@@ -110,6 +110,8 @@ model User {
   updatedAt        DateTime   @updatedAt
   deletedAt        DateTime?
 
+  referredBy String?
+
   buyer    Buyer?
   seller   Seller?
   admin    AdminUser?
@@ -325,6 +327,7 @@ model GlobalCategory {
   parent   GlobalCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
   children GlobalCategory[] @relation("CategoryTree")
   stores   Store[]
+  products Product[]
 
   @@index([parentId])
   @@index([isActive])
@@ -720,6 +723,23 @@ model MediaFile {
 // ─────────────────────────────────────────────
 // NOTIFICATIONS
 // ─────────────────────────────────────────────
+
+model InAppNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // order.status_changed | store.approved | store.rejected | new_order | new_message | seller.verified | moderation.action
+  title     String
+  body      String
+  data      Json     @default("{}")
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("in_app_notifications")
+}
 
 model NotificationPreference {
   id                String   @id @default(uuid())

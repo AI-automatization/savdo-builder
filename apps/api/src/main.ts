@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './socket/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,10 +21,23 @@ async function bootstrap() {
     credentials: true,
   });
 
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    const redisIoAdapter = new RedisIoAdapter(app);
+    await redisIoAdapter.connectToRedis(redisUrl);
+    app.useWebSocketAdapter(redisIoAdapter);
+    Logger.log('Socket.IO using Redis adapter', 'Bootstrap');
+  } else {
+    Logger.warn(
+      'REDIS_URL not set — Socket.IO running without Redis adapter (single instance only)',
+      'Bootstrap',
+    );
+  }
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 
-  console.log(`API running on http://localhost:${port}/api/v1`);
+  Logger.log(`API running on http://localhost:${port}/api/v1`, 'Bootstrap');
 }
 
 bootstrap();

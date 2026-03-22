@@ -9,6 +9,11 @@ export enum UserRole {
   ADMIN = 'ADMIN',
 }
 
+export enum UserStatus {
+  ACTIVE = 'ACTIVE',
+  BLOCKED = 'BLOCKED',
+}
+
 export enum StoreStatus {
   DRAFT = 'DRAFT',
   PENDING_REVIEW = 'PENDING_REVIEW',
@@ -16,6 +21,14 @@ export enum StoreStatus {
   REJECTED = 'REJECTED',
   SUSPENDED = 'SUSPENDED',
   ARCHIVED = 'ARCHIVED',
+}
+
+export enum SellerVerificationStatus {
+  UNVERIFIED = 'UNVERIFIED',
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
+  REJECTED = 'REJECTED',
+  SUSPENDED = 'SUSPENDED',
 }
 
 export enum OrderStatus {
@@ -40,7 +53,30 @@ export enum PaymentMethod {
   ONLINE = 'ONLINE',
 }
 
+export enum PaymentStatus {
+  UNPAID = 'UNPAID',
+  PAID = 'PAID',
+  REFUNDED = 'REFUNDED',
+}
+
 export enum DeliveryType {
   DELIVERY = 'DELIVERY',
   PICKUP = 'PICKUP',
+}
+
+export enum ThreadType {
+  PRODUCT = 'PRODUCT',
+  ORDER = 'ORDER',
+}
+
+export enum MediaVisibility {
+  PUBLIC = 'PUBLIC',
+  PROTECTED = 'PROTECTED',
+  PRIVATE = 'PRIVATE',
+}
+
+export enum InventoryMovementType {
+  ORDER_DEDUCTED = 'ORDER_DEDUCTED',
+  ORDER_RELEASED = 'ORDER_RELEASED',
+  MANUAL_ADJUSTMENT = 'MANUAL_ADJUSTMENT',
 }

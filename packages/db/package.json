@@ -2,12 +2,14 @@
   "name": "db",
   "version": "0.1.0",
   "private": true,
+  "main": "./node_modules/.prisma/client/index.js",
+  "types": "./node_modules/.prisma/client/index.d.ts",
   "scripts": {
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
-    "seed": "ts-node prisma/seed/index.ts"
+    "seed": "ts-node --project tsconfig.json prisma/seed/index.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0"
