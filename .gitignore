@@ -34,6 +34,22 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Personal folders — не трекать
+Desktop/
+AppData/
+Documents/
+Downloads/
+Pictures/
+Videos/
+Music/
+OneDrive/
+.claude/
+.cursor/
+.vscode/
+.android/
+.gemini/
+*.bak
+
 # IDE
 .vscode
 .idea
