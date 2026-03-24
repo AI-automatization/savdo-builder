@@ -3,15 +3,14 @@
 E-commerce store builder для Telegram-продавцов Узбекистана.
 
 ## Команда и зоны ответственности
-
 | Разработчик | Домен | Нельзя трогать |
 |------------|-------|----------------|
-| Абубакир | `apps/api`, `packages/db`, `packages/types` | `apps/web-*`, `apps/admin`, `apps/mobile-*` |
+| Полатр | `apps/api`, `packages/db`, `packages/types`, `apps/mobile-buyer`, `apps/mobile-seller` | `apps/web-*`, `apps/admin` |
 | Азим | `apps/web-buyer`, `apps/web-seller` | `apps/api`, `packages/db`, `apps/admin`, `apps/mobile-*` |
 | Яхьо | `apps/admin` | `apps/api`, `packages/db`, `apps/web-*`, `apps/mobile-*` |
 
-**packages/db** — только Абубакир. Остальные сообщают о проблемах, не правят.
-**packages/types** — Абубакир пишет, остальные только читают.
+**packages/db** — только Полатр. Остальные сообщают о проблемах, не правят.
+**packages/types** — Полатр пишет, остальные только читают.
 **packages/ui** — все могут добавлять компоненты.
 **apps/mobile-*** — заморожены до Phase 3.
 
@@ -34,9 +33,8 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 Не смешивать роли: backend-developer не трогает web, ui-builder не трогает API.
 
 ## Технологический стек
-
 - **Backend:** NestJS + TypeScript + PostgreSQL + Prisma + Redis + BullMQ + Socket.IO
-- **Web:** Next.js 14 (App Router) + Tailwind + DaisyUI + TanStack Query
+- **Web:** Next.js 16 (App Router) + Tailwind + DaisyUI v5 + TanStack Query
 - **Mobile:** Expo / React Native (Phase 3)
 - **Storage:** Cloudflare R2 (S3-compatible)
 - **OTP:** Eskiz.uz → Playmobile fallback
@@ -53,15 +51,16 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 6. **Все ошибки** — через коды из docs/V1.1/05_error_taxonomy.md
 7. **Admin action** всегда пишет audit_log (INV-A01)
 8. **Rejection** требует comment (INV-A02)
+9. **Next.js 16** — params всегда Promise, обязательно await
 
 ## Монорепо команды
-
 ```bash
 pnpm dev:api          # запустить backend
 pnpm db:migrate:dev   # создать migration
 pnpm db:generate      # сгенерировать Prisma client
 pnpm db:studio        # Prisma Studio
 pnpm build            # собрать всё через Turborepo
+cd apps/web-buyer && pnpm dev   # запустить buyer web
 ```
 
 ## Feature Flags
