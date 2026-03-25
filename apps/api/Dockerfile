@@ -8,4 +8,4 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 RUN pnpm db:generate
 RUN pnpm --filter api build
 EXPOSE 3000
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["sh", "-c", "pnpm db:migrate:deploy && node apps/api/dist/main.js"]
