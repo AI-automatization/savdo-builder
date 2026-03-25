@@ -1,4 +1,4 @@
-# Backend Tasks — Абубакир
+# Backend Tasks — Полатр
 
 Домен: `apps/api`, `packages/db`, `packages/types`
 Агент: `backend-developer`, `schema-designer`
@@ -41,7 +41,7 @@ _пусто_
 
 ## Phase C — Deploy & Production Ready
 
-- [x] render.yaml — деплой конфиг (API + PostgreSQL + Redis)
+- [x] railway.toml — деплой конфиг Railway (apps/api/railway.toml, Dockerfile builder)
 - [x] Seed script — глобальные категории + тестовые данные
 - [x] ENV validation — падать при старте если не хватает переменных
 - [x] BullMQ queues — Telegram/notifications через очереди

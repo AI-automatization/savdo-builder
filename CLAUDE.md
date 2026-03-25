@@ -39,7 +39,7 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 - **Storage:** Cloudflare R2 (S3-compatible)
 - **OTP:** Eskiz.uz → Playmobile fallback
 - **Notifications:** Telegram Bot (seller) + in-app
-- **Deploy:** Render.com
+- **Deploy:** Railway
 
 ## Ключевые правила (нарушать нельзя)
 
