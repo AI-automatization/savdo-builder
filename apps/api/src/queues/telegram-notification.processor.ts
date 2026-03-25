@@ -1,8 +1,14 @@
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { SellerNotificationService } from '../modules/telegram/services/seller-notification.service';
+import { TelegramBotService } from '../modules/telegram/services/telegram-bot.service';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from './queues.module';
+import {
+  NotifyNewOrderData,
+  NotifyStoreApprovedData,
+  NotifyStoreRejectedData,
+  NotifyVerificationApprovedData,
+} from '../modules/telegram/services/seller-notification.service';
 
 export const TELEGRAM_JOB_NEW_ORDER = 'new-order';
 export const TELEGRAM_JOB_STORE_APPROVED = 'store-approved';
@@ -13,28 +19,51 @@ export const TELEGRAM_JOB_VERIFICATION_APPROVED = 'verification-approved';
 export class TelegramNotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(TelegramNotificationProcessor.name);
 
-  constructor(private readonly sellerNotificationService: SellerNotificationService) {
+  constructor(private readonly telegramBot: TelegramBotService) {
     super();
   }
 
   async process(job: Job): Promise<void> {
     try {
       switch (job.name) {
-        case TELEGRAM_JOB_NEW_ORDER:
-          await this.sellerNotificationService.sendNewOrder(job.data);
+        case TELEGRAM_JOB_NEW_ORDER: {
+          const d = job.data as NotifyNewOrderData;
+          const text =
+            `📦 Новый заказ #${d.orderNumber}\n` +
+            `Магазин: ${d.storeName}\n` +
+            `Товаров: ${d.itemCount}\n` +
+            `Сумма: ${d.total} ${d.currency}`;
+          await this.telegramBot.sendMessage(`@${d.sellerTelegramUsername}`, text);
           break;
+        }
 
-        case TELEGRAM_JOB_STORE_APPROVED:
-          await this.sellerNotificationService.sendStoreApproved(job.data);
+        case TELEGRAM_JOB_STORE_APPROVED: {
+          const d = job.data as NotifyStoreApprovedData;
+          await this.telegramBot.sendMessage(
+            `@${d.sellerTelegramUsername}`,
+            `✅ Ваш магазин «${d.storeName}» одобрен и теперь доступен покупателям!`,
+          );
           break;
+        }
 
-        case TELEGRAM_JOB_STORE_REJECTED:
-          await this.sellerNotificationService.sendStoreRejected(job.data);
+        case TELEGRAM_JOB_STORE_REJECTED: {
+          const d = job.data as NotifyStoreRejectedData;
+          const reasonLine = d.reason ? `\nПричина: ${d.reason}` : '';
+          await this.telegramBot.sendMessage(
+            `@${d.sellerTelegramUsername}`,
+            `❌ Ваш магазин «${d.storeName}» отклонён.${reasonLine}`,
+          );
           break;
+        }
 
-        case TELEGRAM_JOB_VERIFICATION_APPROVED:
-          await this.sellerNotificationService.sendVerificationApproved(job.data);
+        case TELEGRAM_JOB_VERIFICATION_APPROVED: {
+          const d = job.data as NotifyVerificationApprovedData;
+          await this.telegramBot.sendMessage(
+            `@${d.sellerTelegramUsername}`,
+            '✅ Ваш аккаунт продавца верифицирован. Теперь вы можете создать магазин.',
+          );
           break;
+        }
 
         default:
           this.logger.error(
@@ -47,7 +76,6 @@ export class TelegramNotificationProcessor extends WorkerHost {
         `TelegramNotificationProcessor failed [job=${job.name} id=${job.id}]: ${message}`,
         err instanceof Error ? err.stack : undefined,
       );
-      // Rethrow so BullMQ counts the attempt and applies backoff/retry.
       throw err;
     }
   }
