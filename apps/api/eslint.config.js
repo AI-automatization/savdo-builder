@@ -1,12 +1,14 @@
 // @ts-check
-const js = require('@eslint/js');
+const tseslint = require('typescript-eslint');
 
-module.exports = [
+module.exports = tseslint.config(
+  { ignores: ['dist/**', 'node_modules/**'] },
+  ...tseslint.configs.recommended,
   {
-    ignores: ['dist/**', 'node_modules/**'],
+    files: ['src/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
   },
-  {
-    ...js.configs.recommended,
-    files: ['src/**/*.js'],
-  },
-];
+);
