@@ -18,6 +18,7 @@ import { TrackEventDto } from './dto/track-event.dto';
 import { QueryEventsDto } from './dto/query-events.dto';
 import { TrackEventUseCase } from './use-cases/track-event.use-case';
 import { QueryEventsUseCase } from './use-cases/query-events.use-case';
+import { GetSellerSummaryUseCase } from './use-cases/get-seller-summary.use-case';
 
 /**
  * OptionalJwtAuthGuard — lets unauthenticated requests through.
@@ -37,6 +38,7 @@ export class AnalyticsController {
   constructor(
     private readonly trackEventUseCase: TrackEventUseCase,
     private readonly queryEventsUseCase: QueryEventsUseCase,
+    private readonly getSellerSummaryUseCase: GetSellerSummaryUseCase,
   ) {}
 
   // ─── POST /api/v1/analytics/track ─────────────────────────────────────────
@@ -50,6 +52,15 @@ export class AnalyticsController {
     @Body() dto: TrackEventDto,
   ): Promise<void> {
     await this.trackEventUseCase.execute({ dto, user });
+  }
+
+  // ─── GET /api/v1/analytics/seller/summary ─────────────────────────────────
+
+  @Get('analytics/seller/summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async getSellerSummary(@CurrentUser() user: JwtPayload) {
+    return this.getSellerSummaryUseCase.execute(user);
   }
 
   // ─── GET /api/v1/admin/analytics/events ───────────────────────────────────

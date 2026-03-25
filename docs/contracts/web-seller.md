@@ -1216,3 +1216,33 @@ All fields optional. Only provided fields are updated (upsert).
 **Errors:**
 - `VALIDATION_ERROR`: non-boolean values
 - `UNAUTHORIZED`: missing or invalid JWT
+
+
+---
+
+### GET /api/v1/analytics/seller/summary
+
+**Auth:** required
+**Role:** SELLER
+
+Returns last 30 days summary for the seller's store.
+
+**Response 200:**
+```json
+{
+  "views": 142,
+  "topProduct": {
+    "productId": "uuid-here",
+    "views": 58
+  },
+  "conversionRate": 4.2
+}
+```
+
+`views` — total `storefront_viewed` + `product_viewed` events
+`topProduct` — product with most views, `null` if no data
+`conversionRate` — `order_created / storefront_viewed * 100`, rounded to 1 decimal
+
+**Errors:**
+- `STORE_NOT_FOUND`: seller has no store yet
+- `UNAUTHORIZED`: missing or invalid JWT

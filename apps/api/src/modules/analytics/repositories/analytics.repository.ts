@@ -26,6 +26,12 @@ export interface FindEventsResult {
   total: number;
 }
 
+export interface SellerSummary {
+  views: number;
+  topProduct: { productId: string; views: number } | null;
+  conversionRate: number;
+}
+
 @Injectable()
 export class AnalyticsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -74,5 +80,47 @@ export class AnalyticsRepository {
     ]);
 
     return { events, total };
+  }
+
+  async getSellerSummary(storeId: string): Promise<SellerSummary> {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [views, orderCount, storefrontViews, topProductRows] =
+      await this.prisma.$transaction([
+        this.prisma.analyticsEvent.count({
+          where: {
+            storeId,
+            eventName: { in: ['storefront_viewed', 'product_viewed'] },
+            createdAt: { gte: thirtyDaysAgo },
+          },
+        }),
+        this.prisma.analyticsEvent.count({
+          where: { storeId, eventName: 'order_created', createdAt: { gte: thirtyDaysAgo } },
+        }),
+        this.prisma.analyticsEvent.count({
+          where: { storeId, eventName: 'storefront_viewed', createdAt: { gte: thirtyDaysAgo } },
+        }),
+        this.prisma.$queryRaw<{ productId: string; views: number }[]>`
+          SELECT event_payload->>'productId' AS "productId",
+                 COUNT(*)::int              AS views
+          FROM   analytics_events
+          WHERE  store_id   = ${storeId}
+            AND  event_name = 'product_viewed'
+            AND  created_at >= ${thirtyDaysAgo}
+            AND  event_payload->>'productId' IS NOT NULL
+          GROUP  BY event_payload->>'productId'
+          ORDER  BY views DESC
+          LIMIT  1
+        `,
+      ]);
+
+    return {
+      views,
+      topProduct: topProductRows[0] ?? null,
+      conversionRate:
+        storefrontViews > 0
+          ? Math.round((orderCount / storefrontViews) * 1000) / 10
+          : 0,
+    };
   }
 }
