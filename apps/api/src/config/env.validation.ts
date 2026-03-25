@@ -18,19 +18,19 @@ export const envValidationSchema = Joi.object({
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
 
   // Storage (R2)
-  STORAGE_ENDPOINT: Joi.string().optional(),
-  STORAGE_ACCESS_KEY_ID: Joi.string().optional(),
-  STORAGE_SECRET_ACCESS_KEY: Joi.string().optional(),
-  STORAGE_BUCKET_PUBLIC: Joi.string().optional(),
-  STORAGE_BUCKET_PRIVATE: Joi.string().optional(),
-  STORAGE_PUBLIC_URL: Joi.string().optional(),
+  STORAGE_ENDPOINT: Joi.string().allow('').optional(),
+  STORAGE_ACCESS_KEY_ID: Joi.string().allow('').optional(),
+  STORAGE_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
+  STORAGE_BUCKET_PUBLIC: Joi.string().allow('').optional(),
+  STORAGE_BUCKET_PRIVATE: Joi.string().allow('').optional(),
+  STORAGE_PUBLIC_URL: Joi.string().allow('').optional(),
 
   // Telegram
-  TELEGRAM_BOT_TOKEN: Joi.string().optional(),
+  TELEGRAM_BOT_TOKEN: Joi.string().allow('').optional(),
 
   // OTP
-  ESKIZ_EMAIL: Joi.string().optional(),
-  ESKIZ_PASSWORD: Joi.string().optional(),
+  ESKIZ_EMAIL: Joi.string().allow('').optional(),
+  ESKIZ_PASSWORD: Joi.string().allow('').optional(),
 
   // Feature flags
   DEV_OTP_ENABLED: Joi.boolean().default(false),
