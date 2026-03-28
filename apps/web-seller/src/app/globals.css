@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+:root {
+  --bg-gradient: linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%);
+  --accent: #A78BFA;
+  --accent-dim: rgba(167,139,250,0.18);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
