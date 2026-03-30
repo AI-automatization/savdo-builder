@@ -67,3 +67,7 @@ cd apps/web-buyer && pnpm dev   # запустить buyer web
 
 Полный список: `docs/V1.1/06_feature_flags.md` и `.env.example`.
 В dev: `DEV_OTP_ENABLED=true`, `STORE_APPROVAL_REQUIRED=false`.
+
+## Worktrees
+
+Используй `.worktrees/` для git worktrees.
