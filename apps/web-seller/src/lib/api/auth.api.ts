@@ -1,0 +1,28 @@
+import type {
+  RequestOtpRequest,
+  RequestOtpResponse,
+  VerifyOtpRequest,
+  AuthTokensResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
+} from 'types';
+import { apiClient } from './client';
+
+export async function requestOtp(data: RequestOtpRequest): Promise<RequestOtpResponse> {
+  const res = await apiClient.post<RequestOtpResponse>('/auth/request-otp', data);
+  return res.data;
+}
+
+export async function verifyOtp(data: VerifyOtpRequest): Promise<AuthTokensResponse> {
+  const res = await apiClient.post<AuthTokensResponse>('/auth/verify-otp', data);
+  return res.data;
+}
+
+export async function refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+  const res = await apiClient.post<RefreshTokenResponse>('/auth/refresh', data);
+  return res.data;
+}
+
+export async function logout(): Promise<void> {
+  await apiClient.post('/auth/logout');
+}
