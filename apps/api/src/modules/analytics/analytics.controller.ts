@@ -63,6 +63,15 @@ export class AnalyticsController {
     return this.getSellerSummaryUseCase.execute(user);
   }
 
+  // ─── GET /api/v1/seller/metrics — alias for analytics/seller/summary ──────
+
+  @Get('seller/metrics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async getSellerMetrics(@CurrentUser() user: JwtPayload) {
+    return this.getSellerSummaryUseCase.execute(user);
+  }
+
   // ─── GET /api/v1/admin/analytics/events ───────────────────────────────────
 
   @Get('admin/analytics/events')

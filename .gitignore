@@ -11,13 +11,12 @@ build
 
 # Environment
 .env
-.env.local
-.env.development.local
-.env.staging.local
-.env.production.local
+.env.*
+.env.test
 
 # Keep example env files
 !.env.example
+!*.env.example
 
 # Turbo
 .turbo

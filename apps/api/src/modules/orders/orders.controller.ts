@@ -61,6 +61,17 @@ export class OrdersController {
     });
   }
 
+  // GET /api/v1/orders/:id — alias for buyer/orders/:id
+  @Get('orders/:id')
+  @Roles('BUYER')
+  async getOrderById(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') orderId: string,
+  ) {
+    const buyerId = await this.resolveBuyerId(user.sub);
+    return this.getOrderDetailUseCase.execute({ orderId, buyerId });
+  }
+
   // GET /api/v1/buyer/orders/:id
   @Get('buyer/orders/:id')
   @Roles('BUYER')

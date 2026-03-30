@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CheckoutController } from './checkout.controller';
+import { OrdersCreateController } from './orders-create.controller';
 import { CheckoutRepository } from './repositories/checkout.repository';
 import { PreviewCheckoutUseCase } from './use-cases/preview-checkout.use-case';
 import { ConfirmCheckoutUseCase } from './use-cases/confirm-checkout.use-case';
@@ -9,7 +10,7 @@ import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [CartModule, ProductsModule, UsersModule],
-  controllers: [CheckoutController],
+  controllers: [CheckoutController, OrdersCreateController],
   providers: [
     CheckoutRepository,
     PreviewCheckoutUseCase,

@@ -231,6 +231,58 @@ export class ProductsController {
     return this.adjustStock.execute(variantId, productId, storeId, dto.delta, dto.reason);
   }
 
+  // ─── Storefront routes by slug (public) ──────────────────────────────────
+
+  @Get('storefront/stores/:slug')
+  async getStorefrontStoreBySlug(@Param('slug') slug: string) {
+    const store = await this.storesRepo.findBySlug(slug);
+    if (!store) {
+      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
+    }
+    return store;
+  }
+
+  @Get('stores/:slug')
+  async getStoreBySlug(@Param('slug') slug: string) {
+    const store = await this.storesRepo.findBySlug(slug);
+    if (!store) {
+      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
+    }
+    return store;
+  }
+
+  @Get('stores/:slug/products')
+  async listStoreProductsBySlug(
+    @Param('slug') slug: string,
+    @Query('globalCategoryId') globalCategoryId?: string,
+    @Query('storeCategoryId') storeCategoryId?: string,
+  ) {
+    const store = await this.storesRepo.findBySlug(slug);
+    if (!store) {
+      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
+    }
+    return this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
+  }
+
+  @Get('stores/:slug/products/:id')
+  async getStoreProductBySlug(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+  ) {
+    const store = await this.storesRepo.findBySlug(slug);
+    if (!store) {
+      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
+    }
+    const product = await this.productsRepo.findPublicById(id);
+    if (!product) {
+      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    if (product.storeId !== store.id) {
+      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    return product;
+  }
+
   // ─── Storefront routes (public) ───────────────────────────────────────────
 
   @Get('storefront/products')

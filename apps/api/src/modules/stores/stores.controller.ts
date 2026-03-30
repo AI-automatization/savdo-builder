@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -50,6 +50,14 @@ export class StoresController {
 
   @Patch()
   async updateMyStore(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateStoreDto,
+  ) {
+    return this.updateStore.execute(user.sub, dto);
+  }
+
+  @Put()
+  async replaceMyStore(
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateStoreDto,
   ) {

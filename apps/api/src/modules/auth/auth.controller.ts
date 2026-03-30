@@ -26,9 +26,25 @@ export class AuthController {
     return { message: 'OTP sent', expiresAt: result.expiresAt };
   }
 
+  @Post('otp/send')
+  @HttpCode(HttpStatus.OK)
+  async otpSendHandler(@Body() dto: RequestOtpDto) {
+    const result = await this.requestOtp.execute(dto.phone, dto.purpose);
+    return { message: 'OTP sent', expiresAt: result.expiresAt };
+  }
+
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   async verifyOtpHandler(@Body() dto: VerifyOtpDto, @Req() req: Request) {
+    return this.verifyOtp.execute(dto.phone, dto.code, dto.purpose, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Post('otp/verify')
+  @HttpCode(HttpStatus.OK)
+  async otpVerifyHandler(@Body() dto: VerifyOtpDto, @Req() req: Request) {
     return this.verifyOtp.execute(dto.phone, dto.code, dto.purpose, {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
