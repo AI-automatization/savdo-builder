@@ -3,15 +3,9 @@ node_modules
 **/.pnpm-store
 **/dist
 **/.next
-**/build
-.git
-.github
+**/.turbo
 *.log
 .env*
-!.env.example
+!*.env.example
 design/
 analiz/
-docs/
-apps/web-buyer
-apps/web-seller
-apps/admin
