@@ -1,13 +1,23 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getCategories, getProducts, getProduct } from '../lib/api/storefront.api';
+import { getStoreBySlug, getCategories, getProducts, getProduct } from '../lib/api/storefront.api';
 
 export const storefrontKeys = {
+  store: (slug: string) => ['store', slug] as const,
   categories: ['categories'] as const,
   products: (storeId: string, filters?: object) => ['products', storeId, filters] as const,
   product: (id: string) => ['product', id] as const,
 };
+
+export function useStoreBySlug(slug: string) {
+  return useQuery({
+    queryKey: storefrontKeys.store(slug),
+    queryFn: () => getStoreBySlug(slug),
+    enabled: !!slug,
+    staleTime: 2 * 60 * 1000,
+  });
+}
 
 export function useCategories() {
   return useQuery({

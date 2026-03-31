@@ -1,26 +1,8 @@
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import ProductCard, { type Product } from "@/components/store/ProductCard";
-
-// ── Mock data ─────────────────────────────────────────────────────────────────
-
-const MOCK_STORE = {
-  name: "Nike Uzbekistan",
-  description: "Официальный магазин Nike. Оригинальная спортивная одежда и обувь с доставкой по Ташкенту.",
-  telegram: "https://t.me/nike_uz",
-  categories: ["Все", "Обувь", "Одежда", "Аксессуары"],
-};
-
-const MOCK_PRODUCTS: Product[] = [
-  { id: "1", name: "Air Max 270",             price: 1_450_000, salePrice: 1_200_000, category: "Обувь",      inStock: true  },
-  { id: "2", name: "Air Force 1 Low",         price: 1_250_000,                       category: "Обувь",      inStock: true  },
-  { id: "3", name: "Jordan 1 Retro High OG",  price: 2_100_000,                       category: "Обувь",      inStock: true  },
-  { id: "4", name: "React Infinity Run FK 3", price: 1_650_000,                       category: "Обувь",      inStock: false },
-  { id: "5", name: "Tech Fleece Hoodie",      price:   890_000,                       category: "Одежда",     inStock: true  },
-  { id: "6", name: "Dri-FIT Running Tee",     price:   320_000, salePrice:   259_000, category: "Одежда",     inStock: true  },
-  { id: "7", name: "Club Fleece Joggers",     price:   560_000, salePrice:   420_000, category: "Одежда",     inStock: true  },
-  { id: "8", name: "Nike Cap Classic 99",     price:   185_000,                       category: "Аксессуары", inStock: true  },
-  { id: "9", name: "Brasilia Backpack 9.5",   price:   680_000,                       category: "Аксессуары", inStock: true  },
-];
+import Image from "next/image";
+import ProductCard from "@/components/store/ProductCard";
+import { serverGetStoreBySlug, serverGetProducts } from "@/lib/api/storefront-server";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -53,22 +35,31 @@ export default async function StorePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ categoryId?: string }>;
 }) {
-  const { slug }     = await params;
-  const { category } = await searchParams;
+  const { slug }       = await params;
+  const { categoryId } = await searchParams;
 
-  const activeCategory = category ?? "Все";
-  const products = activeCategory === "Все"
-    ? MOCK_PRODUCTS
-    : MOCK_PRODUCTS.filter((p) => p.category === activeCategory);
+  let store;
+  try {
+    store = await serverGetStoreBySlug(slug);
+  } catch (err: unknown) {
+    const e = err as { status?: number };
+    if (e?.status === 404) notFound();
+    throw err;
+  }
+
+  const products = await serverGetProducts({
+    storeId: store.id,
+    storeCategoryId: categoryId,
+  });
 
   const NAV = [
-    { href: `/${slug}`,    label: "Магазин", icon: <IcoShop />,    active: true },
-    { href: "/cart",       label: "Корзина", icon: <IcoCart /> },
-    { href: "/chats",      label: "Чаты",    icon: <IcoChat /> },
-    { href: "/orders",     label: "Заказы",  icon: <IcoOrders /> },
-    { href: "/profile",    label: "Профиль", icon: <IcoProfile /> },
+    { href: `/${slug}`,  label: "Магазин", icon: <IcoShop />,    active: true },
+    { href: "/cart",     label: "Корзина", icon: <IcoCart /> },
+    { href: "/chats",    label: "Чаты",    icon: <IcoChat /> },
+    { href: "/orders",   label: "Заказы",  icon: <IcoOrders /> },
+    { href: "/profile",  label: "Профиль", icon: <IcoProfile /> },
   ];
 
   return (
@@ -86,19 +77,24 @@ export default async function StorePage({
 
         {/* ── Store header ── */}
         <div className="rounded-2xl p-4 mb-4" style={glass}>
-          {/* Avatar + name row */}
           <div className="flex items-center gap-3 mb-3">
+            {/* Logo / avatar */}
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0 relative overflow-hidden"
               style={{ background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.4)" }}
             >
-              {MOCK_STORE.name.charAt(0)}
+              {store.logoUrl ? (
+                <Image src={store.logoUrl} alt={store.name} fill className="object-cover" sizes="56px" />
+              ) : (
+                store.name.charAt(0)
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold text-white leading-tight">{MOCK_STORE.name}</h1>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>@{slug}</p>
+              <h1 className="text-lg font-bold text-white leading-tight">{store.name}</h1>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                @{slug} · {store.city}
+              </p>
             </div>
-            {/* Cart shortcut */}
             <Link
               href="/cart"
               className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
@@ -108,49 +104,68 @@ export default async function StorePage({
             </Link>
           </div>
 
-          {/* Description */}
-          <p className="text-sm leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.55)" }}>
-            {MOCK_STORE.description}
-          </p>
+          {store.description && (
+            <p className="text-sm leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.55)" }}>
+              {store.description}
+            </p>
+          )}
 
-          {/* Telegram CTA */}
-          <a
-            href={MOCK_STORE.telegram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-85"
-            style={{ background: "linear-gradient(135deg, #1d6fa4 0%, #2AABEE 100%)", boxShadow: "0 4px 16px rgba(42,171,238,.25)" }}
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
-            </svg>
-            Написать в Telegram
-          </a>
+          {store.telegramContactLink && (
+            <a
+              href={store.telegramContactLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-85"
+              style={{ background: "linear-gradient(135deg, #1d6fa4 0%, #2AABEE 100%)", boxShadow: "0 4px 16px rgba(42,171,238,.25)" }}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
+              </svg>
+              Написать в Telegram
+            </a>
+          )}
         </div>
 
         {/* ── Category filter ── */}
-        <div
-          className="sticky flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-none"
-          style={{ top: "12px", zIndex: 10 }}
-        >
-          {MOCK_STORE.categories.map((cat) => {
-            const isActive = activeCategory === cat;
-            return (
-              <Link
-                key={cat}
-                href={cat === "Все" ? `/${slug}` : `/${slug}?category=${encodeURIComponent(cat)}`}
-                className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all"
-                style={
-                  isActive
-                    ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.45)" }
-                    : { ...glassDim, color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.10)" }
-                }
-              >
-                {cat}
-              </Link>
-            );
-          })}
-        </div>
+        {store.categories.length > 0 && (
+          <div
+            className="sticky flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-none"
+            style={{ top: "12px", zIndex: 10 }}
+          >
+            {/* "All" pill */}
+            <Link
+              href={`/${slug}`}
+              className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all"
+              style={
+                !categoryId
+                  ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.45)" }
+                  : { ...glassDim, color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.10)" }
+              }
+            >
+              Все
+            </Link>
+
+            {store.categories
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((cat) => {
+                const isActive = categoryId === cat.id;
+                return (
+                  <Link
+                    key={cat.id}
+                    href={`/${slug}?categoryId=${cat.id}`}
+                    className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all"
+                    style={
+                      isActive
+                        ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.45)" }
+                        : { ...glassDim, color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.10)" }
+                    }
+                  >
+                    {cat.name}
+                  </Link>
+                );
+              })}
+          </div>
+        )}
 
         {/* ── Product grid ── */}
         {products.length === 0 ? (
