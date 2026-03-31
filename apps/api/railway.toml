@@ -4,6 +4,7 @@ dockerfilePath = "apps/api/Dockerfile"
 watchPatterns = ["apps/api/**", "packages/db/**", "packages/types/**"]
 
 [deploy]
+startCommand = "pnpm --filter db exec prisma migrate deploy && node apps/api/dist/src/main.js"
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
