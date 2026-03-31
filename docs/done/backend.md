@@ -33,3 +33,5 @@
 | 2026-03-30 | TypeScript typecheck | tsc --noEmit EXIT 0 — все типы чистые. Скрипт добавлен в root package.json |
 | 2026-03-31 | Dockerfile multi-stage — ГОТОВО | .dockerignore добавлен (node_modules хоста не копируются). prisma в dependencies пакета db. generate и migrate:deploy через `pnpm --filter db exec prisma`. API запускается, health: ok |
 | 2026-03-30 | Конфиги обновлены | TELEGRAM_BOT_TOKEN=required, TELEGRAM_WEBHOOK_SECRET, ESKIZ_* удалены, error-codes: TELEGRAM_NOT_LINKED, CLAUDE.md: правило 0 Eskiz запрещён |
+| 2026-03-31 | Railway деплой web-buyer | savdo-builder сервис — Dockerfile закоммичен, railway.toml настроен, Variables добавлены, деплой успешен |
+| 2026-03-31 | Railway деплой web-seller | web-seller сервис — Dockerfile закоммичен, railway.toml настроен, Variables добавлены, деплой успешен |
