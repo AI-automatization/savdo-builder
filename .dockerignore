@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+**/.pnpm-store
+**/dist
+**/.next
+**/build
+.git
+.github
+*.log
+.env*
+!.env.example
+design/
+analiz/
+docs/
+apps/web-buyer
+apps/web-seller
+apps/admin

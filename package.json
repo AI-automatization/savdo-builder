@@ -9,11 +9,17 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
+    "typecheck": "pnpm --filter api exec tsc --noEmit",
     "db:generate": "pnpm --filter db run generate",
     "db:migrate:dev": "pnpm --filter db run migrate:dev",
     "db:migrate:deploy": "pnpm --filter db run migrate:deploy",
     "db:studio": "pnpm --filter db run studio",
-    "db:seed": "pnpm --filter db run seed"
+    "db:seed": "pnpm --filter db run seed",
+    "docker:up": "docker compose --env-file .env.docker up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f api",
+    "docker:reset": "docker compose down -v && docker compose --env-file .env.docker up --build -d",
+    "docker:typecheck": "docker compose --env-file .env.docker run --rm --no-deps api sh -c 'pnpm --filter api exec tsc --noEmit'"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

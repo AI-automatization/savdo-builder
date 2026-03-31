@@ -11,11 +11,13 @@ import { RequestOtpUseCase } from './use-cases/request-otp.use-case';
 import { VerifyOtpUseCase } from './use-cases/verify-otp.use-case';
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
   imports: [
     PassportModule,
     JwtModule.register({}), // secrets configured per-call in TokenService
+    TelegramModule,
   ],
   controllers: [AuthController],
   providers: [

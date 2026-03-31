@@ -236,10 +236,10 @@ importers:
       '@prisma/client':
         specifier: ^5.0.0
         version: 5.22.0(prisma@5.22.0)
-    devDependencies:
       prisma:
         specifier: ^5.0.0
         version: 5.22.0
+    devDependencies:
       ts-node:
         specifier: ^10.0.0
         version: 10.9.2(@types/node@20.19.37)(typescript@5.9.3)

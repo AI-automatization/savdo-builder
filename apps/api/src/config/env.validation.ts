@@ -25,12 +25,10 @@ export const envValidationSchema = Joi.object({
   STORAGE_BUCKET_PRIVATE: Joi.string().allow('').optional(),
   STORAGE_PUBLIC_URL: Joi.string().allow('').optional(),
 
-  // Telegram
-  TELEGRAM_BOT_TOKEN: Joi.string().allow('').optional(),
-
-  // OTP
-  ESKIZ_EMAIL: Joi.string().allow('').optional(),
-  ESKIZ_PASSWORD: Joi.string().allow('').optional(),
+  // Telegram Bot — OTP через Telegram (Eskiz ЗАПРЕЩЁН)
+  TELEGRAM_BOT_TOKEN: Joi.string().required(),
+  TELEGRAM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
+  TELEGRAM_BOT_USERNAME: Joi.string().default('savdo_builderBOT'),
 
   // Feature flags
   DEV_OTP_ENABLED: Joi.boolean().default(false),
@@ -41,7 +39,7 @@ export const envValidationSchema = Joi.object({
   OTP_REQUIRED_FOR_CHECKOUT: Joi.boolean().default(false),
   WEB_PUSH_ENABLED: Joi.boolean().default(false),
   MOBILE_PUSH_ENABLED: Joi.boolean().default(false),
-  SMS_FALLBACK_ENABLED: Joi.boolean().default(false),
+  SMS_FALLBACK_ENABLED: Joi.boolean().default(false), // ВСЕГДА false — SMS/Eskiz ЗАПРЕЩЕНЫ
   SELLER_INSIGHTS_ENABLED: Joi.boolean().default(false),
   PAYMENT_ONLINE_ENABLED: Joi.boolean().default(false),
   PRODUCT_IMAGE_ATTACHMENT_ENABLED: Joi.boolean().default(false),

@@ -1,14 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
-import axios from 'axios';
+import { RedisService } from '../../../shared/redis.service';
+import { TelegramBotService } from '../../telegram/services/telegram-bot.service';
+import { DomainException } from '../../../common/exceptions/domain.exception';
+import { ErrorCode } from '../../../shared/constants/error-codes';
+import { TELEGRAM_CHAT_ID_KEY } from '../../telegram/telegram-webhook.controller';
 
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
-  private eskizToken: string | null = null;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly redis: RedisService,
+    private readonly telegram: TelegramBotService,
+  ) {}
 
   generateCode(): string {
     // 4-digit code
@@ -31,37 +38,22 @@ export class OtpService {
       return;
     }
 
-    await this.sendViaEskiz(phone, code);
-  }
-
-  private async sendViaEskiz(phone: string, code: string): Promise<void> {
-    const message = `Savdo: your verification code is ${code}. Valid for 5 minutes.`;
-
-    try {
-      if (!this.eskizToken) {
-        await this.refreshEskizToken();
-      }
-
-      await axios.post(
-        'https://notify.eskiz.uz/api/message/sms/send',
-        {
-          mobile_phone: phone.replace('+', ''),
-          message,
-          from: this.config.get('ESKIZ_FROM') ?? '4546',
-        },
-        { headers: { Authorization: `Bearer ${this.eskizToken}` } },
+    const chatId = await this.redis.get(TELEGRAM_CHAT_ID_KEY(phone));
+    if (!chatId) {
+      const botUsername = this.config.get<string>('telegram.botUsername') ?? 'savdo_builderBOT';
+      throw new DomainException(
+        ErrorCode.TELEGRAM_NOT_LINKED,
+        `Telegram не привязан. Откройте @${botUsername} и поделитесь номером телефона, чтобы получать OTP коды.`,
+        HttpStatus.BAD_REQUEST,
       );
-    } catch (error) {
-      this.logger.error(`Failed to send OTP via Eskiz to ${phone}`, error);
-      throw error;
     }
-  }
 
-  private async refreshEskizToken(): Promise<void> {
-    const response = await axios.post('https://notify.eskiz.uz/api/auth/login', {
-      email: this.config.get('ESKIZ_EMAIL'),
-      password: this.config.get('ESKIZ_PASSWORD'),
-    });
-    this.eskizToken = response.data?.data?.token;
+    await this.telegram.sendMessage(
+      chatId,
+      `🔐 <b>${code}</b> — ваш код для входа в Savdo.\n\nДействителен 5 минут. Никому не сообщайте.`,
+      { parseMode: 'HTML' },
+    );
+
+    this.logger.log(`OTP sent via Telegram to phone=${phone}`);
   }
 }

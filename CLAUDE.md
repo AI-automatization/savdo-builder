@@ -37,12 +37,13 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 - **Web:** Next.js 16 (App Router) + Tailwind + DaisyUI v5 + TanStack Query
 - **Mobile:** Expo / React Native (Phase 3)
 - **Storage:** Cloudflare R2 (S3-compatible)
-- **OTP:** Eskiz.uz → Playmobile fallback
+- **OTP:** ТОЛЬКО Telegram Bot (@savdo_builderBOT) — Eskiz.uz и любые SMS ЗАПРЕЩЕНЫ
 - **Notifications:** Telegram Bot (seller) + in-app
 - **Deploy:** Railway
 
 ## Ключевые правила (нарушать нельзя)
 
+0. **❌ ESKIZ.UZ ЗАПРЕЩЁН** — никакого SMS, никакого Eskiz, никакого Playmobile. OTP только через Telegram Bot API (@savdo_builderBOT). Нарушение = откат PR.
 1. **Один seller = один store** в MVP (INV-S01)
 2. **Корзина = один store** (INV-C01)
 3. **Состав заказа immutable** после создания (INV-C03)

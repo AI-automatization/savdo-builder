@@ -28,3 +28,8 @@
 | 2026-03-23 | ENV validation | Joi schema in apps/api/src/config/env.validation.ts, wired into ConfigModule.forRoot |
 | 2026-03-23 | Socket.IO Redis adapter | Горизонтальное масштабирование чата через Redis pub/sub |
 | 2026-03-23 | BullMQ queues | Telegram + in-app notifications через очереди с retry |
+| 2026-03-30 | OTP через Telegram — замена Eskiz | RedisService (global), TelegramWebhookController (POST /telegram/webhook), otp.service.ts полностью переписан. Eskiz удалён везде. Бот: @savdo_builderBOT |
+| 2026-03-30 | Docker + локальная Railway-среда | docker-compose.yml (PostgreSQL 16 + Redis 7 + API), .env.docker, Makefile (make up/down/logs/reset/typecheck) |
+| 2026-03-30 | TypeScript typecheck | tsc --noEmit EXIT 0 — все типы чистые. Скрипт добавлен в root package.json |
+| 2026-03-31 | Dockerfile multi-stage — ГОТОВО | .dockerignore добавлен (node_modules хоста не копируются). prisma в dependencies пакета db. generate и migrate:deploy через `pnpm --filter db exec prisma`. API запускается, health: ok |
+| 2026-03-30 | Конфиги обновлены | TELEGRAM_BOT_TOKEN=required, TELEGRAM_WEBHOOK_SECRET, ESKIZ_* удалены, error-codes: TELEGRAM_NOT_LINKED, CLAUDE.md: правило 0 Eskiz запрещён |

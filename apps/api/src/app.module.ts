@@ -10,6 +10,7 @@ import { telegramConfig } from './config/telegram.config';
 import { featuresConfig } from './config/features.config';
 import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/prisma.module';
+import { RedisModule } from './shared/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { SellersModule } from './modules/sellers/sellers.module';
@@ -38,6 +39,7 @@ import { QueuesModule } from './queues/queues.module';
       validationSchema: envValidationSchema,
     }),
     DatabaseModule,
+    RedisModule,
     QueuesModule,
     AuthModule,
     UsersModule,

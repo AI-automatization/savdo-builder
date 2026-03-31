@@ -1,0 +1,101 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Savdo — Локальная Railway-like среда
+# Использование: make up | docker compose --env-file .env.docker up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL 16 (= Railway Postgres plugin) ──────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: savdo
+      POSTGRES_USER: savdo
+      POSTGRES_PASSWORD: savdo_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U savdo -d savdo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis 7 (= Railway Redis plugin) ───────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── API (NestJS) ───────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      # Railway инжектирует эти два из плагинов — мы эмулируем здесь
+      DATABASE_URL: postgresql://savdo:savdo_local@postgres:5432/savdo
+      REDIS_URL: redis://redis:6379
+
+      # JWT — минимум 32 символа
+      JWT_ACCESS_SECRET: local_access_secret_savdo_builder_32chars
+      JWT_REFRESH_SECRET: local_refresh_secret_savdo_builder_32ch
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 30d
+
+      # Telegram Bot OTP — токен из .env.docker
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-savdo_builderBOT}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+
+      # Feature flags (dev-friendly)
+      DEV_OTP_ENABLED: "true"
+      STORE_APPROVAL_REQUIRED: "false"
+      CHAT_ENABLED: "true"
+      ANALYTICS_ENABLED: "true"
+      TELEGRAM_NOTIFICATIONS_ENABLED: "true"
+      OTP_REQUIRED_FOR_CHECKOUT: "false"
+      WEB_PUSH_ENABLED: "false"
+      MOBILE_PUSH_ENABLED: "false"
+      SMS_FALLBACK_ENABLED: "false"
+      SELLER_INSIGHTS_ENABLED: "false"
+      PAYMENT_ONLINE_ENABLED: "false"
+      PRODUCT_IMAGE_ATTACHMENT_ENABLED: "false"
+      AUTO_CANCEL_PENDING_AFTER_HOURS: "48"
+
+      # CORS
+      ALLOWED_ORIGINS: "http://localhost:3001,http://localhost:3002,http://localhost:3003"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+volumes:
+  postgres_data:
+  redis_data:
