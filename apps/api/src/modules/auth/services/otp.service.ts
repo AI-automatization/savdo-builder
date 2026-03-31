@@ -1,11 +1,14 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import * as bcrypt from 'bcryptjs';
 import { RedisService } from '../../../shared/redis.service';
-import { TelegramBotService } from '../../telegram/services/telegram-bot.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { TELEGRAM_CHAT_ID_KEY } from '../../telegram/telegram-webhook.controller';
+import { QUEUE_OTP } from '../../../queues/queues.module';
+import { OTP_JOB_SEND_TELEGRAM, type OtpSendTelegramJobData } from '../../../queues/otp.jobs';
 
 @Injectable()
 export class OtpService {
@@ -14,7 +17,7 @@ export class OtpService {
   constructor(
     private readonly config: ConfigService,
     private readonly redis: RedisService,
-    private readonly telegram: TelegramBotService,
+    @InjectQueue(QUEUE_OTP) private readonly otpQueue: Queue,
   ) {}
 
   generateCode(): string {
@@ -48,12 +51,12 @@ export class OtpService {
       );
     }
 
-    await this.telegram.sendMessage(
-      chatId,
-      `🔐 <b>${code}</b> — ваш код для входа в Savdo.\n\nДействителен 5 минут. Никому не сообщайте.`,
-      { parseMode: 'HTML' },
-    );
+    // Queue OTP delivery — worker retries on Telegram failure (up to 5 attempts)
+    const jobData: OtpSendTelegramJobData = { chatId, phone, code };
+    await this.otpQueue.add(OTP_JOB_SEND_TELEGRAM, jobData, {
+      priority: 1, // highest priority
+    });
 
-    this.logger.log(`OTP sent via Telegram to phone=${phone}`);
+    this.logger.log(`OTP queued for phone=${phone} chatId=${chatId}`);
   }
 }

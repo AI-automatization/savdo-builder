@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 export const QUEUE_TELEGRAM_NOTIFICATIONS = 'telegram-notifications';
 export const QUEUE_IN_APP_NOTIFICATIONS = 'in-app-notifications';
+export const QUEUE_OTP = 'otp';
 
 @Global()
 @Module({
@@ -39,6 +40,16 @@ export const QUEUE_IN_APP_NOTIFICATIONS = 'in-app-notifications';
           backoff: { type: 'exponential', delay: 1000 },
           removeOnComplete: { count: 100 },
           removeOnFail: { count: 500 },
+        },
+      },
+      {
+        name: QUEUE_OTP,
+        defaultJobOptions: {
+          // OTP critical — retry quickly, short window
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 500 },
+          removeOnComplete: { count: 50 },
+          removeOnFail: { count: 100 },
         },
       },
     ),

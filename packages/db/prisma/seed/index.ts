@@ -69,7 +69,7 @@ const GLOBAL_CATEGORIES = [
   },
 ];
 
-const ADMIN_PHONE = '+998000000000';
+const ADMIN_PHONE = '+998910081910'; // Полат — superadmin
 
 // ─────────────────────────────────────────────
 // SEED
@@ -104,13 +104,7 @@ async function seedGlobalCategories(): Promise<void> {
 
 async function seedAdminUser(): Promise<void> {
   const env = process.env.NODE_ENV ?? 'development';
-
-  if (env !== 'development' && env !== 'test') {
-    console.log(`Skipping admin user seed (NODE_ENV=${env}).\n`);
-    return;
-  }
-
-  console.log(`Seeding test admin user (NODE_ENV=${env})...`);
+  console.log(`Seeding admin user (NODE_ENV=${env})...`);
 
   const user = await prisma.user.upsert({
     where: { phone: ADMIN_PHONE },

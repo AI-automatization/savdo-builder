@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { BullModule } from '@nestjs/bullmq';
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './repositories/auth.repository';
 import { OtpService } from './services/otp.service';
@@ -12,12 +13,15 @@ import { VerifyOtpUseCase } from './use-cases/verify-otp.use-case';
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
 import { TelegramModule } from '../telegram/telegram.module';
+import { OtpProcessor } from '../../queues/otp.processor';
+import { QUEUE_OTP } from '../../queues/queues.module';
 
 @Module({
   imports: [
     PassportModule,
     JwtModule.register({}), // secrets configured per-call in TokenService
     TelegramModule,
+    BullModule.registerQueue({ name: QUEUE_OTP }),
   ],
   controllers: [AuthController],
   providers: [
@@ -30,6 +34,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     VerifyOtpUseCase,
     RefreshSessionUseCase,
     LogoutSessionUseCase,
+    OtpProcessor,
   ],
   exports: [JwtAuthGuard, TokenService],
 })
