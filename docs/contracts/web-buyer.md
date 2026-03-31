@@ -118,6 +118,37 @@ Unauthenticated buyers use a session token stored in `localStorage` (a UUID gene
 
 ## Storefront — Browsing
 
+### GET /api/v1/storefront/stores/:slug
+
+**Auth:** not required
+**Role:** public
+
+**URL params:**
+- `slug`: store slug (e.g. `nike-uz`)
+
+**Response 200:**
+```json
+{
+  "id": "store-uuid-0001",
+  "name": "Nike Uzbekistan",
+  "slug": "nike-uz",
+  "description": "Официальный магазин Nike",
+  "city": "Ташкент",
+  "telegramContactLink": "https://t.me/nike_uz",
+  "logoUrl": "https://cdn.example.com/stores/nike-logo.jpg",
+  "coverUrl": null,
+  "categories": [
+    { "id": "cat-store-uuid-0001", "name": "Обувь", "sortOrder": 1 },
+    { "id": "cat-store-uuid-0002", "name": "Одежда", "sortOrder": 2 }
+  ]
+}
+```
+
+**Errors:**
+- `STORE_NOT_FOUND`: store with given slug does not exist or is not published
+
+---
+
 ### GET /api/v1/storefront/categories
 
 **Auth:** not required
