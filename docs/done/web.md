@@ -20,7 +20,7 @@
 | 28-29 мар 2026 | Seller: Chat `/chat` | UI, mock |
 | 28-29 мар 2026 | Seller: Settings `/settings` | Форма, mock |
 
-## Phase B — API Layer ✅ (частично)
+## Phase B — API Layer ✅
 
 | Дата | Задача | Примечание |
 |------|--------|------------|
@@ -35,6 +35,14 @@
 | 30 мар 2026 | API functions web-seller | auth, seller profile/store, products, orders |
 | 30 мар 2026 | TanStack Query hooks web-buyer | use-auth, use-storefront, use-cart, use-checkout, use-orders |
 | 30 мар 2026 | TanStack Query hooks web-seller | use-auth, use-seller, use-products, use-orders |
+| 31 мар 2026 | Seller login подключён к реальному API | useRequestOtp + useVerifyOtp, редирект на /dashboard |
+| 01 апр 2026 | Seller dashboard подключён к реальному API | useStore + useSellerOrders, loading skeletons, live метрики |
+| 01 апр 2026 | Seller products подключён к реальному API | useSellerProducts, empty state, loading skeletons |
+| 01 апр 2026 | Buyer storefront `/:slug` подключён к реальному API | Server component, serverGetStoreBySlug + serverGetProducts, реальные категории, notFound() при 404 |
+| 01 апр 2026 | Buyer product page `/:slug/products/:id` подключён к API | useProduct + useAddToCart, variant selector, image gallery с next/image |
+| 01 апр 2026 | ProductCard мигрирован на ProductListItem из packages/types | next/image, реальные данные |
+| 01 апр 2026 | storefront-server.ts — server-side fetch helpers | Без axios, ISR revalidate: 30s |
+| 01 апр 2026 | useStoreBySlug hook добавлен | use-storefront.ts |
+| 01 апр 2026 | GET /storefront/stores/:slug добавлен в контракт | docs/contracts/web-buyer.md |
 
-**Ветка:** `feature/api-layer` (worktree `.worktrees/api-layer`)
-**Статус:** код готов и закоммичен, `pnpm install` нужно запустить вручную (axios + @tanstack/react-query)
+**Ветка:** `feature/api-layer` (worktree `.worktrees/api-layer`) — запушена на GitHub
