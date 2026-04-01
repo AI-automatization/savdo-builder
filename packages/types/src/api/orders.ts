@@ -1,6 +1,7 @@
 import { OrderStatus, PaymentMethod, PaymentStatus, DeliveryType } from '../enums';
 import { DeliveryAddress } from './cart';
 import { StoreRef } from './stores';
+import { PaginationMeta } from '../common';
 
 // ── Order Item ────────────────────────────────────────────────────────────────
 
@@ -46,14 +47,6 @@ export interface Order extends OrderListItem {
 export interface UpdateOrderStatusRequest {
   status: OrderStatus;
   reason?: string;
-}
-
-// ── Pagination meta ───────────────────────────────────────────────────────────
-
-export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
 }
 
 export interface PaginatedOrders {
