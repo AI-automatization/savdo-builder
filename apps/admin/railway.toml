@@ -1,0 +1,7 @@
+[build]
+dockerfilePath = "apps/admin/Dockerfile"
+
+[deploy]
+startCommand = "nginx -g 'daemon off;'"
+healthcheckPath = "/"
+healthcheckTimeout = 60

@@ -7,7 +7,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState<1 | 2>(1)
   const [phone, setPhone] = useState('+998')
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [otp, setOtp] = useState(['', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [timer, setTimer] = useState(0)
@@ -28,9 +28,9 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      await api.post('/api/v1/auth/request-otp', { phone })
+      await api.post('/api/v1/auth/request-otp', { phone, purpose: 'login' })
       setStep(2)
-      setTimer(120)
+      setTimer(300)
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
     } catch (e: any) {
       setError(e.message ?? 'Ошибка отправки кода')
@@ -42,7 +42,7 @@ export default function LoginPage() {
   const handleOtpInput = (i: number, val: string) => {
     const digits = val.replace(/\D/g, '')
     if (!digits && val !== '') return
-    if (digits.length === 6) {
+    if (digits.length === 4) {
       const arr = digits.split('')
       setOtp(arr)
       setTimeout(() => verify(arr.join('')), 50)
@@ -51,7 +51,7 @@ export default function LoginPage() {
     const next = [...otp]
     next[i] = digits[0] ?? ''
     setOtp(next)
-    if (digits[0] && i < 5) inputRefs.current[i + 1]?.focus()
+    if (digits[0] && i < 3) inputRefs.current[i + 1]?.focus()
     if (next.every(d => d)) setTimeout(() => verify(next.join('')), 50)
   }
 
@@ -69,10 +69,10 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const data: any = await api.post('/api/v1/auth/verify-otp', { phone, code })
+      const data: any = await api.post('/api/v1/auth/verify-otp', { phone, code, purpose: 'login' })
       if (data.user?.role !== 'ADMIN') {
         setError('Доступ запрещён. Этот кабинет только для администраторов Savdo.')
-        setOtp(['', '', '', '', '', ''])
+        setOtp(['', '', '', ''])
         setLoading(false)
         return
       }
@@ -85,7 +85,7 @@ export default function LoginPage() {
       } else {
         setError('Неверный или просроченный код.')
       }
-      setOtp(['', '', '', '', '', ''])
+      setOtp(['', '', '', ''])
       setTimeout(() => inputRefs.current[0]?.focus(), 50)
     } finally {
       setLoading(false)
@@ -218,7 +218,7 @@ export default function LoginPage() {
           <>
             <div style={{ marginBottom: 8, textAlign: 'center' }}>
               <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>
-                Введите 6-значный код из Telegram
+                Введите 4-значный код из Telegram
               </label>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
