@@ -55,7 +55,9 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 EXPOSE 3000
 
 # cache-bust: forces rebuild so dist is always fresh
-RUN echo "cache-bust-2026-03-31" > /dev/null
+RUN echo "cache-bust-2026-04-01" > /dev/null
 
-# migrate:deploy напрямую через prisma бинарник
-CMD ["sh", "-c", "pnpm --filter db exec prisma migrate deploy && echo '=== dist contents ===' && ls apps/api/dist/ && echo '=== dist/src ===' && ls apps/api/dist/src/ && node apps/api/dist/src/main.js 2>&1"]
+COPY apps/api/start.sh ./start.sh
+RUN chmod +x ./start.sh
+
+CMD ["sh", "./start.sh"]
