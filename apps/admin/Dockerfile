@@ -13,6 +13,6 @@ RUN pnpm build
 
 FROM nginx:alpine
 COPY --from=builder /app/apps/admin/dist /usr/share/nginx/html
-COPY apps/admin/nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/admin/nginx.conf /etc/nginx/templates/default.conf.template
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
