@@ -1,6 +1,6 @@
 # apps/admin — Superadmin Panel Rules
 
-**Owner:** Яхьо
+**Owner:** поалтр
 **Agent:** `admin-builder`, `ui-builder`
 
 ## Stack
