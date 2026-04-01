@@ -5,7 +5,7 @@ RUN npm install -g pnpm
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/admin/package.json ./apps/admin/
-RUN pnpm install --frozen-lockfile --filter admin
+RUN pnpm install --no-frozen-lockfile --filter admin
 
 COPY apps/admin ./apps/admin
 WORKDIR /app/apps/admin
