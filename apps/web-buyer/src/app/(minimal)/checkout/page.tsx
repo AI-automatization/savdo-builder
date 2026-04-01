@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth/context";
+import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
+import { useCheckoutPreview, useConfirmCheckout } from "@/hooks/use-checkout";
+import { track } from "@/lib/analytics";
+import type { CheckoutPreviewItem } from "types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type DeliveryMode = "delivery" | "pickup";
+type PageStep = "otp-phone" | "otp-code" | "form";
 
-// ── Mock order summary ─────────────────────────────────────────────────────
-
-const SUBTOTAL  = 3_660_000;
-const DELIVERY  = 25_000;
+const DELIVERY_FEE = 25_000;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -32,8 +36,6 @@ const glassDim = {
   border:               "1px solid rgba(255,255,255,0.09)",
 } as const;
 
-// ── Input shared style ─────────────────────────────────────────────────────
-
 const inputStyle = {
   background:  "rgba(255,255,255,0.06)",
   border:      "1px solid rgba(255,255,255,0.13)",
@@ -52,21 +54,14 @@ const IcoProfile = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const IcoTruck   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>;
 const IcoPickup  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z"/></svg>;
 const IcoCash    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>;
-const IcoUser    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"/></svg>;
-const IcoPhone   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>;
-const IcoPin     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>;
 const IcoNote    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>;
 
-// ── Section wrapper ────────────────────────────────────────────────────────
+// ── Shared UI ──────────────────────────────────────────────────────────────
 
 function Section({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={glass}>
-      {/* Section header */}
-      <div
-        className="flex items-center gap-2 px-4 py-3"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-      >
+      <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <span style={{ color: "#A78BFA" }}>{icon}</span>
         <span className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">{label}</span>
       </div>
@@ -75,57 +70,154 @@ function Section({ label, icon, children }: { label: string; icon: React.ReactNo
   );
 }
 
-// ── Field ──────────────────────────────────────────────────────────────────
-
 function Field({
-  label,
-  prefix,
-  type = "text",
-  placeholder,
-  value,
-  onChange,
-  textarea,
+  label, prefix, type = "text", placeholder, value, onChange, textarea,
 }: {
-  label: string;
-  prefix?: string;
-  type?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-  textarea?: boolean;
+  label: string; prefix?: string; type?: string; placeholder?: string;
+  value: string; onChange: (v: string) => void; textarea?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[11px] text-white/40 font-medium">{label}</label>
       <div className="flex items-center rounded-xl overflow-hidden" style={inputStyle}>
         {prefix && (
-          <span
-            className="px-3 text-sm text-white/40 flex-shrink-0 h-[44px] flex items-center"
-            style={{ borderRight: "1px solid rgba(255,255,255,0.10)" }}
-          >
+          <span className="px-3 text-sm text-white/40 flex-shrink-0 h-[44px] flex items-center"
+            style={{ borderRight: "1px solid rgba(255,255,255,0.10)" }}>
             {prefix}
           </span>
         )}
         {textarea ? (
-          <textarea
-            rows={2}
-            placeholder={placeholder}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+          <textarea rows={2} placeholder={placeholder} value={value}
+            onChange={e => onChange(e.target.value)}
             className="flex-1 px-3 py-3 text-sm bg-transparent placeholder-white/25 resize-none"
-            style={{ color: "#fff", outline: "none" }}
-          />
+            style={{ color: "#fff", outline: "none" }} />
         ) : (
-          <input
-            type={type}
-            placeholder={placeholder}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+          <input type={type} placeholder={placeholder} value={value}
+            onChange={e => onChange(e.target.value)}
             className="flex-1 px-3 h-[44px] text-sm bg-transparent placeholder-white/25"
-            style={{ color: "#fff", outline: "none" }}
-          />
+            style={{ color: "#fff", outline: "none" }} />
         )}
       </div>
+    </div>
+  );
+}
+
+function ErrorBanner({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <div className="px-4 py-3 rounded-xl text-sm"
+      style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5" }}>
+      {message}
+    </div>
+  );
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded-xl ${className}`} style={{ background: "rgba(255,255,255,0.08)" }} />;
+}
+
+// ── OTP Gate ──────────────────────────────────────────────────────────────
+
+function OtpGate({ onSuccess }: { onSuccess: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [code,  setCode]  = useState("");
+  const [step,  setStep]  = useState<"phone" | "code">("phone");
+
+  const requestOtp = useRequestOtp();
+  const verifyOtp  = useVerifyOtp();
+
+  function handleSendOtp() {
+    if (phone.trim().length < 9) return;
+    requestOtp.mutate(
+      { phone: `+998${phone.replace(/\s/g, "")}`, purpose: "checkout" },
+      { onSuccess: () => setStep("code") },
+    );
+  }
+
+  function handleVerify() {
+    if (code.trim().length < 4) return;
+    verifyOtp.mutate(
+      { phone: `+998${phone.replace(/\s/g, "")}`, code, purpose: "checkout" },
+      { onSuccess: () => onSuccess() },
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-1">
+          {step === "phone" ? "Введите телефон" : "Введите код"}
+        </h2>
+        <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+          {step === "phone"
+            ? "Для оформления заказа нужно подтвердить номер"
+            : `Код отправлен на +998 ${phone}`}
+        </p>
+      </div>
+
+      {step === "phone" ? (
+        <>
+          <div>
+            <label className="text-[11px] text-white/40 font-medium block mb-1.5">Телефон</label>
+            <div className="flex items-center rounded-xl overflow-hidden" style={inputStyle}>
+              <span className="px-3 text-sm text-white/40 flex-shrink-0 h-[44px] flex items-center"
+                style={{ borderRight: "1px solid rgba(255,255,255,0.10)" }}>
+                +998
+              </span>
+              <input
+                type="tel"
+                placeholder="90 123 45 67"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSendOtp()}
+                className="flex-1 px-3 h-[44px] text-sm bg-transparent placeholder-white/25"
+                style={{ color: "#fff", outline: "none" }}
+              />
+            </div>
+          </div>
+          <ErrorBanner message={requestOtp.error?.message} />
+          <button
+            disabled={phone.trim().length < 9 || requestOtp.isPending}
+            onClick={handleSendOtp}
+            className="w-full py-3.5 rounded-2xl text-sm font-semibold text-white disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 8px 28px rgba(167,139,250,.35)" }}
+          >
+            {requestOtp.isPending ? "Отправка..." : "Получить код"}
+          </button>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="text-[11px] text-white/40 font-medium block mb-1.5">Код из сообщения</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="• • • •"
+              value={code}
+              onChange={e => setCode(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleVerify()}
+              className="w-full px-4 h-[52px] rounded-xl text-center text-xl font-bold tracking-[0.5em] placeholder-white/20"
+              style={{ ...inputStyle, letterSpacing: "0.5em" }}
+            />
+          </div>
+          <ErrorBanner message={verifyOtp.error?.message} />
+          <button
+            disabled={code.trim().length < 4 || verifyOtp.isPending}
+            onClick={handleVerify}
+            className="w-full py-3.5 rounded-2xl text-sm font-semibold text-white disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 8px 28px rgba(167,139,250,.35)" }}
+          >
+            {verifyOtp.isPending ? "Проверка..." : "Подтвердить"}
+          </button>
+          <button
+            onClick={() => setStep("phone")}
+            className="text-xs text-center"
+            style={{ color: "rgba(255,255,255,0.35)" }}
+          >
+            ← Изменить номер
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -133,81 +225,88 @@ function Field({
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
-  const [name,     setName]     = useState("");
-  const [phone,    setPhone]    = useState("");
-  const [address,  setAddress]  = useState("");
-  const [comment,  setComment]  = useState("");
-  const [mode,     setMode]     = useState<DeliveryMode>("delivery");
-  const [submitted, setSubmit]  = useState(false);
+  const router  = useRouter();
+  const { user } = useAuth();
 
-  const total = mode === "delivery" ? SUBTOTAL + DELIVERY : SUBTOTAL;
+  const isAuthed = !!user?.isPhoneVerified;
+  const [step, setStep] = useState<PageStep>(isAuthed ? "form" : "otp-phone");
 
-  const canSubmit = name.trim() && phone.trim().length >= 9 &&
-    (mode === "pickup" || address.trim());
+  // Sync step when auth state changes (after OTP success)
+  useEffect(() => {
+    if (user?.isPhoneVerified && step !== "form") setStep("form");
+  }, [user?.isPhoneVerified]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const preview   = useCheckoutPreview();
+  const confirm   = useConfirmCheckout();
+
+  const [mode,    setMode]    = useState<DeliveryMode>("delivery");
+  const [street,  setStreet]  = useState("");
+  const [city,    setCity]    = useState("Ташкент");
+  const [note,    setNote]    = useState("");
+  const [apiError, setApiError] = useState<string>();
+
+  const deliveryFee = mode === "delivery" ? DELIVERY_FEE : 0;
+  const subtotal    = preview.data?.subtotal ?? 0;
+  const total       = subtotal + deliveryFee;
+
+  // Redirect if cart is empty after loading
+  useEffect(() => {
+    if (step === "form" && !preview.isLoading && !preview.data) {
+      router.replace("/cart");
+    }
+  }, [step, preview.isLoading, preview.data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Analytics
+  useEffect(() => {
+    if (preview.data) {
+      track.checkoutStarted(preview.data.storeId, preview.data.items.length, subtotal);
+    }
+  }, [preview.data?.storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const canSubmit = step === "form" && street.trim() && city.trim() && !confirm.isPending;
+
+  async function handleConfirm() {
+    if (!canSubmit || !preview.data) return;
+    setApiError(undefined);
+    try {
+      const order = await confirm.mutateAsync({
+        deliveryAddress: { street, city },
+        buyerNote: note || undefined,
+        deliveryFee,
+      });
+      track.orderCreated(preview.data.storeId, order.id, order.totalAmount, "COD");
+      router.replace(`/orders/${order.id}`);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setApiError(err?.response?.data?.message ?? "Не удалось оформить заказ. Попробуйте ещё раз.");
+    }
+  }
 
   const NAV = [
     { href: "/",        label: "Магазин", icon: <IcoShop /> },
-    { href: "/cart",    label: "Корзина", icon: <IcoCart />, badge: 4 },
+    { href: "/cart",    label: "Корзина", icon: <IcoCart /> },
     { href: "/chats",   label: "Чаты",    icon: <IcoChat /> },
     { href: "/orders",  label: "Заказы",  icon: <IcoOrders /> },
     { href: "/profile", label: "Профиль", icon: <IcoProfile /> },
   ];
 
-  if (submitted) {
-    return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center text-center px-6"
-        style={{ background: "linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%)" }}
-      >
-        <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
-          <div className="absolute rounded-full" style={{ width: 360, height: 360, top: -80, right: -80,  background: "radial-gradient(circle, rgba(167,139,250,.20) 0%, transparent 70%)", filter: "blur(32px)" }} />
-          <div className="absolute rounded-full" style={{ width: 280, height: 280, bottom: 100, left: -60, background: "radial-gradient(circle, rgba(34,197,94,.13) 0%, transparent 70%)",  filter: "blur(28px)" }} />
-        </div>
-        <div className="relative z-10">
-          <div
-            className="w-20 h-20 rounded-full flex items-center justify-center text-4xl mx-auto mb-5"
-            style={{ background: "rgba(167,139,250,.18)", border: "1px solid rgba(167,139,250,.35)" }}
-          >
-            ✓
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Заказ оформлен!</h2>
-          <p className="text-white/45 text-sm mb-8 leading-relaxed">
-            Продавец свяжется с вами<br/>в ближайшее время
-          </p>
-          <Link
-            href="/"
-            className="inline-block px-8 py-3.5 rounded-2xl text-sm font-semibold text-white"
-            style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,.38)" }}
-          >
-            На главную
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%)" }}
-    >
+    <div className="min-h-screen"
+      style={{ background: "linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%)" }}>
+
       {/* Ambient orbs */}
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
-        <div className="absolute rounded-full" style={{ width: 360, height: 360, top: -100, right: -80,  background: "radial-gradient(circle, rgba(167,139,250,.18) 0%, transparent 70%)", filter: "blur(32px)" }} />
-        <div className="absolute rounded-full" style={{ width: 280, height: 280, bottom: 140, left: -70,  background: "radial-gradient(circle, rgba(34,197,94,.12)  0%, transparent 70%)", filter: "blur(28px)" }} />
-        <div className="absolute rounded-full" style={{ width: 200, height: 200, top: "45%", left: "50%", transform: "translateX(-50%)", background: "radial-gradient(circle, rgba(96,165,250,.09) 0%, transparent 70%)", filter: "blur(24px)" }} />
+        <div className="absolute rounded-full" style={{ width: 360, height: 360, top: -100, right: -80, background: "radial-gradient(circle, rgba(167,139,250,.18) 0%, transparent 70%)", filter: "blur(32px)" }} />
+        <div className="absolute rounded-full" style={{ width: 280, height: 280, bottom: 140, left: -70, background: "radial-gradient(circle, rgba(34,197,94,.12) 0%, transparent 70%)", filter: "blur(28px)" }} />
       </div>
 
-      {/* Scrollable content */}
       <div className="relative max-w-md mx-auto px-4 pt-5 pb-60" style={{ zIndex: 1 }}>
 
-        {/* ── Top bar ── */}
+        {/* Top bar */}
         <div className="flex items-center gap-3 mb-6">
-          <Link
-            href="/cart"
+          <Link href="/cart"
             className="w-9 h-9 flex items-center justify-center rounded-xl text-white/70 hover:text-white transition-colors flex-shrink-0"
-            style={glass}
-          >
+            style={glass}>
             <IcoBack />
           </Link>
           <h1 className="flex-1 text-xl font-semibold text-white tracking-tight">
@@ -215,176 +314,174 @@ export default function CheckoutPage() {
           </h1>
         </div>
 
-        {/* ── Delivery toggle ── */}
-        <div className="flex gap-2 mb-5 p-1 rounded-2xl" style={glassDim}>
-          {(["delivery", "pickup"] as DeliveryMode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-all"
-              style={
-                mode === m
-                  ? { background: "rgba(167,139,250,.25)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.35)" }
-                  : { color: "rgba(255,255,255,0.38)", border: "1px solid transparent" }
-              }
-            >
-              {m === "delivery" ? <IcoTruck /> : <IcoPickup />}
-              {m === "delivery" ? "Доставка" : "Самовывоз"}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Sections ── */}
-        <div className="flex flex-col gap-4">
-
-          {/* Recipient */}
-          <Section label="Получатель" icon={<IcoUser />}>
-            <Field
-              label="Имя"
-              placeholder="Ваше имя"
-              value={name}
-              onChange={setName}
-            />
-            <Field
-              label="Телефон"
-              type="tel"
-              prefix="+998"
-              placeholder="90 123 45 67"
-              value={phone}
-              onChange={setPhone}
-            />
-          </Section>
-
-          {/* Delivery details */}
-          <Section label={mode === "delivery" ? "Доставка" : "Самовывоз"} icon={mode === "delivery" ? <IcoTruck /> : <IcoPickup />}>
-            {mode === "delivery" ? (
-              <>
-                <Field
-                  label="Адрес"
-                  placeholder="Улица, дом, квартира"
-                  value={address}
-                  onChange={setAddress}
-                />
-                <Field
-                  label="Комментарий к заказу"
-                  placeholder="Подъезд, этаж, ориентир..."
-                  value={comment}
-                  onChange={setComment}
-                  textarea
-                />
-              </>
-            ) : (
-              <div
-                className="flex items-start gap-3 py-2"
-              >
-                <span style={{ color: "#A78BFA" }} className="mt-0.5"><IcoPin /></span>
-                <div>
-                  <p className="text-sm text-white/80 font-medium">Nike Uzbekistan</p>
-                  <p className="text-xs text-white/40 mt-0.5 leading-relaxed">
-                    г. Ташкент, ул. Амира Темура 5<br/>
-                    Пн–Сб, 10:00–20:00
-                  </p>
-                </div>
-              </div>
-            )}
-          </Section>
-
-          {/* Payment */}
-          <Section label="Оплата" icon={<IcoCash />}>
-            <div
-              className="flex items-center gap-3 py-1 px-1 rounded-xl"
-              style={{ border: "1px solid rgba(167,139,250,.35)", background: "rgba(167,139,250,.08)" }}
-            >
-              {/* Radio dot */}
-              <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ border: "2px solid #A78BFA" }}>
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#A78BFA" }} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">Наличными при получении</p>
-                <p className="text-[11px] text-white/38 mt-0.5">Cash on Delivery</p>
-              </div>
-              <IcoCash />
-            </div>
-            <p className="text-[11px] text-white/28 px-1">
-              Другие способы оплаты появятся позже
-            </p>
-          </Section>
-
-          {/* Order summary */}
-          <div className="rounded-2xl px-4 py-3 flex flex-col gap-2" style={glassDim}>
-            <p className="text-[11px] font-semibold text-white/35 uppercase tracking-widest mb-1">Итого</p>
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Товары</span>
-              <span className="text-white/70">{fmt(SUBTOTAL)} сум</span>
-            </div>
-            {mode === "delivery" && (
-              <div className="flex justify-between text-sm">
-                <span className="text-white/50">Доставка</span>
-                <span className="text-white/70">{fmt(DELIVERY)} сум</span>
-              </div>
-            )}
-            {mode === "pickup" && (
-              <div className="flex justify-between text-sm">
-                <span className="text-white/50">Доставка</span>
-                <span className="text-emerald-400 text-sm">Бесплатно</span>
-              </div>
-            )}
-            <div
-              className="flex justify-between pt-2 mt-1"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
-            >
-              <span className="text-base font-semibold text-white">К оплате</span>
-              <span className="text-base font-bold" style={{ color: "#A78BFA" }}>
-                {fmt(total)} сум
-              </span>
-            </div>
+        {/* ── OTP Gate ── */}
+        {step !== "form" && (
+          <div className="rounded-2xl p-6" style={glass}>
+            <OtpGate onSuccess={() => setStep("form")} />
           </div>
+        )}
 
-        </div>
+        {/* ── Checkout Form ── */}
+        {step === "form" && (
+          <div className="flex flex-col gap-4">
+
+            {/* Delivery toggle */}
+            <div className="flex gap-2 p-1 rounded-2xl" style={glassDim}>
+              {(["delivery", "pickup"] as DeliveryMode[]).map(m => (
+                <button key={m} onClick={() => setMode(m)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  style={mode === m
+                    ? { background: "rgba(167,139,250,.25)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.35)" }
+                    : { color: "rgba(255,255,255,0.38)", border: "1px solid transparent" }}>
+                  {m === "delivery" ? <IcoTruck /> : <IcoPickup />}
+                  {m === "delivery" ? "Доставка" : "Самовывоз"}
+                </button>
+              ))}
+            </div>
+
+            {/* Delivery address */}
+            {mode === "delivery" && (
+              <Section label="Адрес доставки" icon={<IcoNote />}>
+                <Field label="Улица, дом, квартира *" placeholder="ул. Навои 15, кв. 3"
+                  value={street} onChange={setStreet} />
+                <Field label="Город *" placeholder="Ташкент"
+                  value={city} onChange={setCity} />
+                <Field label="Комментарий к заказу" placeholder="Подъезд, этаж, ориентир..."
+                  value={note} onChange={setNote} textarea />
+              </Section>
+            )}
+
+            {mode === "pickup" && (
+              <Section label="Самовывоз" icon={<IcoPickup />}>
+                <div className="flex items-start gap-3 py-1">
+                  <span style={{ color: "#A78BFA" }} className="mt-0.5">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm text-white/80 font-medium">Адрес уточните у продавца</p>
+                    <p className="text-xs text-white/40 mt-0.5">Свяжитесь через Telegram для согласования</p>
+                  </div>
+                </div>
+                <Field label="Комментарий" placeholder="Удобное время самовывоза..."
+                  value={note} onChange={setNote} textarea />
+              </Section>
+            )}
+
+            {/* Payment */}
+            <Section label="Оплата" icon={<IcoCash />}>
+              <div className="flex items-center gap-3 py-1 px-1 rounded-xl"
+                style={{ border: "1px solid rgba(167,139,250,.35)", background: "rgba(167,139,250,.08)" }}>
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ border: "2px solid #A78BFA" }}>
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#A78BFA" }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">Наличными при получении</p>
+                  <p className="text-[11px] text-white/38 mt-0.5">Cash on Delivery</p>
+                </div>
+                <IcoCash />
+              </div>
+            </Section>
+
+            {/* Order items */}
+            <Section label="Состав заказа" icon={<IcoOrders />}>
+              {preview.isLoading ? (
+                <>
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </>
+              ) : (
+                preview.data?.items.map((item: CheckoutPreviewItem) => (
+                  <div key={item.productId + (item.variantId ?? "")}
+                    className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white/85 truncate">{item.title}</p>
+                      {item.variantTitle && (
+                        <p className="text-xs text-white/40 mt-0.5">{item.variantTitle}</p>
+                      )}
+                      <p className="text-xs text-white/35 mt-0.5">× {item.quantity}</p>
+                    </div>
+                    <span className="text-sm font-medium flex-shrink-0" style={{ color: "#A78BFA" }}>
+                      {fmt(item.subtotal)} сум
+                    </span>
+                  </div>
+                ))
+              )}
+
+              {/* Stock warnings */}
+              {(preview.data?.stockWarnings?.length ?? 0) > 0 && (
+                <div className="px-3 py-2 rounded-xl text-xs"
+                  style={{ background: "rgba(251,191,36,.10)", border: "1px solid rgba(251,191,36,.25)", color: "#fbbf24" }}>
+                  Некоторые товары заканчиваются. Вернитесь в корзину и скорректируйте количество.
+                </div>
+              )}
+            </Section>
+
+            {/* Summary */}
+            <div className="rounded-2xl px-4 py-3 flex flex-col gap-2" style={glassDim}>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-widest mb-1">Итого</p>
+              {preview.isLoading ? (
+                <Skeleton className="h-4 w-full" />
+              ) : (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/50">Товары</span>
+                    <span className="text-white/70">{fmt(subtotal)} сум</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/50">Доставка</span>
+                    {mode === "delivery"
+                      ? <span className="text-white/70">{fmt(DELIVERY_FEE)} сум</span>
+                      : <span className="text-emerald-400">Бесплатно</span>}
+                  </div>
+                  <div className="flex justify-between pt-2 mt-1"
+                    style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                    <span className="text-base font-semibold text-white">К оплате</span>
+                    <span className="text-base font-bold" style={{ color: "#A78BFA" }}>
+                      {fmt(total)} сум
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <ErrorBanner message={apiError} />
+
+          </div>
+        )}
       </div>
 
       {/* ── Sticky CTA ── */}
-      <div className="fixed left-0 right-0 px-4" style={{ bottom: 76, zIndex: 50 }}>
-        <div className="max-w-md mx-auto">
-          <button
-            disabled={!canSubmit}
-            onClick={() => setSubmit(true)}
-            className="w-full py-4 rounded-2xl text-[15px] font-semibold text-white tracking-wide transition-all active:scale-[0.98]"
-            style={
-              canSubmit
+      {step === "form" && (
+        <div className="fixed left-0 right-0 px-4" style={{ bottom: 76, zIndex: 50 }}>
+          <div className="max-w-md mx-auto">
+            <button
+              disabled={!canSubmit}
+              onClick={handleConfirm}
+              className="w-full py-4 rounded-2xl text-[15px] font-semibold text-white tracking-wide transition-all active:scale-[0.98]"
+              style={canSubmit
                 ? { background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,.38)" }
-                : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.28)", cursor: "not-allowed" }
-            }
-          >
-            Подтвердить заказ · {fmt(total)} сум
-          </button>
+                : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.28)", cursor: "not-allowed" }}>
+              {confirm.isPending
+                ? "Оформляем..."
+                : `Подтвердить заказ · ${fmt(total)} сум`}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Bottom navigation ── */}
+      {/* ── Bottom nav ── */}
       <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div
-          className="max-w-md mx-auto"
-          style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}
-        >
+        <div className="max-w-md mx-auto"
+          style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}>
           <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon, badge }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl"
-              >
-                <div className="relative">
-                  <span style={{ color: "rgba(255,255,255,0.32)" }}>{icon}</span>
-                  {badge != null && badge > 0 && (
-                    <span
-                      className="absolute -top-1 -right-1.5 w-[17px] h-[17px] flex items-center justify-center rounded-full text-[10px] font-bold"
-                      style={{ background: "#A78BFA", color: "#0d0d1f" }}
-                    >
-                      {badge}
-                    </span>
-                  )}
-                </div>
+            {NAV.map(({ href, label, icon }) => (
+              <Link key={href} href={href}
+                className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl">
+                <span style={{ color: "rgba(255,255,255,0.32)" }}>{icon}</span>
                 <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.28)" }}>
                   {label}
                 </span>
