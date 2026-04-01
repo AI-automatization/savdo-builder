@@ -3,26 +3,10 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-
-// ── Mock data ─────────────────────────────────────────────────────────────────
-
-const MOCK_PRODUCT = {
-  id:          "1",
-  name:        "Air Max 270",
-  description: "Кроссовки Nike Air Max 270 с большой воздушной подушкой в пятке для максимального комфорта в течение всего дня. Верх из сетки и синтетических материалов обеспечивает лёгкость и вентиляцию.",
-  price:       1_450_000,
-  salePrice:   1_200_000,
-  category:    "Обувь",
-  inStock:     true,
-  telegram:    "https://t.me/nike_uz",
-  images:      ["👟", "👟", "👟"],
-  sizes:       ["39", "40", "41", "42", "43", "44"],
-  colors: [
-    { name: "Чёрный", hex: "#111111" },
-    { name: "Белый",  hex: "#f5f5f5" },
-    { name: "Синий",  hex: "#1d4ed8" },
-  ],
-};
+import Image from "next/image";
+import { useProduct } from "@/hooks/use-storefront";
+import { useAddToCart } from "@/hooks/use-cart";
+import { ProductStatus } from "types";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -51,24 +35,50 @@ const IcoChat    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const IcoOrders  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>;
 const IcoProfile = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>;
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-xl ${className}`}
+      style={{ background: "rgba(255,255,255,0.10)" }}
+    />
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ProductPage() {
-  const router  = useRouter();
-  const params  = useParams();
-  const slug    = params.slug as string;
-  const product = MOCK_PRODUCT;
+  const router = useRouter();
+  const params = useParams();
+  const slug   = params.slug as string;
+  const id     = params.id as string;
 
-  const discount = product.salePrice
-    ? Math.round((1 - product.salePrice / product.price) * 100)
-    : null;
+  const { data: product, isLoading } = useProduct(id);
+  const addToCart = useAddToCart();
 
   const [activeImage,   setActiveImage]   = useState(0);
-  const [selectedSize,  setSelectedSize]  = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [added,         setAdded]         = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  const [added, setAdded] = useState(false);
 
-  function handleAddToCart() {
+  const activeVariants = product?.variants.filter(v => v.isActive) ?? [];
+  const selectedVariantObj = activeVariants.find(v => v.id === selectedVariant) ?? null;
+
+  const displayPrice = selectedVariantObj?.priceOverride ?? product?.basePrice ?? 0;
+  const isUnavailable = !product || product.status !== ProductStatus.ACTIVE || !product.isVisible;
+  const isOutOfStock  = selectedVariantObj
+    ? selectedVariantObj.stockQuantity === 0
+    : (activeVariants.length > 0 && activeVariants.every(v => v.stockQuantity === 0));
+
+  const images = product?.mediaUrls ?? [];
+
+  async function handleAddToCart() {
+    if (!product) return;
+    await addToCart.mutateAsync({
+      productId: product.id,
+      variantId: selectedVariant ?? undefined,
+      quantity:  1,
+    });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
@@ -102,9 +112,6 @@ export default function ProductPage() {
           >
             <IcoBack />
           </button>
-          <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.40)" }}>
-            {product.category}
-          </span>
         </div>
 
         {/* ── Main image ── */}
@@ -112,20 +119,24 @@ export default function ProductPage() {
           className="relative aspect-square rounded-2xl flex items-center justify-center mb-3 overflow-hidden"
           style={glass}
         >
-          <span className="text-[96px] select-none">{product.images[activeImage]}</span>
-
-          {discount !== null && (
-            <span
-              className="absolute top-3 left-3 text-sm font-bold px-2.5 py-1 rounded-full"
-              style={{ background: "rgba(239,68,68,.85)", color: "#fff" }}
-            >
-              -{discount}%
-            </span>
+          {isLoading ? (
+            <Skeleton className="absolute inset-0 rounded-2xl" />
+          ) : images.length > 0 ? (
+            <Image
+              src={images[activeImage]}
+              alt={product?.title ?? ""}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 448px"
+              priority
+            />
+          ) : (
+            <span className="text-[96px] select-none">🛍</span>
           )}
 
-          {product.images.length > 1 && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {product.images.map((_, i) => (
+          {images.length > 1 && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5" style={{ zIndex: 1 }}>
+              {images.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveImage(i)}
@@ -142,99 +153,80 @@ export default function ProductPage() {
         </div>
 
         {/* ── Thumbnail row ── */}
-        <div className="flex gap-2 mb-5">
-          {product.images.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveImage(i)}
-              className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl transition-all"
-              style={
-                i === activeImage
-                  ? { ...glass, border: "1px solid rgba(167,139,250,.55)" }
-                  : { ...glassDim }
-              }
-            >
-              {img}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Product info ── */}
-        <h1 className="text-xl font-bold text-white leading-snug mb-2">{product.name}</h1>
-
-        {/* Price */}
-        <div className="flex items-baseline gap-3 mb-5">
-          {product.salePrice ? (
-            <>
-              <span className="text-2xl font-bold" style={{ color: "#A78BFA" }}>
-                {fmt(product.salePrice)} сум
-              </span>
-              <span className="text-sm line-through" style={{ color: "rgba(255,255,255,0.30)" }}>
-                {fmt(product.price)} сум
-              </span>
-            </>
-          ) : (
-            <span className="text-2xl font-bold" style={{ color: "#A78BFA" }}>
-              {fmt(product.price)} сум
-            </span>
-          )}
-        </div>
-
-        {/* ── Colors ── */}
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2.5">
-            Цвет{selectedColor ? `: ${selectedColor}` : ""}
-          </p>
-          <div className="flex gap-2.5">
-            {product.colors.map((color) => (
+        {images.length > 1 && (
+          <div className="flex gap-2 mb-5">
+            {images.map((src, i) => (
               <button
-                key={color.name}
-                onClick={() => setSelectedColor(color.name)}
-                title={color.name}
-                className="w-9 h-9 rounded-full transition-all"
-                style={{
-                  backgroundColor: color.hex,
-                  border: selectedColor === color.name
-                    ? "3px solid #A78BFA"
-                    : "2px solid rgba(255,255,255,0.20)",
-                  transform: selectedColor === color.name ? "scale(1.15)" : "scale(1)",
-                  boxShadow: selectedColor === color.name ? "0 0 12px rgba(167,139,250,.5)" : "none",
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ── Sizes ── */}
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2.5">
-            Размер{selectedSize ? `: EU ${selectedSize}` : ""}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => setSelectedSize(size)}
-                className="min-w-[3rem] px-3 py-1.5 rounded-xl text-sm font-semibold transition-all"
-                style={
-                  selectedSize === size
-                    ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.55)", boxShadow: "0 0 10px rgba(167,139,250,.25)" }
-                    : { ...glassDim, color: "rgba(255,255,255,0.55)" }
-                }
+                key={i}
+                onClick={() => setActiveImage(i)}
+                className="w-16 h-16 rounded-xl overflow-hidden relative flex items-center justify-center transition-all"
+                style={i === activeImage ? { ...glass, border: "1px solid rgba(167,139,250,.55)" } : glassDim}
               >
-                {size}
+                <Image src={src} alt="" fill className="object-cover" sizes="64px" />
               </button>
             ))}
           </div>
-        </div>
+        )}
+
+        {/* ── Product info ── */}
+        {isLoading ? (
+          <>
+            <Skeleton className="h-7 w-3/4 mb-2" />
+            <Skeleton className="h-8 w-32 mb-5" />
+          </>
+        ) : (
+          <>
+            <h1 className="text-xl font-bold text-white leading-snug mb-2">{product?.title}</h1>
+            <div className="flex items-baseline gap-3 mb-5">
+              <span className="text-2xl font-bold" style={{ color: "#A78BFA" }}>
+                {fmt(displayPrice)} сум
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── Variants ── */}
+        {!isLoading && activeVariants.length > 0 && (
+          <div className="mb-5">
+            <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2.5">
+              Вариант
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {activeVariants.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setSelectedVariant(v.id)}
+                  disabled={v.stockQuantity === 0}
+                  className="px-3 py-1.5 rounded-xl text-sm font-semibold transition-all"
+                  style={
+                    v.stockQuantity === 0
+                      ? { ...glassDim, color: "rgba(255,255,255,0.25)", cursor: "not-allowed" }
+                      : selectedVariant === v.id
+                      ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.55)", boxShadow: "0 0 10px rgba(167,139,250,.25)" }
+                      : { ...glassDim, color: "rgba(255,255,255,0.55)" }
+                  }
+                >
+                  {v.titleOverride ?? v.sku}
+                  {v.priceOverride && (
+                    <span className="ml-1.5 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                      {fmt(v.priceOverride)} сум
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Description ── */}
-        <div className="rounded-2xl p-4" style={glassDim}>
-          <p className="text-[11px] font-semibold text-white/35 uppercase tracking-widest mb-2">Описание</p>
-          <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.60)" }}>
-            {product.description}
-          </p>
-        </div>
+        {!isLoading && product?.description && (
+          <div className="rounded-2xl p-4" style={glassDim}>
+            <p className="text-[11px] font-semibold text-white/35 uppercase tracking-widest mb-2">Описание</p>
+            <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.60)" }}>
+              {product.description}
+            </p>
+          </div>
+        )}
 
       </div>
 
@@ -243,30 +235,32 @@ export default function ProductPage() {
         <div className="max-w-md mx-auto flex gap-2.5">
           <button
             onClick={handleAddToCart}
-            disabled={!product.inStock}
+            disabled={isLoading || isUnavailable || isOutOfStock || addToCart.isPending}
             className="flex-1 py-3.5 rounded-2xl text-[15px] font-semibold text-white transition-all active:scale-[0.98]"
             style={
-              !product.inStock
+              isLoading || isUnavailable || isOutOfStock
                 ? { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.28)", cursor: "not-allowed" }
                 : added
                 ? { background: "linear-gradient(135deg, #059669 0%, #34d399 100%)", boxShadow: "0 8px 24px rgba(52,211,153,.35)" }
                 : { background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,.38)" }
             }
           >
-            {added ? "Добавлено ✓" : product.inStock ? "В корзину" : "Нет в наличии"}
+            {isLoading ? "Загрузка..." : added ? "Добавлено ✓" : isOutOfStock ? "Нет в наличии" : "В корзину"}
           </button>
 
-          <a
-            href={product.telegram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-14 flex items-center justify-center rounded-2xl text-white transition-opacity hover:opacity-85 active:scale-[0.97]"
-            style={{ background: "linear-gradient(135deg, #1d6fa4 0%, #2AABEE 100%)", boxShadow: "0 8px 24px rgba(42,171,238,.28)" }}
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
-            </svg>
-          </a>
+          {product?.store?.telegramContactLink && (
+            <a
+              href={product.store.telegramContactLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-14 flex items-center justify-center rounded-2xl text-white transition-opacity hover:opacity-85 active:scale-[0.97]"
+              style={{ background: "linear-gradient(135deg, #1d6fa4 0%, #2AABEE 100%)", boxShadow: "0 8px 24px rgba(42,171,238,.28)" }}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
+              </svg>
+            </a>
+          )}
         </div>
       </div>
 

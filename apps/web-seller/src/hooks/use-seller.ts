@@ -1,0 +1,127 @@
+'use client';
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { UpdateSellerProfileRequest, GlobalCategory, StoreCategory } from 'types';
+import {
+  getSellerProfile,
+  updateSellerProfile,
+  getStore,
+  createStore,
+  updateStore,
+  submitStore,
+  publishStore,
+  unpublishStore,
+  getGlobalCategories,
+  getStoreCategories,
+  createStoreCategory,
+  updateStoreCategory,
+  deleteStoreCategory,
+} from '../lib/api/seller.api';
+
+// ── Profile ────────────────────────────────────────────────────────────────────
+
+export function useSellerProfile() {
+  return useQuery({
+    queryKey: ['seller', 'profile'],
+    queryFn: getSellerProfile,
+  });
+}
+
+export function useUpdateSellerProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateSellerProfileRequest) => updateSellerProfile(data),
+    onSuccess: (profile) => queryClient.setQueryData(['seller', 'profile'], profile),
+  });
+}
+
+// ── Store ──────────────────────────────────────────────────────────────────────
+
+export function useStore() {
+  return useQuery({
+    queryKey: ['seller', 'store'],
+    queryFn: getStore,
+  });
+}
+
+export function useCreateStore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createStore,
+    onSuccess: (store) => queryClient.setQueryData(['seller', 'store'], store),
+  });
+}
+
+export function useUpdateStore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateStore,
+    onSuccess: (store) => queryClient.setQueryData(['seller', 'store'], store),
+  });
+}
+
+export function useSubmitStore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: submitStore,
+    onSuccess: (store) => queryClient.setQueryData(['seller', 'store'], store),
+  });
+}
+
+export function usePublishStore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: publishStore,
+    onSuccess: (store) => queryClient.setQueryData(['seller', 'store'], store),
+  });
+}
+
+export function useUnpublishStore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: unpublishStore,
+    onSuccess: (store) => queryClient.setQueryData(['seller', 'store'], store),
+  });
+}
+
+// ── Categories ─────────────────────────────────────────────────────────────────
+
+export function useGlobalCategories() {
+  return useQuery({
+    queryKey: ['categories', 'global'],
+    queryFn: getGlobalCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useStoreCategories() {
+  return useQuery({
+    queryKey: ['categories', 'store'],
+    queryFn: getStoreCategories,
+  });
+}
+
+export function useCreateStoreCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; sortOrder?: number }) => createStoreCategory(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', 'store'] }),
+  });
+}
+
+export function useUpdateStoreCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; sortOrder?: number }) =>
+      updateStoreCategory(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', 'store'] }),
+  });
+}
+
+export function useDeleteStoreCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteStoreCategory(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', 'store'] }),
+  });
+}

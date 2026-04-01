@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRequestOtp, useVerifyOtp } from "../../../hooks/use-auth";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -22,22 +23,32 @@ const inputStyle = {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const [step,    setStep]    = useState<"phone" | "otp">("phone");
-  const [phone,   setPhone]   = useState("");
-  const [otp,     setOtp]     = useState("");
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const [step,  setStep]  = useState<"phone" | "otp">("phone");
+  const [phone, setPhone] = useState("");
+  const [otp,   setOtp]   = useState("");
+
+  const requestOtp = useRequestOtp();
+  const verifyOtp  = useVerifyOtp();
 
   function handleSendOtp() {
     if (phone.trim().length < 9) return;
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setStep("otp"); }, 1000);
+    requestOtp.mutate(
+      { phone: `+998${phone.replace(/\s/g, "")}`, purpose: "login" },
+      { onSuccess: () => setStep("otp") },
+    );
   }
 
   function handleVerify() {
     if (otp.trim().length < 4) return;
-    setLoading(true);
-    setTimeout(() => { window.location.href = "/dashboard"; }, 1000);
+    verifyOtp.mutate(
+      { phone: `+998${phone.replace(/\s/g, "")}`, code: otp, purpose: "login" },
+      { onSuccess: () => router.replace("/dashboard") },
+    );
   }
+
+  const sendError   = requestOtp.error?.message;
+  const verifyError = verifyOtp.error?.message;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -89,23 +100,29 @@ export default function LoginPage() {
                 />
               </div>
 
+              {sendError && (
+                <p className="text-xs mb-3 px-3 py-2 rounded-lg" style={{ color: "#f87171", background: "rgba(248,113,113,0.10)" }}>
+                  {sendError}
+                </p>
+              )}
+
               <button
                 onClick={handleSendOtp}
-                disabled={loading || phone.trim().length < 9}
+                disabled={requestOtp.isPending || phone.trim().length < 9}
                 className="w-full h-11 rounded-xl text-sm font-semibold text-white transition-all active:scale-[0.98]"
                 style={
-                  phone.trim().length >= 9
+                  phone.trim().length >= 9 && !requestOtp.isPending
                     ? { background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 6px 20px rgba(167,139,250,.38)" }
                     : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.30)", cursor: "not-allowed" }
                 }
               >
-                {loading ? "Отправка..." : "Получить код"}
+                {requestOtp.isPending ? "Отправка..." : "Получить код"}
               </button>
             </>
           ) : (
             <>
               <button
-                onClick={() => setStep("phone")}
+                onClick={() => { setStep("phone"); verifyOtp.reset(); }}
                 className="flex items-center gap-1.5 text-sm mb-4"
                 style={{ color: "rgba(255,255,255,0.45)" }}
               >
@@ -135,22 +152,32 @@ export default function LoginPage() {
                 style={{ ...inputStyle, letterSpacing: "0.4em" }}
               />
 
+              {verifyError && (
+                <p className="text-xs mb-3 px-3 py-2 rounded-lg" style={{ color: "#f87171", background: "rgba(248,113,113,0.10)" }}>
+                  {verifyError}
+                </p>
+              )}
+
               <button
                 onClick={handleVerify}
-                disabled={loading || otp.length < 4}
+                disabled={verifyOtp.isPending || otp.length < 4}
                 className="w-full h-11 rounded-xl text-sm font-semibold text-white transition-all active:scale-[0.98]"
                 style={
-                  otp.length >= 4
+                  otp.length >= 4 && !verifyOtp.isPending
                     ? { background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 6px 20px rgba(167,139,250,.38)" }
                     : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.30)", cursor: "not-allowed" }
                 }
               >
-                {loading ? "Проверка..." : "Войти"}
+                {verifyOtp.isPending ? "Проверка..." : "Войти"}
               </button>
 
               <p className="text-center text-xs mt-3" style={{ color: "rgba(255,255,255,0.30)" }}>
                 Не пришёл код?{" "}
-                <button onClick={() => setStep("phone")} className="underline" style={{ color: "#A78BFA" }}>
+                <button
+                  onClick={() => { requestOtp.reset(); handleSendOtp(); }}
+                  className="underline"
+                  style={{ color: "#A78BFA" }}
+                >
                   Отправить снова
                 </button>
               </p>
