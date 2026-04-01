@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ProductCard from "@/components/store/ProductCard";
 import { serverGetStoreBySlug, serverGetProducts } from "@/lib/api/storefront-server";
+import { TrackStorefrontView } from "@/components/TrackView";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export default async function StorePage({
 
   return (
     <div className="relative min-h-screen">
+      <TrackStorefrontView storeId={store.id} storeSlug={slug} />
 
       {/* ── Ambient glow orbs ── */}
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>

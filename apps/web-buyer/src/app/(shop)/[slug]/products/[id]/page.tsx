@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus } from "types";
+import { track } from "@/lib/analytics";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -72,6 +73,15 @@ export default function ProductPage() {
 
   const images = product?.mediaUrls ?? [];
 
+  useEffect(() => {
+    if (product) track.productViewed(product.storeId, product.id);
+  }, [product?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleVariantSelect(variantId: string) {
+    setSelectedVariant(variantId);
+    if (product) track.variantSelected(product.storeId, product.id, variantId);
+  }
+
   async function handleAddToCart() {
     if (!product) return;
     await addToCart.mutateAsync({
@@ -79,6 +89,7 @@ export default function ProductPage() {
       variantId: selectedVariant ?? undefined,
       quantity:  1,
     });
+    track.addToCart(product.storeId, product.id, selectedVariant, 1);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
@@ -195,7 +206,7 @@ export default function ProductPage() {
               {activeVariants.map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => setSelectedVariant(v.id)}
+                  onClick={() => handleVariantSelect(v.id)}
                   disabled={v.stockQuantity === 0}
                   className="px-3 py-1.5 rounded-xl text-sm font-semibold transition-all"
                   style={

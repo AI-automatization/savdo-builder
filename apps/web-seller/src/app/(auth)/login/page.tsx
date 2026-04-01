@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useRequestOtp, useVerifyOtp } from "../../../hooks/use-auth";
+import { track } from "../../../lib/analytics";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ export default function LoginPage() {
   const requestOtp = useRequestOtp();
   const verifyOtp  = useVerifyOtp();
 
+  useEffect(() => { track.signupStarted('direct'); }, []);
+
   function handleSendOtp() {
     if (phone.trim().length < 9) return;
     requestOtp.mutate(
@@ -41,9 +44,15 @@ export default function LoginPage() {
 
   function handleVerify() {
     if (otp.trim().length < 4) return;
+    const fullPhone = `+998${phone.replace(/\s/g, "")}`;
     verifyOtp.mutate(
-      { phone: `+998${phone.replace(/\s/g, "")}`, code: otp, purpose: "login" },
-      { onSuccess: () => router.replace("/dashboard") },
+      { phone: fullPhone, code: otp, purpose: "login" },
+      {
+        onSuccess: () => {
+          track.otpVerified(fullPhone);
+          router.replace("/dashboard");
+        },
+      },
     );
   }
 

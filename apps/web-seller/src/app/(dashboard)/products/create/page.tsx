@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useCreateProduct } from '../../../../hooks/use-products';
+import { track } from '../../../../lib/analytics';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -53,13 +54,14 @@ export default function CreateProductPage() {
   });
 
   async function onSubmit(values: CreateProductForm) {
-    await create.mutateAsync({
+    const product = await create.mutateAsync({
       title:       values.title,
       description: values.description || undefined,
       basePrice:   Number(values.basePrice),
       sku:         values.sku || undefined,
       isVisible:   values.isVisible,
     });
+    track.productCreated(product.storeId, product.id);
     router.push('/products');
   }
 

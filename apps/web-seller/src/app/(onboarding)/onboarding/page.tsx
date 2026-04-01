@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useCreateStore, useSubmitStore } from '../../../hooks/use-seller';
 import { useUpdateSellerProfile } from '../../../hooks/use-seller';
 import { useCreateProduct } from '../../../hooks/use-products';
+import { track } from '../../../lib/analytics';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -511,7 +512,7 @@ export default function OnboardingPage() {
         ? data.telegramUsername
         : `@${data.telegramUsername}`;
 
-      await Promise.all([
+      const [store] = await Promise.all([
         createStore.mutateAsync({
           name:                step1Data.name,
           slug:                step1Data.slug,
@@ -520,6 +521,8 @@ export default function OnboardingPage() {
         }),
         updateProfile.mutateAsync({ telegramUsername }),
       ]);
+      track.storeCreated(store.id, store.slug);
+      track.sellerProfileCompleted(store.id);
       setStep(2);
     } catch {
       setError('Не удалось создать магазин. Попробуйте ещё раз.');
@@ -529,11 +532,13 @@ export default function OnboardingPage() {
   async function handleStep3(data: Step3Data) {
     setError(undefined);
     try {
-      await createProduct.mutateAsync({
+      const product = await createProduct.mutateAsync({
         title:     data.title,
         basePrice: Number(data.basePrice),
         isVisible: true,
       });
+      // store.id is in query cache after step 2
+      track.firstProductCreated(product.storeId, product.id);
       setStep(3);
     } catch {
       setError('Не удалось сохранить товар.');
@@ -543,7 +548,8 @@ export default function OnboardingPage() {
   async function handleSubmit() {
     setError(undefined);
     try {
-      await submitStore.mutateAsync();
+      const store = await submitStore.mutateAsync();
+      track.storeSubmittedForReview(store.id);
       router.push('/dashboard');
     } catch {
       setError('Не удалось отправить на проверку.');

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { track } from "../../lib/analytics";
+import { useStore } from "../../hooks/use-seller";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -53,6 +55,7 @@ const NAV = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: store } = useStore();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -107,10 +110,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
             <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Ваш магазин</p>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-white/60 truncate">savdo.uz/my-store</span>
+              <span className="text-xs text-white/60 truncate">
+                {store ? `savdo.uz/${store.slug}` : 'savdo.uz/...'}
+              </span>
               <button
                 className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0 transition-opacity hover:opacity-80"
                 style={{ background: "rgba(167,139,250,.20)", color: "#A78BFA" }}
+                onClick={() => {
+                  if (!store) return;
+                  navigator.clipboard.writeText(`https://savdo.uz/${store.slug}`);
+                  track.storeLinkCopied(store.id);
+                }}
               >
                 Копировать
               </button>
