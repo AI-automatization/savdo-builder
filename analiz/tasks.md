@@ -65,6 +65,33 @@
 
 ---
 
+## 💳 Монетизация — Подписки + Payme/Click (Phase 4)
+
+> Блокер: нужны merchant credentials от Payme и Click. Без них только мокаем.
+
+- [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
+  - **Домен:** `packages/db`
+  - **Детали:** `subscription_plans` (id, name, price_uzs, duration_days, features jsonb). `subscriptions` (id, seller_id, plan_id, status: ACTIVE/EXPIRED/CANCELLED, starts_at, expires_at). `payment_transactions` (id, seller_id, subscription_id, provider: PAYME|CLICK, amount_uzs, status: PENDING/PAID/FAILED, provider_tx_id, created_at).
+
+- [ ] **[PAY-002]** Backend: Payme webhook + активация подписки
+  - **Домен:** `apps/api`
+  - **Детали:** `POST /payments/payme` — принимает Payme JSON-RPC (CheckPerformTransaction, CreateTransaction, PerformTransaction, CancelTransaction). При PerformTransaction → активировать подписку → открыть доступ к seller CRM.
+
+- [ ] **[PAY-003]** Backend: Click webhook + активация подписки
+  - **Домен:** `apps/api`
+  - **Детали:** `POST /payments/click/prepare` + `POST /payments/click/complete`. При complete → активировать подписку.
+
+- [ ] **[PAY-004]** Seller CRM: страница тарифов + кнопка оплаты
+  - **Домен:** `apps/web-seller`
+  - **Детали:** Страница `/billing` — список планов, текущая подписка, кнопка "Оплатить" → редирект на Payme/Click. После успешной оплаты → редирект обратно с активным доступом.
+  - **Заметка:** Азимов домен
+
+- [ ] **[PAY-005]** Admin: управление подписками продавцов
+  - **Домен:** `apps/admin`
+  - **Детали:** В SellerDetailPage показывать текущий план + историю платежей. Кнопка "Выдать подписку вручную" (для тестов и исключений).
+
+---
+
 ## 📋 Заморожено (Phase 3)
 
 - `apps/mobile-buyer/` — React Native + Expo
