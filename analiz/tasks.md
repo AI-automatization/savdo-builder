@@ -65,9 +65,9 @@
 
 ---
 
-## 💳 Монетизация — Подписки + Payme/Click (Phase 4)
+## 🧊 ЗАМОРОЖЕНО — Монетизация + Payme/Click (Phase 4)
 
-> Блокер: нужны merchant credentials от Payme и Click. Без них только мокаем.
+> ❄️ Фриз до открытия бизнес-счёта в Click и Payme. Не брать в работу.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`
