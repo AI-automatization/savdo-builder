@@ -166,13 +166,24 @@ function GlobalSearch() {
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 
+function getInitialDark(): boolean {
+  const saved = localStorage.getItem('admin-theme')
+  if (saved) return saved === 'dark'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
 export default function DashboardLayout() {
   const navigate = useNavigate()
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    const isDark = getInitialDark()
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
+    return isDark
+  })
 
   const toggleTheme = () => {
     const next = !dark
     setDark(next)
+    localStorage.setItem('admin-theme', next ? 'dark' : 'light')
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
   }
 
