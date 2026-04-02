@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from 'types';
 import {
@@ -26,6 +26,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const logoutRef = useRef<() => Promise<void>>(async () => {});
   const [user, setUser] = useState<AuthUser | null>(() => {
     if (typeof window === 'undefined') return null;
     const token = getAccessToken();
@@ -63,6 +64,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       queryClient.clear();
     }
   }, [queryClient]);
+
+  useEffect(() => { logoutRef.current = logout; }, [logout]);
+
+  useEffect(() => {
+    function onExpired() { logoutRef.current(); }
+    window.addEventListener('savdo:auth:expired', onExpired);
+    return () => window.removeEventListener('savdo:auth:expired', onExpired);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
