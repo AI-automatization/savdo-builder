@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle, XCircle, Clock, User, Store, AlertTriangle, X, RefreshCw, AlertCircle, GitMerge, UserCheck } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, User, Store, AlertTriangle, X, RefreshCw, AlertCircle, GitMerge, UserCheck, FolderOpen, RotateCcw } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -62,21 +62,30 @@ function timeAgo(iso: string) {
 }
 
 export default function ModerationPage() {
-  const [tab, setTab] = useState<'ALL' | 'seller' | 'store'>('ALL')
+  const [tab, setTab] = useState<'ALL' | 'seller' | 'store' | 'CLOSED'>('ALL')
   const [rejectTarget, setRejectTarget] = useState<ModerationCase | null>(null)
   const [comment, setComment] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const { data, loading, error, refetch } = useFetch<QueueResponse>('/api/v1/admin/moderation/queue', [tab])
+  const isClosed = tab === 'CLOSED'
+  const fetchUrl = isClosed
+    ? '/api/v1/admin/moderation?status=closed&limit=50'
+    : '/api/v1/admin/moderation/queue'
 
-  const cases = (data?.cases ?? []).filter(c => tab === 'ALL' || c.entityType === tab)
+  const { data, loading, error, refetch } = useFetch<QueueResponse>(fetchUrl, [tab])
+
+  const cases = (data?.cases ?? []).filter(c => {
+    if (isClosed || tab === 'ALL') return true
+    return c.entityType === tab
+  })
   const total = data?.total ?? 0
 
   const counts = {
     ALL:    data?.cases.length ?? 0,
     seller: data?.cases.filter(c => c.entityType === 'seller').length ?? 0,
     store:  data?.cases.filter(c => c.entityType === 'store').length ?? 0,
+    CLOSED: isClosed ? total : 0,
   }
 
   async function doAction(caseId: string, action: string, actionComment?: string) {
@@ -86,6 +95,20 @@ export default function ModerationPage() {
       await api.post(`/api/v1/admin/moderation/${caseId}/action`, { action, comment: actionComment })
       setRejectTarget(null)
       setComment('')
+      refetch()
+    } catch (e: any) {
+      setActionError(e.message ?? 'Ошибка')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function toggleCaseStatus(caseId: string, currentStatus: string) {
+    setActionLoading(caseId)
+    setActionError(null)
+    const endpoint = currentStatus === 'open' ? 'close' : 'reopen'
+    try {
+      await api.patch(`/api/v1/admin/moderation/${caseId}/${endpoint}`, {})
       refetch()
     } catch (e: any) {
       setActionError(e.message ?? 'Ошибка')
@@ -128,8 +151,8 @@ export default function ModerationPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {(['ALL', 'seller', 'store'] as const).map(t => (
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+        {(['ALL', 'seller', 'store', 'CLOSED'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500,
             border: `1px solid ${tab === t ? 'var(--primary)' : 'var(--border)'}`,
@@ -139,12 +162,15 @@ export default function ModerationPage() {
           }}>
             {t === 'seller' && <User size={13} />}
             {t === 'store' && <Store size={13} />}
-            {t === 'ALL' ? 'Все' : t === 'seller' ? 'Продавцы' : 'Магазины'}
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
-              background: tab === t ? 'rgba(129,140,248,0.2)' : 'var(--surface2)',
-              color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
-            }}>{counts[t]}</span>
+            {t === 'CLOSED' && <FolderOpen size={13} />}
+            {t === 'ALL' ? 'Все' : t === 'seller' ? 'Продавцы' : t === 'store' ? 'Магазины' : 'Закрыты'}
+            {t !== 'CLOSED' && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
+                background: tab === t ? 'rgba(129,140,248,0.2)' : 'var(--surface2)',
+                color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
+              }}>{counts[t]}</span>
+            )}
           </button>
         ))}
       </div>
@@ -211,66 +237,95 @@ export default function ModerationPage() {
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {!item.assignedAdminId && (
+                {isClosed ? (
+                  // Closed case — only reopen
                   <button
                     disabled={isProcessing}
-                    onClick={() => assignToMe(item.id)}
-                    title="Взять в работу"
+                    onClick={() => toggleCaseStatus(item.id, item.status)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                      background: 'rgba(129,140,248,0.06)', border: '1px solid rgba(129,140,248,0.2)',
+                      display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
+                      background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.25)',
                       color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    <UserCheck size={13} /> Взять
+                    <RotateCcw size={13} /> Переоткрыть
                   </button>
+                ) : (
+                  <>
+                    {!item.assignedAdminId && (
+                      <button
+                        disabled={isProcessing}
+                        onClick={() => assignToMe(item.id)}
+                        title="Взять в работу"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
+                          background: 'rgba(129,140,248,0.06)', border: '1px solid rgba(129,140,248,0.2)',
+                          color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <UserCheck size={13} /> Взять
+                      </button>
+                    )}
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => doAction(item.id, 'REQUEST_CHANGES')}
+                      title="Запросить изменения"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
+                        background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+                        color: '#F59E0B', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <AlertTriangle size={13} /> Доработка
+                    </button>
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => doAction(item.id, 'ESCALATE')}
+                      title="Эскалировать"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
+                        background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.25)',
+                        color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <GitMerge size={13} /> Эскалация
+                    </button>
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => setRejectTarget(item)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
+                        background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                        color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <XCircle size={13} /> Отклонить
+                    </button>
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => doAction(item.id, 'APPROVE')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
+                        background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
+                        color: '#10B981', fontSize: 13, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <CheckCircle size={14} /> Одобрить
+                    </button>
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => toggleCaseStatus(item.id, item.status)}
+                      title="Закрыть кейс без решения"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
+                        background: 'rgba(148,163,184,0.06)', border: '1px solid rgba(148,163,184,0.25)',
+                        color: '#94A3B8', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <FolderOpen size={13} /> Закрыть
+                    </button>
+                  </>
                 )}
-                <button
-                  disabled={isProcessing}
-                  onClick={() => doAction(item.id, 'REQUEST_CHANGES')}
-                  title="Запросить изменения"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                    background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
-                    color: '#F59E0B', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <AlertTriangle size={13} /> Доработка
-                </button>
-                <button
-                  disabled={isProcessing}
-                  onClick={() => doAction(item.id, 'ESCALATE')}
-                  title="Эскалировать"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                    background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.25)',
-                    color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <GitMerge size={13} /> Эскалация
-                </button>
-                <button
-                  disabled={isProcessing}
-                  onClick={() => setRejectTarget(item)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
-                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
-                    color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <XCircle size={13} /> Отклонить
-                </button>
-                <button
-                  disabled={isProcessing}
-                  onClick={() => doAction(item.id, 'APPROVE')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
-                    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
-                    color: '#10B981', fontSize: 13, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <CheckCircle size={14} /> Одобрить
-                </button>
               </div>
             </div>
           )

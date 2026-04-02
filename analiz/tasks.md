@@ -39,21 +39,6 @@
 
 > Аудит 02.04.2026: найдены статусы которые отображаются в UI но изменить их через админку нельзя.
 
-- [ ] **[ADM-015]** Store: добавить `REJECTED` и `ARCHIVED` статусы — API эндпоинты + кнопки в StoreDetailPage
-  - Сейчас: фильтры есть, управления нет
-  - Нужно: `POST /admin/stores/:id/reject`, `POST /admin/stores/:id/archive` + UI кнопки
-
-- [ ] **[ADM-016]** Order: управление статусами из AdminPage
-  - Сейчас: видим статусы, но изменить нельзя
-  - Нужно: `PATCH /admin/orders/:id/status` + кнопка смены статуса в таблице (хотя бы Cancel)
-
-- [ ] **[ADM-017]** Product: добавить `ARCHIVED` статус
-  - Сейчас: фильтр есть, кнопки нет
-  - Нужно: `PATCH /admin/products/:id/archive` + кнопка в ProductsPage
-
-- [ ] **[ADM-018]** ModerationCase: явная кнопка закрыть/переоткрыть кейс
-  - Сейчас: закрывается только через APPROVE/REJECT
-  - Нужно: кнопка "Закрыть кейс" в ModerationPage для OPEN кейсов
 
 ---
 

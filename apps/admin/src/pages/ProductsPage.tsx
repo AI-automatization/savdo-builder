@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw } from 'lucide-react'
+import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -54,6 +54,19 @@ export default function ProductsPage() {
     setActionError(null)
     try {
       await api.patch(endpoint, {})
+      refetch()
+    } catch (e: any) {
+      setActionError(e.message ?? 'Ошибка')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function archiveProduct(product: Product) {
+    setActionLoading(product.id)
+    setActionError(null)
+    try {
+      await api.patch(`/api/v1/admin/products/${product.id}/archive`, {})
       refetch()
     } catch (e: any) {
       setActionError(e.message ?? 'Ошибка')
@@ -124,6 +137,7 @@ export default function ProductsPage() {
             ) : products.map(p => {
               const cfg = STATUS_CFG[p.status] ?? { bg: 'var(--surface2)', text: 'var(--text-muted)', label: p.status }
               const isHidden = p.status === 'HIDDEN_BY_ADMIN'
+              const isArchived = p.status === 'ARCHIVED'
               const isProcessing = actionLoading === p.id
 
               return (
@@ -152,20 +166,38 @@ export default function ProductsPage() {
                     {p.id.slice(0, 8)}…
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    <button
-                      disabled={isProcessing}
-                      onClick={() => toggleHide(p)}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        cursor: isProcessing ? 'not-allowed' : 'pointer',
-                        border: isHidden ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(239,68,68,0.3)',
-                        background: isHidden ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-                        color: isHidden ? '#10B981' : '#EF4444',
-                      }}
-                    >
-                      {isHidden ? <><Eye size={13} /> Восстановить</> : <><EyeOff size={13} /> Скрыть</>}
-                    </button>
+                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <button
+                        disabled={isProcessing}
+                        onClick={() => toggleHide(p)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          cursor: isProcessing ? 'not-allowed' : 'pointer',
+                          border: isHidden ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(239,68,68,0.3)',
+                          background: isHidden ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                          color: isHidden ? '#10B981' : '#EF4444',
+                        }}
+                      >
+                        {isHidden ? <><Eye size={13} /> Восстановить</> : <><EyeOff size={13} /> Скрыть</>}
+                      </button>
+                      {!isArchived && (
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => archiveProduct(p)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                            cursor: isProcessing ? 'not-allowed' : 'pointer',
+                            border: '1px solid rgba(148,163,184,0.3)',
+                            background: 'rgba(148,163,184,0.06)',
+                            color: '#94A3B8',
+                          }}
+                        >
+                          <Archive size={13} /> В архив
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )

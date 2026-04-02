@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Phone, Calendar, Ban, Unlock, ExternalLink, Package, User } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -77,19 +77,23 @@ export default function StoreDetailPage() {
   const navigate = useNavigate()
   const { data: store, loading, error, refetch } = useFetch<StoreDetail>(`/api/v1/admin/stores/${id}`)
 
-  const [modal, setModal] = useState<'suspend' | 'unsuspend' | null>(null)
+  const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'reject' | 'archive' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  const MODAL_ENDPOINT: Record<string, string> = {
+    suspend:   'suspend',
+    unsuspend: 'unsuspend',
+    reject:    'reject',
+    archive:   'archive',
+  }
+
   const handleAction = async (reason: string) => {
-    if (!store) return
+    if (!store || !modal) return
     setActionLoading(true)
     setActionError(null)
     try {
-      const endpoint = modal === 'suspend'
-        ? `/api/v1/admin/stores/${store.id}/suspend`
-        : `/api/v1/admin/stores/${store.id}/unsuspend`
-      await api.post(endpoint, { reason })
+      await api.post(`/api/v1/admin/stores/${store.id}/${MODAL_ENDPOINT[modal]}`, { reason })
       setModal(null)
       refetch()
     } catch (e: any) {
@@ -114,6 +118,8 @@ export default function StoreDetailPage() {
 
   const statusCfg = STATUS_CFG[store.status] ?? STATUS_CFG.DRAFT
   const isSuspended = store.status === 'SUSPENDED'
+  const isRejected  = store.status === 'REJECTED'
+  const isArchived  = store.status === 'ARCHIVED'
 
   return (
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh', maxWidth: 900 }}>
@@ -150,7 +156,7 @@ export default function StoreDetailPage() {
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {isSuspended ? (
             <button onClick={() => setModal('unsuspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <Unlock size={14} /> Восстановить
@@ -158,6 +164,16 @@ export default function StoreDetailPage() {
           ) : (
             <button onClick={() => setModal('suspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <Ban size={14} /> Приостановить
+            </button>
+          )}
+          {!isRejected && (
+            <button onClick={() => setModal('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <XCircle size={14} /> Отклонить
+            </button>
+          )}
+          {!isArchived && (
+            <button onClick={() => setModal('archive')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(148,163,184,0.06)', color: '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <Archive size={14} /> В архив
             </button>
           )}
         </div>
@@ -268,6 +284,30 @@ export default function StoreDetailPage() {
           description={`Магазин «${store.name}» снова станет доступен покупателям.`}
           actionLabel="Восстановить"
           actionColor="#10B981"
+          requireReason={true}
+          onConfirm={handleAction}
+          onCancel={() => setModal(null)}
+          loading={actionLoading}
+        />
+      )}
+      {modal === 'reject' && (
+        <ConfirmModal
+          title="Отклонить магазин"
+          description={`Магазин «${store.name}» получит статус REJECTED и будет недоступен покупателям.`}
+          actionLabel="Отклонить"
+          actionColor="#EF4444"
+          requireReason={true}
+          onConfirm={handleAction}
+          onCancel={() => setModal(null)}
+          loading={actionLoading}
+        />
+      )}
+      {modal === 'archive' && (
+        <ConfirmModal
+          title="Архивировать магазин"
+          description={`Магазин «${store.name}» будет перемещён в архив. Данные сохранятся.`}
+          actionLabel="В архив"
+          actionColor="#64748B"
           requireReason={true}
           onConfirm={handleAction}
           onCancel={() => setModal(null)}

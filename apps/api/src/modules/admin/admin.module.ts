@@ -19,6 +19,9 @@ import { ListStoresUseCase } from './use-cases/list-stores.use-case';
 import { GetStoreDetailUseCase } from './use-cases/get-store-detail.use-case';
 import { SuspendStoreUseCase } from './use-cases/suspend-store.use-case';
 import { UnsuspendStoreUseCase } from './use-cases/unsuspend-store.use-case';
+import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
+import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
+import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 
 @Module({
@@ -36,6 +39,9 @@ import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
     GetStoreDetailUseCase,
     SuspendStoreUseCase,
     UnsuspendStoreUseCase,
+    RejectStoreUseCase,
+    ArchiveStoreUseCase,
+    AdminCancelOrderUseCase,
     GetAuditLogUseCase,
   ],
 })

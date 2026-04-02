@@ -94,4 +94,72 @@ export class ModerationController {
   ) {
     return this.assignCaseUseCase.execute(id, user.sub);
   }
+
+  /**
+   * PATCH /admin/moderation/:id/close
+   * Explicitly close an OPEN case without APPROVE/REJECT.
+   * INV-A01: writes audit log.
+   */
+  @Patch(':id/close')
+  async closeCase(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const modCase = await this.moderationRepo.findCaseById(id);
+    if (!modCase) {
+      return { success: false, error: 'Case not found' };
+    }
+    await this.moderationRepo.updateCaseStatus(id, 'closed');
+    await this.moderationRepo.addAction({
+      caseId: id,
+      entityType: modCase.entityType,
+      entityId: modCase.entityId,
+      adminUserId: user.sub,
+      actionType: 'CLOSE',
+      comment: 'Case closed manually by admin',
+    });
+    await this.moderationRepo.writeAuditLog({
+      actorUserId: user.sub,
+      actorType: 'admin',
+      entityType: 'ModerationCase',
+      entityId: id,
+      action: 'MODERATION_CASE_CLOSED',
+      payload: { previousStatus: modCase.status },
+    });
+    return { success: true };
+  }
+
+  /**
+   * PATCH /admin/moderation/:id/reopen
+   * Reopen a closed case back to OPEN status.
+   * INV-A01: writes audit log.
+   */
+  @Patch(':id/reopen')
+  async reopenCase(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const modCase = await this.moderationRepo.findCaseById(id);
+    if (!modCase) {
+      return { success: false, error: 'Case not found' };
+    }
+    await this.moderationRepo.updateCaseStatus(id, 'open');
+    await this.moderationRepo.addAction({
+      caseId: id,
+      entityType: modCase.entityType,
+      entityId: modCase.entityId,
+      adminUserId: user.sub,
+      actionType: 'REOPEN',
+      comment: 'Case reopened by admin',
+    });
+    await this.moderationRepo.writeAuditLog({
+      actorUserId: user.sub,
+      actorType: 'admin',
+      entityType: 'ModerationCase',
+      entityId: id,
+      action: 'MODERATION_CASE_REOPENED',
+      payload: { previousStatus: modCase.status },
+    });
+    return { success: true };
+  }
 }

@@ -36,6 +36,9 @@ import { ListStoresUseCase } from './use-cases/list-stores.use-case';
 import { GetStoreDetailUseCase } from './use-cases/get-store-detail.use-case';
 import { SuspendStoreUseCase } from './use-cases/suspend-store.use-case';
 import { UnsuspendStoreUseCase } from './use-cases/unsuspend-store.use-case';
+import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
+import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
+import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 
 @Controller('admin')
@@ -58,6 +61,9 @@ export class AdminController {
     private readonly getStoreDetailUseCase: GetStoreDetailUseCase,
     private readonly suspendStoreUseCase: SuspendStoreUseCase,
     private readonly unsuspendStoreUseCase: UnsuspendStoreUseCase,
+    private readonly rejectStoreUseCase: RejectStoreUseCase,
+    private readonly archiveStoreUseCase: ArchiveStoreUseCase,
+    private readonly adminCancelOrderUseCase: AdminCancelOrderUseCase,
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
   ) {}
 
@@ -193,6 +199,45 @@ export class AdminController {
     return this.unsuspendStoreUseCase.execute(id, user.sub, dto.reason);
   }
 
+  @Post('stores/:id/reject')
+  async rejectStore(
+    @Param('id') id: string,
+    @Body() dto: AdminActionDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    return this.rejectStoreUseCase.execute(id, user.sub, dto.reason);
+  }
+
+  @Post('stores/:id/archive')
+  async archiveStore(
+    @Param('id') id: string,
+    @Body() dto: AdminActionDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    return this.archiveStoreUseCase.execute(id, user.sub, dto.reason);
+  }
+
+  // PATCH /api/v1/admin/orders/:id/status  { status: 'CANCELLED', reason: string }
+  @Patch('orders/:id/status')
+  async updateOrderStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Body('reason') reason: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    if (status !== 'CANCELLED') {
+      throw new DomainException(
+        ErrorCode.ORDER_INVALID_TRANSITION,
+        'Admin may only cancel orders via this endpoint',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    return this.adminCancelOrderUseCase.execute(id, user.sub, reason ?? '');
+  }
+
   // ── Audit Log ─────────────────────────────────────────────────────────────
 
   @Get('audit-log')
@@ -251,6 +296,27 @@ export class AdminController {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
     return this.productsRepo.updateStatus(id, 'ACTIVE' as any);
+  }
+
+  // PATCH /api/v1/admin/products/:id/archive
+  @Patch('products/:id/archive')
+  async archiveProduct(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const product = await this.productsRepo.findById(id);
+    if (!product) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'PRODUCT_ARCHIVED',
+      entityType: 'Product',
+      entityId: id,
+      payload: { previousStatus: product.status },
+    });
+    return this.productsRepo.updateStatus(id, 'ARCHIVED' as any);
   }
 
   // ── Global search ──────────────────────────────────────────────────────────

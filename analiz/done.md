@@ -2,6 +2,48 @@
 
 ---
 
+## 2026-04-02 (продолжение)
+
+### ✅ [ADM-015] Store: REJECTED и ARCHIVED статусы — API + UI
+- **Важность:** 🔴 Критическая
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/use-cases/reject-store.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/archive-store.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin.controller.ts` — `POST /admin/stores/:id/reject`, `POST /admin/stores/:id/archive`
+  - `apps/api/src/modules/admin/admin.module.ts` — зарегистрированы новые use-cases
+  - `apps/api/src/shared/constants/error-codes.ts` — `ADMIN_STORE_ALREADY_REJECTED`, `ADMIN_STORE_ALREADY_ARCHIVED`
+  - `apps/admin/src/pages/StoreDetailPage.tsx` — кнопки "Отклонить" и "В архив" + confirm-модалки
+- **Что сделано:** Два новых эндпоинта + use-cases по паттерну suspend-store. INV-A01/A02 соблюдены. Кнопки скрываются если статус уже установлен.
+
+### ✅ [ADM-016] Order: PATCH /admin/orders/:id/status + кнопка Cancel
+- **Важность:** 🔴 Критическая
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/use-cases/admin-cancel-order.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin.controller.ts` — `PATCH /admin/orders/:id/status`
+  - `apps/api/src/modules/admin/admin.module.ts` — зарегистрирован AdminCancelOrderUseCase
+  - `apps/admin/src/pages/OrdersPage.tsx` — кнопка "Отменить" в строке + confirm-модалка
+- **Что сделано:** Admin может отменить любой не-терминальный заказ. Use-case обходит ролевые ограничения. INV-A01 соблюдён. В UI кнопка скрыта для DELIVERED/CANCELLED.
+
+### ✅ [ADM-017] Product: PATCH /admin/products/:id/archive + кнопка в ProductsPage
+- **Важность:** 🔴 Критическая
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/admin.controller.ts` — `PATCH /admin/products/:id/archive` с audit log
+  - `apps/admin/src/pages/ProductsPage.tsx` — кнопка "В архив" рядом с hide/restore
+- **Что сделано:** Новый эндпоинт по паттерну hide/restore. Пишет audit log (INV-A01). Кнопка скрыта если статус уже ARCHIVED.
+
+### ✅ [ADM-018] ModerationCase: кнопки "Закрыть кейс" / "Переоткрыть"
+- **Важность:** 🔴 Критическая
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/moderation/moderation.controller.ts` — `PATCH /:id/close`, `PATCH /:id/reopen`
+  - `apps/admin/src/pages/ModerationPage.tsx` — кнопка "Закрыть" на open-карточках + вкладка "Закрыты" с "Переоткрыть"
+- **Что сделано:** Два новых эндпоинта. Каждый пишет `ModerationAction` + audit log (INV-A01). В UI — кнопка "Закрыть" в конце ряда кнопок на open-кейсах. Новая вкладка "Закрыты" загружает `/admin/moderation?status=closed` и показывает только кнопку "Переоткрыть".
+
+---
+
 ## 2026-04-02
 
 ### ✅ [WEB-015] Socket.IO — emit `order:new` и `order:status_changed`
