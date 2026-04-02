@@ -1,41 +1,82 @@
-import { TrendingUp, Users, Store, ShoppingCart, AlertCircle, Clock } from 'lucide-react'
+import { Users, Store, ShoppingCart, Clock, AlertCircle, ArrowUpRight } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { cn } from '@/lib/utils'
+import { NumberTicker } from '@/components/ui/number-ticker'
 
 interface SellersResponse { sellers: unknown[]; total: number }
 interface StoresResponse  { stores: unknown[];  total: number }
 interface QueueResponse   { cases: unknown[];   total: number }
 
+const STATS = [
+  {
+    key: 'sellers',
+    label: 'Продавцов',
+    icon: Users,
+    accent: 'text-indigo-400',
+    dim: 'bg-indigo-500/10',
+  },
+  {
+    key: 'stores',
+    label: 'Магазинов',
+    icon: Store,
+    accent: 'text-emerald-400',
+    dim: 'bg-emerald-500/10',
+  },
+  {
+    key: 'queue',
+    label: 'На модерации',
+    icon: Clock,
+    accent: 'text-amber-400',
+    dim: 'bg-amber-500/10',
+  },
+  {
+    key: 'orders',
+    label: 'Заказов',
+    icon: ShoppingCart,
+    accent: 'text-zinc-400',
+    dim: 'bg-zinc-500/10',
+  },
+] as const
+
 function StatCard({
-  label, value, loading, error, color, bg, icon: Icon,
+  label, value, loading, error, icon: Icon, accent, dim,
 }: {
-  label: string; value: number | string; loading: boolean; error: string | null
-  color: string; bg: string; icon: any
+  label: string
+  value: number
+  loading: boolean
+  error: string | null
+  icon: React.ElementType
+  accent: string
+  dim: string
 }) {
   return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 16, padding: '22px 20px 18px',
-      transition: 'border-color 0.2s, transform 0.2s', cursor: 'default',
-    }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = color; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.transform = 'none' }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon size={20} color={color} />
+    <div className={cn(
+      'group relative bg-[#111113] border border-zinc-900 rounded-xl p-5',
+      'hover:border-zinc-700 transition-colors duration-200',
+    )}>
+      {/* Top row */}
+      <div className="flex items-start justify-between mb-4">
+        <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', dim)}>
+          <Icon size={15} className={accent} />
         </div>
-        {error ? (
-          <AlertCircle size={14} color="#EF4444" />
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '3px 8px', borderRadius: 20 }}>
-            <TrendingUp size={11} /> live
-          </div>
-        )}
+        {error
+          ? <AlertCircle size={13} className="text-red-500" />
+          : <ArrowUpRight size={13} className="text-zinc-700 group-hover:text-zinc-500 transition-colors" />
+        }
       </div>
-      <div style={{ fontSize: 30, fontWeight: 800, color: loading ? 'var(--text-muted)' : 'var(--text)', lineHeight: 1, letterSpacing: '-1px' }}>
-        {loading ? '—' : error ? '!' : value}
+
+      {/* Value */}
+      <div className="text-2xl font-bold text-zinc-100 tabular-nums tracking-tight leading-none mb-1">
+        {loading
+          ? <span className="text-zinc-700">—</span>
+          : error
+          ? <span className="text-red-500">!</span>
+          : <NumberTicker value={value} className="text-zinc-100" />
+        }
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>{label}</div>
+
+      {/* Label */}
+      <p className="text-xs text-zinc-600 font-medium">{label}</p>
     </div>
   )
 }
@@ -45,57 +86,63 @@ export default function DashboardPage() {
   const stores  = useFetch<StoresResponse>('/api/v1/admin/stores?limit=1', [])
   const queue   = useFetch<QueueResponse>('/api/v1/admin/moderation/queue?limit=1', [])
 
-  const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+  const today = new Date().toLocaleDateString('ru-RU', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+
+  const statValues: Record<string, number> = {
+    sellers: sellers.data?.total ?? 0,
+    stores:  stores.data?.total  ?? 0,
+    queue:   queue.data?.total   ?? 0,
+    orders:  0,
+  }
+  const statLoading: Record<string, boolean> = {
+    sellers: sellers.loading,
+    stores:  stores.loading,
+    queue:   queue.loading,
+    orders:  false,
+  }
+  const statError: Record<string, string | null> = {
+    sellers: sellers.error,
+    stores:  stores.error,
+    queue:   queue.error,
+    orders:  null,
+  }
 
   return (
-    <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>Dashboard</h1>
-        <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>Обзор платформы — {today}</p>
+    <div className="p-8 min-h-screen">
+
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-xl font-semibold text-zinc-100 tracking-tight">Dashboard</h1>
+        <p className="mt-1 text-sm text-zinc-600">{today}</p>
       </div>
 
-      {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
-        <StatCard
-          label="Продавцов"
-          value={sellers.data?.total ?? 0}
-          loading={sellers.loading}
-          error={sellers.error}
-          color="#818CF8" bg="rgba(129,140,248,0.12)"
-          icon={Users}
-        />
-        <StatCard
-          label="Магазинов"
-          value={stores.data?.total ?? 0}
-          loading={stores.loading}
-          error={stores.error}
-          color="#10B981" bg="rgba(16,185,129,0.12)"
-          icon={Store}
-        />
-        <StatCard
-          label="На модерации"
-          value={queue.data?.total ?? 0}
-          loading={queue.loading}
-          error={queue.error}
-          color="#F59E0B" bg="rgba(245,158,11,0.12)"
-          icon={Clock}
-        />
-        <StatCard
-          label="Заказов"
-          value="—"
-          loading={false}
-          error={null}
-          color="#EF4444" bg="rgba(239,68,68,0.12)"
-          icon={ShoppingCart}
-        />
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
+        {STATS.map(s => (
+          <StatCard
+            key={s.key}
+            label={s.label}
+            value={statValues[s.key]}
+            loading={statLoading[s.key]}
+            error={statError[s.key]}
+            icon={s.icon}
+            accent={s.accent}
+            dim={s.dim}
+          />
+        ))}
       </div>
 
-      {/* Recent orders — endpoint not available yet */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <ShoppingCart size={36} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.2 }} />
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6, color: 'var(--text)' }}>Заказы</div>
-        <div style={{ fontSize: 13 }}>Статистика заказов появится здесь</div>
+      {/* Orders placeholder */}
+      <div className="bg-[#111113] border border-zinc-900 rounded-xl p-12 flex flex-col items-center justify-center text-center">
+        <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center mb-4">
+          <ShoppingCart size={18} className="text-zinc-700" />
+        </div>
+        <p className="text-sm font-medium text-zinc-400 mb-1">Статистика заказов</p>
+        <p className="text-xs text-zinc-700">Появится после подключения orders endpoint</p>
       </div>
+
     </div>
   )
 }

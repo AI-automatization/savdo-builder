@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft } from 'lucide-react'
 import { api, auth } from '../lib/api'
+import { cn } from '@/lib/utils'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -56,12 +57,10 @@ export default function LoginPage() {
   }
 
   const handleOtpKey = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace') {
-      if (!otp[i] && i > 0) {
-        const next = [...otp]; next[i - 1] = ''
-        setOtp(next)
-        inputRefs.current[i - 1]?.focus()
-      }
+    if (e.key === 'Backspace' && !otp[i] && i > 0) {
+      const next = [...otp]; next[i - 1] = ''
+      setOtp(next)
+      inputRefs.current[i - 1]?.focus()
     }
   }
 
@@ -91,136 +90,97 @@ export default function LoginPage() {
     }
   }
 
+  const reset = () => { setStep(1); setOtp(['', '', '', '']); setError('') }
+
   return (
-    <div style={{
-      minHeight: '100vh', background: 'var(--bg)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, position: 'relative', overflow: 'hidden',
-    }}>
-      {/* Background grid */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-        backgroundImage: [
-          'linear-gradient(to right, rgba(129,140,248,0.04) 1px, transparent 1px)',
-          'linear-gradient(to bottom, rgba(129,140,248,0.04) 1px, transparent 1px)',
-        ].join(','),
-        backgroundSize: '40px 40px',
-        maskImage: 'radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 100%)',
-      }} />
-      {/* Glow orb */}
-      <div style={{
-        position: 'fixed', top: '10%', left: '50%', transform: 'translateX(-50%)',
-        width: 700, height: 400, borderRadius: '50%', zIndex: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 70%)',
-        filter: 'blur(60px)',
-      }} />
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-5 relative overflow-hidden">
+
+      {/* Subtle grid bg */}
+      <div className="fixed inset-0 pointer-events-none"
+        style={{
+          backgroundImage: [
+            'linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px)',
+            'linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px)',
+          ].join(','),
+          backgroundSize: '48px 48px',
+          maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 10%, transparent 100%)',
+        }}
+      />
+      {/* Glow */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+        }}
+      />
 
       {/* Card */}
-      <div style={{
-        position: 'relative', zIndex: 1,
-        background: 'var(--surface)', border: '1px solid var(--border)',
-        borderRadius: 24, padding: '40px 40px 36px', width: '100%', maxWidth: 420,
-        boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
-      }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 60, height: 60, borderRadius: 18, margin: '0 auto 18px',
-            background: 'linear-gradient(135deg, #818CF8 0%, #6366F1 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 32px rgba(99,102,241,0.45)',
-          }}>
-            <Store size={28} color="white" />
+      <div className="relative z-10 w-full max-w-[400px] bg-[#111113] border border-zinc-800 rounded-2xl p-8 shadow-2xl">
+
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/20">
+            <Store size={20} color="white" />
           </div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>
-            Savdo Admin
-          </h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            {step === 1 ? 'Войдите через Telegram OTP' : `Код отправлен на ${phone}`}
+          <h1 className="text-base font-semibold text-zinc-100 tracking-tight">Savdo Admin</h1>
+          <p className="mt-1 text-xs text-zinc-600">
+            {step === 1 ? 'Вход через Telegram OTP' : `Код отправлен на ${phone}`}
           </p>
         </div>
 
-        {/* Step progress */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
+        {/* Step bar */}
+        <div className="flex gap-1.5 mb-6">
           {[1, 2].map(s => (
-            <div key={s} style={{
-              flex: 1, height: 3, borderRadius: 2,
-              background: s <= step ? 'var(--primary)' : 'var(--border)',
-              transition: 'background 0.4s',
-            }} />
+            <div key={s} className={cn(
+              'flex-1 h-0.5 rounded-full transition-colors duration-300',
+              s <= step ? 'bg-indigo-500' : 'bg-zinc-800',
+            )} />
           ))}
         </div>
 
         {/* Error */}
         {error && (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 8,
-            padding: '10px 14px', borderRadius: 10, marginBottom: 20,
-            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
-            color: '#EF4444', fontSize: 13, lineHeight: 1.5,
-          }}>
-            <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg mb-5 bg-red-500/5 border border-red-500/20 text-red-400 text-xs leading-relaxed">
+            <AlertCircle size={13} className="mt-0.5 shrink-0" />
             {error}
           </div>
         )}
 
         {step === 1 ? (
-          <>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>
-              Номер телефона
-            </label>
-            <input
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendOtp()}
-              placeholder="+998901234567"
-              style={{
-                width: '100%', padding: '12px 14px', borderRadius: 10, boxSizing: 'border-box',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
-                color: 'var(--text)', fontSize: 16, outline: 'none',
-                fontFamily: 'monospace', letterSpacing: '0.5px',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={e => e.target.style.borderColor = 'var(--primary)'}
-              onBlur={e => e.target.style.borderColor = 'var(--border)'}
-            />
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, marginTop: 12,
-              padding: '10px 14px', background: 'rgba(129,140,248,0.06)',
-              borderRadius: 10, border: '1px solid rgba(129,140,248,0.15)',
-            }}>
-              <MessageCircle size={14} color="var(--primary)" />
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Код придёт в Telegram от @savdo_builderBOT
-              </span>
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1.5 text-xs font-medium text-zinc-500">Номер телефона</label>
+              <input
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && sendOtp()}
+                placeholder="+998901234567"
+                className="w-full h-9 px-3 rounded-lg bg-zinc-900 border border-zinc-800 text-sm text-zinc-100 font-mono placeholder:text-zinc-700 focus:outline-none focus:border-indigo-500/60 transition-colors"
+              />
             </div>
+
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
+              <MessageCircle size={12} className="text-indigo-400 shrink-0" />
+              <span className="text-xs text-zinc-600">Код придёт в Telegram от @savdo_builderBOT</span>
+            </div>
+
             <button
               onClick={sendOtp}
               disabled={loading}
-              style={{
-                width: '100%', marginTop: 20, padding: '13px',
-                borderRadius: 10, border: 'none',
-                background: loading ? 'var(--surface2)' : 'linear-gradient(135deg, #818CF8, #6366F1)',
-                color: 'white', fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: loading ? 'none' : '0 4px 20px rgba(99,102,241,0.4)',
-                transition: 'opacity 0.2s, box-shadow 0.2s',
-              }}
+              className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
-                ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Отправляем...</>
-                : <>Получить код <ArrowRight size={18} /></>
+                ? <><Loader2 size={15} className="animate-spin" /> Отправляем...</>
+                : <>Получить код <ArrowRight size={15} /></>
               }
             </button>
-          </>
+          </div>
         ) : (
-          <>
-            <div style={{ marginBottom: 8, textAlign: 'center' }}>
-              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>
-                Введите 4-значный код из Telegram
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+          <div className="space-y-4">
+            <p className="text-xs text-zinc-600 text-center">Введите 4-значный код из Telegram</p>
+
+            {/* OTP inputs */}
+            <div className="flex gap-2 justify-center">
               {otp.map((d, i) => (
                 <input
                   key={i}
@@ -230,59 +190,42 @@ export default function LoginPage() {
                   onKeyDown={e => handleOtpKey(i, e)}
                   maxLength={6}
                   inputMode="numeric"
-                  style={{
-                    width: 48, height: 56, textAlign: 'center',
-                    fontSize: 24, fontWeight: 700, fontFamily: 'monospace',
-                    borderRadius: 10, outline: 'none',
-                    border: `2px solid ${d ? 'var(--primary)' : 'var(--border)'}`,
-                    background: d ? 'var(--primary-dim)' : 'var(--surface2)',
-                    color: 'var(--text)', transition: 'all 0.15s',
-                  }}
-                  onFocus={e => e.target.style.borderColor = 'var(--primary)'}
-                  onBlur={e => { if (!d) e.target.style.borderColor = 'var(--border)' }}
+                  className={cn(
+                    'w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border bg-zinc-900 text-zinc-100',
+                    'focus:outline-none transition-colors',
+                    d ? 'border-indigo-500/60 bg-indigo-500/5' : 'border-zinc-800 focus:border-zinc-600',
+                  )}
                 />
               ))}
             </div>
 
             {timer > 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
+              <p className="text-center text-xs text-zinc-600">
                 Повторить через{' '}
-                <span style={{ color: 'var(--primary)', fontWeight: 600, fontFamily: 'monospace' }}>
+                <span className="text-indigo-400 font-mono font-semibold">
                   {Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}
                 </span>
               </p>
             ) : (
-              <p style={{ textAlign: 'center', margin: '0 0 16px' }}>
-                <button onClick={() => { setStep(1); setOtp(['','','','','','']); setError('') }} style={{
-                  background: 'none', border: 'none', color: 'var(--primary)',
-                  fontSize: 13, cursor: 'pointer', fontWeight: 500,
-                }}>
+              <p className="text-center">
+                <button onClick={reset} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
                   Отправить код повторно
                 </button>
               </p>
             )}
 
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 13 }}>
-                <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
-                Проверяем код...
+              <div className="flex items-center justify-center gap-2 text-xs text-zinc-600">
+                <Loader2 size={13} className="animate-spin" /> Проверяем...
               </div>
             )}
 
-            <button onClick={() => { setStep(1); setOtp(['','','','','','']); setError('') }} style={{
-              display: 'flex', alignItems: 'center', gap: 6, marginTop: 16,
-              background: 'none', border: 'none', color: 'var(--text-muted)',
-              fontSize: 13, cursor: 'pointer',
-            }}>
-              <ChevronLeft size={14} /> Изменить номер
+            <button onClick={reset} className="flex items-center gap-1.5 text-xs text-zinc-700 hover:text-zinc-500 transition-colors mt-2">
+              <ChevronLeft size={13} /> Изменить номер
             </button>
-          </>
+          </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   )
 }
