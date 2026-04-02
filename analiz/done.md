@@ -1,3 +1,38 @@
+# Done — Азим + Полат
+
+## 2026-04-03
+
+### ✅ [WEB-026] Socket.IO клиент — seller real-time заказы
+- **Важность:** 🔴
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/socket.ts` (новый)
+  - `apps/web-seller/src/hooks/use-seller-socket.ts` (новый)
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx`
+  - `apps/web-seller/src/app/globals.css`
+  - `apps/web-seller/package.json` (добавлен `socket.io-client`)
+- **Что сделано:** Socket.IO клиент подключён к backend (OrdersGateway Полата). При `order:new` → invalidate list + toast уведомление. При `order:status_changed` → invalidate list + detail. Сокет монтируется в DashboardLayout, join-seller-room отправляется после получения storeId.
+
+### ✅ [WEB-029] Analytics — реальный sink вместо console.log
+- **Важность:** 🟡
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/analytics.ts`
+  - `apps/web-buyer/src/lib/analytics.ts`
+- **Что сделано:** `send()` теперь вызывает `POST /api/v1/analytics/track` (fire-and-forget). Buyer передаёт `storeId` из payload. Ошибки не пробрасываются — best-effort.
+
+### ✅ [WEB-028] Seller analytics страница
+- **Важность:** 🟢
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx` (новый)
+  - `apps/web-seller/src/hooks/use-analytics.ts` (новый)
+  - `apps/web-seller/src/lib/api/analytics.api.ts` (новый)
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` (добавлен пункт "Аналитика" в nav)
+- **Что сделано:** Страница `/analytics` с карточками views, conversionRate, топ товар. Топ товар рефетчит название через `useSellerProduct`. staleTime 5 мин.
+
+---
+
 # Done — Полат
 
 ---

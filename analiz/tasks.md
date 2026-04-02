@@ -55,22 +55,13 @@
 
 > Все критические страницы Phase B готовы. Осталось ждать Полата по WEB-022 для тестирования.
 
-## 🟡 На следующую сессию (после WEB-022 от Полата)
+## 🟡 В работе / На следующую сессию
 
-### 🟡 [WEB-026] Socket.IO клиент — seller real-time заказы
-- **Домен:** `apps/web-seller`
-- **Кто взял:** Азим (после WEB-015 от Полата)
-- **Детали:** Заменить polling в `useSellerOrders` на Socket.IO. Подключиться к room `seller:{storeId}`. Слушать `order:new` → добавить в список + toast уведомление. Слушать `order:status_changed` → обновить через `queryClient.setQueryData`.
-- **Файлы:** `apps/web-seller/src/hooks/use-orders.ts`, новый `apps/web-seller/src/lib/socket.ts`
-
-### 🟡 [WEB-027] Socket.IO клиент — chat real-time
+### 🔴 [WEB-027] Socket.IO клиент — chat real-time (ЗАБЛОКИРОВАН)
 - **Домен:** `apps/web-seller`, `apps/web-buyer`
-- **Кто взял:** Азим (после WEB-015 от Полата)
-- **Детали:** Заменить polling (10s) в `useMessages` на Socket.IO для обоих приложений.
+- **Кто взял:** Азим (ждёт Полата)
+- **Блокер:** Полат должен добавить chat gateway в API (аналогично `apps/api/src/socket/orders.gateway.ts`) — emit `chat:message` при новом сообщении в thread.
+- **Детали:** После chat gateway — заменить `refetchInterval: 10_000` в `useMessages` на Socket.IO для обоих приложений.
 - **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
 
-### 🟢 [WEB-028] Seller analytics страница
-- **Домен:** `apps/web-seller`
-- **Кто взял:** Азим
-- **Детали:** Страница `/analytics` уже есть endpoint `GET /api/v1/analytics/seller/summary` (сделан Полатом). Отобразить: views, topProduct, conversionRate за последние 30 дней. Карточки + простой chart (или просто числа).
-- **Файлы:** `apps/web-seller/src/app/(dashboard)/analytics/page.tsx` (новый)
+~~[WEB-028] — ✅ Готово~~
