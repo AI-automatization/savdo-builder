@@ -8,6 +8,8 @@ import {
   clearTokens,
   getSessionToken,
   clearSessionToken,
+  getStoredUser,
+  storeUser,
 } from './storage';
 import { logout as logoutApi } from '../api/auth.api';
 import { mergeCart } from '../api/cart.api';
@@ -25,16 +27,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    // Restore auth state from token presence
-    // Full user info would require a /me endpoint — for now we parse from JWT or skip
     const token = getAccessToken();
-    if (!token) setUser(null);
-    // TODO: add GET /auth/me when backend exposes it
+    if (token) {
+      const stored = getStoredUser();
+      if (stored) setUser(stored);
+    }
   }, []);
 
   const login = useCallback(
     async (accessToken: string, refreshToken: string, authUser: AuthUser) => {
       setTokens(accessToken, refreshToken);
+      storeUser(authUser);
       setUser(authUser);
 
       // Merge guest cart into authenticated buyer cart

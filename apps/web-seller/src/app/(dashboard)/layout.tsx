@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { track } from "../../lib/analytics";
 import { useStore } from "../../hooks/use-seller";
 import { useSellerSocket } from "../../hooks/use-seller-socket";
+import { useAuth } from "../../lib/auth/context";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { data: store } = useStore();
   const { toasts } = useSellerSocket();
+  const { user } = useAuth();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -144,8 +146,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             А
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-white truncate">Азиз Каримов</p>
-            <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.30)" }}>+998 90 123 45 67</p>
+            <p className="text-xs font-medium text-white truncate">{user?.phone ?? '—'}</p>
+            <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.30)" }}>Продавец</p>
           </div>
           <Link href="/login" title="Выйти" style={{ color: "rgba(255,255,255,0.28)" }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">

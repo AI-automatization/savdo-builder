@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { AuthUser } from 'types';
-import { getAccessToken, setTokens, clearTokens } from './storage';
+import { getAccessToken, setTokens, clearTokens, getStoredUser, storeUser } from './storage';
 import { logout as logoutApi } from '../api/auth.api';
 
 interface AuthContextValue {
@@ -19,13 +19,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = getAccessToken();
-    if (!token) setUser(null);
-    // TODO: add GET /auth/me when backend exposes it
+    if (token) {
+      const stored = getStoredUser();
+      if (stored) setUser(stored);
+    }
   }, []);
 
   const login = useCallback(
     (accessToken: string, refreshToken: string, authUser: AuthUser) => {
       setTokens(accessToken, refreshToken);
+      storeUser(authUser);
       setUser(authUser);
     },
     [],
