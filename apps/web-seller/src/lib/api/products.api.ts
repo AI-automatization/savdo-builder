@@ -1,4 +1,4 @@
-import type { ProductListItem, ProductVariant, ProductStatus } from 'types';
+import type { ProductListItem, Product, ProductVariant, ProductStatus } from 'types';
 import { apiClient } from './client';
 
 // ── Products ───────────────────────────────────────────────────────────────────
@@ -12,8 +12,8 @@ export async function getSellerProducts(params?: {
   return res.data;
 }
 
-export async function getSellerProduct(id: string): Promise<ProductListItem> {
-  const res = await apiClient.get<ProductListItem>(`/seller/products/${id}`);
+export async function getSellerProduct(id: string): Promise<Product> {
+  const res = await apiClient.get<Product>(`/seller/products/${id}`);
   return res.data;
 }
 

@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useStore } from '../../../hooks/use-seller';
 import { useSellerOrders } from '../../../hooks/use-orders';
 import { OrderStatus, StoreStatus } from 'types';
+import { track } from '../../../lib/analytics';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -69,6 +71,17 @@ function Skeleton({ className }: { className?: string }) {
 export default function DashboardPage() {
   const { data: store, isLoading: storeLoading } = useStore();
   const { data: ordersData, isLoading: ordersLoading } = useSellerOrders({ limit: 5 });
+  const [copied, setCopied] = useState(false);
+
+  function handleCopyLink() {
+    if (!store) return;
+    const url = `https://savdo.uz/${store.slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+      track.storeLinkCopied(store.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   const orders = ordersData?.data ?? [];
   const pendingCount = orders.filter(o => o.status === OrderStatus.PENDING).length;
@@ -132,10 +145,19 @@ export default function DashboardPage() {
           <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Выручка (последние)</p>
         </div>
 
-        {/* Store slug */}
-        <div className="rounded-2xl p-4" style={glass}>
+        {/* Store slug — copy link */}
+        <div
+          className="rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-80 active:scale-[0.98]"
+          style={glass}
+          onClick={handleCopyLink}
+        >
           <div className="flex items-start justify-between mb-3">
             <span className="text-2xl">🔗</span>
+            {copied && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(52,211,153,.15)", color: "#34d399" }}>
+                Скопировано
+              </span>
+            )}
           </div>
           {storeLoading ? (
             <Skeleton className="h-6 w-20 mb-1" />
@@ -144,7 +166,7 @@ export default function DashboardPage() {
           ) : (
             <p className="text-sm font-bold leading-none" style={{ color: "rgba(255,255,255,0.30)" }}>—</p>
           )}
-          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Ссылка магазина</p>
+          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Нажми чтобы скопировать</p>
         </div>
 
         {/* Pending orders */}
@@ -186,7 +208,7 @@ export default function DashboardPage() {
         ) : (
           <div>
             {orders.map((o) => (
-              <div key={o.id} className="flex items-center gap-4 px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+              <a key={o.id} href={`/orders/${o.id}`} className="flex items-center gap-4 px-5 py-3 transition-opacity hover:opacity-75" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                 <span className="text-xs font-mono shrink-0" style={{ color: "rgba(255,255,255,0.30)" }}>
                   #{o.id.slice(-4).toUpperCase()}
                 </span>
@@ -205,7 +227,7 @@ export default function DashboardPage() {
                 >
                   {STATUS_LABELS[o.status] ?? o.status}
                 </span>
-              </div>
+              </a>
             ))}
           </div>
         )}
@@ -214,7 +236,7 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: "Добавить товар",    href: "/products",  icon: "➕" },
+          { label: "Добавить товар",    href: "/products/create",  icon: "➕" },
           { label: "Обработать заказы", href: "/orders",    icon: "📋" },
           { label: "Настройки магазина", href: "/settings", icon: "⚙️" },
         ].map((a) => (

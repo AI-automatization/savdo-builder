@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useSellerProducts } from '../../../hooks/use-products';
 import { ProductStatus } from 'types';
 
@@ -53,21 +54,23 @@ export default function ProductsPage() {
 
       <div className="rounded-2xl overflow-hidden" style={glass}>
         <div
-          className="grid grid-cols-[1fr_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
+          className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
           style={{ color: "rgba(255,255,255,0.28)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
         >
           <span>Товар</span>
           <span>Цена</span>
           <span>Статус</span>
+          <span></span>
         </div>
 
         {isLoading ? (
           <>
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-4 w-12" />
               </div>
             ))}
           </>
@@ -80,7 +83,7 @@ export default function ProductsPage() {
           products.map((p) => (
             <div
               key={p.id}
-              className="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center px-5 py-3.5"
+              className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-5 py-3.5"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
             >
               <span className="text-sm font-medium text-white truncate">{p.title}</span>
@@ -100,6 +103,13 @@ export default function ProductsPage() {
               >
                 {STATUS_LABELS[p.status] ?? p.status}
               </span>
+              <Link
+                href={`/products/${p.id}/edit`}
+                className="text-xs font-medium transition-opacity hover:opacity-80"
+                style={{ color: "rgba(167,139,250,0.70)" }}
+              >
+                Изменить
+              </Link>
             </div>
           ))
         )}

@@ -30,7 +30,7 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 ```markdown
 ## 🔴 [ID] Название задачи
 - **Домен:** apps/api | web-buyer | web-seller | admin
-- **Кто взял:** Полат | Азим | Яхьо
+- **Кто взял:** Полат | Азим
 - **Детали:** что нужно сделать
 - **Файлы:** список файлов
 ```
@@ -62,9 +62,8 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 ## Команда и зоны ответственности
 | Разработчик | Домен | Нельзя трогать |
 |------------|-------|----------------|
-| Полатр | `apps/api`, `packages/db`, `packages/types`, `apps/mobile-buyer`, `apps/mobile-seller` | `apps/web-*`, `apps/admin` |
+| Полатр | `apps/api`, `packages/db`, `packages/types`, `apps/admin`, `apps/mobile-buyer`, `apps/mobile-seller` | `apps/web-*` |
 | Азим | `apps/web-buyer`, `apps/web-seller` | `apps/api`, `packages/db`, `apps/admin`, `apps/mobile-*` |
-| Яхьо | `apps/admin` | `apps/api`, `packages/db`, `apps/web-*`, `apps/mobile-*` |
 
 **packages/db** — только Полатр. Остальные сообщают о проблемах, не правят.
 **packages/types** — Полатр пишет, остальные только читают.

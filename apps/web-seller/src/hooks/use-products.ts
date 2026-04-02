@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ProductStatus } from 'types';
+import type { ProductStatus, Product } from 'types';
 import {
   getSellerProducts,
   getSellerProduct,
@@ -37,7 +37,7 @@ export function useSellerProducts(params?: {
 }
 
 export function useSellerProduct(id: string) {
-  return useQuery({
+  return useQuery<Product>({
     queryKey: productKeys.detail(id),
     queryFn: () => getSellerProduct(id),
     enabled: !!id,
