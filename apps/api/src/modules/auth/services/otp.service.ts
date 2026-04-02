@@ -38,6 +38,12 @@ export class OtpService {
 
     if (devMode) {
       this.logger.warn(`[DEV OTP] Phone: ${phone} | Code: ${code}`);
+      // Still try to send via Telegram if the phone is linked
+      const chatId = await this.redis.get(TELEGRAM_CHAT_ID_KEY(phone));
+      if (chatId) {
+        const jobData: OtpSendTelegramJobData = { chatId, phone, code };
+        await this.otpQueue.add(OTP_JOB_SEND_TELEGRAM, jobData, { priority: 1 });
+      }
       return;
     }
 
