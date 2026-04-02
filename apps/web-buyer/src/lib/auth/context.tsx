@@ -26,15 +26,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window === 'undefined') return null;
     const token = getAccessToken();
-    if (token) {
-      const stored = getStoredUser();
-      if (stored) setUser(stored);
-    }
-  }, []);
+    return token ? getStoredUser() : null;
+  });
 
   const login = useCallback(
     async (accessToken: string, refreshToken: string, authUser: AuthUser) => {

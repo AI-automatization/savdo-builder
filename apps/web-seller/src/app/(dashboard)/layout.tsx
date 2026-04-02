@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { track } from "../../lib/analytics";
 import { useStore } from "../../hooks/use-seller";
 import { useSellerSocket } from "../../hooks/use-seller-socket";
 import { useAuth } from "../../lib/auth/context";
+import { useLogout } from "../../hooks/use-auth";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -62,9 +64,22 @@ const NAV = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
   const { data: store } = useStore();
   const { toasts } = useSellerSocket();
-  const { user } = useAuth();
+  const logoutMutation = useLogout();
+
+  useEffect(() => {
+    if (!isAuthenticated) router.replace('/login');
+  }, [isAuthenticated, router]);
+
+  async function handleLogout() {
+    await logoutMutation.mutateAsync();
+    router.push('/login');
+  }
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -149,11 +164,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <p className="text-xs font-medium text-white truncate">{user?.phone ?? '—'}</p>
             <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.30)" }}>Продавец</p>
           </div>
-          <Link href="/login" title="Выйти" style={{ color: "rgba(255,255,255,0.28)" }}>
+          <button
+            onClick={handleLogout}
+            disabled={logoutMutation.isPending}
+            title="Выйти"
+            style={{ color: "rgba(255,255,255,0.28)" }}
+            className="disabled:opacity-40"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
             </svg>
-          </Link>
+          </button>
         </div>
       </aside>
 
