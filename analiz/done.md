@@ -1,4 +1,168 @@
-# Done — Полатр
+# Done — Полат
+
+---
+
+## 2026-04-02
+
+### ✅ [WEB-015] Socket.IO — emit `order:new` и `order:status_changed`
+- **Важность:** 🟡 Важная
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/socket/orders.gateway.ts` (новый) — WebSocketGateway
+  - `apps/api/src/socket/socket.module.ts` (новый) — экспортирует OrdersGateway
+  - `apps/api/src/modules/orders/use-cases/update-order-status.use-case.ts` — emit после смены статуса
+  - `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts` — emit при создании заказа
+  - `apps/api/src/modules/orders/orders.module.ts` — добавлен SocketModule
+  - `apps/api/src/modules/checkout/checkout.module.ts` — добавлен SocketModule
+- **Что сделано:** Seller подключается к room `seller:{storeId}` через событие `join-seller-room`. При новом заказе (checkout) → `order:new`. При смене статуса → `order:status_changed` с полями `id, storeId, status, oldStatus, totalAmount, currencyCode, deliveryFee, createdAt`. Азим может подключить WEB-026 (заменить polling на Socket.IO).
+
+### ✅ [ADM-009] Moderation queue — SLA-таймер + assign + action labels
+- **Важность:** 🟡 Важная
+- **Дата:** 02.04.2026
+- **Файлы:** `apps/admin/src/pages/ModerationPage.tsx`
+- **Что сделано:** SLA 24ч от `createdAt` — зелёный >8ч, жёлтый 2–8ч, красный <2ч / просрочен. Граница карточки красная при overdue. Кнопка "Взять" (PATCH `/assign`) появляется только если не назначен. Все кнопки получили текстовые метки (было только иконки). Минимум 10 символов в причине отклонения.
+
+### ✅ [ADM-011] Product hide/restore
+- **Важность:** 🟡 Важная
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/products.repository.ts` — добавлен `findAll(filters)`
+  - `apps/api/src/modules/admin/admin.controller.ts` — `GET /admin/products`, `PATCH /admin/products/:id/hide`, `PATCH /admin/products/:id/restore`
+  - `apps/api/src/modules/admin/admin.module.ts` — добавлен `ProductsModule`
+  - `apps/admin/src/pages/ProductsPage.tsx` (новый) — таблица товаров с фильтром статуса
+  - `apps/admin/src/App.tsx` — роут `/products`
+  - `apps/admin/src/layouts/DashboardLayout.tsx` — пункт "Товары" в nav
+- **Что сделано:** Список всех товаров платформы. Фильтр по статусу. Кнопка "Скрыть" → `HIDDEN_BY_ADMIN`, "Восстановить" → `ACTIVE`. Миниатюра товара, цена, статус-бейдж.
+
+### ✅ [ADM-008] Admin auth — token refresh + centralised auth helpers
+- **Важность:** 🟡 Важная
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/admin/src/lib/api.ts` — добавлен `auth` хелпер, refresh singleton, retry после 401
+  - `apps/admin/src/pages/LoginPage.tsx` — `auth.setTokens()` вместо прямого sessionStorage
+  - `apps/admin/src/layouts/DashboardLayout.tsx` — logout через `auth.clear()`
+  - `apps/admin/src/App.tsx` — `PrivateRoute` принимает access ИЛИ refresh токен
+- **Что сделано:** Access token 15 мин → при 401 автоматически пробует refresh. Singleton promise предотвращает race condition при параллельных запросах. Если refresh тоже упал — `auth.clear()` + redirect `/login`.
+
+### ✅ [WEB-022] DEV_OTP_ENABLED=true на Railway
+- **Важность:** 🔴 Критическая
+- **Дата:** 02.04.2026
+- **Файлы:** Railway Dashboard — сервис `savdo-api` → Variables
+- **Что сделано:** Установлен `DEV_OTP_ENABLED=true`. Азим теперь видит OTP коды в Railway Logs без Telegram бота.
+
+### ✅ [ADM-012] Order overview с фильтрами
+- **Важность:** 🟡 Важная
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/repositories/admin.repository.ts` — добавлен `listOrders(filters)`
+  - `apps/api/src/modules/admin/admin.controller.ts` — `GET /admin/orders?status=&storeId=&page=&limit=`
+  - `apps/api/src/modules/admin/admin.module.ts` — добавлен `OrdersModule`
+  - `apps/admin/src/pages/OrdersPage.tsx` — таблица заказов с фильтрами по статусу
+- **Что сделано:** Все заказы платформы. Фильтр по 6 статусам. Клиентская фильтрация по номеру/телефону/магазину. Пагинация 25 шт. Таблица: номер, магазин, покупатель, сумма, статус, дата.
+
+### ✅ [ADM-013] Global search по телефону / номеру заказа / slug
+- **Важность:** 🟡 Важная
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/repositories/admin.repository.ts` — `globalSearch(q)` — параллельный поиск users/orders/stores
+  - `apps/api/src/modules/admin/admin.controller.ts` — `GET /admin/search?q=`
+  - `apps/admin/src/layouts/DashboardLayout.tsx` — GlobalSearch компонент с 350ms debounce
+- **Что сделано:** Поиск от 2 символов. Результаты разбиты по группам: пользователи (по телефону), заказы (по orderNumber), магазины (по name/slug). Клик → переход на нужную страницу. Закрытие по клику вне.
+
+### ✅ [ADM-014] Seller detail — история moderation actions
+- **Важность:** 🟡 Важная
+- **Дата:** 02.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/repositories/admin.repository.ts` — `findSellerById` переписан: отдельный запрос `moderationCase.findMany({ where: { entityType: 'seller', entityId } })`
+  - `apps/admin/src/pages/SellerDetailPage.tsx` — секция "История модерации"
+- **Что сделано:** `ModerationCase` использует `entityId: String` (не FK), поэтому отдельный `findMany` в транзакции. Страница показывает до 20 последних кейсов, каждый с действиями (APPROVE/REJECT/REQUEST_CHANGES/ESCALATE), цветной левой полосой, телефоном администратора и комментарием.
+
+---
+
+## 2026-04-01
+
+### ✅ [ADM-001..008] Admin Panel — с нуля до продакшна
+- **Важность:** 🔴 Критическая
+- **Дата:** 01.04.2026
+- **Файлы:** `apps/admin/` (весь каталог), `apps/admin/Dockerfile`, `apps/admin/nginx.conf`, `apps/admin/railway.toml`, `apps/admin/src/lib/api.ts`, `apps/admin/src/lib/hooks.ts`, `apps/admin/src/pages/`
+- **Что сделано:**
+  - Переписан с Next.js → **Vite + React SPA** (правильный стек для SPA без SSR)
+  - Дизайн: **Liquid Authority** (тёмная тема, navy + indigo)
+  - OTP логин: 4-значный код, таймер 300 сек, `purpose: 'login'` в обоих запросах
+  - Все страницы подключены к реальному API (sellers, stores, moderation, audit-logs, dashboard)
+  - Dockerfile: multi-stage (builder + nginx), `VITE_API_URL` через ARG
+  - nginx.conf: шаблон через `envsubst` (`$PORT`), размещён в `/etc/nginx/templates/`
+  - Задеплоен на Railway → `https://savdo-builderadmin-production.up.railway.app`
+
+### ✅ [API-005] Backend Railway деплой — исправлен
+- **Важность:** 🔴 Критическая
+- **Дата:** 01.04.2026
+- **Файлы:** `apps/api/src/main.ts`, `apps/api/start.sh`, `apps/api/railway.toml`
+- **Что сделано:** `app.listen(port, '0.0.0.0')` — Railway healthcheck не мог достучаться. Добавлен `start.sh`: сначала `prisma migrate deploy`, потом запуск. `healthcheckTimeout` → 300 сек.
+
+### ✅ [API-006] CORS — все 4 домена
+- **Важность:** 🔴 Критическая
+- **Дата:** 01.04.2026
+- **Файлы:** Railway Variables (`ALLOWED_ORIGINS`)
+- **Что сделано:** Добавлены все фронтенды: `savdo-builder-production`, `savdo-builderadmin-production`, `savdo-builder-by-production`, `savdo-builder-sl-production`
+
+### ✅ [TYPES-001] PaginationMeta — убран дубль TS2308
+- **Важность:** 🔴 Критическая
+- **Дата:** 01.04.2026
+- **Файлы:** `packages/types/src/api/orders.ts`
+- **Что сделано:** Удалён дублирующий `export interface PaginationMeta`. Единственный источник: `packages/types/src/common.ts`
+
+### ✅ [GIT-001] Мердж `feature/api-layer` → `main`
+- **Важность:** 🟡 Важная
+- **Дата:** 01.04.2026
+- **Файлы:** `pnpm-lock.yaml`, `docs/done/web.md` (конфликты разрешены через `--theirs`)
+- **Что сделано:** Смержена ветка Azim с реальным API для web-buyer и web-seller
+
+---
+
+## 2026-03-31
+
+### ✅ [WEB-D01] web-buyer — Dockerfile + railway.toml
+- **Важность:** 🟡 Важная
+- **Дата:** 31.03.2026
+- **Файлы:** `apps/web-buyer/Dockerfile`, `apps/web-buyer/railway.toml`
+- **Что сделано:**
+
+| Параметр | Значение |
+|----------|----------|
+| Стадии сборки | `base → deps → builder → runner` |
+| Монорепо | копируются `packages/` + `apps/web-buyer/` |
+| Install | `pnpm install --no-frozen-lockfile` |
+| Build | `pnpm --filter web-buyer build` |
+| Build ARG | `NEXT_PUBLIC_API_URL` |
+| Output | `.next/standalone` + `.next/static` + `public/` |
+| PORT | `3002`, `HOSTNAME=0.0.0.0` |
+| Start | `node apps/web-buyer/server.js` |
+| watchPatterns | `apps/web-buyer/**`, `packages/types/**`, `packages/ui/**` |
+| build.args | `NEXT_PUBLIC_API_URL = "${{api.RAILWAY_PUBLIC_DOMAIN}}"` |
+| healthcheck | `/`, timeout 60s |
+| restartPolicy | `ON_FAILURE`, max 3 retries |
+
+### ✅ [WEB-D02] web-seller — Dockerfile + railway.toml
+- **Важность:** 🟡 Важная
+- **Дата:** 31.03.2026
+- **Файлы:** `apps/web-seller/Dockerfile`, `apps/web-seller/railway.toml`
+- **Что сделано:**
+
+| Параметр | Значение |
+|----------|----------|
+| Стадии сборки | `base → deps → builder → runner` |
+| Монорепо | копируются `packages/` + `apps/web-seller/` |
+| Install | `pnpm install --no-frozen-lockfile` |
+| Build | `pnpm --filter web-seller build` |
+| Build ARG | `NEXT_PUBLIC_API_URL` |
+| Output | `.next/standalone` + `.next/static` + `public/` |
+| PORT | `3001`, `HOSTNAME=0.0.0.0` |
+| Start | `node apps/web-seller/server.js` |
+| watchPatterns | `apps/web-seller/**`, `packages/types/**`, `packages/ui/**` |
+| build.args | `NEXT_PUBLIC_API_URL = "${{api.RAILWAY_PUBLIC_DOMAIN}}"` |
+| healthcheck | `/`, timeout 60s |
+| restartPolicy | `ON_FAILURE`, max 3 retries |
 
 ---
 

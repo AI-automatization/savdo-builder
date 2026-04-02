@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Store, Eye, Package, RefreshCw, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 
@@ -27,6 +28,7 @@ const STATUS_CFG: Record<string, { bg: string; text: string; label: string; bord
 }
 
 export default function StoresPage() {
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('ALL')
   const [page, setPage] = useState(1)
 
@@ -125,7 +127,7 @@ export default function StoresPage() {
                     </div>
                   </div>
                 )}
-                <button style={{ width: '100%', padding: '9px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background 0.15s, color 0.15s' }}
+                <button onClick={() => navigate(`/stores/${s.id}`)} style={{ width: '100%', padding: '9px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background 0.15s, color 0.15s' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--primary-dim)'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}
                 >

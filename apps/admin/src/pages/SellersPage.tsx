@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Search, CheckCircle, XCircle, Clock, MoreHorizontal, RefreshCw, AlertCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, CheckCircle, XCircle, Clock, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 
 interface Seller {
@@ -25,6 +26,7 @@ const STATUS_CFG: Record<string, { bg: string; text: string; icon: any; label: s
 }
 
 export default function SellersPage() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('ALL')
   const [page, setPage] = useState(1)
@@ -110,7 +112,8 @@ export default function SellersPage() {
                 : STATUS_CFG[s.verificationStatus] ?? STATUS_CFG.PENDING
               return (
                 <tr key={s.id}
-                  style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                  onClick={() => navigate(`/sellers/${s.id}`)}
+                  style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s', cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
@@ -137,9 +140,7 @@ export default function SellersPage() {
                     {new Date(s.createdAt).toLocaleDateString('ru-RU')}
                   </td>
                   <td style={{ padding: '13px 20px' }}>
-                    <button style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '6px 8px', borderRadius: 8, cursor: 'pointer' }}>
-                      <MoreHorizontal size={15} />
-                    </button>
+                    <ChevronRight size={16} color="var(--text-muted)" />
                   </td>
                 </tr>
               )

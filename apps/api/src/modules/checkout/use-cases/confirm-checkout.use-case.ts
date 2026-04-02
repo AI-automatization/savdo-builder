@@ -5,6 +5,7 @@ import { CartRepository } from '../../cart/repositories/cart.repository';
 import { ProductsRepository } from '../../products/repositories/products.repository';
 import { VariantsRepository } from '../../products/repositories/variants.repository';
 import { CheckoutRepository } from '../repositories/checkout.repository';
+import { OrdersGateway } from '../../../socket/orders.gateway';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { DeliveryAddressDto } from '../dto/confirm-checkout.dto';
@@ -34,6 +35,7 @@ export class ConfirmCheckoutUseCase {
     private readonly variantsRepo: VariantsRepository,
     private readonly checkoutRepo: CheckoutRepository,
     private readonly config: ConfigService,
+    private readonly ordersGateway: OrdersGateway,
   ) {}
 
   async execute(input: ConfirmCheckoutInput): Promise<Order> {
@@ -217,6 +219,8 @@ export class ConfirmCheckoutUseCase {
     await this.checkoutRepo.markCartConverted(cart.id);
 
     this.logger.log(`Order ${order.orderNumber} created for buyer ${input.buyerId}`);
+
+    this.ordersGateway.emitOrderNew(order);
 
     return order;
   }

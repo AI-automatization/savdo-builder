@@ -8,22 +8,33 @@ const PRESIGNED_URL_TTL_SECONDS = 300;
 @Injectable()
 export class R2StorageService {
   private readonly logger = new Logger(R2StorageService.name);
-  private readonly s3Client: S3Client;
+  private readonly s3Client: S3Client | null = null;
+  private readonly configured: boolean;
 
   constructor(private readonly configService: ConfigService) {
     const endpoint = this.configService.get<string>('storage.endpoint');
     const accessKeyId = this.configService.get<string>('storage.accessKeyId');
     const secretAccessKey = this.configService.get<string>('storage.secretAccessKey');
 
-    this.s3Client = new S3Client({
-      endpoint,
-      region: 'auto',
-      credentials: {
-        accessKeyId: accessKeyId ?? '',
-        secretAccessKey: secretAccessKey ?? '',
-      },
-      forcePathStyle: true,
-    });
+    this.configured = Boolean(endpoint && accessKeyId && secretAccessKey);
+
+    if (this.configured) {
+      this.s3Client = new S3Client({
+        endpoint,
+        region: 'auto',
+        credentials: {
+          accessKeyId: accessKeyId!,
+          secretAccessKey: secretAccessKey!,
+        },
+        forcePathStyle: true,
+      });
+    } else {
+      this.logger.warn('R2 Storage not configured (STORAGE_ENDPOINT missing) — media upload disabled');
+    }
+  }
+
+  isConfigured(): boolean {
+    return this.configured;
   }
 
   async generateUploadUrl(
@@ -31,6 +42,8 @@ export class R2StorageService {
     objectKey: string,
     mimeType: string,
   ): Promise<{ uploadUrl: string; expiresIn: number }> {
+    if (!this.s3Client) throw new Error('R2 Storage is not configured');
+
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: objectKey,
@@ -45,6 +58,8 @@ export class R2StorageService {
   }
 
   async deleteObject(bucket: string, objectKey: string): Promise<void> {
+    if (!this.s3Client) throw new Error('R2 Storage is not configured');
+
     try {
       await this.s3Client.send(
         new DeleteObjectCommand({ Bucket: bucket, Key: objectKey }),

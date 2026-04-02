@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, auth } from '../lib/api'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -76,8 +76,7 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
-      sessionStorage.setItem('access_token', data.accessToken)
-      if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken)
+      auth.setTokens(data.accessToken, data.refreshToken)
       navigate('/dashboard')
     } catch (e: any) {
       if (e.message?.includes('TELEGRAM_NOT_LINKED')) {

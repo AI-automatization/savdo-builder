@@ -8,9 +8,10 @@ import { UpdateOrderStatusUseCase } from './use-cases/update-order-status.use-ca
 import { UsersModule } from '../users/users.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { StoresModule } from '../stores/stores.module';
+import { SocketModule } from '../../socket/socket.module';
 
 @Module({
-  imports: [UsersModule, SellersModule, StoresModule],
+  imports: [UsersModule, SellersModule, StoresModule, SocketModule],
   controllers: [OrdersController],
   providers: [
     OrdersRepository,

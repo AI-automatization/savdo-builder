@@ -32,6 +32,34 @@ export interface UpdateProductData {
 export class ProductsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAll(filters?: {
+    storeId?: string;
+    status?: ProductStatus;
+    page?: number;
+    limit?: number;
+  }): Promise<{ products: Product[]; total: number }> {
+    const page  = filters?.page  ?? 1;
+    const limit = filters?.limit ?? 20;
+    const skip  = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { deletedAt: null };
+    if (filters?.storeId) where['storeId'] = filters.storeId;
+    if (filters?.status)  where['status']  = filters.status;
+
+    const [products, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { products, total };
+  }
+
   async findByStoreId(
     storeId: string,
     filters?: {

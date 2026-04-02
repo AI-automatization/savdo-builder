@@ -40,6 +40,28 @@
 - Удалён дубль `PaginationMeta` из `orders.ts` — был конфликт TS2308
 - Единственный источник: `packages/types/src/common.ts`
 
+### 🐳 web-buyer / web-seller — Dockerfile + Railway (31.03)
+
+| Задача | web-buyer | web-seller |
+|--------|-----------|------------|
+| **Dockerfile создан** | ✅ `apps/web-buyer/Dockerfile` | ✅ `apps/web-seller/Dockerfile` |
+| **Build стадии** | `base → deps → builder → runner` | `base → deps → builder → runner` |
+| **Монорепо копируется** | `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `packages/`, `apps/web-buyer/` | то же, `apps/web-seller/` |
+| **Build команда** | `pnpm --filter web-buyer build` | `pnpm --filter web-seller build` |
+| **Build ARG** | `NEXT_PUBLIC_API_URL` | `NEXT_PUBLIC_API_URL` |
+| **Standalone output** | `.next/standalone` + `.next/static` + `public/` | то же |
+| **PORT** | `3002` | `3001` |
+| **Start CMD** | `node apps/web-buyer/server.js` | `node apps/web-seller/server.js` |
+| **railway.toml создан** | ✅ `apps/web-buyer/railway.toml` | ✅ `apps/web-seller/railway.toml` |
+| **Builder** | `DOCKERFILE` | `DOCKERFILE` |
+| **watchPatterns** | `apps/web-buyer/**`, `packages/types/**`, `packages/ui/**` | `apps/web-seller/**`, `packages/types/**`, `packages/ui/**` |
+| **build.args** | `NEXT_PUBLIC_API_URL = "${{api.RAILWAY_PUBLIC_DOMAIN}}"` | то же |
+| **healthcheck** | `/` , timeout 60s | то же |
+| **restartPolicy** | `ON_FAILURE`, max 3 retries | то же |
+
+> ⚠️ `build.args` использует Railway reference variable `${{api.RAILWAY_PUBLIC_DOMAIN}}`.
+> Если Railway не резолвит — добавить вручную: `NEXT_PUBLIC_API_URL=https://savdo-api-production.up.railway.app`
+
 ### 🔀 Git
 - Смержена ветка `feature/api-layer` → `main` (работа Azim: реальный API для web-buyer, web-seller)
 - Добавлены таски для Azim в `analiz/tasks-azim.md`
@@ -100,10 +122,13 @@
 - [ ] Выбрать цветовую палитру из 4 вариантов в `packages/ui/tokens/colors.ts` и согласовать с командой
 
 ### Яхьо (apps/admin)
-- [ ] Протестировать admin панель: `https://savdo-builderadmin-production.up.railway.app`
-- [ ] Логин: телефон `+998910081910` → код из Telegram
-- [ ] Проверить страницы: sellers, stores, moderation, audit-logs
-- [ ] При нахождении багов → писать в `analiz/logs.md`
+
+> ⚠️ **Обновление 01.04.2026:** `apps/admin` переходит под управление Полата.
+> Яхьо больше не назначен на admin. Таски ниже — для истории.
+
+~~- [ ] Протестировать admin панель~~
+~~- [ ] Логин: телефон `+998910081910` → код из Telegram~~
+~~- [ ] Проверить страницы: sellers, stores, moderation, audit-logs~~
 
 ### Полат (apps/api, packages/db)
 - [ ] Настроить Watch Paths в Railway для всех сервисов (чтобы не деплоились зря):

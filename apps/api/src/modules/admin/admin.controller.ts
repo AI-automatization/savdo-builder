@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Param,
   Body,
   Query,
@@ -17,6 +18,8 @@ import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 
 import { AdminRepository } from './repositories/admin.repository';
+import { ProductsRepository } from '../products/repositories/products.repository';
+import { OrdersRepository } from '../orders/repositories/orders.repository';
 import { ListUsersDto } from './dto/list-users.dto';
 import { ListSellersDto } from './dto/list-sellers.dto';
 import { ListStoresDto } from './dto/list-stores.dto';
@@ -43,6 +46,8 @@ export class AdminController {
 
   constructor(
     private readonly adminRepo: AdminRepository,
+    private readonly productsRepo: ProductsRepository,
+    private readonly ordersRepo: OrdersRepository,
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly getUserDetailUseCase: GetUserDetailUseCase,
     private readonly suspendUserUseCase: SuspendUserUseCase,
@@ -179,5 +184,97 @@ export class AdminController {
   ) {
     await this.resolveAdminUser(user);
     return this.getAuditLogUseCase.execute(dto);
+  }
+
+  // ── Products ───────────────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/products?storeId=&status=&page=&limit=
+  @Get('products')
+  async listProducts(
+    @Query('storeId') storeId: string | undefined,
+    @Query('status') status: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const products = await this.productsRepo.findAll({
+      storeId,
+      status: status as any,
+      page: page ? Number(page) : 1,
+      limit: limit ? Math.min(Number(limit), 100) : 20,
+    });
+    return products;
+  }
+
+  // PATCH /api/v1/admin/products/:id/hide
+  @Patch('products/:id/hide')
+  async hideProduct(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const product = await this.productsRepo.findById(id);
+    if (!product) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    return this.productsRepo.updateStatus(id, 'HIDDEN_BY_ADMIN' as any);
+  }
+
+  // PATCH /api/v1/admin/products/:id/restore
+  @Patch('products/:id/restore')
+  async restoreProduct(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const product = await this.productsRepo.findById(id);
+    if (!product) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    return this.productsRepo.updateStatus(id, 'ACTIVE' as any);
+  }
+
+  // ── Global search ──────────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/search?q=
+  @Get('search')
+  async search(
+    @Query('q') q: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    if (!q || q.trim().length < 2) return { users: [], orders: [], stores: [] };
+    return this.adminRepo.globalSearch(q.trim());
+  }
+
+  // ── Orders ─────────────────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/orders?status=&storeId=&search=&page=&limit=
+  @Get('orders')
+  async listOrders(
+    @Query('status')  status:  string | undefined,
+    @Query('storeId') storeId: string | undefined,
+    @Query('page')    page:    string | undefined,
+    @Query('limit')   limit:   string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+
+    if (storeId) {
+      const result = await this.ordersRepo.findByStoreId(storeId, {
+        status: status as any,
+        page:   page  ? Number(page)  : 1,
+        limit:  limit ? Math.min(Number(limit), 100) : 20,
+      });
+      return result;
+    }
+
+    // All orders — use raw Prisma via admin repo
+    return this.adminRepo.listOrders({
+      status: status as any,
+      page:   page  ? Number(page)  : 1,
+      limit:  limit ? Math.min(Number(limit), 100) : 20,
+    });
   }
 }

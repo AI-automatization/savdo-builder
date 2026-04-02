@@ -34,6 +34,14 @@ export class RequestUploadUseCase {
     userId: string,
     data: { mimeType: string; purpose: string; sizeBytes: number },
   ) {
+    if (!this.r2Storage.isConfigured()) {
+      throw new DomainException(
+        ErrorCode.MEDIA_UPLOAD_TYPE_NOT_ALLOWED,
+        'File upload is not available — storage is not configured',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
     const { mimeType, purpose, sizeBytes } = data;
 
     // Validate mimeType is allowed for the given purpose

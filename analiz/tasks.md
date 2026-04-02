@@ -4,31 +4,20 @@
 
 > ⚠️ Admin panel передана Полату (ранее Яхьо). Яхьо больше не работает над `apps/admin`.
 
----
-
-## 🔴 Срочно — блокирует Азима
-
-### 🔴 [WEB-022] DEV_OTP_ENABLED на Railway — локальное тестирование
-- **Домен:** `apps/api` (Railway Variables)
-- **Кто взял:** Полат
-- **Детали:** Азим не может залогиниться локально — OTP уходит в Telegram, а бот не поднят локально. Нужно на Railway → сервис `savdo-api` → Variables установить `DEV_OTP_ENABLED=true`. Тогда OTP-код будет виден в Railway Logs (не в Telegram). После тестирования — вернуть `false`.
-- **Файлы:** Railway Dashboard только
-
-### 🔴 [WEB-001] Убрать дубль `PaginationMeta` из `packages/types`
-- **Домен:** `packages/types`
-- **Кто взял:** Полат
-- **Детали:** `PaginationMeta` объявлён в `packages/types/src/common.ts` И в `packages/types/src/api/orders.ts`. Вызывает TS2308 в web-*. Нужно убрать дубль из `common.ts`, оставить в `api/orders.ts`.
-- **Файлы:** `packages/types/src/common.ts` — удалить `export interface PaginationMeta`
+> ADM Phase A (ADM-001..008) — выполнено 01.04.2026, перенесено в `done.md`
 
 ---
 
-## 🟡 Backend — после стабилизации
+## ✅ Выполнено (02.04.2026)
 
-### 🟡 [WEB-015] Socket.IO — emit `order:new` и `order:status_changed` для seller
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Детали:** Seller dashboard будет слушать real-time события. Нужно emit при: (1) новый заказ → `order:new` в room `seller:{storeId}`, (2) смена статуса → `order:status_changed` в ту же room. Payload: `OrderListItem`. На frontend уже готов polling (10s) как placeholder — после этого заменим на socket.
-- **Файлы:** `apps/api/src/modules/orders/` (orders.service.ts или orders.gateway.ts)
+- [x] **[WEB-022]** `DEV_OTP_ENABLED=true` на Railway — Азим может тестировать OTP ✅
+- [x] **[WEB-001]** Дубль `PaginationMeta` — дубля нет, TS2308 отсутствует ✅
+- [x] **[WEB-015]** Socket.IO emit `order:new` / `order:status_changed` ✅
+- [x] **[API-007]** Telegram Webhook — авто-регистрация при старте ✅
+- [x] **[API-008]** Watch Paths — уже были в `apps/api/railway.toml` ✅
+- [x] **[API-009]** R2 Storage — guard для отсутствия конфига ✅
+
+---
 
 ---
 
@@ -36,13 +25,13 @@
 
 > Phase A уже сделана (макеты с моками). Phase B — подключение к реальному API.
 
-- [ ] **[ADM-008]** Интеграция admin auth (JWT)
-- [ ] **[ADM-009]** Seller review queue — реальные данные + SLA-таймер
-- [ ] **[ADM-010]** Store approve/reject/suspend flow + confirmation modal
-- [ ] **[ADM-011]** Product hide/restore
-- [ ] **[ADM-012]** Order overview с фильтрами
-- [ ] **[ADM-013]** Поиск по телефону / order number / slug
-- [ ] **[ADM-014]** Seller detail страница с историей moderation actions
+- [x] **[ADM-008]** Интеграция admin auth (JWT) ✅
+- [x] **[ADM-009]** Seller review queue — реальные данные + SLA-таймер ✅
+- [x] **[ADM-010]** Store approve/reject/suspend flow + confirmation modal ✅ (сделано ранее)
+- [x] **[ADM-011]** Product hide/restore ✅
+- [x] **[ADM-012]** Order overview с фильтрами ✅
+- [x] **[ADM-013]** Поиск по телефону / order number / slug ✅
+- [x] **[ADM-014]** Seller detail страница с историей moderation actions ✅
 
 ---
 

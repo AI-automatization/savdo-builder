@@ -1,42 +1,52 @@
-# Admin Tasks — Яхьо
+# Admin Tasks — Полат
 
 Домен: `apps/admin`
-Агент: `admin-builder`, `ui-builder`
+Стек: Vite + React SPA + TypeScript
 
 ---
 
-## Phase A — Параллельно с backend
+## 📋 Таски от admin к backend
 
-> Пока admin API не готово — строить layout и статичные страницы.
+> Все эндпоинты уже реализованы. Проверка:
 
-### Очередь
-- [ ] Инициализировать apps/admin (Next.js App Router)
-- [ ] Настроить Tailwind + DaisyUI
-- [ ] Базовый layout admin panel (sidebar с навигацией)
-- [ ] Admin auth страница (login form)
-- [ ] Страница sellers — статичный UI, таблица с моками
-- [ ] Страница stores — статичный UI
-- [ ] Страница orders — статичный UI
+| Эндпоинт | Статус | Ключ ответа |
+|----------|--------|-------------|
+| `GET /api/v1/admin/sellers` | ✅ Готов | `{ sellers, total }` |
+| `GET /api/v1/admin/sellers/:id` | ✅ Готов | seller + user + store |
+| `GET /api/v1/admin/stores` | ✅ Готов | `{ stores, total }` |
+| `GET /api/v1/admin/stores/:id` | ✅ Готов | store + seller + contacts |
+| `GET /api/v1/admin/users` | ✅ Готов | `{ users, total }` |
+| `GET /api/v1/admin/users/:id` | ✅ Готов | user + seller + buyer |
+| `POST /api/v1/admin/users/:id/suspend` | ✅ Готов | требует `{ reason }` |
+| `POST /api/v1/admin/users/:id/unsuspend` | ✅ Готов | требует `{ reason }` |
+| `POST /api/v1/admin/stores/:id/suspend` | ✅ Готов | требует `{ reason }` |
+| `POST /api/v1/admin/stores/:id/unsuspend` | ✅ Готов | требует `{ reason }` |
+| `GET /api/v1/admin/moderation/queue` | ✅ Готов | `{ data, total }` |
+| `GET /api/v1/admin/moderation/:id` | ✅ Готов | case + actions |
+| `POST /api/v1/admin/moderation/:id/action` | ✅ Готов | APPROVE/REJECT/ESCALATE |
+| `PATCH /api/v1/admin/moderation/:id/assign` | ✅ Готов | назначить на себя |
+| `GET /api/v1/admin/audit-log` | ✅ Готов | `{ logs, total }` |
+| `GET /api/v1/admin/analytics/events` | ✅ Готов | `{ data, total }` |
+
+**Нет ни одного блокирующего запроса к backend.** Весь Phase B — frontend работа.
 
 ---
 
-## Phase B — После стабильного backend admin API
+## Phase B — Frontend (текущий спринт)
 
-- [ ] Интеграция admin auth
-- [ ] Seller review queue — реальные данные
-- [ ] Store approve/reject/suspend flow
-- [ ] Product hide/restore
-- [ ] Order overview с фильтрами
-- [ ] Поиск по телефону / order number / slug
-- [ ] Страница seller detail с историей moderation actions
-- [ ] SLA-таймер на pending review cards
+- [x] **[ADM-B01]** Роутинг: `/sellers/:id`, `/stores/:id` → App.tsx
+- [x] **[ADM-B02]** `SellerDetailPage` — детали продавца + suspend/unsuspend user
+- [x] **[ADM-B03]** `StoreDetailPage` — детали магазина + suspend/unsuspend store
+- [x] **[ADM-B04]** `SellersPage` — ряд кликабельный → navigate `/sellers/:id`
+- [x] **[ADM-B05]** `StoresPage` — кнопка "Открыть" → navigate `/stores/:id`
+- [ ] **[ADM-B06]** `UsersPage` — список пользователей, фильтр по role/status
+- [ ] **[ADM-B07]** Moderation detail — клик на кейс → `/moderation/:id` с assign + action
 
 ---
 
-## Правила
+## Phase C — Расширение (следующий спринт)
 
-- Не трогать `apps/api`, `packages/db`, `apps/web-*`
-- packages/types — только читать
-- Destructive actions (suspend, block) — всегда с confirmation modal
-- Status badges должны соответствовать цветам из docs/V1.1/02_state_machines.md
-- После завершения → перенести в docs/done/admin.md
+- [ ] **[ADM-C01]** SLA-таймер на pending review cards (moderation queue)
+- [ ] **[ADM-C02]** Seller detail — история moderation actions
+- [ ] **[ADM-C03]** Analytics events page → `GET /api/v1/admin/analytics/events`
+- [ ] **[ADM-C04]** Orders overview (нужен новый backend endpoint)

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
@@ -7,7 +7,7 @@ interface SendMessageOptions {
 }
 
 @Injectable()
-export class TelegramBotService {
+export class TelegramBotService implements OnApplicationBootstrap {
   private readonly logger = new Logger(TelegramBotService.name);
   private readonly botToken: string;
   private readonly apiBase: string;
@@ -15,6 +15,31 @@ export class TelegramBotService {
   constructor(private readonly config: ConfigService) {
     this.botToken = this.config.get<string>('telegram.botToken') ?? '';
     this.apiBase = `https://api.telegram.org/bot${this.botToken}`;
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    if (process.env.NODE_ENV !== 'production') return;
+
+    const appUrl = this.config.get<string>('APP_URL') ?? process.env.APP_URL;
+    if (!this.botToken || !appUrl) {
+      this.logger.warn('Telegram webhook not registered: TELEGRAM_BOT_TOKEN or APP_URL missing');
+      return;
+    }
+
+    const webhookUrl = `${appUrl}/api/v1/telegram/webhook`;
+    const secret = this.config.get<string>('telegram.webhookSecret');
+
+    try {
+      await axios.post(`${this.apiBase}/setWebhook`, {
+        url: webhookUrl,
+        ...(secret ? { secret_token: secret } : {}),
+        allowed_updates: ['message'],
+      });
+      this.logger.log(`Telegram webhook registered → ${webhookUrl}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to register Telegram webhook: ${msg}`);
+    }
   }
 
   async sendMessage(

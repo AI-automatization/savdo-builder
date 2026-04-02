@@ -1,6 +1,7 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@prisma/client';
 import { OrdersRepository } from '../repositories/orders.repository';
+import { OrdersGateway } from '../../../socket/orders.gateway';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
@@ -34,7 +35,10 @@ export interface UpdateOrderStatusInput {
 export class UpdateOrderStatusUseCase {
   private readonly logger = new Logger(UpdateOrderStatusUseCase.name);
 
-  constructor(private readonly ordersRepo: OrdersRepository) {}
+  constructor(
+    private readonly ordersRepo: OrdersRepository,
+    private readonly ordersGateway: OrdersGateway,
+  ) {}
 
   async execute(input: UpdateOrderStatusInput): Promise<Order> {
     const order = await this.ordersRepo.findById(input.orderId);
@@ -72,16 +76,20 @@ export class UpdateOrderStatusUseCase {
       );
     }
 
+    const oldStatus = order.status;
+
     const updatedOrder = await this.ordersRepo.updateStatus(input.orderId, {
-      oldStatus: order.status,
+      oldStatus,
       newStatus: input.newStatus,
       reason: input.reason,
       changedByUserId: input.actorUserId,
     });
 
     this.logger.log(
-      `Order ${order.orderNumber} transitioned ${order.status} → ${input.newStatus} by ${input.actorRole} ${input.actorUserId}`,
+      `Order ${order.orderNumber} transitioned ${oldStatus} → ${input.newStatus} by ${input.actorRole} ${input.actorUserId}`,
     );
+
+    this.ordersGateway.emitOrderStatusChanged(updatedOrder, oldStatus);
 
     return updatedOrder;
   }

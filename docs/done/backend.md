@@ -35,3 +35,11 @@
 | 2026-03-30 | Конфиги обновлены | TELEGRAM_BOT_TOKEN=required, TELEGRAM_WEBHOOK_SECRET, ESKIZ_* удалены, error-codes: TELEGRAM_NOT_LINKED, CLAUDE.md: правило 0 Eskiz запрещён |
 | 2026-03-31 | Railway деплой web-buyer | savdo-builder сервис — Dockerfile закоммичен, railway.toml настроен, Variables добавлены, деплой успешен |
 | 2026-03-31 | Railway деплой web-seller | web-seller сервис — Dockerfile закоммичен, railway.toml настроен, Variables добавлены, деплой успешен |
+| 2026-04-01 | `app.listen(port, '0.0.0.0')` — критический фикс | Railway healthcheck не мог достучаться до API |
+| 2026-04-01 | `start.sh` — prisma migrate deploy перед запуском | Гарантирует что миграции применены до старта |
+| 2026-04-01 | `healthcheckTimeout` → 300 сек | Было мало для Railway cold start |
+| 2026-04-01 | CORS — добавлены все 4 домена в `ALLOWED_ORIGINS` | buyer, admin, web-buyer (new), web-seller |
+| 2026-04-01 | Seed: admin user + 10 категорий | `+998910081910`, role=ADMIN, запись в `admin_users` |
+| 2026-04-01 | API задеплоен и работает | `https://savdo-api-production.up.railway.app` |
+| 2026-04-01 | Telegram Webhook авто-регистрация | `onApplicationBootstrap` в `TelegramBotService` — при старте в prod вызывает `setWebhook` |
+| 2026-04-01 | R2 Storage guard — нет краша без конфига | `isConfigured()` + 503 в `RequestUploadUseCase` когда `STORAGE_ENDPOINT` пустой |

@@ -62,8 +62,9 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 ## Команда и зоны ответственности
 | Разработчик | Домен | Нельзя трогать |
 |------------|-------|----------------|
-| Полатр | `apps/api`, `packages/db`, `packages/types`, `apps/admin`, `apps/mobile-buyer`, `apps/mobile-seller` | `apps/web-*` |
+| Полат | `apps/api`, `apps/admin`, `packages/db`, `packages/types`, `apps/mobile-buyer`, `apps/mobile-seller` | `apps/web-*` |
 | Азим | `apps/web-buyer`, `apps/web-seller` | `apps/api`, `packages/db`, `apps/admin`, `apps/mobile-*` |
+| ~~Яхьо~~ | ~~`apps/admin`~~ | — (admin перешёл к Полату, 01.04.2026) |
 
 **packages/db** — только Полатр. Остальные сообщают о проблемах, не правят.
 **packages/types** — Полатр пишет, остальные только читают.

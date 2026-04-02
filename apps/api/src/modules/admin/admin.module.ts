@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { UsersModule } from '../users/users.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { StoresModule } from '../stores/stores.module';
+import { ProductsModule } from '../products/products.module';
+import { OrdersModule } from '../orders/orders.module';
 import { AuthModule } from '../auth/auth.module';
 
 import { AdminRepository } from './repositories/admin.repository';
@@ -20,7 +22,7 @@ import { UnsuspendStoreUseCase } from './use-cases/unsuspend-store.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 
 @Module({
-  imports: [UsersModule, SellersModule, StoresModule, AuthModule],
+  imports: [UsersModule, SellersModule, StoresModule, ProductsModule, OrdersModule, AuthModule],
   controllers: [AdminController],
   providers: [
     AdminRepository,

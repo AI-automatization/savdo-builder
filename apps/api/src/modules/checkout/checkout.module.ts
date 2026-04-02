@@ -7,9 +7,10 @@ import { ConfirmCheckoutUseCase } from './use-cases/confirm-checkout.use-case';
 import { CartModule } from '../cart/cart.module';
 import { ProductsModule } from '../products/products.module';
 import { UsersModule } from '../users/users.module';
+import { SocketModule } from '../../socket/socket.module';
 
 @Module({
-  imports: [CartModule, ProductsModule, UsersModule],
+  imports: [CartModule, ProductsModule, UsersModule, SocketModule],
   controllers: [CheckoutController, OrdersCreateController],
   providers: [
     CheckoutRepository,

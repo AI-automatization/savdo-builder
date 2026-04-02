@@ -154,13 +154,27 @@ export class AdminRepository {
   }
 
   async findSellerById(id: string) {
-    return this.prisma.seller.findUnique({
-      where: { id },
-      include: {
-        user: true,
-        store: true,
-      },
-    });
+    const [seller, moderationCases] = await this.prisma.$transaction([
+      this.prisma.seller.findUnique({
+        where: { id },
+        include: { user: true, store: true },
+      }),
+      this.prisma.moderationCase.findMany({
+        where: { entityType: 'seller', entityId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        include: {
+          actions: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              adminUser: { select: { id: true, role: true, user: { select: { phone: true } } } },
+            },
+          },
+        },
+      }),
+    ]);
+    if (!seller) return null;
+    return { ...seller, moderationCases };
   }
 
   async updateSellerVerification(id: string, status: string) {
@@ -231,5 +245,66 @@ export class AdminRepository {
       where: { id },
       data: { status: status as any },
     });
+  }
+
+  // ── Global search ─────────────────────────────────────────────────────────
+
+  async globalSearch(q: string) {
+    const [users, orders, stores] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where: { phone: { contains: q } },
+        select: { id: true, phone: true, role: true, status: true },
+        take: 5,
+      }),
+      this.prisma.order.findMany({
+        where: { orderNumber: { contains: q, mode: 'insensitive' } },
+        include: { store: { select: { name: true } } },
+        orderBy: { placedAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.store.findMany({
+        where: {
+          OR: [
+            { slug: { contains: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+          ],
+        },
+        include: { seller: { select: { id: true, fullName: true } } },
+        take: 5,
+      }),
+    ]);
+
+    return { users, orders, stores };
+  }
+
+  // ── Orders ────────────────────────────────────────────────────────────────
+
+  async listOrders(filters: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page  = filters.page  ?? 1;
+    const limit = filters.limit ?? 20;
+    const skip  = (page - 1) * limit;
+
+    const where = {
+      ...(filters.status ? { status: filters.status as any } : {}),
+    };
+
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        orderBy: { placedAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          store: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return { orders, total };
   }
 }
