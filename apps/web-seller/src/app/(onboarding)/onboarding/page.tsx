@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { useCreateStore, useSubmitStore } from '../../../hooks/use-seller';
+import { useCreateStore, useSubmitStore, useStore } from '../../../hooks/use-seller';
 import { useUpdateSellerProfile } from '../../../hooks/use-seller';
 import { useCreateProduct } from '../../../hooks/use-products';
+import { useAuth } from '../../../lib/auth/context';
 import { track } from '../../../lib/analytics';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -483,7 +484,19 @@ function Step4({
 
 export default function OnboardingPage() {
   const router      = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { data: store, isLoading: storeLoading } = useStore();
   const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated) router.replace('/login');
+  }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!storeLoading && store) router.replace('/dashboard');
+  }, [storeLoading, store, router]);
+
+  if (!isAuthenticated || (!storeLoading && store)) return null;
   const [error, setError] = useState<string>();
 
   // Collected data

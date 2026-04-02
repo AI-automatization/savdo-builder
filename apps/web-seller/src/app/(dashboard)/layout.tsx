@@ -66,13 +66,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
-  const { data: store } = useStore();
+  const { data: store, isLoading: storeLoading, error: storeError } = useStore();
   const { toasts } = useSellerSocket();
   const logoutMutation = useLogout();
 
   useEffect(() => {
     if (!isAuthenticated) router.replace('/login');
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!storeLoading && storeError) {
+      const status = (storeError as { response?: { status?: number } }).response?.status;
+      if (status === 404) router.replace('/onboarding');
+    }
+  }, [storeLoading, storeError, router]);
 
   async function handleLogout() {
     await logoutMutation.mutateAsync();
