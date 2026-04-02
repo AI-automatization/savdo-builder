@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from 'types';
 import {
   getAccessToken,
@@ -24,6 +25,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
@@ -62,8 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       clearTokens();
       setUser(null);
+      queryClient.clear();
     }
-  }, []);
+  }, [queryClient]);
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>

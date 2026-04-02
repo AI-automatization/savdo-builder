@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useStore } from '../../../hooks/use-seller';
 import { useSellerOrders } from '../../../hooks/use-orders';
+import { useSellerSummary } from '../../../hooks/use-analytics';
 import { OrderStatus, StoreStatus } from 'types';
 import { track } from '../../../lib/analytics';
 
@@ -71,6 +72,7 @@ function Skeleton({ className }: { className?: string }) {
 export default function DashboardPage() {
   const { data: store, isLoading: storeLoading } = useStore();
   const { data: ordersData, isLoading: ordersLoading } = useSellerOrders({ limit: 5 });
+  const { data: summary, isLoading: summaryLoading } = useSellerSummary();
   const [copied, setCopied] = useState(false);
 
   function handleCopyLink() {
@@ -85,7 +87,6 @@ export default function DashboardPage() {
 
   const orders = ordersData?.data ?? [];
   const pendingCount = orders.filter(o => o.status === OrderStatus.PENDING).length;
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
@@ -132,17 +133,19 @@ export default function DashboardPage() {
           <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Всего заказов</p>
         </div>
 
-        {/* Revenue */}
+        {/* Views */}
         <div className="rounded-2xl p-4" style={glass}>
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">💰</span>
+            <span className="text-2xl">👁</span>
           </div>
-          {ordersLoading ? (
-            <Skeleton className="h-6 w-24 mb-1" />
+          {summaryLoading ? (
+            <Skeleton className="h-6 w-16 mb-1" />
           ) : (
-            <p className="text-lg font-bold text-white leading-none">{fmt(totalRevenue)}</p>
+            <p className="text-lg font-bold text-white leading-none">
+              {(summary?.views ?? 0).toLocaleString('ru-RU')}
+            </p>
           )}
-          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Выручка (последние)</p>
+          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Просмотров за 30 дней</p>
         </div>
 
         {/* Store slug — copy link */}
@@ -236,9 +239,9 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: "Добавить товар",    href: "/products/create",  icon: "➕" },
-          { label: "Обработать заказы", href: "/orders",    icon: "📋" },
-          { label: "Настройки магазина", href: "/settings", icon: "⚙️" },
+          { label: "Добавить товар",    href: "/products/create", icon: "➕" },
+          { label: "Обработать заказы", href: "/orders",          icon: "📋" },
+          { label: "Аналитика",         href: "/analytics",       icon: "📊" },
         ].map((a) => (
           <a
             key={a.label}
