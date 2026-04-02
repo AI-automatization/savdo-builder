@@ -9,7 +9,7 @@ interface ModerationAction {
   action: string
   comment: string | null
   createdAt: string
-  adminUser: { id: string; role: string; user: { phone: string } }
+  adminUser: { id: string; isSuperadmin: boolean; user: { phone: string } }
 }
 
 interface ModerationCase {
@@ -268,7 +268,7 @@ export default function SellerDetailPage() {
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: a.comment ? 4 : 0 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, color: actionColor[a.action] ?? '#94A3B8' }}>{a.action}</span>
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{a.adminUser.user.phone}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{a.adminUser.user.phone}{a.adminUser.isSuperadmin ? ' (super)' : ''}</span>
                               <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
                                 {new Date(a.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                               </span>

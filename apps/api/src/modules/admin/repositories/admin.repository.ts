@@ -167,7 +167,7 @@ export class AdminRepository {
           actions: {
             orderBy: { createdAt: 'asc' },
             include: {
-              adminUser: { select: { id: true, role: true, user: { select: { phone: true } } } },
+              adminUser: { select: { id: true, isSuperadmin: true, user: { select: { phone: true } } } },
             },
           },
         },
