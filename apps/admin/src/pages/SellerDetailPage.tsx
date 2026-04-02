@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -85,7 +85,7 @@ export default function SellerDetailPage() {
   const navigate = useNavigate()
   const { data: seller, loading, error, refetch } = useFetch<SellerDetail>(`/api/v1/admin/sellers/${id}`)
 
-  const [modal, setModal] = useState<'suspend' | 'unsuspend' | null>(null)
+  const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'verify' | 'reject' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -94,10 +94,15 @@ export default function SellerDetailPage() {
     setActionLoading(true)
     setActionError(null)
     try {
-      const endpoint = modal === 'suspend'
-        ? `/api/v1/admin/users/${seller.user.id}/suspend`
-        : `/api/v1/admin/users/${seller.user.id}/unsuspend`
-      await api.post(endpoint, { reason })
+      if (modal === 'verify' || modal === 'reject') {
+        const status = modal === 'verify' ? 'VERIFIED' : 'REJECTED'
+        await api.patch(`/api/v1/admin/sellers/${seller.id}/verify`, { status })
+      } else {
+        const endpoint = modal === 'suspend'
+          ? `/api/v1/admin/users/${seller.user.id}/suspend`
+          : `/api/v1/admin/users/${seller.user.id}/unsuspend`
+        await api.post(endpoint, { reason })
+      }
       setModal(null)
       refetch()
     } catch (e: any) {
@@ -159,6 +164,26 @@ export default function SellerDetailPage() {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8 }}>
+          {seller.verificationStatus === 'PENDING' && (
+            <>
+              <button onClick={() => setModal('verify')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <UserCheck size={14} /> Верифицировать
+              </button>
+              <button onClick={() => setModal('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <XCircle size={14} /> Отклонить
+              </button>
+            </>
+          )}
+          {seller.verificationStatus === 'VERIFIED' && (
+            <button onClick={() => setModal('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <XCircle size={14} /> Снять верификацию
+            </button>
+          )}
+          {(seller.verificationStatus === 'REJECTED' || seller.verificationStatus === 'UNVERIFIED') && (
+            <button onClick={() => setModal('verify')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <UserCheck size={14} /> Верифицировать
+            </button>
+          )}
           {isUserBlocked ? (
             <button onClick={() => setModal('unsuspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <Unlock size={14} /> Разблокировать
@@ -289,6 +314,30 @@ export default function SellerDetailPage() {
       )}
 
       {/* Modals */}
+      {modal === 'verify' && (
+        <ConfirmModal
+          title="Верифицировать продавца"
+          description={`Продавец ${seller.fullName} получит статус VERIFIED и сможет публиковать магазин.`}
+          actionLabel="Верифицировать"
+          actionColor="#10B981"
+          requireReason={false}
+          onConfirm={handleAction}
+          onCancel={() => setModal(null)}
+          loading={actionLoading}
+        />
+      )}
+      {modal === 'reject' && (
+        <ConfirmModal
+          title="Отклонить / снять верификацию"
+          description={`Продавец ${seller.fullName} потеряет статус верификации.`}
+          actionLabel="Отклонить"
+          actionColor="#EF4444"
+          requireReason={false}
+          onConfirm={handleAction}
+          onCancel={() => setModal(null)}
+          loading={actionLoading}
+        />
+      )}
       {modal === 'suspend' && (
         <ConfirmModal
           title="Заблокировать аккаунт"

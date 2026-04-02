@@ -135,6 +135,24 @@ export class AdminController {
     return this.getSellerDetailUseCase.execute(id);
   }
 
+  @Patch('sellers/:id/verify')
+  async verifySeller(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const adminUser = await this.resolveAdminUser(user);
+    const updated = await this.adminRepo.updateSellerVerification(id, status);
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: `seller.verification.${status.toLowerCase()}`,
+      entityType: 'seller',
+      entityId: id,
+      payload: { status },
+    });
+    return updated;
+  }
+
   // ── Stores ────────────────────────────────────────────────────────────────
 
   @Get('stores')
