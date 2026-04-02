@@ -1,11 +1,29 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft } from 'lucide-react'
+import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft, Sun, Moon } from 'lucide-react'
 import { api, auth } from '../lib/api'
 import { cn } from '@/lib/utils'
 
+function getInitialDark() {
+  const saved = localStorage.getItem('admin-theme')
+  if (saved) return saved === 'dark'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [dark, setDark] = useState(() => {
+    const isDark = getInitialDark()
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
+    return isDark
+  })
+  const toggleTheme = () => {
+    const next = !dark
+    setDark(next)
+    localStorage.setItem('admin-theme', next ? 'dark' : 'light')
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
+  }
+
   const [step, setStep] = useState<1 | 2>(1)
   const [phone, setPhone] = useState('+998')
   const [otp, setOtp] = useState(['', '', '', ''])
@@ -93,7 +111,7 @@ export default function LoginPage() {
   const reset = () => { setStep(1); setOtp(['', '', '', '']); setError('') }
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-5 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-5 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
 
       {/* Subtle grid bg */}
       <div className="fixed inset-0 pointer-events-none"
@@ -114,8 +132,17 @@ export default function LoginPage() {
         }}
       />
 
+      {/* Theme toggle — top right */}
+      <button
+        onClick={toggleTheme}
+        className="fixed top-4 right-4 z-20 w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+      >
+        {dark ? <Sun size={14} /> : <Moon size={14} />}
+      </button>
+
       {/* Card */}
-      <div className="relative z-10 w-full max-w-[400px] bg-[#111113] border border-zinc-800 rounded-2xl p-8 shadow-2xl">
+      <div className="relative z-10 w-full max-w-[400px] rounded-2xl p-8 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">

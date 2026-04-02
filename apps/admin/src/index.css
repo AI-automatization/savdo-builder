@@ -1,28 +1,45 @@
 @import "tailwindcss";
 
-:root {
-  /* Base — zinc/obsidian dark */
-  --bg:         #09090b;
-  --surface:    #111113;
-  --surface2:   #18181b;
-  --border:     #27272a;
-  --border-dim: rgba(255,255,255,0.04);
+/* ── Dark theme (default) ────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg:          #09090b;
+  --surface:     #111113;
+  --surface2:    #18181b;
+  --border:      #27272a;
 
-  /* Accent — indigo */
   --primary:     #6366f1;
   --primary-dim: rgba(99,102,241,0.12);
 
-  /* Semantic */
   --success: #10b981;
   --error:   #ef4444;
   --warning: #f59e0b;
 
-  /* Text */
   --text:       #fafafa;
   --text-muted: #71717a;
   --text-dim:   #3f3f46;
 
   --background: #09090b;
+}
+
+/* ── Light theme ─────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:          #f4f4f5;
+  --surface:     #ffffff;
+  --surface2:    #f4f4f5;
+  --border:      #e4e4e7;
+
+  --primary:     #6366f1;
+  --primary-dim: rgba(99,102,241,0.08);
+
+  --success: #059669;
+  --error:   #dc2626;
+  --warning: #d97706;
+
+  --text:       #09090b;
+  --text-muted: #71717a;
+  --text-dim:   #a1a1aa;
+
+  --background: #f4f4f5;
 }
 
 * { box-sizing: border-box; }
@@ -31,19 +48,17 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', 'Geist', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #27272a; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
-/* Tailwind layer overrides for dark zinc palette */
 @layer base {
-  * { border-color: #27272a; }
+  * { border-color: var(--border); }
 }
