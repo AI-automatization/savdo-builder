@@ -42,6 +42,29 @@
 
 ---
 
+## 🟡 Dashboard аналитика (чарты)
+
+- [ ] **[ADM-021]** Dashboard charts — продажи и активность
+  - **Домен:** `apps/admin`
+  - **Детали:** Установить `recharts`. На DashboardPage добавить: 1) LineChart — заказы по дням (последние 30 дней), 2) BarChart — топ-5 магазинов по заказам. Endpoint: `GET /api/v1/admin/analytics/summary` (нужно создать). Данные из `orders` таблицы через Prisma.
+  - **Файлы:** `apps/admin/src/pages/DashboardPage.tsx`, новый `apps/api/src/modules/admin/use-cases/get-analytics.use-case.ts`
+
+---
+
+## 🟡 Broadcast — Telegram рассылка из админки
+
+- [ ] **[ADM-019]** Backend: `POST /api/v1/admin/broadcast`
+  - **Домен:** `apps/api`
+  - **Детали:** Принимает `{ message: string, preview_mode?: boolean }`. Достаёт всех юзеров с `telegram_chat_id != null`. Шлёт через BullMQ очередь (30 msg/sec лимит Telegram). Сохраняет в таблицу `broadcast_logs` (id, message, sent_count, failed_count, created_by, created_at).
+  - **Файлы:** новый `apps/api/src/modules/admin/use-cases/broadcast.use-case.ts`, `admin.controller.ts`, миграция `broadcast_logs`
+
+- [ ] **[ADM-020]** Admin UI: страница `/broadcast`
+  - **Домен:** `apps/admin`
+  - **Детали:** Textarea для сообщения (поддержка HTML: `<b>`, `<i>`, `<a>`), превью как Telegram-пузырь, кнопка "Отправить всем" с confirm-модалкой (показывает кол-во получателей), таблица истории рассылок.
+  - **Файлы:** новый `apps/admin/src/pages/BroadcastPage.tsx`, обновить `App.tsx` + `DashboardLayout.tsx` (добавить в nav)
+
+---
+
 ## 📋 Заморожено (Phase 3)
 
 - `apps/mobile-buyer/` — React Native + Expo
