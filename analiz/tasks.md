@@ -44,10 +44,7 @@
 
 ## 🟡 Dashboard аналитика (чарты)
 
-- [ ] **[ADM-021]** Dashboard charts — продажи и активность
-  - **Домен:** `apps/admin`
-  - **Детали:** Установить `recharts`. На DashboardPage добавить: 1) LineChart — заказы по дням (последние 30 дней), 2) BarChart — топ-5 магазинов по заказам. Endpoint: `GET /api/v1/admin/analytics/summary` (нужно создать). Данные из `orders` таблицы через Prisma.
-  - **Файлы:** `apps/admin/src/pages/DashboardPage.tsx`, новый `apps/api/src/modules/admin/use-cases/get-analytics.use-case.ts`
+- [x] **[ADM-021]** Dashboard charts ✅
 
 ---
 
