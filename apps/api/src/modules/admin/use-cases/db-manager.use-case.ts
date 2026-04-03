@@ -1,23 +1,22 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 
-// Whitelist: which Prisma models are accessible and which fields can be written
 const TABLE_CONFIG: Record<string, {
   prismaModel: string;
   searchFields: string[];
   writableFields: string[];
   readonly?: boolean;
 }> = {
-  users:           { prismaModel: 'user',           searchFields: ['phone', 'id'],              writableFields: ['status', 'languageCode'] },
-  sellers:         { prismaModel: 'seller',          searchFields: ['fullName', 'id'],           writableFields: ['verificationStatus', 'bio', 'isBlocked'] },
-  stores:          { prismaModel: 'store',           searchFields: ['name', 'slug', 'id'],       writableFields: ['status', 'description'] },
-  products:        { prismaModel: 'product',         searchFields: ['name', 'id'],               writableFields: ['status', 'name'] },
-  orders:          { prismaModel: 'order',           searchFields: ['id'],                       writableFields: ['status'] },
-  audit_logs:      { prismaModel: 'auditLog',        searchFields: ['action', 'entityId', 'id'], writableFields: [], readonly: true },
-  broadcast_logs:  { prismaModel: 'broadcastLog',    searchFields: ['message', 'id'],            writableFields: [], readonly: true },
-  moderation_cases:{ prismaModel: 'moderationCase',  searchFields: ['caseType', 'id'],           writableFields: ['status'] },
-  categories:      { prismaModel: 'globalCategory',  searchFields: ['name', 'id'],               writableFields: ['name', 'slug', 'isActive'] },
-  buyers:          { prismaModel: 'buyer',           searchFields: ['id'],                       writableFields: [] , readonly: true },
+  users:            { prismaModel: 'user',           searchFields: ['phone'],                               writableFields: ['status', 'languageCode'] },
+  sellers:          { prismaModel: 'seller',          searchFields: ['fullName', 'telegramUsername'],        writableFields: ['verificationStatus', 'bio', 'isBlocked'] },
+  stores:           { prismaModel: 'store',           searchFields: ['name', 'slug'],                       writableFields: ['status', 'description'] },
+  products:         { prismaModel: 'product',         searchFields: ['title'],                              writableFields: ['status', 'title'] },
+  orders:           { prismaModel: 'order',           searchFields: ['orderNumber', 'customerPhone', 'customerFullName'], writableFields: ['status'] },
+  audit_logs:       { prismaModel: 'auditLog',        searchFields: ['action', 'entityType'],               writableFields: [], readonly: true },
+  broadcast_logs:   { prismaModel: 'broadcastLog',    searchFields: ['message'],                            writableFields: [], readonly: true },
+  moderation_cases: { prismaModel: 'moderationCase',  searchFields: ['caseType'],                           writableFields: ['status'] },
+  categories:       { prismaModel: 'globalCategory',  searchFields: ['nameRu', 'slug'],                     writableFields: ['nameRu', 'nameUz', 'slug', 'isActive'] },
+  buyers:           { prismaModel: 'buyer',           searchFields: ['firstName', 'lastName', 'telegramUsername'], writableFields: [], readonly: true },
 };
 
 export const ALLOWED_TABLES = Object.keys(TABLE_CONFIG);
@@ -26,7 +25,22 @@ export const ALLOWED_TABLES = Object.keys(TABLE_CONFIG);
 export class DbManagerUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
-  // List all tables with row count
+  // Recursively convert BigInt → string, Date → ISO string (JSON-safe)
+  private serialize(data: unknown): unknown {
+    if (data === null || data === undefined) return data;
+    if (typeof data === 'bigint') return data.toString();
+    if (data instanceof Date) return data.toISOString();
+    if (Array.isArray(data)) return data.map(item => this.serialize(item));
+    if (typeof data === 'object') {
+      const result: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+        result[k] = this.serialize(v);
+      }
+      return result;
+    }
+    return data;
+  }
+
   async listTables() {
     const counts = await Promise.all(
       ALLOWED_TABLES.map(async (tableName) => {
@@ -42,12 +56,11 @@ export class DbManagerUseCase {
     return counts;
   }
 
-  // Get rows from a table
   async getRows(tableName: string, opts: { page: number; limit: number; search?: string }) {
     const cfg = TABLE_CONFIG[tableName];
     if (!cfg) throw new BadRequestException(`Table "${tableName}" is not in the allowed list`);
 
-    const { page = 1, limit = 20, search } = opts;
+    const { page = 1, limit = 25, search } = opts;
     const take = Math.min(limit, 100);
     const skip = (page - 1) * take;
 
@@ -59,33 +72,44 @@ export class DbManagerUseCase {
     }
 
     const model = (this.prisma as any)[cfg.prismaModel];
-    const [rows, total] = await this.prisma.$transaction([
-      model.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
-      model.count({ where }),
-    ]);
+
+    let rows: any[] = [];
+    let total = 0;
+    try {
+      [rows, total] = await this.prisma.$transaction([
+        model.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
+        model.count({ where }),
+      ]);
+    } catch {
+      // fallback: try without orderBy (for tables with unusual schema)
+      [rows, total] = await this.prisma.$transaction([
+        model.findMany({ where, skip, take }),
+        model.count({ where }),
+      ]);
+    }
 
     return {
       table: tableName,
-      rows,
+      rows: this.serialize(rows) as Record<string, unknown>[],
       total,
       page,
-      totalPages: Math.ceil(total / take),
+      totalPages: Math.ceil(total / take) || 1,
       writableFields: cfg.writableFields,
       readonly: cfg.readonly ?? false,
     };
   }
 
-  // Update a row (only whitelisted fields)
   async updateRow(tableName: string, id: string, data: Record<string, unknown>) {
     const cfg = TABLE_CONFIG[tableName];
     if (!cfg) throw new BadRequestException(`Table "${tableName}" is not allowed`);
     if (cfg.readonly) throw new BadRequestException(`Table "${tableName}" is read-only`);
 
-    // Strip fields that are not in the whitelist
     const safeData: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
       if (cfg.writableFields.includes(key)) {
-        safeData[key] = data[key];
+        // coerce 'true'/'false' strings to boolean where applicable
+        const val = data[key];
+        safeData[key] = val === 'true' ? true : val === 'false' ? false : val;
       }
     }
     if (Object.keys(safeData).length === 0) {
@@ -96,10 +120,10 @@ export class DbManagerUseCase {
     const existing = await model.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Row with id="${id}" not found`);
 
-    return model.update({ where: { id }, data: safeData });
+    const updated = await model.update({ where: { id }, data: safeData });
+    return this.serialize(updated);
   }
 
-  // Delete a row
   async deleteRow(tableName: string, id: string) {
     const cfg = TABLE_CONFIG[tableName];
     if (!cfg) throw new BadRequestException(`Table "${tableName}" is not allowed`);
@@ -113,7 +137,6 @@ export class DbManagerUseCase {
     return { deleted: true, id };
   }
 
-  // Insert a new row (only whitelisted fields + required fields caller provides)
   async insertRow(tableName: string, data: Record<string, unknown>) {
     const cfg = TABLE_CONFIG[tableName];
     if (!cfg) throw new BadRequestException(`Table "${tableName}" is not allowed`);
@@ -122,11 +145,13 @@ export class DbManagerUseCase {
     const safeData: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
       if (cfg.writableFields.includes(key)) {
-        safeData[key] = data[key];
+        const val = data[key];
+        safeData[key] = val === 'true' ? true : val === 'false' ? false : val;
       }
     }
 
     const model = (this.prisma as any)[cfg.prismaModel];
-    return model.create({ data: safeData });
+    const created = await model.create({ data: safeData });
+    return this.serialize(created);
   }
 }
