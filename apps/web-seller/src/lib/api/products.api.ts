@@ -26,6 +26,7 @@ export async function createProduct(data: {
   storeCategoryId?: string;
   isVisible?: boolean;
   sku?: string;
+  mediaId?: string;
 }): Promise<ProductListItem> {
   const res = await apiClient.post<ProductListItem>('/seller/products', data);
   return res.data;
@@ -41,6 +42,7 @@ export async function updateProduct(
     sku?: string;
     globalCategoryId?: string;
     storeCategoryId?: string;
+    mediaId?: string;
   },
 ): Promise<ProductListItem> {
   const res = await apiClient.patch<ProductListItem>(`/seller/products/${id}`, data);
