@@ -1,5 +1,18 @@
 # Done — Азим + Полат
 
+## 2026-04-03 (сессия 6)
+
+### ✅ [ADM-021] Dashboard charts — recharts (Полат)
+- **Важность:** 🟡 Важная
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/use-cases/get-analytics.use-case.ts` — новый
+  - `apps/api/src/modules/admin/admin.controller.ts` — `GET /admin/analytics/summary`
+  - `apps/api/src/modules/admin/admin.module.ts` — зарегистрирован use-case
+  - `apps/admin/src/pages/DashboardPage.tsx` — LineChart (30д) + BarChart (топ-5 магазинов)
+  - `apps/admin/src/components/ui/input.tsx` — фикс светлой темы (CSS vars)
+- **Что сделано:** Backend агрегирует заказы по дням и топ-5 магазинов за 30 дней. Frontend рендерит два графика через recharts. Input компонент теперь корректно работает в светлой теме.
+
 ## 2026-04-03 (сессия 5)
 
 ### ✅ [WEB-027] Chat Gateway — emit `chat:message` (Полат)

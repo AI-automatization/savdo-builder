@@ -175,13 +175,17 @@ export default function DatabasePage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [tableVersion, setTableVersion] = useState(0)
 
-  const { data: tablesData, loading: tablesLoading } = useFetch<TableMeta[]>('/api/v1/admin/db/tables', [])
+  const { data: tablesData, loading: tablesLoading, error: tablesError } = useFetch<TableMeta[]>('/api/v1/admin/db/tables', [])
 
   const tableParams = new URLSearchParams({ page: String(page), limit: '25' })
   if (search) tableParams.set('search', search)
 
-  const { data: rowsData, loading: rowsLoading, refetch: refetchRows } = useFetch<TableData>(
-    activeTable ? `/api/v1/admin/db/tables/${activeTable}?${tableParams}` : '',
+  const rowsPath = activeTable
+    ? `/api/v1/admin/db/tables/${activeTable}?${tableParams}`
+    : null
+
+  const { data: rowsData, loading: rowsLoading } = useFetch<TableData>(
+    rowsPath ?? '',
     [activeTable, page, search, tableVersion],
   )
 
@@ -247,6 +251,15 @@ export default function DatabasePage() {
         <div style={{ padding: '8px 8px', flex: 1 }}>
           {tablesLoading && (
             <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--text-dim)' }}>Загрузка...</div>
+          )}
+          {tablesError && (
+            <div style={{ padding: '10px 12px', fontSize: 12, color: '#EF4444', background: 'rgba(239,68,68,0.08)', borderRadius: 8, margin: '4px 0' }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Ошибка загрузки</div>
+              <div style={{ wordBreak: 'break-word' }}>{tablesError}</div>
+            </div>
+          )}
+          {!tablesLoading && !tablesError && (!tablesData || tablesData.length === 0) && (
+            <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--text-dim)' }}>Таблицы не найдены</div>
           )}
           {tablesData?.map(t => (
             <button

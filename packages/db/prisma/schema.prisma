@@ -115,9 +115,10 @@ model User {
 
   buyer    Buyer?
   seller   Seller?
-  admin    AdminUser?
-  sessions UserSession[]
-  auditLogs AuditLog[]
+  admin         AdminUser?
+  sessions      UserSession[]
+  auditLogs     AuditLog[]
+  broadcastLogs BroadcastLog[]
 
   @@index([role])
   @@index([status])
@@ -882,4 +883,22 @@ model AnalyticsEvent {
   @@index([eventName])
   @@index([createdAt])
   @@map("analytics_events")
+}
+
+// ─────────────────────────────────────────────
+// BROADCAST
+// ─────────────────────────────────────────────
+
+model BroadcastLog {
+  id          String   @id @default(uuid())
+  message     String
+  sentCount   Int      @default(0)
+  failedCount Int      @default(0)
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  creator User @relation(fields: [createdBy], references: [id])
+
+  @@index([createdAt])
+  @@map("broadcast_logs")
 }
