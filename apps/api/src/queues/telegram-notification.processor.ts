@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { TelegramBotService } from '../modules/telegram/services/telegram-bot.service';
+import { PrismaService } from '../database/prisma.service';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from './queues.module';
 import {
   NotifyNewOrderData,
@@ -9,6 +10,7 @@ import {
   NotifyStoreRejectedData,
   NotifyVerificationApprovedData,
 } from '../modules/telegram/services/seller-notification.service';
+import { TELEGRAM_JOB_BROADCAST } from '../modules/admin/use-cases/broadcast.use-case';
 
 export const TELEGRAM_JOB_NEW_ORDER = 'new-order';
 export const TELEGRAM_JOB_STORE_APPROVED = 'store-approved';
@@ -19,7 +21,10 @@ export const TELEGRAM_JOB_VERIFICATION_APPROVED = 'verification-approved';
 export class TelegramNotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(TelegramNotificationProcessor.name);
 
-  constructor(private readonly telegramBot: TelegramBotService) {
+  constructor(
+    private readonly telegramBot: TelegramBotService,
+    private readonly prisma: PrismaService,
+  ) {
     super();
   }
 
@@ -62,6 +67,23 @@ export class TelegramNotificationProcessor extends WorkerHost {
             `@${d.sellerTelegramUsername}`,
             '✅ Ваш аккаунт продавца верифицирован. Теперь вы можете создать магазин.',
           );
+          break;
+        }
+
+        case TELEGRAM_JOB_BROADCAST: {
+          const d = job.data as { chatId: string; message: string; broadcastLogId: string };
+          try {
+            await this.telegramBot.sendMessage(d.chatId, d.message, { parseMode: 'HTML' });
+            await this.prisma.broadcastLog.update({
+              where: { id: d.broadcastLogId },
+              data: { sentCount: { increment: 1 } },
+            });
+          } catch {
+            await this.prisma.broadcastLog.update({
+              where: { id: d.broadcastLogId },
+              data: { failedCount: { increment: 1 } },
+            });
+          }
           break;
         }
 

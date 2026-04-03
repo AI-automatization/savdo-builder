@@ -4,6 +4,16 @@ import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, Us
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
+interface AuditEntry {
+  id: string
+  action: string
+  entityType: string
+  entityId: string
+  payload: Record<string, any> | null
+  createdAt: string
+  actorUser?: { phone: string }
+}
+
 interface StoreDetail {
   id: string
   name: string
@@ -76,6 +86,10 @@ export default function StoreDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: store, loading, error, refetch } = useFetch<StoreDetail>(`/api/v1/admin/stores/${id}`)
+  const { data: auditData } = useFetch<{ logs: AuditEntry[]; total: number }>(
+    `/api/v1/admin/audit-log?entityType=Store&entityId=${store?.id ?? 'none'}&limit=20`,
+    [store?.id],
+  )
 
   const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'reject' | 'archive' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
@@ -120,6 +134,8 @@ export default function StoreDetailPage() {
   const isSuspended = store.status === 'SUSPENDED'
   const isRejected  = store.status === 'REJECTED'
   const isArchived  = store.status === 'ARCHIVED'
+  const suspendEntry = auditData?.logs?.find(e => e.action === 'STORE_SUSPENDED')
+  const suspendReason: string | null = suspendEntry?.payload?.reason ?? null
 
   return (
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh', maxWidth: 900 }}>
@@ -131,6 +147,13 @@ export default function StoreDetailPage() {
       {actionError && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
           <AlertTriangle size={15} /> {actionError}
+        </div>
+      )}
+
+      {isSuspended && suspendReason && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+          <Ban size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span><strong>Причина приостановки:</strong> {suspendReason}</span>
         </div>
       )}
 
@@ -262,6 +285,33 @@ export default function StoreDetailPage() {
               <span style={{ color: 'var(--text)', fontSize: 13, fontFamily: 'monospace' }}>{c.value}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Audit History */}
+      {auditData && auditData.logs.length > 0 && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
+            История действий ({auditData.logs.length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {auditData.logs.map(entry => (
+              <div key={entry.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.action.includes('SUSPENDED') || entry.action.includes('REJECTED') ? '#EF4444' : entry.action.includes('APPROVED') || entry.action.includes('UNSUSPEND') ? '#10B981' : '#94A3B8', marginTop: 5, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{entry.action}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(entry.createdAt).toLocaleString('ru-RU')}</span>
+                  </div>
+                  {entry.payload?.reason && (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                      Причина: {entry.payload.reason}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

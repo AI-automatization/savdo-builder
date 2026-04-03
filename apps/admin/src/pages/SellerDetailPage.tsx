@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck, History } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -18,6 +18,15 @@ interface ModerationCase {
   status: string
   createdAt: string
   actions: ModerationAction[]
+}
+
+interface AuditEntry {
+  id: string
+  action: string
+  entityType: string
+  entityId: string
+  payload: Record<string, any> | null
+  createdAt: string
 }
 
 interface SellerDetail {
@@ -84,10 +93,15 @@ export default function SellerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: seller, loading, error, refetch } = useFetch<SellerDetail>(`/api/v1/admin/sellers/${id}`)
+  const { data: auditData } = useFetch<{ logs: AuditEntry[]; total: number }>(
+    `/api/v1/admin/audit-log?entityType=User&entityId=${seller?.user?.id ?? 'none'}&limit=50`,
+    [seller?.user?.id],
+  )
 
   const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'verify' | 'reject' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [historyTab, setHistoryTab] = useState<'key' | 'all'>('key')
 
   const handleAction = async (reason: string) => {
     if (!seller) return
@@ -127,6 +141,12 @@ export default function SellerDetailPage() {
 
   const verifyCfg = VERIFY_CFG[seller.verificationStatus] ?? VERIFY_CFG.UNVERIFIED
   const isUserBlocked = seller.user.status === 'BLOCKED'
+  const suspendEntry = auditData?.logs?.find(e => e.action === 'USER_SUSPENDED')
+  const blockReason: string | null = suspendEntry?.payload?.reason ?? null
+
+  const KEY_ACTIONS = ['USER_SUSPENDED', 'USER_UNSUSPENDED', 'seller.verification.verified', 'seller.verification.rejected', 'seller.verification.pending']
+  const keyLogs = auditData?.logs?.filter(e => KEY_ACTIONS.includes(e.action)) ?? []
+  const allLogs = auditData?.logs ?? []
 
   return (
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh', maxWidth: 900 }}>
@@ -196,87 +216,97 @@ export default function SellerDetailPage() {
         </div>
       </div>
 
-      {/* Info grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Контакт</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <Phone size={15} color="var(--text-muted)" />
-            <span style={{ fontFamily: 'monospace', color: 'var(--text)', fontSize: 14 }}>{seller.user.phone}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Calendar size={15} color="var(--text-muted)" />
-            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-              Зарегистрирован {new Date(seller.createdAt).toLocaleDateString('ru-RU')}
-            </span>
-          </div>
-        </div>
+      {/* Main layout: left info + right history */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Аккаунт</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Статус</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: isUserBlocked ? '#EF4444' : '#10B981' }}>
-              {isUserBlocked ? 'Заблокирован' : 'Активен'}
-            </span>
+        {/* LEFT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Контакт + Аккаунт side by side */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Контакт</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Phone size={13} color="var(--text-muted)" />
+                <span style={{ fontFamily: 'monospace', color: 'var(--text)', fontSize: 13 }}>{seller.user.phone}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Calendar size={13} color="var(--text-muted)" />
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                  {new Date(seller.createdAt).toLocaleDateString('ru-RU')}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Аккаунт</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Статус</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: isUserBlocked ? '#EF4444' : '#10B981' }}>
+                  {isUserBlocked ? 'Заблокирован' : 'Активен'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Роль</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{seller.user.role}</span>
+              </div>
+              {isUserBlocked && blockReason && (
+                <div style={{ fontSize: 11, color: '#EF4444', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 7, marginTop: 8 }}>
+                  Причина: {blockReason}
+                </div>
+              )}
+            </div>
           </div>
-          {seller.isBlocked && seller.blockedReason && (
-            <div style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8 }}>
-              Причина: {seller.blockedReason}
+
+          {/* Bio */}
+          {seller.bio && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>О продавце</div>
+              <p style={{ margin: 0, color: 'var(--text)', fontSize: 13, lineHeight: 1.6 }}>{seller.bio}</p>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Bio */}
-      {seller.bio && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>О продавце</div>
-          <p style={{ margin: 0, color: 'var(--text)', fontSize: 14, lineHeight: 1.6 }}>{seller.bio}</p>
-        </div>
-      )}
-
-      {/* Store */}
-      {seller.store && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Магазин</div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Store size={18} color="var(--primary)" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14 }}>{seller.store.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{seller.store.slug}</div>
+          {/* Store */}
+          {seller.store && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Магазин</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Store size={16} color="var(--primary)" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13 }}>{seller.store.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{seller.store.slug}</div>
+                  </div>
+                </div>
+                <button onClick={() => navigate(`/stores/${seller.store!.id}`)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
+                  Открыть
+                </button>
               </div>
             </div>
-            <button onClick={() => navigate(`/stores/${seller.store!.id}`)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-              Открыть
-            </button>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Moderation History */}
-      {seller.moderationCases && seller.moderationCases.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Shield size={15} color="var(--text-muted)" />
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              История модерации ({seller.moderationCases.length})
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {seller.moderationCases.map(mc => (
-              <div key={mc.id} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: mc.actions.length > 0 ? 10 : 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{mc.caseType}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, fontWeight: 600,
-                      background: mc.status === 'CLOSED' ? 'rgba(16,185,129,0.12)' : mc.status === 'OPEN' ? 'rgba(245,158,11,0.12)' : 'rgba(148,163,184,0.1)',
-                      color: mc.status === 'CLOSED' ? '#10B981' : mc.status === 'OPEN' ? '#F59E0B' : '#94A3B8',
-                    }}>{mc.status}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          {/* Moderation Cases */}
+          {seller.moderationCases && seller.moderationCases.length > 0 && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <Shield size={13} color="var(--text-muted)" />
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Кейсы модерации ({seller.moderationCases.length})
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {seller.moderationCases.map(mc => (
+                  <div key={mc.id} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: mc.actions.length > 0 ? 8 : 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{mc.caseType}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, fontWeight: 600,
+                          background: mc.status === 'CLOSED' ? 'rgba(16,185,129,0.12)' : mc.status === 'OPEN' ? 'rgba(245,158,11,0.12)' : 'rgba(148,163,184,0.1)',
+                          color: mc.status === 'CLOSED' ? '#10B981' : mc.status === 'OPEN' ? '#F59E0B' : '#94A3B8',
+                        }}>{mc.status}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {new Date(mc.createdAt).toLocaleDateString('ru-RU')}
                     </span>
                   </div>
@@ -311,7 +341,79 @@ export default function SellerDetailPage() {
             ))}
           </div>
         </div>
-      )}
+          )}
+
+        </div>
+        {/* END LEFT COLUMN */}
+
+        {/* RIGHT COLUMN — История */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+            {(['key', 'all'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setHistoryTab(tab)}
+                style={{
+                  flex: 1, padding: '12px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: 'none', background: 'none',
+                  color: historyTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                  borderBottom: historyTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tab === 'key' ? (
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <Shield size={13} /> Важные события {keyLogs.length > 0 && `(${keyLogs.length})`}
+                  </span>
+                ) : (
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <History size={13} /> Вся история {allLogs.length > 0 && `(${allLogs.length})`}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Log entries */}
+          <div style={{ padding: 16, maxHeight: 480, overflowY: 'auto' }}>
+            {(historyTab === 'key' ? keyLogs : allLogs).length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>
+                Нет записей
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(historyTab === 'key' ? keyLogs : allLogs).map(entry => {
+                  const isBad  = entry.action.includes('SUSPEND') || entry.action.includes('REJECT')
+                  const isGood = entry.action.includes('UNSUSPEND') || entry.action.includes('verified') || entry.action.includes('APPROVE')
+                  const dotColor = isBad ? '#EF4444' : isGood ? '#10B981' : '#94A3B8'
+                  return (
+                    <div key={entry.id} style={{ display: 'flex', gap: 10, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 10 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, marginTop: 5, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: entry.payload?.reason ? 4 : 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-all' }}>{entry.action}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {new Date(entry.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        {entry.payload?.reason && (
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                            Причина: {entry.payload.reason}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        {/* END RIGHT COLUMN */}
+
+      </div>
+      {/* END MAIN GRID */}
 
       {/* Modals */}
       {modal === 'verify' && (

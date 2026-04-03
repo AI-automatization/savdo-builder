@@ -3,19 +3,21 @@ import { useState, useEffect } from 'react'
 import { auth } from '../lib/api'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, Users, Store, ShoppingCart,
-  Shield, ScrollText, LogOut, Package,
+  LayoutDashboard, Users, UserCog, Store, ShoppingCart,
+  Shield, ScrollText, LogOut, Package, Database,
   ChevronRight, Search, Sun, Moon,
 } from 'lucide-react'
 
 const NAV = [
   { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/sellers',    icon: Users,           label: 'Продавцы' },
+  { to: '/users',      icon: Users,           label: 'Пользователи' },
+  { to: '/sellers',    icon: UserCog,         label: 'Продавцы' },
   { to: '/stores',     icon: Store,           label: 'Магазины' },
   { to: '/products',   icon: Package,         label: 'Товары' },
   { to: '/orders',     icon: ShoppingCart,    label: 'Заказы' },
   { to: '/moderation', icon: Shield,          label: 'Модерация' },
   { to: '/audit-logs', icon: ScrollText,      label: 'Аудит-лог' },
+  { to: '/database',   icon: Database,        label: 'База данных' },
 ]
 
 function useTashkentClock() {

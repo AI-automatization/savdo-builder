@@ -96,6 +96,7 @@ export class AdminRepository {
           languageCode: true,
           createdAt: true,
           updatedAt: true,
+          seller: { select: { telegramChatId: true } },
         },
       }),
       this.prisma.user.count({ where }),

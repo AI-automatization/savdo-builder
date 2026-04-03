@@ -11,6 +11,8 @@ import OrdersPage from './pages/OrdersPage'
 import ProductsPage from './pages/ProductsPage'
 import ModerationPage from './pages/ModerationPage'
 import AuditLogsPage from './pages/AuditLogsPage'
+import UsersPage from './pages/UsersPage'
+import DatabasePage from './pages/DatabasePage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hasAccess  = !!auth.getAccess()
@@ -34,6 +36,8 @@ export default function App() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="moderation" element={<ModerationPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="database" element={<DatabasePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

@@ -24,9 +24,18 @@ import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
+import { BroadcastUseCase } from './use-cases/broadcast.use-case';
+import { DbManagerUseCase } from './use-cases/db-manager.use-case';
+import { BullModule } from '@nestjs/bullmq';
+import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [UsersModule, SellersModule, StoresModule, ProductsModule, OrdersModule, AuthModule],
+  imports: [
+    UsersModule, SellersModule, StoresModule, ProductsModule, OrdersModule, AuthModule,
+    TelegramModule,
+    BullModule.registerQueue({ name: QUEUE_TELEGRAM_NOTIFICATIONS }),
+  ],
   controllers: [AdminController],
   providers: [
     AdminRepository,
@@ -45,6 +54,8 @@ import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
     AdminCancelOrderUseCase,
     GetAuditLogUseCase,
     GetAnalyticsUseCase,
+    BroadcastUseCase,
+    DbManagerUseCase,
   ],
 })
 export class AdminModule {}
