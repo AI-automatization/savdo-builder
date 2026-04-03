@@ -17,10 +17,8 @@ const inputBase =
 const inputStyle = {
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.12)',
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   '--tw-ring-color': 'rgba(167,139,250,0.50)',
-} as const;
+} as React.CSSProperties;
 
 const errorStyle = { color: 'rgba(248,113,113,.85)' } as const;
 

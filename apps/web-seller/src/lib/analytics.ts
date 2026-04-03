@@ -1,7 +1,6 @@
 // ── Analytics — seller events ─────────────────────────────────────────────────
-//
-// No backend POST endpoint in MVP contract.
-// Events are logged in dev; swap `send` to push to PostHog/Segment/custom API.
+
+import { apiClient } from './api/client';
 
 type SellerEvent =
   | { name: 'signup_started';              payload: { source: 'direct' | 'referral' } }
@@ -20,8 +19,9 @@ function send(event: SellerEvent): void {
     // eslint-disable-next-line no-console
     console.debug('[analytics:seller]', event.name, event.payload);
   }
-  // TODO: replace with real sink
-  // analytics.track(event.name, event.payload);
+  apiClient
+    .post('/analytics/track', { eventName: event.name, eventPayload: event.payload })
+    .catch(() => { /* best-effort */ });
 }
 
 export const track = {

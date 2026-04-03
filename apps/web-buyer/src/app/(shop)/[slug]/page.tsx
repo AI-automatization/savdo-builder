@@ -1,9 +1,34 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import ProductCard from "@/components/store/ProductCard";
 import { serverGetStoreBySlug, serverGetProducts } from "@/lib/api/storefront-server";
 import { TrackStorefrontView } from "@/components/TrackView";
+
+// ── SEO ───────────────────────────────────────────────────────────────────────
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  try {
+    const { slug } = await params;
+    const store = await serverGetStoreBySlug(slug);
+    return {
+      title: store.name,
+      description: store.description ?? `Магазин ${store.name} на Savdo`,
+      openGraph: {
+        title: store.name,
+        description: store.description ?? `Магазин ${store.name} на Savdo`,
+        ...(store.logoUrl ? { images: [{ url: store.logoUrl }] } : {}),
+      },
+    };
+  } catch {
+    return { title: 'Магазин' };
+  }
+}
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 

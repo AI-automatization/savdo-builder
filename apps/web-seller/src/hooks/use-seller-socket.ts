@@ -1,0 +1,58 @@
+'use client';
+
+import { useEffect, useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { getSocket } from '../lib/socket';
+import { useStore } from './use-seller';
+import { orderKeys } from './use-orders';
+
+export interface ToastMessage {
+  id: number;
+  text: string;
+}
+
+export function useSellerSocket() {
+  const queryClient = useQueryClient();
+  const { data: store } = useStore();
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const addToast = useCallback((text: string) => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, text }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
+
+  useEffect(() => {
+    if (!store?.id) return;
+
+    const socket = getSocket();
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    socket.emit('join-seller-room', { storeId: store.id });
+
+    function onOrderNew(payload: { id: string }) {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      addToast(`Новый заказ #${payload.id.slice(-6).toUpperCase()}`);
+    }
+
+    function onOrderStatusChanged(payload: { id: string }) {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      queryClient.invalidateQueries({ queryKey: orderKeys.detail(payload.id) });
+    }
+
+    socket.on('order:new', onOrderNew);
+    socket.on('order:status_changed', onOrderStatusChanged);
+
+    return () => {
+      socket.off('order:new', onOrderNew);
+      socket.off('order:status_changed', onOrderStatusChanged);
+    };
+  }, [store?.id, queryClient, addToast]);
+
+  return { toasts };
+}

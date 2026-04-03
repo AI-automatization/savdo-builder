@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useCreateProduct } from '../../../../hooks/use-products';
 import { track } from '../../../../lib/analytics';
+import { ImageUploader } from '../../../../components/image-uploader';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ export default function CreateProductPage() {
   const router  = useRouter();
   const create  = useCreateProduct();
 
+  const [mediaId, setMediaId] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -60,6 +64,7 @@ export default function CreateProductPage() {
       basePrice:   Number(values.basePrice),
       sku:         values.sku || undefined,
       isVisible:   values.isVisible,
+      mediaId:     mediaId ?? undefined,
     });
     track.productCreated(product.storeId, product.id);
     router.push('/products');
@@ -102,16 +107,57 @@ export default function CreateProductPage() {
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="rounded-2xl p-6 flex flex-col gap-5" style={glass}>
 
-          {/* Title */}
-          <div>
-            <Label>Название <span style={{ color: "#f87171" }}>*</span></Label>
-            <input
-              className={inputFocusClass}
-              style={inputStyle}
-              placeholder="Например: Кроссовки Nike Air Max"
-              {...register('title', { required: 'Введите название товара' })}
-            />
-            <FieldError message={errors.title?.message} />
+          {/* Photo + main fields row */}
+          <div className="flex items-start gap-4">
+            <div style={{ width: 100, height: 100, flexShrink: 0 }}>
+              <ImageUploader
+                value={mediaId}
+                onChange={setMediaId}
+                purpose="product_image"
+              />
+            </div>
+            <div className="flex-1 flex flex-col gap-4">
+              {/* Title */}
+              <div>
+                <Label>Название <span style={{ color: "#f87171" }}>*</span></Label>
+                <input
+                  className={inputFocusClass}
+                  style={inputStyle}
+                  placeholder="Например: Кроссовки Nike Air Max"
+                  {...register('title', { required: 'Введите название товара' })}
+                />
+                <FieldError message={errors.title?.message} />
+              </div>
+
+              {/* Price + SKU row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Цена (сум) <span style={{ color: "#f87171" }}>*</span></Label>
+                  <input
+                    type="number"
+                    min={0}
+                    className={inputFocusClass}
+                    style={inputStyle}
+                    placeholder="0"
+                    {...register('basePrice', {
+                      required: 'Укажите цену',
+                      min: { value: 0, message: 'Цена не может быть отрицательной' },
+                      valueAsNumber: true,
+                    })}
+                  />
+                  <FieldError message={errors.basePrice?.message} />
+                </div>
+                <div>
+                  <Label>Артикул (SKU)</Label>
+                  <input
+                    className={inputFocusClass}
+                    style={inputStyle}
+                    placeholder="SKU-001"
+                    {...register('sku')}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Description */}
@@ -123,35 +169,6 @@ export default function CreateProductPage() {
               placeholder="Подробное описание товара..."
               {...register('description')}
             />
-          </div>
-
-          {/* Price + SKU row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Цена (сум) <span style={{ color: "#f87171" }}>*</span></Label>
-              <input
-                type="number"
-                min={0}
-                className={inputFocusClass}
-                style={inputStyle}
-                placeholder="0"
-                {...register('basePrice', {
-                  required: 'Укажите цену',
-                  min: { value: 0, message: 'Цена не может быть отрицательной' },
-                  valueAsNumber: true,
-                })}
-              />
-              <FieldError message={errors.basePrice?.message} />
-            </div>
-            <div>
-              <Label>Артикул (SKU)</Label>
-              <input
-                className={inputFocusClass}
-                style={inputStyle}
-                placeholder="SKU-001"
-                {...register('sku')}
-              />
-            </div>
           </div>
 
           {/* Visible toggle */}

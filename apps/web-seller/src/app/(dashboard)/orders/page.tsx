@@ -86,10 +86,8 @@ function CancelModal({
               background: 'rgba(255,255,255,0.06)',
               border: '1px solid rgba(255,255,255,0.13)',
               minHeight: 80,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore
               '--tw-ring-color': 'rgba(167,139,250,0.50)',
-            }}
+            } as React.CSSProperties}
             placeholder="Нет в наличии, покупатель не отвечает..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}

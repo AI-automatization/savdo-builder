@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useRequestOtp, useVerifyOtp } from "../../../hooks/use-auth";
+import { useAuth } from "../../../lib/auth/context";
 import { track } from "../../../lib/analytics";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
@@ -25,12 +26,17 @@ const inputStyle = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [step,  setStep]  = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp,   setOtp]   = useState("");
 
   const requestOtp = useRequestOtp();
   const verifyOtp  = useVerifyOtp();
+
+  useEffect(() => {
+    if (isAuthenticated) router.replace('/dashboard');
+  }, [isAuthenticated, router]);
 
   useEffect(() => { track.signupStarted('direct'); }, []);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSellerProducts } from '../../../hooks/use-products';
+import { useSellerProducts } from '@/hooks/use-products';
 import { ProductStatus } from 'types';
 
 const glass = {
@@ -43,13 +43,13 @@ export default function ProductsPage() {
             {isLoading ? "Загрузка..." : `${products?.length ?? 0} товаров`}
           </p>
         </div>
-        <a
+        <Link
           href="/products/create"
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
           style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
         >
           + Добавить товар
-        </a>
+        </Link>
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={glass}>
@@ -77,7 +77,7 @@ export default function ProductsPage() {
         ) : !products || products.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>
             Товаров пока нет.{" "}
-            <a href="/products/create" style={{ color: "#A78BFA" }}>Добавить первый →</a>
+            <Link href="/products/create" style={{ color: "#A78BFA" }}>Добавить первый →</Link>
           </div>
         ) : (
           products.map((p) => (

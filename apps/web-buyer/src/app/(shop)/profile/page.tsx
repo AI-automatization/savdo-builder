@@ -145,7 +145,7 @@ function OtpGate() {
 // ── Authenticated Profile ──────────────────────────────────────────────────
 
 function ProfileView() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const logoutMutation = useLogout();
   const [confirming, setConfirming] = useState(false);
 

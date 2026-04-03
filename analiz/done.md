@@ -1,3 +1,75 @@
+# Done — Азим + Полат
+
+## 2026-04-03 (сессия 4)
+
+### ✅ [WEB-032] Media upload — Tasks 1-4 из 7 (продолжить в след. сессии)
+- **Важность:** 🔴
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/media.api.ts` (новый) — Task 1
+  - `apps/web-seller/src/components/image-uploader.tsx` (новый) — Task 2
+  - `apps/web-seller/src/lib/api/products.api.ts` — Task 3 (mediaId?: string)
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — Task 4
+- **Что сделано:** Media API layer (getUploadUrl + confirmUpload). Компонент ImageUploader с 4 состояниями (empty/uploading/done/error), XHR progress, валидация (10 МБ, jpeg/png/webp). Исправлен blob URL memory leak + hasImage logic. Форма создания товара — фото слева от title/price, mediaId передаётся в API.
+- **Осталось:** Task 5 (edit page), Task 6 (settings logo+cover), Task 7 (TS check).
+
+## 2026-04-03 (сессия 3)
+
+### ✅ [WEB-031] In-app уведомления — seller
+- **Важность:** 🔴
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/notifications.api.ts` (новый)
+  - `apps/web-seller/src/hooks/use-notifications.ts` (новый)
+  - `apps/web-seller/src/app/(dashboard)/notifications/page.tsx` (новый)
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx`
+- **Что сделано:** Живой badge с пульсом на колокольчике (polling 30s). Страница /notifications с авто read-all, фильтром по вкладкам, навигацией к заказу по клику.
+
+## 2026-04-03 (сессия 2)
+
+### ✅ [WEB-030] Мелкие фиксы — products page + buyer profile
+- **Важность:** 🟢
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx`
+- **Что сделано:** (1) `<a href="/products/create">` → `<Link href>` (2 места) — убрана полная перезагрузка страницы при навигации. Заодно исправлен относительный импорт `../../../hooks/use-products` → `@/hooks/use-products`. (2) Убрана неиспользуемая деструктуризация `logout` из `useAuth()` в buyer/profile — `useLogout()` мутация уже делала то же самое.
+
+---
+
+## 2026-04-03
+
+### ✅ [WEB-026] Socket.IO клиент — seller real-time заказы
+- **Важность:** 🔴
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/socket.ts` (новый)
+  - `apps/web-seller/src/hooks/use-seller-socket.ts` (новый)
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx`
+  - `apps/web-seller/src/app/globals.css`
+  - `apps/web-seller/package.json` (добавлен `socket.io-client`)
+- **Что сделано:** Socket.IO клиент подключён к backend (OrdersGateway Полата). При `order:new` → invalidate list + toast уведомление. При `order:status_changed` → invalidate list + detail. Сокет монтируется в DashboardLayout, join-seller-room отправляется после получения storeId.
+
+### ✅ [WEB-029] Analytics — реальный sink вместо console.log
+- **Важность:** 🟡
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/analytics.ts`
+  - `apps/web-buyer/src/lib/analytics.ts`
+- **Что сделано:** `send()` теперь вызывает `POST /api/v1/analytics/track` (fire-and-forget). Buyer передаёт `storeId` из payload. Ошибки не пробрасываются — best-effort.
+
+### ✅ [WEB-028] Seller analytics страница
+- **Важность:** 🟢
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx` (новый)
+  - `apps/web-seller/src/hooks/use-analytics.ts` (новый)
+  - `apps/web-seller/src/lib/api/analytics.api.ts` (новый)
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` (добавлен пункт "Аналитика" в nav)
+- **Что сделано:** Страница `/analytics` с карточками views, conversionRate, топ товар. Топ товар рефетчит название через `useSellerProduct`. staleTime 5 мин.
+
+---
+
 # Done — Полат
 
 ---

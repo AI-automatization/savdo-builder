@@ -1,6 +1,9 @@
+import type { AuthUser } from 'types';
+
 const ACCESS_TOKEN_KEY = 'savdo_access_token';
 const REFRESH_TOKEN_KEY = 'savdo_refresh_token';
 const SESSION_TOKEN_KEY = 'savdo_session_token';
+const USER_KEY = 'savdo_user';
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -20,6 +23,21 @@ export function setTokens(accessToken: string, refreshToken: string): void {
 export function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+export function getStoredUser(): AuthUser | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function storeUser(user: AuthUser): void {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 /** Guest cart session token — UUID generated once, persists until login+merge */

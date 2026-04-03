@@ -35,6 +35,7 @@ apiClient.interceptors.response.use(
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
       clearTokens();
+      window.dispatchEvent(new CustomEvent('savdo:auth:expired'));
       return Promise.reject(error);
     }
 
@@ -56,6 +57,7 @@ apiClient.interceptors.response.use(
       return apiClient(original);
     } catch {
       clearTokens();
+      window.dispatchEvent(new CustomEvent('savdo:auth:expired'));
       return Promise.reject(error);
     }
   },

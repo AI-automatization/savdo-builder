@@ -105,22 +105,39 @@
 
 > Все критические страницы Phase B готовы. Осталось ждать Полата по WEB-022 для тестирования.
 
-## 🟡 На следующую сессию (после WEB-022 от Полата)
+## ✅ Выполнено (03.04.2026) — Азим
 
-### 🟡 [WEB-026] Socket.IO клиент — seller real-time заказы
-- **Домен:** `apps/web-seller`
-- **Кто взял:** Азим (после WEB-015 от Полата)
-- **Детали:** Заменить polling в `useSellerOrders` на Socket.IO. Подключиться к room `seller:{storeId}`. Слушать `order:new` → добавить в список + toast уведомление. Слушать `order:status_changed` → обновить через `queryClient.setQueryData`.
-- **Файлы:** `apps/web-seller/src/hooks/use-orders.ts`, новый `apps/web-seller/src/lib/socket.ts`
+- Auth persistence (F5 не разлогинивает) ✅
+- Seller logout — реальный вызов API + очистка кеша ✅
+- Dashboard auth guard + редирект на /login ✅
+- Onboarding guard (нет магазина → онбординг, есть → dashboard) ✅
+- Login redirect если уже залогинен ✅
+- Token expiry event → авто-logout в обоих приложениях ✅
+- queryClient.clear() при logout ✅
+- Analytics → реальный POST /api/v1/analytics/track ✅
+- Seller sidebar — реальный phone вместо hardcoded ✅
+- Dashboard — views из аналитики вместо ложной revenue ✅
+- Buyer SEO meta (generateMetadata per store) ✅
+- Buyer root title ("Create Next App" → реальный) ✅
+- @ts-ignore × 2 → as React.CSSProperties ✅
 
-### 🟡 [WEB-027] Socket.IO клиент — chat real-time
+## 🔴 ЗАБЛОКИРОВАНО (ждём Полата)
+
+### 🔴 [WEB-027] Socket.IO клиент — chat real-time (ЗАБЛОКИРОВАН)
 - **Домен:** `apps/web-seller`, `apps/web-buyer`
-- **Кто взял:** Азим (после WEB-015 от Полата)
-- **Детали:** Заменить polling (10s) в `useMessages` на Socket.IO для обоих приложений.
+- **Кто взял:** Азим (ждёт Полата)
+- **Блокер:** Полат должен добавить chat gateway в API (аналогично `apps/api/src/socket/orders.gateway.ts`) — emit `chat:message` при новом сообщении в thread.
+- **Детали:** После chat gateway — заменить `refetchInterval: 10_000` в `useMessages` на Socket.IO для обоих приложений.
 - **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
 
-### 🟢 [WEB-028] Seller analytics страница
+~~[WEB-028] — ✅ Готово~~
+
+## 🟡 В работе — Азим
+
+### 🟡 [WEB-032] Media upload — Tasks 5-7 (продолжить)
 - **Домен:** `apps/web-seller`
-- **Кто взял:** Азим
-- **Детали:** Страница `/analytics` уже есть endpoint `GET /api/v1/analytics/seller/summary` (сделан Полатом). Отобразить: views, topProduct, conversionRate за последние 30 дней. Карточки + простой chart (или просто числа).
-- **Файлы:** `apps/web-seller/src/app/(dashboard)/analytics/page.tsx` (новый)
+- **Детали:** Tasks 1-4 готовы. Осталось:
+  - Task 5: ImageUploader в `products/[id]/edit/page.tsx` (previewUrl от `product.mediaUrls?.[0]`)
+  - Task 6: logo + cover ImageUploaders в `settings/page.tsx` (StoreSettingsSection)
+  - Task 7: `npx tsc --noEmit` в `apps/web-seller`, исправить ошибки, обновить done.md
+- **Файлы:** план `docs/superpowers/plans/2026-04-03-media-upload.md` (Tasks 5-7)

@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from 'types';
 import {
   getAccessToken,
@@ -8,6 +9,8 @@ import {
   clearTokens,
   getSessionToken,
   clearSessionToken,
+  getStoredUser,
+  storeUser,
 } from './storage';
 import { logout as logoutApi } from '../api/auth.api';
 import { mergeCart } from '../api/cart.api';
@@ -22,19 +25,18 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    // Restore auth state from token presence
-    // Full user info would require a /me endpoint — for now we parse from JWT or skip
+  const queryClient = useQueryClient();
+  const logoutRef = useRef<() => Promise<void>>(async () => {});
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window === 'undefined') return null;
     const token = getAccessToken();
-    if (!token) setUser(null);
-    // TODO: add GET /auth/me when backend exposes it
-  }, []);
+    return token ? getStoredUser() : null;
+  });
 
   const login = useCallback(
     async (accessToken: string, refreshToken: string, authUser: AuthUser) => {
       setTokens(accessToken, refreshToken);
+      storeUser(authUser);
       setUser(authUser);
 
       // Merge guest cart into authenticated buyer cart
@@ -59,7 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       clearTokens();
       setUser(null);
+      queryClient.clear();
     }
+  }, [queryClient]);
+
+  useEffect(() => { logoutRef.current = logout; }, [logout]);
+
+  useEffect(() => {
+    function onExpired() { logoutRef.current(); }
+    window.addEventListener('savdo:auth:expired', onExpired);
+    return () => window.removeEventListener('savdo:auth:expired', onExpired);
   }, []);
 
   return (

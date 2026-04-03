@@ -1,7 +1,6 @@
 // ── Analytics — buyer events ──────────────────────────────────────────────────
-//
-// No backend POST endpoint in MVP contract.
-// Events are logged in dev; swap `send` to push to PostHog/Segment/custom API.
+
+import { apiClient } from './api/client';
 
 type BuyerEvent =
   | { name: 'storefront_viewed';  payload: { store_id: string; store_slug: string; source: string } }
@@ -18,8 +17,10 @@ function send(event: BuyerEvent): void {
     // eslint-disable-next-line no-console
     console.debug('[analytics:buyer]', event.name, event.payload);
   }
-  // TODO: replace with real sink
-  // analytics.track(event.name, event.payload);
+  const storeId = 'store_id' in event.payload ? (event.payload as Record<string, string>).store_id : undefined;
+  apiClient
+    .post('/analytics/track', { eventName: event.name, eventPayload: event.payload, storeId })
+    .catch(() => { /* best-effort */ });
 }
 
 export const track = {
