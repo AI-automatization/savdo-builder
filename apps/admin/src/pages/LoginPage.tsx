@@ -149,8 +149,8 @@ export default function LoginPage() {
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/20">
             <Store size={20} color="white" />
           </div>
-          <h1 className="text-base font-semibold text-zinc-100 tracking-tight">Savdo Admin</h1>
-          <p className="mt-1 text-xs text-zinc-600">
+          <h1 className="text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Savdo Admin</h1>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
             {step === 1 ? 'Вход через Telegram OTP' : `Код отправлен на ${phone}`}
           </p>
         </div>
@@ -160,7 +160,7 @@ export default function LoginPage() {
           {[1, 2].map(s => (
             <div key={s} className={cn(
               'flex-1 h-0.5 rounded-full transition-colors duration-300',
-              s <= step ? 'bg-indigo-500' : 'bg-zinc-800',
+              s <= step ? 'bg-indigo-500' : 'bg-white/10',
             )} />
           ))}
         </div>
@@ -176,19 +176,20 @@ export default function LoginPage() {
         {step === 1 ? (
           <div className="space-y-4">
             <div>
-              <label className="block mb-1.5 text-xs font-medium text-zinc-500">Номер телефона</label>
+              <label className="block mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Номер телефона</label>
               <input
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendOtp()}
                 placeholder="+998901234567"
-                className="w-full h-9 px-3 rounded-lg bg-zinc-900 border border-zinc-800 text-sm text-zinc-100 font-mono placeholder:text-zinc-700 focus:outline-none focus:border-indigo-500/60 transition-colors"
+                className="w-full h-9 px-3 rounded-lg text-sm font-mono focus:outline-none focus:border-indigo-500/60 transition-colors"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
               />
             </div>
 
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
               <MessageCircle size={12} className="text-indigo-400 shrink-0" />
-              <span className="text-xs text-zinc-600">Код придёт в Telegram от @savdo_builderBOT</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Код придёт в Telegram от @savdo_builderBOT</span>
             </div>
 
             <button
@@ -204,7 +205,7 @@ export default function LoginPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-zinc-600 text-center">Введите 4-значный код из Telegram</p>
+            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>Введите 4-значный код из Telegram</p>
 
             {/* OTP inputs */}
             <div className="flex gap-2 justify-center">
@@ -218,16 +219,17 @@ export default function LoginPage() {
                   maxLength={6}
                   inputMode="numeric"
                   className={cn(
-                    'w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border bg-zinc-900 text-zinc-100',
+                    'w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border',
                     'focus:outline-none transition-colors',
-                    d ? 'border-indigo-500/60 bg-indigo-500/5' : 'border-zinc-800 focus:border-zinc-600',
+                    d ? 'border-indigo-500/60 bg-indigo-500/5' : 'focus:border-white/20',
                   )}
+                  style={{ background: 'var(--surface2)', color: 'var(--text)', borderColor: d ? undefined : 'var(--border)' }}
                 />
               ))}
             </div>
 
             {timer > 0 ? (
-              <p className="text-center text-xs text-zinc-600">
+              <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
                 Повторить через{' '}
                 <span className="text-indigo-400 font-mono font-semibold">
                   {Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}
@@ -242,12 +244,12 @@ export default function LoginPage() {
             )}
 
             {loading && (
-              <div className="flex items-center justify-center gap-2 text-xs text-zinc-600">
+              <div className="flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <Loader2 size={13} className="animate-spin" /> Проверяем...
               </div>
             )}
 
-            <button onClick={reset} className="flex items-center gap-1.5 text-xs text-zinc-700 hover:text-zinc-500 transition-colors mt-2">
+            <button onClick={reset} className="flex items-center gap-1.5 text-xs transition-colors mt-2" style={{ color: 'var(--text-dim)' }}>
               <ChevronLeft size={13} /> Изменить номер
             </button>
           </div>

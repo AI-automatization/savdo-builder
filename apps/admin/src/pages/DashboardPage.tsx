@@ -1,112 +1,105 @@
-import { Users, Store, ShoppingCart, Clock, AlertCircle, ArrowUpRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Users, Store, ShoppingCart, Clock, AlertCircle, ArrowUpRight, ChevronRight } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { cn } from '@/lib/utils'
 import { NumberTicker } from '@/components/ui/number-ticker'
+import { Badge } from '@/components/ui/badge'
 
 interface SellersResponse { sellers: unknown[]; total: number }
 interface StoresResponse  { stores: unknown[];  total: number }
 interface QueueResponse   { cases: unknown[];   total: number }
+interface OrderItem {
+  id: string
+  orderNumber: string
+  status: string
+  totalAmount: string
+  currencyCode: string
+  customerFullName: string
+  customerPhone: string
+  placedAt: string
+  store: { id: string; name: string; slug: string }
+}
+interface OrdersResponse { orders: OrderItem[]; total: number }
 
 const STATS = [
-  {
-    key: 'sellers',
-    label: 'Продавцов',
-    icon: Users,
-    accent: 'text-indigo-400',
-    dim: 'bg-indigo-500/10',
-  },
-  {
-    key: 'stores',
-    label: 'Магазинов',
-    icon: Store,
-    accent: 'text-emerald-400',
-    dim: 'bg-emerald-500/10',
-  },
-  {
-    key: 'queue',
-    label: 'На модерации',
-    icon: Clock,
-    accent: 'text-amber-400',
-    dim: 'bg-amber-500/10',
-  },
-  {
-    key: 'orders',
-    label: 'Заказов',
-    icon: ShoppingCart,
-    accent: 'text-zinc-400',
-    dim: 'bg-zinc-500/10',
-  },
+  { key: 'sellers', label: 'Продавцов',    icon: Users,        accent: 'text-indigo-400', dim: 'bg-indigo-500/10', to: '/sellers' },
+  { key: 'stores',  label: 'Магазинов',    icon: Store,        accent: 'text-emerald-400', dim: 'bg-emerald-500/10', to: '/stores' },
+  { key: 'queue',   label: 'На модерации', icon: Clock,        accent: 'text-amber-400',   dim: 'bg-amber-500/10',  to: '/moderation' },
+  { key: 'orders',  label: 'Заказов',      icon: ShoppingCart, accent: 'text-sky-400',     dim: 'bg-sky-500/10',    to: '/orders' },
 ] as const
 
+const ORDER_STATUS: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; label: string }> = {
+  PENDING:    { variant: 'warning', label: 'Ожидание' },
+  CONFIRMED:  { variant: 'info',    label: 'Подтверждён' },
+  PROCESSING: { variant: 'info',    label: 'Обработка' },
+  SHIPPED:    { variant: 'info',    label: 'Отправлен' },
+  DELIVERED:  { variant: 'success', label: 'Доставлен' },
+  CANCELLED:  { variant: 'danger',  label: 'Отменён' },
+}
+
 function StatCard({
-  label, value, loading, error, icon: Icon, accent, dim,
+  label, value, loading, error, icon: Icon, accent, dim, onClick,
 }: {
-  label: string
-  value: number
-  loading: boolean
-  error: string | null
-  icon: React.ElementType
-  accent: string
-  dim: string
+  label: string; value: number; loading: boolean; error: string | null
+  icon: React.ElementType; accent: string; dim: string; onClick: () => void
 }) {
   return (
-    <div className={cn(
-      'group relative bg-[#111113] border border-zinc-900 rounded-xl p-5',
-      'hover:border-zinc-700 transition-colors duration-200',
-    )}>
-      {/* Top row */}
+    <button
+      onClick={onClick}
+      className={cn(
+        'group relative text-left rounded-xl p-5 transition-colors duration-200 w-full',
+        'hover:border-zinc-700',
+      )}
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', dim)}>
           <Icon size={15} className={accent} />
         </div>
         {error
           ? <AlertCircle size={13} className="text-red-500" />
-          : <ArrowUpRight size={13} className="text-zinc-700 group-hover:text-zinc-500 transition-colors" />
+          : <ArrowUpRight size={13} style={{ color: 'var(--text-dim)' }} className="transition-colors" />
         }
       </div>
-
-      {/* Value */}
-      <div className="text-2xl font-bold text-zinc-100 tabular-nums tracking-tight leading-none mb-1">
+      <div className="text-2xl font-bold tabular-nums tracking-tight leading-none mb-1" style={{ color: 'var(--text)' }}>
         {loading
-          ? <span className="text-zinc-700">—</span>
+          ? <span style={{ color: 'var(--text-dim)' }}>—</span>
           : error
           ? <span className="text-red-500">!</span>
-          : <NumberTicker value={value} className="text-zinc-100" />
+          : <NumberTicker value={value} style={{ color: 'var(--text)' }} />
         }
       </div>
-
-      {/* Label */}
-      <p className="text-xs text-zinc-600 font-medium">{label}</p>
-    </div>
+      <p className="text-xs font-medium" style={{ color: 'var(--text-dim)' }}>{label}</p>
+    </button>
   )
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
+
   const sellers = useFetch<SellersResponse>('/api/v1/admin/sellers?limit=1', [])
   const stores  = useFetch<StoresResponse>('/api/v1/admin/stores?limit=1', [])
   const queue   = useFetch<QueueResponse>('/api/v1/admin/moderation/queue?limit=1', [])
+  const orders  = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=1', [])
+  const recent  = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=8', [])
 
   const today = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  const statValues: Record<string, number> = {
+  const statValues = {
     sellers: sellers.data?.total ?? 0,
     stores:  stores.data?.total  ?? 0,
     queue:   queue.data?.total   ?? 0,
-    orders:  0,
+    orders:  orders.data?.total  ?? 0,
   }
-  const statLoading: Record<string, boolean> = {
-    sellers: sellers.loading,
-    stores:  stores.loading,
-    queue:   queue.loading,
-    orders:  false,
+  const statLoading = {
+    sellers: sellers.loading, stores: stores.loading,
+    queue:   queue.loading,   orders: orders.loading,
   }
-  const statError: Record<string, string | null> = {
-    sellers: sellers.error,
-    stores:  stores.error,
-    queue:   queue.error,
-    orders:  null,
+  const statError = {
+    sellers: sellers.error, stores: stores.error,
+    queue:   queue.error,   orders: orders.error,
   }
 
   return (
@@ -114,8 +107,8 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-xl font-semibold text-zinc-100 tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-sm text-zinc-600">{today}</p>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Dashboard</h1>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{today}</p>
       </div>
 
       {/* Stats grid */}
@@ -130,19 +123,89 @@ export default function DashboardPage() {
             icon={s.icon}
             accent={s.accent}
             dim={s.dim}
+            onClick={() => navigate(s.to)}
           />
         ))}
       </div>
 
-      {/* Orders placeholder */}
-      <div className="bg-[#111113] border border-zinc-900 rounded-xl p-12 flex flex-col items-center justify-center text-center">
-        <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center mb-4">
-          <ShoppingCart size={18} className="text-zinc-700" />
+      {/* Recent orders */}
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+        {/* Section header */}
+        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={14} style={{ color: 'var(--text-dim)' }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
+              Последние заказы
+            </span>
+          </div>
+          <button
+            onClick={() => navigate('/orders')}
+            className="flex items-center gap-1 text-xs transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+          >
+            Все заказы <ChevronRight size={12} />
+          </button>
         </div>
-        <p className="text-sm font-medium text-zinc-400 mb-1">Статистика заказов</p>
-        <p className="text-xs text-zinc-700">Появится после подключения orders endpoint</p>
-      </div>
 
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              {['Номер', 'Магазин', 'Покупатель', 'Сумма', 'Статус', 'Дата'].map(h => (
+                <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'var(--text-dim)' }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {recent.loading ? (
+              <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+            ) : (recent.data?.orders ?? []).length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                  Заказов пока нет
+                </td>
+              </tr>
+            ) : (recent.data?.orders ?? []).map((o, i, arr) => {
+              const cfg = ORDER_STATUS[o.status] ?? { variant: 'muted' as const, label: o.status }
+              return (
+                <tr
+                  key={o.id}
+                  className="cursor-pointer transition-colors"
+                  style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}
+                  onClick={() => navigate('/orders')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '')}
+                >
+                  <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--text)' }}>
+                    {o.orderNumber}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>{o.store.name}</div>
+                    <div className="text-[11px] font-mono" style={{ color: 'var(--text-dim)' }}>/{o.store.slug}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs" style={{ color: 'var(--text)' }}>{o.customerFullName || '—'}</div>
+                    <div className="text-[11px] font-mono" style={{ color: 'var(--text-dim)' }}>{o.customerPhone}</div>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--text)' }}>
+                    {new Intl.NumberFormat('ru-RU').format(Number(o.totalAmount))} {o.currencyCode}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                    {new Date(o.placedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

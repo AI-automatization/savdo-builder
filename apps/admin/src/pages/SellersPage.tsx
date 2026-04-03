@@ -98,7 +98,7 @@ export default function SellersPage() {
                 'px-3 h-8 rounded-md text-xs font-medium transition-colors border',
                 filter === f
                   ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
-                  : 'border-transparent text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300',
+                  : 'border-transparent hover:bg-white/5',
               )}
             >
               {FILTER_LABEL[f]}
