@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile } from '@/hooks/use-seller';
+import { ImageUploader } from '@/components/image-uploader';
 
 const glass = {
   background: 'rgba(255,255,255,0.08)',
@@ -78,6 +79,8 @@ function StoreSettingsSection() {
   const [saved, setSaved] = useState(false);
 
   const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<StoreFormValues>();
+  const [logoMediaId, setLogoMediaId]   = useState<string | null>(null);
+  const [coverMediaId, setCoverMediaId] = useState<string | null>(null);
 
   useEffect(() => {
     if (store) {
@@ -93,11 +96,13 @@ function StoreSettingsSection() {
 
   async function onSubmit(values: StoreFormValues) {
     await updateStore.mutateAsync({
-      name: values.name,
-      description: values.description || undefined,
-      city: values.city,
-      region: values.region || undefined,
+      name:                values.name,
+      description:         values.description || undefined,
+      city:                values.city,
+      region:              values.region || undefined,
       telegramContactLink: values.telegramContactLink || undefined,
+      logoMediaId:         logoMediaId ?? undefined,
+      coverMediaId:        coverMediaId ?? undefined,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -125,6 +130,29 @@ function StoreSettingsSection() {
   return (
     <Section title="Магазин">
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        {/* Cover */}
+        <Field label="Обложка магазина">
+          <ImageUploader
+            value={coverMediaId}
+            onChange={setCoverMediaId}
+            purpose="store_banner"
+            previewUrl={store?.coverUrl ?? null}
+            aspectRatio="3/1"
+          />
+        </Field>
+
+        {/* Logo */}
+        <Field label="Логотип">
+          <div style={{ width: 72, height: 72 }}>
+            <ImageUploader
+              value={logoMediaId}
+              onChange={setLogoMediaId}
+              purpose="store_logo"
+              previewUrl={store?.logoUrl ?? null}
+            />
+          </div>
+        </Field>
+
         <Field label="Название магазина" error={errors.name?.message}>
           <input
             {...register('name', { required: 'Обязательное поле', minLength: { value: 2, message: 'Минимум 2 символа' }, maxLength: { value: 255, message: 'Максимум 255 символов' } })}
