@@ -1,9 +1,10 @@
 'use client';
 
-import { use, useEffect } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct } from '../../../../../hooks/use-products';
+import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
@@ -72,6 +73,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     defaultValues: { isVisible: true, basePrice: 0 },
   });
 
+  const [mediaId, setMediaId] = useState<string | null>(null);
+
   // Populate form once product loads
   useEffect(() => {
     if (product) {
@@ -93,6 +96,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       basePrice:   Number(values.basePrice),
       sku:         values.sku || undefined,
       isVisible:   values.isVisible,
+      mediaId:     mediaId ?? undefined,
     });
     router.push('/products');
   }
@@ -198,6 +202,19 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="rounded-2xl p-6 flex flex-col gap-5" style={glass}>
+
+          {/* Photo */}
+          <div>
+            <Label>Фото товара</Label>
+            <div style={{ width: 100, height: 100 }}>
+              <ImageUploader
+                value={mediaId}
+                onChange={setMediaId}
+                purpose="product_image"
+                previewUrl={product?.mediaUrls?.[0] ?? null}
+              />
+            </div>
+          </div>
 
           {/* Title */}
           <div>
