@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct } from '../../../../../hooks/use-products';
+import { useStoreCategories } from '../../../../../hooks/use-seller';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
 
@@ -74,6 +75,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   });
 
   const [mediaId, setMediaId] = useState<string | null>(null);
+  const { data: categories = [] } = useStoreCategories();
+  const [storeCategoryId, setStoreCategoryId] = useState<string | null>(null);
 
   // Populate form once product loads
   useEffect(() => {
@@ -85,18 +88,20 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         sku:         product.sku ?? '',
         isVisible:   product.isVisible,
       });
+      setStoreCategoryId(product.storeCategoryId ?? null);
     }
   }, [product, reset]);
 
   async function onSubmit(values: EditProductForm) {
     await update.mutateAsync({
       id,
-      title:       values.title,
-      description: values.description || undefined,
-      basePrice:   Number(values.basePrice),
-      sku:         values.sku || undefined,
-      isVisible:   values.isVisible,
-      mediaId:     mediaId ?? undefined,
+      title:           values.title,
+      description:     values.description || undefined,
+      basePrice:       Number(values.basePrice),
+      sku:             values.sku || undefined,
+      isVisible:       values.isVisible,
+      mediaId:         mediaId ?? undefined,
+      storeCategoryId: storeCategoryId ?? undefined,
     });
     router.push('/products');
   }
@@ -215,6 +220,26 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               />
             </div>
           </div>
+
+          {/* Category */}
+          {categories.length > 0 && (
+            <div>
+              <Label>Категория</Label>
+              <select
+                value={storeCategoryId ?? ''}
+                onChange={(e) => setStoreCategoryId(e.target.value || null)}
+                className={focusCls}
+                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
+              >
+                <option value="" style={{ background: '#1a1d2e' }}>— Без категории —</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Title */}
           <div>
