@@ -125,12 +125,3 @@
 
 ~~[WEB-028] — ✅ Готово~~
 
-## 🟡 В работе — Азим
-
-### 🟡 [WEB-032] Media upload — Tasks 5-7 (продолжить)
-- **Домен:** `apps/web-seller`
-- **Детали:** Tasks 1-4 готовы. Осталось:
-  - Task 5: ImageUploader в `products/[id]/edit/page.tsx` (previewUrl от `product.mediaUrls?.[0]`)
-  - Task 6: logo + cover ImageUploaders в `settings/page.tsx` (StoreSettingsSection)
-  - Task 7: `npx tsc --noEmit` в `apps/web-seller`, исправить ошибки, обновить done.md
-- **Файлы:** план `docs/superpowers/plans/2026-04-03-media-upload.md` (Tasks 5-7)
