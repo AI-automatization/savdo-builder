@@ -1,5 +1,16 @@
 # Done — Азим + Полат
 
+## 2026-04-03 (сессия 6)
+
+### ✅ [WEB-033] Store categories CRUD + category select в product forms
+- **Важность:** 🔴
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx` — StoreCategoriesSection (inline CRUD: add/edit/delete)
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — storeCategoryId select
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — storeCategoryId select + populate + isDirty fix
+- **Что сделано:** CRUD категорий магазина в настройках — inline edit, add, delete с guard на concurrent ops и error handling. Category select в create/edit формах. isDirty учитывает category и media изменения. tsc --noEmit — 0 ошибок.
+
 ## 2026-04-03 (сессия 5)
 
 ### ✅ [WEB-027] Chat Gateway — emit `chat:message` (Полат)
