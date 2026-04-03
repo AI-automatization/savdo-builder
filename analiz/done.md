@@ -1,5 +1,18 @@
 # Done — Азим + Полат
 
+## 2026-04-03 (сессия 4)
+
+### ✅ [WEB-032] Media upload — Tasks 1-4 из 7 (продолжить в след. сессии)
+- **Важность:** 🔴
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/media.api.ts` (новый) — Task 1
+  - `apps/web-seller/src/components/image-uploader.tsx` (новый) — Task 2
+  - `apps/web-seller/src/lib/api/products.api.ts` — Task 3 (mediaId?: string)
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — Task 4
+- **Что сделано:** Media API layer (getUploadUrl + confirmUpload). Компонент ImageUploader с 4 состояниями (empty/uploading/done/error), XHR progress, валидация (10 МБ, jpeg/png/webp). Исправлен blob URL memory leak + hasImage logic. Форма создания товара — фото слева от title/price, mediaId передаётся в API.
+- **Осталось:** Task 5 (edit page), Task 6 (settings logo+cover), Task 7 (TS check).
+
 ## 2026-04-03 (сессия 3)
 
 ### ✅ [WEB-031] In-app уведомления — seller

@@ -55,7 +55,23 @@
 
 > Все критические страницы Phase B готовы. Осталось ждать Полата по WEB-022 для тестирования.
 
-## 🟡 В работе / На следующую сессию
+## ✅ Выполнено (03.04.2026) — Азим
+
+- Auth persistence (F5 не разлогинивает) ✅
+- Seller logout — реальный вызов API + очистка кеша ✅
+- Dashboard auth guard + редирект на /login ✅
+- Onboarding guard (нет магазина → онбординг, есть → dashboard) ✅
+- Login redirect если уже залогинен ✅
+- Token expiry event → авто-logout в обоих приложениях ✅
+- queryClient.clear() при logout ✅
+- Analytics → реальный POST /api/v1/analytics/track ✅
+- Seller sidebar — реальный phone вместо hardcoded ✅
+- Dashboard — views из аналитики вместо ложной revenue ✅
+- Buyer SEO meta (generateMetadata per store) ✅
+- Buyer root title ("Create Next App" → реальный) ✅
+- @ts-ignore × 2 → as React.CSSProperties ✅
+
+## 🔴 ЗАБЛОКИРОВАНО (ждём Полата)
 
 ### 🔴 [WEB-027] Socket.IO клиент — chat real-time (ЗАБЛОКИРОВАН)
 - **Домен:** `apps/web-seller`, `apps/web-buyer`
@@ -65,3 +81,13 @@
 - **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
 
 ~~[WEB-028] — ✅ Готово~~
+
+## 🟡 В работе — Азим
+
+### 🟡 [WEB-032] Media upload — Tasks 5-7 (продолжить)
+- **Домен:** `apps/web-seller`
+- **Детали:** Tasks 1-4 готовы. Осталось:
+  - Task 5: ImageUploader в `products/[id]/edit/page.tsx` (previewUrl от `product.mediaUrls?.[0]`)
+  - Task 6: logo + cover ImageUploaders в `settings/page.tsx` (StoreSettingsSection)
+  - Task 7: `npx tsc --noEmit` в `apps/web-seller`, исправить ошибки, обновить done.md
+- **Файлы:** план `docs/superpowers/plans/2026-04-03-media-upload.md` (Tasks 5-7)
