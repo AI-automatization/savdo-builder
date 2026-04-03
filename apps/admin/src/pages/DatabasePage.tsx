@@ -316,13 +316,13 @@ export default function DatabasePage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [tableVersion, setTableVersion] = useState(0)
 
-  const { data: tablesData, loading: tablesLoading, error: tablesError } = useFetch<TableMeta[]>('/api/v1/admin/db/tables', [])
+  const { data: tablesData, loading: tablesLoading, error: tablesError, refetch: refetchTables } = useFetch<TableMeta[]>('/api/v1/admin/db/tables', [])
 
   const tableParams = new URLSearchParams({ page: String(page), limit: '25' })
   if (search) tableParams.set('search', search)
 
   const { data: rowsData, loading: rowsLoading } = useFetch<TableData>(
-    activeTable ? `/api/v1/admin/db/tables/${activeTable}?${tableParams}` : '',
+    activeTable ? `/api/v1/admin/db/tables/${activeTable}?${tableParams}` : null,
     [activeTable, page, search, tableVersion],
   )
 
@@ -386,8 +386,13 @@ export default function DatabasePage() {
           {tablesLoading && <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--text-dim)' }}>Загрузка...</div>}
           {tablesError && (
             <div style={{ padding: '10px 12px', fontSize: 12, color: '#EF4444', background: 'rgba(239,68,68,0.08)', borderRadius: 8, margin: '4px 0' }}>
-              <div style={{ fontWeight: 600, marginBottom: 3 }}>Ошибка API</div>
-              <div style={{ wordBreak: 'break-word' }}>{tablesError}</div>
+              <div style={{ fontWeight: 600, marginBottom: 3 }}>API недоступен</div>
+              <div style={{ wordBreak: 'break-word', marginBottom: 8, color: 'var(--text-muted)', fontSize: 11 }}>
+                {tablesError.includes('fetch') ? 'Запустите: pnpm dev:api' : tablesError}
+              </div>
+              <button onClick={refetchTables} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                <RefreshCw size={10} /> Повторить
+              </button>
             </div>
           )}
           {!tablesLoading && !tablesError && !tablesData?.length && (
