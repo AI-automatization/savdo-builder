@@ -71,14 +71,7 @@
 - Buyer root title ("Create Next App" → реальный) ✅
 - @ts-ignore × 2 → as React.CSSProperties ✅
 
-## 🔴 ЗАБЛОКИРОВАНО (ждём Полата)
-
-### 🔴 [WEB-027] Socket.IO клиент — chat real-time (ЗАБЛОКИРОВАН)
-- **Домен:** `apps/web-seller`, `apps/web-buyer`
-- **Кто взял:** Азим (ждёт Полата)
-- **Блокер:** Полат должен добавить chat gateway в API (аналогично `apps/api/src/socket/orders.gateway.ts`) — emit `chat:message` при новом сообщении в thread.
-- **Детали:** После chat gateway — заменить `refetchInterval: 10_000` в `useMessages` на Socket.IO для обоих приложений.
-- **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
+~~[WEB-027] — ✅ Chat gateway готов, блокер снят (Полат, 03.04.2026)~~
 
 ~~[WEB-028] — ✅ Готово~~
 

@@ -11,9 +11,10 @@ import { OrdersModule } from '../orders/orders.module';
 import { UsersModule } from '../users/users.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { StoresModule } from '../stores/stores.module';
+import { SocketModule } from '../../socket/socket.module';
 
 @Module({
-  imports: [ProductsModule, OrdersModule, UsersModule, SellersModule, StoresModule],
+  imports: [ProductsModule, OrdersModule, UsersModule, SellersModule, StoresModule, SocketModule],
   controllers: [ChatController],
   providers: [
     ChatRepository,

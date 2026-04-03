@@ -1,5 +1,17 @@
 # Done — Азим + Полат
 
+## 2026-04-03 (сессия 5)
+
+### ✅ [WEB-027] Chat Gateway — emit `chat:message` (Полат)
+- **Важность:** 🔴 Критическая (блокировал Азима)
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/api/src/socket/chat.gateway.ts` — новый, `join-chat-room` + `emitChatMessage`
+  - `apps/api/src/socket/socket.module.ts` — добавлен `ChatGateway`
+  - `apps/api/src/modules/chat/chat.module.ts` — импортирован `SocketModule`
+  - `apps/api/src/modules/chat/use-cases/send-message.use-case.ts` — вызов `chatGateway.emitChatMessage` после сохранения
+- **Что сделано:** По паттерну `orders.gateway.ts`. Gateway эмитит `chat:message` в комнату `thread:{threadId}`. Клиент вступает через `join-chat-room`. `tsc --noEmit` — без ошибок.
+
 ## 2026-04-03 (сессия 4)
 
 ### ✅ [WEB-032] Media upload — Tasks 1-4 из 7 (продолжить в след. сессии)

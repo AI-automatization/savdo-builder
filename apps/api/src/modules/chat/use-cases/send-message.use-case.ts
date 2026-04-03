@@ -4,6 +4,7 @@ import { ChatMessage } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
+import { ChatGateway } from '../../../socket/chat.gateway';
 
 export interface SendMessageInput {
   threadId: string;
@@ -18,6 +19,7 @@ export class SendMessageUseCase {
   constructor(
     private readonly chatRepo: ChatRepository,
     private readonly config: ConfigService,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   async execute(input: SendMessageInput): Promise<ChatMessage> {
@@ -67,6 +69,8 @@ export class SendMessageUseCase {
     });
 
     this.logger.log(`Message sent to thread ${input.threadId} by user ${input.senderUserId}`);
+
+    this.chatGateway.emitChatMessage(message);
 
     return message;
   }
