@@ -8,6 +8,29 @@
 
 ---
 
+## 🔴 Нужно от Полата — блокирует Азима
+
+### 🔴 [API-010] GET /auth/me — эндпоинт не существует
+- **Домен:** `apps/api`
+- **Блокирует:** оба приложения (web-seller, web-buyer)
+- **Проблема:** При перезагрузке страницы `user` берётся из `localStorage` — данные могут быть устаревшими. Нет способа проверить актуальность токена и получить свежие данные пользователя без этого эндпоинта.
+- **Что нужно:** `GET /api/v1/auth/me` → возвращает `AuthUser` (id, phone, isPhoneVerified, role). Требует `JwtAuthGuard`. После — Азим добавит вызов при старте приложения в `AuthContext`.
+- **Файлы:** `apps/api/src/modules/auth/auth.controller.ts` + use-case
+
+### 🔴 [API-011] Delivery settings — поля не в PATCH /seller/store
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-seller` — страница настроек магазина
+- **Проблема:** В БД у `Store` есть `deliveryFeeType` (fixed/manual/none) и `deliveryFeeAmount`, но `update-store.dto.ts` их не принимает → Азим не может добавить UI управления доставкой.
+- **Что нужно:** Добавить в `UpdateStoreDto`:
+  ```ts
+  deliveryFeeType?: 'fixed' | 'manual' | 'none';
+  deliveryFeeAmount?: number;
+  ```
+  И обработать в use-case. После — Азим добавит секцию "Доставка" в `settings/page.tsx`.
+- **Файлы:** `apps/api/src/modules/stores/dto/update-store.dto.ts`, use-case обновления магазина
+
+---
+
 ## ✅ Выполнено (02.04.2026)
 
 - [x] **[WEB-022]** `DEV_OTP_ENABLED=true` на Railway — Азим может тестировать OTP ✅
