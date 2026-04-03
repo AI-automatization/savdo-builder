@@ -1,9 +1,11 @@
 'use client';
 
-import { use, useEffect } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct } from '../../../../../hooks/use-products';
+import { useStoreCategories } from '../../../../../hooks/use-seller';
+import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
@@ -72,6 +74,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     defaultValues: { isVisible: true, basePrice: 0 },
   });
 
+  const [mediaId, setMediaId] = useState<string | null>(null);
+  const { data: categories = [] } = useStoreCategories();
+  const [storeCategoryId, setStoreCategoryId] = useState<string | null>(null);
+  const initialCategoryIdRef = useRef<string | null>(null);
+
   // Populate form once product loads
   useEffect(() => {
     if (product) {
@@ -82,17 +89,21 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         sku:         product.sku ?? '',
         isVisible:   product.isVisible,
       });
+      setStoreCategoryId(product.storeCategoryId ?? null);
+      initialCategoryIdRef.current = product.storeCategoryId ?? null;
     }
   }, [product, reset]);
 
   async function onSubmit(values: EditProductForm) {
     await update.mutateAsync({
       id,
-      title:       values.title,
-      description: values.description || undefined,
-      basePrice:   Number(values.basePrice),
-      sku:         values.sku || undefined,
-      isVisible:   values.isVisible,
+      title:           values.title,
+      description:     values.description || undefined,
+      basePrice:       Number(values.basePrice),
+      sku:             values.sku || undefined,
+      isVisible:       values.isVisible,
+      mediaId:         mediaId ?? undefined,
+      storeCategoryId: storeCategoryId ?? undefined,
     });
     router.push('/products');
   }
@@ -199,6 +210,39 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="rounded-2xl p-6 flex flex-col gap-5" style={glass}>
 
+          {/* Photo */}
+          <div>
+            <Label>Фото товара</Label>
+            <div style={{ width: 100, height: 100 }}>
+              <ImageUploader
+                value={mediaId}
+                onChange={setMediaId}
+                purpose="product_image"
+                previewUrl={product?.mediaUrls?.[0] ?? null}
+              />
+            </div>
+          </div>
+
+          {/* Category */}
+          {categories.length > 0 && (
+            <div>
+              <Label>Категория</Label>
+              <select
+                value={storeCategoryId ?? ''}
+                onChange={(e) => setStoreCategoryId(e.target.value || null)}
+                className={focusCls}
+                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
+              >
+                <option value="" style={{ background: '#1a1d2e' }}>— Без категории —</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Title */}
           <div>
             <Label>Название <span style={{ color: "#f87171" }}>*</span></Label>
@@ -293,7 +337,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </button>
           <button
             type="submit"
-            disabled={!isDirty || isSubmitting || update.isPending}
+            disabled={!isDirty && storeCategoryId === initialCategoryIdRef.current && mediaId === null || isSubmitting || update.isPending}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-40"
             style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
           >

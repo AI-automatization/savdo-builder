@@ -8,6 +8,29 @@
 
 ---
 
+## 🔴 Нужно от Полата — блокирует Азима
+
+### 🔴 [API-010] GET /auth/me — эндпоинт не существует
+- **Домен:** `apps/api`
+- **Блокирует:** оба приложения (web-seller, web-buyer)
+- **Проблема:** При перезагрузке страницы `user` берётся из `localStorage` — данные могут быть устаревшими. Нет способа проверить актуальность токена и получить свежие данные пользователя без этого эндпоинта.
+- **Что нужно:** `GET /api/v1/auth/me` → возвращает `AuthUser` (id, phone, isPhoneVerified, role). Требует `JwtAuthGuard`. После — Азим добавит вызов при старте приложения в `AuthContext`.
+- **Файлы:** `apps/api/src/modules/auth/auth.controller.ts` + use-case
+
+### 🔴 [API-011] Delivery settings — поля не в PATCH /seller/store
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-seller` — страница настроек магазина
+- **Проблема:** В БД у `Store` есть `deliveryFeeType` (fixed/manual/none) и `deliveryFeeAmount`, но `update-store.dto.ts` их не принимает → Азим не может добавить UI управления доставкой.
+- **Что нужно:** Добавить в `UpdateStoreDto`:
+  ```ts
+  deliveryFeeType?: 'fixed' | 'manual' | 'none';
+  deliveryFeeAmount?: number;
+  ```
+  И обработать в use-case. После — Азим добавит секцию "Доставка" в `settings/page.tsx`.
+- **Файлы:** `apps/api/src/modules/stores/dto/update-store.dto.ts`, use-case обновления магазина
+
+---
+
 ## ✅ Выполнено (02.04.2026)
 
 - [x] **[WEB-022]** `DEV_OTP_ENABLED=true` на Railway — Азим может тестировать OTP ✅
@@ -120,14 +143,21 @@
 
 ~~[WEB-027] — ✅ Chat gateway готов, блокер снят (Полат, 03.04.2026)~~
 
+## 🟡 Следующие задачи — Азим
+
+### 🟡 [WEB-034] Product variants — управление вариантами товара
+- **Домен:** `apps/web-seller`
+- **Кто берёт:** Азим
+- **Детали:** Варианты товара в product edit page. Простые варианты: `titleOverride` (свободный текст), `priceOverride`, `stockQuantity`, `isActive`. Хуки готовы в `use-products.ts`.
+- **Файлы:**
+  - Новый: `apps/web-seller/src/components/product-variants-section.tsx`
+  - Modify: `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
+
+### 🟡 [WEB-027] Socket.IO chat real-time (РАЗБЛОКИРОВАН ✅)
+- **Домен:** `apps/web-seller`, `apps/web-buyer`
+- **Кто берёт:** Азим
+- **Детали:** Заменить `refetchInterval: 10_000` в `useMessages` на Socket.IO. Комната: `thread:{threadId}`, событие: `chat:message`.
+- **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
+
 ~~[WEB-028] — ✅ Готово~~
 
-## 🟡 В работе — Азим
-
-### 🟡 [WEB-032] Media upload — Tasks 5-7 (продолжить)
-- **Домен:** `apps/web-seller`
-- **Детали:** Tasks 1-4 готовы. Осталось:
-  - Task 5: ImageUploader в `products/[id]/edit/page.tsx` (previewUrl от `product.mediaUrls?.[0]`)
-  - Task 6: logo + cover ImageUploaders в `settings/page.tsx` (StoreSettingsSection)
-  - Task 7: `npx tsc --noEmit` в `apps/web-seller`, исправить ошибки, обновить done.md
-- **Файлы:** план `docs/superpowers/plans/2026-04-03-media-upload.md` (Tasks 5-7)

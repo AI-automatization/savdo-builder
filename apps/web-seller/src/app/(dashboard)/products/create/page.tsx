@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useCreateProduct } from '../../../../hooks/use-products';
+import { useStoreCategories } from '../../../../hooks/use-seller';
 import { track } from '../../../../lib/analytics';
 import { ImageUploader } from '../../../../components/image-uploader';
 
@@ -49,6 +50,9 @@ export default function CreateProductPage() {
 
   const [mediaId, setMediaId] = useState<string | null>(null);
 
+  const { data: categories = [] } = useStoreCategories();
+  const [storeCategoryId, setStoreCategoryId] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -59,12 +63,13 @@ export default function CreateProductPage() {
 
   async function onSubmit(values: CreateProductForm) {
     const product = await create.mutateAsync({
-      title:       values.title,
-      description: values.description || undefined,
-      basePrice:   Number(values.basePrice),
-      sku:         values.sku || undefined,
-      isVisible:   values.isVisible,
-      mediaId:     mediaId ?? undefined,
+      title:           values.title,
+      description:     values.description || undefined,
+      basePrice:       Number(values.basePrice),
+      sku:             values.sku || undefined,
+      isVisible:       values.isVisible,
+      mediaId:         mediaId ?? undefined,
+      storeCategoryId: storeCategoryId ?? undefined,
     });
     track.productCreated(product.storeId, product.id);
     router.push('/products');
@@ -170,6 +175,26 @@ export default function CreateProductPage() {
               {...register('description')}
             />
           </div>
+
+          {/* Category */}
+          {categories.length > 0 && (
+            <div>
+              <Label>Категория</Label>
+              <select
+                value={storeCategoryId ?? ''}
+                onChange={(e) => setStoreCategoryId(e.target.value || null)}
+                className={inputFocusClass}
+                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
+              >
+                <option value="" style={{ background: '#1a1d2e' }}>— Без категории —</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Visible toggle */}
           <div className="flex items-center justify-between py-1">
