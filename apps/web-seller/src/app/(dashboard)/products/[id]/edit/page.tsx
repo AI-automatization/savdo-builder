@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct } from '../../../../../hooks/use-products';
@@ -77,6 +77,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [mediaId, setMediaId] = useState<string | null>(null);
   const { data: categories = [] } = useStoreCategories();
   const [storeCategoryId, setStoreCategoryId] = useState<string | null>(null);
+  const initialCategoryIdRef = useRef<string | null>(null);
 
   // Populate form once product loads
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         isVisible:   product.isVisible,
       });
       setStoreCategoryId(product.storeCategoryId ?? null);
+      initialCategoryIdRef.current = product.storeCategoryId ?? null;
     }
   }, [product, reset]);
 
@@ -335,7 +337,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </button>
           <button
             type="submit"
-            disabled={!isDirty || isSubmitting || update.isPending}
+            disabled={!isDirty && storeCategoryId === initialCategoryIdRef.current && mediaId === null || isSubmitting || update.isPending}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-40"
             style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
           >
