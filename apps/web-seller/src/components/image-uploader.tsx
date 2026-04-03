@@ -1,7 +1,7 @@
 // apps/web-seller/src/components/image-uploader.tsx
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getUploadUrl, confirmUpload } from '../lib/api/media.api';
 import type { MediaPurpose } from '../lib/api/media.api';
 
@@ -55,7 +55,14 @@ export function ImageUploader({
   const [localPreview, setLocalPreview] = useState<string | null>(null);
 
   const displayUrl = localPreview ?? previewUrl ?? null;
-  const hasImage = value !== null || displayUrl !== null;
+
+  useEffect(() => {
+    return () => {
+      if (localPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(localPreview);
+      }
+    };
+  }, [localPreview]);
 
   async function handleFile(file: File) {
     setError(null);
@@ -152,7 +159,7 @@ export function ImageUploader({
     );
   }
 
-  if (hasImage && displayUrl) {
+  if (displayUrl) {
     return (
       <div style={{ ...base, border: '2px solid rgba(167,139,250,.25)', background: '#1a1d2e' }} onClick={() => inputRef.current?.click()}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
