@@ -112,8 +112,12 @@ function StoreCategoriesSection() {
   async function saveAdd() {
     const name = newValue.trim();
     if (!name) { cancelAdd(); return; }
-    await create.mutateAsync({ name, sortOrder: categories.length + 1 });
-    cancelAdd();
+    try {
+      await create.mutateAsync({ name, sortOrder: categories.length + 1 });
+      cancelAdd();
+    } catch {
+      // keep add row open on failure
+    }
   }
 
   async function handleDelete(id: string) {
