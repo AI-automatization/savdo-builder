@@ -123,5 +123,21 @@
 
 ~~[WEB-027] — ✅ Chat gateway готов, блокер снят (Полат, 03.04.2026)~~
 
+## 🟡 Следующие задачи — Азим
+
+### 🟡 [WEB-034] Product variants — управление вариантами товара
+- **Домен:** `apps/web-seller`
+- **Кто берёт:** Азим
+- **Детали:** Варианты товара в product edit page. Простые варианты: `titleOverride` (свободный текст), `priceOverride`, `stockQuantity`, `isActive`. Хуки готовы в `use-products.ts`.
+- **Файлы:**
+  - Новый: `apps/web-seller/src/components/product-variants-section.tsx`
+  - Modify: `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
+
+### 🟡 [WEB-027] Socket.IO chat real-time (РАЗБЛОКИРОВАН ✅)
+- **Домен:** `apps/web-seller`, `apps/web-buyer`
+- **Кто берёт:** Азим
+- **Детали:** Заменить `refetchInterval: 10_000` в `useMessages` на Socket.IO. Комната: `thread:{threadId}`, событие: `chat:message`.
+- **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
+
 ~~[WEB-028] — ✅ Готово~~
 
