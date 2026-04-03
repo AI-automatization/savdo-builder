@@ -74,6 +74,7 @@ function StoreCategoriesSection() {
   const [editValue, setEditValue]     = useState('');
   const [adding, setAdding]           = useState(false);
   const [newValue, setNewValue]       = useState('');
+  const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const newInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,8 +91,12 @@ function StoreCategoriesSection() {
   async function saveEdit(id: string) {
     const name = editValue.trim();
     if (!name) { cancelEdit(); return; }
-    await update.mutateAsync({ id, name });
-    cancelEdit();
+    try {
+      await update.mutateAsync({ id, name });
+      cancelEdit();
+    } catch {
+      // keep edit open; update.isError will be true (TanStack Query tracks it)
+    }
   }
 
   function startAdd() {
@@ -112,11 +117,15 @@ function StoreCategoriesSection() {
   }
 
   async function handleDelete(id: string) {
+    if (deletingId) return;
     setDeleteError(null);
+    setDeletingId(id);
     try {
       await remove.mutateAsync(id);
     } catch {
       setDeleteError('Нельзя удалить категорию, к которой привязаны товары.');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -206,15 +215,16 @@ function StoreCategoriesSection() {
           ) : (
             <>
               <span
-                className="flex-1 text-sm text-white cursor-pointer transition-colors hover:text-purple-300"
-                onClick={() => startEdit(cat)}
+                className="flex-1 text-sm text-white transition-colors"
+                onClick={() => !update.isPending && startEdit(cat)}
+                style={{ cursor: update.isPending ? 'default' : 'pointer', opacity: update.isPending ? 0.5 : 1 }}
               >
                 {cat.name}
               </span>
               <button
                 type="button"
                 onClick={() => handleDelete(cat.id)}
-                disabled={remove.isPending}
+                disabled={!!deletingId}
                 className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
                 style={{ color: '#f87171' }}
                 aria-label="Удалить"
