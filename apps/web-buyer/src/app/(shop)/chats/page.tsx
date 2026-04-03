@@ -6,7 +6,7 @@ import { UserRole } from "types";
 import type { ChatThread } from "types";
 import { useAuth } from "@/lib/auth/context";
 import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
-import { useThreads, useMessages, useSendMessage } from "@/hooks/use-chat";
+import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -173,6 +173,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 
 function ChatView({ thread }: { thread: ChatThread }) {
   const { data, isLoading } = useMessages(thread.id);
+  useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);

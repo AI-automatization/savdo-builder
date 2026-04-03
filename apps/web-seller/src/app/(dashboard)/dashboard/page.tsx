@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useStore } from '../../../hooks/use-seller';
 import { useSellerOrders } from '../../../hooks/use-orders';
 import { useSellerSummary } from '../../../hooks/use-analytics';
@@ -190,7 +191,7 @@ export default function DashboardPage() {
       <div className="rounded-2xl overflow-hidden" style={glass}>
         <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <p className="text-sm font-semibold text-white">Последние заказы</p>
-          <a href="/orders" className="text-xs font-medium" style={{ color: "#A78BFA" }}>Все заказы →</a>
+          <Link href="/orders" className="text-xs font-medium" style={{ color: "#A78BFA" }}>Все заказы →</Link>
         </div>
 
         {ordersLoading ? (
@@ -211,7 +212,7 @@ export default function DashboardPage() {
         ) : (
           <div>
             {orders.map((o) => (
-              <a key={o.id} href={`/orders/${o.id}`} className="flex items-center gap-4 px-5 py-3 transition-opacity hover:opacity-75" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+              <Link key={o.id} href={`/orders/${o.id}`} className="flex items-center gap-4 px-5 py-3 transition-opacity hover:opacity-75" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                 <span className="text-xs font-mono shrink-0" style={{ color: "rgba(255,255,255,0.30)" }}>
                   #{o.id.slice(-4).toUpperCase()}
                 </span>
@@ -230,7 +231,7 @@ export default function DashboardPage() {
                 >
                   {STATUS_LABELS[o.status] ?? o.status}
                 </span>
-              </a>
+              </Link>
             ))}
           </div>
         )}
@@ -243,7 +244,7 @@ export default function DashboardPage() {
           { label: "Обработать заказы", href: "/orders",          icon: "📋" },
           { label: "Аналитика",         href: "/analytics",       icon: "📊" },
         ].map((a) => (
-          <a
+          <Link
             key={a.label}
             href={a.href}
             className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white transition-all hover:opacity-80"
@@ -251,7 +252,7 @@ export default function DashboardPage() {
           >
             <span className="text-xl">{a.icon}</span>
             {a.label}
-          </a>
+          </Link>
         ))}
       </div>
 

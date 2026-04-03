@@ -1,0 +1,351 @@
+'use client';
+
+import { useRef, useState } from 'react';
+import type { ProductVariant } from 'types';
+import {
+  useProductVariants,
+  useCreateVariant,
+  useUpdateVariant,
+  useDeleteVariant,
+} from '../hooks/use-products';
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const glass = {
+  background:           'rgba(255,255,255,0.07)',
+  backdropFilter:       'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  border:               '1px solid rgba(255,255,255,0.11)',
+} as const;
+
+const fieldStyle = {
+  background:   'rgba(255,255,255,0.06)',
+  border:       '1px solid rgba(255,255,255,0.13)',
+  color:        '#fff',
+  borderRadius: '0.625rem',
+  outline:      'none',
+  width:        '100%',
+  padding:      '0.5rem 0.75rem',
+  fontSize:     '0.8125rem',
+} as const;
+
+const confirmBtn = {
+  flexShrink: 0,
+  width: 28,
+  height: 28,
+  borderRadius: '0.5rem',
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  background: 'rgba(167,139,250,.18)',
+  border: '1px solid rgba(167,139,250,.30)',
+  color: '#A78BFA',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
+
+const cancelBtn = {
+  ...confirmBtn,
+  background: 'rgba(255,255,255,.06)',
+  border: '1px solid rgba(255,255,255,.12)',
+  color: 'rgba(255,255,255,0.45)',
+} as const;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatPrice(price: number | null): string {
+  if (price === null) return '—';
+  return price.toLocaleString('ru-RU') + ' сум';
+}
+
+// ── Inline form for add/edit ──────────────────────────────────────────────────
+
+interface VariantForm {
+  titleOverride: string;
+  sku: string;
+  priceOverride: string;
+  stockQuantity: string;
+  isActive: boolean;
+}
+
+function emptyForm(sku?: string): VariantForm {
+  return { titleOverride: '', sku: sku ?? '', priceOverride: '', stockQuantity: '0', isActive: true };
+}
+
+function variantToForm(v: ProductVariant): VariantForm {
+  return {
+    titleOverride: v.titleOverride ?? '',
+    sku:           v.sku,
+    priceOverride: v.priceOverride !== null ? String(v.priceOverride) : '',
+    stockQuantity: String(v.stockQuantity),
+    isActive:      v.isActive,
+  };
+}
+
+interface InlineFormProps {
+  initial: VariantForm;
+  onSave: (f: VariantForm) => Promise<void>;
+  onCancel: () => void;
+  saving: boolean;
+}
+
+function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProps) {
+  const [f, setF] = useState<VariantForm>(initial);
+  const set = (k: keyof VariantForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setF((prev) => ({ ...prev, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') onCancel();
+  }
+
+  return (
+    <div
+      className="rounded-xl p-4 flex flex-col gap-3 mt-1"
+      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
+      onKeyDown={handleKeyDown}
+    >
+      {/* Row 1: title + sku */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Название</label>
+          <input
+            autoFocus
+            style={fieldStyle}
+            placeholder="Красный / XL"
+            value={f.titleOverride}
+            onChange={set('titleOverride')}
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Артикул (SKU)</label>
+          <input
+            style={fieldStyle}
+            placeholder="SKU-VAR-001"
+            value={f.sku}
+            onChange={set('sku')}
+          />
+        </div>
+      </div>
+
+      {/* Row 2: price + stock */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Цена (сум, пусто = базовая)</label>
+          <input
+            type="number"
+            min={0}
+            style={fieldStyle}
+            placeholder="0"
+            value={f.priceOverride}
+            onChange={set('priceOverride')}
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Остаток</label>
+          <input
+            type="number"
+            min={0}
+            style={fieldStyle}
+            placeholder="0"
+            value={f.stockQuantity}
+            onChange={set('stockQuantity')}
+          />
+        </div>
+      </div>
+
+      {/* Row 3: active toggle + buttons */}
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-white">
+          <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={f.isActive}
+            onChange={set('isActive')}
+          />
+          <div
+            className="relative w-9 h-5 rounded-full transition-all peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white"
+            style={{ background: f.isActive ? 'linear-gradient(135deg,#7C3AED,#A78BFA)' : 'rgba(255,255,255,0.15)' }}
+          />
+          Активен
+        </label>
+
+        <div className="flex gap-2">
+          <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена">✕</button>
+          <button
+            type="button"
+            style={confirmBtn}
+            disabled={saving || !f.sku.trim()}
+            onClick={() => onSave(f)}
+            title="Сохранить"
+          >
+            {saving ? '…' : '✓'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+interface Props {
+  productId: string;
+  productSku: string | null;
+}
+
+export function ProductVariantsSection({ productId, productSku }: Props) {
+  const { data: variants = [], isLoading } = useProductVariants(productId);
+  const create = useCreateVariant();
+  const update = useUpdateVariant();
+  const remove = useDeleteVariant();
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [adding, setAdding]       = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
+  async function handleAdd(f: VariantForm) {
+    if (!f.sku.trim()) return;
+    await create.mutateAsync({
+      productId,
+      sku:           f.sku.trim(),
+      titleOverride: f.titleOverride.trim() || undefined,
+      priceOverride: f.priceOverride !== '' ? Number(f.priceOverride) : undefined,
+      stockQuantity: Number(f.stockQuantity) || 0,
+      isActive:      f.isActive,
+    });
+    setAdding(false);
+  }
+
+  async function handleUpdate(variantId: string, f: VariantForm) {
+    await update.mutateAsync({
+      productId,
+      variantId,
+      sku:           f.sku.trim(),
+      titleOverride: f.titleOverride.trim() || undefined,
+      priceOverride: f.priceOverride !== '' ? Number(f.priceOverride) : undefined,
+      stockQuantity: Number(f.stockQuantity) || 0,
+      isActive:      f.isActive,
+    });
+    setEditingId(null);
+  }
+
+  async function handleDelete(variantId: string) {
+    if (!confirm('Удалить вариант?')) return;
+    setDeletingId(variantId);
+    try {
+      await remove.mutateAsync({ productId, variantId });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="rounded-2xl p-5 flex flex-col gap-4 mt-4" style={glass}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.28)' }}>
+          Варианты товара
+        </p>
+        {variants.length > 0 && (
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            {variants.length} шт.
+          </span>
+        )}
+      </div>
+
+      {isLoading && (
+        <p className="text-xs py-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Загрузка...</p>
+      )}
+
+      {!isLoading && variants.length === 0 && !adding && (
+        <p className="text-xs py-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          Нет вариантов. Добавьте, если товар продаётся в разных размерах, цветах и т.д.
+        </p>
+      )}
+
+      {/* Variant rows */}
+      {variants.map((v) => (
+        <div key={v.id}>
+          <div
+            className="flex items-center gap-3 py-2"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            {/* Active dot */}
+            <span
+              className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
+              style={{ background: v.isActive ? '#34d399' : 'rgba(255,255,255,0.20)' }}
+            />
+
+            {/* Name + stock */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white truncate">
+                {v.titleOverride ?? v.sku}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                {formatPrice(v.priceOverride)} · склад: {v.stockQuantity}
+              </p>
+            </div>
+
+            {/* Edit / Delete */}
+            {editingId !== v.id && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  className="text-xs transition-opacity opacity-40 hover:opacity-80"
+                  style={{ color: '#A78BFA' }}
+                  onClick={() => { setAdding(false); setEditingId(v.id); }}
+                >
+                  ✏
+                </button>
+                <button
+                  type="button"
+                  className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
+                  style={{ color: '#f87171' }}
+                  disabled={deletingId === v.id}
+                  onClick={() => handleDelete(v.id)}
+                >
+                  {deletingId === v.id ? '…' : '🗑'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {editingId === v.id && (
+            <InlineVariantForm
+              initial={variantToForm(v)}
+              saving={update.isPending}
+              onSave={(f) => handleUpdate(v.id, f)}
+              onCancel={() => setEditingId(null)}
+            />
+          )}
+        </div>
+      ))}
+
+      {/* Add form */}
+      {adding && (
+        <InlineVariantForm
+          initial={emptyForm(productSku ? `${productSku}-V${variants.length + 1}` : undefined)}
+          saving={create.isPending}
+          onSave={handleAdd}
+          onCancel={() => setAdding(false)}
+        />
+      )}
+
+      {/* Add button */}
+      {!adding && (
+        <button
+          type="button"
+          className="text-xs font-semibold transition-opacity hover:opacity-80 text-left mt-1"
+          style={{ color: '#A78BFA' }}
+          onClick={() => { setEditingId(null); setAdding(true); }}
+        >
+          + Добавить вариант
+        </button>
+      )}
+    </div>
+  );
+}

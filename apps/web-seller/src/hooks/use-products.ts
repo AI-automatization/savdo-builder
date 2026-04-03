@@ -33,6 +33,7 @@ export function useSellerProducts(params?: {
   return useQuery({
     queryKey: productKeys.list(params),
     queryFn: () => getSellerProducts(params),
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -41,6 +42,7 @@ export function useSellerProduct(id: string) {
     queryKey: productKeys.detail(id),
     queryFn: () => getSellerProduct(id),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -91,6 +93,7 @@ export function useProductVariants(productId: string) {
     queryKey: productKeys.variants(productId),
     queryFn: () => getProductVariants(productId),
     enabled: !!productId,
+    staleTime: 3 * 60 * 1000,
   });
 }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSellerProducts } from '@/hooks/use-products';
 import { ProductStatus } from 'types';
@@ -18,6 +19,20 @@ const STATUS_LABELS: Record<string, string> = {
   [ProductStatus.HIDDEN_BY_ADMIN]:"Скрыт",
 };
 
+const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  [ProductStatus.ACTIVE]:         { bg: "rgba(52,211,153,.15)",   color: "#34d399" },
+  [ProductStatus.DRAFT]:          { bg: "rgba(251,191,36,.13)",   color: "#fbbf24" },
+  [ProductStatus.ARCHIVED]:       { bg: "rgba(255,255,255,.08)",  color: "rgba(255,255,255,0.40)" },
+  [ProductStatus.HIDDEN_BY_ADMIN]:{ bg: "rgba(248,113,113,.13)",  color: "#f87171" },
+};
+
+const STATUS_FILTERS: { key: ProductStatus | 'ALL'; label: string }[] = [
+  { key: 'ALL',                      label: 'Все' },
+  { key: ProductStatus.ACTIVE,       label: 'Активные' },
+  { key: ProductStatus.DRAFT,        label: 'Черновики' },
+  { key: ProductStatus.ARCHIVED,     label: 'Архив' },
+];
+
 function fmt(n: number) {
   return n.toLocaleString('ru-RU') + ' сум';
 }
@@ -33,10 +48,23 @@ function Skeleton({ className }: { className?: string }) {
 
 export default function ProductsPage() {
   const { data: products, isLoading } = useSellerProducts();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ProductStatus | 'ALL'>('ALL');
+
+  const filtered = useMemo(() => {
+    if (!products) return [];
+    const q = search.trim().toLowerCase();
+    return products.filter((p) => {
+      const matchStatus = statusFilter === 'ALL' || p.status === statusFilter;
+      const matchSearch = !q || p.title.toLowerCase().includes(q);
+      return matchStatus && matchSearch;
+    });
+  }, [products, search, statusFilter]);
 
   return (
     <div className="flex flex-col gap-5 max-w-4xl">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Товары</h1>
           <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
@@ -45,13 +73,57 @@ export default function ProductsPage() {
         </div>
         <Link
           href="/products/create"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shrink-0"
           style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
         >
-          + Добавить товар
+          + Добавить
         </Link>
       </div>
 
+      {/* Search + filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+            className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: "rgba(255,255,255,0.30)" }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск по названию..."
+            className="w-full h-9 pl-9 pr-3 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.11)",
+              '--tw-ring-color': 'rgba(167,139,250,0.45)',
+            } as React.CSSProperties}
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {STATUS_FILTERS.map((f) => {
+            const active = statusFilter === f.key;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all h-9"
+                style={
+                  active
+                    ? { background: "rgba(167,139,250,0.25)", color: "rgba(167,139,250,1)", border: "1px solid rgba(167,139,250,0.35)" }
+                    : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.10)" }
+                }
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Table */}
       <div className="rounded-2xl overflow-hidden" style={glass}>
         <div
           className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
@@ -74,44 +146,41 @@ export default function ProductsPage() {
               </div>
             ))}
           </>
-        ) : !products || products.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>
-            Товаров пока нет.{" "}
-            <Link href="/products/create" style={{ color: "#A78BFA" }}>Добавить первый →</Link>
+            {products?.length === 0
+              ? <><span>Товаров пока нет. </span><Link href="/products/create" style={{ color: "#A78BFA" }}>Добавить первый →</Link></>
+              : "Ничего не найдено"}
           </div>
         ) : (
-          products.map((p) => (
-            <div
-              key={p.id}
-              className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-5 py-3.5"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              <span className="text-sm font-medium text-white truncate">{p.title}</span>
-              <span className="text-sm font-medium" style={{ color: "#A78BFA" }}>
-                {fmt(p.basePrice)}
-              </span>
-              <span
-                className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                style={{
-                  background: p.status === ProductStatus.ACTIVE
-                    ? "rgba(52,211,153,.15)"
-                    : "rgba(255,255,255,.08)",
-                  color: p.status === ProductStatus.ACTIVE
-                    ? "#34d399"
-                    : "rgba(255,255,255,0.45)",
-                }}
+          filtered.map((p) => {
+            const sc = STATUS_COLORS[p.status] ?? { bg: "rgba(255,255,255,.08)", color: "rgba(255,255,255,0.45)" };
+            return (
+              <div
+                key={p.id}
+                className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-5 py-3.5"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               >
-                {STATUS_LABELS[p.status] ?? p.status}
-              </span>
-              <Link
-                href={`/products/${p.id}/edit`}
-                className="text-xs font-medium transition-opacity hover:opacity-80"
-                style={{ color: "rgba(167,139,250,0.70)" }}
-              >
-                Изменить
-              </Link>
-            </div>
-          ))
+                <span className="text-sm font-medium text-white truncate">{p.title}</span>
+                <span className="text-sm font-medium" style={{ color: "#A78BFA" }}>
+                  {fmt(p.basePrice)}
+                </span>
+                <span
+                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: sc.bg, color: sc.color }}
+                >
+                  {STATUS_LABELS[p.status] ?? p.status}
+                </span>
+                <Link
+                  href={`/products/${p.id}/edit`}
+                  className="text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ color: "rgba(167,139,250,0.70)" }}
+                >
+                  Изменить
+                </Link>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

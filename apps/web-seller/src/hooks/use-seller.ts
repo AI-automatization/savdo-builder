@@ -24,6 +24,7 @@ export function useSellerProfile() {
   return useQuery({
     queryKey: ['seller', 'profile'],
     queryFn: getSellerProfile,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -41,6 +42,7 @@ export function useStore() {
   return useQuery({
     queryKey: ['seller', 'store'],
     queryFn: getStore,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -98,6 +100,7 @@ export function useStoreCategories() {
   return useQuery({
     queryKey: ['categories', 'store'],
     queryFn: getStoreCategories,
+    staleTime: 10 * 60 * 1000,
   });
 }
 

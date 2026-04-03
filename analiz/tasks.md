@@ -125,39 +125,24 @@
 
 > Все критические страницы Phase B готовы. Осталось ждать Полата по WEB-022 для тестирования.
 
-## ✅ Выполнено (03.04.2026) — Азим
+## 🟡 Следующие задачи — Азим (без блокеров)
 
-- Auth persistence (F5 не разлогинивает) ✅
-- Seller logout — реальный вызов API + очистка кеша ✅
-- Dashboard auth guard + редирект на /login ✅
-- Onboarding guard (нет магазина → онбординг, есть → dashboard) ✅
-- Login redirect если уже залогинен ✅
-- Token expiry event → авто-logout в обоих приложениях ✅
-- queryClient.clear() при logout ✅
-- Analytics → реальный POST /api/v1/analytics/track ✅
-- Seller sidebar — реальный phone вместо hardcoded ✅
-- Dashboard — views из аналитики вместо ложной revenue ✅
-- Buyer SEO meta (generateMetadata per store) ✅
-- Buyer root title ("Create Next App" → реальный) ✅
-- @ts-ignore × 2 → as React.CSSProperties ✅
+### [WEB-035] Buyer: поиск товаров в сторфронте
+- **Домен:** `apps/web-buyer`
+- **Детали:** На `StorePage` добавить строку поиска по названию товара (client-side filter через `useMemo`). Показывать только при наличии >8 товаров в магазине.
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx`
 
-~~[WEB-027] — ✅ Chat gateway готов, блокер снят (Полат, 03.04.2026)~~
-
-## 🟡 Следующие задачи — Азим
-
-### 🟡 [WEB-034] Product variants — управление вариантами товара
+### [WEB-036] Seller: быстрый toggle активности товара из списка
 - **Домен:** `apps/web-seller`
-- **Кто берёт:** Азим
-- **Детали:** Варианты товара в product edit page. Простые варианты: `titleOverride` (свободный текст), `priceOverride`, `stockQuantity`, `isActive`. Хуки готовы в `use-products.ts`.
-- **Файлы:**
-  - Новый: `apps/web-seller/src/components/product-variants-section.tsx`
-  - Modify: `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
+- **Детали:** В `products/page.tsx` добавить кнопку/toggle для переключения ACTIVE ↔ DRAFT прямо из строки списка, без перехода на страницу редактирования. Использовать `useUpdateProduct` мутацию.
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`, `apps/web-seller/src/hooks/use-products.ts`
 
-### 🟡 [WEB-027] Socket.IO chat real-time (РАЗБЛОКИРОВАН ✅)
-- **Домен:** `apps/web-seller`, `apps/web-buyer`
-- **Кто берёт:** Азим
-- **Детали:** Заменить `refetchInterval: 10_000` в `useMessages` на Socket.IO. Комната: `thread:{threadId}`, событие: `chat:message`.
-- **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
+### [WEB-037] Seller: пагинация в списке заказов
+- **Домен:** `apps/web-seller`
+- **Детали:** API уже поддерживает `page` параметр. Добавить кнопку "Загрузить ещё" (бесконечная прокрутка или page+1) в `orders/page.tsx`.
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/orders/page.tsx`
 
-~~[WEB-028] — ✅ Готово~~
+## 🔴 Ждём Полата (блокируют Азима)
+
+> API-010 и API-011 в таблице блокеров выше (начало файла)
 

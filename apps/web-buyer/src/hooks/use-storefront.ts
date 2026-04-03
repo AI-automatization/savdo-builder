@@ -39,6 +39,7 @@ export function useProducts(params: {
     }),
     queryFn: () => getProducts(params),
     enabled: !!params.storeId,
+    staleTime: 3 * 60 * 1000,
   });
 }
 
@@ -47,5 +48,6 @@ export function useProduct(id: string) {
     queryKey: storefrontKeys.product(id),
     queryFn: () => getProduct(id),
     enabled: !!id,
+    staleTime: 3 * 60 * 1000,
   });
 }

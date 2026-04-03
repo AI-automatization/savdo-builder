@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { OrderStatus, DeliveryType } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
@@ -109,6 +109,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const { data: order, isLoading, isError } = useOrder(id);
   const cancelOrder = useCancelOrder();
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const NAV = [
     { href: "/",        label: "Магазин", icon: <IcoShop /> },
@@ -327,15 +328,36 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 Написать продавцу
               </a>
             )}
-            {canCancel && (
+            {canCancel && !confirmCancel && (
               <button
-                onClick={() => cancelOrder.mutate({ id: order.id })}
-                disabled={cancelOrder.isPending}
-                className="w-full py-3 rounded-2xl text-sm font-semibold disabled:opacity-40 transition-opacity"
+                onClick={() => setConfirmCancel(true)}
+                className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity"
                 style={{ background: "rgba(248,113,113,0.12)", color: "rgba(248,113,113,.90)", border: "1px solid rgba(248,113,113,0.20)" }}
               >
-                {cancelOrder.isPending ? "Отмена заказа..." : "Отменить заказ"}
+                Отменить заказ
               </button>
+            )}
+            {canCancel && confirmCancel && (
+              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.22)" }}>
+                <p className="text-sm text-white/80 text-center">Отменить заказ #{shortId(order.id)}?</p>
+                <div className="flex gap-2.5">
+                  <button
+                    onClick={() => setConfirmCancel(false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                    style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)" }}
+                  >
+                    Назад
+                  </button>
+                  <button
+                    onClick={() => cancelOrder.mutate({ id: order.id })}
+                    disabled={cancelOrder.isPending}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+                    style={{ background: "rgba(248,113,113,0.22)", color: "rgba(248,113,113,.95)" }}
+                  >
+                    {cancelOrder.isPending ? "..." : "Да, отменить"}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

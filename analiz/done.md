@@ -1,5 +1,69 @@
 # Done — Азим + Полат
 
+## 2026-04-04 (сессия 10 — продолжение разработки)
+
+### ✅ [BUGFIX] Onboarding: Rules of Hooks violation
+- **Важность:** 🔴
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+- **Что сделано:** 7 хуков (useState × 3, useCreateStore/updateProfile/createProduct/submitStore) вызывались после условного `return null`. Перенесены до любых return-statements.
+
+### ✅ [FEAT] Seller dashboard: mobile responsive sidebar
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/layout.tsx`
+- **Что сделано:** Desktop (`md:`) — постоянный сайдбар без изменений. Mobile — гамбургер-кнопка в хедере, slide-in drawer (translateX), overlay backdrop. Закрывается при навигации. `SidebarContent` вынесен как отдельный компонент вне `DashboardLayout` (избегает remount на каждом рендере).
+
+### ✅ [FEAT] Seller sidebar: pending orders badge
+- **Важность:** 🟢
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/layout.tsx`
+- **Что сделано:** Жёлтый бейдж с числом на пункте "Заказы" в сайдбаре, показывает количество PENDING заказов. Данные из `useSellerOrders({ status: PENDING })`.
+
+### ✅ [FEAT] Products page: search + status filter
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+- **Что сделано:** Поисковая строка (клиентская фильтрация по названию) + таб-фильтр по статусу (Все/Активные/Черновики/Архив). Цвета статусов расширены: DRAFT — жёлтый, HIDDEN_BY_ADMIN — красный. Фильтрация через `useMemo`.
+
+## 2026-04-04 (сессия 9 — bug sweep)
+
+### ✅ [BUGFIX] Комплексный баг-свип обоих приложений
+- **Важность:** 🔴
+- **Дата:** 04.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — самовывоз: canSubmit не требует адрес, submit передаёт placeholder
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — требовать выбор варианта перед добавлением в корзину
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` — confirm перед отменой заказа + useState import
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — `<a href>` → `<Link>` (5 мест, полная перезагрузка)
+  - Все hooks (13 запросов) — добавлен staleTime
+  - `apps/web-buyer/src/hooks/use-cart.ts` — useRemoveCartItem: invalidate → setQueryData
+- **Что сделано:** Устранены критические UX-баги: невозможность оформить самовывоз, добавление товара без выбора варианта, случайная отмена заказа, полные перезагрузки страниц в dashboard. Оптимизированы запросы.
+
+## 2026-04-04 (сессия 8)
+
+### ✅ [WEB-027] Socket.IO chat real-time
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:**
+  - Новый: `apps/web-buyer/src/lib/socket.ts`
+  - Modify: `apps/web-buyer/package.json` — добавлен `socket.io-client@^4.8.3`
+  - Modify: `apps/web-seller/src/hooks/use-chat.ts` — добавлен `useChatSocket(threadId)`
+  - Modify: `apps/web-buyer/src/hooks/use-chat.ts` — добавлен `useChatSocket(threadId)`, удалён `refetchInterval: 10_000`
+  - Modify: `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — вызов `useChatSocket` в `ChatWindow`
+  - Modify: `apps/web-buyer/src/app/(shop)/chats/page.tsx` — вызов `useChatSocket` в `ChatView`
+- **Что сделано:** Заменён polling (10s) на Socket.IO. Комната `thread:{threadId}`, событие `chat:message` → invalidate messages query. Seller использует существующий `getSocket()`. Buyer получил новый `lib/socket.ts` и зависимость `socket.io-client`.
+
+## 2026-04-04 (сессия 7)
+
+### ✅ [WEB-034] Product variants — управление вариантами товара
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:**
+  - Новый: `apps/web-seller/src/components/product-variants-section.tsx`
+  - Modify: `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — добавлена секция вариантов
+- **Что сделано:** Компонент `ProductVariantsSection` — inline add/edit/delete вариантов. 4 поля: название (titleOverride), SKU, цена (priceOverride, null = базовая), остаток, флаг isActive. Форма разворачивается под строкой при редактировании. Хуки: useProductVariants, useCreateVariant, useUpdateVariant, useDeleteVariant.
+
 ## 2026-04-03 (сессия 6)
 
 ### ✅ [ADM-021] Dashboard charts — recharts (Полат)

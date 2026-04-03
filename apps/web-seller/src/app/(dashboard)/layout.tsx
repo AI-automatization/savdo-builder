@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { track } from "../../lib/analytics";
@@ -9,6 +9,8 @@ import { useSellerSocket } from "../../hooks/use-seller-socket";
 import { useAuth } from "../../lib/auth/context";
 import { useLogout } from "../../hooks/use-auth";
 import { useUnreadCount } from "../../hooks/use-notifications";
+import { useSellerOrders } from "../../hooks/use-orders";
+import { OrderStatus } from "types";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -61,6 +63,111 @@ const NAV = [
   },
 ];
 
+// ── Sidebar content ───────────────────────────────────────────────────────────
+
+interface SidebarProps {
+  pathname: string;
+  pendingCount: number;
+  store: { slug: string; id: string } | undefined;
+  userPhone: string | undefined;
+  logoutPending: boolean;
+  onLogout: () => void;
+  onCopyLink: () => void;
+}
+
+function SidebarContent({ pathname, pendingCount, store, userPhone, logoutPending, onLogout, onCopyLink }: SidebarProps) {
+  return (
+    <>
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
+        >
+          🛒
+        </div>
+        <span className="text-base font-bold" style={{ color: "#A78BFA" }}>Savdo</span>
+        <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA" }}>Beta</span>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+        {NAV.map(({ href, label, icon }) => {
+          const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+          const isOrders = href === "/orders";
+          return (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={
+                active
+                  ? { background: "rgba(167,139,250,.20)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.30)" }
+                  : { color: "rgba(255,255,255,0.50)", border: "1px solid transparent" }
+              }
+            >
+              <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
+              <span className="flex-1">{label}</span>
+              {isOrders && pendingCount > 0 && (
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: "rgba(251,191,36,.18)", color: "#fbbf24", minWidth: 18, textAlign: "center" }}
+                >
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Store link shortcut */}
+      <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
+          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Ваш магазин</p>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-white/60 truncate">
+              {store ? `savdo.uz/${store.slug}` : 'savdo.uz/...'}
+            </span>
+            <button
+              className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0 transition-opacity hover:opacity-80"
+              style={{ background: "rgba(167,139,250,.20)", color: "#A78BFA" }}
+              onClick={onCopyLink}
+            >
+              Копировать
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* User */}
+      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+          style={{ background: "rgba(167,139,250,.25)", color: "#A78BFA" }}
+        >
+          А
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-white truncate">{userPhone ?? '—'}</p>
+          <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.30)" }}>Продавец</p>
+        </div>
+        <button
+          onClick={onLogout}
+          disabled={logoutPending}
+          title="Выйти"
+          style={{ color: "rgba(255,255,255,0.28)" }}
+          className="disabled:opacity-40"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+          </svg>
+        </button>
+      </div>
+    </>
+  );
+}
+
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -70,7 +177,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: store, isLoading: storeLoading, error: storeError } = useStore();
   const { toasts } = useSellerSocket();
   const { data: unreadCount = 0 } = useUnreadCount();
+  const { data: pendingOrders } = useSellerOrders({ status: OrderStatus.PENDING });
+  const pendingCount = pendingOrders?.meta.total ?? 0;
   const logoutMutation = useLogout();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close drawer on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
     if (!isAuthenticated) router.replace('/login');
@@ -90,6 +203,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthenticated) return null;
 
+  const sidebarProps: SidebarProps = {
+    pathname,
+    pendingCount,
+    store: store ? { slug: store.slug, id: store.id } : undefined,
+    userPhone: user?.phone,
+    logoutPending: logoutMutation.isPending,
+    onLogout: handleLogout,
+    onCopyLink: () => {
+      if (!store) return;
+      navigator.clipboard.writeText(`https://savdo.uz/${store.slug}`);
+      track.storeLinkCopied(store.id);
+    },
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
 
@@ -99,92 +226,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="absolute rounded-full" style={{ width: 400, height: 400, bottom: -100, left: -100,  background: "radial-gradient(circle, rgba(34,197,94,.10)  0%, transparent 70%)", filter: "blur(48px)" }} />
       </div>
 
-      {/* ── Sidebar ── */}
+      {/* ── Sidebar — desktop ── */}
       <aside
-        className="relative w-60 flex-shrink-0 flex flex-col h-full"
+        className="hidden md:flex relative w-60 flex-shrink-0 flex-col h-full"
         style={{ ...glass, zIndex: 10 }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
-          >
-            🛒
-          </div>
-          <span className="text-base font-bold" style={{ color: "#A78BFA" }}>Savdo</span>
-          <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA" }}>Beta</span>
-        </div>
+        <SidebarContent {...sidebarProps} />
+      </aside>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
-          {NAV.map(({ href, label, icon }) => {
-            const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-            return (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-                style={
-                  active
-                    ? { background: "rgba(167,139,250,.20)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.30)" }
-                    : { color: "rgba(255,255,255,0.50)", border: "1px solid transparent" }
-                }
-              >
-                <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
+      {/* ── Mobile overlay backdrop ── */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0"
+          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", zIndex: 40 }}
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
-        {/* Store link shortcut */}
-        <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Ваш магазин</p>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-white/60 truncate">
-                {store ? `savdo.uz/${store.slug}` : 'savdo.uz/...'}
-              </span>
-              <button
-                className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0 transition-opacity hover:opacity-80"
-                style={{ background: "rgba(167,139,250,.20)", color: "#A78BFA" }}
-                onClick={() => {
-                  if (!store) return;
-                  navigator.clipboard.writeText(`https://savdo.uz/${store.slug}`);
-                  track.storeLinkCopied(store.id);
-                }}
-              >
-                Копировать
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* User */}
-        <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-            style={{ background: "rgba(167,139,250,.25)", color: "#A78BFA" }}
-          >
-            А
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-white truncate">{user?.phone ?? '—'}</p>
-            <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.30)" }}>Продавец</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-            title="Выйти"
-            style={{ color: "rgba(255,255,255,0.28)" }}
-            className="disabled:opacity-40"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-            </svg>
-          </button>
-        </div>
+      {/* ── Sidebar — mobile drawer ── */}
+      <aside
+        className="md:hidden fixed top-0 left-0 h-full w-64 flex flex-col transition-transform duration-300"
+        style={{
+          ...glass,
+          zIndex: 50,
+          transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
+        }}
+      >
+        <SidebarContent {...sidebarProps} />
       </aside>
 
       {/* ── Main area ── */}
@@ -192,10 +260,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Top header */}
         <header
-          className="flex items-center justify-between px-6 h-14 flex-shrink-0"
+          className="flex items-center justify-between px-4 md:px-6 h-14 flex-shrink-0"
           style={glassTop}
         >
-          <div>
+          <div className="flex items-center gap-3">
+            {/* Hamburger — mobile only */}
+            <button
+              className="md:hidden flex items-center justify-center w-8 h-8 rounded-xl transition-opacity hover:opacity-80"
+              style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.60)" }}
+              onClick={() => setMobileOpen(true)}
+              aria-label="Открыть меню"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </button>
             <h2 className="text-sm font-semibold text-white">
               {NAV.find(n => pathname === n.href || (n.href !== "/dashboard" && pathname.startsWith(n.href)))?.label ?? "Дашборд"}
             </h2>
@@ -240,7 +319,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
       </div>

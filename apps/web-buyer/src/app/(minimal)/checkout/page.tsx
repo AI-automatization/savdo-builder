@@ -263,14 +263,19 @@ export default function CheckoutPage() {
     }
   }, [preview.data?.storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canSubmit = step === "form" && street.trim() && city.trim() && !confirm.isPending;
+  const canSubmit =
+    step === "form" &&
+    !confirm.isPending &&
+    (mode === "pickup" || (street.trim() !== "" && city.trim() !== ""));
 
   async function handleConfirm() {
     if (!canSubmit || !preview.data) return;
     setApiError(undefined);
     try {
       const order = await confirm.mutateAsync({
-        deliveryAddress: { street, city },
+        deliveryAddress: mode === "pickup"
+          ? { street: "Самовывоз", city: city.trim() || "—" }
+          : { street, city },
         buyerNote: note || undefined,
         deliveryFee,
       });
