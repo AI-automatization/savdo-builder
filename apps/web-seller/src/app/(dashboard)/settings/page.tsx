@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile } from '@/hooks/use-seller';
+import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories, useCreateStoreCategory, useUpdateStoreCategory, useDeleteStoreCategory } from '@/hooks/use-seller';
+import type { StoreCategory } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
 
 const glass = {
@@ -60,6 +61,217 @@ function SavedBadge({ show }: { show: boolean }) {
     <span className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: 'rgba(52,211,153,0.15)', color: 'rgba(52,211,153,.90)' }}>
       Сохранено
     </span>
+  );
+}
+
+function StoreCategoriesSection() {
+  const { data: categories = [], isLoading } = useStoreCategories();
+  const create = useCreateStoreCategory();
+  const update = useUpdateStoreCategory();
+  const remove = useDeleteStoreCategory();
+
+  const [editingId, setEditingId]     = useState<string | null>(null);
+  const [editValue, setEditValue]     = useState('');
+  const [adding, setAdding]           = useState(false);
+  const [newValue, setNewValue]       = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const newInputRef = useRef<HTMLInputElement>(null);
+
+  function startEdit(cat: StoreCategory) {
+    setEditingId(cat.id);
+    setEditValue(cat.name);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditValue('');
+  }
+
+  async function saveEdit(id: string) {
+    const name = editValue.trim();
+    if (!name) { cancelEdit(); return; }
+    await update.mutateAsync({ id, name });
+    cancelEdit();
+  }
+
+  function startAdd() {
+    setAdding(true);
+    setNewValue('');
+  }
+
+  function cancelAdd() {
+    setAdding(false);
+    setNewValue('');
+  }
+
+  async function saveAdd() {
+    const name = newValue.trim();
+    if (!name) { cancelAdd(); return; }
+    await create.mutateAsync({ name, sortOrder: categories.length + 1 });
+    cancelAdd();
+  }
+
+  async function handleDelete(id: string) {
+    setDeleteError(null);
+    try {
+      await remove.mutateAsync(id);
+    } catch {
+      setDeleteError('Нельзя удалить категорию, к которой привязаны товары.');
+    }
+  }
+
+  useEffect(() => {
+    if (adding) newInputRef.current?.focus();
+  }, [adding]);
+
+  const rowInputStyle: React.CSSProperties = {
+    flex: 1,
+    background: 'transparent',
+    border: '1px solid rgba(167,139,250,0.50)',
+    borderRadius: 8,
+    padding: '4px 8px',
+    fontSize: 13,
+    color: '#fff',
+    outline: 'none',
+  };
+
+  const confirmBtn: React.CSSProperties = {
+    fontSize: 12,
+    padding: '3px 8px',
+    borderRadius: 7,
+    color: '#34d399',
+    background: 'rgba(52,211,153,0.12)',
+    border: '1px solid rgba(52,211,153,0.20)',
+    cursor: 'pointer',
+  };
+
+  const cancelBtn: React.CSSProperties = {
+    fontSize: 12,
+    padding: '3px 8px',
+    borderRadius: 7,
+    color: 'rgba(255,255,255,0.40)',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    cursor: 'pointer',
+  };
+
+  const rowBorder = { borderBottom: '1px solid rgba(255,255,255,0.06)' };
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl overflow-hidden" style={glass}>
+        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="h-3.5 w-44 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-2">
+          {[140, 100, 160].map((w, i) => (
+            <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.06)', width: w }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Section title="Категории магазина">
+      {categories.length === 0 && !adding && (
+        <p className="text-xs py-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          Категории помогают покупателям ориентироваться в вашем магазине.
+        </p>
+      )}
+
+      {categories.map((cat) => (
+        <div key={cat.id} className="flex items-center gap-2 py-1.5" style={rowBorder}>
+          {editingId === cat.id ? (
+            <>
+              <input
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter')  saveEdit(cat.id);
+                  if (e.key === 'Escape') cancelEdit();
+                }}
+                style={rowInputStyle}
+              />
+              <button type="button" style={confirmBtn} onClick={() => saveEdit(cat.id)}>✓</button>
+              <button
+                type="button"
+                style={cancelBtn}
+                onMouseDown={(e) => { e.preventDefault(); cancelEdit(); }}
+              >
+                ✕
+              </button>
+            </>
+          ) : (
+            <>
+              <span
+                className="flex-1 text-sm text-white cursor-pointer transition-colors hover:text-purple-300"
+                onClick={() => startEdit(cat)}
+              >
+                {cat.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleDelete(cat.id)}
+                disabled={remove.isPending}
+                className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
+                style={{ color: '#f87171' }}
+                aria-label="Удалить"
+              >
+                🗑
+              </button>
+            </>
+          )}
+        </div>
+      ))}
+
+      {adding && (
+        <div className="flex items-center gap-2 py-1.5" style={rowBorder}>
+          <input
+            ref={newInputRef}
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter')  saveAdd();
+              if (e.key === 'Escape') cancelAdd();
+            }}
+            placeholder="Название категории"
+            style={rowInputStyle}
+          />
+          <button
+            type="button"
+            style={confirmBtn}
+            onClick={saveAdd}
+            disabled={create.isPending}
+          >
+            {create.isPending ? '...' : '✓'}
+          </button>
+          <button
+            type="button"
+            style={cancelBtn}
+            onMouseDown={(e) => { e.preventDefault(); cancelAdd(); }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {deleteError && (
+        <p className="text-xs mt-1" style={{ color: 'rgba(248,113,113,.80)' }}>{deleteError}</p>
+      )}
+
+      {!adding && (
+        <button
+          type="button"
+          onClick={startAdd}
+          className="mt-1 text-xs font-semibold flex items-center gap-1.5 transition-opacity hover:opacity-80"
+          style={{ color: '#A78BFA' }}
+        >
+          <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Добавить категорию
+        </button>
+      )}
+    </Section>
   );
 }
 
@@ -334,6 +546,7 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-5 max-w-xl">
       <h1 className="text-xl font-bold text-white">Настройки</h1>
       <StoreSettingsSection />
+      <StoreCategoriesSection />
       <ProfileSettingsSection />
     </div>
   );
