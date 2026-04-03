@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-04-03 (сессия 3)
+
+### ✅ [WEB-031] In-app уведомления — seller
+- **Важность:** 🔴
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/notifications.api.ts` (новый)
+  - `apps/web-seller/src/hooks/use-notifications.ts` (новый)
+  - `apps/web-seller/src/app/(dashboard)/notifications/page.tsx` (новый)
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx`
+- **Что сделано:** Живой badge с пульсом на колокольчике (polling 30s). Страница /notifications с авто read-all, фильтром по вкладкам, навигацией к заказу по клику.
+
+## 2026-04-03 (сессия 2)
+
+### ✅ [WEB-030] Мелкие фиксы — products page + buyer profile
+- **Важность:** 🟢
+- **Дата:** 03.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx`
+- **Что сделано:** (1) `<a href="/products/create">` → `<Link href>` (2 места) — убрана полная перезагрузка страницы при навигации. Заодно исправлен относительный импорт `../../../hooks/use-products` → `@/hooks/use-products`. (2) Убрана неиспользуемая деструктуризация `logout` из `useAuth()` в buyer/profile — `useLogout()` мутация уже делала то же самое.
+
+---
+
 ## 2026-04-03
 
 ### ✅ [WEB-026] Socket.IO клиент — seller real-time заказы
