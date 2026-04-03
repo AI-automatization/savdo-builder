@@ -42,6 +42,56 @@
 
 ---
 
+## 🟡 Dashboard аналитика (чарты)
+
+- [ ] **[ADM-021]** Dashboard charts — продажи и активность
+  - **Домен:** `apps/admin`
+  - **Детали:** Установить `recharts`. На DashboardPage добавить: 1) LineChart — заказы по дням (последние 30 дней), 2) BarChart — топ-5 магазинов по заказам. Endpoint: `GET /api/v1/admin/analytics/summary` (нужно создать). Данные из `orders` таблицы через Prisma.
+  - **Файлы:** `apps/admin/src/pages/DashboardPage.tsx`, новый `apps/api/src/modules/admin/use-cases/get-analytics.use-case.ts`
+
+---
+
+## 🟡 Broadcast — Telegram рассылка из админки
+
+- [ ] **[ADM-019]** Backend: `POST /api/v1/admin/broadcast`
+  - **Домен:** `apps/api`
+  - **Детали:** Принимает `{ message: string, preview_mode?: boolean }`. Достаёт всех юзеров с `telegram_chat_id != null`. Шлёт через BullMQ очередь (30 msg/sec лимит Telegram). Сохраняет в таблицу `broadcast_logs` (id, message, sent_count, failed_count, created_by, created_at).
+  - **Файлы:** новый `apps/api/src/modules/admin/use-cases/broadcast.use-case.ts`, `admin.controller.ts`, миграция `broadcast_logs`
+
+- [ ] **[ADM-020]** Admin UI: страница `/broadcast`
+  - **Домен:** `apps/admin`
+  - **Детали:** Textarea для сообщения (поддержка HTML: `<b>`, `<i>`, `<a>`), превью как Telegram-пузырь, кнопка "Отправить всем" с confirm-модалкой (показывает кол-во получателей), таблица истории рассылок.
+  - **Файлы:** новый `apps/admin/src/pages/BroadcastPage.tsx`, обновить `App.tsx` + `DashboardLayout.tsx` (добавить в nav)
+
+---
+
+## 🧊 ЗАМОРОЖЕНО — Монетизация + Payme/Click (Phase 4)
+
+> ❄️ Фриз до открытия бизнес-счёта в Click и Payme. Не брать в работу.
+
+- [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
+  - **Домен:** `packages/db`
+  - **Детали:** `subscription_plans` (id, name, price_uzs, duration_days, features jsonb). `subscriptions` (id, seller_id, plan_id, status: ACTIVE/EXPIRED/CANCELLED, starts_at, expires_at). `payment_transactions` (id, seller_id, subscription_id, provider: PAYME|CLICK, amount_uzs, status: PENDING/PAID/FAILED, provider_tx_id, created_at).
+
+- [ ] **[PAY-002]** Backend: Payme webhook + активация подписки
+  - **Домен:** `apps/api`
+  - **Детали:** `POST /payments/payme` — принимает Payme JSON-RPC (CheckPerformTransaction, CreateTransaction, PerformTransaction, CancelTransaction). При PerformTransaction → активировать подписку → открыть доступ к seller CRM.
+
+- [ ] **[PAY-003]** Backend: Click webhook + активация подписки
+  - **Домен:** `apps/api`
+  - **Детали:** `POST /payments/click/prepare` + `POST /payments/click/complete`. При complete → активировать подписку.
+
+- [ ] **[PAY-004]** Seller CRM: страница тарифов + кнопка оплаты
+  - **Домен:** `apps/web-seller`
+  - **Детали:** Страница `/billing` — список планов, текущая подписка, кнопка "Оплатить" → редирект на Payme/Click. После успешной оплаты → редирект обратно с активным доступом.
+  - **Заметка:** Азимов домен
+
+- [ ] **[PAY-005]** Admin: управление подписками продавцов
+  - **Домен:** `apps/admin`
+  - **Детали:** В SellerDetailPage показывать текущий план + историю платежей. Кнопка "Выдать подписку вручную" (для тестов и исключений).
+
+---
+
 ## 📋 Заморожено (Phase 3)
 
 - `apps/mobile-buyer/` — React Native + Expo

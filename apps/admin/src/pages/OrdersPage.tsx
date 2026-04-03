@@ -1,7 +1,11 @@
 import { useState } from 'react'
-import { ShoppingCart, Search, RefreshCw, AlertCircle, XCircle } from 'lucide-react'
+import { ShoppingCart, Search, RefreshCw, AlertCircle, XCircle, ChevronRight } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 interface Store { id: string; name: string; slug: string }
 interface Order {
@@ -17,25 +21,23 @@ interface Order {
 }
 interface OrdersResponse { orders: Order[]; total: number }
 
-const STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING:    { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', label: 'Ожидание' },
-  CONFIRMED:  { bg: 'rgba(129,140,248,0.12)', text: '#818CF8', label: 'Подтверждён' },
-  PROCESSING: { bg: 'rgba(99,102,241,0.12)',  text: '#6366F1', label: 'Обработка' },
-  SHIPPED:    { bg: 'rgba(14,165,233,0.12)',  text: '#0EA5E9', label: 'Отправлен' },
-  DELIVERED:  { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Доставлен' },
-  CANCELLED:  { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', label: 'Отменён' },
+const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; label: string }> = {
+  PENDING:    { variant: 'warning', label: 'Ожидание' },
+  CONFIRMED:  { variant: 'info',    label: 'Подтверждён' },
+  PROCESSING: { variant: 'info',    label: 'Обработка' },
+  SHIPPED:    { variant: 'info',    label: 'Отправлен' },
+  DELIVERED:  { variant: 'success', label: 'Доставлен' },
+  CANCELLED:  { variant: 'danger',  label: 'Отменён' },
 }
 
 const STATUSES = ['', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
-const TERMINAL_STATUSES = new Set(['DELIVERED', 'CANCELLED'])
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+const FILTER_LABEL: Record<string, string> = {
+  '': 'Все',
+  PENDING: 'Ожидание', CONFIRMED: 'Подтверждены', PROCESSING: 'В обработке',
+  SHIPPED: 'Отправлены', DELIVERED: 'Доставлены', CANCELLED: 'Отменены',
 }
 
-function formatAmount(raw: string, currency: string) {
-  return new Intl.NumberFormat('ru-RU').format(Number(raw)) + ' ' + currency
-}
+const TERMINAL = new Set(['DELIVERED', 'CANCELLED'])
 
 interface CancelModal { orderId: string; orderNumber: string }
 
@@ -76,11 +78,6 @@ export default function OrdersPage() {
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / LIMIT)
 
-  function onStatusChange(s: string) {
-    setStatusFilter(s)
-    setPage(1)
-  }
-
   async function handleCancelConfirm() {
     if (!cancelModal) return
     setCancelLoading(true)
@@ -101,111 +98,125 @@ export default function OrdersPage() {
   }
 
   return (
-    <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
+    <div className="p-8 min-h-screen">
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>Заказы</h1>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Заказы</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
             {loading ? 'Загрузка...' : `${total} заказов`}
           </p>
         </div>
-        <button onClick={refetch} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-          <RefreshCw size={14} /> Обновить
-        </button>
+        <Button variant="secondary" size="sm" onClick={refetch}>
+          <RefreshCw size={13} /> Обновить
+        </Button>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 340 }}>
-          <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Номер, телефон, магазин..."
-            style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 8, boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, outline: 'none' }}
-            onFocus={e => e.target.style.borderColor = 'var(--primary)'}
-            onBlur={e => e.target.style.borderColor = 'var(--border)'}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {STATUSES.map(s => {
-            const cfg = s ? STATUS_CFG[s] : null
-            return (
-              <button key={s} onClick={() => onStatusChange(s)} style={{
-                padding: '7px 13px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                border: `1px solid ${statusFilter === s ? 'var(--primary)' : 'var(--border)'}`,
-                background: statusFilter === s ? 'var(--primary-dim)' : 'var(--surface)',
-                color: statusFilter === s ? 'var(--primary)' : 'var(--text-muted)',
-              }}>
-                {s === '' ? 'Все' : cfg?.label ?? s}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
+      {/* Error */}
       {error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, marginBottom: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
-          <AlertCircle size={14} /> {error}
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-5 text-xs border"
+          style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)', color: 'var(--error)' }}>
+          <AlertCircle size={13} /> {error}
         </div>
       )}
 
+      {/* Filters */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[220px] max-w-xs">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Номер, телефон, магазин..."
+            className="pl-8"
+          />
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {STATUSES.map(s => (
+            <button
+              key={s}
+              onClick={() => { setStatusFilter(s); setPage(1) }}
+              className={cn(
+                'px-3 h-8 rounded-md text-xs font-medium transition-colors border',
+                statusFilter === s
+                  ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                  : 'border-transparent hover:bg-white/5',
+              )}
+            >
+              {FILTER_LABEL[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Table */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+            <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
               {['Номер', 'Магазин', 'Покупатель', 'Сумма', 'Статус', 'Дата', ''].map(h => (
-                <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</th>
+                <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'var(--text-dim)' }}>
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</td></tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '52px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <ShoppingCart size={32} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.2 }} />
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Заказов не найдено</div>
-                  {search && <div style={{ fontSize: 12 }}>Попробуй изменить запрос</div>}
+                <td colSpan={7} className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <ShoppingCart size={28} className="mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-medium mb-1">Заказов не найдено</p>
+                  {search && <p className="text-xs">Попробуйте изменить запрос</p>}
                 </td>
               </tr>
-            ) : orders.map(o => {
-              const cfg = STATUS_CFG[o.status] ?? { bg: 'var(--surface2)', text: 'var(--text-muted)', label: o.status }
+            ) : orders.map((o, i) => {
+              const cfg = STATUS_CFG[o.status] ?? { variant: 'muted' as const, label: o.status }
               return (
-                <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>
+                <tr
+                  key={o.id}
+                  className="transition-colors"
+                  style={{ borderBottom: i < orders.length - 1 ? '1px solid var(--border)' : 'none' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '')}
+                >
+                  <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--text)' }}>
                     {o.orderNumber}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text)' }}>{o.store.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{o.store.slug}</div>
+                  <td className="px-4 py-3">
+                    <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>{o.store.name}</div>
+                    <div className="text-[11px] font-mono" style={{ color: 'var(--text-dim)' }}>/{o.store.slug}</div>
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ color: 'var(--text)' }}>{o.customerFullName || '—'}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{o.customerPhone}</div>
+                  <td className="px-4 py-3">
+                    <div className="text-xs" style={{ color: 'var(--text)' }}>{o.customerFullName || '—'}</div>
+                    <div className="text-[11px] font-mono" style={{ color: 'var(--text-dim)' }}>{o.customerPhone}</div>
                   </td>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: 'var(--text)', fontWeight: 600 }}>
-                    {formatAmount(o.totalAmount, o.currencyCode)}
+                  <td className="px-4 py-3 font-mono text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--text)' }}>
+                    {new Intl.NumberFormat('ru-RU').format(Number(o.totalAmount))} {o.currencyCode}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: cfg.bg, color: cfg.text, whiteSpace: 'nowrap' }}>
-                      {cfg.label}
-                    </span>
+                  <td className="px-4 py-3">
+                    <Badge variant={cfg.variant}>{cfg.label}</Badge>
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {formatDate(o.placedAt)}
+                  <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                    {new Date(o.placedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    {!TERMINAL_STATUSES.has(o.status) && (
+                  <td className="px-4 py-3">
+                    {!TERMINAL.has(o.status) ? (
                       <button
                         onClick={() => { setCancelModal({ orderId: o.id, orderNumber: o.orderNumber }); setCancelReason(''); setCancelError(null) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors border"
+                        style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: 'var(--error)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.12)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.06)')}
                       >
-                        <XCircle size={12} /> Отменить
+                        <XCircle size={11} /> Отменить
                       </button>
+                    ) : (
+                      <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
                     )}
                   </td>
                 </tr>
@@ -213,58 +224,59 @@ export default function OrdersPage() {
             })}
           </tbody>
         </table>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Стр. {page} из {totalPages} · {total} заказов
+            </span>
+            <div className="flex gap-1.5">
+              <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Назад</Button>
+              <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Вперёд →</Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            Стр. {page} из {totalPages} · {total} заказов
-          </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage(p => p - 1)}
-              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: page <= 1 ? 'var(--text-muted)' : 'var(--text)', fontSize: 13, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
-            >← Назад</button>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage(p => p + 1)}
-              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: page >= totalPages ? 'var(--text-muted)' : 'var(--text)', fontSize: 13, cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
-            >Вперёд →</button>
-          </div>
-        </div>
-      )}
       {/* Cancel Modal */}
       {cancelModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 440, maxWidth: '90vw' }}>
-            <h3 style={{ margin: '0 0 8px', color: 'var(--text)', fontSize: 18, fontWeight: 700 }}>Отменить заказ</h3>
-            <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: 14 }}>
-              Заказ <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{cancelModal.orderNumber}</span> будет отменён.
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-full max-w-md rounded-2xl p-7 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--text)' }}>Отменить заказ</h3>
+            <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+              Заказ <span className="font-mono font-semibold" style={{ color: 'var(--text)' }}>{cancelModal.orderNumber}</span> будет отменён.
             </p>
             <textarea
               value={cancelReason}
               onChange={e => setCancelReason(e.target.value)}
               placeholder="Причина отмены (обязательно)..."
               rows={3}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, resize: 'vertical', outline: 'none', marginBottom: 12 }}
+              className="w-full px-3 py-2.5 rounded-lg text-sm resize-y outline-none transition-colors"
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', marginBottom: 12 }}
+              onFocus={e => (e.target.style.borderColor = 'rgba(99,102,241,0.5)')}
+              onBlur={e => (e.target.style.borderColor = 'var(--border)')}
             />
             {cancelError && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, marginBottom: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
-                <AlertCircle size={13} /> {cancelError}
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-4 text-xs border"
+                style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)', color: 'var(--error)' }}>
+                <AlertCircle size={12} /> {cancelError}
               </div>
             )}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button
+            <div className="flex gap-2.5 justify-end">
+              <Button
+                variant="secondary"
                 onClick={() => { setCancelModal(null); setCancelReason(''); setCancelError(null) }}
-                style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}
-              >Отмена</button>
-              <button
+              >
+                Отмена
+              </Button>
+              <Button
+                variant="danger"
                 onClick={handleCancelConfirm}
                 disabled={cancelLoading || !cancelReason.trim()}
-                style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#EF4444', color: 'white', fontSize: 14, fontWeight: 600, cursor: cancelLoading ? 'wait' : 'pointer', opacity: !cancelReason.trim() ? 0.5 : 1 }}
-              >{cancelLoading ? 'Загрузка...' : 'Отменить заказ'}</button>
+              >
+                {cancelLoading ? 'Загрузка...' : 'Отменить заказ'}
+              </Button>
             </div>
           </div>
         </div>
