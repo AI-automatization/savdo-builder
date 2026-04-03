@@ -1,9 +1,13 @@
 import { useNavigate } from 'react-router-dom'
-import { Users, Store, ShoppingCart, Clock, AlertCircle, ArrowUpRight, ChevronRight } from 'lucide-react'
+import { Users, Store, ShoppingCart, Clock, AlertCircle, ArrowUpRight, ChevronRight, TrendingUp, BarChart2 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { cn } from '@/lib/utils'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { Badge } from '@/components/ui/badge'
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip,
+  BarChart, Bar, Cell,
+} from 'recharts'
 
 interface SellersResponse { sellers: unknown[]; total: number }
 interface StoresResponse  { stores: unknown[];  total: number }
@@ -20,6 +24,10 @@ interface OrderItem {
   store: { id: string; name: string; slug: string }
 }
 interface OrdersResponse { orders: OrderItem[]; total: number }
+
+interface DailyOrderStat { date: string; count: number }
+interface TopStore { storeId: string; storeName: string; orderCount: number }
+interface AnalyticsSummary { ordersPerDay: DailyOrderStat[]; topStores: TopStore[] }
 
 const STATS = [
   { key: 'sellers', label: 'Продавцов',    icon: Users,        accent: 'text-indigo-400', dim: 'bg-indigo-500/10', to: '/sellers' },
@@ -66,7 +74,7 @@ function StatCard({
           ? <span style={{ color: 'var(--text-dim)' }}>—</span>
           : error
           ? <span className="text-red-500">!</span>
-          : <NumberTicker value={value} style={{ color: 'var(--text)' }} />
+          : <span style={{ color: 'var(--text)' }}><NumberTicker value={value} /></span>
         }
       </div>
       <p className="text-xs font-medium" style={{ color: 'var(--text-dim)' }}>{label}</p>
@@ -77,11 +85,12 @@ function StatCard({
 export default function DashboardPage() {
   const navigate = useNavigate()
 
-  const sellers = useFetch<SellersResponse>('/api/v1/admin/sellers?limit=1', [])
-  const stores  = useFetch<StoresResponse>('/api/v1/admin/stores?limit=1', [])
-  const queue   = useFetch<QueueResponse>('/api/v1/admin/moderation/queue?limit=1', [])
-  const orders  = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=1', [])
-  const recent  = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=8', [])
+  const sellers   = useFetch<SellersResponse>('/api/v1/admin/sellers?limit=1', [])
+  const stores    = useFetch<StoresResponse>('/api/v1/admin/stores?limit=1', [])
+  const queue     = useFetch<QueueResponse>('/api/v1/admin/moderation/queue?limit=1', [])
+  const orders    = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=1', [])
+  const recent    = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=8', [])
+  const analytics = useFetch<AnalyticsSummary>('/api/v1/admin/analytics/summary', [])
 
   const today = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -126,6 +135,88 @@ export default function DashboardPage() {
             onClick={() => navigate(s.to)}
           />
         ))}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-8">
+
+        {/* Line chart — orders per day */}
+        <div className="xl:col-span-2 rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={14} style={{ color: 'var(--text-dim)' }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
+              Заказы за 30 дней
+            </span>
+          </div>
+          {analytics.loading ? (
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={analytics.data?.ordersPerDay ?? []} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={d => d.slice(5)}
+                  tick={{ fontSize: 10, fill: 'var(--text-dim)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={4}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'var(--text-dim)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' }}
+                  labelStyle={{ color: 'var(--text-muted)' }}
+                  labelFormatter={d => String(d)}
+                  formatter={(v) => [`${v}`, 'Заказов']}
+                />
+                <Line type="monotone" dataKey="count" stroke="var(--primary)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Bar chart — top 5 stores */}
+        <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart2 size={14} style={{ color: 'var(--text-dim)' }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
+              Топ магазинов
+            </span>
+          </div>
+          {analytics.loading ? (
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+          ) : (analytics.data?.topStores ?? []).length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Нет данных</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={analytics.data?.topStores ?? []} layout="vertical" margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
+                <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--text-dim)' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="storeName"
+                  width={80}
+                  tick={{ fontSize: 10, fill: 'var(--text-dim)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={v => v.length > 10 ? v.slice(0, 10) + '…' : v}
+                />
+                <Tooltip
+                  contentStyle={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' }}
+                  formatter={(v) => [`${v}`, 'Заказов']}
+                />
+                <Bar dataKey="orderCount" radius={[0, 4, 4, 0]}>
+                  {(analytics.data?.topStores ?? []).map((_, i) => (
+                    <Cell key={i} fill={`rgba(99,102,241,${1 - i * 0.15})`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
       {/* Recent orders */}

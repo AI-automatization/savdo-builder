@@ -23,6 +23,7 @@ import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
 import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
+import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
 
 @Module({
   imports: [UsersModule, SellersModule, StoresModule, ProductsModule, OrdersModule, AuthModule],
@@ -43,6 +44,7 @@ import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
     ArchiveStoreUseCase,
     AdminCancelOrderUseCase,
     GetAuditLogUseCase,
+    GetAnalyticsUseCase,
   ],
 })
 export class AdminModule {}

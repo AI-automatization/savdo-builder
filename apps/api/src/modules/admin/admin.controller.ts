@@ -40,6 +40,7 @@ import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
 import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
+import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -65,6 +66,7 @@ export class AdminController {
     private readonly archiveStoreUseCase: ArchiveStoreUseCase,
     private readonly adminCancelOrderUseCase: AdminCancelOrderUseCase,
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
+    private readonly getAnalyticsUseCase: GetAnalyticsUseCase,
   ) {}
 
   // Resolve AdminUser record from JWT payload.
@@ -236,6 +238,15 @@ export class AdminController {
       );
     }
     return this.adminCancelOrderUseCase.execute(id, user.sub, reason ?? '');
+  }
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/analytics/summary
+  @Get('analytics/summary')
+  async getAnalyticsSummary(@CurrentUser() user: JwtPayload) {
+    await this.resolveAdminUser(user);
+    return this.getAnalyticsUseCase.execute();
   }
 
   // ── Audit Log ─────────────────────────────────────────────────────────────
