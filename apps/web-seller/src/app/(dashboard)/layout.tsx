@@ -8,6 +8,7 @@ import { useStore } from "../../hooks/use-seller";
 import { useSellerSocket } from "../../hooks/use-seller-socket";
 import { useAuth } from "../../lib/auth/context";
 import { useLogout } from "../../hooks/use-auth";
+import { useUnreadCount } from "../../hooks/use-notifications";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isAuthenticated } = useAuth();
   const { data: store, isLoading: storeLoading, error: storeError } = useStore();
   const { toasts } = useSellerSocket();
+  const { data: unreadCount = 0 } = useUnreadCount();
   const logoutMutation = useLogout();
 
   useEffect(() => {
@@ -199,12 +201,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            {/* Notifications */}
-            <button className="relative" style={{ color: "rgba(255,255,255,0.45)" }}>
+            {/* Notifications bell */}
+            <button
+              onClick={() => router.push('/notifications')}
+              className="relative"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+              aria-label="Уведомления"
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full" style={{ background: "#A78BFA" }} />
+              {unreadCount > 0 && (
+                <>
+                  <style>{`
+                    @keyframes savdo-ping {
+                      75%, 100% { transform: scale(2); opacity: 0; }
+                    }
+                  `}</style>
+                  <span
+                    className="absolute -top-1 -right-1.5 flex items-center justify-center"
+                    style={{ minWidth: 16, height: 16, padding: '0 3px', borderRadius: 8, border: '2px solid transparent', background: 'transparent' }}
+                  >
+                    <span
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: 'rgba(167,139,250,.45)', animation: 'savdo-ping 1.4s cubic-bezier(0,0,.2,1) infinite', borderRadius: 8 }}
+                    />
+                    <span
+                      className="relative flex items-center justify-center rounded-full text-white font-bold"
+                      style={{ minWidth: 14, height: 14, padding: '0 3px', fontSize: 9, background: '#A78BFA', borderRadius: 7 }}
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  </span>
+                </>
+              )}
             </button>
           </div>
         </header>
