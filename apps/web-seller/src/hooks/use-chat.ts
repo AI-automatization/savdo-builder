@@ -60,6 +60,7 @@ export function useChatSocket(threadId: string | null) {
 
     function onMessage() {
       queryClient.invalidateQueries({ queryKey: chatKeys.messages(threadId!) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.threads });
     }
 
     socket.on('chat:message', onMessage);

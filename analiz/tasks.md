@@ -17,6 +17,24 @@
 - **Что нужно:** `GET /api/v1/auth/me` → возвращает `AuthUser` (id, phone, isPhoneVerified, role). Требует `JwtAuthGuard`. После — Азим добавит вызов при старте приложения в `AuthContext`.
 - **Файлы:** `apps/api/src/modules/auth/auth.controller.ts` + use-case
 
+### 🔴 [API-013] Socket: chat:new_message → seller-room
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-seller` — уведомления о новых сообщениях
+- **Проблема:** `useSellerSocket` слушает только `order:*` события в seller-room. Чат-уведомления приходят только в конкретный thread-room. Продавец не узнаёт о новых сообщениях если не открыт чат.
+- **Что нужно:** При создании нового сообщения в чате — дополнительно emit `chat:new_message` в seller-room (`storeId`). Payload: `{ threadId, buyerName? }`.
+
+### 🔴 [API-014] Socket: order:status_changed → buyer
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-buyer` — realtime обновление статуса заказа
+- **Проблема:** Покупатель не получает realtime обновлений когда продавец меняет статус заказа. Нет buyer-room.
+- **Что нужно:** При смене статуса заказа — emit `order:status_changed` в buyer-room (по `buyerId`). Тогда Азим добавит hook в buyer app.
+
+### 🔴 [API-012] Buyer phone в деталях заказа продавца
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-seller` — страница деталей заказа
+- **Проблема:** `Order` тип содержит только `buyerId: string`. Нет объекта `buyer` с телефоном. Продавец не может связаться с покупателем напрямую.
+- **Что нужно:** Добавить в `Order` (seller detail endpoint): `buyer: { phone: string }`. Полат обновляет тип в `packages/types` и endpoint `GET /seller/orders/:id`.
+
 ### 🔴 [API-011] Delivery settings — поля не в PATCH /seller/store
 - **Домен:** `apps/api`
 - **Блокирует:** `apps/web-seller` — страница настроек магазина
@@ -126,21 +144,6 @@
 > Все критические страницы Phase B готовы. Осталось ждать Полата по WEB-022 для тестирования.
 
 ## 🟡 Следующие задачи — Азим (без блокеров)
-
-### [WEB-035] Buyer: поиск товаров в сторфронте
-- **Домен:** `apps/web-buyer`
-- **Детали:** На `StorePage` добавить строку поиска по названию товара (client-side filter через `useMemo`). Показывать только при наличии >8 товаров в магазине.
-- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx`
-
-### [WEB-036] Seller: быстрый toggle активности товара из списка
-- **Домен:** `apps/web-seller`
-- **Детали:** В `products/page.tsx` добавить кнопку/toggle для переключения ACTIVE ↔ DRAFT прямо из строки списка, без перехода на страницу редактирования. Использовать `useUpdateProduct` мутацию.
-- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`, `apps/web-seller/src/hooks/use-products.ts`
-
-### [WEB-037] Seller: пагинация в списке заказов
-- **Домен:** `apps/web-seller`
-- **Детали:** API уже поддерживает `page` параметр. Добавить кнопку "Загрузить ещё" (бесконечная прокрутка или page+1) в `orders/page.tsx`.
-- **Файлы:** `apps/web-seller/src/app/(dashboard)/orders/page.tsx`
 
 ## 🔴 Ждём Полата (блокируют Азима)
 

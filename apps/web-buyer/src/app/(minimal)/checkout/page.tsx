@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { useAuth } from "@/lib/auth/context";
 import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
 import { useCheckoutPreview, useConfirmCheckout } from "@/hooks/use-checkout";
@@ -287,13 +288,6 @@ export default function CheckoutPage() {
     }
   }
 
-  const NAV = [
-    { href: "/",        label: "Магазин", icon: <IcoShop /> },
-    { href: "/cart",    label: "Корзина", icon: <IcoCart /> },
-    { href: "/chats",   label: "Чаты",    icon: <IcoChat /> },
-    { href: "/orders",  label: "Заказы",  icon: <IcoOrders /> },
-    { href: "/profile", label: "Профиль", icon: <IcoProfile /> },
-  ];
 
   return (
     <div className="min-h-screen"
@@ -478,23 +472,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {/* ── Bottom nav ── */}
-      <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div className="max-w-md mx-auto"
-          style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}>
-          <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon }) => (
-              <Link key={href} href={href}
-                className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl">
-                <span style={{ color: "rgba(255,255,255,0.32)" }}>{icon}</span>
-                <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.28)" }}>
-                  {label}
-                </span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <BottomNavBar active="cart" />
     </div>
   );
 }

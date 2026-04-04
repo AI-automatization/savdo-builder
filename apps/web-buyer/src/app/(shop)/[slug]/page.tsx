@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import ProductCard from "@/components/store/ProductCard";
+import ProductsWithSearch from "@/components/store/ProductsWithSearch";
+import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { serverGetStoreBySlug, serverGetProducts } from "@/lib/api/storefront-server";
 import { TrackStorefrontView } from "@/components/TrackView";
 
@@ -79,14 +80,6 @@ export default async function StorePage({
     storeId: store.id,
     storeCategoryId: categoryId,
   });
-
-  const NAV = [
-    { href: `/${slug}`,  label: "Магазин", icon: <IcoShop />,    active: true },
-    { href: "/cart",     label: "Корзина", icon: <IcoCart /> },
-    { href: "/chats",    label: "Чаты",    icon: <IcoChat /> },
-    { href: "/orders",   label: "Заказы",  icon: <IcoOrders /> },
-    { href: "/profile",  label: "Профиль", icon: <IcoProfile /> },
-  ];
 
   return (
     <div className="relative min-h-screen">
@@ -194,43 +187,11 @@ export default async function StorePage({
           </div>
         )}
 
-        {/* ── Product grid ── */}
-        {products.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-5xl mb-4">📦</p>
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>Товаров в этой категории пока нет</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} storeSlug={slug} />
-            ))}
-          </div>
-        )}
+        {/* ── Product grid (with search when >8 items) ── */}
+        <ProductsWithSearch products={products} storeSlug={slug} />
       </div>
 
-      {/* ── Bottom navigation ── */}
-      <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div
-          className="max-w-md mx-auto"
-          style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}
-        >
-          <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon, active }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl"
-              >
-                <span style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.32)" }}>{icon}</span>
-                <span className="text-[10px] font-medium" style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.28)" }}>
-                  {label}
-                </span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <BottomNavBar active="store" storeSlug={slug} />
 
     </div>
   );

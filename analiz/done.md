@@ -1,5 +1,50 @@
 # Done — Азим + Полат
 
+### ✅ [WEB-041] Bugfixes + chat threads refresh
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `ProductsWithSearch.tsx`, `[slug]/page.tsx`, `use-seller-socket.ts`, `use-chat.ts` (buyer + seller)
+- **Что сделано:** Исправлен кривой SVG поиска в сторфронте. Удалён мусорный NAV из Server Component. Toast при отмене заказа покупателем (`order:status_changed` + CANCELLED). Список тредов теперь обновляется при получении нового сообщения в чате (buyer + seller).
+
+### ✅ [WEB-040] Buyer: BottomNavBar — slug магазина во всех страницах
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `components/layout/BottomNavBar.tsx` (новый), `TrackView.tsx`, все страницы buyer app (8 файлов)
+- **Что сделано:** Создан `BottomNavBar` компонент. Читает `last_store_slug` из localStorage (сохраняется в `TrackStorefrontView` при посещении магазина). Поддерживает `cartBadge` и `storeSlug` проп. Все 9 страниц переведены на единый компонент — дубликация NAV устранена.
+
+### ✅ [WEB-039] Seller: браузерное уведомление при новом заказе
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/hooks/use-seller-socket.ts`
+- **Что сделано:** При монтировании хука запрашивается разрешение `Notification.requestPermission()`. При `order:new` через socket — показывается `new Notification()` если разрешение выдано. In-app toast остался без изменений.
+
+### ✅ [WEB-038] Seller: копировать ссылку на товар из списка
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+- **Что сделано:** Кнопка-иконка 🔗 в каждой строке товара. Копирует `https://savdo.uz/{slug}/products/{id}` в буфер. Показывает ✓ на 2 секунды после копирования. Использует `useStore()` для получения slug.
+
+## 2026-04-04 (сессия 11)
+
+### ✅ [WEB-037] Seller: пагинация в списке заказов
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/orders/page.tsx`
+- **Что сделано:** "Загрузить ещё" — page+1 с аккумуляцией. При смене фильтра сбрасывается page=1 и accOrders=[]. Кнопка скрывается когда `page * limit >= total`.
+
+### ✅ [WEB-036] Seller: быстрый toggle ACTIVE/DRAFT из списка товаров
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+- **Что сделано:** Добавлена кнопка-иконка (▶/⏸) в строку каждого товара. Toggle работает только для ACTIVE ↔ DRAFT. Для ARCHIVED/HIDDEN_BY_ADMIN кнопка не рендерится. Использует `useUpdateProductStatus`, показывает спиннер пока идёт запрос, disabled во время мутации.
+
+
+### ✅ [WEB-035] Buyer: поиск товаров в сторфронте
+- **Важность:** 🟡
+- **Дата:** 04.04.2026
+- **Файлы:** `apps/web-buyer/src/components/store/ProductsWithSearch.tsx` (новый), `apps/web-buyer/src/app/(shop)/[slug]/page.tsx`
+- **Что сделано:** Создан Client Component `ProductsWithSearch`. Показывает поисковую строку при >8 товарах, фильтрует по названию через `useMemo`. StorePage остался Server Component, только грид вынесен в клиент.
+
 ## 2026-04-04 (сессия 10 — продолжение разработки)
 
 ### ✅ [BUGFIX] Onboarding: Rules of Hooks violation

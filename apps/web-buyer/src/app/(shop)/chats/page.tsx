@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { UserRole } from "types";
 import type { ChatThread } from "types";
 import { useAuth } from "@/lib/auth/context";
@@ -52,13 +53,6 @@ const IcoProfile = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const IcoBack    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>;
 const IcoSend    = () => <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>;
 
-const NAV = [
-  { href: "/",        label: "Магазин", icon: <IcoShop /> },
-  { href: "/cart",    label: "Корзина", icon: <IcoCart /> },
-  { href: "/chats",   label: "Чаты",    icon: <IcoChat />, active: true },
-  { href: "/orders",  label: "Заказы",  icon: <IcoOrders /> },
-  { href: "/profile", label: "Профиль", icon: <IcoProfile /> },
-];
 
 // ── OTP Gate ───────────────────────────────────────────────────────────────
 
@@ -367,18 +361,7 @@ export default function ChatsPage() {
         {isAuthenticated ? <ChatsView /> : <OtpGate />}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div className="max-w-md mx-auto" style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}>
-          <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon, active }) => (
-              <Link key={href} href={href} className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl">
-                <span style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.32)" }}>{icon}</span>
-                <span className="text-[10px] font-medium" style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.28)" }}>{label}</span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <BottomNavBar active="chats" />
     </div>
   );
 }

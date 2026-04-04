@@ -24,6 +24,13 @@ export function useSellerSocket() {
     }, 4000);
   }, []);
 
+  // Request browser notification permission once
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   useEffect(() => {
     if (!store?.id) return;
 
@@ -37,12 +44,23 @@ export function useSellerSocket() {
 
     function onOrderNew(payload: { id: string }) {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
-      addToast(`Новый заказ #${payload.id.slice(-6).toUpperCase()}`);
+      const label = `#${payload.id.slice(-6).toUpperCase()}`;
+      addToast(`Новый заказ ${label}`);
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('Новый заказ 📦', {
+          body: `Заказ ${label} ожидает подтверждения`,
+          icon: '/favicon.ico',
+        });
+      }
     }
 
-    function onOrderStatusChanged(payload: { id: string }) {
+    function onOrderStatusChanged(payload: { id: string; status?: string }) {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
       queryClient.invalidateQueries({ queryKey: orderKeys.detail(payload.id) });
+      if (payload.status === 'CANCELLED') {
+        const label = `#${payload.id.slice(-6).toUpperCase()}`;
+        addToast(`Заказ ${label} отменён покупателем`);
+      }
     }
 
     socket.on('order:new', onOrderNew);

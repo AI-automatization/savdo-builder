@@ -8,6 +8,7 @@ import { track } from '@/lib/analytics';
 export function TrackStorefrontView({ storeId, storeSlug }: { storeId: string; storeSlug: string }) {
   useEffect(() => {
     track.storefrontViewed(storeId, storeSlug);
+    localStorage.setItem('last_store_slug', storeSlug);
   }, [storeId, storeSlug]);
   return null;
 }

@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useSellerProducts } from '@/hooks/use-products';
+import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products';
+import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
 
 const glass = {
@@ -48,6 +49,18 @@ function Skeleton({ className }: { className?: string }) {
 
 export default function ProductsPage() {
   const { data: products, isLoading } = useSellerProducts();
+  const { mutate: updateStatus, isPending: isStatusPending, variables: statusVars } = useUpdateProductStatus();
+  const { data: store } = useStore();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function copyProductLink(productId: string) {
+    if (!store) return;
+    const url = `https://savdo.uz/${store.slug}/products/${productId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(productId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'ALL'>('ALL');
 
@@ -126,22 +139,24 @@ export default function ProductsPage() {
       {/* Table */}
       <div className="rounded-2xl overflow-hidden" style={glass}>
         <div
-          className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
+          className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
           style={{ color: "rgba(255,255,255,0.28)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
         >
           <span>Товар</span>
           <span>Цена</span>
           <span>Статус</span>
           <span></span>
+          <span></span>
         </div>
 
         {isLoading ? (
           <>
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-7 w-7 rounded-lg" />
                 <Skeleton className="h-4 w-12" />
               </div>
             ))}
@@ -155,10 +170,15 @@ export default function ProductsPage() {
         ) : (
           filtered.map((p) => {
             const sc = STATUS_COLORS[p.status] ?? { bg: "rgba(255,255,255,.08)", color: "rgba(255,255,255,0.45)" };
+            const isToggleable = p.status === ProductStatus.ACTIVE || p.status === ProductStatus.DRAFT;
+            const isUpdating = isStatusPending && statusVars?.id === p.id;
+            const nextStatus = p.status === ProductStatus.ACTIVE ? ProductStatus.DRAFT : ProductStatus.ACTIVE;
+            const toggleTitle = p.status === ProductStatus.ACTIVE ? "Перевести в черновик" : "Активировать";
+
             return (
               <div
                 key={p.id}
-                className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-5 py-3.5"
+                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5"
                 style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <span className="text-sm font-medium text-white truncate">{p.title}</span>
@@ -171,13 +191,42 @@ export default function ProductsPage() {
                 >
                   {STATUS_LABELS[p.status] ?? p.status}
                 </span>
-                <Link
-                  href={`/products/${p.id}/edit`}
-                  className="text-xs font-medium transition-opacity hover:opacity-80"
-                  style={{ color: "rgba(167,139,250,0.70)" }}
-                >
-                  Изменить
-                </Link>
+
+                {/* Toggle ACTIVE ↔ DRAFT */}
+                {isToggleable ? (
+                  <button
+                    disabled={isUpdating}
+                    onClick={() => updateStatus({ id: p.id, status: nextStatus })}
+                    className="text-xs font-medium transition-opacity disabled:opacity-40"
+                    style={{ color: p.status === ProductStatus.ACTIVE ? "rgba(248,113,113,0.80)" : "rgba(52,211,153,0.80)" }}
+                  >
+                    {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? "Скрыть" : "Опубликовать"}
+                  </button>
+                ) : (
+                  <span />
+                )}
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => copyProductLink(p.id)}
+                    title="Скопировать ссылку на товар"
+                    className="text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ color: copiedId === p.id ? "rgba(52,211,153,0.90)" : "rgba(255,255,255,0.30)" }}
+                  >
+                    {copiedId === p.id ? "✓" : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-3.5 h-3.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                      </svg>
+                    )}
+                  </button>
+                  <Link
+                    href={`/products/${p.id}/edit`}
+                    className="text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ color: "rgba(167,139,250,0.70)" }}
+                  >
+                    Изменить
+                  </Link>
+                </div>
               </div>
             );
           })
