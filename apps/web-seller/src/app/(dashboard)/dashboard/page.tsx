@@ -77,7 +77,7 @@ export default function DashboardPage() {
 
   function handleCopyLink() {
     if (!store) return;
-    const url = `https://savdo.uz/${store.slug}`;
+    const url = `${process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'}/${store.slug}`;
     navigator.clipboard.writeText(url).then(() => {
       track.storeLinkCopied(store.id);
       setCopied(true);
