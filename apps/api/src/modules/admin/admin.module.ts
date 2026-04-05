@@ -26,6 +26,8 @@ import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
 import { BroadcastUseCase } from './use-cases/broadcast.use-case';
 import { DbManagerUseCase } from './use-cases/db-manager.use-case';
+import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
+import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -56,6 +58,8 @@ import { TelegramModule } from '../telegram/telegram.module';
     GetAnalyticsUseCase,
     BroadcastUseCase,
     DbManagerUseCase,
+    AdminCreateSellerUseCase,
+    AdminCreateStoreUseCase,
   ],
 })
 export class AdminModule {}

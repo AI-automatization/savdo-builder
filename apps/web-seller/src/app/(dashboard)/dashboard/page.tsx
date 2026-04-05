@@ -94,7 +94,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-bold text-white">Добро пожаловать 👋</h1>
-        <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.42)" }}>
+        <div className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.42)" }}>
           {storeLoading ? (
             <Skeleton className="h-4 w-40 inline-block" />
           ) : store ? (
@@ -105,7 +105,7 @@ export default function DashboardPage() {
           ) : (
             <span style={{ color: "#f87171" }}>Магазин не найден</span>
           )}
-        </p>
+        </div>
       </div>
 
       {/* Metrics grid */}

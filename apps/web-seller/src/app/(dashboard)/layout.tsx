@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { track } from "../../lib/analytics";
@@ -71,6 +71,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { toasts } = useSellerSocket();
   const { data: unreadCount = 0 } = useUnreadCount();
   const logoutMutation = useLogout();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true) }, []);
 
   useEffect(() => {
     if (!isAuthenticated) router.replace('/login');
@@ -88,7 +91,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   }
 
-  if (!isAuthenticated) return null;
+  if (!mounted || !isAuthenticated) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">

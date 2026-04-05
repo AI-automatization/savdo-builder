@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck, History } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck, History, Plus, X } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -102,6 +102,25 @@ export default function SellerDetailPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [historyTab, setHistoryTab] = useState<'key' | 'all'>('key')
+  const [showCreateStore, setShowCreateStore] = useState(false)
+  const [createStoreForm, setCreateStoreForm] = useState({ name: '', city: '', telegramContactLink: '', description: '', region: '', slug: '' })
+  const [createStoreLoading, setCreateStoreLoading] = useState(false)
+  const [createStoreError, setCreateStoreError] = useState<string | null>(null)
+
+  const handleCreateStore = async () => {
+    if (!seller || !createStoreForm.name.trim() || !createStoreForm.city.trim() || !createStoreForm.telegramContactLink.trim()) return
+    setCreateStoreLoading(true); setCreateStoreError(null)
+    try {
+      await api.post(`/api/v1/admin/sellers/${seller.id}/create-store`, createStoreForm)
+      setShowCreateStore(false)
+      setCreateStoreForm({ name: '', city: '', telegramContactLink: '', description: '', region: '', slug: '' })
+      refetch()
+    } catch (e: any) {
+      setCreateStoreError(e.message ?? 'Ошибка')
+    } finally {
+      setCreateStoreLoading(false)
+    }
+  }
 
   const handleAction = async (reason: string) => {
     if (!seller) return
@@ -267,9 +286,9 @@ export default function SellerDetailPage() {
           )}
 
           {/* Store */}
-          {seller.store && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Магазин</div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Магазин</div>
+            {seller.store ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -284,8 +303,16 @@ export default function SellerDetailPage() {
                   Открыть
                 </button>
               </div>
-            </div>
-          )}
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>Магазин не создан</span>
+                <button onClick={() => setShowCreateStore(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'rgba(16,185,129,0.12)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <Plus size={13} /> Создать магазин
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Moderation Cases */}
           {seller.moderationCases && seller.moderationCases.length > 0 && (
@@ -463,6 +490,49 @@ export default function SellerDetailPage() {
           onCancel={() => setModal(null)}
           loading={actionLoading}
         />
+      )}
+
+      {/* Create Store Modal */}
+      {showCreateStore && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Создать магазин</h3>
+              <button onClick={() => setShowCreateStore(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18, padding: '8px 12px', background: 'rgba(16,185,129,0.06)', borderRadius: 8, borderLeft: '3px solid #10B981' }}>
+              Статус ACTIVE, сразу опубликован. Продавец: <strong>{seller.fullName}</strong>
+            </div>
+            {([
+              { key: 'name', label: 'Название', required: true, placeholder: 'Uzcar Market' },
+              { key: 'city', label: 'Город', required: true, placeholder: 'Ташкент' },
+              { key: 'telegramContactLink', label: 'Telegram контакт', required: true, placeholder: '@username' },
+              { key: 'description', label: 'Описание', required: false, placeholder: 'Необязательно' },
+              { key: 'region', label: 'Регион', required: false, placeholder: 'Необязательно' },
+              { key: 'slug', label: 'Slug', required: false, placeholder: 'Авто-генерируется' },
+            ] as const).map(({ key, label, required, placeholder }) => (
+              <div key={key} style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+                  {label}{required && <span style={{ color: '#EF4444', marginLeft: 2 }}>*</span>}
+                </div>
+                <input value={createStoreForm[key]} onChange={e => setCreateStoreForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+              </div>
+            ))}
+            {createStoreError && (
+              <div style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{createStoreError}</div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowCreateStore(false)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>Отмена</button>
+              <button onClick={handleCreateStore} disabled={createStoreLoading || !createStoreForm.name.trim() || !createStoreForm.city.trim() || !createStoreForm.telegramContactLink.trim()}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: '#10B981', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  opacity: (!createStoreForm.name.trim() || !createStoreForm.city.trim() || !createStoreForm.telegramContactLink.trim()) ? 0.5 : 1 }}>
+                <Store size={14} /> {createStoreLoading ? 'Создание...' : 'Создать'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
