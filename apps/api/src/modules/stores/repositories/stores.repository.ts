@@ -22,7 +22,15 @@ export class StoresRepository {
   async findBySlug(slug: string) {
     return this.prisma.store.findUnique({
       where: { slug },
-      include: { deliverySettings: true, contacts: true },
+      include: {
+        deliverySettings: true,
+        contacts: true,
+        categories: {
+          where: { isActive: true },
+          select: { id: true, name: true, sortOrder: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
     });
   }
 
