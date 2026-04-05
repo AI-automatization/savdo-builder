@@ -9,7 +9,7 @@ type Props = {
 };
 
 export default function ProductCard({ product, storeSlug }: Props) {
-  const imageUrl = product.mediaUrls[0] ?? null;
+  const imageUrl = product.mediaUrls?.[0] ?? null;
   const isUnavailable = product.status !== ProductStatus.ACTIVE || !product.isVisible;
 
   return (
