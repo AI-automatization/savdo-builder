@@ -55,6 +55,17 @@ export class StoresRepository {
     });
   }
 
+  async upsertDeliverySettings(storeId: string, data: {
+    deliveryFeeType?: string;
+    fixedDeliveryFee?: number;
+  }) {
+    return this.prisma.storeDeliverySettings.upsert({
+      where: { storeId },
+      create: { storeId, ...data },
+      update: data,
+    });
+  }
+
   async update(storeId: string, data: Partial<{
     name: string;
     description: string;

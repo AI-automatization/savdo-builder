@@ -33,6 +33,7 @@ export interface OrderListItem {
 /** Full order detail */
 export interface Order extends OrderListItem {
   buyerId: string;
+  buyer: { phone: string } | null;
   buyerNote: string | null;
   store: Pick<StoreRef, 'name' | 'telegramContactLink'>;
   items: OrderItem[];

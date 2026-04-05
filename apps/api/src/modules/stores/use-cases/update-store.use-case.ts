@@ -20,6 +20,8 @@ export class UpdateStoreUseCase {
     logoMediaId?: string;
     coverMediaId?: string;
     primaryGlobalCategoryId?: string;
+    deliveryFeeType?: 'fixed' | 'manual' | 'none';
+    deliveryFeeAmount?: number;
   }) {
     const seller = await this.sellersRepo.findByUserId(userId);
     if (!seller) throw new DomainException(ErrorCode.NOT_FOUND, 'Seller not found', HttpStatus.NOT_FOUND);
@@ -28,6 +30,18 @@ export class UpdateStoreUseCase {
     const store = await this.storesRepo.findBySellerId(seller.id);
     if (!store) throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
 
-    return this.storesRepo.update(store.id, data);
+    const { deliveryFeeType, deliveryFeeAmount, ...storeData } = data;
+
+    const [updatedStore] = await Promise.all([
+      this.storesRepo.update(store.id, storeData),
+      (deliveryFeeType !== undefined || deliveryFeeAmount !== undefined)
+        ? this.storesRepo.upsertDeliverySettings(store.id, {
+            ...(deliveryFeeType !== undefined && { deliveryFeeType }),
+            ...(deliveryFeeAmount !== undefined && { fixedDeliveryFee: deliveryFeeAmount }),
+          })
+        : Promise.resolve(),
+    ]);
+
+    return updatedStore;
   }
 }

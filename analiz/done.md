@@ -1,5 +1,66 @@
 # Done — Азим + Полат
 
+## 2026-04-05 (сессия 12)
+
+### ✅ [ADM-020] Admin UI: страница /broadcast (Полат)
+- **Важность:** 🟡 Важная
+- **Дата:** 05.04.2026
+- **Файлы:**
+  - `apps/admin/src/pages/BroadcastPage.tsx` — новый
+  - `apps/admin/src/App.tsx` — роут `/broadcast`
+  - `apps/admin/src/layouts/DashboardLayout.tsx` — пункт "Рассылка" в nav
+- **Что сделано:** Страница с textarea (HTML-теги), Telegram-превью, confirm-модалка с кол-вом получателей, таблица истории рассылок.
+
+### ✅ [ADM-019] Backend: POST /admin/broadcast (Полат)
+- **Важность:** 🟡 Важная
+- **Дата:** 05.04.2026
+- **Файлы:** уже был реализован в `broadcast.use-case.ts`, `admin.controller.ts`, `admin.module.ts`, схема `broadcast_logs`
+- **Что сделано:** Эндпоинт существовал, зарегистрирован, работает. Подключён к UI.
+
+### ✅ [API-014] Socket: order:status_changed → buyer-room (Полат)
+- **Важность:** 🔴 Критическая (блокировал Азима)
+- **Дата:** 05.04.2026
+- **Файлы:**
+  - `apps/api/src/socket/orders.gateway.ts` — добавлены `join-buyer-room` handler и `emitOrderStatusChangedToBuyer`
+  - `apps/api/src/modules/orders/use-cases/update-order-status.use-case.ts` — вызов `emitOrderStatusChangedToBuyer` после смены статуса
+- **Что сделано:** При смене статуса заказа — emit `order:status_changed` в `buyer:{buyerId}`. Азим добавит `join-buyer-room` и hook в buyer app.
+
+### ✅ [API-013] Socket: chat:new_message → seller-room (Полат)
+- **Важность:** 🔴 Критическая (блокировал Азима)
+- **Дата:** 05.04.2026
+- **Файлы:**
+  - `apps/api/src/socket/chat.gateway.ts` — добавлен `emitChatNewMessage(storeId, { threadId })`
+  - `apps/api/src/modules/chat/repositories/chat.repository.ts` — `findThreadById` включает `seller.store`, обновлён тип `ThreadWithMessages`
+  - `apps/api/src/modules/chat/use-cases/send-message.use-case.ts` — emit в seller-room когда покупатель отправляет сообщение
+- **Что сделано:** При новом сообщении от покупателя — emit `chat:new_message` в `seller:{storeId}` с payload `{ threadId }`. Азим добавит handler в `useSellerSocket`.
+
+### ✅ [API-012] buyer.phone в деталях заказа продавца (Полат)
+- **Важность:** 🔴 Критическая (блокировал Азима)
+- **Дата:** 05.04.2026
+- **Файлы:**
+  - `packages/types/src/api/orders.ts` — добавлено `buyer: { phone: string } | null` в `Order`
+  - `apps/api/src/modules/orders/repositories/orders.repository.ts` — `OrderWithDetails` расширен, `findById` включает `buyer.user.phone`
+- **Что сделано:** `GET /seller/orders/:id` теперь возвращает `buyer.user.phone`. Азим может показать телефон покупателя на странице деталей заказа.
+
+### ✅ [API-011] deliveryFeeType + deliveryFeeAmount в UpdateStoreDto (Полат)
+- **Важность:** 🔴 Критическая (блокировал Азима)
+- **Дата:** 05.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/stores/dto/update-store.dto.ts` — добавлены `deliveryFeeType`, `deliveryFeeAmount`
+  - `apps/api/src/modules/stores/repositories/stores.repository.ts` — добавлен `upsertDeliverySettings`
+  - `apps/api/src/modules/stores/use-cases/update-store.use-case.ts` — upsert в `StoreDeliverySettings` при наличии полей
+- **Что сделано:** `PATCH /seller/store` теперь принимает `deliveryFeeType: 'fixed'|'manual'|'none'` и `deliveryFeeAmount: number`. Обновление идёт в отдельную таблицу `store_delivery_settings` через upsert.
+
+### ✅ [API-010] GET /auth/me (Полат)
+- **Важность:** 🔴 Критическая (блокировал Азима)
+- **Дата:** 05.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/auth/use-cases/get-me.use-case.ts` — новый
+  - `apps/api/src/modules/auth/repositories/auth.repository.ts` — добавлен `findUserById`
+  - `apps/api/src/modules/auth/auth.controller.ts` — `GET /auth/me` с `JwtAuthGuard`
+  - `apps/api/src/modules/auth/auth.module.ts` — зарегистрирован `GetMeUseCase`
+- **Что сделано:** Эндпоинт возвращает `{ success, data: { id, phone, isPhoneVerified, role } }`. Азим может вызывать при старте приложения для получения актуальных данных пользователя.
+
 ## 2026-04-03 (сессия 6)
 
 ### ✅ [ADM-021] Dashboard charts — recharts (Полат)

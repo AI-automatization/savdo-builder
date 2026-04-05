@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Order, OrderItem, OrderStatus, OrderStatusHistory } from '@prisma/client';
+import { Order, OrderItem, OrderStatus, OrderStatusHistory, Buyer, User } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 
 export type OrderWithDetails = Order & {
   items: OrderItem[];
   history: OrderStatusHistory[];
+  buyer: (Buyer & { user: Pick<User, 'phone'> }) | null;
 };
 
 export interface OrderListFilters {
@@ -75,6 +76,11 @@ export class OrdersRepository {
         items: true,
         history: {
           orderBy: { createdAt: 'asc' },
+        },
+        buyer: {
+          include: {
+            user: { select: { phone: true } },
+          },
         },
       },
     });

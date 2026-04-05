@@ -90,6 +90,7 @@ export class UpdateOrderStatusUseCase {
     );
 
     this.ordersGateway.emitOrderStatusChanged(updatedOrder, oldStatus);
+    this.ordersGateway.emitOrderStatusChangedToBuyer(updatedOrder, oldStatus);
 
     return updatedOrder;
   }

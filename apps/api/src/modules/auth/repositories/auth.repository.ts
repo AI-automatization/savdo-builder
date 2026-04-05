@@ -46,6 +46,13 @@ export class AuthRepository {
     });
   }
 
+  async findUserById(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, phone: true, isPhoneVerified: true, role: true },
+    });
+  }
+
   async createUserWithSeller(data: { phone: string }) {
     return this.prisma.user.create({
       data: {

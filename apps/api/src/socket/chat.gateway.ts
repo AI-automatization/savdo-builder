@@ -36,4 +36,9 @@ export class ChatGateway {
     this.server.to(`thread:${message.threadId}`).emit('chat:message', payload);
     this.logger.log(`Emitted chat:message to thread:${message.threadId} — messageId=${message.id}`);
   }
+
+  emitChatNewMessage(storeId: string, payload: { threadId: string; buyerName?: string }): void {
+    this.server.to(`seller:${storeId}`).emit('chat:new_message', payload);
+    this.logger.log(`Emitted chat:new_message to seller:${storeId} — threadId=${payload.threadId}`);
+  }
 }
