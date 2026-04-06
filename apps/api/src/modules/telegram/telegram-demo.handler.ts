@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { TelegramBotService } from './services/telegram-bot.service';
+import { TelegramBotService, InlineButton } from './services/telegram-bot.service';
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
 
