@@ -2,22 +2,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TelegramBotService, InlineButton } from './services/telegram-bot.service';
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
-import { UsersRepository } from '../users/repositories/users.repository';
-import { SellersRepository } from '../sellers/repositories/sellers.repository';
-import { StoresRepository } from '../stores/repositories/stores.repository';
-import { ProductsRepository } from '../products/repositories/products.repository';
-import { OrdersRepository } from '../orders/repositories/orders.repository';
 
-const STATE_TTL = 300; // 5 минут
+const STATE_TTL = 300;
 const STATE_KEY = (chatId: string) => `tg:state:${chatId}`;
 const PHONE_KEY = (chatId: string) => `tg:phone:${chatId}`;
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
-  PENDING:    '🟡 Ожидает',
-  CONFIRMED:  '🔵 Подтверждён',
-  SHIPPED:    '🚚 Доставляется',
-  DELIVERED:  '✅ Доставлен',
-  CANCELLED:  '❌ Отменён',
+  PENDING:   '🟡 Ожидает',
+  CONFIRMED: '🔵 Подтверждён',
+  SHIPPED:   '🚚 Доставляется',
+  DELIVERED: '✅ Доставлен',
+  CANCELLED: '❌ Отменён',
 };
 
 @Injectable()
@@ -28,14 +23,9 @@ export class TelegramDemoHandler {
     private readonly bot: TelegramBotService,
     private readonly redis: RedisService,
     private readonly prisma: PrismaService,
-    private readonly users: UsersRepository,
-    private readonly sellers: SellersRepository,
-    private readonly stores: StoresRepository,
-    private readonly products: ProductsRepository,
-    private readonly orders: OrdersRepository,
   ) {}
 
-  // ── State helpers ─────────────────────────────────────────────────────────
+  // ── State ─────────────────────────────────────────────────────────────────
 
   async getState(chatId: string): Promise<string | null> {
     return this.redis.get(STATE_KEY(chatId));
@@ -58,11 +48,7 @@ export class TelegramDemoHandler {
   private async resolveUser(chatId: string) {
     const phone = await this.getPhone(chatId);
     if (!phone) return null;
-    return this.users.findByPhone(phone);
-  }
-
-  private async resolveSeller(userId: string) {
-    return this.sellers.findByUserId(userId);
+    return this.prisma.user.findUnique({ where: { phone } });
   }
 
   // ── /start ────────────────────────────────────────────────────────────────
@@ -80,7 +66,7 @@ export class TelegramDemoHandler {
       return;
     }
 
-    const seller = await this.resolveSeller(user.id);
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (seller) {
       await this.showSellerMenu(chatId, firstName ?? user.phone);
     } else {
@@ -88,7 +74,7 @@ export class TelegramDemoHandler {
     }
   }
 
-  // ── Seller menu ───────────────────────────────────────────────────────────
+  // ── Seller ────────────────────────────────────────────────────────────────
 
   async showSellerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
@@ -109,23 +95,27 @@ export class TelegramDemoHandler {
     const user = await this.resolveUser(chatId);
     if (!user) { await this.handleStart(chatId); return; }
 
-    const seller = await this.resolveSeller(user.id);
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!seller) { await this.handleStart(chatId); return; }
 
-    const store = await this.stores.findBySellerId(seller.id);
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
     if (!store) {
       await this.bot.sendMessage(chatId, '⚠️ У вас ещё нет магазина.');
       return;
     }
 
-    const { orders } = await this.orders.findByStoreId(store.id, { limit: 5 });
+    const orders = await this.prisma.order.findMany({
+      where: { storeId: store.id },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
 
     if (!orders.length) {
-      await this.bot.sendMessage(chatId, '📭 Новых заказов нет.', { parseMode: 'HTML' });
+      await this.bot.sendMessage(chatId, '📭 Заказов пока нет.', { parseMode: 'HTML' });
       return;
     }
 
-    const lines = orders.map((o: { status: string; orderNumber?: string | null; id: string; totalAmount?: unknown }, i: number) => {
+    const lines = orders.map((o, i) => {
       const status = ORDER_STATUS_LABEL[o.status] ?? o.status;
       const amount = o.totalAmount ? `${Number(o.totalAmount).toLocaleString('ru')} сум` : '—';
       return `${i + 1}. #${o.orderNumber ?? o.id.slice(-6)} | ${status}\n   💰 ${amount}`;
@@ -142,10 +132,10 @@ export class TelegramDemoHandler {
     const user = await this.resolveUser(chatId);
     if (!user) { await this.handleStart(chatId); return; }
 
-    const seller = await this.resolveSeller(user.id);
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!seller) { await this.handleStart(chatId); return; }
 
-    const store = await this.stores.findBySellerId(seller.id);
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
     if (!store) {
       await this.bot.sendMessage(chatId, '⚠️ У вас ещё нет магазина. Создайте его на savdo.uz');
       return;
@@ -162,28 +152,28 @@ export class TelegramDemoHandler {
     const user = await this.resolveUser(chatId);
     if (!user) { await this.handleStart(chatId); return; }
 
-    const seller = await this.resolveSeller(user.id);
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!seller) { await this.handleStart(chatId); return; }
 
-    const store = await this.stores.findBySellerId(seller.id);
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
     if (!store) {
       await this.bot.sendMessage(chatId, '⚠️ У вас ещё нет магазина.');
       return;
     }
 
-    const [productCount, { total }] = await Promise.all([
-      this.products.countByStoreId(store.id),
-      this.orders.findByStoreId(store.id, { limit: 1 }),
+    const [productCount, orderCount] = await Promise.all([
+      this.prisma.product.count({ where: { storeId: store.id, deletedAt: null } }),
+      this.prisma.order.count({ where: { storeId: store.id } }),
     ]);
 
     await this.bot.sendMessage(
       chatId,
-      `📊 <b>Статистика магазина «${store.name}»</b>\n\n📦 Товаров: <b>${productCount}</b>\n🛒 Всего заказов: <b>${total}</b>`,
+      `📊 <b>Статистика магазина «${store.name}»</b>\n\n📦 Товаров: <b>${productCount}</b>\n🛒 Всего заказов: <b>${orderCount}</b>`,
       { parseMode: 'HTML' },
     );
   }
 
-  // ── Buyer menu ────────────────────────────────────────────────────────────
+  // ── Buyer ─────────────────────────────────────────────────────────────────
 
   async showBuyerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
@@ -209,30 +199,33 @@ export class TelegramDemoHandler {
   async handleStoreSlugInput(chatId: string, slug: string): Promise<void> {
     await this.clearState(chatId);
 
-    const store = await this.stores.findBySlug(slug.trim().toLowerCase());
+    const store = await this.prisma.store.findUnique({ where: { slug: slug.trim().toLowerCase() } });
     if (!store) {
       await this.bot.sendInlineKeyboard(
         chatId,
-        `❌ Магазин <code>${slug}</code> не найден.\n\nПроверьте адрес и попробуйте снова.`,
+        `❌ Магазин <code>${slug}</code> не найден.`,
         [[{ text: '🔍 Искать снова', callback_data: 'buyer_find_store' }]],
         'HTML',
       );
       return;
     }
 
-    const allProducts = await this.products.findPublicByStoreId(store.id);
-    const productList = allProducts.slice(0, 5);
+    const products = await this.prisma.product.findMany({
+      where: { storeId: store.id, status: 'ACTIVE', deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
 
-    const productLines = productList.length
-      ? productList.map((p, i) => {
-          const price = p.basePrice ? `${Number(p.basePrice).toLocaleString('ru')} сум` : '—';
+    const productLines = products.length
+      ? products.map((p, i) => {
+          const price = `${Number(p.basePrice).toLocaleString('ru')} сум`;
           return `${i + 1}. <b>${p.title}</b> — ${price}`;
         }).join('\n')
       : '📭 Товаров пока нет';
 
     await this.bot.sendInlineKeyboard(
       chatId,
-      `🏪 <b>${store.name}</b>\n\n${store.description ? `📝 ${store.description}\n\n` : ''}🔗 savdo.uz/${store.slug}\n\n<b>Топ товаров:</b>\n${productLines}`,
+      `🏪 <b>${store.name}</b>\n\n${store.description ? `📝 ${store.description}\n\n` : ''}🔗 savdo.uz/${store.slug}\n\n<b>Товары:</b>\n${productLines}`,
       [[{ text: '🛒 Открыть магазин', callback_data: `open_store_${store.slug}` }]],
       'HTML',
     );
@@ -242,21 +235,24 @@ export class TelegramDemoHandler {
     const user = await this.resolveUser(chatId);
     if (!user) { await this.handleStart(chatId); return; }
 
-    // Buyer record is separate from User — find by userId
     const buyer = await this.prisma.buyer.findUnique({ where: { userId: user.id } });
     if (!buyer) {
-      await this.bot.sendMessage(chatId, '⚠️ Профиль покупателя не найден. Сначала оформите заказ на savdo.uz');
+      await this.bot.sendMessage(chatId, '📭 У вас ещё нет заказов. Оформите первый на savdo.uz');
       return;
     }
 
-    const { orders } = await this.orders.findByBuyerId(buyer.id, { limit: 5 });
+    const orders = await this.prisma.order.findMany({
+      where: { buyerId: buyer.id },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
 
     if (!orders.length) {
       await this.bot.sendMessage(chatId, '📭 У вас ещё нет заказов.');
       return;
     }
 
-    const lines = orders.map((o: { status: string; orderNumber?: string | null; id: string; totalAmount?: unknown }, i: number) => {
+    const lines = orders.map((o, i) => {
       const status = ORDER_STATUS_LABEL[o.status] ?? o.status;
       const amount = o.totalAmount ? `${Number(o.totalAmount).toLocaleString('ru')} сум` : '—';
       return `${i + 1}. #${o.orderNumber ?? o.id.slice(-6)} | ${status}\n   💰 ${amount}`;
