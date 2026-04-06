@@ -72,6 +72,13 @@ export class SendMessageUseCase {
 
     this.chatGateway.emitChatMessage(message);
 
+    // Notify seller-room when buyer sends a message
+    const storeId = thread.seller.store?.id;
+    const isBuyerSending = thread.buyerId !== null && thread.sellerId !== input.senderUserId;
+    if (storeId && isBuyerSending) {
+      this.chatGateway.emitChatNewMessage(storeId, { threadId: input.threadId });
+    }
+
     return message;
   }
 }

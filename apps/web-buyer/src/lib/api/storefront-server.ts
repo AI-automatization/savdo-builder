@@ -14,7 +14,9 @@ async function sfetch<T>(path: string, params?: Record<string, string>): Promise
   if (params) {
     Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, v));
   }
-  const res = await fetch(url.toString(), { next: { revalidate: 30 } });
+  const res = await fetch(url.toString(), {
+    next: { revalidate: process.env.NODE_ENV === 'development' ? 0 : 30 },
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw Object.assign(new Error(err.message ?? res.statusText), { status: res.status, code: err.code });

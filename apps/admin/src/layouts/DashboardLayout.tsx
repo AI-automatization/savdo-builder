@@ -4,7 +4,7 @@ import { auth } from '../lib/api'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UserCog, Store, ShoppingCart,
-  Shield, ScrollText, LogOut, Package, Database,
+  Shield, ScrollText, LogOut, Package, Database, Megaphone,
   ChevronRight, Search, Sun, Moon,
 } from 'lucide-react'
 
@@ -18,6 +18,7 @@ const NAV = [
   { to: '/moderation', icon: Shield,          label: 'Модерация' },
   { to: '/audit-logs', icon: ScrollText,      label: 'Аудит-лог' },
   { to: '/database',   icon: Database,        label: 'База данных' },
+  { to: '/broadcast',  icon: Megaphone,       label: 'Рассылка' },
 ]
 
 function useTashkentClock() {

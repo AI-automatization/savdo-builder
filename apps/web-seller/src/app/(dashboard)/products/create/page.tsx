@@ -140,13 +140,13 @@ export default function CreateProductPage() {
                   <Label>Цена (сум) <span style={{ color: "#f87171" }}>*</span></Label>
                   <input
                     type="number"
-                    min={0}
+                    min={1}
                     className={inputFocusClass}
                     style={inputStyle}
-                    placeholder="0"
+                    placeholder="10000"
                     {...register('basePrice', {
                       required: 'Укажите цену',
-                      min: { value: 0, message: 'Цена не может быть отрицательной' },
+                      min: { value: 1, message: 'Цена должна быть больше 0' },
                       valueAsNumber: true,
                     })}
                   />

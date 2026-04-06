@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { ChatMessage, ChatThread, ThreadType } from '@prisma/client';
+import { ChatMessage, ChatThread, ThreadType, Seller, Store } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 
-export type ThreadWithMessages = ChatThread & { messages: ChatMessage[] };
+export type ThreadWithMessages = ChatThread & {
+  messages: ChatMessage[];
+  seller: Seller & { store: Store | null };
+};
 
 export interface CreateThreadData {
   buyerId: string;
@@ -29,6 +32,9 @@ export class ChatRepository {
         messages: {
           where: { isDeleted: false },
           orderBy: { createdAt: 'asc' },
+        },
+        seller: {
+          include: { store: true },
         },
       },
     });

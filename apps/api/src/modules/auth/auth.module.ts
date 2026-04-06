@@ -12,6 +12,7 @@ import { RequestOtpUseCase } from './use-cases/request-otp.use-case';
 import { VerifyOtpUseCase } from './use-cases/verify-otp.use-case';
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
+import { GetMeUseCase } from './use-cases/get-me.use-case';
 import { TelegramModule } from '../telegram/telegram.module';
 import { OtpProcessor } from '../../queues/otp.processor';
 import { QUEUE_OTP } from '../../queues/queues.module';
@@ -34,6 +35,7 @@ import { QUEUE_OTP } from '../../queues/queues.module';
     VerifyOtpUseCase,
     RefreshSessionUseCase,
     LogoutSessionUseCase,
+    GetMeUseCase,
     OtpProcessor,
   ],
   exports: [JwtAuthGuard, TokenService],

@@ -7,7 +7,7 @@ const TABLE_CONFIG: Record<string, {
   writableFields: string[];
   readonly?: boolean;
 }> = {
-  users:            { prismaModel: 'user',           searchFields: ['phone'],                               writableFields: ['status', 'languageCode'] },
+  users:            { prismaModel: 'user',           searchFields: ['phone'],                               writableFields: ['role', 'status', 'languageCode'] },
   sellers:          { prismaModel: 'seller',          searchFields: ['fullName', 'telegramUsername'],        writableFields: ['verificationStatus', 'bio', 'isBlocked'] },
   stores:           { prismaModel: 'store',           searchFields: ['name', 'slug'],                       writableFields: ['status', 'description'] },
   products:         { prismaModel: 'product',         searchFields: ['title'],                              writableFields: ['status', 'title'] },

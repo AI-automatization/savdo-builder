@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Phone, Search, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react'
+import { Users, Phone, Search, ChevronLeft, ChevronRight, MessageCircle, UserCheck, X } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { api } from '../lib/api'
 
 interface UserRow {
   id: string

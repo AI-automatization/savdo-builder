@@ -31,10 +31,27 @@ export class OrdersGateway {
     this.logger.log(`Emitted order:new to seller:${order.storeId} — orderId=${order.id}`);
   }
 
+  @SubscribeMessage('join-buyer-room')
+  handleJoinBuyerRoom(
+    @MessageBody() data: { buyerId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const room = `buyer:${data.buyerId}`;
+    client.join(room);
+    this.logger.debug(`Client ${client.id} joined room ${room}`);
+  }
+
   emitOrderStatusChanged(order: Order, oldStatus: string): void {
     const payload = { ...this.buildPayload(order), oldStatus };
     this.server.to(`seller:${order.storeId}`).emit('order:status_changed', payload);
     this.logger.log(`Emitted order:status_changed to seller:${order.storeId} — orderId=${order.id} ${oldStatus}→${order.status}`);
+  }
+
+  emitOrderStatusChangedToBuyer(order: Order, oldStatus: string): void {
+    if (!order.buyerId) return;
+    const payload = { ...this.buildPayload(order), oldStatus };
+    this.server.to(`buyer:${order.buyerId}`).emit('order:status_changed', payload);
+    this.logger.log(`Emitted order:status_changed to buyer:${order.buyerId} — orderId=${order.id} ${oldStatus}→${order.status}`);
   }
 
   private buildPayload(order: Order) {

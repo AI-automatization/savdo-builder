@@ -22,6 +22,9 @@ export class RolesGuard implements CanActivate {
       throw new DomainException(ErrorCode.UNAUTHORIZED, 'Unauthorized', HttpStatus.UNAUTHORIZED);
     }
 
+    // ADMIN bypasses all role checks
+    if (user.role === 'ADMIN') return true;
+
     if (!requiredRoles.includes(user.role)) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Insufficient permissions', HttpStatus.FORBIDDEN);
     }

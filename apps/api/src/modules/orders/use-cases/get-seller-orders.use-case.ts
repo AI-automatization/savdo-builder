@@ -17,7 +17,7 @@ export class GetSellerOrdersUseCase {
 
   constructor(private readonly ordersRepo: OrdersRepository) {}
 
-  async execute(input: GetSellerOrdersInput): Promise<PaginatedOrders> {
+  async execute(input: GetSellerOrdersInput) {
     if (!input.storeId) {
       throw new DomainException(
         ErrorCode.STORE_NOT_FOUND,
@@ -26,10 +26,23 @@ export class GetSellerOrdersUseCase {
       );
     }
 
-    return this.ordersRepo.findByStoreId(input.storeId, {
+    const page = input.page ?? 1;
+    const limit = Math.min(input.limit ?? 20, 100);
+
+    const result = await this.ordersRepo.findByStoreId(input.storeId, {
       status: input.status,
-      page: input.page,
-      limit: input.limit,
+      page,
+      limit,
     });
+
+    return {
+      data: result.orders,
+      meta: {
+        total: result.total,
+        page,
+        limit,
+        totalPages: Math.ceil(result.total / limit),
+      },
+    };
   }
 }

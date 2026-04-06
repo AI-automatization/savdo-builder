@@ -44,6 +44,8 @@ import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
 import { BroadcastUseCase } from './use-cases/broadcast.use-case';
 import { DbManagerUseCase } from './use-cases/db-manager.use-case';
+import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
+import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -72,6 +74,8 @@ export class AdminController {
     private readonly getAnalyticsUseCase: GetAnalyticsUseCase,
     private readonly broadcastUseCase: BroadcastUseCase,
     private readonly dbManagerUseCase: DbManagerUseCase,
+    private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
+    private readonly adminCreateStoreUseCase: AdminCreateStoreUseCase,
   ) {}
 
   // Resolve AdminUser record from JWT payload.
@@ -164,6 +168,52 @@ export class AdminController {
       payload: { status },
     });
     return updated;
+  }
+
+  // POST /api/v1/admin/users/:id/make-seller
+  @Post('users/:id/make-seller')
+  async makeUserSeller(
+    @Param('id') id: string,
+    @Body() body: { fullName: string; sellerType: string; telegramUsername: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const seller = await this.adminCreateSellerUseCase.execute({
+      userId: id,
+      fullName: body.fullName,
+      sellerType: body.sellerType as 'individual' | 'business',
+      telegramUsername: body.telegramUsername,
+    });
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'admin.create_seller',
+      entityType: 'seller',
+      entityId: seller.id,
+      payload: { userId: id, fullName: body.fullName },
+    });
+    return seller;
+  }
+
+  // POST /api/v1/admin/sellers/:id/create-store
+  @Post('sellers/:id/create-store')
+  async createStoreForSeller(
+    @Param('id') id: string,
+    @Body() body: { name: string; city: string; telegramContactLink: string; description?: string; region?: string; slug?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const store = await this.adminCreateStoreUseCase.execute({
+      sellerId: id,
+      ...body,
+    });
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'admin.create_store',
+      entityType: 'store',
+      entityId: store.id,
+      payload: { sellerId: id, name: body.name, slug: store.slug },
+    });
+    return store;
   }
 
   // ── Stores ────────────────────────────────────────────────────────────────
@@ -477,7 +527,7 @@ export class AdminController {
       actorUserId: user.sub,
       action: `db.insert.${table}`,
       entityType: table,
-      entityId: result.id ?? 'unknown',
+      entityId: (result as Record<string, unknown>).id as string ?? 'unknown',
       payload: { fields: Object.keys(data) },
     });
     return result;

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -7,6 +7,7 @@ import { RequestOtpUseCase } from './use-cases/request-otp.use-case';
 import { VerifyOtpUseCase } from './use-cases/verify-otp.use-case';
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
+import { GetMeUseCase } from './use-cases/get-me.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 
@@ -17,6 +18,7 @@ export class AuthController {
     private readonly verifyOtp: VerifyOtpUseCase,
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logoutSession: LogoutSessionUseCase,
+    private readonly getMe: GetMeUseCase,
   ) {}
 
   @Post('request-otp')
@@ -62,5 +64,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async logoutHandler(@CurrentUser() user: JwtPayload) {
     await this.logoutSession.execute(user.sessionId);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMeHandler(@CurrentUser() user: JwtPayload) {
+    return this.getMe.execute(user.sub);
   }
 }

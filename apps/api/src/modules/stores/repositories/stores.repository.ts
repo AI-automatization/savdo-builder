@@ -22,7 +22,15 @@ export class StoresRepository {
   async findBySlug(slug: string) {
     return this.prisma.store.findUnique({
       where: { slug },
-      include: { deliverySettings: true, contacts: true },
+      include: {
+        deliverySettings: true,
+        contacts: true,
+        categories: {
+          where: { isActive: true },
+          select: { id: true, name: true, sortOrder: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
     });
   }
 
@@ -52,6 +60,17 @@ export class StoresRepository {
         },
       },
       include: { deliverySettings: true },
+    });
+  }
+
+  async upsertDeliverySettings(storeId: string, data: {
+    deliveryFeeType?: string;
+    fixedDeliveryFee?: number;
+  }) {
+    return this.prisma.storeDeliverySettings.upsert({
+      where: { storeId },
+      create: { storeId, ...data },
+      update: data,
     });
   }
 

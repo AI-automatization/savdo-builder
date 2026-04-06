@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Database, Search, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, X, Check, AlertTriangle, RefreshCw, Lock, Eye } from 'lucide-react'
+import { Database, Search, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, X, Check, AlertTriangle, RefreshCw, Lock, Eye, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -305,6 +305,7 @@ function InsertModal({ writableFields, onSave, onCancel }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function DatabasePage() {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTable, setActiveTable] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
@@ -373,13 +374,16 @@ export default function DatabasePage() {
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
 
       {/* Sidebar */}
-      <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-        <div style={{ padding: '18px 16px 12px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Database size={15} color="var(--primary)" />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>База данных</span>
+      <div style={{ width: sidebarOpen ? 220 : 0, flexShrink: 0, borderRight: sidebarOpen ? '1px solid var(--border)' : 'none', background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', transition: 'width 0.2s ease' }}>
+        <div style={{ width: 220, display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div style={{ padding: '18px 16px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Database size={15} color="var(--primary)" />
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>База данных</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>10 таблиц · whitelist</div>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>10 таблиц · whitelist</div>
         </div>
 
         <div style={{ padding: '8px', flex: 1 }}>
@@ -413,6 +417,7 @@ export default function DatabasePage() {
             </button>
           ))}
         </div>
+        </div>
       </div>
 
       {/* Main area */}
@@ -426,6 +431,10 @@ export default function DatabasePage() {
           <>
             {/* Toolbar */}
             <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
+              <button onClick={() => setSidebarOpen(o => !o)} title={sidebarOpen ? 'Скрыть таблицы' : 'Показать таблицы'}
+                style={{ height: 32, width: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+              </button>
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{activeTable}</span>
               {isReadonly && (
                 <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, background: 'rgba(148,163,184,0.1)', color: '#94A3B8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -464,7 +473,7 @@ export default function DatabasePage() {
             )}
 
             {/* Table */}
-            <div style={{ flex: 1, overflow: 'auto' }}>
+            <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
               {rowsLoading ? (
                 <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
               ) : rows.length === 0 ? (
@@ -472,7 +481,7 @@ export default function DatabasePage() {
                   {search ? `Ничего не найдено по «${search}»` : 'Таблица пуста'}
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10 }}>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       {displayCols.map(col => (

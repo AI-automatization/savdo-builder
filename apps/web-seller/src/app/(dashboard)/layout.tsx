@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { track } from "../../lib/analytics";
@@ -71,6 +71,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { toasts } = useSellerSocket();
   const { data: unreadCount = 0 } = useUnreadCount();
   const logoutMutation = useLogout();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true) }, []);
 
   useEffect(() => {
     if (!isAuthenticated) router.replace('/login');
@@ -88,7 +91,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   }
 
-  if (!isAuthenticated) return null;
+  if (!mounted || !isAuthenticated) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -143,15 +146,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
             <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Ваш магазин</p>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-white/60 truncate">
+              <a
+                href={store ? `${process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'}/${store.slug}` : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-white/60 truncate hover:text-white/90 transition-colors"
+              >
                 {store ? `savdo.uz/${store.slug}` : 'savdo.uz/...'}
-              </span>
+              </a>
               <button
                 className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0 transition-opacity hover:opacity-80"
                 style={{ background: "rgba(167,139,250,.20)", color: "#A78BFA" }}
                 onClick={() => {
                   if (!store) return;
-                  navigator.clipboard.writeText(`https://savdo.uz/${store.slug}`);
+                  navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'}/${store.slug}`);
                   track.storeLinkCopied(store.id);
                 }}
               >

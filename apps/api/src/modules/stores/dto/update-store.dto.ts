@@ -1,4 +1,4 @@
-import { IsString, MinLength, MaxLength, IsOptional, IsBoolean, IsUUID } from 'class-validator';
+import { IsString, MinLength, MaxLength, IsOptional, IsBoolean, IsUUID, IsIn, IsNumber, Min } from 'class-validator';
 
 export class UpdateStoreDto {
   @IsOptional()
@@ -37,4 +37,13 @@ export class UpdateStoreDto {
   @IsOptional()
   @IsUUID()
   primaryGlobalCategoryId?: string;
+
+  @IsOptional()
+  @IsIn(['fixed', 'manual', 'none'])
+  deliveryFeeType?: 'fixed' | 'manual' | 'none';
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  deliveryFeeAmount?: number;
 }
