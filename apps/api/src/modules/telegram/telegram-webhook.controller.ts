@@ -45,13 +45,22 @@ export class TelegramWebhookController {
     const expected = this.config.get<string>('telegram.webhookSecret');
     if (expected && secretToken !== expected) return { ok: true };
 
-    if (update.callback_query) {
-      await this.handleCallbackQuery(update.callback_query);
-      return { ok: true };
-    }
-
-    if (update.message) {
-      await this.handleMessage(update.message);
+    try {
+      if (update.callback_query) {
+        await this.handleCallbackQuery(update.callback_query);
+        return { ok: true };
+      }
+      if (update.message) {
+        await this.handleMessage(update.message);
+      }
+    } catch (err: unknown) {
+      // Никогда не возвращаем ошибку Telegram — иначе он будет спамить повторами
+      const chatId = update.message?.chat.id ?? update.callback_query?.from.id;
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Bot handler crashed [chatId=${chatId}]: ${msg}`);
+      if (chatId) {
+        await this.bot.sendMessage(String(chatId), '⚠️ Что-то пошло не так. Попробуйте ещё раз или напишите /start').catch(() => null);
+      }
     }
 
     return { ok: true };
