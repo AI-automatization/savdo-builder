@@ -12,9 +12,10 @@ import { DeleteVariantUseCase } from './use-cases/delete-variant.use-case';
 import { AdjustStockUseCase } from './use-cases/adjust-stock.use-case';
 import { StoresModule } from '../stores/stores.module';
 import { SellersModule } from '../sellers/sellers.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [StoresModule, SellersModule],
+  imports: [StoresModule, SellersModule, TelegramModule],
   controllers: [ProductsController],
   providers: [
     ProductsRepository,

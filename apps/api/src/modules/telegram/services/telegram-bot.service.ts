@@ -7,6 +7,11 @@ export interface InlineButton {
   callback_data: string;
 }
 
+export interface WebAppButton {
+  text: string;
+  web_app: { url: string };
+}
+
 interface SendMessageOptions {
   parseMode?: 'HTML' | 'Markdown';
   replyMarkup?: object;
@@ -148,6 +153,28 @@ export class TelegramBotService implements OnApplicationBootstrap {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to remove keyboard for ${chatId}: ${msg}`);
+    }
+  }
+
+  // ── Web App button ────────────────────────────────────────────────────────
+
+  async sendWithWebApp(
+    chatId: string,
+    text: string,
+    rows: Array<Array<InlineButton | WebAppButton>>,
+    parseMode?: 'HTML' | 'Markdown',
+  ): Promise<void> {
+    if (!this.botToken) return;
+    try {
+      await axios.post(`${this.apiBase}/sendMessage`, {
+        chat_id: chatId,
+        text,
+        ...(parseMode ? { parse_mode: parseMode } : {}),
+        reply_markup: { inline_keyboard: rows },
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`sendWithWebApp failed: ${msg}`);
     }
   }
 

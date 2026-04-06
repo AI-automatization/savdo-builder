@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { TelegramBotService, InlineButton } from './services/telegram-bot.service';
+import { TelegramBotService, InlineButton, WebAppButton } from './services/telegram-bot.service';
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
 
@@ -342,15 +342,18 @@ export class TelegramDemoHandler {
 
   async showSellerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
-    await this.bot.sendInlineKeyboard(
+    const twaUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    const rows: Array<Array<InlineButton | WebAppButton>> = [
+      [{ text: '📱 Открыть приложение', web_app: { url: `${twaUrl}/twa` } }],
+      [{ text: '📋 Новые заказы',       callback_data: 'seller_orders'       }],
+      [{ text: '🔗 Мой магазин',        callback_data: 'seller_store'        }],
+      [{ text: '📊 Статистика',         callback_data: 'seller_stats'        }],
+      [{ text: '📢 Настройка канала',   callback_data: 'seller_link_channel' }],
+    ];
+    await this.bot.sendWithWebApp(
       chatId,
       `👋 <b>${name}</b>, вы в панели продавца:`,
-      [
-        [{ text: '📋 Новые заказы',       callback_data: 'seller_orders'       }],
-        [{ text: '🔗 Мой магазин',        callback_data: 'seller_store'        }],
-        [{ text: '📊 Статистика',         callback_data: 'seller_stats'        }],
-        [{ text: '📢 Настройка канала',   callback_data: 'seller_link_channel' }],
-      ],
+      rows,
       'HTML',
     );
   }
@@ -428,15 +431,13 @@ export class TelegramDemoHandler {
 
   async showBuyerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
-    await this.bot.sendInlineKeyboard(
-      chatId,
-      `👋 Привет, <b>${name}</b>!`,
-      [
-        [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
-        [{ text: '📦 Мои заказы',   callback_data: 'buyer_orders'     }],
-      ],
-      'HTML',
-    );
+    const twaUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    const rows: Array<Array<InlineButton | WebAppButton>> = [
+      [{ text: '📱 Открыть приложение', web_app: { url: `${twaUrl}/twa` } }],
+      [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
+      [{ text: '📦 Мои заказы',   callback_data: 'buyer_orders'     }],
+    ];
+    await this.bot.sendWithWebApp(chatId, `👋 Привет, <b>${name}</b>!`, rows, 'HTML');
   }
 
   async handleBuyerFindStore(chatId: string): Promise<void> {

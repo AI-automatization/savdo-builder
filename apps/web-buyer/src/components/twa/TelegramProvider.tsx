@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { SDKProvider, useLaunchParams, useInitData } from "@telegram-apps/sdk-react";
+import { createContext, useContext, useEffect, useState } from "react";
 
-interface TelegramUser {
+export interface TwaUser {
   id: number;
   firstName: string;
   lastName?: string;
@@ -12,83 +11,81 @@ interface TelegramUser {
 }
 
 interface TwaContextValue {
-  user: TelegramUser | null;
-  startParam: string | null;   // данные из deep link (?startapp=...)
+  user: TwaUser | null;
+  startParam: string | null;
   isReady: boolean;
   isTelegram: boolean;
-  themeParams: { bgColor?: string; textColor?: string; buttonColor?: string } | null;
 }
-
-import { createContext, useContext } from "react";
 
 const TwaContext = createContext<TwaContextValue>({
   user: null,
   startParam: null,
   isReady: false,
   isTelegram: false,
-  themeParams: null,
 });
 
 export const useTwa = () => useContext(TwaContext);
 
-// Внутренний компонент — читает данные после инициализации SDK
-function TwaContextProvider({ children }: { children: React.ReactNode }) {
-  const launchParams = useLaunchParams();
-  const initData     = useInitData();
-
-  const tgUser = initData?.user;
-
-  const value: TwaContextValue = {
-    user: tgUser
-      ? {
-          id:        tgUser.id,
-          firstName: tgUser.firstName,
-          lastName:  tgUser.lastName,
-          username:  tgUser.username,
-          photoUrl:  tgUser.photoUrl,
-        }
-      : null,
-    startParam: launchParams.startParam ?? null,
-    isReady:    true,
-    isTelegram: true,
-    themeParams: null,
+// Типы из window.Telegram.WebApp (без SDK — чтобы не было версионных конфликтов)
+interface TgWebApp {
+  ready: () => void;
+  expand: () => void;
+  initDataUnsafe?: {
+    user?: {
+      id: number;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+      photo_url?: string;
+    };
+    start_param?: string;
   };
-
-  return <TwaContext.Provider value={value}>{children}</TwaContext.Provider>;
+  colorScheme?: string;
 }
 
-// Fallback для браузера вне Telegram
-function BrowserFallbackProvider({ children }: { children: React.ReactNode }) {
-  const value: TwaContextValue = {
-    user: null,
-    startParam: null,
-    isReady: true,
-    isTelegram: false,
-    themeParams: null,
-  };
-  return <TwaContext.Provider value={value}>{children}</TwaContext.Provider>;
+declare global {
+  interface Window {
+    Telegram?: { WebApp: TgWebApp };
+  }
 }
 
 export function TelegramProvider({ children }: { children: React.ReactNode }) {
-  const [isTg, setIsTg] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [value, setValue] = useState<TwaContextValue>({
+    user: null,
+    startParam: null,
+    isReady: false,
+    isTelegram: false,
+  });
 
   useEffect(() => {
-    // Проверяем что мы внутри Telegram
-    const inTg = typeof window !== "undefined" && !!(window as typeof window & { Telegram?: unknown }).Telegram;
-    setIsTg(inTg);
-    setChecked(true);
+    const tg = window.Telegram?.WebApp;
+
+    if (!tg) {
+      // Запущен в браузере — не в Telegram
+      setValue({ user: null, startParam: null, isReady: true, isTelegram: false });
+      return;
+    }
+
+    tg.ready();
+    tg.expand();
+
+    const tgUser = tg.initDataUnsafe?.user;
+
+    setValue({
+      user: tgUser
+        ? {
+            id:        tgUser.id,
+            firstName: tgUser.first_name,
+            lastName:  tgUser.last_name,
+            username:  tgUser.username,
+            photoUrl:  tgUser.photo_url,
+          }
+        : null,
+      startParam: tg.initDataUnsafe?.start_param ?? null,
+      isReady:    true,
+      isTelegram: true,
+    });
   }, []);
 
-  if (!checked) return null;
-
-  if (isTg) {
-    return (
-      <SDKProvider acceptCustomStyles>
-        <TwaContextProvider>{children}</TwaContextProvider>
-      </SDKProvider>
-    );
-  }
-
-  return <BrowserFallbackProvider>{children}</BrowserFallbackProvider>;
+  return <TwaContext.Provider value={value}>{children}</TwaContext.Provider>;
 }

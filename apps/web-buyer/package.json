@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.74.4",
-    "@telegram-apps/sdk-react": "^3.3.9",
     "axios": "^1.8.4",
     "daisyui": "^5.5.19",
     "next": "16.2.1",

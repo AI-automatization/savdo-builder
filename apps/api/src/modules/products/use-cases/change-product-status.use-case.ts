@@ -3,6 +3,8 @@ import { ProductsRepository } from '../repositories/products.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { Product, ProductStatus } from '@prisma/client';
+import { TelegramBotService } from '../../telegram/services/telegram-bot.service';
+import { PrismaService } from '../../../database/prisma.service';
 
 // Valid transitions per docs/V1.1/02_state_machines.md
 // DRAFT → ACTIVE, ACTIVE → ARCHIVED, ACTIVE → DRAFT, ARCHIVED → ACTIVE
@@ -15,7 +17,11 @@ const ALLOWED_TRANSITIONS: Record<string, ProductStatus[]> = {
 
 @Injectable()
 export class ChangeProductStatusUseCase {
-  constructor(private readonly productsRepo: ProductsRepository) {}
+  constructor(
+    private readonly productsRepo: ProductsRepository,
+    private readonly telegramBot: TelegramBotService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async execute(id: string, storeId: string, newStatus: ProductStatus): Promise<Product> {
     const product = await this.productsRepo.findById(id);
@@ -53,6 +59,32 @@ export class ChangeProductStatusUseCase {
       );
     }
 
-    return this.productsRepo.updateStatus(id, newStatus);
+    const updated = await this.productsRepo.updateStatus(id, newStatus);
+
+    // Автопостинг в TG канал при публикации товара
+    if (newStatus === ProductStatus.ACTIVE) {
+      this.postToChannel(updated).catch(() => null); // fire-and-forget, не блокируем ответ
+    }
+
+    return updated;
+  }
+
+  private async postToChannel(product: Product): Promise<void> {
+    const store = await this.prisma.store.findUnique({ where: { id: product.storeId } });
+    if (!store?.telegramChannelId) return;
+
+    const price   = `${Number(product.basePrice).toLocaleString('ru')} сум`;
+    const buyerUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    const text    = `🛍 <b>${product.title}</b>\n\n${product.description ? `${product.description}\n\n` : ''}💰 <b>${price}</b>\n\n🏪 ${store.name}`;
+
+    await this.telegramBot.sendToChannel(
+      store.telegramChannelId,
+      text,
+      [
+        [{ text: '🛒 Заказать', url: `${buyerUrl}/${store.slug}/products/${product.id}` }],
+        [{ text: '💬 Написать продавцу', url: store.telegramContactLink || `${buyerUrl}/${store.slug}` }],
+      ],
+      'HTML',
+    );
   }
 }
