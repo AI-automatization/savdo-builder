@@ -150,4 +150,54 @@ export class TelegramBotService implements OnApplicationBootstrap {
       this.logger.error(`Failed to remove keyboard for ${chatId}: ${msg}`);
     }
   }
+
+  // ── Channel helpers ───────────────────────────────────────────────────────
+
+  async checkBotIsAdmin(channelId: string): Promise<boolean> {
+    if (!this.botToken) return false;
+    try {
+      const meRes = await axios.get(`${this.apiBase}/getMe`);
+      const botId = (meRes.data as { result?: { id?: number } }).result?.id;
+      if (!botId) return false;
+
+      const res = await axios.post(`${this.apiBase}/getChatMember`, {
+        chat_id: channelId,
+        user_id: botId,
+      });
+      const status = (res.data as { result?: { status?: string } }).result?.status;
+      return status === 'administrator' || status === 'creator';
+    } catch {
+      return false;
+    }
+  }
+
+  async getChannelTitle(channelId: string): Promise<string | null> {
+    if (!this.botToken) return null;
+    try {
+      const res = await axios.post(`${this.apiBase}/getChat`, { chat_id: channelId });
+      return (res.data as { result?: { title?: string } }).result?.title ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async sendToChannel(
+    channelId: string,
+    text: string,
+    urlButtons?: Array<Array<{ text: string; url: string }>>,
+    parseMode?: 'HTML' | 'Markdown',
+  ): Promise<void> {
+    if (!this.botToken) return;
+    try {
+      await axios.post(`${this.apiBase}/sendMessage`, {
+        chat_id: channelId,
+        text,
+        ...(parseMode ? { parse_mode: parseMode } : {}),
+        ...(urlButtons ? { reply_markup: { inline_keyboard: urlButtons } } : {}),
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`sendToChannel failed for ${channelId}: ${msg}`);
+    }
+  }
 }

@@ -4,15 +4,15 @@ import { TelegramBotService } from './services/telegram-bot.service';
 import { TelegramDemoHandler } from './telegram-demo.handler';
 import { RedisService } from '../../shared/redis.service';
 
-const CHAT_ID_TTL      = 365 * 24 * 60 * 60;
-export const TELEGRAM_CHAT_ID_KEY  = (phone: string)  => `tg:chatid:${phone}`;
-export const TELEGRAM_PHONE_KEY    = (chatId: string) => `tg:phone:${chatId}`;
+const TTL_LONG = 365 * 24 * 60 * 60;
+export const TELEGRAM_CHAT_ID_KEY = (phone: string)  => `tg:chatid:${phone}`;
+export const TELEGRAM_PHONE_KEY   = (chatId: string) => `tg:phone:${chatId}`;
 
 interface TelegramUpdate {
   update_id: number;
   message?: {
     message_id: number;
-    from: { id: number; first_name?: string; username?: string };
+    from: { id: number; first_name?: string; last_name?: string; username?: string };
     chat: { id: number };
     text?: string;
     contact?: { phone_number: string; user_id?: number };
@@ -30,7 +30,7 @@ export class TelegramWebhookController {
   private readonly logger = new Logger(TelegramWebhookController.name);
 
   constructor(
-    private readonly telegramBot: TelegramBotService,
+    private readonly bot: TelegramBotService,
     private readonly demo: TelegramDemoHandler,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
@@ -42,20 +42,14 @@ export class TelegramWebhookController {
     @Body() update: TelegramUpdate,
     @Headers('x-telegram-bot-api-secret-token') secretToken?: string,
   ) {
-    // Verify webhook secret
-    const expectedSecret = this.config.get<string>('telegram.webhookSecret');
-    if (expectedSecret && secretToken !== expectedSecret) {
-      this.logger.warn('Webhook secret mismatch — ignoring');
-      return { ok: true };
-    }
+    const expected = this.config.get<string>('telegram.webhookSecret');
+    if (expected && secretToken !== expected) return { ok: true };
 
-    // ── Callback query (inline button press) ─────────────────────────────
     if (update.callback_query) {
       await this.handleCallbackQuery(update.callback_query);
       return { ok: true };
     }
 
-    // ── Text message ──────────────────────────────────────────────────────
     if (update.message) {
       await this.handleMessage(update.message);
     }
@@ -63,89 +57,85 @@ export class TelegramWebhookController {
     return { ok: true };
   }
 
-  // ── Message handler ───────────────────────────────────────────────────────
+  // ── Message ───────────────────────────────────────────────────────────────
 
-  private async handleMessage(message: NonNullable<TelegramUpdate['message']>) {
-    const chatId = String(message.chat.id);
-    const firstName = message.from.first_name;
+  private async handleMessage(msg: NonNullable<TelegramUpdate['message']>) {
+    const chatId    = String(msg.chat.id);
+    const firstName = msg.from.first_name;
+    const username  = msg.from.username;
 
     // /start
-    if (message.text === '/start') {
+    if (msg.text === '/start') {
       await this.demo.handleStart(chatId, firstName);
       return;
     }
 
-    // Contact shared — link phone ↔ chatId
-    if (message.contact) {
-      const rawPhone = message.contact.phone_number.replace(/\s/g, '');
-      const phone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
+    // Контакт (телефон)
+    if (msg.contact) {
+      const raw   = msg.contact.phone_number.replace(/\s/g, '');
+      const phone = raw.startsWith('+') ? raw : `+${raw}`;
 
+      // Двустороннее хранение для OTP совместимости
       await Promise.all([
-        this.redis.set(TELEGRAM_CHAT_ID_KEY(phone), chatId, CHAT_ID_TTL),
-        this.redis.set(TELEGRAM_PHONE_KEY(chatId), phone, CHAT_ID_TTL),
+        this.redis.set(TELEGRAM_CHAT_ID_KEY(phone), chatId, TTL_LONG),
+        this.redis.set(TELEGRAM_PHONE_KEY(chatId), phone, TTL_LONG),
       ]);
 
-      this.logger.log(`Linked chatId=${chatId} ↔ phone=${phone}`);
-
-      await this.telegramBot.removeKeyboard(
-        chatId,
-        `✅ Номер ${phone} привязан! Загружаю ваш аккаунт...`,
-      );
-
-      await this.demo.handleStart(chatId, firstName);
+      await this.demo.handleContact(chatId, phone, firstName, username);
       return;
     }
 
-    // State-aware text input
+    // State machine
     const state = await this.demo.getState(chatId);
 
-    if (state === 'awaiting_store_slug' && message.text) {
-      await this.demo.handleStoreSlugInput(chatId, message.text);
-      return;
+    if (msg.text) {
+      switch (state) {
+        case 'awaiting_store_slug':    await this.demo.handleStoreSlugInput(chatId, msg.text); return;
+        case 'awaiting_channel':       await this.demo.handleChannelInput(chatId, msg.text);   return;
+        case 'seller_reg_name':        await this.demo.handleSellerRegName(chatId, msg.text);  return;
+        case 'seller_reg_store_name':  await this.demo.handleSellerRegStoreName(chatId, msg.text); return;
+        case 'seller_reg_store_desc':  await this.demo.finishSellerRegistration(chatId, msg.text); return;
+      }
     }
 
-    // Unknown — show menu or hint
-    const phone = await this.demo.getPhone(chatId);
-    if (phone) {
-      await this.demo.handleStart(chatId, firstName);
-    } else {
-      await this.telegramBot.sendMessage(
-        chatId,
-        `Напишите /start чтобы войти в аккаунт.`,
-      );
-    }
+    // Fallback — показать меню
+    await this.demo.handleStart(chatId, firstName);
   }
 
-  // ── Callback query handler ────────────────────────────────────────────────
+  // ── Callback query ────────────────────────────────────────────────────────
 
   private async handleCallbackQuery(cq: NonNullable<TelegramUpdate['callback_query']>) {
     const chatId = String(cq.from.id);
-    const data = cq.data ?? '';
+    const data   = cq.data ?? '';
 
-    await this.telegramBot.answerCallbackQuery(cq.id);
+    await this.bot.answerCallbackQuery(cq.id);
 
-    switch (true) {
-      // Seller
-      case data === 'seller_orders': await this.demo.handleSellerOrders(chatId); break;
-      case data === 'seller_store':  await this.demo.handleSellerStore(chatId);  break;
-      case data === 'seller_stats':  await this.demo.handleSellerStats(chatId);  break;
+    // Регистрация
+    if (data === 'reg_buyer')  { await this.demo.registerAsBuyer(chatId);         return; }
+    if (data === 'reg_seller') { await this.demo.startSellerRegistration(chatId); return; }
+    if (data === 'seller_reg_skip_desc') { await this.demo.finishSellerRegistration(chatId); return; }
 
-      // Buyer
-      case data === 'buyer_find_store': await this.demo.handleBuyerFindStore(chatId); break;
-      case data === 'buyer_orders':     await this.demo.handleBuyerOrders(chatId);    break;
+    // Продавец
+    if (data === 'seller_orders')       { await this.demo.handleSellerOrders(chatId);  return; }
+    if (data === 'seller_store')        { await this.demo.handleSellerStore(chatId);   return; }
+    if (data === 'seller_stats')        { await this.demo.handleSellerStats(chatId);   return; }
+    if (data === 'seller_link_channel') { await this.demo.handleLinkChannel(chatId);   return; }
+    if (data === 'seller_skip_channel') { await this.demo.showSellerMenu(chatId, ''); return; }
 
-      // Open store link (just info message)
-      case data.startsWith('open_store_'): {
-        const slug = data.replace('open_store_', '');
-        await this.telegramBot.sendMessage(
-          chatId,
-          `🔗 Откройте магазин в браузере:\nsavdo.uz/${slug}`,
-        );
-        break;
-      }
+    // Покупатель
+    if (data === 'buyer_find_store') { await this.demo.handleBuyerFindStore(chatId); return; }
+    if (data === 'buyer_orders')     { await this.demo.handleBuyerOrders(chatId);    return; }
 
-      default:
-        this.logger.warn(`Unknown callback_data: ${data}`);
+    if (data.startsWith('open_store_')) {
+      const slug = data.replace('open_store_', '');
+      const url  = `${process.env.BUYER_APP_URL ?? 'https://savdo.uz'}/${slug}`;
+      await this.bot.sendMessage(chatId, `🔗 Открыть магазин:\n${url}`);
+      return;
     }
+
+    // noop — кнопки в постах канала (там обработка не нужна)
+    if (data === 'noop') return;
+
+    this.logger.warn(`Unknown callback: ${data}`);
   }
 }
