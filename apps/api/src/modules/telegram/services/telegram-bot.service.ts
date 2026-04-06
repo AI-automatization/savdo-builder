@@ -2,8 +2,14 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
+export interface InlineButton {
+  text: string;
+  callback_data: string;
+}
+
 interface SendMessageOptions {
   parseMode?: 'HTML' | 'Markdown';
+  replyMarkup?: object;
 }
 
 @Injectable()
@@ -46,25 +52,69 @@ export class TelegramBotService implements OnApplicationBootstrap {
     chatId: string,
     text: string,
     options: SendMessageOptions = {},
-  ): Promise<void> {
+  ): Promise<number | null> {
     if (!this.botToken) {
       this.logger.error('TELEGRAM_BOT_TOKEN is not configured — cannot send message');
-      return;
+      return null;
     }
 
     try {
-      await axios.post(`${this.apiBase}/sendMessage`, {
+      const res = await axios.post(`${this.apiBase}/sendMessage`, {
         chat_id: chatId,
         text,
         ...(options.parseMode ? { parse_mode: options.parseMode } : {}),
+        ...(options.replyMarkup ? { reply_markup: options.replyMarkup } : {}),
       });
+      return (res.data as { result?: { message_id?: number } }).result?.message_id ?? null;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `Failed to send Telegram message to ${chatId}: ${message}`,
-      );
-      // Non-critical — swallow the error
+      this.logger.error(`Failed to send Telegram message to ${chatId}: ${message}`);
+      return null;
     }
+  }
+
+  async sendInlineKeyboard(
+    chatId: string,
+    text: string,
+    buttons: InlineButton[][],
+    parseMode?: 'HTML' | 'Markdown',
+  ): Promise<number | null> {
+    return this.sendMessage(chatId, text, {
+      parseMode,
+      replyMarkup: { inline_keyboard: buttons },
+    });
+  }
+
+  async editMessageText(
+    chatId: string,
+    messageId: number,
+    text: string,
+    buttons?: InlineButton[][],
+    parseMode?: 'HTML' | 'Markdown',
+  ): Promise<void> {
+    if (!this.botToken) return;
+    try {
+      await axios.post(`${this.apiBase}/editMessageText`, {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        ...(parseMode ? { parse_mode: parseMode } : {}),
+        ...(buttons ? { reply_markup: { inline_keyboard: buttons } } : {}),
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`editMessageText failed: ${msg}`);
+    }
+  }
+
+  async answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
+    if (!this.botToken) return;
+    try {
+      await axios.post(`${this.apiBase}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        ...(text ? { text } : {}),
+      });
+    } catch { /* non-critical */ }
   }
 
   async sendContactRequest(chatId: string): Promise<void> {
