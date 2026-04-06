@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCart, useUpdateCartItem, useRemoveCartItem } from "@/hooks/use-cart";
+import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import type { CartItem } from "types";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
@@ -145,13 +146,6 @@ export default function CartPage() {
   const items = cart?.items ?? [];
   const totalQty = items.reduce((s, it) => s + it.quantity, 0);
 
-  const NAV = [
-    { href: "/",        label: "Магазин", icon: <IcoShop /> },
-    { href: "/cart",    label: "Корзина", icon: <IcoCart />, active: true, badge: totalQty },
-    { href: "/chats",   label: "Чаты",    icon: <IcoChat /> },
-    { href: "/orders",  label: "Заказы",  icon: <IcoOrders /> },
-    { href: "/profile", label: "Профиль", icon: <IcoProfile /> },
-  ];
 
   return (
     <div
@@ -259,26 +253,7 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div className="max-w-md mx-auto" style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}>
-          <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon, active, badge }) => (
-              <Link key={href} href={href} className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl">
-                <div className="relative">
-                  <span style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.32)" }}>{icon}</span>
-                  {badge != null && badge > 0 && (
-                    <span className="absolute -top-1 -right-1.5 w-[17px] h-[17px] flex items-center justify-center rounded-full text-[10px] font-bold" style={{ background: "#A78BFA", color: "#0d0d1f" }}>
-                      {badge}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] font-medium" style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.28)" }}>{label}</span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <BottomNavBar active="cart" cartBadge={totalQty} />
     </div>
   );
 }

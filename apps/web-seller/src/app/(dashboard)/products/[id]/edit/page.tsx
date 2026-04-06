@@ -7,6 +7,7 @@ import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeletePr
 import { useStoreCategories } from '../../../../../hooks/use-seller';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
+import { ProductVariantsSection } from '../../../../../components/product-variants-section';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -345,6 +346,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </button>
         </div>
       </form>
+
+      {/* Variants */}
+      <ProductVariantsSection productId={id} productSku={product.sku} />
 
       {/* Status & danger actions */}
       {!isHiddenByAdmin && (

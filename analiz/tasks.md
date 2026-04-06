@@ -17,6 +17,24 @@
 - **Что нужно:** `GET /api/v1/auth/me` → возвращает `AuthUser` (id, phone, isPhoneVerified, role). Требует `JwtAuthGuard`. После — Азим добавит вызов при старте приложения в `AuthContext`.
 - **Файлы:** `apps/api/src/modules/auth/auth.controller.ts` + use-case
 
+### 🔴 [API-013] Socket: chat:new_message → seller-room
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-seller` — уведомления о новых сообщениях
+- **Проблема:** `useSellerSocket` слушает только `order:*` события в seller-room. Чат-уведомления приходят только в конкретный thread-room. Продавец не узнаёт о новых сообщениях если не открыт чат.
+- **Что нужно:** При создании нового сообщения в чате — дополнительно emit `chat:new_message` в seller-room (`storeId`). Payload: `{ threadId, buyerName? }`.
+
+### 🔴 [API-014] Socket: order:status_changed → buyer
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-buyer` — realtime обновление статуса заказа
+- **Проблема:** Покупатель не получает realtime обновлений когда продавец меняет статус заказа. Нет buyer-room.
+- **Что нужно:** При смене статуса заказа — emit `order:status_changed` в buyer-room (по `buyerId`). Тогда Азим добавит hook в buyer app.
+
+### 🔴 [API-012] Buyer phone в деталях заказа продавца
+- **Домен:** `apps/api`
+- **Блокирует:** `apps/web-seller` — страница деталей заказа
+- **Проблема:** `Order` тип содержит только `buyerId: string`. Нет объекта `buyer` с телефоном. Продавец не может связаться с покупателем напрямую.
+- **Что нужно:** Добавить в `Order` (seller detail endpoint): `buyer: { phone: string }`. Полат обновляет тип в `packages/types` и endpoint `GET /seller/orders/:id`.
+
 ### 🔴 [API-011] Delivery settings — поля не в PATCH /seller/store
 - **Домен:** `apps/api`
 - **Блокирует:** `apps/web-seller` — страница настроек магазина
@@ -125,39 +143,9 @@
 
 > Все критические страницы Phase B готовы. Осталось ждать Полата по WEB-022 для тестирования.
 
-## ✅ Выполнено (03.04.2026) — Азим
+## 🟡 Следующие задачи — Азим (без блокеров)
 
-- Auth persistence (F5 не разлогинивает) ✅
-- Seller logout — реальный вызов API + очистка кеша ✅
-- Dashboard auth guard + редирект на /login ✅
-- Onboarding guard (нет магазина → онбординг, есть → dashboard) ✅
-- Login redirect если уже залогинен ✅
-- Token expiry event → авто-logout в обоих приложениях ✅
-- queryClient.clear() при logout ✅
-- Analytics → реальный POST /api/v1/analytics/track ✅
-- Seller sidebar — реальный phone вместо hardcoded ✅
-- Dashboard — views из аналитики вместо ложной revenue ✅
-- Buyer SEO meta (generateMetadata per store) ✅
-- Buyer root title ("Create Next App" → реальный) ✅
-- @ts-ignore × 2 → as React.CSSProperties ✅
+## 🔴 Ждём Полата (блокируют Азима)
 
-~~[WEB-027] — ✅ Chat gateway готов, блокер снят (Полат, 03.04.2026)~~
-
-## 🟡 Следующие задачи — Азим
-
-### 🟡 [WEB-034] Product variants — управление вариантами товара
-- **Домен:** `apps/web-seller`
-- **Кто берёт:** Азим
-- **Детали:** Варианты товара в product edit page. Простые варианты: `titleOverride` (свободный текст), `priceOverride`, `stockQuantity`, `isActive`. Хуки готовы в `use-products.ts`.
-- **Файлы:**
-  - Новый: `apps/web-seller/src/components/product-variants-section.tsx`
-  - Modify: `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
-
-### 🟡 [WEB-027] Socket.IO chat real-time (РАЗБЛОКИРОВАН ✅)
-- **Домен:** `apps/web-seller`, `apps/web-buyer`
-- **Кто берёт:** Азим
-- **Детали:** Заменить `refetchInterval: 10_000` в `useMessages` на Socket.IO. Комната: `thread:{threadId}`, событие: `chat:message`.
-- **Файлы:** `apps/web-seller/src/hooks/use-chat.ts`, `apps/web-buyer/src/hooks/use-chat.ts`
-
-~~[WEB-028] — ✅ Готово~~
+> API-010 и API-011 в таблице блокеров выше (начало файла)
 

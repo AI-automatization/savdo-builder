@@ -487,6 +487,14 @@ export default function OnboardingPage() {
   const { isAuthenticated } = useAuth();
   const { data: store, isLoading: storeLoading } = useStore();
   const [step, setStep] = useState(0);
+  const [error, setError] = useState<string>();
+  const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
+  const [storeName, setStoreName] = useState('');
+
+  const createStore      = useCreateStore();
+  const updateProfile    = useUpdateSellerProfile();
+  const createProduct    = useCreateProduct();
+  const submitStore      = useSubmitStore();
 
   useEffect(() => {
     if (!isAuthenticated) router.replace('/login');
@@ -497,16 +505,6 @@ export default function OnboardingPage() {
   }, [storeLoading, store, router]);
 
   if (!isAuthenticated || (!storeLoading && store)) return null;
-  const [error, setError] = useState<string>();
-
-  // Collected data
-  const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
-  const [storeName, setStoreName] = useState('');
-
-  const createStore      = useCreateStore();
-  const updateProfile    = useUpdateSellerProfile();
-  const createProduct    = useCreateProduct();
-  const submitStore      = useSubmitStore();
 
   // ── Handlers ──
 

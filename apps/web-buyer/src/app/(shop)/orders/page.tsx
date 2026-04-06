@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OrderStatus } from "types";
 import type { OrderListItem } from "types";
 import { useAuth } from "@/lib/auth/context";
@@ -61,15 +62,6 @@ const FILTER_TABS: { key: OrderStatus | "ALL"; label: string }[] = [
 const fmt = (n: number) => n.toLocaleString("ru-RU");
 const shortId = (id: string) => id.slice(-6).toUpperCase();
 
-// ── Nav ────────────────────────────────────────────────────────────────────
-
-const NAV = [
-  { href: "/",        label: "Магазин", icon: <IcoShop /> },
-  { href: "/cart",    label: "Корзина", icon: <IcoCart /> },
-  { href: "/chats",   label: "Чаты",    icon: <IcoChat /> },
-  { href: "/orders",  label: "Заказы",  icon: <IcoOrders />, active: true },
-  { href: "/profile", label: "Профиль", icon: <IcoProfile /> },
-];
 
 // ── OTP Gate ───────────────────────────────────────────────────────────────
 
@@ -312,18 +304,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div className="max-w-md mx-auto" style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}>
-          <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon, active }) => (
-              <Link key={href} href={href} className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl">
-                <span style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.32)" }}>{icon}</span>
-                <span className="text-[10px] font-medium" style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.28)" }}>{label}</span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <BottomNavBar active="orders" />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { UserRole } from 'types';
 import type { ChatThread } from 'types';
-import { useThreads, useMessages, useSendMessage, useResolveThread } from '@/hooks/use-chat';
+import { useThreads, useMessages, useSendMessage, useResolveThread, useChatSocket } from '@/hooks/use-chat';
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -74,6 +74,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 
 function ChatWindow({ thread }: { thread: ChatThread }) {
   const { data, isLoading } = useMessages(thread.id);
+  useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
   const resolveMutation = useResolveThread();
   const [text, setText] = useState('');

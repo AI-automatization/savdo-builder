@@ -1,7 +1,8 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
+import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OrderStatus, DeliveryType } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
 
@@ -109,14 +110,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const { data: order, isLoading, isError } = useOrder(id);
   const cancelOrder = useCancelOrder();
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
-  const NAV = [
-    { href: "/",        label: "Магазин", icon: <IcoShop /> },
-    { href: "/cart",    label: "Корзина", icon: <IcoCart /> },
-    { href: "/chats",   label: "Чаты",    icon: <IcoChat /> },
-    { href: "/orders",  label: "Заказы",  icon: <IcoOrders />, active: true },
-    { href: "/profile", label: "Профиль", icon: <IcoProfile /> },
-  ];
 
   const currentStep = order ? (ACTIVE_STEP[order.status] ?? 0) : 0;
   const isCancelled = order?.status === OrderStatus.CANCELLED;
@@ -327,33 +322,42 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 Написать продавцу
               </a>
             )}
-            {canCancel && (
+            {canCancel && !confirmCancel && (
               <button
-                onClick={() => cancelOrder.mutate({ id: order.id })}
-                disabled={cancelOrder.isPending}
-                className="w-full py-3 rounded-2xl text-sm font-semibold disabled:opacity-40 transition-opacity"
+                onClick={() => setConfirmCancel(true)}
+                className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity"
                 style={{ background: "rgba(248,113,113,0.12)", color: "rgba(248,113,113,.90)", border: "1px solid rgba(248,113,113,0.20)" }}
               >
-                {cancelOrder.isPending ? "Отмена заказа..." : "Отменить заказ"}
+                Отменить заказ
               </button>
+            )}
+            {canCancel && confirmCancel && (
+              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.22)" }}>
+                <p className="text-sm text-white/80 text-center">Отменить заказ #{shortId(order.id)}?</p>
+                <div className="flex gap-2.5">
+                  <button
+                    onClick={() => setConfirmCancel(false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                    style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)" }}
+                  >
+                    Назад
+                  </button>
+                  <button
+                    onClick={() => cancelOrder.mutate({ id: order.id })}
+                    disabled={cancelOrder.isPending}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+                    style={{ background: "rgba(248,113,113,0.22)", color: "rgba(248,113,113,.95)" }}
+                  >
+                    {cancelOrder.isPending ? "..." : "Да, отменить"}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div className="max-w-md mx-auto" style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}>
-          <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon, active }) => (
-              <Link key={href} href={href} className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl">
-                <span style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.32)" }}>{icon}</span>
-                <span className="text-[10px] font-medium" style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.28)" }}>{label}</span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <BottomNavBar active="orders" />
     </div>
   );
 }

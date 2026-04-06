@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import Image from "next/image";
 import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
@@ -66,8 +67,9 @@ export default function ProductPage() {
   const selectedVariantObj = activeVariants.find(v => v.id === selectedVariant) ?? null;
 
   const displayPrice = selectedVariantObj?.priceOverride ?? product?.basePrice ?? 0;
-  const isUnavailable = !product || product.status !== ProductStatus.ACTIVE || !product.isVisible;
-  const isOutOfStock  = selectedVariantObj
+  const isUnavailable           = !product || product.status !== ProductStatus.ACTIVE || !product.isVisible;
+  const requiresVariantSelection = activeVariants.length > 0 && !selectedVariant;
+  const isOutOfStock             = selectedVariantObj
     ? selectedVariantObj.stockQuantity === 0
     : (activeVariants.length > 0 && activeVariants.every(v => v.stockQuantity === 0));
 
@@ -246,17 +248,17 @@ export default function ProductPage() {
         <div className="max-w-md mx-auto flex gap-2.5">
           <button
             onClick={handleAddToCart}
-            disabled={isLoading || isUnavailable || isOutOfStock || addToCart.isPending}
+            disabled={isLoading || isUnavailable || isOutOfStock || requiresVariantSelection || addToCart.isPending}
             className="flex-1 py-3.5 rounded-2xl text-[15px] font-semibold text-white transition-all active:scale-[0.98]"
             style={
-              isLoading || isUnavailable || isOutOfStock
+              isLoading || isUnavailable || isOutOfStock || requiresVariantSelection
                 ? { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.28)", cursor: "not-allowed" }
                 : added
                 ? { background: "linear-gradient(135deg, #059669 0%, #34d399 100%)", boxShadow: "0 8px 24px rgba(52,211,153,.35)" }
                 : { background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,.38)" }
             }
           >
-            {isLoading ? "Загрузка..." : added ? "Добавлено ✓" : isOutOfStock ? "Нет в наличии" : "В корзину"}
+            {isLoading ? "Загрузка..." : isOutOfStock ? "Нет в наличии" : requiresVariantSelection ? "Выберите вариант" : added ? "Добавлено ✓" : "В корзину"}
           </button>
 
           {product?.store?.telegramContactLink && (
@@ -276,27 +278,7 @@ export default function ProductPage() {
       </div>
 
       {/* ── Bottom navigation ── */}
-      <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
-        <div
-          className="max-w-md mx-auto"
-          style={{ ...glassDim, borderRadius: "20px 20px 0 0", borderBottom: "none" }}
-        >
-          <nav className="flex items-center justify-around px-2 py-2">
-            {NAV.map(({ href, label, icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl"
-              >
-                <span style={{ color: "rgba(255,255,255,0.32)" }}>{icon}</span>
-                <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.28)" }}>
-                  {label}
-                </span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      <BottomNavBar active="store" storeSlug={slug} />
 
     </div>
   );

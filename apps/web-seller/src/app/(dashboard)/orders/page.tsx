@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { OrderStatus } from 'types';
 import type { OrderListItem } from 'types';
@@ -216,17 +216,38 @@ function SkeletonRow() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────────
 
+const PAGE_LIMIT = 20;
+
 export default function OrdersPage() {
   const [activeFilter, setActiveFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [cancelTarget, setCancelTarget] = useState<OrderListItem | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [accOrders, setAccOrders] = useState<OrderListItem[]>([]);
 
-  const { data, isLoading, isError } = useSellerOrders(
-    activeFilter !== 'ALL' ? { status: activeFilter } : undefined,
-  );
+  const { data, isLoading, isError, isFetching } = useSellerOrders({
+    ...(activeFilter !== 'ALL' ? { status: activeFilter } : {}),
+    page,
+    limit: PAGE_LIMIT,
+  });
   const updateStatus = useUpdateOrderStatus();
 
-  const orders = data?.data ?? [];
+  // Accumulate pages; reset on filter change
+  useEffect(() => {
+    if (!data?.data) return;
+    setAccOrders((prev) => (page === 1 ? data.data : [...prev, ...data.data]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.data]);
+
+  const orders = accOrders;
+  const hasMore = data ? page * PAGE_LIMIT < data.meta.total : false;
+  const isLoadingMore = isFetching && page > 1;
+
+  function handleFilterChange(key: OrderStatus | 'ALL') {
+    setActiveFilter(key);
+    setPage(1);
+    setAccOrders([]);
+  }
 
   async function handleAction(order: OrderListItem, toStatus: OrderStatus) {
     setPendingId(order.id);
@@ -267,7 +288,7 @@ export default function OrdersPage() {
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
+              onClick={() => handleFilterChange(tab.key)}
               className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all"
               style={
                 active
@@ -327,6 +348,18 @@ export default function OrdersPage() {
           />
         ))}
       </div>
+
+      {/* Load more */}
+      {hasMore && (
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={isLoadingMore}
+          className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-50"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
+        >
+          {isLoadingMore ? 'Загрузка...' : 'Загрузить ещё'}
+        </button>
+      )}
 
       {/* Cancel modal */}
       {cancelTarget && (

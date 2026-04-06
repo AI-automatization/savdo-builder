@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { AddCartItemRequest, UpdateCartItemRequest } from 'types';
+import type { AddCartItemRequest, UpdateCartItemRequest, Cart } from 'types';
 import {
   getCart,
   addCartItem,
@@ -16,6 +16,7 @@ export function useCart() {
   return useQuery({
     queryKey: CART_KEY,
     queryFn: getCart,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -40,7 +41,14 @@ export function useRemoveCartItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (itemId: string) => removeCartItem(itemId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CART_KEY }),
+    onSuccess: (_, itemId) => {
+      queryClient.setQueryData<Cart | null>(CART_KEY, (prev) => {
+        if (!prev) return prev;
+        const items = prev.items.filter((i) => i.id !== itemId);
+        const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
+        return { ...prev, items, totalAmount };
+      });
+    },
   });
 }
 

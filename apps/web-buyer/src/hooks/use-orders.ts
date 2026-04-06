@@ -14,6 +14,7 @@ export function useOrders(params?: { status?: OrderStatus; page?: number; limit?
   return useQuery({
     queryKey: orderKeys.list(params),
     queryFn: () => getBuyerOrders(params),
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -22,6 +23,7 @@ export function useOrder(id: string) {
     queryKey: orderKeys.detail(id),
     queryFn: () => getBuyerOrder(id),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
