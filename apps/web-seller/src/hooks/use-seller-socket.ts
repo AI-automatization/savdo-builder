@@ -63,12 +63,22 @@ export function useSellerSocket() {
       }
     }
 
+    function onChatNewMessage(payload: { threadId: string; buyerName?: string }) {
+      const body = payload.buyerName ? `${payload.buyerName} написал(а) вам` : 'Новое сообщение в чате';
+      addToast(`💬 ${body}`);
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('Новое сообщение 💬', { body, icon: '/favicon.ico' });
+      }
+    }
+
     socket.on('order:new', onOrderNew);
     socket.on('order:status_changed', onOrderStatusChanged);
+    socket.on('chat:new_message', onChatNewMessage);
 
     return () => {
       socket.off('order:new', onOrderNew);
       socket.off('order:status_changed', onOrderStatusChanged);
+      socket.off('chat:new_message', onChatNewMessage);
     };
   }, [store?.id, queryClient, addToast]);
 

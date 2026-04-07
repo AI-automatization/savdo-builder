@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import { useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from 'types';
 import { getAccessToken, setTokens, clearTokens, getStoredUser, storeUser } from './storage';
-import { logout as logoutApi } from '../api/auth.api';
+import { getMe, logout as logoutApi } from '../api/auth.api';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -46,6 +46,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => { logoutRef.current = logout; }, [logout]);
+
+  // Refresh user from server on mount (validates token + gets fresh data)
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    getMe()
+      .then((freshUser) => {
+        storeUser(freshUser);
+        setUser(freshUser);
+      })
+      .catch(() => {
+        logoutRef.current();
+      });
+  }, []);
 
   useEffect(() => {
     function onExpired() { logoutRef.current(); }

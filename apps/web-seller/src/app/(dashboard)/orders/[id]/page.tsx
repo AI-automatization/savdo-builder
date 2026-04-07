@@ -331,6 +331,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
+        {order.buyer?.phone && (
+          <div>
+            <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Телефон покупателя</p>
+            <a
+              href={`tel:${order.buyer.phone}`}
+              className="text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ color: '#A78BFA' }}
+            >
+              {order.buyer.phone}
+            </a>
+          </div>
+        )}
+
         {order.buyerNote && (
           <div
             className="rounded-xl px-3.5 py-2.5"

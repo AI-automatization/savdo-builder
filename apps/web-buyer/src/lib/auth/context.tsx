@@ -12,7 +12,7 @@ import {
   getStoredUser,
   storeUser,
 } from './storage';
-import { logout as logoutApi } from '../api/auth.api';
+import { getMe, logout as logoutApi } from '../api/auth.api';
 import { mergeCart } from '../api/cart.api';
 
 interface AuthContextValue {
@@ -66,6 +66,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => { logoutRef.current = logout; }, [logout]);
+
+  // Refresh user from server on mount (validates token + gets fresh data)
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    getMe()
+      .then((freshUser) => {
+        storeUser(freshUser);
+        setUser(freshUser);
+      })
+      .catch(() => {
+        logoutRef.current();
+      });
+  }, []);
 
   useEffect(() => {
     function onExpired() { logoutRef.current(); }

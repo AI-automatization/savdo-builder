@@ -19,6 +19,11 @@ export function useThreads() {
   });
 }
 
+export function useUnreadChatCount(): number {
+  const { data: threads = [] } = useThreads();
+  return threads.reduce((sum, t) => sum + (t.unreadCount ?? 0), 0);
+}
+
 export function useMessages(threadId: string | null) {
   return useQuery({
     queryKey: chatKeys.messages(threadId ?? ''),

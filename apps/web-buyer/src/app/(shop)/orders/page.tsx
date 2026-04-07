@@ -8,6 +8,7 @@ import type { OrderListItem } from "types";
 import { useAuth } from "@/lib/auth/context";
 import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
+import { useBuyerSocket } from "@/hooks/use-buyer-socket";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -286,6 +287,7 @@ function OrdersList() {
 
 export default function OrdersPage() {
   const { isAuthenticated } = useAuth();
+  useBuyerSocket();
 
   return (
     <div

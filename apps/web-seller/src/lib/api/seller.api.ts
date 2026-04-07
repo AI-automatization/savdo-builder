@@ -47,6 +47,8 @@ export async function updateStore(data: {
   logoMediaId?: string;
   coverMediaId?: string;
   primaryGlobalCategoryId?: string;
+  deliveryFeeType?: 'fixed' | 'manual' | 'none';
+  deliveryFeeAmount?: number;
 }): Promise<Store> {
   const res = await apiClient.patch<Store>('/seller/store', data);
   return res.data;

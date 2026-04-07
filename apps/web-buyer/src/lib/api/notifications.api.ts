@@ -13,19 +13,15 @@ export interface InboxResponse {
   meta: { page: number; limit: number; total: number };
 }
 
-export interface UnreadCountResponse {
-  count: number;
-}
-
 export async function getInbox(): Promise<NotificationItem[]> {
   const { data } = await apiClient.get<InboxResponse>('/notifications/inbox', {
-    params: { limit: 20 },
+    params: { limit: 30 },
   });
   return data.data;
 }
 
 export async function getUnreadCount(): Promise<number> {
-  const { data } = await apiClient.get<UnreadCountResponse>(
+  const { data } = await apiClient.get<{ count: number }>(
     '/notifications/inbox/unread-count',
   );
   return data.count;
@@ -33,20 +29,4 @@ export async function getUnreadCount(): Promise<number> {
 
 export async function readAll(): Promise<void> {
   await apiClient.patch('/notifications/inbox/read-all');
-}
-
-export interface NotifPreferences {
-  mobilePushEnabled: boolean;
-  webPushEnabled: boolean;
-  telegramEnabled: boolean;
-}
-
-export async function getPreferences(): Promise<NotifPreferences> {
-  const { data } = await apiClient.get<NotifPreferences>('/notifications/preferences');
-  return data;
-}
-
-export async function updatePreferences(prefs: Partial<NotifPreferences>): Promise<NotifPreferences> {
-  const { data } = await apiClient.put<NotifPreferences>('/notifications/preferences', prefs);
-  return data;
 }

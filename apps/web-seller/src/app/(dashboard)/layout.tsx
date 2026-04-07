@@ -9,6 +9,7 @@ import { useSellerSocket } from "../../hooks/use-seller-socket";
 import { useAuth } from "../../lib/auth/context";
 import { useLogout } from "../../hooks/use-auth";
 import { useUnreadCount } from "../../hooks/use-notifications";
+import { useUnreadChatCount } from "../../hooks/use-chat";
 import { useSellerOrders } from "../../hooks/use-orders";
 import { OrderStatus } from "types";
 
@@ -68,6 +69,7 @@ const NAV = [
 interface SidebarProps {
   pathname: string;
   pendingCount: number;
+  unreadChatCount: number;
   store: { slug: string; id: string } | undefined;
   userPhone: string | undefined;
   logoutPending: boolean;
@@ -75,7 +77,7 @@ interface SidebarProps {
   onCopyLink: () => void;
 }
 
-function SidebarContent({ pathname, pendingCount, store, userPhone, logoutPending, onLogout, onCopyLink }: SidebarProps) {
+function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPhone, logoutPending, onLogout, onCopyLink }: SidebarProps) {
   return (
     <>
       {/* Logo */}
@@ -95,6 +97,8 @@ function SidebarContent({ pathname, pendingCount, store, userPhone, logoutPendin
         {NAV.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           const isOrders = href === "/orders";
+          const isChat = href === "/chat";
+          const badge = isOrders ? pendingCount : isChat ? unreadChatCount : 0;
           return (
             <Link
               key={href}
@@ -108,12 +112,16 @@ function SidebarContent({ pathname, pendingCount, store, userPhone, logoutPendin
             >
               <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
               <span className="flex-1">{label}</span>
-              {isOrders && pendingCount > 0 && (
+              {badge > 0 && (
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: "rgba(251,191,36,.18)", color: "#fbbf24", minWidth: 18, textAlign: "center" }}
+                  style={
+                    isChat
+                      ? { background: "rgba(167,139,250,.18)", color: "#A78BFA", minWidth: 18, textAlign: "center" }
+                      : { background: "rgba(251,191,36,.18)", color: "#fbbf24", minWidth: 18, textAlign: "center" }
+                  }
                 >
-                  {pendingCount > 99 ? "99+" : pendingCount}
+                  {badge > 99 ? "99+" : badge}
                 </span>
               )}
             </Link>
@@ -177,6 +185,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: store, isLoading: storeLoading, error: storeError } = useStore();
   const { toasts } = useSellerSocket();
   const { data: unreadCount = 0 } = useUnreadCount();
+  const unreadChatCount = useUnreadChatCount();
   const { data: pendingOrders } = useSellerOrders({ status: OrderStatus.PENDING });
   const pendingCount = pendingOrders?.meta.total ?? 0;
   const logoutMutation = useLogout();
@@ -209,6 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebarProps: SidebarProps = {
     pathname,
     pendingCount,
+    unreadChatCount,
     store: store ? { slug: store.slug, id: store.id } : undefined,
     userPhone: user?.phone,
     logoutPending: logoutMutation.isPending,

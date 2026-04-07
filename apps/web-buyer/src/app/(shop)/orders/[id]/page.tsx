@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OrderStatus, DeliveryType } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
+import { useBuyerSocket } from "@/hooks/use-buyer-socket";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -110,6 +111,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const { data: order, isLoading, isError } = useOrder(id);
   const cancelOrder = useCancelOrder();
+  useBuyerSocket();
   const [confirmCancel, setConfirmCancel] = useState(false);
 
 

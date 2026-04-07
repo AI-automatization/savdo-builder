@@ -1,8 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getInbox, getUnreadCount, readAll, getPreferences, updatePreferences } from '../lib/api/notifications.api';
-import type { NotifPreferences } from '../lib/api/notifications.api';
+import { useAuth } from '../lib/auth/context';
+import { getInbox, getUnreadCount, readAll } from '../lib/api/notifications.api';
 
 export const NOTIF_KEYS = {
   inbox: ['notifications', 'inbox'] as const,
@@ -10,18 +10,22 @@ export const NOTIF_KEYS = {
 };
 
 export function useNotifications() {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: NOTIF_KEYS.inbox,
     queryFn: getInbox,
+    enabled: isAuthenticated,
     staleTime: 0,
   });
 }
 
 export function useUnreadCount() {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: NOTIF_KEYS.unreadCount,
     queryFn: getUnreadCount,
-    refetchInterval: 30_000,
+    enabled: isAuthenticated,
+    refetchInterval: isAuthenticated ? 30_000 : false,
     staleTime: 0,
   });
 }
@@ -33,24 +37,6 @@ export function useReadAll() {
     onSuccess: () => {
       queryClient.setQueryData(NOTIF_KEYS.unreadCount, 0);
       queryClient.invalidateQueries({ queryKey: NOTIF_KEYS.inbox });
-    },
-  });
-}
-
-export function useNotifPreferences() {
-  return useQuery({
-    queryKey: ['notifications', 'preferences'] as const,
-    queryFn: getPreferences,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-export function useUpdateNotifPreferences() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (prefs: Partial<NotifPreferences>) => updatePreferences(prefs),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['notifications', 'preferences'], updated);
     },
   });
 }

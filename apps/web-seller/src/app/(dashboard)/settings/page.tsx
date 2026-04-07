@@ -3,8 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories, useCreateStoreCategory, useUpdateStoreCategory, useDeleteStoreCategory } from '@/hooks/use-seller';
-import type { StoreCategory } from 'types';
+import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
+import type { Store, StoreCategory } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
+
+// Backend returns deliverySettings nested in Store response (not yet in shared types)
+type StoreWithDelivery = Store & {
+  deliverySettings?: {
+    deliveryFeeType: 'fixed' | 'manual' | 'none';
+    fixedDeliveryFee: number;
+  } | null;
+};
 
 const glass = {
   background: 'rgba(255,255,255,0.08)',
@@ -289,6 +298,123 @@ function StoreCategoriesSection() {
   );
 }
 
+// ── Delivery Settings Form ─────────────────────────────────────────────────────
+
+type DeliveryFormValues = {
+  deliveryFeeType: 'fixed' | 'manual' | 'none';
+  deliveryFeeAmount: string;
+};
+
+function DeliverySettingsSection() {
+  const { data: store, isLoading } = useStore();
+  const updateStore = useUpdateStore();
+  const [saved, setSaved] = useState(false);
+
+  const storeWithDelivery = store as StoreWithDelivery | undefined;
+  const currentType = storeWithDelivery?.deliverySettings?.deliveryFeeType ?? 'none';
+  const currentAmount = storeWithDelivery?.deliverySettings?.fixedDeliveryFee ?? 0;
+
+  const { register, handleSubmit, reset, watch, formState: { isDirty } } = useForm<DeliveryFormValues>();
+  const feeType = watch('deliveryFeeType');
+
+  useEffect(() => {
+    if (storeWithDelivery) {
+      reset({
+        deliveryFeeType: currentType,
+        deliveryFeeAmount: currentAmount > 0 ? String(currentAmount) : '',
+      });
+    }
+  }, [storeWithDelivery?.id, currentType, currentAmount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function onSubmit(values: DeliveryFormValues) {
+    await updateStore.mutateAsync({
+      deliveryFeeType: values.deliveryFeeType,
+      deliveryFeeAmount: values.deliveryFeeType === 'fixed' ? Number(values.deliveryFeeAmount) || 0 : undefined,
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+    reset(values);
+  }
+
+  const FEE_TYPE_LABELS: Record<string, string> = {
+    none:   'Бесплатно',
+    fixed:  'Фиксированная сумма',
+    manual: 'Договорная',
+  };
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl overflow-hidden" style={glass}>
+        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="h-3.5 w-32 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          {[100, 80].map((w, i) => (
+            <div key={i} className="flex flex-col gap-1.5">
+              <div className="h-2.5 rounded-full animate-pulse" style={{ width: w, background: 'rgba(255,255,255,0.08)' }} />
+              <div className="h-10 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Section title="Доставка">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <Field label="Стоимость доставки">
+          <select
+            {...register('deliveryFeeType')}
+            className={inputBase}
+            style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
+          >
+            {Object.entries(FEE_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value} style={{ background: '#1a1a2e' }}>{label}</option>
+            ))}
+          </select>
+        </Field>
+
+        {feeType === 'fixed' && (
+          <Field label="Сумма доставки (сум)">
+            <input
+              {...register('deliveryFeeAmount', {
+                pattern: { value: /^\d+$/, message: 'Только целые числа' },
+              })}
+              type="number"
+              min={0}
+              className={inputBase}
+              style={inputStyle}
+              placeholder="15000"
+            />
+          </Field>
+        )}
+
+        {feeType === 'manual' && (
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+            Сумма доставки обсуждается с покупателем индивидуально.
+          </p>
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="submit"
+            disabled={!isDirty || updateStore.isPending}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 16px rgba(167,139,250,.30)' }}
+          >
+            {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
+          </button>
+          <SavedBadge show={saved} />
+          {updateStore.isError && (
+            <span className="text-xs" style={errorStyle}>Ошибка сохранения</span>
+          )}
+        </div>
+      </form>
+    </Section>
+  );
+}
+
 // ── Store Settings Form ────────────────────────────────────────────────────────
 
 type StoreFormValues = {
@@ -553,6 +679,111 @@ function ProfileSettingsSection() {
   );
 }
 
+// ── Notification Preferences Section ──────────────────────────────────────────
+
+interface ToggleRowProps {
+  label: string;
+  description: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+}
+
+function ToggleRow({ label, description, checked, disabled, onChange }: ToggleRowProps) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white">{label}</p>
+        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className="relative flex-shrink-0 w-10 h-5.5 rounded-full transition-colors disabled:opacity-40"
+        style={{
+          width: 40,
+          height: 22,
+          background: checked ? 'rgba(167,139,250,0.80)' : 'rgba(255,255,255,0.14)',
+          border: '1px solid rgba(255,255,255,0.10)',
+        }}
+      >
+        <span
+          className="absolute top-[2px] rounded-full transition-transform"
+          style={{
+            width: 16,
+            height: 16,
+            background: '#fff',
+            left: 2,
+            transform: checked ? 'translateX(18px)' : 'translateX(0)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+          }}
+        />
+      </button>
+    </div>
+  );
+}
+
+function NotifPreferencesSection() {
+  const { data: prefs, isLoading } = useNotifPreferences();
+  const update = useUpdateNotifPreferences();
+  const [saved, setSaved] = useState(false);
+
+  async function toggle(key: 'telegramEnabled' | 'webPushEnabled' | 'mobilePushEnabled', value: boolean) {
+    await update.mutateAsync({ [key]: value });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl overflow-hidden" style={glass}>
+        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="h-3.5 w-40 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="flex flex-col gap-1.5">
+                <div className="h-3.5 w-36 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                <div className="h-2.5 w-52 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
+              </div>
+              <div className="w-10 h-[22px] rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Section title="Уведомления">
+      <ToggleRow
+        label="Telegram-уведомления"
+        description="Новые заказы и изменения статусов — в ваш Telegram"
+        checked={prefs?.telegramEnabled ?? false}
+        disabled={update.isPending}
+        onChange={(v) => toggle('telegramEnabled', v)}
+      />
+      <ToggleRow
+        label="Push в браузере"
+        description="Уведомления на этом устройстве даже если вкладка закрыта"
+        checked={prefs?.webPushEnabled ?? false}
+        disabled={update.isPending}
+        onChange={(v) => toggle('webPushEnabled', v)}
+      />
+      {saved && (
+        <p className="text-xs" style={{ color: 'rgba(52,211,153,.85)' }}>Сохранено</p>
+      )}
+      {update.isError && (
+        <p className="text-xs" style={errorStyle}>Ошибка сохранения</p>
+      )}
+    </Section>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -560,8 +791,10 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-5 max-w-xl">
       <h1 className="text-xl font-bold text-white">Настройки</h1>
       <StoreSettingsSection />
+      <DeliverySettingsSection />
       <StoreCategoriesSection />
       <ProfileSettingsSection />
+      <NotifPreferencesSection />
     </div>
   );
 }

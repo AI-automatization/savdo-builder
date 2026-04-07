@@ -1,6 +1,6 @@
 # Done — Азим + Полат
 
-## 2026-04-07 (сессия 13)
+## 2026-04-07 (сессия 13 — Полат)
 
 ### ✅ [BOT-FIX] callback_query не доставлялся (Полат)
 - **Важность:** 🔴 Критическая
@@ -19,6 +19,81 @@
 - **Дата:** 07.04.2026
 - **Файлы:** `apps/api/src/modules/admin/use-cases/approve-store.use-case.ts` (новый), `admin.controller.ts`, `admin.module.ts`, `apps/admin/src/pages/StoreDetailPage.tsx`
 - **Что сделано:** `POST /admin/stores/:id/approve` + кнопка в UI только для PENDING_REVIEW
+
+## 2026-04-07 (сессия 13 — продолжение 2)
+
+### ✅ [WEB-043] Seller настройки уведомлений (preferences)
+- **Важность:** 🟡 Важная
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/notifications.api.ts` — добавлены `getPreferences()`, `updatePreferences()`
+  - `apps/web-seller/src/hooks/use-notifications.ts` — `useNotifPreferences`, `useUpdateNotifPreferences`
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx` — секция `NotifPreferencesSection` (toggle Telegram + web push)
+- **Что сделано:** Продавец может включить/выключить Telegram-уведомления и push в браузере прямо из настроек.
+
+### ✅ [WEB-044] Cart badge в Header (web-buyer) + chat badge в sidebar (web-seller)
+- **Важность:** 🔴 Баг-фикс + улучшение
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/components/layout/Header.tsx` — real cart count вместо хардкода `0`
+  - `apps/web-seller/src/hooks/use-chat.ts` — `useUnreadChatCount()`
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — badge на "Чаты" (фиолетовый) + рефактор badge логики
+- **Что сделано:** Покупатель видит реальное кол-во товаров в корзине. Продавец видит кол-во непрочитанных чатов в nav.
+
+## 2026-04-07 (сессия 13 — продолжение)
+
+### ✅ [WEB-042] Buyer уведомления
+- **Важность:** 🟡 Важная
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/notifications.api.ts` — новый
+  - `apps/web-buyer/src/hooks/use-notifications.ts` — новый (с `enabled: isAuthenticated`)
+  - `apps/web-buyer/src/app/(shop)/notifications/page.tsx` — новый
+  - `apps/web-buyer/src/components/layout/Header.tsx` — bell icon + unread badge
+- **Что сделано:** Страница /notifications с табами "Все / Непрочитанные", auto mark-all-read on mount, клик → переход к заказу. Колокольчик с badge в шапке (показывается только при наличии непрочитанных). Auth gate для незалогиненных.
+
+## 2026-04-07 (сессия 13 — Азим)
+
+### ✅ [API-010] GET /auth/me — refresh user on mount
+- **Важность:** 🔴 Критическая
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/auth.api.ts` — добавлен `getMe()`
+  - `apps/web-seller/src/lib/auth/context.tsx` — refresh on mount
+  - `apps/web-buyer/src/lib/api/auth.api.ts` — добавлен `getMe()`
+  - `apps/web-buyer/src/lib/auth/context.tsx` — refresh on mount
+- **Что сделано:** При старте приложения если есть токен — вызывается GET /auth/me, обновляется user state. При 401 — автоматический logout.
+
+### ✅ [API-011] Секция "Доставка" в настройках магазина
+- **Важность:** 🟡 Важная
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/seller.api.ts` — добавлены `deliveryFeeType`, `deliveryFeeAmount` в `updateStore()`
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx` — новый компонент `DeliverySettingsSection`
+- **Что сделано:** Секция с select (бесплатно/фиксированная/договорная) + поле суммы (показывается только при fixed).
+
+### ✅ [API-012] Телефон покупателя в деталях заказа
+- **Важность:** 🟡 Важная
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx`
+- **Что сделано:** Показывается `order.buyer?.phone` как кликабельная ссылка `tel:` в разделе "Доставка и оплата".
+
+### ✅ [API-013] chat:new_message → seller-room
+- **Важность:** 🟡 Важная
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/hooks/use-seller-socket.ts`
+- **Что сделано:** Обработчик `chat:new_message` — toast + browser notification с именем покупателя.
+
+### ✅ [API-014] Buyer socket — order:status_changed → buyer-room
+- **Важность:** 🔴 Критическая
+- **Дата:** 07.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-buyer-socket.ts` — новый хук
+  - `apps/web-buyer/src/app/(shop)/orders/page.tsx` — подключён
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` — подключён
+- **Что сделано:** Хук join `buyer:userId` room, слушает `order:status_changed`, invalidate queries → progress bar обновляется в реальном времени.
 
 ## 2026-04-05 (сессия 12)
 
