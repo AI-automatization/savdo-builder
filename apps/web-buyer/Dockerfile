@@ -18,6 +18,11 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_BUYER_URL=$NEXT_PUBLIC_BUYER_URL
 RUN pnpm --filter web-buyer build
 
+# Диагностика: показать структуру standalone в build logs
+RUN echo "=== standalone structure ===" && \
+    find /app/apps/web-buyer/.next/standalone -maxdepth 3 -name "*.js" | head -20 && \
+    echo "=== end ==="
+
 # ── runner ────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -27,8 +32,7 @@ COPY --from=builder /app/apps/web-buyer/.next/standalone ./
 COPY --from=builder /app/apps/web-buyer/.next/static ./.next/static
 COPY --from=builder /app/apps/web-buyer/public ./public
 
-EXPOSE 3000
-ENV PORT=3000
+# PORT задаёт Railway сам через env — не хардкодим
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
