@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -91,7 +91,7 @@ export default function StoreDetailPage() {
     [store?.id],
   )
 
-  const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'reject' | 'archive' | null>(null)
+  const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'reject' | 'archive' | 'approve' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -100,6 +100,7 @@ export default function StoreDetailPage() {
     unsuspend: 'unsuspend',
     reject:    'reject',
     archive:   'archive',
+    approve:   'approve',
   }
 
   const handleAction = async (reason: string) => {
@@ -131,9 +132,10 @@ export default function StoreDetailPage() {
   )
 
   const statusCfg = STATUS_CFG[store.status] ?? STATUS_CFG.DRAFT
-  const isSuspended = store.status === 'SUSPENDED'
-  const isRejected  = store.status === 'REJECTED'
-  const isArchived  = store.status === 'ARCHIVED'
+  const isSuspended   = store.status === 'SUSPENDED'
+  const isRejected    = store.status === 'REJECTED'
+  const isArchived    = store.status === 'ARCHIVED'
+  const isPendingReview = store.status === 'PENDING_REVIEW'
   const suspendEntry = auditData?.logs?.find(e => e.action === 'STORE_SUSPENDED')
   const suspendReason: string | null = suspendEntry?.payload?.reason ?? null
 
@@ -180,6 +182,11 @@ export default function StoreDetailPage() {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {isPendingReview && (
+            <button onClick={() => setModal('approve')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <CheckCircle size={14} /> Одобрить
+            </button>
+          )}
           {isSuspended ? (
             <button onClick={() => setModal('unsuspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <Unlock size={14} /> Восстановить
@@ -359,6 +366,18 @@ export default function StoreDetailPage() {
           actionLabel="В архив"
           actionColor="#64748B"
           requireReason={true}
+          onConfirm={handleAction}
+          onCancel={() => setModal(null)}
+          loading={actionLoading}
+        />
+      )}
+      {modal === 'approve' && (
+        <ConfirmModal
+          title="Одобрить магазин"
+          description={`Магазин «${store.name}» будет одобрен и получит статус APPROVED.`}
+          actionLabel="Одобрить"
+          actionColor="#10B981"
+          requireReason={false}
           onConfirm={handleAction}
           onCancel={() => setModal(null)}
           loading={actionLoading}
