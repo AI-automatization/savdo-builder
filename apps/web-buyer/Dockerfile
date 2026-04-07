@@ -22,14 +22,13 @@ RUN pnpm --filter web-buyer build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN npm install -g pnpm
 
 COPY --from=builder /app/apps/web-buyer/.next/standalone ./
-COPY --from=builder /app/apps/web-buyer/.next/static ./apps/web-buyer/.next/static
-COPY --from=builder /app/apps/web-buyer/public ./apps/web-buyer/public
+COPY --from=builder /app/apps/web-buyer/.next/static ./.next/static
+COPY --from=builder /app/apps/web-buyer/public ./public
 
-EXPOSE 3002
-ENV PORT=3002
+EXPOSE 3000
+ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "apps/web-buyer/server.js"]
+CMD ["node", "server.js"]
