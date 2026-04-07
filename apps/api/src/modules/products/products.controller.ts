@@ -231,7 +231,12 @@ export class ProductsController {
     return this.adjustStock.execute(variantId, productId, storeId, dto.delta, dto.reason);
   }
 
-  // ─── Storefront routes by slug (public) ──────────────────────────────────
+  // ─── Storefront routes (public) ──────────────────────────────────────────
+
+  @Get('storefront/stores')
+  async listStorefrontStores() {
+    return this.storesRepo.findAllPublished();
+  }
 
   @Get('storefront/stores/:slug')
   async getStorefrontStoreBySlug(@Param('slug') slug: string) {

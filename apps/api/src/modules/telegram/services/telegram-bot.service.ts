@@ -44,7 +44,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
       await axios.post(`${this.apiBase}/setWebhook`, {
         url: webhookUrl,
         ...(secret ? { secret_token: secret } : {}),
-        allowed_updates: ['message'],
+        allowed_updates: ['message', 'callback_query'],
       });
       this.logger.log(`Telegram webhook registered → ${webhookUrl}`);
     } catch (err: unknown) {

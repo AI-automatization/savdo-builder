@@ -34,6 +34,15 @@ export class StoresRepository {
     });
   }
 
+  async findAllPublished() {
+    return this.prisma.store.findMany({
+      where: { isPublic: true },
+      select: { id: true, name: true, slug: true, description: true, status: true },
+      orderBy: { publishedAt: 'desc' },
+      take: 50,
+    });
+  }
+
   async existsBySlug(slug: string): Promise<boolean> {
     const count = await this.prisma.store.count({ where: { slug } });
     return count > 0;
