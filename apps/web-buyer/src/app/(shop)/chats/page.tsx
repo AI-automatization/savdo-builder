@@ -3,10 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
+import { OtpGate } from "@/components/auth/OtpGate";
 import { UserRole } from "types";
 import type { ChatThread } from "types";
 import { useAuth } from "@/lib/auth/context";
-import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
 import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
@@ -54,79 +54,9 @@ const IcoBack    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const IcoSend    = () => <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>;
 
 
-// ── OTP Gate ───────────────────────────────────────────────────────────────
+// ── Icons (used in OtpGate) ───────────────────────────────────────────────
 
-type OtpStep = "phone" | "code";
-
-function OtpGate() {
-  const [step, setStep] = useState<OtpStep>("phone");
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const requestOtp = useRequestOtp();
-  const verifyOtp = useVerifyOtp();
-
-  async function handleSend() {
-    setError("");
-    try { await requestOtp.mutateAsync({ phone, purpose: "login" }); setStep("code"); }
-    catch { setError("Не удалось отправить код."); }
-  }
-
-  async function handleVerify() {
-    setError("");
-    try { await verifyOtp.mutateAsync({ phone, code, purpose: "login" }); }
-    catch { setError("Неверный код."); }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh]">
-      <div className="w-full max-w-sm flex flex-col gap-4">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(167,139,250,.20)", border: "1px solid rgba(167,139,250,.35)" }}>
-            <IcoChat />
-          </div>
-          <h2 className="text-lg font-bold text-white">Войдите для доступа к чатам</h2>
-          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {step === "phone" ? "Введите номер телефона" : `Код отправлен на ${phone}`}
-          </p>
-        </div>
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={glass}>
-          {step === "phone" ? (
-            <>
-              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 000 00 00"
-                className="h-11 px-4 rounded-xl text-sm w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, "--tw-ring-color": "rgba(167,139,250,0.50)" } as React.CSSProperties}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()} />
-              <button onClick={handleSend} disabled={!phone.trim() || requestOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}>
-                {requestOtp.isPending ? "Отправка..." : "Получить код"}
-              </button>
-            </>
-          ) : (
-            <>
-              <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="0000"
-                maxLength={6} autoFocus
-                className="h-11 px-4 rounded-xl text-sm text-center tracking-widest w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, "--tw-ring-color": "rgba(167,139,250,0.50)" } as React.CSSProperties}
-                onKeyDown={(e) => e.key === "Enter" && handleVerify()} />
-              <button onClick={handleVerify} disabled={code.length < 4 || verifyOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}>
-                {verifyOtp.isPending ? "Проверка..." : "Войти"}
-              </button>
-              <button onClick={() => { setStep("phone"); setCode(""); setError(""); }}
-                className="text-xs text-center" style={{ color: "rgba(255,255,255,0.40)" }}>
-                Изменить номер
-              </button>
-            </>
-          )}
-          {error && <p className="text-xs text-center" style={{ color: "rgba(248,113,113,.85)" }}>{error}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
+const IcoChatGate = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>;
 
 // ── Thread Item ────────────────────────────────────────────────────────────
 
@@ -358,7 +288,12 @@ export default function ChatsPage() {
 
       <div className="relative max-w-2xl mx-auto px-4 pt-6 pb-28" style={{ zIndex: 1 }}>
         <h1 className="text-xl font-bold text-white mb-5">Чаты</h1>
-        {isAuthenticated ? <ChatsView /> : <OtpGate />}
+        {isAuthenticated ? <ChatsView /> : (
+          <OtpGate
+            icon={<IcoChatGate />}
+            title="Войдите для доступа к чатам"
+          />
+        )}
       </div>
 
       <BottomNavBar active="chats" />

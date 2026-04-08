@@ -1,5 +1,51 @@
 # Done — Азим + Полат
 
+## 2026-04-08 (сессия 14 — polish & refactor)
+
+### ✅ [WEB-030] Notification badge в buyer навигации
+- **Важность:** 🟡
+- **Дата:** 08.04.2026
+- **Файлы:** `apps/web-buyer/src/components/layout/BottomNavBar.tsx`
+- **Что сделано:** Добавлен badge непрочитанных уведомлений на иконку "Профиль" в BottomNavBar. Использует `useUnreadCount()` с auto-refetch каждые 30 сек. Disabled когда не авторизован.
+
+### ✅ [WEB-031] Извлечён shared OtpGate компонент
+- **Важность:** 🟢
+- **Дата:** 08.04.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx` (новый), `orders/page.tsx`, `chats/page.tsx`, `profile/page.tsx`
+- **Что сделано:** Убран дублированный OtpGate из 3 страниц buyer (orders, chats, profile). Теперь единый компонент с props: icon, title, subtitle.
+
+### ✅ [WEB-032] Shared glass tokens
+- **Важность:** 🟢
+- **Дата:** 08.04.2026
+- **Файлы:** `apps/web-buyer/src/lib/styles.ts`, `apps/web-seller/src/lib/styles.ts`
+- **Что сделано:** Созданы файлы с glass/glassDim/inputStyle токенами для будущего использования.
+
+### ✅ [WEB-034] Cart badge в buyer навигации
+- **Важность:** 🟡
+- **Дата:** 08.04.2026
+- **Файлы:** `apps/web-buyer/src/components/layout/BottomNavBar.tsx`
+- **Что сделано:** BottomNavBar показывает кол-во товаров в корзине через `useCart()`. Auto-fetch, не требует prop от parent.
+
+### ✅ [WEB-035] Buyer orders пагинация
+- **Важность:** 🟡
+- **Дата:** 08.04.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/orders/page.tsx`
+- **Что сделано:** Добавлен load-more с аккумуляцией страниц (как у seller). Лимит 20, reset при смене фильтра.
+
+### ✅ [WEB-036] Store cover image на витрине
+- **Важность:** 🟢
+- **Дата:** 08.04.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx`
+- **Что сделано:** Если у магазина есть `coverUrl`, отображается баннер 128px с gradient overlay над store header.
+
+### ✅ [WEB-037] SVG icons extraction
+- **Важность:** 🟢
+- **Дата:** 08.04.2026
+- **Файлы:** `apps/web-buyer/src/components/icons.tsx` (новый), `BottomNavBar.tsx`
+- **Что сделано:** 9 shared иконок (Shop, Cart, Chat, Orders, Profile, Back, Pin, Send, Chevron). BottomNavBar мигрирован.
+
+---
+
 ## 2026-04-07 (сессия 13 — Полат)
 
 ### ✅ [BOT-FIX] callback_query не доставлялся (Полат)

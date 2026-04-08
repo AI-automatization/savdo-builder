@@ -96,7 +96,15 @@ export default async function StorePage({
       <div className="relative max-w-md mx-auto px-4 pt-5 pb-32" style={{ zIndex: 1 }}>
 
         {/* ── Store header ── */}
-        <div className="rounded-2xl p-4 mb-4" style={glass}>
+        <div className="rounded-2xl overflow-hidden mb-4" style={glass}>
+          {/* Cover image */}
+          {store.coverUrl && (
+            <div className="relative w-full h-32">
+              <Image src={store.coverUrl} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 448px" />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)" }} />
+            </div>
+          )}
+          <div className="p-4">
           <div className="flex items-center gap-3 mb-3">
             {/* Logo / avatar */}
             <div
@@ -144,6 +152,7 @@ export default async function StorePage({
               Написать в Telegram
             </a>
           )}
+          </div>
         </div>
 
         {/* ── Category filter ── */}

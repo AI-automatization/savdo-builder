@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
+import { OtpGate } from "@/components/auth/OtpGate";
 import { useAuth } from "@/lib/auth/context";
-import { useRequestOtp, useVerifyOtp, useLogout } from "@/hooks/use-auth";
+import { useLogout } from "@/hooks/use-auth";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -22,13 +23,6 @@ const glassDim = {
   border: "1px solid rgba(255,255,255,0.09)",
 } as const;
 
-const inputStyle = {
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.13)",
-  color: "#fff",
-  outline: "none",
-} as const;
-
 // ── Icons ──────────────────────────────────────────────────────────────────
 
 const IcoShop    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>;
@@ -37,111 +31,6 @@ const IcoChat    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const IcoOrders  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/></svg>;
 const IcoProfile = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>;
 
-// ── OTP Gate ───────────────────────────────────────────────────────────────
-
-type OtpStep = "phone" | "code";
-
-function OtpGate() {
-  const [step, setStep] = useState<OtpStep>("phone");
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-
-  const requestOtp = useRequestOtp();
-  const verifyOtp = useVerifyOtp();
-
-  async function handleSendCode() {
-    setError("");
-    try {
-      await requestOtp.mutateAsync({ phone, purpose: "login" });
-      setStep("code");
-    } catch {
-      setError("Не удалось отправить код. Проверьте номер.");
-    }
-  }
-
-  async function handleVerify() {
-    setError("");
-    try {
-      await verifyOtp.mutateAsync({ phone, code, purpose: "login" });
-    } catch {
-      setError("Неверный код. Попробуйте ещё раз.");
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh]">
-      <div className="w-full max-w-sm flex flex-col gap-4">
-        <div className="text-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
-            style={{ background: "rgba(167,139,250,.20)", border: "1px solid rgba(167,139,250,.35)" }}
-          >
-            <span className="text-3xl">👤</span>
-          </div>
-          <h2 className="text-lg font-bold text-white">Войдите в аккаунт</h2>
-          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {step === "phone" ? "Введите номер телефона" : `Код отправлен на ${phone}`}
-          </p>
-        </div>
-
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={glass}>
-          {step === "phone" ? (
-            <>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+998 90 000 00 00"
-                className="h-11 px-4 rounded-xl text-sm w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, "--tw-ring-color": "rgba(167,139,250,0.50)" } as React.CSSProperties}
-                onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
-              />
-              <button
-                onClick={handleSendCode}
-                disabled={!phone.trim() || requestOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
-              >
-                {requestOtp.isPending ? "Отправка..." : "Получить код"}
-              </button>
-            </>
-          ) : (
-            <>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="0000"
-                maxLength={6}
-                className="h-11 px-4 rounded-xl text-sm text-center tracking-widest w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, "--tw-ring-color": "rgba(167,139,250,0.50)" } as React.CSSProperties}
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleVerify()}
-              />
-              <button
-                onClick={handleVerify}
-                disabled={code.length < 4 || verifyOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
-              >
-                {verifyOtp.isPending ? "Проверка..." : "Войти"}
-              </button>
-              <button
-                onClick={() => { setStep("phone"); setCode(""); setError(""); }}
-                className="text-xs text-center"
-                style={{ color: "rgba(255,255,255,0.40)" }}
-              >
-                Изменить номер
-              </button>
-            </>
-          )}
-          {error && <p className="text-xs text-center" style={{ color: "rgba(248,113,113,.85)" }}>{error}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Authenticated Profile ──────────────────────────────────────────────────
 
@@ -248,7 +137,12 @@ export default function ProfilePage() {
 
       <div className="relative max-w-md mx-auto px-4 pt-6 pb-28" style={{ zIndex: 1 }}>
         <h1 className="text-xl font-bold text-white mb-5">Профиль</h1>
-        {isAuthenticated ? <ProfileView /> : <OtpGate />}
+        {isAuthenticated ? <ProfileView /> : (
+          <OtpGate
+            icon={<span className="text-3xl">👤</span>}
+            title="Войдите в аккаунт"
+          />
+        )}
       </div>
 
       {/* Bottom nav */}

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
+import { OtpGate } from "@/components/auth/OtpGate";
 import { OrderStatus } from "types";
 import type { OrderListItem } from "types";
 import { useAuth } from "@/lib/auth/context";
-import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
 import { useBuyerSocket } from "@/hooks/use-buyer-socket";
 
@@ -64,108 +64,7 @@ const fmt = (n: number) => n.toLocaleString("ru-RU");
 const shortId = (id: string) => id.slice(-6).toUpperCase();
 
 
-// ── OTP Gate ───────────────────────────────────────────────────────────────
-
-type OtpStep = "phone" | "code";
-
-function OtpGate() {
-  const [step, setStep] = useState<OtpStep>("phone");
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-
-  const requestOtp = useRequestOtp();
-  const verifyOtp = useVerifyOtp();
-
-  async function handleSendCode() {
-    setError("");
-    try {
-      await requestOtp.mutateAsync({ phone, purpose: "login" });
-      setStep("code");
-    } catch {
-      setError("Не удалось отправить код. Проверьте номер.");
-    }
-  }
-
-  async function handleVerify() {
-    setError("");
-    try {
-      await verifyOtp.mutateAsync({ phone, code, purpose: "login" });
-    } catch {
-      setError("Неверный код. Попробуйте ещё раз.");
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
-      <div className="w-full max-w-sm flex flex-col gap-4">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(167,139,250,.20)", border: "1px solid rgba(167,139,250,.35)" }}>
-            <IcoOrders />
-          </div>
-          <h2 className="text-lg font-bold text-white">Войдите чтобы видеть заказы</h2>
-          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {step === "phone" ? "Введите номер телефона для входа" : `Код отправлен на ${phone}`}
-          </p>
-        </div>
-
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={glass}>
-          {step === "phone" ? (
-            <>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+998 90 000 00 00"
-                className="h-11 px-4 rounded-xl text-sm w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, "--tw-ring-color": "rgba(167,139,250,0.50)" } as React.CSSProperties}
-                onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
-              />
-              <button
-                onClick={handleSendCode}
-                disabled={!phone.trim() || requestOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
-              >
-                {requestOtp.isPending ? "Отправка..." : "Получить код"}
-              </button>
-            </>
-          ) : (
-            <>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="0000"
-                maxLength={6}
-                className="h-11 px-4 rounded-xl text-sm text-center tracking-widest w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, "--tw-ring-color": "rgba(167,139,250,0.50)" } as React.CSSProperties}
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleVerify()}
-              />
-              <button
-                onClick={handleVerify}
-                disabled={code.length < 4 || verifyOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
-              >
-                {verifyOtp.isPending ? "Проверка..." : "Войти"}
-              </button>
-              <button
-                onClick={() => { setStep("phone"); setCode(""); setError(""); }}
-                className="text-xs text-center"
-                style={{ color: "rgba(255,255,255,0.40)" }}
-              >
-                Изменить номер
-              </button>
-            </>
-          )}
-          {error && <p className="text-xs text-center" style={{ color: "rgba(248,113,113,.85)" }}>{error}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
+// ── Icons (used in OrderCard) ─────────────────────────────────────────────
 
 // ── Order Card ─────────────────────────────────────────────────────────────
 
@@ -218,13 +117,35 @@ function SkeletonCard() {
 
 // ── Orders List ────────────────────────────────────────────────────────────
 
+const PAGE_LIMIT = 20;
+
 function OrdersList() {
   const [activeFilter, setActiveFilter] = useState<OrderStatus | "ALL">("ALL");
-  const { data, isLoading, isError } = useOrders(
-    activeFilter !== "ALL" ? { status: activeFilter } : undefined,
-  );
+  const [page, setPage] = useState(1);
+  const [accOrders, setAccOrders] = useState<OrderListItem[]>([]);
 
-  const orders = data?.data ?? [];
+  const { data, isLoading, isError, isFetching } = useOrders({
+    ...(activeFilter !== "ALL" ? { status: activeFilter } : {}),
+    page,
+    limit: PAGE_LIMIT,
+  });
+
+  // Accumulate pages; reset on filter change
+  useEffect(() => {
+    if (!data?.data) return;
+    setAccOrders((prev) => (page === 1 ? data.data : [...prev, ...data.data]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.data]);
+
+  const orders = accOrders;
+  const hasMore = data ? page * PAGE_LIMIT < data.meta.total : false;
+  const isLoadingMore = isFetching && page > 1;
+
+  function handleFilterChange(key: OrderStatus | "ALL") {
+    setActiveFilter(key);
+    setPage(1);
+    setAccOrders([]);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -235,7 +156,7 @@ function OrdersList() {
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
+              onClick={() => handleFilterChange(tab.key)}
               className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all"
               style={
                 active
@@ -279,6 +200,17 @@ function OrdersList() {
           ))}
         </div>
       )}
+
+      {hasMore && (
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={isLoadingMore}
+          className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-50"
+          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.10)" }}
+        >
+          {isLoadingMore ? "Загрузка..." : "Загрузить ещё"}
+        </button>
+      )}
     </div>
   );
 }
@@ -302,7 +234,12 @@ export default function OrdersPage() {
 
       <div className="relative max-w-md mx-auto px-4 pt-6 pb-28" style={{ zIndex: 1 }}>
         <h1 className="text-xl font-bold text-white mb-5">Мои заказы</h1>
-        {isAuthenticated ? <OrdersList /> : <OtpGate />}
+        {isAuthenticated ? <OrdersList /> : (
+          <OtpGate
+            icon={<IcoOrders />}
+            title="Войдите чтобы видеть заказы"
+          />
+        )}
       </div>
 
       {/* Bottom nav */}

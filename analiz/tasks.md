@@ -109,5 +109,17 @@
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 
 API-010, API-011, API-012, API-013, API-014 — реализованы на фронтенде.
+
+## ✅ Сессия 14 (08.04.2026) — polish & refactor
+
+- [x] **[WEB-030]** Notification badge в buyer BottomNavBar (профиль) — `useUnreadCount()` с auto-refetch 30s
+- [x] **[WEB-031]** Извлечён `OtpGate` в shared компонент `components/auth/OtpGate.tsx` — убран дубликат из orders, chats, profile
+- [x] **[WEB-032]** Созданы `lib/styles.ts` с glass tokens для buyer и seller
+- [x] **[WEB-033]** TypeScript проверка: оба приложения компилируются без ошибок
+- [x] **[WEB-034]** Cart badge в BottomNavBar — показывает кол-во товаров через `useCart()`
+- [x] **[WEB-035]** Buyer orders пагинация — load-more кнопка, аккумуляция страниц
+- [x] **[WEB-036]** Store cover image — баннер на витрине если `coverUrl` есть
+- [x] **[WEB-037]** SVG icons extraction — `components/icons.tsx`, BottomNavBar мигрирован
+
 Блокеров нет. Домен Азима свободен.
 
