@@ -39,8 +39,8 @@
 - [x] **[ADM-B03]** `StoreDetailPage` — детали магазина + suspend/unsuspend store
 - [x] **[ADM-B04]** `SellersPage` — ряд кликабельный → navigate `/sellers/:id`
 - [x] **[ADM-B05]** `StoresPage` — кнопка "Открыть" → navigate `/stores/:id`
-- [ ] **[ADM-B06]** `UsersPage` — список пользователей, фильтр по role/status
-- [ ] **[ADM-B07]** Moderation detail — клик на кейс → `/moderation/:id` с assign + action
+- [x] **[ADM-B06]** `UsersPage` — список пользователей, фильтр по role/status
+- [x] **[ADM-B07]** Moderation detail — клик на кейс → `/moderation/:id` с assign + action
 
 ---
 

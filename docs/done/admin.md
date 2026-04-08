@@ -18,3 +18,6 @@
 | 01.04.2026 | nginx.conf — `$PORT` через envsubst | Шаблон в `/etc/nginx/templates/` |
 | 01.04.2026 | Задеплоен на Railway | `https://savdo-builderadmin-production.up.railway.app` |
 | 01.04.2026 | Owner изменён: Яхьо → **Полат** | `apps/admin/CLAUDE.md`, `CLAUDE.md` обновлены |
+| 08.04.2026 | [ADM-B06] UsersPage — список пользователей, фильтр role/status/phone | `apps/admin/src/pages/UsersPage.tsx` (уже был готов) |
+| 08.04.2026 | [ADM-B07] ModerationDetailPage — `/moderation/:id` с assign + actions + history | `apps/admin/src/pages/ModerationDetailPage.tsx`, роут в `App.tsx`, кнопка "Открыть" в `ModerationPage.tsx` |
+| 08.04.2026 | fix(web-buyer): пути standalone для монорепо с outputFileTracingRoot | `apps/web-buyer/Dockerfile`, `apps/web-buyer/railway.toml` — исправлен CMD и пути static/public |
