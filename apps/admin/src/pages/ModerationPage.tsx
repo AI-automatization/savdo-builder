@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CheckCircle, XCircle, Clock, User, Store, AlertTriangle, X, RefreshCw, AlertCircle, GitMerge, UserCheck, FolderOpen, RotateCcw } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle, XCircle, Clock, User, Store, AlertTriangle, X, RefreshCw, AlertCircle, GitMerge, UserCheck, FolderOpen, RotateCcw, ExternalLink } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -62,6 +63,7 @@ function timeAgo(iso: string) {
 }
 
 export default function ModerationPage() {
+  const navigate = useNavigate()
   const [tab, setTab] = useState<'ALL' | 'seller' | 'store' | 'CLOSED'>('ALL')
   const [rejectTarget, setRejectTarget] = useState<ModerationCase | null>(null)
   const [comment, setComment] = useState('')
@@ -237,6 +239,17 @@ export default function ModerationPage() {
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {/* Detail link */}
+                <button
+                  onClick={() => navigate(`/moderation/${item.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  <ExternalLink size={12} /> Открыть
+                </button>
                 {isClosed ? (
                   // Closed case — only reopen
                   <button
