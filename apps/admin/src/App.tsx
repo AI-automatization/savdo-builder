@@ -15,6 +15,7 @@ import AuditLogsPage from './pages/AuditLogsPage'
 import UsersPage from './pages/UsersPage'
 import DatabasePage from './pages/DatabasePage'
 import BroadcastPage from './pages/BroadcastPage'
+import AnalyticsEventsPage from './pages/AnalyticsEventsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hasAccess  = !!auth.getAccess()
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="database" element={<DatabasePage />} />
           <Route path="broadcast" element={<BroadcastPage />} />
+          <Route path="analytics" element={<AnalyticsEventsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
