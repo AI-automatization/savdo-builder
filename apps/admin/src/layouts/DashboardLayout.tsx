@@ -8,18 +8,28 @@ import {
   ChevronRight, Search, Sun, Moon, BarChart2,
 } from 'lucide-react'
 
-const NAV = [
-  { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/users',      icon: Users,           label: 'Пользователи' },
-  { to: '/sellers',    icon: UserCog,         label: 'Продавцы' },
-  { to: '/stores',     icon: Store,           label: 'Магазины' },
-  { to: '/products',   icon: Package,         label: 'Товары' },
-  { to: '/orders',     icon: ShoppingCart,    label: 'Заказы' },
-  { to: '/moderation', icon: Shield,          label: 'Модерация' },
-  { to: '/analytics',  icon: BarChart2,       label: 'Аналитика' },
-  { to: '/audit-logs', icon: ScrollText,      label: 'Аудит-лог' },
-  { to: '/database',   icon: Database,        label: 'База данных' },
-  { to: '/broadcast',  icon: Megaphone,       label: 'Рассылка' },
+const NAV_DATA = [
+  {
+    group: 'Данные',
+    items: [
+      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/users',      icon: Users,           label: 'Пользователи' },
+      { to: '/sellers',    icon: UserCog,         label: 'Продавцы' },
+      { to: '/stores',     icon: Store,           label: 'Магазины' },
+      { to: '/products',   icon: Package,         label: 'Товары' },
+      { to: '/orders',     icon: ShoppingCart,    label: 'Заказы' },
+    ],
+  },
+  {
+    group: 'Инструменты',
+    items: [
+      { to: '/moderation', icon: Shield,          label: 'Модерация' },
+      { to: '/analytics',  icon: BarChart2,       label: 'Аналитика' },
+      { to: '/audit-logs', icon: ScrollText,      label: 'Аудит-лог' },
+      { to: '/database',   icon: Database,        label: 'База данных' },
+      { to: '/broadcast',  icon: Megaphone,       label: 'Рассылка' },
+    ],
+  },
 ]
 
 function useTashkentClock() {
@@ -72,7 +82,7 @@ export default function DashboardLayout() {
         {/* Logo */}
         <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-indigo-500 flex items-center justify-center shrink-0">
               <Store size={14} color="white" />
             </div>
             <div>
@@ -81,13 +91,14 @@ export default function DashboardLayout() {
             </div>
           </div>
 
-          {/* Search hint — Cmd+K */}
+          {/* Search hint */}
           <button
             className="w-full flex items-center gap-2 px-2.5 h-8 rounded-md text-xs transition-colors"
             style={{
               background: 'var(--surface2)',
               border: '1px solid var(--border)',
               color: 'var(--text-muted)',
+              cursor: 'pointer',
             }}
             onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text-dim)')}
             onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
@@ -99,45 +110,63 @@ export default function DashboardLayout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
-          <p className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
-            Управление
-          </p>
-          {NAV.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) => cn(
-                'group flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors',
-                isActive ? 'bg-indigo-500/10 text-indigo-400' : '',
-              )}
-              style={({ isActive }) => ({
-                color: isActive ? undefined : 'var(--text-muted)',
-              })}
-              onMouseEnter={e => {
-                const el = e.currentTarget
-                if (!el.getAttribute('aria-current')) {
-                  el.style.background = 'var(--surface2)'
-                  el.style.color = 'var(--text)'
-                }
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget
-                if (!el.getAttribute('aria-current')) {
-                  el.style.background = ''
-                  el.style.color = 'var(--text-muted)'
-                }
-              }}
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon size={15} className={cn('shrink-0', isActive ? 'text-indigo-400' : '')}
-                    style={{ color: isActive ? undefined : 'var(--text-dim)' }} />
-                  <span className="flex-1">{label}</span>
-                  {isActive && <ChevronRight size={12} className="text-indigo-400/50" />}
-                </>
-              )}
-            </NavLink>
+        <nav className="flex-1 px-2 py-3 overflow-y-auto">
+          {NAV_DATA.map(({ group, items }) => (
+            <div key={group} className="mb-4">
+              <p
+                className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'var(--text-dim)' }}
+              >
+                {group}
+              </p>
+              <div className="space-y-0.5">
+                {items.map(({ to, icon: Icon, label }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={({ isActive }) => cn(
+                      'group relative flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors',
+                      isActive ? 'bg-indigo-500/10 text-indigo-400' : '',
+                    )}
+                    style={({ isActive }) => ({
+                      color: isActive ? undefined : 'var(--text-muted)',
+                    })}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget
+                      if (!el.getAttribute('aria-current')) {
+                        el.style.background = 'var(--surface2)'
+                        el.style.color = 'var(--text)'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget
+                      if (!el.getAttribute('aria-current')) {
+                        el.style.background = ''
+                        el.style.color = 'var(--text-muted)'
+                      }
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {/* Active indicator strip */}
+                        {isActive && (
+                          <span
+                            className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-indigo-400"
+                          />
+                        )}
+                        <Icon
+                          size={15}
+                          className={cn('shrink-0', isActive ? 'text-indigo-400' : '')}
+                          style={{ color: isActive ? undefined : 'var(--text-dim)' }}
+                        />
+                        <span className="flex-1">{label}</span>
+                        {isActive && <ChevronRight size={12} className="text-indigo-400/50" />}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -153,7 +182,7 @@ export default function DashboardLayout() {
           <button
             onClick={toggleTheme}
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors"
-            style={{ color: 'var(--text-muted)' }}
+            style={{ color: 'var(--text-muted)', cursor: 'pointer' }}
             onMouseEnter={e => {
               e.currentTarget.style.background = 'var(--surface2)'
               e.currentTarget.style.color = 'var(--text)'
@@ -174,7 +203,7 @@ export default function DashboardLayout() {
           <button
             onClick={logout}
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors"
-            style={{ color: 'var(--text-muted)' }}
+            style={{ color: 'var(--text-muted)', cursor: 'pointer' }}
             onMouseEnter={e => {
               e.currentTarget.style.background = 'rgba(239,68,68,0.06)'
               e.currentTarget.style.color = 'var(--error)'

@@ -2,44 +2,44 @@
 
 /* ── Dark theme (default) ────────────────────────────────── */
 :root, [data-theme="dark"] {
-  --bg:          #09090b;
-  --surface:     #111113;
-  --surface2:    #18181b;
-  --border:      #27272a;
+  --bg:          #0F172A;
+  --surface:     #1E293B;
+  --surface2:    #253347;
+  --border:      #334155;
 
-  --primary:     #6366f1;
-  --primary-dim: rgba(99,102,241,0.12);
+  --primary:     #818CF8;
+  --primary-dim: rgba(129,140,248,0.12);
 
-  --success: #10b981;
-  --error:   #ef4444;
-  --warning: #f59e0b;
+  --success: #22C55E;
+  --error:   #EF4444;
+  --warning: #F59E0B;
 
-  --text:       #fafafa;
-  --text-muted: #71717a;
-  --text-dim:   #3f3f46;
+  --text:       #F1F5F9;
+  --text-muted: #94A3B8;
+  --text-dim:   #475569;
 
-  --background: #09090b;
+  --background: #0F172A;
 }
 
 /* ── Light theme ─────────────────────────────────────────── */
 [data-theme="light"] {
-  --bg:          #f4f4f5;
-  --surface:     #ffffff;
-  --surface2:    #f4f4f5;
-  --border:      #e4e4e7;
+  --bg:          #F8FAFC;
+  --surface:     #FFFFFF;
+  --surface2:    #F1F5F9;
+  --border:      #E2E8F0;
 
-  --primary:     #6366f1;
-  --primary-dim: rgba(99,102,241,0.08);
+  --primary:     #818CF8;
+  --primary-dim: rgba(129,140,248,0.10);
 
-  --success: #059669;
-  --error:   #dc2626;
-  --warning: #d97706;
+  --success: #16A34A;
+  --error:   #DC2626;
+  --warning: #D97706;
 
-  --text:       #09090b;
-  --text-muted: #71717a;
-  --text-dim:   #a1a1aa;
+  --text:       #0F172A;
+  --text-muted: #64748B;
+  --text-dim:   #94A3B8;
 
-  --background: #f4f4f5;
+  --background: #F8FAFC;
 }
 
 * { box-sizing: border-box; }

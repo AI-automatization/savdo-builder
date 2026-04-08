@@ -1,12 +1,17 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, User, Store, Clock, CheckCircle, XCircle,
+  User, Store, Clock, CheckCircle, XCircle,
   AlertTriangle, GitMerge, UserCheck, FolderOpen, RotateCcw,
   AlertCircle, X,
 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { PageHeader } from '../components/admin/PageHeader'
+import { Panel } from '../components/admin/Panel'
+import { InfoRow } from '../components/admin/InfoRow'
+import { ActionPanel } from '../components/admin/ActionPanel'
+import { StatusBadge } from '../components/admin/StatusBadge'
 
 interface ModerationAction {
   id: string
@@ -29,9 +34,9 @@ interface ModerationCase {
   actions: ModerationAction[]
 }
 
-const TYPE_CFG: Record<string, { color: string; bg: string; label: string }> = {
-  seller: { color: 'var(--primary)', bg: 'rgba(129,140,248,0.12)', label: 'Продавец' },
-  store:  { color: '#10B981',        bg: 'rgba(16,185,129,0.12)',  label: 'Магазин'  },
+const TYPE_CFG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+  seller: { icon: User,  color: 'var(--primary)', bg: 'rgba(129,140,248,0.12)', label: 'Продавец' },
+  store:  { icon: Store, color: '#22C55E',         bg: 'rgba(34,197,94,0.12)',  label: 'Магазин'  },
 }
 
 const CASE_TYPE_LABEL: Record<string, string> = {
@@ -44,9 +49,9 @@ const CASE_TYPE_LABEL: Record<string, string> = {
 }
 
 const ACTION_CFG: Record<string, { color: string; bg: string; label: string }> = {
-  APPROVE:         { color: '#10B981', bg: 'rgba(16,185,129,0.12)', label: 'Одобрено' },
-  REJECT:          { color: '#EF4444', bg: 'rgba(239,68,68,0.12)',  label: 'Отклонено' },
-  REQUEST_CHANGES: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', label: 'Доработка' },
+  APPROVE:         { color: '#22C55E', bg: 'rgba(34,197,94,0.12)',   label: 'Одобрено' },
+  REJECT:          { color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   label: 'Отклонено' },
+  REQUEST_CHANGES: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  label: 'Доработка' },
   ESCALATE:        { color: '#818CF8', bg: 'rgba(129,140,248,0.12)', label: 'Эскалация' },
   CLOSE:           { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', label: 'Закрыто' },
   REOPEN:          { color: '#818CF8', bg: 'rgba(129,140,248,0.12)', label: 'Переоткрыто' },
@@ -66,7 +71,7 @@ function getSla(createdAt: string) {
   const label = h > 0 ? `SLA ${h}ч ${m}м` : `SLA ${m}м`
   if (remaining < 2 * 3_600_000) return { label, color: '#EF4444', bg: 'rgba(239,68,68,0.12)' }
   if (remaining < 8 * 3_600_000) return { label, color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' }
-  return { label, color: '#10B981', bg: 'rgba(16,185,129,0.12)' }
+  return { label, color: '#22C55E', bg: 'rgba(34,197,94,0.12)' }
 }
 
 function timeAgo(iso: string) {
@@ -77,6 +82,34 @@ function timeAgo(iso: string) {
   if (h > 0) return `${h}ч назад`
   const m = Math.floor(diff / 60_000)
   return m > 0 ? `${m}м назад` : 'только что'
+}
+
+function ActionBtn({ icon, label, color, bg, border, loading, disabled, onClick }: {
+  icon: React.ReactNode
+  label: string
+  color: string
+  bg: string
+  border: string
+  loading: boolean
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-[14px] font-semibold transition-opacity"
+      style={{
+        border: `1px solid ${border}`,
+        background: bg,
+        color,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.7 : 1,
+      }}
+    >
+      {icon} {loading ? 'Загрузка...' : label}
+    </button>
+  )
 }
 
 export default function ModerationDetailPage() {
@@ -139,15 +172,13 @@ export default function ModerationDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div style={{ padding: '32px', color: 'var(--text-muted)', fontSize: 15 }}>Загрузка...</div>
-    )
+    return <div className="p-8 text-[15px]" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
   }
 
   if (error || !modCase) {
     return (
-      <div style={{ padding: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#EF4444', fontSize: 14 }}>
+      <div className="p-8">
+        <div className="flex items-center gap-2 text-[14px]" style={{ color: '#EF4444' }}>
           <AlertCircle size={16} /> {error ?? 'Кейс не найден'}
         </div>
       </div>
@@ -160,111 +191,110 @@ export default function ModerationDetailPage() {
   const isLoading = (a: string) => actionLoading === a
 
   return (
-    <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
-        <button
-          onClick={() => navigate('/moderation')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
-        >
-          <ArrowLeft size={14} /> Очередь
-        </button>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>
-            Кейс · {modCase.id.slice(0, 8)}…
-          </h1>
-          <p style={{ margin: '2px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>
-            {cfg.label} · {CASE_TYPE_LABEL[modCase.caseType] ?? modCase.caseType}
-          </p>
-        </div>
-      </div>
+    <div className="px-8 pt-8 pb-12 min-h-screen">
+      <PageHeader
+        title={`Кейс · ${modCase.id.slice(0, 8)}…`}
+        subtitle={`${cfg.label} · ${CASE_TYPE_LABEL[modCase.caseType] ?? modCase.caseType}`}
+        backTo="/moderation"
+        backLabel="Очередь"
+      />
 
       {actionError && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-5 text-[13px]"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
           <AlertCircle size={15} /> {actionError}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start' }}>
+      <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px', alignItems: 'start' }}>
         {/* Left — Info + History */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Case Info */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Информация о кейсе</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <Row label="ID сущности">
-                <span style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--text)' }}>{modCase.entityId}</span>
-              </Row>
-              <Row label="Тип сущности">
-                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-              </Row>
-              <Row label="Тип кейса">
-                <span style={{ fontSize: 13, color: 'var(--text)' }}>{CASE_TYPE_LABEL[modCase.caseType] ?? modCase.caseType}</span>
-              </Row>
-              <Row label="Статус">
-                <span style={{
-                  padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                  background: isClosed ? 'rgba(148,163,184,0.12)' : 'rgba(16,185,129,0.12)',
-                  color: isClosed ? '#94A3B8' : '#10B981',
-                }}>
-                  {isClosed ? 'Закрыт' : 'Открыт'}
+        <div className="flex flex-col gap-5">
+          <Panel title="Информация о кейсе">
+            <InfoRow label="ID сущности">
+              <span className="font-mono text-[13px]" style={{ color: 'var(--text)' }}>{modCase.entityId}</span>
+            </InfoRow>
+            <InfoRow label="Тип сущности">
+              <span
+                className="px-2.5 py-1 rounded-full text-[12px] font-semibold"
+                style={{ background: cfg.bg, color: cfg.color }}
+              >
+                {cfg.label}
+              </span>
+            </InfoRow>
+            <InfoRow label="Тип кейса">
+              <span className="text-[13px]" style={{ color: 'var(--text)' }}>
+                {CASE_TYPE_LABEL[modCase.caseType] ?? modCase.caseType}
+              </span>
+            </InfoRow>
+            <InfoRow label="Статус">
+              <StatusBadge status={modCase.status} />
+            </InfoRow>
+            <InfoRow label="SLA">
+              <span
+                className="px-2.5 py-1 rounded-full text-[12px] font-bold"
+                style={{ background: sla.bg, color: sla.color }}
+              >
+                {sla.label}
+              </span>
+            </InfoRow>
+            {modCase.reason && (
+              <InfoRow label="Причина">
+                <span className="text-[13px]" style={{ color: 'var(--text)' }}>{modCase.reason}</span>
+              </InfoRow>
+            )}
+            <InfoRow label="Создан">
+              <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                {new Date(modCase.createdAt).toLocaleString('ru-RU')} ({timeAgo(modCase.createdAt)})
+              </span>
+            </InfoRow>
+            <InfoRow label="Назначен" border={false}>
+              {modCase.assignedAdminId ? (
+                <span className="font-mono text-[12px]" style={{ color: '#22C55E' }}>
+                  {modCase.assignedAdminId.slice(0, 12)}…
                 </span>
-              </Row>
-              <Row label="SLA">
-                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: sla.bg, color: sla.color }}>
-                  {sla.label}
-                </span>
-              </Row>
-              {modCase.reason && (
-                <Row label="Причина">
-                  <span style={{ fontSize: 13, color: 'var(--text)' }}>{modCase.reason}</span>
-                </Row>
+              ) : (
+                <span className="text-[13px]" style={{ color: 'var(--text-dim)' }}>Не назначен</span>
               )}
-              <Row label="Создан">
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                  {new Date(modCase.createdAt).toLocaleString('ru-RU')} ({timeAgo(modCase.createdAt)})
-                </span>
-              </Row>
-              <Row label="Назначен">
-                {modCase.assignedAdminId
-                  ? <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#10B981' }}>{modCase.assignedAdminId.slice(0, 12)}…</span>
-                  : <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>Не назначен</span>
-                }
-              </Row>
-            </div>
-          </div>
+            </InfoRow>
+          </Panel>
 
-          {/* Action History */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-              История действий ({modCase.actions.length})
-            </h3>
+          <Panel title={`История действий (${modCase.actions.length})`}>
             {modCase.actions.length === 0 ? (
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>Действий ещё не было</p>
+              <p className="m-0 text-[14px]" style={{ color: 'var(--text-muted)' }}>Действий ещё не было</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="flex flex-col gap-3">
                 {modCase.actions.map((action, i) => {
                   const acfg = ACTION_CFG[action.actionType] ?? { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', label: action.actionType }
                   return (
-                    <div key={action.id} style={{
-                      display: 'flex', gap: 14, alignItems: 'flex-start',
-                      paddingBottom: i < modCase.actions.length - 1 ? 12 : 0,
-                      borderBottom: i < modCase.actions.length - 1 ? '1px solid var(--border)' : 'none',
-                    }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: acfg.color, marginTop: 5, flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                          <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: acfg.bg, color: acfg.color }}>
+                    <div
+                      key={action.id}
+                      className="flex gap-3.5 items-start pb-3"
+                      style={{
+                        borderBottom: i < modCase.actions.length - 1 ? '1px solid var(--border)' : 'none',
+                      }}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                        style={{ background: acfg.color }}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[11px] font-bold"
+                            style={{ background: acfg.bg, color: acfg.color }}
+                          >
                             {acfg.label}
                           </span>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{timeAgo(action.createdAt)}</span>
+                          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                            {timeAgo(action.createdAt)}
+                          </span>
                         </div>
                         {action.comment && (
-                          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                          <p className="m-0 mt-1 text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                             {action.comment}
                           </p>
                         )}
-                        <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'monospace' }}>
+                        <span className="text-[11px] font-mono" style={{ color: 'var(--text-dim)' }}>
                           {action.adminUserId.slice(0, 10)}…
                         </span>
                       </div>
@@ -273,28 +303,24 @@ export default function ModerationDetailPage() {
                 })}
               </div>
             )}
-          </div>
+          </Panel>
         </div>
 
         {/* Right — Actions */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Действия</h3>
-
+        <ActionPanel>
           {isClosed ? (
-            <button
+            <ActionBtn
+              icon={<RotateCcw size={14} />}
+              label="Переоткрыть"
+              color="var(--primary)"
+              bg="rgba(129,140,248,0.08)"
+              border="rgba(129,140,248,0.3)"
+              loading={isLoading('reopen')}
               disabled={!!actionLoading}
               onClick={toggleStatus}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(129,140,248,0.3)',
-                background: 'rgba(129,140,248,0.08)', color: 'var(--primary)',
-                fontSize: 14, fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              <RotateCcw size={14} /> Переоткрыть
-            </button>
+            />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="flex flex-col gap-2.5">
               {!modCase.assignedAdminId && (
                 <ActionBtn
                   icon={<UserCheck size={14} />}
@@ -310,9 +336,9 @@ export default function ModerationDetailPage() {
               <ActionBtn
                 icon={<CheckCircle size={14} />}
                 label="Одобрить"
-                color="#10B981"
-                bg="rgba(16,185,129,0.1)"
-                border="rgba(16,185,129,0.25)"
+                color="#22C55E"
+                bg="rgba(34,197,94,0.1)"
+                border="rgba(34,197,94,0.25)"
                 loading={isLoading('APPROVE')}
                 disabled={!!actionLoading}
                 onClick={() => doAction('APPROVE')}
@@ -347,7 +373,7 @@ export default function ModerationDetailPage() {
                 disabled={!!actionLoading}
                 onClick={() => setRejectOpen(true)}
               />
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 2 }}>
+              <div className="pt-2.5" style={{ borderTop: '1px solid var(--border)' }}>
                 <ActionBtn
                   icon={<FolderOpen size={14} />}
                   label="Закрыть без решения"
@@ -361,26 +387,36 @@ export default function ModerationDetailPage() {
               </div>
             </div>
           )}
-        </div>
+        </ActionPanel>
       </div>
 
       {/* Reject Modal */}
       {rejectOpen && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, backdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 flex items-center justify-center z-[200]"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
           onClick={() => { setRejectOpen(false); setComment('') }}
         >
           <div
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: 28, width: 440, maxWidth: '90vw', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}
+            className="rounded-2xl p-7 w-[440px] max-w-[90vw]"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
+            }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Отклонить кейс</h3>
-              <button onClick={() => { setRejectOpen(false); setComment('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>Отклонить кейс</h3>
+              <button
+                onClick={() => { setRejectOpen(false); setComment('') }}
+                className="p-0"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
                 <X size={18} />
               </button>
             </div>
-            <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: 14 }}>
+            <p className="m-0 mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>
               Укажи причину отклонения — обязательное поле.
             </p>
             <textarea
@@ -388,24 +424,40 @@ export default function ModerationDetailPage() {
               onChange={e => setComment(e.target.value)}
               placeholder="Например: профиль не заполнен, нарушение правил платформы..."
               rows={4}
+              className="w-full px-3.5 py-3 rounded-xl text-[14px] resize-y outline-none leading-relaxed"
               style={{
-                width: '100%', padding: '12px 14px', borderRadius: 10, boxSizing: 'border-box',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
-                color: 'var(--text)', fontSize: 14, resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.5,
+                background: 'var(--surface2)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
               }}
             />
-            <div style={{ fontSize: 12, color: comment.length >= 10 ? 'var(--text-muted)' : '#EF4444', textAlign: 'right', marginTop: 4, marginBottom: 18 }}>
+            <div
+              className="text-[12px] text-right mt-1 mb-4"
+              style={{ color: comment.length >= 10 ? 'var(--text-muted)' : '#EF4444' }}
+            >
               {comment.length} символов {comment.length < 10 && '(мин. 10)'}
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => { setRejectOpen(false); setComment('') }} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>
+            <div className="flex gap-2.5 justify-end">
+              <button
+                onClick={() => { setRejectOpen(false); setComment('') }}
+                className="px-5 py-2.5 rounded-xl text-[14px]"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                }}
+              >
                 Отмена
               </button>
               <button
                 onClick={() => doAction('REJECT', comment)}
                 disabled={comment.trim().length < 10 || !!actionLoading}
+                className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
                 style={{
-                  padding: '10px 24px', borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 600,
+                  border: 'none',
                   cursor: comment.trim().length >= 10 ? 'pointer' : 'not-allowed',
                   background: comment.trim().length >= 10 ? '#EF4444' : 'var(--surface2)',
                   color: comment.trim().length >= 10 ? 'white' : 'var(--text-muted)',
@@ -418,41 +470,5 @@ export default function ModerationDetailPage() {
         </div>
       )}
     </div>
-  )
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-      <span style={{ width: 120, flexShrink: 0, fontSize: 13, color: 'var(--text-muted)' }}>{label}</span>
-      <div style={{ flex: 1 }}>{children}</div>
-    </div>
-  )
-}
-
-function ActionBtn({ icon, label, color, bg, border, loading, disabled, onClick }: {
-  icon: React.ReactNode
-  label: string
-  color: string
-  bg: string
-  border: string
-  loading: boolean
-  disabled: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      disabled={disabled}
-      onClick={onClick}
-      style={{
-        width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-        padding: '11px 16px', borderRadius: 10, border: `1px solid ${border}`,
-        background: bg, color, fontSize: 14, fontWeight: 600,
-        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.7 : 1,
-        transition: 'opacity 0.15s',
-      }}
-    >
-      {icon} {loading ? 'Загрузка...' : label}
-    </button>
   )
 }

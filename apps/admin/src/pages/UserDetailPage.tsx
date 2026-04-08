@@ -1,8 +1,13 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag } from 'lucide-react'
+import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { PageHeader } from '../components/admin/PageHeader'
+import { Panel } from '../components/admin/Panel'
+import { InfoRow } from '../components/admin/InfoRow'
+import { ActionPanel } from '../components/admin/ActionPanel'
+import { StatusBadge } from '../components/admin/StatusBadge'
 
 interface Seller {
   id: string
@@ -36,25 +41,9 @@ interface UserDetail {
 }
 
 const ROLE_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  SELLER: { bg: 'rgba(99,102,241,0.12)',  text: '#818CF8', label: 'Продавец' },
-  BUYER:  { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Покупатель' },
+  SELLER: { bg: 'rgba(129,140,248,0.12)', text: '#818CF8', label: 'Продавец' },
+  BUYER:  { bg: 'rgba(34,197,94,0.12)',   text: '#22C55E', label: 'Покупатель' },
   ADMIN:  { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', label: 'Администратор' },
-}
-
-const VERIFICATION_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING:   { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', label: 'На проверке' },
-  VERIFIED:  { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Верифицирован' },
-  REJECTED:  { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', label: 'Отклонён' },
-  UNVERIFIED:{ bg: 'rgba(148,163,184,0.10)', text: '#94A3B8', label: 'Не верифицирован' },
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ width: 140, flexShrink: 0, fontSize: 13, color: 'var(--text-muted)', paddingTop: 2 }}>{label}</span>
-      <div style={{ flex: 1 }}>{children}</div>
-    </div>
-  )
 }
 
 export default function UserDetailPage() {
@@ -101,167 +90,171 @@ export default function UserDetailPage() {
     }
   }
 
-  if (loading) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Загрузка...</div>
-  if (error || !user) return (
-    <div style={{ padding: 32 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#EF4444', fontSize: 14 }}>
-        <AlertCircle size={16} /> {error ?? 'Пользователь не найден'}
+  if (loading) {
+    return <div className="p-8 text-[14px]" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+  }
+
+  if (error || !user) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center gap-2 text-[14px]" style={{ color: '#EF4444' }}>
+          <AlertCircle size={16} /> {error ?? 'Пользователь не найден'}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const roleCfg = ROLE_CFG[user.role] ?? ROLE_CFG.BUYER
   const isBlocked = user.status === 'BLOCKED'
 
   return (
-    <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
-        <button
-          onClick={() => navigate('/users')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
-        >
-          <ArrowLeft size={14} /> Пользователи
-        </button>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Phone size={16} color="var(--primary)" />
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{user.phone}</h1>
-            <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: roleCfg.bg, color: roleCfg.text }}>
+    <div className="px-8 pt-8 pb-12 min-h-screen">
+      <PageHeader
+        icon={<Phone size={18} />}
+        title={user.phone}
+        subtitle={`ID: ${user.id}`}
+        backTo="/users"
+        backLabel="Пользователи"
+        actions={
+          <div className="flex items-center gap-2">
+            <span
+              className="px-2.5 py-1 rounded-full text-[12px] font-semibold"
+              style={{ background: roleCfg.bg, color: roleCfg.text }}
+            >
               {roleCfg.label}
             </span>
-            <span style={{
-              padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-              background: isBlocked ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)',
-              color: isBlocked ? '#EF4444' : '#10B981',
-            }}>
-              {isBlocked ? 'Заблокирован' : 'Активен'}
-            </span>
+            <StatusBadge status={user.status} />
           </div>
-          <p style={{ margin: '2px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>
-            ID: <code style={{ fontFamily: 'monospace', fontSize: 12 }}>{user.id}</code>
-          </p>
-        </div>
-      </div>
+        }
+      />
 
       {actionError && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-5 text-[13px]"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
           <AlertCircle size={15} /> {actionError}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 24, alignItems: 'start' }}>
-        {/* Left — User info + role-specific */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-          {/* Basic info */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Основная информация</h3>
-            <div>
-              <Row label="Телефон">
-                <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{user.phone}</span>
-                {user.isPhoneVerified && (
-                  <span style={{ marginLeft: 8, fontSize: 11, padding: '1px 6px', borderRadius: 6, background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>верифицирован</span>
-                )}
-              </Row>
-              <Row label="Роль">
-                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: roleCfg.bg, color: roleCfg.text }}>{roleCfg.label}</span>
-              </Row>
-              <Row label="Статус">
-                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: isBlocked ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)', color: isBlocked ? '#EF4444' : '#10B981' }}>
-                  {isBlocked ? 'Заблокирован' : 'Активен'}
+      <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 280px', alignItems: 'start' }}>
+        {/* Left column */}
+        <div className="flex flex-col gap-5">
+          <Panel title="Основная информация">
+            <InfoRow label="Телефон">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[14px] font-semibold" style={{ color: 'var(--text)' }}>
+                  {user.phone}
                 </span>
-              </Row>
-              <Row label="Язык">
-                <span style={{ fontSize: 13, color: 'var(--text)' }}>{user.languageCode ?? '—'}</span>
-              </Row>
-              <Row label="Регистрация">
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{new Date(user.createdAt).toLocaleString('ru-RU')}</span>
-              </Row>
-            </div>
-          </div>
+                {user.isPhoneVerified && (
+                  <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
+                    верифицирован
+                  </span>
+                )}
+              </div>
+            </InfoRow>
+            <InfoRow label="Роль">
+              <span
+                className="px-2.5 py-1 rounded-full text-[12px] font-semibold"
+                style={{ background: roleCfg.bg, color: roleCfg.text }}
+              >
+                {roleCfg.label}
+              </span>
+            </InfoRow>
+            <InfoRow label="Статус">
+              <StatusBadge status={user.status} />
+            </InfoRow>
+            <InfoRow label="Язык">
+              <span className="text-[13px]" style={{ color: 'var(--text)' }}>{user.languageCode ?? '—'}</span>
+            </InfoRow>
+            <InfoRow label="Регистрация" border={false}>
+              <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                {new Date(user.createdAt).toLocaleString('ru-RU')}
+              </span>
+            </InfoRow>
+          </Panel>
 
-          {/* Seller info */}
           {user.seller && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <Store size={15} color="var(--primary)" />
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Профиль продавца</h3>
+            <Panel title="Профиль продавца" icon={<Store size={15} />}>
+              <InfoRow label="Верификация">
+                <StatusBadge status={user.seller.verificationStatus} />
+              </InfoRow>
+              <InfoRow label="Telegram">
+                {user.seller.telegramChatId ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[12px]" style={{ color: '#22C55E' }}>
+                      {user.seller.telegramChatId}
+                    </span>
+                    {user.seller.telegramUsername && (
+                      <span className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                        @{user.seller.telegramUsername}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-[13px]" style={{ color: 'var(--text-dim)' }}>Не подключён</span>
+                )}
+              </InfoRow>
+              <InfoRow label="Продавец с" border={false}>
+                <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                  {new Date(user.seller.createdAt).toLocaleDateString('ru-RU')}
+                </span>
+              </InfoRow>
+              <div className="mt-3">
+                <button
+                  onClick={() => navigate(`/sellers/${user.seller!.id}`)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold"
+                  style={{
+                    border: '1px solid rgba(129,140,248,0.3)',
+                    background: 'rgba(129,140,248,0.08)',
+                    color: '#818CF8',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <UserCheck size={13} /> Открыть профиль продавца
+                </button>
               </div>
-              <div>
-                <Row label="Верификация">
-                  {(() => {
-                    const vcfg = VERIFICATION_CFG[user.seller!.verificationStatus] ?? VERIFICATION_CFG.UNVERIFIED
-                    return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: vcfg.bg, color: vcfg.text }}>{vcfg.label}</span>
-                  })()}
-                </Row>
-                <Row label="Telegram">
-                  {user.seller.telegramChatId ? (
-                    <div>
-                      <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#10B981' }}>{user.seller.telegramChatId}</span>
-                      {user.seller.telegramUsername && (
-                        <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)' }}>@{user.seller.telegramUsername}</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>Не подключён</span>
-                  )}
-                </Row>
-                <Row label="Продавец с">
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{new Date(user.seller.createdAt).toLocaleDateString('ru-RU')}</span>
-                </Row>
-                <div style={{ marginTop: 12 }}>
-                  <button
-                    onClick={() => navigate(`/sellers/${user.seller!.id}`)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818CF8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    <UserCheck size={13} /> Открыть профиль продавца →
-                  </button>
-                </div>
-              </div>
-            </div>
+            </Panel>
           )}
 
-          {/* Buyer info */}
           {user.buyer && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <ShoppingBag size={15} color="#10B981" />
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Профиль покупателя</h3>
-              </div>
-              <div>
-                <Row label="Имя">
-                  <span style={{ fontSize: 13, color: 'var(--text)' }}>{user.buyer.fullName ?? '—'}</span>
-                </Row>
-                <Row label="Покупатель с">
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{new Date(user.buyer.createdAt).toLocaleDateString('ru-RU')}</span>
-                </Row>
-              </div>
-            </div>
+            <Panel title="Профиль покупателя" icon={<ShoppingBag size={15} />}>
+              <InfoRow label="Имя">
+                <span className="text-[13px]" style={{ color: 'var(--text)' }}>{user.buyer.fullName ?? '—'}</span>
+              </InfoRow>
+              <InfoRow label="Покупатель с" border={false}>
+                <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                  {new Date(user.buyer.createdAt).toLocaleDateString('ru-RU')}
+                </span>
+              </InfoRow>
+            </Panel>
           )}
 
           {user.admin && (
-            <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 16, padding: 20 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B' }}>Системный администратор — ограниченные действия</span>
+            <div
+              className="rounded-xl px-5 py-4 text-[13px] font-semibold"
+              style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B' }}
+            >
+              Системный администратор — ограниченные действия
             </div>
           )}
         </div>
 
-        {/* Right — Actions */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Действия</h3>
-
+        {/* Right column */}
+        <ActionPanel>
           {user.admin ? (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Нельзя блокировать администраторов через UI.</p>
+            <p className="m-0 text-[13px]" style={{ color: 'var(--text-muted)' }}>
+              Нельзя блокировать администраторов через UI.
+            </p>
           ) : isBlocked ? (
             <button
               disabled={actionLoading}
               onClick={unsuspend}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[14px] font-semibold transition-opacity"
               style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)',
-                background: 'rgba(16,185,129,0.08)', color: '#10B981',
-                fontSize: 14, fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer',
+                border: '1px solid rgba(34,197,94,0.3)',
+                background: 'rgba(34,197,94,0.08)',
+                color: '#22C55E',
+                cursor: actionLoading ? 'not-allowed' : 'pointer',
+                opacity: actionLoading ? 0.6 : 1,
               }}
             >
               <ShieldCheck size={14} /> {actionLoading ? 'Загрузка...' : 'Разблокировать'}
@@ -270,51 +263,83 @@ export default function UserDetailPage() {
             <button
               disabled={actionLoading}
               onClick={() => { setSuspendModal(true); setReason(''); setActionError(null) }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[14px] font-semibold transition-opacity"
               style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)',
-                background: 'rgba(239,68,68,0.08)', color: '#EF4444',
-                fontSize: 14, fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer',
+                border: '1px solid rgba(239,68,68,0.3)',
+                background: 'rgba(239,68,68,0.08)',
+                color: '#EF4444',
+                cursor: actionLoading ? 'not-allowed' : 'pointer',
+                opacity: actionLoading ? 0.6 : 1,
               }}
             >
               <ShieldOff size={14} /> Заблокировать
             </button>
           )}
-        </div>
+        </ActionPanel>
       </div>
 
       {/* Suspend Modal */}
       {suspendModal && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, backdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 flex items-center justify-center z-[200]"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
           onClick={() => setSuspendModal(false)}
         >
           <div
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: 28, width: 420, maxWidth: '90vw', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}
+            className="rounded-2xl p-7 w-[420px] max-w-[90vw]"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
+            }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Заблокировать пользователя</h3>
-            <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: 14 }}>
-              <code style={{ fontFamily: 'monospace' }}>{user.phone}</code> потеряет доступ к платформе.
+            <h3 className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+              Заблокировать пользователя
+            </h3>
+            <p className="m-0 mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>
+              <code className="font-mono">{user.phone}</code> потеряет доступ к платформе.
             </p>
             <textarea
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="Причина блокировки (обязательно)..."
               rows={3}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, boxSizing: 'border-box', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, resize: 'vertical', outline: 'none', fontFamily: 'inherit' }}
+              className="w-full px-3.5 py-3 rounded-xl text-[14px] resize-y outline-none"
+              style={{
+                background: 'var(--surface2)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
             />
             {actionError && (
-              <div style={{ marginTop: 8, color: '#EF4444', fontSize: 12 }}>{actionError}</div>
+              <div className="mt-2 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
             )}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
-              <button onClick={() => setSuspendModal(false)} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>
+            <div className="flex gap-2.5 justify-end mt-4">
+              <button
+                onClick={() => setSuspendModal(false)}
+                className="px-5 py-2.5 rounded-xl text-[14px]"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                }}
+              >
                 Отмена
               </button>
               <button
                 onClick={suspend}
                 disabled={reason.trim().length < 5 || actionLoading}
-                style={{ padding: '10px 24px', borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 600, cursor: reason.trim().length >= 5 ? 'pointer' : 'not-allowed', background: reason.trim().length >= 5 ? '#EF4444' : 'var(--surface2)', color: reason.trim().length >= 5 ? 'white' : 'var(--text-muted)' }}
+                className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+                style={{
+                  border: 'none',
+                  cursor: reason.trim().length >= 5 ? 'pointer' : 'not-allowed',
+                  background: reason.trim().length >= 5 ? '#EF4444' : 'var(--surface2)',
+                  color: reason.trim().length >= 5 ? 'white' : 'var(--text-muted)',
+                }}
               >
                 {actionLoading ? 'Загрузка...' : 'Заблокировать'}
               </button>

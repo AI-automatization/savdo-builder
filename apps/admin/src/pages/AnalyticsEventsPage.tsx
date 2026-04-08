@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { BarChart2, Search, X, ChevronLeft, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { PageHeader } from '../components/admin/PageHeader'
+import { Panel } from '../components/admin/Panel'
+import { EmptyState } from '../components/admin/EmptyState'
 
 interface AnalyticsEvent {
   id: string
@@ -19,15 +22,15 @@ interface EventsResponse {
 }
 
 const EVENT_COLORS: Record<string, { bg: string; text: string }> = {
-  storefront_viewed:    { bg: 'rgba(99,102,241,0.12)',  text: '#818CF8' },
-  product_viewed:       { bg: 'rgba(99,102,241,0.10)',  text: '#818CF8' },
-  add_to_cart:          { bg: 'rgba(16,185,129,0.12)',  text: '#10B981' },
+  storefront_viewed:    { bg: 'rgba(129,140,248,0.12)', text: '#818CF8' },
+  product_viewed:       { bg: 'rgba(129,140,248,0.10)', text: '#818CF8' },
+  add_to_cart:          { bg: 'rgba(34,197,94,0.12)',   text: '#22C55E' },
   checkout_started:     { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B' },
-  order_created:        { bg: 'rgba(16,185,129,0.15)',  text: '#10B981' },
+  order_created:        { bg: 'rgba(34,197,94,0.15)',   text: '#22C55E' },
   order_status_changed: { bg: 'rgba(245,158,11,0.10)',  text: '#F59E0B' },
   store_link_copied:    { bg: 'rgba(129,140,248,0.10)', text: '#818CF8' },
-  store_published:      { bg: 'rgba(16,185,129,0.10)',  text: '#10B981' },
-  product_created:      { bg: 'rgba(16,185,129,0.10)',  text: '#10B981' },
+  store_published:      { bg: 'rgba(34,197,94,0.10)',   text: '#22C55E' },
+  product_created:      { bg: 'rgba(34,197,94,0.10)',   text: '#22C55E' },
 }
 
 const KNOWN_EVENTS = [
@@ -87,38 +90,41 @@ export default function AnalyticsEventsPage() {
   const hasFilters = !!eventName || !!storeId
 
   return (
-    <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <BarChart2 size={20} color="var(--primary)" />
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>Analytics Events</h1>
-            {total > 0 && (
-              <span style={{ padding: '2px 10px', borderRadius: 20, background: 'rgba(99,102,241,0.12)', color: '#818CF8', fontSize: 12, fontWeight: 700 }}>
-                {total}
-              </span>
-            )}
-          </div>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13 }}>
-            Лента аналитических событий платформы в реальном времени
-          </p>
-        </div>
-        <button
-          onClick={refetch}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
-        >
-          <RefreshCw size={14} /> Обновить
-        </button>
-      </div>
+    <div className="px-8 pt-8 pb-12 min-h-screen">
+      <PageHeader
+        icon={<BarChart2 size={20} />}
+        title="Analytics Events"
+        subtitle="Лента аналитических событий платформы в реальном времени"
+        count={total > 0 ? total : undefined}
+        actions={
+          <button
+            onClick={refetch}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px]"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            <RefreshCw size={14} /> Обновить
+          </button>
+        }
+      />
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* Event name filter */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div className="flex gap-2.5 mb-5 flex-wrap items-center">
+        {/* Event name buttons */}
+        <div className="flex gap-1.5 flex-wrap">
           <button
             onClick={() => { setEventName(''); setPage(1) }}
-            style={{ height: 34, padding: '0 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: !eventName ? '1px solid var(--primary)' : '1px solid var(--border)', background: !eventName ? 'var(--primary)' : 'var(--surface2)', color: !eventName ? 'white' : 'var(--text-muted)' }}
+            className="h-8 px-3.5 rounded-lg text-[12px] font-semibold"
+            style={{
+              cursor: 'pointer',
+              border: !eventName ? '1px solid var(--primary)' : '1px solid var(--border)',
+              background: !eventName ? 'var(--primary)' : 'var(--surface2)',
+              color: !eventName ? 'white' : 'var(--text-muted)',
+            }}
           >
             Все события
           </button>
@@ -129,8 +135,9 @@ export default function AnalyticsEventsPage() {
               <button
                 key={ev}
                 onClick={() => { setEventName(active ? '' : ev); setPage(1) }}
+                className="h-8 px-3 rounded-lg text-[12px] font-semibold"
                 style={{
-                  height: 34, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  cursor: 'pointer',
                   border: active ? `1px solid ${c.text}` : '1px solid var(--border)',
                   background: active ? c.bg : 'var(--surface2)',
                   color: active ? c.text : 'var(--text-muted)',
@@ -143,22 +150,44 @@ export default function AnalyticsEventsPage() {
         </div>
 
         {/* Store ID search */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+        <div className="flex gap-1.5 items-center ml-auto">
+          <div className="relative">
+            <Search
+              size={13}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: 'var(--text-muted)' }}
+            />
             <input
               value={storeIdInput}
               onChange={e => setStoreIdInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && applyStore()}
               placeholder="Store ID..."
-              style={{ paddingLeft: 30, paddingRight: 12, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 12, outline: 'none', width: 200, fontFamily: 'monospace' }}
+              className="pl-8 pr-3 h-8 rounded-lg text-[12px] font-mono outline-none w-48"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--surface2)',
+                color: 'var(--text)',
+              }}
             />
           </div>
-          <button onClick={applyStore} style={{ height: 34, padding: '0 12px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button
+            onClick={applyStore}
+            className="h-8 px-3 rounded-lg text-[13px] font-semibold"
+            style={{ border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer' }}
+          >
             Найти
           </button>
           {hasFilters && (
-            <button onClick={clearFilters} style={{ height: 34, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button
+              onClick={clearFilters}
+              className="h-8 px-3 rounded-lg text-[12px] flex items-center gap-1"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--surface2)',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
               <X size={12} /> Сброс
             </button>
           )}
@@ -166,148 +195,181 @@ export default function AnalyticsEventsPage() {
       </div>
 
       {error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-4 text-[13px]"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
           <AlertCircle size={15} /> {error}
         </div>
       )}
 
       {/* Events table */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Событие', 'Actor', 'Store', 'Сессия', 'Когда', 'Payload'].map(col => (
-                <th key={col} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</td>
-              </tr>
-            )}
-            {!loading && events.length === 0 && (
-              <tr>
-                <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-                  {hasFilters ? 'Событий не найдено с текущими фильтрами' : 'Нет событий'}
-                </td>
-              </tr>
-            )}
-            {events.map((ev, i) => {
-              const c = eventColor(ev.eventName)
-              const isExpanded = expandedId === ev.id
-              const payloadStr = JSON.stringify(ev.eventPayload)
-              const payloadShort = payloadStr.length > 60 ? payloadStr.slice(0, 60) + '…' : payloadStr
-
-              return (
-                <>
-                  <tr
-                    key={ev.id}
-                    style={{
-                      borderBottom: '1px solid var(--border)',
-                      cursor: 'pointer',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
-                    onClick={() => setExpandedId(isExpanded ? null : ev.id)}
+      <Panel>
+        <div className="overflow-hidden -m-6 rounded-xl">
+          <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Событие', 'Actor', 'Store', 'Сессия', 'Когда', 'Payload'].map(col => (
+                  <th
+                    key={col}
+                    className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
+                    style={{ color: 'var(--text-muted)' }}
                   >
-                    <td style={{ padding: '10px 16px' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: c.bg, color: c.text, whiteSpace: 'nowrap' }}>
-                        {ev.eventName}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 16px', fontSize: 12, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                      {ev.actorUserId ? (
-                        <span title={ev.actorUserId}>{ev.actorUserId.slice(0, 8)}…</span>
-                      ) : (
-                        <span style={{ color: 'var(--text-dim)' }}>—</span>
-                      )}
-                      {ev.actorType && (
-                        <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'var(--surface2)', color: 'var(--text-muted)' }}>
-                          {ev.actorType}
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="p-10 text-center text-[14px]" style={{ color: 'var(--text-muted)' }}>
+                    Загрузка...
+                  </td>
+                </tr>
+              )}
+              {!loading && events.length === 0 && (
+                <tr>
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={<BarChart2 size={32} />}
+                      title={hasFilters ? 'Событий не найдено с текущими фильтрами' : 'Нет событий'}
+                    />
+                  </td>
+                </tr>
+              )}
+              {events.map((ev, i) => {
+                const c = eventColor(ev.eventName)
+                const isExpanded = expandedId === ev.id
+                const payloadStr = JSON.stringify(ev.eventPayload)
+                const payloadShort = payloadStr.length > 60 ? payloadStr.slice(0, 60) + '…' : payloadStr
+
+                return (
+                  <>
+                    <tr
+                      key={ev.id}
+                      className="cursor-pointer transition-colors"
+                      style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+                      onClick={() => setExpandedId(isExpanded ? null : ev.id)}
+                    >
+                      <td className="px-4 py-2.5">
+                        <span
+                          className="px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap"
+                          style={{ background: c.bg, color: c.text }}
+                        >
+                          {ev.eventName}
                         </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 16px', fontSize: 12, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                      {ev.storeId ? (
-                        <span title={ev.storeId}>{ev.storeId.slice(0, 8)}…</span>
-                      ) : (
-                        <span style={{ color: 'var(--text-dim)' }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 16px', fontSize: 11, fontFamily: 'monospace', color: 'var(--text-dim)' }}>
-                      {ev.sessionKey ? ev.sessionKey.slice(0, 10) + '…' : '—'}
-                    </td>
-                    <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {timeAgo(ev.createdAt)}
-                    </td>
-                    <td style={{ padding: '10px 16px', fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {payloadShort !== '{}' ? payloadShort : <span style={{ color: 'var(--text-dim)' }}>∅</span>}
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr key={ev.id + '_exp'} style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-                      <td colSpan={6} style={{ padding: '12px 20px' }}>
-                        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-                          <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>ID события</div>
-                            <code style={{ fontSize: 12, color: 'var(--text)', background: 'var(--surface)', padding: '3px 8px', borderRadius: 6 }}>{ev.id}</code>
-                          </div>
-                          {ev.actorUserId && (
-                            <div>
-                              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actor ID</div>
-                              <code style={{ fontSize: 12, color: 'var(--text)', background: 'var(--surface)', padding: '3px 8px', borderRadius: 6 }}>{ev.actorUserId}</code>
-                            </div>
-                          )}
-                          {ev.storeId && (
-                            <div>
-                              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Store ID</div>
-                              <code style={{ fontSize: 12, color: 'var(--text)', background: 'var(--surface)', padding: '3px 8px', borderRadius: 6 }}>{ev.storeId}</code>
-                            </div>
-                          )}
-                          <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Время</div>
-                            <span style={{ fontSize: 12, color: 'var(--text)' }}>{new Date(ev.createdAt).toLocaleString('ru-RU')}</span>
-                          </div>
-                          <div style={{ flexBasis: '100%' }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Payload</div>
-                            <pre style={{ margin: 0, fontSize: 12, color: 'var(--text)', background: 'var(--surface)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', overflow: 'auto', maxHeight: 200 }}>
-                              {JSON.stringify(ev.eventPayload, null, 2)}
-                            </pre>
-                          </div>
-                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {ev.actorUserId ? (
+                          <span title={ev.actorUserId}>{ev.actorUserId.slice(0, 8)}…</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-dim)' }}>—</span>
+                        )}
+                        {ev.actorType && (
+                          <span
+                            className="ml-1.5 text-[10px] px-1 py-0.5 rounded"
+                            style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}
+                          >
+                            {ev.actorType}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {ev.storeId ? (
+                          <span title={ev.storeId}>{ev.storeId.slice(0, 8)}…</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-dim)' }}>—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-[11px] font-mono" style={{ color: 'var(--text-dim)' }}>
+                        {ev.sessionKey ? ev.sessionKey.slice(0, 10) + '…' : '—'}
+                      </td>
+                      <td className="px-4 py-2.5 text-[12px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                        {timeAgo(ev.createdAt)}
+                      </td>
+                      <td
+                        className="px-4 py-2.5 text-[11px] font-mono max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        {payloadShort !== '{}' ? payloadShort : <span style={{ color: 'var(--text-dim)' }}>∅</span>}
                       </td>
                     </tr>
-                  )}
-                </>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    {isExpanded && (
+                      <tr key={ev.id + '_exp'} style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+                        <td colSpan={6} className="px-5 py-3">
+                          <div className="flex gap-8 flex-wrap">
+                            <div>
+                              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>ID события</div>
+                              <code className="text-[12px] px-2 py-0.5 rounded" style={{ color: 'var(--text)', background: 'var(--surface)' }}>{ev.id}</code>
+                            </div>
+                            {ev.actorUserId && (
+                              <div>
+                                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Actor ID</div>
+                                <code className="text-[12px] px-2 py-0.5 rounded" style={{ color: 'var(--text)', background: 'var(--surface)' }}>{ev.actorUserId}</code>
+                              </div>
+                            )}
+                            {ev.storeId && (
+                              <div>
+                                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Store ID</div>
+                                <code className="text-[12px] px-2 py-0.5 rounded" style={{ color: 'var(--text)', background: 'var(--surface)' }}>{ev.storeId}</code>
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Время</div>
+                              <span className="text-[12px]" style={{ color: 'var(--text)' }}>{new Date(ev.createdAt).toLocaleString('ru-RU')}</span>
+                            </div>
+                            <div className="basis-full">
+                              <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Payload</div>
+                              <pre
+                                className="m-0 text-[12px] px-3.5 py-2.5 rounded-lg overflow-auto max-h-48"
+                                style={{ color: 'var(--text)', background: 'var(--surface)', border: '1px solid var(--border)' }}
+                              >
+                                {JSON.stringify(ev.eventPayload, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+        <div className="flex items-center justify-between mt-4">
+          <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
             Стр. {page} из {totalPages} · {total} событий
           </span>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="flex gap-1.5">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === 1 ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 13, cursor: page === 1 ? 'default' : 'pointer' }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px]"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--surface2)',
+                color: page === 1 ? 'var(--text-dim)' : 'var(--text-muted)',
+                cursor: page === 1 ? 'default' : 'pointer',
+              }}
             >
               <ChevronLeft size={14} /> Назад
             </button>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === totalPages ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 13, cursor: page === totalPages ? 'default' : 'pointer' }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px]"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--surface2)',
+                color: page === totalPages ? 'var(--text-dim)' : 'var(--text-muted)',
+                cursor: page === totalPages ? 'default' : 'pointer',
+              }}
             >
               Вперёд <ChevronRight size={14} />
             </button>

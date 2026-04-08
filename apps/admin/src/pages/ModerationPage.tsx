@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { CheckCircle, XCircle, Clock, User, Store, AlertTriangle, X, RefreshCw, AlertCircle, GitMerge, UserCheck, FolderOpen, RotateCcw, ExternalLink } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { PageHeader } from '../components/admin/PageHeader'
+import { EmptyState } from '../components/admin/EmptyState'
 
 interface ModerationCase {
   id: string
@@ -21,7 +23,7 @@ interface QueueResponse {
 
 const TYPE_CFG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   seller: { icon: User,  color: 'var(--primary)', bg: 'rgba(129,140,248,0.12)', label: 'Продавец' },
-  store:  { icon: Store, color: '#10B981',         bg: 'rgba(16,185,129,0.12)',  label: 'Магазин'  },
+  store:  { icon: Store, color: '#22C55E',         bg: 'rgba(34,197,94,0.12)',  label: 'Магазин'  },
 }
 
 const CASE_TYPE_LABEL: Record<string, string> = {
@@ -33,7 +35,6 @@ const CASE_TYPE_LABEL: Record<string, string> = {
   MANUAL_REVIEW:  'Ручная проверка',
 }
 
-// SLA = 24h from createdAt
 const SLA_HOURS = 24
 
 function getSla(createdAt: string): { label: string; color: string; bg: string; overdue: boolean } {
@@ -49,7 +50,7 @@ function getSla(createdAt: string): { label: string; color: string; bg: string; 
   const label = h > 0 ? `SLA ${h}ч ${m}м` : `SLA ${m}м`
   if (remaining < 2 * 3_600_000) return { label, color: '#EF4444', bg: 'rgba(239,68,68,0.12)', overdue: false }
   if (remaining < 8 * 3_600_000) return { label, color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', overdue: false }
-  return { label, color: '#10B981', bg: 'rgba(16,185,129,0.12)', overdue: false }
+  return { label, color: '#22C55E', bg: 'rgba(34,197,94,0.12)', overdue: false }
 }
 
 function timeAgo(iso: string) {
@@ -133,57 +134,81 @@ export default function ModerationPage() {
   }
 
   return (
-    <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>Модерация</h1>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            {loading ? 'Загрузка...' : `Очередь · ${total} ожидает · SLA ${SLA_HOURS}ч`}
-          </p>
-        </div>
-        <button onClick={refetch} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-          <RefreshCw size={14} /> Обновить
-        </button>
-      </div>
+    <div className="px-8 pt-8 pb-12 min-h-screen">
+      <PageHeader
+        title="Модерация"
+        subtitle={loading ? 'Загрузка...' : `Очередь · ${total} ожидает · SLA ${SLA_HOURS}ч`}
+        actions={
+          <button
+            onClick={refetch}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px]"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            <RefreshCw size={14} /> Обновить
+          </button>
+        }
+      />
 
       {(error || actionError) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-5 text-[13px]"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
           <AlertCircle size={15} /> {error ?? actionError}
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="flex gap-2 mb-6 flex-wrap">
         {(['ALL', 'seller', 'store', 'CLOSED'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500,
-            border: `1px solid ${tab === t ? 'var(--primary)' : 'var(--border)'}`,
-            background: tab === t ? 'var(--primary-dim)' : 'var(--surface)',
-            color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
-            display: 'flex', alignItems: 'center', gap: 7,
-          }}>
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium"
+            style={{
+              cursor: 'pointer',
+              border: `1px solid ${tab === t ? 'var(--primary)' : 'var(--border)'}`,
+              background: tab === t ? 'var(--primary-dim)' : 'var(--surface)',
+              color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
+            }}
+          >
             {t === 'seller' && <User size={13} />}
             {t === 'store' && <Store size={13} />}
             {t === 'CLOSED' && <FolderOpen size={13} />}
             {t === 'ALL' ? 'Все' : t === 'seller' ? 'Продавцы' : t === 'store' ? 'Магазины' : 'Закрыты'}
             {t !== 'CLOSED' && (
-              <span style={{
-                fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
-                background: tab === t ? 'rgba(129,140,248,0.2)' : 'var(--surface2)',
-                color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
-              }}>{counts[t]}</span>
+              <span
+                className="text-[11px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: tab === t ? 'rgba(129,140,248,0.2)' : 'var(--surface2)',
+                  color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
+                }}
+              >
+                {counts[t]}
+              </span>
             )}
           </button>
         ))}
       </div>
 
       {/* Queue */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="flex flex-col gap-2.5">
         {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Загрузка...</div>
+          <div
+            className="p-16 text-center rounded-2xl"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+          >
+            Загрузка...
+          </div>
         ) : cases.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-            Очередь пуста — всё проверено ✓
+          <div
+            className="rounded-2xl"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          >
+            <EmptyState title="Очередь пуста — всё проверено" />
           </div>
         ) : cases.map(item => {
           const cfg = TYPE_CFG[item.entityType] ?? TYPE_CFG.seller
@@ -191,74 +216,83 @@ export default function ModerationPage() {
           const isProcessing = actionLoading === item.id
 
           return (
-            <div key={item.id} style={{
-              background: 'var(--surface)',
-              border: `1px solid ${sla.overdue ? 'rgba(239,68,68,0.35)' : 'var(--border)'}`,
-              borderRadius: 14, padding: '16px 20px',
-              display: 'flex', alignItems: 'center', gap: 14,
-              opacity: isProcessing ? 0.6 : 1, transition: 'opacity 0.2s',
-            }}>
+            <div
+              key={item.id}
+              className="flex items-center gap-3.5 px-5 py-4 rounded-2xl transition-opacity"
+              style={{
+                background: 'var(--surface)',
+                border: `1px solid ${sla.overdue ? 'rgba(239,68,68,0.35)' : 'var(--border)'}`,
+                opacity: isProcessing ? 0.6 : 1,
+              }}
+            >
               {/* Entity icon */}
-              <div style={{
-                width: 46, height: 46, borderRadius: 12, flexShrink: 0,
-                background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <div
+                className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center"
+                style={{ background: cfg.bg }}
+              >
                 <cfg.icon size={20} color={cfg.color} />
               </div>
 
               {/* Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 15 }}>{cfg.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface2)', padding: '1px 8px', borderRadius: 20 }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="font-bold text-[15px]" style={{ color: 'var(--text)' }}>{cfg.label}</span>
+                  <span
+                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}
+                  >
                     {CASE_TYPE_LABEL[item.caseType] ?? item.caseType}
                   </span>
                   {item.assignedAdminId && (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '1px 8px', borderRadius: 20 }}>
+                    <span
+                      className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E' }}
+                    >
                       Назначен
                     </span>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>
                     {item.entityId.slice(0, 8)}…
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    <Clock size={10} style={{ verticalAlign: 'middle', marginRight: 3 }} />
+                  <span className="text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                    <Clock size={10} />
                     {timeAgo(item.createdAt)}
                   </span>
-                  {/* SLA badge */}
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                    background: sla.bg, color: sla.color,
-                  }}>
+                  <span
+                    className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: sla.bg, color: sla.color }}
+                  >
                     {sla.label}
                   </span>
                 </div>
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {/* Detail link */}
+              <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
                 <button
                   onClick={() => navigate(`/moderation/${item.id}`)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                    background: 'var(--surface2)', border: '1px solid var(--border)',
-                    color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
                   }}
                 >
                   <ExternalLink size={12} /> Открыть
                 </button>
                 {isClosed ? (
-                  // Closed case — only reopen
                   <button
                     disabled={isProcessing}
                     onClick={() => toggleCaseStatus(item.id, item.status)}
+                    className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold"
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
-                      background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.25)',
-                      color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      background: 'rgba(129,140,248,0.08)',
+                      border: '1px solid rgba(129,140,248,0.25)',
+                      color: 'var(--primary)',
+                      cursor: isProcessing ? 'not-allowed' : 'pointer',
                     }}
                   >
                     <RotateCcw size={13} /> Переоткрыть
@@ -270,10 +304,12 @@ export default function ModerationPage() {
                         disabled={isProcessing}
                         onClick={() => assignToMe(item.id)}
                         title="Взять в работу"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold"
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                          background: 'rgba(129,140,248,0.06)', border: '1px solid rgba(129,140,248,0.2)',
-                          color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                          background: 'rgba(129,140,248,0.06)',
+                          border: '1px solid rgba(129,140,248,0.2)',
+                          color: 'var(--primary)',
+                          cursor: isProcessing ? 'not-allowed' : 'pointer',
                         }}
                       >
                         <UserCheck size={13} /> Взять
@@ -283,10 +319,12 @@ export default function ModerationPage() {
                       disabled={isProcessing}
                       onClick={() => doAction(item.id, 'REQUEST_CHANGES')}
                       title="Запросить изменения"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold"
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                        background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
-                        color: '#F59E0B', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        background: 'rgba(245,158,11,0.08)',
+                        border: '1px solid rgba(245,158,11,0.25)',
+                        color: '#F59E0B',
+                        cursor: isProcessing ? 'not-allowed' : 'pointer',
                       }}
                     >
                       <AlertTriangle size={13} /> Доработка
@@ -295,10 +333,12 @@ export default function ModerationPage() {
                       disabled={isProcessing}
                       onClick={() => doAction(item.id, 'ESCALATE')}
                       title="Эскалировать"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold"
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                        background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.25)',
-                        color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        background: 'rgba(129,140,248,0.08)',
+                        border: '1px solid rgba(129,140,248,0.25)',
+                        color: 'var(--primary)',
+                        cursor: isProcessing ? 'not-allowed' : 'pointer',
                       }}
                     >
                       <GitMerge size={13} /> Эскалация
@@ -306,10 +346,12 @@ export default function ModerationPage() {
                     <button
                       disabled={isProcessing}
                       onClick={() => setRejectTarget(item)}
+                      className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold"
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
-                        background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
-                        color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        background: 'rgba(239,68,68,0.08)',
+                        border: '1px solid rgba(239,68,68,0.25)',
+                        color: '#EF4444',
+                        cursor: isProcessing ? 'not-allowed' : 'pointer',
                       }}
                     >
                       <XCircle size={13} /> Отклонить
@@ -317,10 +359,12 @@ export default function ModerationPage() {
                     <button
                       disabled={isProcessing}
                       onClick={() => doAction(item.id, 'APPROVE')}
+                      className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold"
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8,
-                        background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
-                        color: '#10B981', fontSize: 13, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        background: 'rgba(34,197,94,0.1)',
+                        border: '1px solid rgba(34,197,94,0.25)',
+                        color: '#22C55E',
+                        cursor: isProcessing ? 'not-allowed' : 'pointer',
                       }}
                     >
                       <CheckCircle size={14} /> Одобрить
@@ -329,10 +373,12 @@ export default function ModerationPage() {
                       disabled={isProcessing}
                       onClick={() => toggleCaseStatus(item.id, item.status)}
                       title="Закрыть кейс без решения"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold"
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                        background: 'rgba(148,163,184,0.06)', border: '1px solid rgba(148,163,184,0.25)',
-                        color: '#94A3B8', fontSize: 12, fontWeight: 600, cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        background: 'rgba(148,163,184,0.06)',
+                        border: '1px solid rgba(148,163,184,0.25)',
+                        color: '#94A3B8',
+                        cursor: isProcessing ? 'not-allowed' : 'pointer',
                       }}
                     >
                       <FolderOpen size={13} /> Закрыть
@@ -347,40 +393,49 @@ export default function ModerationPage() {
 
       {/* Reject Modal */}
       {rejectTarget && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
-          backdropFilter: 'blur(4px)',
-        }} onClick={() => { setRejectTarget(null); setComment('') }}>
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 20, padding: 28, width: 440, maxWidth: '90vw',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Отклонить заявку</h3>
-              <button onClick={() => { setRejectTarget(null); setComment('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+        <div
+          className="fixed inset-0 flex items-center justify-center z-[200]"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+          onClick={() => { setRejectTarget(null); setComment('') }}
+        >
+          <div
+            className="rounded-2xl p-7 w-[440px] max-w-[90vw]"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>Отклонить заявку</h3>
+              <button
+                onClick={() => { setRejectTarget(null); setComment('') }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
                 <X size={18} />
               </button>
             </div>
-            <p style={{ margin: '0 0 4px', color: 'var(--text-muted)', fontSize: 14 }}>
+            <p className="m-0 mb-1 text-[14px]" style={{ color: 'var(--text-muted)' }}>
               {TYPE_CFG[rejectTarget.entityType]?.label}
-              <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 8, fontFamily: 'monospace' }}>
+              <span className="font-mono text-[12px] ml-2" style={{ color: 'var(--text-muted)' }}>
                 {rejectTarget.entityId.slice(0, 12)}…
               </span>
             </p>
-            {/* SLA in modal */}
-            <div style={{ marginBottom: 16 }}>
+            <div className="mb-4">
               {(() => {
                 const s = getSla(rejectTarget.createdAt)
                 return (
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: s.bg, color: s.color }}>
+                  <span
+                    className="text-[12px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: s.bg, color: s.color }}
+                  >
                     {s.label}
                   </span>
                 )
               })()}
             </div>
-            <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: 13 }}>
+            <p className="m-0 mb-4 text-[13px]" style={{ color: 'var(--text-muted)' }}>
               Укажи причину — обязательное поле (INV-A02).
             </p>
             <textarea
@@ -388,30 +443,43 @@ export default function ModerationPage() {
               onChange={e => setComment(e.target.value)}
               placeholder="Например: профиль не заполнен, нарушение правил платформы..."
               rows={4}
+              className="w-full px-3.5 py-3 rounded-xl text-[14px] resize-y outline-none leading-relaxed"
               style={{
-                width: '100%', padding: '12px 14px', borderRadius: 10, boxSizing: 'border-box',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
-                color: 'var(--text)', fontSize: 14, resize: 'vertical', outline: 'none',
-                fontFamily: 'inherit', lineHeight: 1.5, transition: 'border-color 0.2s',
+                background: 'var(--surface2)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+                transition: 'border-color 0.2s',
               }}
               onFocus={e => e.target.style.borderColor = '#EF4444'}
               onBlur={e => e.target.style.borderColor = 'var(--border)'}
             />
-            <div style={{ fontSize: 12, color: comment.length > 10 ? 'var(--text-muted)' : '#EF4444', textAlign: 'right', marginTop: 4, marginBottom: 18 }}>
+            <div
+              className="text-[12px] text-right mt-1 mb-4"
+              style={{ color: comment.length > 10 ? 'var(--text-muted)' : '#EF4444' }}
+            >
               {comment.length} символов {comment.length < 10 && '(мин. 10)'}
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => { setRejectTarget(null); setComment('') }} style={{
-                padding: '10px 20px', borderRadius: 10, border: '1px solid var(--border)',
-                background: 'transparent', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer',
-              }}>
+            <div className="flex gap-2.5 justify-end">
+              <button
+                onClick={() => { setRejectTarget(null); setComment('') }}
+                className="px-5 py-2.5 rounded-xl text-[14px]"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                }}
+              >
                 Отмена
               </button>
               <button
                 onClick={() => doAction(rejectTarget.id, 'REJECT', comment)}
                 disabled={comment.trim().length < 10 || actionLoading === rejectTarget.id}
+                className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
                 style={{
-                  padding: '10px 24px', borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 600,
+                  border: 'none',
                   cursor: comment.trim().length >= 10 ? 'pointer' : 'not-allowed',
                   background: comment.trim().length >= 10 ? '#EF4444' : 'var(--surface2)',
                   color: comment.trim().length >= 10 ? 'white' : 'var(--text-muted)',
