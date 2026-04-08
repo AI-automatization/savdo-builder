@@ -46,7 +46,7 @@
 
 ## Phase C — Расширение (следующий спринт)
 
-- [ ] **[ADM-C01]** SLA-таймер на pending review cards (moderation queue)
-- [ ] **[ADM-C02]** Seller detail — история moderation actions
-- [ ] **[ADM-C03]** Analytics events page → `GET /api/v1/admin/analytics/events`
-- [ ] **[ADM-C04]** Orders overview (нужен новый backend endpoint)
+- [x] **[ADM-C01]** SLA-таймер на pending review cards (moderation queue)
+- [x] **[ADM-C02]** Seller detail — история moderation actions
+- [x] **[ADM-C03]** Analytics events page → `GET /api/v1/admin/analytics/events`
+- [x] **[ADM-C04]** Orders overview (нужен новый backend endpoint)
