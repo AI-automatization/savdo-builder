@@ -157,14 +157,12 @@ export default function UsersPage() {
                   key={user.id}
                   style={{
                     borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
-                    cursor: user.role === 'SELLER' ? 'pointer' : 'default',
+                    cursor: 'pointer',
                     transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => { if (user.role === 'SELLER') (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '' }}
-                  onClick={() => {
-                    if (user.role === 'SELLER') navigate(`/sellers?userId=${user.id}`)
-                  }}
+                  onClick={() => navigate(`/users/${user.id}`)}
                 >
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -199,9 +197,7 @@ export default function UsersPage() {
                     {new Date(user.createdAt).toLocaleDateString('ru-RU')}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    {user.role === 'SELLER' && (
-                      <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>→ Профиль</span>
-                    )}
+                    <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>→</span>
                   </td>
                 </tr>
               )

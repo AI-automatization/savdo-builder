@@ -13,6 +13,7 @@ import ModerationPage from './pages/ModerationPage'
 import ModerationDetailPage from './pages/ModerationDetailPage'
 import AuditLogsPage from './pages/AuditLogsPage'
 import UsersPage from './pages/UsersPage'
+import UserDetailPage from './pages/UserDetailPage'
 import DatabasePage from './pages/DatabasePage'
 import BroadcastPage from './pages/BroadcastPage'
 import AnalyticsEventsPage from './pages/AnalyticsEventsPage'
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="moderation/:id" element={<ModerationDetailPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="users/:id" element={<UserDetailPage />} />
           <Route path="database" element={<DatabasePage />} />
           <Route path="broadcast" element={<BroadcastPage />} />
           <Route path="analytics" element={<AnalyticsEventsPage />} />
