@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-04-07 (сессия 13)
+
+### ✅ [BOT-FIX] callback_query не доставлялся (Полат)
+- **Важность:** 🔴 Критическая
+- **Дата:** 07.04.2026
+- **Файлы:** `apps/api/src/modules/telegram/services/telegram-bot.service.ts`
+- **Что сделано:** `allowed_updates` теперь включает `callback_query` — кнопки бота работают
+
+### ✅ [TWA-FIX] GET /storefront/stores не существовал (Полат)
+- **Важность:** 🔴 Критическая
+- **Дата:** 07.04.2026
+- **Файлы:** `apps/api/src/modules/products/products.controller.ts`, `apps/api/src/modules/stores/repositories/stores.repository.ts`
+- **Что сделано:** Добавлен endpoint + `findAllPublished()` — TWA главная страница работает
+
+### ✅ [ADM-Phase-C] Кнопка "Одобрить" для PENDING_REVIEW магазинов (Полат)
+- **Важность:** 🟡 Важная
+- **Дата:** 07.04.2026
+- **Файлы:** `apps/api/src/modules/admin/use-cases/approve-store.use-case.ts` (новый), `admin.controller.ts`, `admin.module.ts`, `apps/admin/src/pages/StoreDetailPage.tsx`
+- **Что сделано:** `POST /admin/stores/:id/approve` + кнопка в UI только для PENDING_REVIEW
+
 ## 2026-04-05 (сессия 12)
 
 ### ✅ [ADM-020] Admin UI: страница /broadcast (Полат)
