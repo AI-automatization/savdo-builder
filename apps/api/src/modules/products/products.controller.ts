@@ -235,7 +235,8 @@ export class ProductsController {
 
   @Get('storefront/stores')
   async listStorefrontStores() {
-    return this.storesRepo.findAllPublished();
+    const stores = await this.storesRepo.findAllPublished();
+    return { data: stores };
   }
 
   @Get('storefront/stores/:slug')

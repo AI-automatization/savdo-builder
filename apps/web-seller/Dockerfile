@@ -20,14 +20,12 @@ RUN pnpm --filter web-seller build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN npm install -g pnpm
 
 COPY --from=builder /app/apps/web-seller/.next/standalone ./
 COPY --from=builder /app/apps/web-seller/.next/static ./apps/web-seller/.next/static
 COPY --from=builder /app/apps/web-seller/public ./apps/web-seller/public
 
-EXPOSE 3001
-ENV PORT=3001
+# PORT задаёт Railway сам через env — не хардкодим
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "apps/web-seller/server.js"]
