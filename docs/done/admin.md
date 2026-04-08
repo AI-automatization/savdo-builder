@@ -25,3 +25,4 @@
 | 08.04.2026 | [ADM-C02] Seller detail — история moderation actions | `SellerDetailPage.tsx` — уже был реализован, помечен как выполнен |
 | 08.04.2026 | [ADM-C03] Analytics events page | `apps/admin/src/pages/AnalyticsEventsPage.tsx` — новая страница с фильтрами, пагинацией, expand payload |
 | 08.04.2026 | [ADM-C04] Orders overview | `OrdersPage.tsx` + `GET /api/v1/admin/orders` — уже были реализованы |
+| 08.04.2026 | UserDetailPage — `/users/:id` | `apps/admin/src/pages/UserDetailPage.tsx` — детали пользователя + suspend/unsuspend, ссылка на seller profile |
