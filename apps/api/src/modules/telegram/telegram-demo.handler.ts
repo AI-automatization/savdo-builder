@@ -342,9 +342,9 @@ export class TelegramDemoHandler {
 
   async showSellerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
-    const twaUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    const twaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
     const rows: Array<Array<InlineButton | WebAppButton>> = [
-      [{ text: '📱 Открыть приложение', web_app: { url: `${twaUrl}/twa` } }],
+      [{ text: '📱 Открыть приложение', web_app: { url: twaUrl } }],
       [{ text: '📋 Новые заказы',       callback_data: 'seller_orders'       }],
       [{ text: '🔗 Мой магазин',        callback_data: 'seller_store'        }],
       [{ text: '📊 Статистика',         callback_data: 'seller_stats'        }],
@@ -431,9 +431,9 @@ export class TelegramDemoHandler {
 
   async showBuyerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
-    const twaUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    const twaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
     const rows: Array<Array<InlineButton | WebAppButton>> = [
-      [{ text: '📱 Открыть приложение', web_app: { url: `${twaUrl}/twa` } }],
+      [{ text: '📱 Открыть приложение', web_app: { url: twaUrl } }],
       [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
       [{ text: '📦 Мои заказы',   callback_data: 'buyer_orders'     }],
     ];

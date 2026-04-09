@@ -3,11 +3,13 @@ import { Request } from 'express';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { TelegramAuthDto } from './dto/telegram-auth.dto';
 import { RequestOtpUseCase } from './use-cases/request-otp.use-case';
 import { VerifyOtpUseCase } from './use-cases/verify-otp.use-case';
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
 import { GetMeUseCase } from './use-cases/get-me.use-case';
+import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 
@@ -19,7 +21,14 @@ export class AuthController {
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logoutSession: LogoutSessionUseCase,
     private readonly getMe: GetMeUseCase,
+    private readonly telegramAuth: TelegramAuthUseCase,
   ) {}
+
+  @Post('telegram')
+  @HttpCode(HttpStatus.OK)
+  async telegramAuthHandler(@Body() dto: TelegramAuthDto) {
+    return this.telegramAuth.execute(dto.initData);
+  }
 
   @Post('request-otp')
   @HttpCode(HttpStatus.OK)

@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-04-09 — Сессия 16: TMA Auth + Bot URL
+
+### ✅ [API-021] POST /api/v1/auth/telegram — авторизация через Telegram initData
+- **Важность:** 🔴
+- **Дата:** 09.04.2026
+- **Кто делал:** Полат
+- **Файлы:**
+  - `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.ts` (новый)
+  - `apps/api/src/modules/auth/dto/telegram-auth.dto.ts` (новый)
+  - `apps/api/src/modules/auth/auth.controller.ts` (+эндпоинт POST auth/telegram)
+  - `apps/api/src/modules/auth/auth.module.ts` (+TelegramAuthUseCase)
+  - `apps/api/src/modules/auth/repositories/auth.repository.ts` (+findUserByTelegramId, +createUserWithBuyerByTelegram)
+  - `packages/db/prisma/schema.prisma` (+telegramId BigInt? @unique на User)
+  - `packages/db/prisma/migrations/20260409000000_add_telegram_id_to_users/migration.sql` (новый)
+  - `.env.example` (+TMA_URL)
+- **Что сделано:** Endpoint принимает `{ initData: string }`, валидирует HMAC-SHA256 подпись через TELEGRAM_BOT_TOKEN, находит или создаёт user по telegramId, возвращает JWT + refreshToken. Новая колонка `telegramId` добавлена в таблицу users с миграцией.
+
+### ✅ [API-022] Поменять BUYER_APP_URL/twa → TMA_URL в telegram-demo.handler.ts
+- **Важность:** 🔴
+- **Дата:** 09.04.2026
+- **Кто делал:** Полат
+- **Файлы:** `apps/api/src/modules/telegram/telegram-demo.handler.ts`
+- **Что сделано:** В `showSellerMenu()` и `showBuyerMenu()` заменён `BUYER_APP_URL + "/twa"` на `TMA_URL`. Бот теперь открывает отдельное TMA приложение.
+
 ## 2026-04-09 — Сессия 15: Telegram Mini App (TMA)
 
 > **Задача от Полата:** создать отдельное приложение для Telegram бота, не использовать web-buyer/web-seller.

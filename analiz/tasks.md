@@ -8,27 +8,6 @@
 
 ---
 
-## 🔴 [API-021] POST /api/v1/auth/telegram — авторизация через Telegram initData
-- **Домен:** apps/api
-- **Кто взял:** Полат
-- **Блокирует:** TMA-002, TMA-003 (весь auth flow в TMA)
-- **Детали:** Endpoint принимает `{ initData: string }`, валидирует HMAC-SHA256 через TELEGRAM_BOT_TOKEN, находит/создаёт user по telegramId, возвращает JWT.
-- **Request:** `POST /api/v1/auth/telegram` body: `{ initData: string }`
-- **Response:** `{ token: string, user: { id, role, phone } }`
-- **Валидация:** `HMAC_SHA256(data_check_string, secret_key)` где `secret_key = HMAC_SHA256(bot_token, "WebAppData")`
-- **Файлы:** auth.controller.ts, auth.service.ts
-- **Спека:** `docs/superpowers/specs/2026-04-09-tma-design.md` → раздел Authentication
-
-## 🔴 [API-022] Поменять BUYER_APP_URL/twa → TMA_URL в telegram-demo.handler.ts
-- **Домен:** apps/api
-- **Кто взял:** Полат
-- **Блокирует:** Бот не откроет TMA пока URL не заменён
-- **Детали:** В `showSellerMenu()` (строка 345) и `showBuyerMenu()` (строка 434) заменить:
-  - `const twaUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz'` → `const twaUrl = process.env.TMA_URL ?? 'https://savdo.uz'`
-  - `web_app: { url: \`${twaUrl}/twa\` }` → `web_app: { url: twaUrl }`
-- Добавить `TMA_URL` в `.env`, `.env.example`, Railway env
-- **Файлы:** telegram-demo.handler.ts
-
 ---
 
 ## ✅ Разблокировано для Азима (07.04.2026)

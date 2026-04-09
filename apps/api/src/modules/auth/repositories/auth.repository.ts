@@ -46,6 +46,27 @@ export class AuthRepository {
     });
   }
 
+  async findUserByTelegramId(telegramId: bigint) {
+    return this.prisma.user.findUnique({
+      where: { telegramId },
+      include: { seller: true, buyer: true },
+    });
+  }
+
+  async createUserWithBuyerByTelegram(data: { telegramId: bigint; phone?: string }) {
+    const phone = data.phone ?? `tg_${data.telegramId}`;
+    return this.prisma.user.create({
+      data: {
+        phone,
+        telegramId: data.telegramId,
+        role: 'BUYER',
+        isPhoneVerified: false,
+        buyer: { create: {} },
+      },
+      include: { buyer: true, seller: true },
+    });
+  }
+
   async findUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
