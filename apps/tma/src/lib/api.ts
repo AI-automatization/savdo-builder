@@ -1,8 +1,18 @@
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
-let _token: string | null = null;
+const TOKEN_KEY = 'savdo_tma_token';
 
-export function setToken(token: string | null) { _token = token; }
+let _token: string | null = (() => {
+  try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
+})();
+
+export function setToken(token: string | null) {
+  _token = token;
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch { /* SSR or private browsing */ }
+}
 export function getToken() { return _token; }
 
 interface ApiOptions {

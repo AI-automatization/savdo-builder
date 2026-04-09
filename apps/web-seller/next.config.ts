@@ -1,13 +1,14 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const monorepoRoot = path.resolve(__dirname, "../..");
+
 const nextConfig: NextConfig = {
   output: "standalone",
-  experimental: {
-    // @ts-expect-error — turbo root not yet in ExperimentalConfig types
-    turbo: {
-      root: path.resolve(__dirname, "../.."),
-    },
+  outputFileTracingRoot: monorepoRoot,
+  transpilePackages: ["types", "ui"],
+  turbopack: {
+    root: monorepoRoot,
   },
 };
 

@@ -1,28 +1,112 @@
 # Done — Азим + Полат
 
-## 2026-04-09 — Сессия 16: TMA Auth + Bot URL
+## 2026-04-10 — Сессия 16b: Полный аудит + фиксы багов
+
+### ✅ [AUDIT-001] TMA: JSON.parse crash fix — CartPage, StorePage, CheckoutPage
+- **Важность:** 🔴
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/pages/buyer/CartPage.tsx`, `StorePage.tsx`, `CheckoutPage.tsx`
+- **Что сделано:** Обёрнуто JSON.parse localStorage в try/catch — при повреждённых данных корзина сбрасывается вместо краша
+
+### ✅ [AUDIT-002] TMA: Error UI вместо silent .catch(() => {})
+- **Важность:** 🔴
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `StoresPage.tsx`, `seller/DashboardPage.tsx`, `seller/OrdersPage.tsx`
+- **Что сделано:** Все API ошибки теперь показывают UI с кнопкой "Попробовать снова"
+
+### ✅ [AUDIT-003] TMA: AuthProvider catch — не зависает в loading
+- **Важность:** 🔴
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** Добавлен .catch() в authenticateWithTelegram — при ошибке auth переходит в unauthenticated
+
+### ✅ [AUDIT-004] TMA: Токен сохраняется в sessionStorage
+- **Важность:** 🔴
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** Токен сохраняется в sessionStorage, восстанавливается при перезагрузке
+
+### ✅ [AUDIT-005] web-seller: next.config.ts — убран невалидный experimental.turbo
+- **Важность:** 🟡
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-seller/next.config.ts`
+- **Что сделано:** Заменено experimental.turbo на turbopack.root + добавлен outputFileTracingRoot и transpilePackages
+
+### ✅ [AUDIT-006] TMA: Валидация телефона +998 в CheckoutPage
+- **Важность:** 🟡
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/pages/buyer/CheckoutPage.tsx`
+- **Что сделано:** Формат +998XXXXXXXXX проверяется перед отправкой заказа
+
+### ✅ [AUDIT-007] API client: console.warn если NEXT_PUBLIC_API_URL не задан
+- **Важность:** 🟡
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/src/lib/api/client.ts`, `apps/web-seller/src/lib/api/client.ts`
+- **Что сделано:** Warning в консоль если env var отсутствует — помогает диагностировать проблемы деплоя
+
+### ✅ [AUDIT-008] web-seller: удалён лишний pnpm-workspace.yaml
+- **Важность:** 🟡
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** удалён `apps/web-seller/pnpm-workspace.yaml`
+- **Что сделано:** Дублирующий файл вызывал warning о множественных lockfiles при билде
+
+## 2026-04-10 — Сессия 16: Чистка + аудит + фиксы
+
+### ✅ [TMA-005] Поиск магазинов на StoresPage (TMA)
+- **Важность:** 🟡
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/pages/buyer/StoresPage.tsx`
+- **Что сделано:** Добавлен glass-стилизованный input с иконкой лупы, client-side фильтрация по имени/описанию через useMemo
+
+### ✅ [TMA-006] Удалить старые /twa роуты из web-buyer
+- **Важность:** 🟡
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** удалены `app/twa/`, `components/twa/` (4 файла)
+- **Что сделано:** TMA — отдельное приложение, старые /twa роуты больше не нужны
+
+### ✅ [WEB-040] OTP текст: "Код отправлен" → упоминание Telegram
+- **Важность:** 🟡
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `components/auth/OtpGate.tsx`, `app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Текст "Код отправлен на..." заменён на "Код отправлен в Telegram на..." — соответствует реальному OTP flow через бот
+
+### ✅ [WEB-041] Checkout: убран хардкод DELIVERY_FEE = 25_000
+- **Важность:** 🔴
+- **Дата:** 10.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Delivery fee теперь берётся из API preview response (deliveryFee). Когда Полат добавит реальную стоимость доставки в preview — заработает автоматически
+
+---
+
+## 2026-04-09 — Сессия 16: TMA Auth + Bot URL (Полат)
 
 ### ✅ [API-021] POST /api/v1/auth/telegram — авторизация через Telegram initData
 - **Важность:** 🔴
 - **Дата:** 09.04.2026
 - **Кто делал:** Полат
-- **Файлы:**
-  - `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.ts` (новый)
-  - `apps/api/src/modules/auth/dto/telegram-auth.dto.ts` (новый)
-  - `apps/api/src/modules/auth/auth.controller.ts` (+эндпоинт POST auth/telegram)
-  - `apps/api/src/modules/auth/auth.module.ts` (+TelegramAuthUseCase)
-  - `apps/api/src/modules/auth/repositories/auth.repository.ts` (+findUserByTelegramId, +createUserWithBuyerByTelegram)
-  - `packages/db/prisma/schema.prisma` (+telegramId BigInt? @unique на User)
-  - `packages/db/prisma/migrations/20260409000000_add_telegram_id_to_users/migration.sql` (новый)
-  - `.env.example` (+TMA_URL)
-- **Что сделано:** Endpoint принимает `{ initData: string }`, валидирует HMAC-SHA256 подпись через TELEGRAM_BOT_TOKEN, находит или создаёт user по telegramId, возвращает JWT + refreshToken. Новая колонка `telegramId` добавлена в таблицу users с миграцией.
+- **Файлы:** auth.controller.ts, telegram-auth.use-case.ts, auth.repository.ts, schema.prisma
+- **Что сделано:** Endpoint принимает `{ initData: string }`, валидирует HMAC-SHA256, находит/создаёт user по telegramId, возвращает JWT
 
-### ✅ [API-022] Поменять BUYER_APP_URL/twa → TMA_URL в telegram-demo.handler.ts
+### ✅ [API-022] Поменять BUYER_APP_URL/twa → TMA_URL
 - **Важность:** 🔴
 - **Дата:** 09.04.2026
 - **Кто делал:** Полат
 - **Файлы:** `apps/api/src/modules/telegram/telegram-demo.handler.ts`
-- **Что сделано:** В `showSellerMenu()` и `showBuyerMenu()` заменён `BUYER_APP_URL + "/twa"` на `TMA_URL`. Бот теперь открывает отдельное TMA приложение.
+- **Что сделано:** Бот теперь открывает отдельное TMA приложение через TMA_URL
+
+---
 
 ## 2026-04-09 — Сессия 15: Telegram Mini App (TMA)
 

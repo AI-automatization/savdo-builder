@@ -18,7 +18,12 @@ interface CartItem {
 }
 
 function getCart(): CartItem[] {
-  return JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
+  try {
+    return JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
+  } catch {
+    localStorage.removeItem('savdo_cart');
+    return [];
+  }
 }
 
 export default function CheckoutPage() {
@@ -39,6 +44,11 @@ export default function CheckoutPage() {
       setError('Заполните имя и телефон');
       return;
     }
+    const cleanPhone = phone.replace(/[\s\-()]/g, '');
+    if (!/^\+998\d{9}$/.test(cleanPhone)) {
+      setError('Введите номер в формате +998XXXXXXXXX');
+      return;
+    }
 
     setSubmitting(true);
     setError('');
@@ -50,7 +60,7 @@ export default function CheckoutPage() {
         body: {
           items: items.map((i) => ({ productId: i.productId, quantity: i.qty })),
           buyerName: name.trim(),
-          buyerPhone: phone.trim(),
+          buyerPhone: phone.replace(/[\s\-()]/g, ''),
           deliveryAddress: address.trim() || undefined,
         },
       });

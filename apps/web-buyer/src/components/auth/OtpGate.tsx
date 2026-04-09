@@ -54,7 +54,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
           <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
             {step === 'phone'
               ? (subtitle ?? 'Введите номер телефона для входа')
-              : `Код отправлен на ${phone}`}
+              : `Код отправлен в Telegram на ${phone}`}
           </p>
         </div>
 

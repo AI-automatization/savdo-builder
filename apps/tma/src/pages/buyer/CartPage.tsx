@@ -15,7 +15,12 @@ interface CartItem {
 }
 
 function getCart(): CartItem[] {
-  return JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
+  try {
+    return JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
+  } catch {
+    localStorage.removeItem('savdo_cart');
+    return [];
+  }
 }
 function saveCart(items: CartItem[]) {
   localStorage.setItem('savdo_cart', JSON.stringify(items));

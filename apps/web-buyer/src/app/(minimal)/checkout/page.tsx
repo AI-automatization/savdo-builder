@@ -8,14 +8,15 @@ import { useAuth } from "@/lib/auth/context";
 import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
 import { useCheckoutPreview, useConfirmCheckout } from "@/hooks/use-checkout";
 import { track } from "@/lib/analytics";
-import type { CheckoutPreviewItem } from "types";
+import type { CheckoutPreview, CheckoutPreviewItem } from "types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type DeliveryMode = "delivery" | "pickup";
 type PageStep = "otp-phone" | "otp-code" | "form";
 
-const DELIVERY_FEE = 25_000;
+// Extend preview type — API returns deliveryFee/total but shared type doesn't include them yet
+type PreviewWithFee = CheckoutPreview & { deliveryFee?: number; total?: number };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -152,7 +153,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
           {step === "phone"
             ? "Для оформления заказа нужно подтвердить номер"
-            : `Код отправлен на +998 ${phone}`}
+            : `Код отправлен в Telegram на +998 ${phone}`}
         </p>
       </div>
 
@@ -246,8 +247,10 @@ export default function CheckoutPage() {
   const [note,    setNote]    = useState("");
   const [apiError, setApiError] = useState<string>();
 
-  const deliveryFee = mode === "delivery" ? DELIVERY_FEE : 0;
-  const subtotal    = preview.data?.subtotal ?? 0;
+  const previewData = preview.data as PreviewWithFee | undefined;
+  const storeDeliveryFee = previewData?.deliveryFee ?? 0;
+  const deliveryFee = mode === "delivery" ? storeDeliveryFee : 0;
+  const subtotal    = previewData?.subtotal ?? 0;
   const total       = subtotal + deliveryFee;
 
   // Redirect if cart is empty after loading
@@ -432,8 +435,8 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-white/50">Доставка</span>
-                    {mode === "delivery"
-                      ? <span className="text-white/70">{fmt(DELIVERY_FEE)} сум</span>
+                    {deliveryFee > 0
+                      ? <span className="text-white/70">{fmt(deliveryFee)} сум</span>
                       : <span className="text-emerald-400">Бесплатно</span>}
                   </div>
                   <div className="flex justify-between pt-2 mt-1"

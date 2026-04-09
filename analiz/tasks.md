@@ -140,6 +140,17 @@ API-010, API-011, API-012, API-013, API-014 — реализованы на фр
 - [ ] **[TMA-002]** Протестировать auth flow в реальном Telegram после API-021
 - [ ] **[TMA-003]** Деплой TMA на Railway/Cloudflare Pages + получить публичный URL
 - [ ] **[TMA-004]** Deep links — startapp=store_{slug} → редирект в конкретный магазин
-- [ ] **[TMA-005]** Поиск магазинов на StoresPage (сейчас placeholder)
-- [ ] **[TMA-006]** Удалить старые `/twa` роуты из web-buyer после стабилизации TMA
+- [x] **[TMA-005]** Поиск магазинов на StoresPage ✅ (10.04.2026)
+- [x] **[TMA-006]** Удалить старые `/twa` роуты из web-buyer ✅ (10.04.2026)
+
+## ✅ Сессия 16b (10.04.2026) — Полный аудит + фиксы
+
+- [x] **[AUDIT-001]** JSON.parse crash fix — CartPage, StorePage, CheckoutPage
+- [x] **[AUDIT-002]** Error UI вместо silent `.catch(() => {})` в 3 TMA страницах
+- [x] **[AUDIT-003]** AuthProvider catch — не зависает в loading при ошибке auth
+- [x] **[AUDIT-004]** Токен сохраняется в sessionStorage (не теряется при reload)
+- [x] **[AUDIT-005]** web-seller next.config.ts — убран невалидный experimental.turbo
+- [x] **[AUDIT-006]** Валидация телефона +998 в TMA CheckoutPage
+- [x] **[AUDIT-007]** API client: console.warn если NEXT_PUBLIC_API_URL не задан
+- [x] **[AUDIT-008]** web-seller: удалён лишний pnpm-workspace.yaml
 

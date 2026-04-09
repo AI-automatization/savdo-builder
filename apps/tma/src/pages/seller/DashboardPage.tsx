@@ -26,12 +26,15 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      api<{ data: Order[] }>('/seller/orders?limit=5').then((r) => setOrders(r.data ?? [])).catch(() => {}),
-      api<{ data: Stats }>('/seller/stats').then((r) => setStats(r.data ?? null)).catch(() => {}),
-    ]).finally(() => setLoading(false));
+      api<{ data: Order[] }>('/seller/orders?limit=5').then((r) => setOrders(r.data ?? [])),
+      api<{ data: Stats }>('/seller/stats').then((r) => setStats(r.data ?? null)),
+    ])
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, []);
 
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
@@ -81,7 +84,15 @@ export default function DashboardPage() {
 
         {loading && <div className="flex justify-center py-6"><Spinner /></div>}
 
-        {!loading && !orders.length && (
+        {!loading && error && (
+          <div className="flex flex-col items-center gap-2 py-8">
+            <span style={{ fontSize: 36 }}>⚠️</span>
+            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить данные</p>
+            <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A78BFA' }}>Попробовать снова</button>
+          </div>
+        )}
+
+        {!loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-8">
             <span style={{ fontSize: 36 }}>📭</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>

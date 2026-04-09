@@ -30,13 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    authenticateWithTelegram().then((res) => {
-      if (res) {
-        setState({ user: res.user, loading: false, authenticated: true });
-      } else {
+    authenticateWithTelegram()
+      .then((res) => {
+        if (res) {
+          setState({ user: res.user, loading: false, authenticated: true });
+        } else {
+          setState({ user: null, loading: false, authenticated: false });
+        }
+      })
+      .catch(() => {
         setState({ user: null, loading: false, authenticated: false });
-      }
-    });
+      });
   }, [ready, isTelegram]);
 
   return <Ctx.Provider value={state}>{children}</Ctx.Provider>;

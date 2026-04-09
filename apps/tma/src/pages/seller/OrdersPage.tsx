@@ -27,12 +27,14 @@ export default function SellerOrdersPage() {
   const { tg } = useTelegram();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
 
   const fetchOrders = () => {
+    setError(false);
     api<{ data: Order[] }>('/seller/orders')
       .then((r) => setOrders(r.data ?? []))
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
 
@@ -77,7 +79,15 @@ export default function SellerOrdersPage() {
 
         {loading && <div className="flex justify-center py-8"><Spinner /></div>}
 
-        {!loading && !orders.length && (
+        {!loading && error && (
+          <div className="flex flex-col items-center gap-2 py-10">
+            <span style={{ fontSize: 36 }}>⚠️</span>
+            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить заказы</p>
+            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: '#A78BFA' }}>Попробовать снова</button>
+          </div>
+        )}
+
+        {!loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>

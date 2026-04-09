@@ -46,7 +46,12 @@ export default function StorePage() {
 
   const addToCart = (product: Product) => {
     tg?.HapticFeedback.impactOccurred('light');
-    const cart = JSON.parse(localStorage.getItem('savdo_cart') ?? '[]') as Array<{ productId: string; title: string; price: number; qty: number; storeSlug: string; storeName: string }>;
+    let cart: Array<{ productId: string; title: string; price: number; qty: number; storeSlug: string; storeName: string }>;
+    try {
+      cart = JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
+    } catch {
+      cart = [];
+    }
     const existing = cart.find((i) => i.productId === product.id);
     if (existing) {
       existing.qty += 1;
