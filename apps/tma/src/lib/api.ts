@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? 'https://savdo-api-production.up.railway.app';
+const BASE = import.meta.env.VITE_API_URL ?? '';
 
 let _token: string | null = null;
 
