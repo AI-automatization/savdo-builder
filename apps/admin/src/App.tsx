@@ -16,6 +16,7 @@ import UsersPage from './pages/UsersPage'
 import UserDetailPage from './pages/UserDetailPage'
 import DatabasePage from './pages/DatabasePage'
 import BroadcastPage from './pages/BroadcastPage'
+import AnalyticsDashboardPage from './pages/AnalyticsDashboardPage'
 import AnalyticsEventsPage from './pages/AnalyticsEventsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -45,7 +46,8 @@ export default function App() {
           <Route path="users/:id" element={<UserDetailPage />} />
           <Route path="database" element={<DatabasePage />} />
           <Route path="broadcast" element={<BroadcastPage />} />
-          <Route path="analytics" element={<AnalyticsEventsPage />} />
+          <Route path="analytics" element={<AnalyticsDashboardPage />} />
+          <Route path="analytics/events" element={<AnalyticsEventsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

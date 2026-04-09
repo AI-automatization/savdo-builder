@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UserCog, Store, ShoppingCart,
   Shield, ScrollText, LogOut, Package, Database, Megaphone,
-  ChevronRight, Search, Sun, Moon, BarChart2,
+  ChevronRight, Search, Sun, Moon, BarChart2, Activity,
 } from 'lucide-react'
 
 const NAV_DATA = [
@@ -23,9 +23,10 @@ const NAV_DATA = [
   {
     group: 'Инструменты',
     items: [
-      { to: '/moderation', icon: Shield,          label: 'Модерация' },
-      { to: '/analytics',  icon: BarChart2,       label: 'Аналитика' },
-      { to: '/audit-logs', icon: ScrollText,      label: 'Аудит-лог' },
+      { to: '/moderation',        icon: Shield,    label: 'Модерация' },
+      { to: '/analytics',         icon: BarChart2, label: 'Аналитика' },
+      { to: '/analytics/events',  icon: Activity,  label: 'События' },
+      { to: '/audit-logs',        icon: ScrollText, label: 'Аудит-лог' },
       { to: '/database',   icon: Database,        label: 'База данных' },
       { to: '/broadcast',  icon: Megaphone,       label: 'Рассылка' },
     ],
