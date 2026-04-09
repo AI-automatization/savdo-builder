@@ -8,6 +8,20 @@
 
 ---
 
+## 🔴 [API-021] POST /api/v1/auth/telegram — авторизация через Telegram initData
+- **Домен:** apps/api
+- **Кто взял:** Полат
+- **Детали:** Endpoint принимает `{ initData: string }`, валидирует HMAC-SHA256 через TELEGRAM_BOT_TOKEN, находит/создаёт user по telegramId, возвращает JWT. Нужен для TMA.
+- **Файлы:** auth.controller.ts, auth.service.ts
+
+## 🔴 [API-022] Поменять BUYER_APP_URL/twa → TMA_URL в telegram-demo.handler.ts
+- **Домен:** apps/api
+- **Кто взял:** Полат
+- **Детали:** В showSellerMenu и showBuyerMenu заменить `${twaUrl}/twa` на `${process.env.TMA_URL}`. Добавить TMA_URL в env.
+- **Файлы:** telegram-demo.handler.ts
+
+---
+
 ## ✅ Разблокировано для Азима (07.04.2026)
 
 > Аудит кода показал: все задачи уже реализованы Абубакиром.

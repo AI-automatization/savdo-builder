@@ -1,5 +1,15 @@
 # Done — Азим + Полат
 
+## 2026-04-09 (TMA — Telegram Mini App)
+
+### ✅ [TMA-001] Telegram Mini App — отдельное Vite SPA
+- **Важность:** 🔴
+- **Дата:** 09.04.2026
+- **Файлы:** apps/tma/ (полное приложение)
+- **Что сделано:** Создано отдельное Vite + React 19 + TypeScript + Tailwind приложение для Telegram Mini App. Buyer flow (каталог, магазин, корзина, checkout, заказы) + Seller flow (dashboard, заказы со сменой статусов, настройки магазина). Telegram SDK интеграция (BackButton, MainButton, HapticFeedback). Glassmorphism дизайн. Build: ~70KB gzipped.
+
+---
+
 ## 2026-04-08 (сессия 14 — polish & refactor)
 
 ### ✅ [WEB-030] Notification badge в buyer навигации
