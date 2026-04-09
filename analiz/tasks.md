@@ -11,13 +11,22 @@
 ## 🔴 [API-021] POST /api/v1/auth/telegram — авторизация через Telegram initData
 - **Домен:** apps/api
 - **Кто взял:** Полат
-- **Детали:** Endpoint принимает `{ initData: string }`, валидирует HMAC-SHA256 через TELEGRAM_BOT_TOKEN, находит/создаёт user по telegramId, возвращает JWT. Нужен для TMA.
+- **Блокирует:** TMA-002, TMA-003 (весь auth flow в TMA)
+- **Детали:** Endpoint принимает `{ initData: string }`, валидирует HMAC-SHA256 через TELEGRAM_BOT_TOKEN, находит/создаёт user по telegramId, возвращает JWT.
+- **Request:** `POST /api/v1/auth/telegram` body: `{ initData: string }`
+- **Response:** `{ token: string, user: { id, role, phone } }`
+- **Валидация:** `HMAC_SHA256(data_check_string, secret_key)` где `secret_key = HMAC_SHA256(bot_token, "WebAppData")`
 - **Файлы:** auth.controller.ts, auth.service.ts
+- **Спека:** `docs/superpowers/specs/2026-04-09-tma-design.md` → раздел Authentication
 
 ## 🔴 [API-022] Поменять BUYER_APP_URL/twa → TMA_URL в telegram-demo.handler.ts
 - **Домен:** apps/api
 - **Кто взял:** Полат
-- **Детали:** В showSellerMenu и showBuyerMenu заменить `${twaUrl}/twa` на `${process.env.TMA_URL}`. Добавить TMA_URL в env.
+- **Блокирует:** Бот не откроет TMA пока URL не заменён
+- **Детали:** В `showSellerMenu()` (строка 345) и `showBuyerMenu()` (строка 434) заменить:
+  - `const twaUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz'` → `const twaUrl = process.env.TMA_URL ?? 'https://savdo.uz'`
+  - `web_app: { url: \`${twaUrl}/twa\` }` → `web_app: { url: twaUrl }`
+- Добавить `TMA_URL` в `.env`, `.env.example`, Railway env
 - **Файлы:** telegram-demo.handler.ts
 
 ---
@@ -116,9 +125,9 @@
 
 # Tasks — Азим
 
-Домен: `apps/web-buyer`, `apps/web-seller`
+Домен: `apps/web-buyer`, `apps/web-seller`, `apps/tma`
 
-> Все критические страницы Phase B готовы. Осталось ждать Полата по WEB-022 для тестирования.
+> TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 
@@ -136,4 +145,22 @@ API-010, API-011, API-012, API-013, API-014 — реализованы на фр
 - [x] **[WEB-037]** SVG icons extraction — `components/icons.tsx`, BottomNavBar мигрирован
 
 Блокеров нет. Домен Азима свободен.
+
+## ✅ Сессия 15 (09.04.2026) — TMA создан
+
+- [x] **[TMA-001]** Полное Vite SPA приложение `apps/tma/` — 27 файлов, 13 коммитов
+- [x] Buyer flow: каталог → магазин → корзина → checkout → заказы
+- [x] Seller flow: dashboard → заказы (PATCH статусы) → настройки магазина
+- [x] Telegram SDK: BackButton, MainButton, HapticFeedback
+- [x] Build: ~70KB gzipped, 0 TS ошибок
+
+## 🟡 TMA — следующие шаги (после Полата)
+
+> ⚠️ Заблокировано: ждём API-021 (auth/telegram) и API-022 (bot URL change) от Полата
+
+- [ ] **[TMA-002]** Протестировать auth flow в реальном Telegram после API-021
+- [ ] **[TMA-003]** Деплой TMA на Railway/Cloudflare Pages + получить публичный URL
+- [ ] **[TMA-004]** Deep links — startapp=store_{slug} → редирект в конкретный магазин
+- [ ] **[TMA-005]** Поиск магазинов на StoresPage (сейчас placeholder)
+- [ ] **[TMA-006]** Удалить старые `/twa` роуты из web-buyer после стабилизации TMA
 

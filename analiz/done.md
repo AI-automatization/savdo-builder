@@ -1,12 +1,55 @@
 # Done — Азим + Полат
 
-## 2026-04-09 (TMA — Telegram Mini App)
+## 2026-04-09 — Сессия 15: Telegram Mini App (TMA)
+
+> **Задача от Полата:** создать отдельное приложение для Telegram бота, не использовать web-buyer/web-seller.
 
 ### ✅ [TMA-001] Telegram Mini App — отдельное Vite SPA
 - **Важность:** 🔴
 - **Дата:** 09.04.2026
-- **Файлы:** apps/tma/ (полное приложение)
-- **Что сделано:** Создано отдельное Vite + React 19 + TypeScript + Tailwind приложение для Telegram Mini App. Buyer flow (каталог, магазин, корзина, checkout, заказы) + Seller flow (dashboard, заказы со сменой статусов, настройки магазина). Telegram SDK интеграция (BackButton, MainButton, HapticFeedback). Glassmorphism дизайн. Build: ~70KB gzipped.
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/` — 27 файлов, 13 коммитов
+
+**Что сделано:**
+
+Создано с нуля отдельное приложение `apps/tma/` — Vite + React 19 + TypeScript + Tailwind CSS. Это фронтенд для Telegram Mini App (WebApp), который открывается внутри Telegram бота @savdo_builderBOT.
+
+**Стек:**
+- Vite (сборка, dev server) — НЕ Next.js, потому что SSR не нужен для Mini App
+- React 19 + TypeScript strict
+- Tailwind CSS v3 (glassmorphism дизайн)
+- react-router-dom v6 (lazy loading всех страниц)
+- Telegram WebApp SDK (BackButton, MainButton, HapticFeedback)
+
+**Buyer flow (5 страниц):**
+- `StoresPage` — каталог магазинов (GET /storefront/stores)
+- `StorePage` — товары магазина + кнопка "добавить в корзину"
+- `CartPage` — корзина (localStorage), интеграция с Telegram MainButton
+- `CheckoutPage` — форма заказа (имя, телефон, адрес) → POST /orders
+- `OrdersPage` — список заказов покупателя с цветными badge статусов
+
+**Seller flow (3 страницы):**
+- `DashboardPage` — 3 стат-карточки (товары, заказы, новые) + последние 5 заказов
+- `OrdersPage` — список заказов + кнопки смены статуса (PATCH): Подтвердить → Отправить → Доставлен / Отменить
+- `StorePage` — информация о магазине + inline-редактирование (имя, описание)
+
+**Инфраструктура:**
+- `TelegramProvider` — инициализация SDK, expand(), ready()
+- `AuthProvider` — авторизация через initData → JWT (ждёт endpoint от Полата)
+- `api.ts` — fetch-обёртка с автоматической инъекцией JWT токена
+- `AppShell` — layout с ambient orbs, BottomNav (buyer/seller варианты), BackButton
+- UI компоненты: GlassCard, Button, Badge, Spinner
+
+**Цифры:**
+- Build: **~70KB gzipped** (в 5-10 раз легче Next.js)
+- 13 lazy-loaded JS чанков
+- TypeScript: 0 ошибок
+- Запуск: `pnpm dev:tma` → http://localhost:5173
+
+**Спека:** `docs/superpowers/specs/2026-04-09-tma-design.md`
+**План:** `docs/superpowers/plans/2026-04-09-tma-app.md`
+
+**Что НЕ входило в scope:** OTP/SMS, чат, оплата, SEO, изменения в боте или API
 
 ---
 
