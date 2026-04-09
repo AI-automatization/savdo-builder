@@ -6,6 +6,7 @@
     "dev:web-buyer": "pnpm --filter web-buyer dev",
     "dev:web-seller": "pnpm --filter web-seller dev",
     "dev:admin": "pnpm --filter admin dev",
+    "dev:tma": "pnpm --filter tma dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
