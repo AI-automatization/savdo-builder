@@ -36,14 +36,11 @@ export class VerifyOtpUseCase {
     // Consume OTP (INV-I02: OTP cannot be reused)
     await this.authRepo.consumeOtpRequest(otpRequest.id);
 
-    // Get or create user
+    // Get or create user — всегда создаём BUYER.
+    // Seller создаётся отдельно через POST /seller/apply (onboarding flow).
     let user = await this.authRepo.findUserByPhone(phone);
     if (!user) {
-      if (purpose === 'checkout') {
-        user = (await this.authRepo.createUserWithBuyer({ phone })) as unknown as typeof user;
-      } else {
-        user = (await this.authRepo.createUserWithSeller({ phone })) as unknown as typeof user;
-      }
+      user = (await this.authRepo.createUserWithBuyer({ phone })) as unknown as typeof user;
     }
     // user is guaranteed non-null at this point (created above if missing)
     const resolvedUser = user!;
