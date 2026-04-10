@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useTelegram } from './TelegramProvider';
 import { authenticateWithTelegram } from '@/lib/auth';
+import { setUnauthorizedHandler } from '@/lib/api';
 
 interface User {
   id: string;
@@ -22,26 +23,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { ready, isTelegram } = useTelegram();
   const [state, setState] = useState<AuthCtx>({ user: null, loading: true, authenticated: false });
 
-  useEffect(() => {
-    if (!ready) return;
-
+  const doAuth = useCallback(async () => {
     if (!isTelegram) {
       setState({ user: null, loading: false, authenticated: false });
       return;
     }
+    const res = await authenticateWithTelegram().catch(() => null);
+    if (res) {
+      setState({ user: res.user, loading: false, authenticated: true });
+    } else {
+      setState({ user: null, loading: false, authenticated: false });
+    }
+  }, [isTelegram]);
 
-    authenticateWithTelegram()
-      .then((res) => {
-        if (res) {
-          setState({ user: res.user, loading: false, authenticated: true });
-        } else {
-          setState({ user: null, loading: false, authenticated: false });
-        }
-      })
-      .catch(() => {
-        setState({ user: null, loading: false, authenticated: false });
-      });
-  }, [ready, isTelegram]);
+  useEffect(() => {
+    if (!ready) return;
+    doAuth();
+  }, [ready, doAuth]);
+
+  // При 401 — переаутентифицируемся автоматически
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setState(prev => ({ ...prev, authenticated: false }));
+      doAuth();
+    });
+  }, [doAuth]);
 
   return <Ctx.Provider value={state}>{children}</Ctx.Provider>;
 }

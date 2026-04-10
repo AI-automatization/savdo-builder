@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoadingScreen } from '@/components/layout/LoadingScreen';
+import { useAuth } from '@/providers/AuthProvider';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const BuyerStores = lazy(() => import('@/pages/buyer/StoresPage'));
@@ -12,6 +13,14 @@ const SellerDashboard = lazy(() => import('@/pages/seller/DashboardPage'));
 const SellerOrders = lazy(() => import('@/pages/seller/OrdersPage'));
 const SellerStore = lazy(() => import('@/pages/seller/StorePage'));
 
+function SellerGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/" replace />;
+  if (user.role !== 'SELLER') return <Navigate to="/buyer" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <Suspense fallback={<LoadingScreen />}>
@@ -22,9 +31,10 @@ export default function App() {
         <Route path="/buyer/cart" element={<BuyerCart />} />
         <Route path="/buyer/checkout" element={<BuyerCheckout />} />
         <Route path="/buyer/orders" element={<BuyerOrders />} />
-        <Route path="/seller" element={<SellerDashboard />} />
-        <Route path="/seller/orders" element={<SellerOrders />} />
-        <Route path="/seller/store" element={<SellerStore />} />
+        <Route path="/seller" element={<SellerGuard><SellerDashboard /></SellerGuard>} />
+        <Route path="/seller/orders" element={<SellerGuard><SellerOrders /></SellerGuard>} />
+        <Route path="/seller/store" element={<SellerGuard><SellerStore /></SellerGuard>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );

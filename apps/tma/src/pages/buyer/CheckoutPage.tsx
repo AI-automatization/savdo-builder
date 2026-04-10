@@ -7,24 +7,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { glass } from '@/lib/styles';
-
-interface CartItem {
-  productId: string;
-  title: string;
-  price: number;
-  qty: number;
-  storeSlug: string;
-  storeName: string;
-}
-
-function getCart(): CartItem[] {
-  try {
-    return JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
-  } catch {
-    localStorage.removeItem('savdo_cart');
-    return [];
-  }
-}
+import { type CartItem, getCart, clearCart } from '@/lib/cart';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -65,7 +48,7 @@ export default function CheckoutPage() {
         },
       });
 
-      localStorage.removeItem('savdo_cart');
+      clearCart();
       tg?.HapticFeedback.notificationOccurred('success');
       tg?.MainButton.hide();
       navigate('/buyer/orders', { replace: true });

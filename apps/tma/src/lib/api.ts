@@ -6,6 +6,10 @@ let _token: string | null = (() => {
   try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
 })();
 
+// Callback вызывается когда 401 — провайдер переаутентифицирует
+let _onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(cb: () => void) { _onUnauthorized = cb; }
+
 export function setToken(token: string | null) {
   _token = token;
   try {
@@ -19,6 +23,12 @@ interface ApiOptions {
   method?: string;
   body?: unknown;
   headers?: Record<string, string>;
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
 }
 
 export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
@@ -35,8 +45,12 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      setToken(null);
+      _onUnauthorized?.();
+    }
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? `API error ${res.status}`);
+    throw new ApiError(res.status, err.message ?? `API error ${res.status}`);
   }
 
   return res.json() as Promise<T>;

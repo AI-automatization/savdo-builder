@@ -4,27 +4,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
-
-interface CartItem {
-  productId: string;
-  title: string;
-  price: number;
-  qty: number;
-  storeSlug: string;
-  storeName: string;
-}
-
-function getCart(): CartItem[] {
-  try {
-    return JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
-  } catch {
-    localStorage.removeItem('savdo_cart');
-    return [];
-  }
-}
-function saveCart(items: CartItem[]) {
-  localStorage.setItem('savdo_cart', JSON.stringify(items));
-}
+import { type CartItem, getCart, saveCart } from '@/lib/cart';
 
 export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>(getCart);
