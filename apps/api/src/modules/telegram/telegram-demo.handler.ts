@@ -50,6 +50,18 @@ export class TelegramDemoHandler {
     return this.prisma.user.findUnique({ where: { phone } });
   }
 
+  /** /orders — показывает заказы продавца или покупателя по роли */
+  async handleOrdersByRole(chatId: string): Promise<void> {
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+    if (seller) {
+      await this.handleSellerOrders(chatId);
+    } else {
+      await this.handleBuyerOrders(chatId);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // /start — точка входа
   // ─────────────────────────────────────────────────────────────────────────
@@ -77,6 +89,42 @@ export class TelegramDemoHandler {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // /help
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async handleHelp(chatId: string): Promise<void> {
+    const tmaUrl = process.env.TMA_URL ?? '';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
+    const appLink = tmaUrl
+      ? `\n\n📱 <a href="${tmaUrl}">Открыть приложение</a>`
+      : '';
+
+    const text = [
+      '📖 <b>Помощь — Savdo</b>',
+      '',
+      '<b>Команды:</b>',
+      '/start — Главное меню',
+      '/menu — Главное меню',
+      '/orders — Мои заказы',
+      '/store — Мой магазин (для продавцов)',
+      '/help — Это сообщение',
+      '',
+      '<b>Как найти магазин?</b>',
+      '1. Нажмите «📱 Открыть приложение»',
+      '2. Или нажмите «🏪 Найти магазин» и введите адрес',
+      '',
+      '<b>Как стать продавцом?</b>',
+      'Напишите /start → поделитесь номером → выберите «🏪 Я продавец»',
+      '',
+      '<b>Вопросы и поддержка:</b>',
+      botUsername ? `@${botUsername}` : 'Обратитесь к администратору',
+      appLink,
+    ].join('\n');
+
+    await this.bot.sendMessage(chatId, text, { parseMode: 'HTML' });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Обработка поделиться контактом
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -96,6 +144,13 @@ export class TelegramDemoHandler {
     const existing = await this.prisma.user.findUnique({ where: { phone: normalized } });
 
     if (existing) {
+      // Линкуем telegramId если ещё не привязан (чтобы TMA auth работал через тот же аккаунт)
+      if (!existing.telegramId) {
+        await this.prisma.user.update({
+          where: { id: existing.id },
+          data: { telegramId: BigInt(chatId) },
+        }).catch(() => null); // ignore если телеграм id уже у другого
+      }
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
       if (seller) {
         await this.showSellerMenu(chatId, firstName ?? normalized);
@@ -135,6 +190,7 @@ export class TelegramDemoHandler {
         phone,
         role: 'BUYER',
         isPhoneVerified: true,
+        telegramId: BigInt(chatId),
         buyer: { create: { firstName: firstName || null } },
       },
     });
@@ -205,6 +261,7 @@ export class TelegramDemoHandler {
           phone,
           role: 'SELLER',
           isPhoneVerified: true,
+          telegramId: BigInt(chatId),
           seller: {
             create: {
               fullName: sellerName,

@@ -73,9 +73,27 @@ export class TelegramWebhookController {
     const firstName = msg.from.first_name;
     const username  = msg.from.username;
 
-    // /start
-    if (msg.text === '/start') {
+    // /start | /menu
+    if (msg.text === '/start' || msg.text === '/menu') {
       await this.demo.handleStart(chatId, firstName);
+      return;
+    }
+
+    // /help
+    if (msg.text === '/help') {
+      await this.demo.handleHelp(chatId);
+      return;
+    }
+
+    // /orders — seller видит свои заказы, buyer — свои
+    if (msg.text === '/orders') {
+      await this.demo.handleOrdersByRole(chatId);
+      return;
+    }
+
+    // /store
+    if (msg.text === '/store') {
+      await this.demo.handleSellerStore(chatId);
       return;
     }
 
@@ -136,9 +154,13 @@ export class TelegramWebhookController {
     if (data === 'buyer_orders')     { await this.demo.handleBuyerOrders(chatId);    return; }
 
     if (data.startsWith('open_store_')) {
-      const slug = data.replace('open_store_', '');
-      const url  = `${process.env.BUYER_APP_URL ?? 'https://savdo.uz'}/${slug}`;
-      await this.bot.sendMessage(chatId, `🔗 Открыть магазин:\n${url}`);
+      const slug        = data.replace('open_store_', '');
+      const tmaUrl      = process.env.TMA_URL ?? '';
+      const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
+      const url = botUsername && slug
+        ? `https://t.me/${botUsername}?startapp=store_${slug}`
+        : tmaUrl;
+      await this.bot.sendToChannel(chatId, `🔗 Открыть магазин:`, [[{ text: '🛒 Открыть', url }]], 'HTML');
       return;
     }
 

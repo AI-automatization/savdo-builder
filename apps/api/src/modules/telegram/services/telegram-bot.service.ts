@@ -51,6 +51,23 @@ export class TelegramBotService implements OnApplicationBootstrap {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to register Telegram webhook: ${msg}`);
     }
+
+    // Регистрируем команды в меню бота
+    try {
+      await axios.post(`${this.apiBase}/setMyCommands`, {
+        commands: [
+          { command: 'start',  description: 'Главное меню' },
+          { command: 'menu',   description: 'Открыть меню' },
+          { command: 'help',   description: 'Помощь и информация' },
+          { command: 'orders', description: 'Мои заказы' },
+          { command: 'store',  description: 'Мой магазин (для продавцов)' },
+        ],
+      });
+      this.logger.log('Telegram bot commands registered');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Failed to register bot commands: ${msg}`);
+    }
   }
 
   async sendMessage(
