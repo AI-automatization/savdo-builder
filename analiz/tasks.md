@@ -133,13 +133,16 @@ API-010, API-011, API-012, API-013, API-014 — реализованы на фр
 - [x] Telegram SDK: BackButton, MainButton, HapticFeedback
 - [x] Build: ~70KB gzipped, 0 TS ошибок
 
-## 🟡 TMA — следующие шаги (после Полата)
+## ✅ TMA — блокеры закрыты (10.04.2026)
 
-> ⚠️ Заблокировано: ждём API-021 (auth/telegram) и API-022 (bot URL change) от Полата
+- [x] **[API-021]** `POST /auth/telegram` — уже реализован (`auth.controller.ts:27`, `telegram-auth.use-case.ts`). HMAC-валидация initData, find-or-create user+buyer, возвращает `{ token, refreshToken, user }`. TMA вызывает его правильно.
+- [x] **[API-022]** `BUYER_APP_URL → TMA_URL` — исправлено в `telegram-demo.handler.ts` (`handleBuyerStore`). Теперь генерирует deep link `t.me/{botUsername}?startapp=store_{slug}`.
+- [x] **[TMA-003]** Деплой TMA на Railway ✅ — `Dockerfile` + `railway.toml` созданы, "telegram-app: Deployment successful" в Railway.
+- [x] **[TMA-004]** Deep links — `parseStartParam()` в `HomePage.tsx` ✅
 
-- [ ] **[TMA-002]** Протестировать auth flow в реальном Telegram после API-021
-- [ ] **[TMA-003]** Деплой TMA на Railway/Cloudflare Pages + получить публичный URL
-- [ ] **[TMA-004]** Deep links — startapp=store_{slug} → редирект в конкретный магазин
+## 🟡 TMA — осталось Азиму
+
+- [ ] **[TMA-002]** Протестировать auth flow в реальном Telegram (всё готово, нужен живой тест)
 - [x] **[TMA-005]** Поиск магазинов на StoresPage ✅ (10.04.2026)
 - [x] **[TMA-006]** Удалить старые `/twa` роуты из web-buyer ✅ (10.04.2026)
 

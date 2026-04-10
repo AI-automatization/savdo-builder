@@ -470,10 +470,14 @@ export class TelegramDemoHandler {
       ? products.map((p, i) => `${i + 1}. <b>${p.title}</b> — ${Number(p.basePrice).toLocaleString('ru')} сум`).join('\n')
       : '📭 Товаров пока нет';
 
-    const buyerUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    const tmaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
+    const storeLink = botUsername && store.slug
+      ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
+      : tmaUrl;
     await this.bot.sendToChannel(chatId, // sendToChannel работает и для личных чатов
       `🏪 <b>${store.name}</b>\n\n${store.description ? `${store.description}\n\n` : ''}<b>Товары:</b>\n${productLines}`,
-      [[{ text: '🛒 Открыть магазин', url: `${buyerUrl}/${store.slug}` }]],
+      [[{ text: '🛒 Открыть магазин', url: storeLink }]],
       'HTML',
     );
   }
