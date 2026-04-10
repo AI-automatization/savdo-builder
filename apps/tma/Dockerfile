@@ -22,7 +22,12 @@ RUN pnpm --filter tma build
 FROM nginx:1.27-alpine AS runner
 
 COPY --from=builder /app/apps/tma/dist /usr/share/nginx/html
+COPY apps/tma/nginx.conf /tmp/nginx.conf.template
+
+# Remove default nginx conf (listens on 80, conflicts with Railway $PORT)
+RUN rm /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-CMD ["/bin/sh", "-c", "PORT=${PORT:-80}; echo \"server { listen $PORT; server_name _; root /usr/share/nginx/html; index index.html; location / { try_files \\$uri \\$uri/ /index.html; } gzip on; gzip_types text/plain text/css application/javascript application/json; }\" > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+# envsubst substitutes only ${PORT}, leaving nginx vars ($uri etc.) intact
+CMD ["/bin/sh", "-c", "envsubst '${PORT}' < /tmp/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
