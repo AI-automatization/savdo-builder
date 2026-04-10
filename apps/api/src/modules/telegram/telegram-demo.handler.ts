@@ -328,15 +328,10 @@ export class TelegramDemoHandler {
       ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
       : tmaUrl;
 
-    const buttons: InlineButton[][] = [
+    // Для каналов используем inline_keyboard с url кнопками (deep link → TMA)
+    await this.bot.sendToChannel(store.telegramChannelId, text, [
       [{ text: '🛒 Открыть магазин', url: deepLink }],
       [{ text: '💬 Написать продавцу', url: store.telegramContactLink ?? deepLink }],
-    ];
-
-    // Для каналов используем inline_keyboard с url кнопками
-    await this.bot.sendToChannel(store.telegramChannelId, text, [
-      [{ text: '🛒 Заказать товар', url: `${buyerUrl}/${store.slug}/products/${productId}` }],
-      [{ text: '💬 Написать продавцу', url: store.telegramContactLink || `${buyerUrl}/${store.slug}` }],
     ]);
 
     this.logger.log(`Posted product ${productId} to channel ${store.telegramChannelId}`);
