@@ -1,6 +1,5 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "apps/tma/Dockerfile"
 watchPatterns = ["apps/tma/**"]
 
 [deploy]
