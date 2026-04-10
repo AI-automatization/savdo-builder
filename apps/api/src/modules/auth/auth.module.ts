@@ -40,6 +40,6 @@ import { QUEUE_OTP } from '../../queues/queues.module';
     TelegramAuthUseCase,
     OtpProcessor,
   ],
-  exports: [JwtAuthGuard, TokenService],
+  exports: [JwtAuthGuard, TokenService, AuthRepository],
 })
 export class AuthModule {}
