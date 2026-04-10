@@ -18,9 +18,11 @@ RUN pnpm build
 # Stage 2: serve
 FROM nginx:1.27-alpine AS runner
 
-COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-CMD ["/bin/sh", "-c", "envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "\
+  PORT=${PORT:-80}; \
+  echo \"server { listen $PORT; server_name _; root /usr/share/nginx/html; index index.html; location / { try_files \\$uri \\$uri/ /index.html; } gzip on; gzip_types text/plain text/css application/javascript application/json; }\" \
+  > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
