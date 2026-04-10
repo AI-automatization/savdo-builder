@@ -31,6 +31,20 @@ export interface StoreRef {
   logoUrl: string | null;
 }
 
+// ── Storefront Store (публичная витрина — для покупателей и TMA) ──────────────
+
+export interface StorefrontStore {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  city: string;
+  telegramContactLink: string | null;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  categories: Pick<StoreCategory, 'id' | 'name' | 'sortOrder'>[];
+}
+
 // ── Global Category ───────────────────────────────────────────────────────────
 
 export interface GlobalCategory {

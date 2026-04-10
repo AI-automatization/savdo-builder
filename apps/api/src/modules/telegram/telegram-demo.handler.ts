@@ -321,10 +321,16 @@ export class TelegramDemoHandler {
     const price = `${Number(product.basePrice).toLocaleString('ru')} сум`;
     const text = `🛍 <b>${product.title}</b>\n\n${product.description ? `📝 ${product.description}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${store.name}`;
 
-    const buyerUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    // Deep link: открывает TMA сразу на магазине → startapp=store_{slug}
+    const tmaUrl = process.env.TMA_URL ?? '';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
+    const deepLink = botUsername && store.slug
+      ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
+      : tmaUrl;
+
     const buttons: InlineButton[][] = [
-      [{ text: '🛒 Заказать', callback_data: `noop` }],
-      [{ text: '💬 Написать продавцу', callback_data: `noop` }],
+      [{ text: '🛒 Открыть магазин', url: deepLink }],
+      [{ text: '💬 Написать продавцу', url: store.telegramContactLink ?? deepLink }],
     ];
 
     // Для каналов используем inline_keyboard с url кнопками
