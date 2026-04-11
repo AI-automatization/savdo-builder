@@ -331,10 +331,15 @@ export default function DatabasePage() {
 
   const handleSaveEdit = async (data: Record<string, unknown>) => {
     if (!editRow || !activeTable) return
-    await api.patch(`/api/v1/admin/db/tables/${activeTable}/${editRow.id}`, data)
-    setEditRow(null)
-    setSelectedRow(prev => prev ? { ...prev, ...data } : null)
-    setTableVersion(v => v + 1)
+    setActionError(null)
+    try {
+      await api.patch(`/api/v1/admin/db/tables/${activeTable}/${editRow.id}`, data)
+      setEditRow(null)
+      setSelectedRow(prev => prev ? { ...prev, ...data } : null)
+      setTableVersion(v => v + 1)
+    } catch (e: any) {
+      setActionError(e.message ?? 'Ошибка сохранения')
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -353,9 +358,14 @@ export default function DatabasePage() {
 
   const handleInsert = async (data: Record<string, unknown>) => {
     if (!activeTable) return
-    await api.post(`/api/v1/admin/db/tables/${activeTable}`, data)
-    setShowInsert(false)
-    setTableVersion(v => v + 1)
+    setActionError(null)
+    try {
+      await api.post(`/api/v1/admin/db/tables/${activeTable}`, data)
+      setShowInsert(false)
+      setTableVersion(v => v + 1)
+    } catch (e: any) {
+      setActionError(e.message ?? 'Ошибка создания записи')
+    }
   }
 
   const rows = rowsData?.rows ?? []
