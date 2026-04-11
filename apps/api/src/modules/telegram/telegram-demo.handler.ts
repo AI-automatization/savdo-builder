@@ -403,17 +403,74 @@ export class TelegramDemoHandler {
     const twaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
     const rows: Array<Array<InlineButton | WebAppButton>> = [
       [{ text: '📱 Открыть приложение', web_app: { url: twaUrl } }],
-      [{ text: '📋 Новые заказы',       callback_data: 'seller_orders'       }],
-      [{ text: '🔗 Мой магазин',        callback_data: 'seller_store'        }],
-      [{ text: '📊 Статистика',         callback_data: 'seller_stats'        }],
-      [{ text: '📢 Настройка канала',   callback_data: 'seller_link_channel' }],
+      [
+        { text: '📋 Заказы', callback_data: 'seller_orders' },
+        { text: '📦 Товары', callback_data: 'seller_products' },
+      ],
+      [
+        { text: '🔗 Магазин',  callback_data: 'seller_store'        },
+        { text: '📊 Статистика', callback_data: 'seller_stats'      },
+      ],
+      [{ text: '📢 Привязать Telegram-канал', callback_data: 'seller_link_channel' }],
     ];
     await this.bot.sendWithWebApp(
       chatId,
-      `👋 <b>${name}</b>, вы в панели продавца:`,
+      `👋 <b>${name || 'Продавец'}</b>, панель управления:\n\n💡 <i>Для удобного управления товарами используйте приложение</i>`,
       rows,
       'HTML',
     );
+  }
+
+  /** Направляет продавца в TMA для управления товарами */
+  async handleSellerProductsInTma(chatId: string): Promise<void> {
+    const tmaUrl      = process.env.TMA_URL ?? '';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
+
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+
+    // Deep link в TMA сразу на страницу товаров
+    const deepLink = tmaUrl ? `${tmaUrl}` : null;
+    const tmaProductsLink = botUsername
+      ? `https://t.me/${botUsername}?startapp=seller_products`
+      : deepLink;
+
+    const productCount = store
+      ? await this.prisma.product.count({ where: { storeId: store.id, deletedAt: null } })
+      : 0;
+
+    const text = store
+      ? `📦 <b>Мои товары — ${store.name}</b>\n\nВсего товаров: <b>${productCount}</b>\n\n<i>Управляйте товарами, добавляйте новые и публикуйте их прямо в приложении. При публикации товар автоматически появится в вашем Telegram-канале.</i>`
+      : `📦 <b>Товары</b>\n\n<i>Создайте магазин чтобы добавлять товары.</i>`;
+
+    await this.bot.sendToChannel(
+      chatId,
+      text,
+      tmaProductsLink ? [[{ text: '📦 Открыть в приложении', url: tmaProductsLink }]] : undefined,
+      'HTML',
+    );
+  }
+
+  /** Выход из аккаунта — очищает сессию в Redis */
+  async handleLogout(chatId: string): Promise<void> {
+    const phone = await this.getPhone(chatId);
+    await Promise.all([
+      this.redis.del(`tg:phone:${chatId}`),
+      this.redis.del(`tg:state:${chatId}`),
+      ...(phone ? [this.redis.del(`tg:chatid:${phone}`)] : []),
+    ]);
+    await this.bot.sendInlineKeyboard(
+      chatId,
+      `✅ Вы вышли из аккаунта.\n\nДля повторного входа нажмите /start`,
+      [[{ text: '🔄 Войти снова', callback_data: 'noop' }]],
+    );
+    // После logout показываем /start через 1 секунду
+    setTimeout(() => {
+      this.handleStart(chatId).catch(() => null);
+    }, 1500);
   }
 
   async handleSellerOrders(chatId: string): Promise<void> {

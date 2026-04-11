@@ -14,6 +14,8 @@ const SellerOrders = lazy(() => import('@/pages/seller/OrdersPage'));
 const SellerStore = lazy(() => import('@/pages/seller/StorePage'));
 const SellerProducts = lazy(() => import('@/pages/seller/ProductsPage'));
 const SellerAddProduct = lazy(() => import('@/pages/seller/AddProductPage'));
+const SellerProfile = lazy(() => import('@/pages/seller/ProfilePage'));
+const BuyerProfile = lazy(() => import('@/pages/buyer/ProfilePage'));
 
 function SellerGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -33,11 +35,13 @@ export default function App() {
         <Route path="/buyer/cart" element={<BuyerCart />} />
         <Route path="/buyer/checkout" element={<BuyerCheckout />} />
         <Route path="/buyer/orders" element={<BuyerOrders />} />
+        <Route path="/buyer/profile" element={<BuyerProfile />} />
         <Route path="/seller" element={<SellerGuard><SellerDashboard /></SellerGuard>} />
         <Route path="/seller/orders" element={<SellerGuard><SellerOrders /></SellerGuard>} />
         <Route path="/seller/store" element={<SellerGuard><SellerStore /></SellerGuard>} />
         <Route path="/seller/products" element={<SellerGuard><SellerProducts /></SellerGuard>} />
         <Route path="/seller/products/add" element={<SellerGuard><SellerAddProduct /></SellerGuard>} />
+        <Route path="/seller/profile" element={<SellerGuard><SellerProfile /></SellerGuard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

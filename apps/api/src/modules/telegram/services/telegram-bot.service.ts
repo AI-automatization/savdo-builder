@@ -56,11 +56,13 @@ export class TelegramBotService implements OnApplicationBootstrap {
     try {
       await axios.post(`${this.apiBase}/setMyCommands`, {
         commands: [
-          { command: 'start',  description: 'Главное меню' },
-          { command: 'menu',   description: 'Открыть меню' },
-          { command: 'help',   description: 'Помощь и информация' },
-          { command: 'orders', description: 'Мои заказы' },
-          { command: 'store',  description: 'Мой магазин (для продавцов)' },
+          { command: 'start',    description: 'Главное меню' },
+          { command: 'menu',     description: 'Открыть меню' },
+          { command: 'help',     description: 'Помощь и информация' },
+          { command: 'orders',   description: 'Мои заказы' },
+          { command: 'store',    description: 'Мой магазин (для продавцов)' },
+          { command: 'products', description: 'Управление товарами (для продавцов)' },
+          { command: 'logout',   description: 'Выйти из аккаунта' },
         ],
       });
       this.logger.log('Telegram bot commands registered');

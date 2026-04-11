@@ -97,6 +97,18 @@ export class TelegramWebhookController {
       return;
     }
 
+    // /products — открыть TMA на управлении товарами
+    if (msg.text === '/products') {
+      await this.demo.handleSellerProductsInTma(chatId);
+      return;
+    }
+
+    // /logout — выход из аккаунта
+    if (msg.text === '/logout') {
+      await this.demo.handleLogout(chatId);
+      return;
+    }
+
     // Контакт (телефон)
     if (msg.contact) {
       const raw   = msg.contact.phone_number.replace(/\s/g, '');
@@ -143,11 +155,12 @@ export class TelegramWebhookController {
     if (data === 'seller_reg_skip_desc') { await this.demo.finishSellerRegistration(chatId); return; }
 
     // Продавец
-    if (data === 'seller_orders')       { await this.demo.handleSellerOrders(chatId);  return; }
-    if (data === 'seller_store')        { await this.demo.handleSellerStore(chatId);   return; }
-    if (data === 'seller_stats')        { await this.demo.handleSellerStats(chatId);   return; }
-    if (data === 'seller_link_channel') { await this.demo.handleLinkChannel(chatId);   return; }
-    if (data === 'seller_skip_channel') { await this.demo.showSellerMenu(chatId, ''); return; }
+    if (data === 'seller_orders')       { await this.demo.handleSellerOrders(chatId);         return; }
+    if (data === 'seller_store')        { await this.demo.handleSellerStore(chatId);           return; }
+    if (data === 'seller_stats')        { await this.demo.handleSellerStats(chatId);           return; }
+    if (data === 'seller_products')     { await this.demo.handleSellerProductsInTma(chatId);  return; }
+    if (data === 'seller_link_channel') { await this.demo.handleLinkChannel(chatId);           return; }
+    if (data === 'seller_skip_channel') { await this.demo.showSellerMenu(chatId, '');         return; }
 
     // Покупатель
     if (data === 'buyer_find_store') { await this.demo.handleBuyerFindStore(chatId); return; }
