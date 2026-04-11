@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { createHmac } from 'crypto';
 import { AuthRepository } from '../repositories/auth.repository';
 import { TokenService } from '../services/token.service';
+import { RedisService } from '../../../shared/redis.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
@@ -15,6 +16,7 @@ export class TelegramAuthUseCase {
   constructor(
     private readonly authRepo: AuthRepository,
     private readonly tokenService: TokenService,
+    private readonly redis: RedisService,
   ) {}
 
   async execute(initData: string) {
@@ -61,15 +63,35 @@ export class TelegramAuthUseCase {
 
     const telegramId = BigInt(tgUser.id);
 
-    // Find or create user by telegramId
-    const existing = await this.authRepo.findUserByTelegramId(telegramId);
-    const resolvedUser = existing ?? await this.authRepo.createUserWithBuyerByTelegram({
-      telegramId,
-      phone: tgUser.phone,
-    });
+    // 1. Ищем по telegramId
+    let resolvedUser = await this.authRepo.findUserByTelegramId(telegramId);
 
-    if (!existing) {
-      this.logger.log(`New Telegram user created: telegramId=${telegramId}`);
+    if (!resolvedUser) {
+      // 2. Проверяем Redis: вдруг юзер уже шарил номер в боте
+      //    Ключ tg:phone:{chatId} хранится в webhook-контроллере при шаринге контакта
+      const phoneFromBot = await this.redis.get(`tg:phone:${tgUser.id}`).catch(() => null);
+
+      if (phoneFromBot) {
+        const byPhone = await this.authRepo.findUserByPhone(phoneFromBot);
+        if (byPhone && !byPhone.telegramId) {
+          // Сначала убираем telegramId у ghost-аккаунта (если есть)
+          await this.authRepo.clearTelegramIdIfGhost(telegramId);
+          // Привязываем telegramId к существующему web-аккаунту
+          resolvedUser = await this.authRepo.linkTelegramId(byPhone.id, telegramId);
+          this.logger.log(`Linked telegramId=${telegramId} to existing user phone=${phoneFromBot}`);
+        } else if (byPhone) {
+          resolvedUser = byPhone;
+        }
+      }
+
+      if (!resolvedUser) {
+        // 3. Создаём нового пользователя
+        resolvedUser = await this.authRepo.createUserWithBuyerByTelegram({
+          telegramId,
+          phone: tgUser.phone,
+        });
+        this.logger.log(`New Telegram user created: telegramId=${telegramId}`);
+      }
     }
 
     // Create session

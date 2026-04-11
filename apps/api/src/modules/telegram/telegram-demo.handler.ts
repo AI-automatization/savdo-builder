@@ -140,16 +140,22 @@ export class TelegramDemoHandler {
 
     await this.bot.removeKeyboard(chatId, `✅ Номер получен! Определяем ваш аккаунт...`);
 
-    // Проверяем есть ли уже пользователь
+    // Проверяем есть ли уже пользователь по номеру телефона
     const existing = await this.prisma.user.findUnique({ where: { phone: normalized } });
 
     if (existing) {
-      // Линкуем telegramId если ещё не привязан (чтобы TMA auth работал через тот же аккаунт)
       if (!existing.telegramId) {
+        // Есть ghost TMA-аккаунт с тем же telegramId? Сначала убираем у него привязку,
+        // чтобы не было unique constraint при линковке к основному аккаунту.
+        await this.prisma.user.updateMany({
+          where: { telegramId: BigInt(chatId), id: { not: existing.id } },
+          data: { telegramId: null },
+        });
+        // Привязываем telegramId к основному аккаунту
         await this.prisma.user.update({
           where: { id: existing.id },
           data: { telegramId: BigInt(chatId) },
-        }).catch(() => null); // ignore если телеграм id уже у другого
+        }).catch(() => null);
       }
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
       if (seller) {
@@ -160,7 +166,24 @@ export class TelegramDemoHandler {
       return;
     }
 
-    // Новый пользователь — спрашиваем роль
+    // Нет аккаунта по номеру. Проверяем есть ли ghost TMA-аккаунт (создан до шаринга контакта).
+    // Такой аккаунт имеет phone вида tg_{chatId} — просто обновляем телефон.
+    const ghost = await this.prisma.user.findUnique({ where: { telegramId: BigInt(chatId) } });
+    if (ghost && ghost.phone.startsWith('tg_')) {
+      await this.prisma.user.update({
+        where: { id: ghost.id },
+        data: { phone: normalized, isPhoneVerified: true },
+      });
+      const seller = await this.prisma.seller.findUnique({ where: { userId: ghost.id } });
+      if (seller) {
+        await this.showSellerMenu(chatId, firstName ?? normalized);
+      } else {
+        await this.showBuyerMenu(chatId, firstName ?? normalized);
+      }
+      return;
+    }
+
+    // Совершенно новый пользователь — спрашиваем роль
     await this.setTmp(chatId, 'phone', normalized);
     await this.setTmp(chatId, 'firstName', firstName ?? '');
     await this.setTmp(chatId, 'username', username ?? '');

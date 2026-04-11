@@ -3,6 +3,11 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './socket/redis-io.adapter';
 
+// Prisma returns BigInt for telegramId — JSON.stringify crashes without this polyfill
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+  return this.toString();
+};
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

@@ -17,12 +17,14 @@ import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
 import { TelegramModule } from '../telegram/telegram.module';
 import { OtpProcessor } from '../../queues/otp.processor';
 import { QUEUE_OTP } from '../../queues/queues.module';
+import { RedisModule } from '../../shared/redis.module';
 
 @Module({
   imports: [
     PassportModule,
     JwtModule.register({}), // secrets configured per-call in TokenService
     TelegramModule,
+    RedisModule,
     BullModule.registerQueue({ name: QUEUE_OTP }),
   ],
   controllers: [AuthController],

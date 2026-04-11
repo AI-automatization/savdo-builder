@@ -67,6 +67,25 @@ export class AuthRepository {
     });
   }
 
+  async linkTelegramId(userId: string, telegramId: bigint) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { telegramId },
+      include: { buyer: true, seller: true },
+    });
+  }
+
+  // Убирает telegramId у ghost-аккаунта (phone вида tg_XXX), чтобы не было unique conflict
+  async clearTelegramIdIfGhost(telegramId: bigint) {
+    return this.prisma.user.updateMany({
+      where: {
+        telegramId,
+        phone: { startsWith: 'tg_' },
+      },
+      data: { telegramId: null },
+    });
+  }
+
   async findUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
