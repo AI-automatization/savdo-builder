@@ -5,7 +5,6 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
 interface Store {

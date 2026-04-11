@@ -64,6 +64,7 @@ export interface TgWebApp {
     notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
     selectionChanged: () => void;
   };
+  openTelegramLink: (url: string) => void;
 }
 
 declare global {
