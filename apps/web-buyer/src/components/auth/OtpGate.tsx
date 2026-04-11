@@ -24,7 +24,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
   async function handleSend() {
     setError('');
     try {
-      await requestOtp.mutateAsync({ phone, purpose: 'login' });
+      await requestOtp.mutateAsync({ phone, purpose: 'checkout' });
       setStep('code');
     } catch {
       setError('Не удалось отправить код. Проверьте номер.');
@@ -34,7 +34,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
   async function handleVerify() {
     setError('');
     try {
-      await verifyOtp.mutateAsync({ phone, code, purpose: 'login' });
+      await verifyOtp.mutateAsync({ phone, code, purpose: 'checkout' });
     } catch {
       setError('Неверный код. Попробуйте ещё раз.');
     }

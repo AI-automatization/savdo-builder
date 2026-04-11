@@ -74,15 +74,20 @@ export class ChangeProductStatusUseCase {
     if (!store?.telegramChannelId) return;
 
     const price   = `${Number(product.basePrice).toLocaleString('ru')} сум`;
-    const buyerUrl = process.env.BUYER_APP_URL ?? 'https://savdo.uz';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
+    const tmaUrl      = process.env.TMA_URL ?? '';
+    // Deep link → открывает TMA сразу на витрине магазина
+    const deepLink = botUsername && store.slug
+      ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
+      : tmaUrl;
     const text    = `🛍 <b>${product.title}</b>\n\n${product.description ? `${product.description}\n\n` : ''}💰 <b>${price}</b>\n\n🏪 ${store.name}`;
 
     await this.telegramBot.sendToChannel(
       store.telegramChannelId,
       text,
       [
-        [{ text: '🛒 Заказать', url: `${buyerUrl}/${store.slug}/products/${product.id}` }],
-        [{ text: '💬 Написать продавцу', url: store.telegramContactLink || `${buyerUrl}/${store.slug}` }],
+        [{ text: '🛒 Открыть магазин', url: deepLink }],
+        [{ text: '💬 Написать продавцу', url: store.telegramContactLink || deepLink }],
       ],
       'HTML',
     );

@@ -73,6 +73,24 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Быстрые действия */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => navigate('/seller/products')}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
+            style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.25)' }}
+          >
+            <span>📦</span> Мои товары
+          </button>
+          <button
+            onClick={() => navigate('/seller/products/add')}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
+            style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.22)' }}
+          >
+            <span>➕</span> Добавить
+          </button>
+        </div>
+
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Последние заказы

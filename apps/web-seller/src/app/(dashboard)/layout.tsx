@@ -198,13 +198,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace('/login');
-  }, [isAuthenticated, router]);
+    if (!isAuthenticated) { router.replace('/login'); return; }
+    // BUYER в дашборде продавца → редирект на онбординг
+    if (user && user.role !== 'SELLER') router.replace('/onboarding');
+  }, [isAuthenticated, user, router]);
 
   useEffect(() => {
     if (!storeLoading && storeError) {
       const status = (storeError as { response?: { status?: number } }).response?.status;
-      if (status === 404) router.replace('/onboarding');
+      // 404 = магазин не создан, 403 = нет прав (BUYER попал сюда)
+      if (status === 404 || status === 403) router.replace('/onboarding');
     }
   }, [storeLoading, storeError, router]);
 

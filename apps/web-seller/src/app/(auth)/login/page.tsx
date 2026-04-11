@@ -6,6 +6,7 @@ import { useRequestOtp, useVerifyOtp } from "../../../hooks/use-auth";
 import { useAuth } from "../../../lib/auth/context";
 import { track } from "../../../lib/analytics";
 
+
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
 const glass = {
@@ -26,17 +27,21 @@ const inputStyle = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [step,  setStep]  = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp,   setOtp]   = useState("");
 
   const requestOtp = useRequestOtp();
   const verifyOtp  = useVerifyOtp();
-
   useEffect(() => {
-    if (isAuthenticated) router.replace('/dashboard');
-  }, [isAuthenticated, router]);
+    if (!user) return;
+    if (user.role === 'SELLER') {
+      router.replace('/dashboard');
+    } else {
+      router.replace('/onboarding');
+    }
+  }, [user, router]);
 
   useEffect(() => { track.signupStarted('direct'); }, []);
 
@@ -54,9 +59,14 @@ export default function LoginPage() {
     verifyOtp.mutate(
       { phone: fullPhone, code: otp, purpose: "login" },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           track.otpVerified(fullPhone);
-          router.replace("/dashboard");
+          // SELLER → дашборд, BUYER → онбординг для создания магазина
+          if (data.user.role === 'SELLER') {
+            router.replace("/dashboard");
+          } else {
+            router.replace("/onboarding");
+          }
         },
       },
     );
