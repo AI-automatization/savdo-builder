@@ -4,6 +4,7 @@ import { TelegramBotService } from './services/telegram-bot.service';
 import { SellerNotificationService } from './services/seller-notification.service';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramDemoHandler } from './telegram-demo.handler';
+import { GhostCleanupService } from './ghost-cleanup.service';
 import { TelegramNotificationProcessor } from '../../queues/telegram-notification.processor';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 
@@ -19,6 +20,7 @@ import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
     SellerNotificationService,
     TelegramNotificationProcessor,
     TelegramDemoHandler,
+    GhostCleanupService,
   ],
   exports: [TelegramBotService, SellerNotificationService],
 })

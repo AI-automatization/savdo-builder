@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 import { appConfig } from './config/app.config';
@@ -38,6 +39,7 @@ import { QueuesModule } from './queues/queues.module';
       load: [appConfig, dbConfig, redisConfig, jwtConfig, storageConfig, telegramConfig, featuresConfig],
       validationSchema: envValidationSchema,
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     RedisModule,
     QueuesModule,

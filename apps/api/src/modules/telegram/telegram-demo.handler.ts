@@ -170,23 +170,35 @@ export class TelegramDemoHandler {
     const existing = await this.prisma.user.findUnique({ where: { phone: normalized } });
 
     if (existing) {
-      // Если telegramId ещё не привязан или привязан к другому chatId (смена аккаунта TG) — обновляем.
-      // Всё в одной транзакции: сначала снимаем chatId с ghost-аккаунтов, потом привязываем к основному.
       const needsLink = existing.telegramId?.toString() !== chatId;
       if (needsLink) {
-        await this.prisma.$transaction([
-          // Убираем chatId у всех других аккаунтов (ghost и т.д.)
-          this.prisma.user.updateMany({
-            where: { telegramId: BigInt(chatId), id: { not: existing.id } },
-            data: { telegramId: null },
-          }),
-          // Привязываем (или перепривязываем) текущий chatId к аккаунту с нужным телефоном
-          this.prisma.user.update({
+        // Ищем ghost-аккаунт с тем же chatId (tg_{chatId} phone)
+        const ghost = await this.prisma.user.findFirst({
+          where: { telegramId: BigInt(chatId), id: { not: existing.id }, phone: { startsWith: 'tg_' } },
+          include: { buyer: { include: { orders: { take: 1 } } } },
+        });
+
+        await this.prisma.$transaction(async (tx) => {
+          if (ghost) {
+            const hasOrders = (ghost.buyer?.orders?.length ?? 0) > 0;
+            if (!hasOrders) {
+              // Ghost пустой — удаляем полностью (очищаем дубль)
+              await deleteGhostUser(tx, ghost.id, ghost.buyer?.id ?? null);
+              this.logger.log(`Deleted ghost userId=${ghost.id} (merged into ${existing.id})`);
+            } else {
+              // У ghost есть заказы — не удаляем, только снимаем chatId
+              await tx.user.update({ where: { id: ghost.id }, data: { telegramId: null } });
+              this.logger.warn(`Ghost userId=${ghost.id} has orders — only unlinked telegramId`);
+            }
+          }
+          // Привязываем chatId к реальному аккаунту
+          await tx.user.update({
             where: { id: existing.id },
             data: { telegramId: BigInt(chatId) },
-          }),
-        ]);
-        this.logger.log(`Linked telegramId=${chatId} to existing user id=${existing.id} phone=${normalized}`);
+          });
+        });
+
+        this.logger.log(`Linked telegramId=${chatId} to user id=${existing.id} phone=${normalized}`);
       }
 
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
@@ -746,4 +758,36 @@ export class TelegramDemoHandler {
 
     await this.bot.sendMessage(chatId, `<b>📦 Мои заказы:</b>\n\n${lines.join('\n\n')}`, { parseMode: 'HTML' });
   }
+}
+
+// ─── Ghost user cascade delete helper ─────────────────────────────────────────
+// Используется в handleContact и GhostCleanupService.
+// tx — Prisma Interactive Transaction client.
+// Порядок важен: сначала дочерние записи, потом родительские.
+import type { PrismaClient } from '@prisma/client';
+type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+
+export async function deleteGhostUser(
+  tx: TxClient,
+  userId: string,
+  buyerId: string | null,
+): Promise<void> {
+  if (buyerId) {
+    // Сообщения в чатах покупателя
+    await tx.chatMessage.deleteMany({ where: { thread: { buyerId } } });
+    await tx.chatThread.deleteMany({ where: { buyerId } });
+    // Корзина
+    await tx.cartItem.deleteMany({ where: { cart: { buyerId } } });
+    await tx.cart.deleteMany({ where: { buyerId } });
+    // Адреса
+    await tx.buyerAddress.deleteMany({ where: { buyerId } });
+    // Buyer (orders у ghost пустые — проверено выше)
+    await tx.buyer.delete({ where: { id: buyerId } }).catch(() => null);
+  }
+  // Сессии
+  await tx.userSession.deleteMany({ where: { userId } });
+  // Audit logs — nullable FK, просто обнуляем
+  await tx.auditLog.updateMany({ where: { actorUserId: userId }, data: { actorUserId: null } });
+  // Наконец пользователь
+  await tx.user.delete({ where: { id: userId } });
 }
