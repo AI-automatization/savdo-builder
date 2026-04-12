@@ -31,7 +31,8 @@ export default function HomePage() {
       return;
     }
 
-    if (user.role === 'SELLER') {
+    // ADMIN и SELLER → панель продавца, BUYER → покупатель
+    if (user.role === 'SELLER' || user.role === 'ADMIN') {
       navigate('/seller', { replace: true });
     } else {
       navigate('/buyer', { replace: true });

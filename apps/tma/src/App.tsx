@@ -22,7 +22,8 @@ function SellerGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/" replace />;
-  if (user.role !== 'SELLER') return <Navigate to="/buyer" replace />;
+  // ADMIN имеет доступ ко всем секциям включая seller
+  if (user.role !== 'SELLER' && user.role !== 'ADMIN') return <Navigate to="/buyer" replace />;
   return <>{children}</>;
 }
 
