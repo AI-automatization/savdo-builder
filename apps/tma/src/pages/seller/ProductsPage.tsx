@@ -121,6 +121,26 @@ export default function SellerProductsPage() {
 
             <div className="flex items-center gap-2 shrink-0">
               <Badge status={product.status} />
+              {/* Edit button */}
+              <button
+                onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                title="Редактировать"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: 'rgba(167,139,250,0.12)',
+                  color: '#A78BFA',
+                  fontSize: 15,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✏️
+              </button>
               {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
                 <button
                   onClick={() => toggleStatus(product)}

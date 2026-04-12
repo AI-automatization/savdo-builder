@@ -14,6 +14,7 @@ const SellerOrders = lazy(() => import('@/pages/seller/OrdersPage'));
 const SellerStore = lazy(() => import('@/pages/seller/StorePage'));
 const SellerProducts = lazy(() => import('@/pages/seller/ProductsPage'));
 const SellerAddProduct = lazy(() => import('@/pages/seller/AddProductPage'));
+const SellerEditProduct = lazy(() => import('@/pages/seller/EditProductPage'));
 const SellerProfile = lazy(() => import('@/pages/seller/ProfilePage'));
 const BuyerProfile = lazy(() => import('@/pages/buyer/ProfilePage'));
 
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/seller/store" element={<SellerGuard><SellerStore /></SellerGuard>} />
         <Route path="/seller/products" element={<SellerGuard><SellerProducts /></SellerGuard>} />
         <Route path="/seller/products/add" element={<SellerGuard><SellerAddProduct /></SellerGuard>} />
+        <Route path="/seller/products/:id/edit" element={<SellerGuard><SellerEditProduct /></SellerGuard>} />
         <Route path="/seller/profile" element={<SellerGuard><SellerProfile /></SellerGuard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
