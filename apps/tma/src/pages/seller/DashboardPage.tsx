@@ -15,26 +15,36 @@ interface Order {
   createdAt: string;
 }
 
-interface Stats {
-  productCount: number;
-  orderCount: number;
+interface PagedResponse<T> {
+  data: T[];
+  meta: { total: number; page: number; limit: number };
 }
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useTelegram();
+
   const [orders, setOrders] = useState<Order[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [productCount, setProductCount] = useState<number | null>(null);
+  const [orderCount, setOrderCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      api<{ data: Order[] }>('/seller/orders?limit=5').then((r) => setOrders(r.data ?? [])),
-      api<{ data: Stats }>('/seller/stats').then((r) => setStats(r.data ?? null)),
-    ])
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    setLoading(true);
+
+    // Promise.allSettled — не падает если один из запросов вернул ошибку
+    Promise.allSettled([
+      api<PagedResponse<Order>>('/seller/orders?limit=5'),
+      api<PagedResponse<unknown>>('/seller/products?limit=1'),
+    ]).then(([ordersResult, productsResult]) => {
+      if (ordersResult.status === 'fulfilled') {
+        setOrders(ordersResult.value.data ?? []);
+        setOrderCount(ordersResult.value.meta?.total ?? 0);
+      }
+      if (productsResult.status === 'fulfilled') {
+        setProductCount(productsResult.value.meta?.total ?? 0);
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
@@ -42,6 +52,7 @@ export default function DashboardPage() {
   return (
     <AppShell role="SELLER">
       <div className="flex flex-col gap-4">
+        {/* Заголовок */}
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0"
@@ -59,19 +70,24 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Товары', value: stats?.productCount ?? '—', icon: '📦' },
-            { label: 'Заказы', value: stats?.orderCount ?? '—', icon: '🛒' },
-            { label: 'Новые', value: pendingCount, icon: '🔔' },
-          ].map((s) => (
-            <GlassCard key={s.label} className="flex flex-col items-center gap-1 py-3 px-2">
-              <span style={{ fontSize: 20 }}>{s.icon}</span>
-              <span className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{s.value}</span>
-              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
-            </GlassCard>
-          ))}
-        </div>
+        {/* Счётчики */}
+        {loading ? (
+          <div className="flex justify-center py-4"><Spinner /></div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Товары',  value: productCount ?? '—', icon: '📦' },
+              { label: 'Заказы',  value: orderCount   ?? '—', icon: '🛒' },
+              { label: 'Новые',   value: pendingCount,         icon: '🔔' },
+            ].map((s) => (
+              <GlassCard key={s.label} className="flex flex-col items-center gap-1 py-3 px-2">
+                <span style={{ fontSize: 20 }}>{s.icon}</span>
+                <span className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{s.value}</span>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
+              </GlassCard>
+            ))}
+          </div>
+        )}
 
         {/* Быстрые действия */}
         <div className="grid grid-cols-2 gap-2">
@@ -91,6 +107,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
+        {/* Последние заказы */}
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Последние заказы
@@ -100,17 +117,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {loading && <div className="flex justify-center py-6"><Spinner /></div>}
-
-        {!loading && error && (
-          <div className="flex flex-col items-center gap-2 py-8">
-            <span style={{ fontSize: 36 }}>⚠️</span>
-            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить данные</p>
-            <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A78BFA' }}>Попробовать снова</button>
-          </div>
-        )}
-
-        {!loading && !error && !orders.length && (
+        {!loading && orders.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8">
             <span style={{ fontSize: 36 }}>📭</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
