@@ -101,11 +101,20 @@ export class TelegramDemoHandler {
       return;
     }
 
-    // Для ghost-юзеров (phone = tg_XXXXXXX) показываем firstName из Telegram, а не phone
-    const displayName = user.phone.startsWith('tg_')
-      ? (firstName ?? 'Пользователь')
-      : (firstName ?? user.phone);
+    // Ghost-юзер (phone = tg_XXXXXXX): зашёл через TMA, телефон не привязан.
+    // Просим поделиться контактом — это синхронизирует аккаунт.
+    if (user.phone.startsWith('tg_')) {
+      await this.bot.sendMessage(
+        chatId,
+        `👋 Привет${firstName ? `, <b>${firstName}</b>` : ''}!\n\nВы уже вошли через наше приложение. Для полноценной работы с ботом поделитесь номером телефона:`,
+        { parseMode: 'HTML' },
+      );
+      await this.bot.sendContactRequest(chatId);
+      return;
+    }
 
+    // Обычный пользователь — показываем меню
+    const displayName = firstName ?? user.phone;
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (seller) {
       await this.showSellerMenu(chatId, displayName);
@@ -218,11 +227,32 @@ export class TelegramDemoHandler {
         where: { id: ghost.id },
         data: { phone: normalized, isPhoneVerified: true },
       });
+
       const seller = await this.prisma.seller.findUnique({ where: { userId: ghost.id } });
       if (seller) {
-        await this.showSellerMenu(chatId, firstName ?? normalized);
+        // Продавец — проверяем есть ли магазин
+        const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+        if (store) {
+          await this.showSellerMenu(chatId, firstName ?? normalized);
+        } else {
+          // Продавец без магазина — запускаем регистрацию
+          await this.setTmp(chatId, 'phone', normalized);
+          await this.setTmp(chatId, 'firstName', firstName ?? '');
+          await this.startSellerRegistration(chatId);
+        }
       } else {
-        await this.showBuyerMenu(chatId, firstName ?? normalized);
+        // Покупатель — спрашиваем имя если не заполнено
+        const buyer = await this.prisma.buyer.findUnique({ where: { userId: ghost.id } });
+        if (!buyer?.firstName) {
+          await this.setState(chatId, 'awaiting_buyer_name');
+          await this.bot.sendMessage(
+            chatId,
+            `✅ Номер подтверждён!\n\nКак вас зовут? Введите <b>имя и фамилию</b> (например: Алишер Иванов)\nили только имя:`,
+            { parseMode: 'HTML' },
+          );
+        } else {
+          await this.showBuyerMenu(chatId, buyer.firstName);
+        }
       }
       return;
     }
@@ -757,6 +787,29 @@ export class TelegramDemoHandler {
     });
 
     await this.bot.sendMessage(chatId, `<b>📦 Мои заказы:</b>\n\n${lines.join('\n\n')}`, { parseMode: 'HTML' });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Сохранение имени покупателя (state: awaiting_buyer_name)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async handleBuyerName(chatId: string, text: string): Promise<void> {
+    await this.clearState(chatId);
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+
+    const parts     = text.trim().split(/\s+/);
+    const firstName = parts[0] ?? '';
+    const lastName  = parts.slice(1).join(' ') || null;
+
+    await this.prisma.buyer.upsert({
+      where:  { userId: user.id },
+      update: { firstName, lastName },
+      create: { userId: user.id, firstName, lastName },
+    });
+
+    this.logger.log(`Buyer name saved userId=${user.id} firstName=${firstName} lastName=${lastName}`);
+    await this.showBuyerMenu(chatId, firstName || text.trim());
   }
 }
 

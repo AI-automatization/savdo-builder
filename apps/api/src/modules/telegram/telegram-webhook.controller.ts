@@ -138,6 +138,7 @@ export class TelegramWebhookController {
 
     if (msg.text) {
       switch (state) {
+        case 'awaiting_buyer_name':      await this.demo.handleBuyerName(chatId, msg.text);        return;
         case 'awaiting_store_slug':      await this.demo.handleStoreSlugInput(chatId, msg.text);   return;
         case 'awaiting_channel':         await this.demo.handleChannelInput(chatId, msg.text);     return;
         case 'seller_create_store_name': await this.demo.handleCreateStoreName(chatId, msg.text);  return;
