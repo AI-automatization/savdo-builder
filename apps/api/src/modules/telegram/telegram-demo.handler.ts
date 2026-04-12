@@ -45,9 +45,30 @@ export class TelegramDemoHandler {
   // ── User helpers ──────────────────────────────────────────────────────────
 
   private async resolveUser(chatId: string) {
+    // Путь 1: Redis (юзер поделился номером через бота)
     const phone = await this.getPhone(chatId);
-    if (!phone) return null;
-    return this.prisma.user.findUnique({ where: { phone } });
+    if (phone) {
+      const user = await this.prisma.user.findUnique({ where: { phone } });
+      if (user) return user;
+    }
+
+    // Путь 2: DB по telegramId (юзер зашёл через TMA, chatId === telegramId)
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { telegramId: BigInt(chatId) },
+      });
+      if (!user) return null;
+
+      // Кэшируем телефон в Redis для ускорения следующих обращений,
+      // но только если номер реальный (не ghost вида tg_XXXXXXX)
+      if (user.phone && !user.phone.startsWith('tg_')) {
+        await this.setPhone(chatId, user.phone);
+      }
+
+      return user;
+    } catch {
+      return null;
+    }
   }
 
   /** /orders — показывает заказы продавца или покупателя по роли */
@@ -80,11 +101,16 @@ export class TelegramDemoHandler {
       return;
     }
 
+    // Для ghost-юзеров (phone = tg_XXXXXXX) показываем firstName из Telegram, а не phone
+    const displayName = user.phone.startsWith('tg_')
+      ? (firstName ?? 'Пользователь')
+      : (firstName ?? user.phone);
+
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (seller) {
-      await this.showSellerMenu(chatId, firstName ?? user.phone);
+      await this.showSellerMenu(chatId, displayName);
     } else {
-      await this.showBuyerMenu(chatId, firstName ?? user.phone);
+      await this.showBuyerMenu(chatId, displayName);
     }
   }
 
