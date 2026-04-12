@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -11,6 +12,13 @@ export default function BuyerProfilePage() {
   const { tg, user: tgUser } = useTelegram();
   const navigate = useNavigate();
 
+  // Продавцы не должны быть на странице покупателя
+  useEffect(() => {
+    if (user?.role === 'SELLER' || user?.role === 'ADMIN') {
+      navigate('/seller/profile', { replace: true });
+    }
+  }, [user, navigate]);
+
   const handleLogout = () => {
     tg?.HapticFeedback.notificationOccurred('warning');
     logout();
@@ -19,6 +27,14 @@ export default function BuyerProfilePage() {
 
   const openBot = () => {
     tg?.openTelegramLink(`https://t.me/${BOT_USERNAME}`);
+  };
+
+  const openBotForSelling = () => {
+    if (tg) {
+      tg.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=become_seller`);
+    } else {
+      window.open(`https://t.me/${BOT_USERNAME}`, '_blank');
+    }
   };
 
   return (
@@ -64,16 +80,16 @@ export default function BuyerProfilePage() {
           )}
         </GlassCard>
 
-        {/* Хочешь стать продавцом? */}
-        {authenticated && (
+        {/* Хочешь стать продавцом? — только для покупателей */}
+        {authenticated && user?.role === 'BUYER' && (
           <GlassCard className="p-4 flex items-center gap-3">
             <span style={{ fontSize: 28 }}>🏪</span>
             <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>Хочешь продавать?</p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>Открой магазин прямо в боте</p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>Открой магазин через бота</p>
             </div>
             <button
-              onClick={openBot}
+              onClick={openBotForSelling}
               className="text-xs font-semibold px-3 py-1.5 rounded-xl shrink-0"
               style={{ background: 'rgba(167,139,250,0.18)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)' }}
             >
