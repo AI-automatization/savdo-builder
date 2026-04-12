@@ -19,6 +19,7 @@ const buyerTabs: NavItem[] = [
 const sellerTabs: NavItem[] = [
   { path: '/seller',          label: 'Дашборд', icon: '📊', exact: true },
   { path: '/seller/products', label: 'Товары',  icon: '📦' },
+  { path: '/seller/store',    label: 'Магазин', icon: '🏪' },
   { path: '/seller/orders',   label: 'Заказы',  icon: '📋' },
   { path: '/seller/profile',  label: 'Профиль', icon: '👤' },
 ];

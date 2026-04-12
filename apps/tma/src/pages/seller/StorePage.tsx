@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
@@ -20,12 +21,31 @@ interface Store {
 
 export default function SellerStorePage() {
   const { tg } = useTelegram();
+  const navigate = useNavigate();
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const botUsername = (import.meta.env.VITE_BOT_USERNAME as string) ?? '';
+  const storeLink = (s: Store) =>
+    botUsername
+      ? `https://t.me/${botUsername}?startapp=store_${s.slug}`
+      : `https://savdo.uz/${s.slug}`;
+
+  const copyLink = async (s: Store) => {
+    try {
+      await navigator.clipboard.writeText(storeLink(s));
+      tg?.HapticFeedback.notificationOccurred('success');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+    }
+  };
 
   useEffect(() => {
     api<{ data: Store }>('/seller/store')
@@ -127,9 +147,21 @@ export default function SellerStorePage() {
             </div>
           </div>
         ) : (
-          <Button variant="ghost" className="w-full" onClick={() => setEditing(true)}>
-            Редактировать
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button variant="ghost" className="w-full" onClick={() => setEditing(true)}>
+              ✏️ Редактировать
+            </Button>
+            <Button className="w-full" onClick={() => copyLink(store)}>
+              {copied ? '✅ Ссылка скопирована!' : '🔗 Скопировать ссылку'}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => navigate(`/buyer/store/${store.slug}`)}
+            >
+              👁 Посмотреть каталог
+            </Button>
+          </div>
         )}
       </div>
     </AppShell>
