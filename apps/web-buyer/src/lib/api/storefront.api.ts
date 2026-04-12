@@ -1,18 +1,7 @@
-import type { GlobalCategory, ProductListItem, Product, StoreCategory } from 'types';
+import type { GlobalCategory, ProductListItem, Product, StorefrontStore } from 'types';
 import { apiClient } from './client';
 
-// Local type — pending Полатр adding it to packages/types
-export interface StorefrontStore {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  city: string;
-  telegramContactLink: string | null;
-  logoUrl: string | null;
-  coverUrl: string | null;
-  categories: Pick<StoreCategory, 'id' | 'name' | 'sortOrder'>[];
-}
+export type { StorefrontStore };
 
 export async function getStoreBySlug(slug: string): Promise<StorefrontStore> {
   const res = await apiClient.get<StorefrontStore>(`/storefront/stores/${slug}`);
