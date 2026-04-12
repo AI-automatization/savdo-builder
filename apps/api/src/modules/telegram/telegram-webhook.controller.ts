@@ -129,11 +129,12 @@ export class TelegramWebhookController {
 
     if (msg.text) {
       switch (state) {
-        case 'awaiting_store_slug':    await this.demo.handleStoreSlugInput(chatId, msg.text); return;
-        case 'awaiting_channel':       await this.demo.handleChannelInput(chatId, msg.text);   return;
-        case 'seller_reg_name':        await this.demo.handleSellerRegName(chatId, msg.text);  return;
-        case 'seller_reg_store_name':  await this.demo.handleSellerRegStoreName(chatId, msg.text); return;
-        case 'seller_reg_store_desc':  await this.demo.finishSellerRegistration(chatId, msg.text); return;
+        case 'awaiting_store_slug':      await this.demo.handleStoreSlugInput(chatId, msg.text);   return;
+        case 'awaiting_channel':         await this.demo.handleChannelInput(chatId, msg.text);     return;
+        case 'seller_create_store_name': await this.demo.handleCreateStoreName(chatId, msg.text);  return;
+        case 'seller_reg_name':          await this.demo.handleSellerRegName(chatId, msg.text);    return;
+        case 'seller_reg_store_name':    await this.demo.handleSellerRegStoreName(chatId, msg.text); return;
+        case 'seller_reg_store_desc':    await this.demo.finishSellerRegistration(chatId, msg.text); return;
       }
     }
 

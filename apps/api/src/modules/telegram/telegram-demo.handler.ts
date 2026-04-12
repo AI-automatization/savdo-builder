@@ -329,12 +329,72 @@ export class TelegramDemoHandler {
   // ─────────────────────────────────────────────────────────────────────────
 
   async handleLinkChannel(chatId: string): Promise<void> {
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+    if (!seller) { await this.handleStart(chatId); return; }
+
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+    if (!store) {
+      // Нет магазина — сначала создаём
+      await this.setState(chatId, 'seller_create_store_name');
+      await this.bot.sendMessage(
+        chatId,
+        `🏪 У вас ещё нет магазина. Создадим его прямо сейчас!\n\nВведите <b>название вашего магазина</b>:`,
+        { parseMode: 'HTML' },
+      );
+      return;
+    }
+
     await this.setState(chatId, 'awaiting_channel');
     await this.bot.sendMessage(
       chatId,
       `📢 <b>Привязка Telegram-канала</b>\n\n1. Добавьте бота как <b>администратора</b> в ваш канал\n2. Отправьте сюда <b>username канала</b>, например:\n\n<code>@mystore_channel</code>`,
       { parseMode: 'HTML' },
     );
+  }
+
+  async handleCreateStoreName(chatId: string, storeName: string): Promise<void> {
+    await this.clearState(chatId);
+
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+    if (!seller) { await this.handleStart(chatId); return; }
+
+    const name = storeName.trim();
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-zа-яё0-9\s]/gi, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 40) + '-' + Date.now().toString(36);
+
+    try {
+      await this.prisma.store.create({
+        data: {
+          sellerId: seller.id,
+          name,
+          slug,
+          city: 'Tashkent',
+          telegramContactLink: '',
+          status: 'DRAFT',
+        },
+      });
+
+      // Магазин создан — переходим к привязке канала
+      await this.setState(chatId, 'awaiting_channel');
+      await this.bot.sendMessage(
+        chatId,
+        `✅ Магазин <b>${name}</b> создан!\n\n📢 <b>Теперь привяжем Telegram-канал</b>\n\n1. Добавьте бота как <b>администратора</b> в ваш канал\n2. Отправьте сюда <b>username канала</b>, например:\n\n<code>@mystore_channel</code>`,
+        { parseMode: 'HTML' },
+      );
+    } catch (err) {
+      this.logger.error(`Store creation failed for seller ${seller.id}: ${err}`);
+      await this.bot.sendMessage(chatId, '❌ Не удалось создать магазин. Попробуйте ещё раз: /start');
+    }
   }
 
   async handleChannelInput(chatId: string, input: string): Promise<void> {
@@ -366,7 +426,13 @@ export class TelegramDemoHandler {
 
     const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
     if (!store) {
-      await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.');
+      // Этого не должно быть (handleLinkChannel теперь создаёт store заранее),
+      // но на всякий случай — предлагаем создать
+      await this.bot.sendInlineKeyboard(
+        chatId,
+        '⚠️ Сначала нужно создать магазин.',
+        [[{ text: '🏪 Создать магазин', callback_data: 'seller_link_channel' }]],
+      );
       return;
     }
 
