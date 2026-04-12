@@ -471,6 +471,17 @@ export class AdminController {
     return this.dbManagerUseCase.listTables();
   }
 
+  // GET /api/v1/admin/db/tables/:table/:id
+  @Get('db/tables/:table/:id')
+  async dbGetRow(
+    @Param('table') table: string,
+    @Param('id')    id:    string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    return this.dbManagerUseCase.getRow(table, id);
+  }
+
   // GET /api/v1/admin/db/tables/:table?page=&limit=&search=
   @Get('db/tables/:table')
   async dbGetRows(

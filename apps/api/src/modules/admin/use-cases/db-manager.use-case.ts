@@ -99,6 +99,22 @@ export class DbManagerUseCase {
     };
   }
 
+  async getRow(tableName: string, id: string) {
+    const cfg = TABLE_CONFIG[tableName];
+    if (!cfg) throw new BadRequestException(`Table "${tableName}" is not in the allowed list`);
+
+    const model = (this.prisma as any)[cfg.prismaModel];
+    const row = await model.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException(`Row with id="${id}" not found in "${tableName}"`);
+
+    return {
+      table: tableName,
+      row: this.serialize(row) as Record<string, unknown>,
+      writableFields: cfg.writableFields,
+      readonly: cfg.readonly ?? false,
+    };
+  }
+
   async updateRow(tableName: string, id: string, data: Record<string, unknown>) {
     const cfg = TABLE_CONFIG[tableName];
     if (!cfg) throw new BadRequestException(`Table "${tableName}" is not allowed`);
