@@ -111,6 +111,15 @@ export class TelegramWebhookController {
 
     // Контакт (телефон)
     if (msg.contact) {
+      // Безопасность: принимаем только собственный контакт пользователя.
+      // Telegram включает user_id в контакт когда человек нажимает "Поделиться номером".
+      // Если user_id не совпадает с from.id — кто-то пытается отправить чужой номер.
+      if (msg.contact.user_id && msg.contact.user_id !== msg.from.id) {
+        await this.bot.sendMessage(chatId, '❌ Пожалуйста, поделитесь <b>своим</b> номером телефона, используя кнопку ниже.', { parseMode: 'HTML' }).catch(() => null);
+        await this.bot.sendContactRequest(chatId);
+        return;
+      }
+
       const raw   = msg.contact.phone_number.replace(/\s/g, '');
       const phone = raw.startsWith('+') ? raw : `+${raw}`;
 

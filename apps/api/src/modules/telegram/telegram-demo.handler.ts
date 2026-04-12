@@ -170,19 +170,25 @@ export class TelegramDemoHandler {
     const existing = await this.prisma.user.findUnique({ where: { phone: normalized } });
 
     if (existing) {
-      if (!existing.telegramId) {
-        // Есть ghost TMA-аккаунт с тем же telegramId? Сначала убираем у него привязку,
-        // чтобы не было unique constraint при линковке к основному аккаунту.
-        await this.prisma.user.updateMany({
-          where: { telegramId: BigInt(chatId), id: { not: existing.id } },
-          data: { telegramId: null },
-        });
-        // Привязываем telegramId к основному аккаунту
-        await this.prisma.user.update({
-          where: { id: existing.id },
-          data: { telegramId: BigInt(chatId) },
-        }).catch(() => null);
+      // Если telegramId ещё не привязан или привязан к другому chatId (смена аккаунта TG) — обновляем.
+      // Всё в одной транзакции: сначала снимаем chatId с ghost-аккаунтов, потом привязываем к основному.
+      const needsLink = existing.telegramId?.toString() !== chatId;
+      if (needsLink) {
+        await this.prisma.$transaction([
+          // Убираем chatId у всех других аккаунтов (ghost и т.д.)
+          this.prisma.user.updateMany({
+            where: { telegramId: BigInt(chatId), id: { not: existing.id } },
+            data: { telegramId: null },
+          }),
+          // Привязываем (или перепривязываем) текущий chatId к аккаунту с нужным телефоном
+          this.prisma.user.update({
+            where: { id: existing.id },
+            data: { telegramId: BigInt(chatId) },
+          }),
+        ]);
+        this.logger.log(`Linked telegramId=${chatId} to existing user id=${existing.id} phone=${normalized}`);
       }
+
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
       if (seller) {
         await this.showSellerMenu(chatId, firstName ?? normalized);
