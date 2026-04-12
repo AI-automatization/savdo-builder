@@ -46,8 +46,7 @@ export default function EditProductPage() {
     setLoading(true);
     setLoadError('');
     try {
-      const res = await api<{ data: Product }>(`/seller/products/${id}`);
-      const p = res.data;
+      const p = await api<Product>(`/seller/products/${id}`);
       setProduct(p);
       setTitle(p.title);
       setDescription(p.description ?? '');

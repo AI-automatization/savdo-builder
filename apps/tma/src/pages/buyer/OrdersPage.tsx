@@ -21,8 +21,8 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (!authenticated) { setLoading(false); return; }
-    api<{ data: Order[] }>('/buyer/orders')
-      .then((res) => setOrders(res.data ?? []))
+    api<{ orders: Order[] }>('/buyer/orders')
+      .then((res) => setOrders(res.orders ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [authenticated]);

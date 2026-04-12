@@ -48,9 +48,8 @@ export default function SellerStorePage() {
   };
 
   useEffect(() => {
-    api<{ data: Store }>('/seller/store')
-      .then((r) => {
-        const s = r.data;
+    api<Store>('/seller/store')
+      .then((s) => {
         setStore(s);
         setName(s.name);
         setDescription(s.description ?? '');
@@ -63,11 +62,11 @@ export default function SellerStorePage() {
     if (!store) return;
     setSaving(true);
     try {
-      const updated = await api<{ data: Store }>('/seller/store', {
+      const updated = await api<Store>('/seller/store', {
         method: 'PATCH',
         body: { name: name.trim(), description: description.trim() || null },
       });
-      setStore(updated.data);
+      setStore(updated);
       setEditing(false);
       tg?.HapticFeedback.notificationOccurred('success');
     } catch {

@@ -41,7 +41,7 @@ export default function AddProductPage() {
     setSaving(true);
     setError('');
     try {
-      const product = await api<{ data: { id: string } }>('/seller/products', {
+      const product = await api<{ id: string }>('/seller/products', {
         method: 'POST',
         body: {
           title: title.trim(),
@@ -51,7 +51,7 @@ export default function AddProductPage() {
       });
 
       if (publish) {
-        await api(`/seller/products/${product.data.id}/status`, {
+        await api(`/seller/products/${product.id}/status`, {
           method: 'PATCH',
           body: { status: 'ACTIVE' },
         });

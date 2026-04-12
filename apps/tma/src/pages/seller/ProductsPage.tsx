@@ -16,10 +16,6 @@ interface Product {
   description: string | null;
 }
 
-interface ProductsResponse {
-  data: Product[];
-  meta: { total: number; page: number; limit: number };
-}
 
 export default function SellerProductsPage() {
   const navigate = useNavigate();
@@ -32,8 +28,8 @@ export default function SellerProductsPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    api<ProductsResponse>('/seller/products?limit=50')
-      .then((r) => setProducts(r.data))
+    api<Product[]>('/seller/products?limit=50')
+      .then((r) => setProducts(r ?? []))
       .catch(() => setError('Не удалось загрузить товары'))
       .finally(() => setLoading(false));
   }, []);

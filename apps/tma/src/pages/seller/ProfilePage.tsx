@@ -24,8 +24,8 @@ export default function SellerProfilePage() {
   const [store, setStore] = useState<Store | null>(null);
 
   useEffect(() => {
-    api<{ data: Store }>('/seller/store')
-      .then((r) => setStore(r.data))
+    api<Store>('/seller/store')
+      .then((s) => setStore(s))
       .catch(() => {});
   }, []);
 

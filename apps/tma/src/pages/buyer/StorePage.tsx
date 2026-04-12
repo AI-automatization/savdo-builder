@@ -34,14 +34,19 @@ export default function StorePage() {
 
   useEffect(() => {
     if (!slug) return;
-    api<{ data: { store?: Store; products?: Product[] } & Store }>(`/storefront/stores/${slug}`)
-      .then((res) => {
-        const d = res.data;
-        setStore(d.store ?? d);
-        setProducts(d.products ?? []);
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    Promise.allSettled([
+      api<Store>(`/storefront/stores/${slug}`),
+      api<Product[]>(`/stores/${slug}/products`),
+    ]).then(([storeResult, productsResult]) => {
+      if (storeResult.status === 'fulfilled') {
+        setStore(storeResult.value);
+      } else {
+        setError(true);
+      }
+      if (productsResult.status === 'fulfilled') {
+        setProducts(productsResult.value ?? []);
+      }
+    }).finally(() => setLoading(false));
   }, [slug]);
 
   const addToCart = (product: Product) => {
