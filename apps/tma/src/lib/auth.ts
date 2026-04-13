@@ -25,3 +25,9 @@ export async function authenticateWithTelegram(): Promise<AuthResponse | null> {
     return null;
   }
 }
+
+/** Переводит текущего BUYER в SELLER.
+ *  После вызова нужно сделать reauth() чтобы AuthProvider получил SELLER JWT. */
+export async function applyAsSeller(): Promise<void> {
+  await api('/seller/apply', { method: 'POST' });
+}

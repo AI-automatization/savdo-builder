@@ -53,5 +53,8 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
     throw new ApiError(res.status, err.message ?? `API error ${res.status}`);
   }
 
+  // 204 No Content — нет тела, возвращаем undefined
+  if (res.status === 204) return undefined as unknown as T;
+
   return res.json() as Promise<T>;
 }

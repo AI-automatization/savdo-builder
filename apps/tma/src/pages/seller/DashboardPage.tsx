@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
@@ -23,6 +24,7 @@ interface PagedResponse<T> {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useTelegram();
+  const { authVersion } = useAuth();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [productCount, setProductCount] = useState<number | null>(null);
@@ -46,7 +48,7 @@ export default function DashboardPage() {
         setProductCount(Array.isArray(val) ? val.length : 0);
       }
     }).finally(() => setLoading(false));
-  }, []);
+  }, [authVersion]);
 
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
 

@@ -1,16 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { applyAsSeller } from '@/lib/auth';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
 
 export default function BuyerProfilePage() {
-  const { user, authenticated, logout } = useAuth();
+  const { user, authenticated, logout, reauth } = useAuth();
   const { tg, user: tgUser } = useTelegram();
   const navigate = useNavigate();
+  const [applying, setApplying] = useState(false);
 
   // Продавцы не должны быть на странице покупателя
   useEffect(() => {
@@ -29,11 +31,17 @@ export default function BuyerProfilePage() {
     tg?.openTelegramLink(`https://t.me/${BOT_USERNAME}`);
   };
 
-  const openBotForSelling = () => {
-    if (tg) {
-      tg.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=become_seller`);
-    } else {
-      window.open(`https://t.me/${BOT_USERNAME}`, '_blank');
+  const handleBecomeSeller = async () => {
+    setApplying(true);
+    try {
+      await applyAsSeller();
+      await reauth();
+      tg?.HapticFeedback.notificationOccurred('success');
+      navigate('/seller', { replace: true });
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -86,14 +94,22 @@ export default function BuyerProfilePage() {
             <span style={{ fontSize: 28 }}>🏪</span>
             <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>Хочешь продавать?</p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>Открой магазин через бота</p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                {applying ? 'Создаём аккаунт продавца...' : 'Открой свой магазин прямо здесь'}
+              </p>
             </div>
             <button
-              onClick={openBotForSelling}
+              onClick={handleBecomeSeller}
+              disabled={applying}
               className="text-xs font-semibold px-3 py-1.5 rounded-xl shrink-0"
-              style={{ background: 'rgba(167,139,250,0.18)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)' }}
+              style={{
+                background: applying ? 'rgba(167,139,250,0.08)' : 'rgba(167,139,250,0.18)',
+                color: applying ? 'rgba(167,139,250,0.45)' : '#A78BFA',
+                border: '1px solid rgba(167,139,250,0.25)',
+                cursor: applying ? 'wait' : 'pointer',
+              }}
             >
-              Открыть бота
+              {applying ? '...' : 'Открыть магазин'}
             </button>
           </GlassCard>
         )}

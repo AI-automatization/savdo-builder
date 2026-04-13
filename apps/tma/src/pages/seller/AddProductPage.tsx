@@ -116,6 +116,7 @@ export default function AddProductPage() {
     setPhotoFile(null);
     setPhotoPreview('');
     setUploadProgress(0);
+    setPhotoUploading(false);
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -203,13 +204,16 @@ export default function AddProductPage() {
           await uploadPhotoForProduct(pid, photoFile);
         } catch (photoErr: unknown) {
           const isStorageDown = photoErr instanceof ApiError && photoErr.status === 503;
-          setError(
-            isStorageDown
-              ? 'Товар создан. Загрузка фото временно недоступна — добавьте фото позже.'
-              : 'Товар создан, но фото не загружено. Попробуйте добавить его позже.',
-          );
           tg?.HapticFeedback.notificationOccurred('warning');
-          navigate('/seller/products');
+          // Показываем ошибку фото и переходим в редактор товара
+          // чтобы пользователь мог попробовать загрузить фото там
+          navigate(`/seller/products/${pid}/edit`, {
+            state: {
+              photoError: isStorageDown
+                ? 'Загрузка фото временно недоступна — попробуйте позже'
+                : 'Фото не загружено — попробуйте добавить здесь',
+            },
+          });
           return;
         }
       }

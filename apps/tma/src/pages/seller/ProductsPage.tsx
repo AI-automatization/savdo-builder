@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { useAuth } from '@/providers/AuthProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
@@ -28,6 +29,7 @@ interface Product {
 export default function SellerProductsPage() {
   const navigate = useNavigate();
   const { tg } = useTelegram();
+  const { authVersion } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export default function SellerProductsPage() {
     tg?.BackButton.show();
     tg?.BackButton.onClick(() => navigate('/seller'));
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(() => navigate('/seller')); };
-  }, [load, navigate, tg]);
+  }, [load, navigate, tg, authVersion]);
 
   const toggleStatus = async (product: Product) => {
     if (product.status === 'HIDDEN_BY_ADMIN') return;

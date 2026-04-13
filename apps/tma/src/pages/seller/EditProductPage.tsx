@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { api, getToken, ApiError } from '@/lib/api';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -63,6 +63,7 @@ function uploadWithProgress(
 export default function EditProductPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { tg } = useTelegram();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -124,6 +125,16 @@ export default function EditProductPage() {
     tg?.BackButton.onClick(goBack);
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [load, navigate, tg]);
+
+  // Показать ошибку фото переданную из AddProductPage
+  useEffect(() => {
+    const photoError = (location.state as { photoError?: string } | null)?.photoError;
+    if (photoError) {
+      showToast(`⚠️ ${photoError}`);
+      // Очищаем state чтобы toast не показывался при повторном рендере
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   const inputStyle = {
     ...glass,
@@ -281,9 +292,16 @@ export default function EditProductPage() {
       tg?.HapticFeedback.notificationOccurred('success');
       showToast('✅ Фото добавлено');
     } catch (e: unknown) {
-      const isStorageDown = e instanceof ApiError && e.status === 503;
       tg?.HapticFeedback.notificationOccurred('error');
-      showToast(isStorageDown ? '⚠️ Загрузка фото временно недоступна' : '❌ Ошибка загрузки фото');
+      if (e instanceof ApiError && e.status === 503) {
+        showToast('⚠️ R2 хранилище не настроено — обратитесь к разработчику');
+      } else if (e instanceof Error && e.message === 'Network error') {
+        showToast('❌ Сетевая ошибка: проверьте CORS настройки R2');
+      } else if (e instanceof Error && e.message === 'Upload failed') {
+        showToast('❌ R2 отклонил загрузку (неверные ключи или bucket)');
+      } else {
+        showToast('❌ Ошибка загрузки фото');
+      }
     } finally {
       setPhotoUploading(false);
       setUploadProgress(0);

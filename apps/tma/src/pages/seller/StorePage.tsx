@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -22,6 +23,7 @@ interface Store {
 export default function SellerStorePage() {
   const { tg } = useTelegram();
   const navigate = useNavigate();
+  const { authVersion } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -29,6 +31,12 @@ export default function SellerStorePage() {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Create store flow
+  const [creating, setCreating] = useState(false);
+  const [newStoreName, setNewStoreName] = useState('');
+  const [newStoreCity, setNewStoreCity] = useState('');
+  const [newStoreTg, setNewStoreTg] = useState('');
+  const [createError, setCreateError] = useState('');
 
   const botUsername = (import.meta.env.VITE_BOT_USERNAME as string) ?? '';
   const storeLink = (s: Store) =>
@@ -48,15 +56,17 @@ export default function SellerStorePage() {
   };
 
   useEffect(() => {
+    setLoading(true);
+    setStore(null);
     api<Store>('/seller/store')
       .then((s) => {
         setStore(s);
         setName(s.name);
         setDescription(s.description ?? '');
       })
-      .catch(() => {})
+      .catch(() => { /* 404 = нет магазина → показываем форму создания */ })
       .finally(() => setLoading(false));
-  }, []);
+  }, [authVersion]);
 
   const save = async () => {
     if (!store) return;
@@ -76,6 +86,33 @@ export default function SellerStorePage() {
     }
   };
 
+  const handleCreateStore = async () => {
+    if (!newStoreName.trim()) { setCreateError('Введите название магазина'); return; }
+    if (!newStoreCity.trim()) { setCreateError('Введите город'); return; }
+    if (!newStoreTg.trim()) { setCreateError('Введите ссылку Telegram для связи'); return; }
+    setCreating(true);
+    setCreateError('');
+    try {
+      const created = await api<Store>('/seller/store', {
+        method: 'POST',
+        body: {
+          name: newStoreName.trim(),
+          city: newStoreCity.trim(),
+          telegramContactLink: newStoreTg.trim(),
+        },
+      });
+      setStore(created);
+      setName(created.name);
+      setDescription(created.description ?? '');
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch {
+      setCreateError('Не удалось создать магазин. Попробуйте снова.');
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) {
     return <AppShell role="SELLER"><div className="flex justify-center py-10"><Spinner size={32} /></div></AppShell>;
   }
@@ -83,9 +120,50 @@ export default function SellerStorePage() {
   if (!store) {
     return (
       <AppShell role="SELLER">
-        <div className="flex flex-col items-center gap-3 py-16">
-          <span style={{ fontSize: 40 }}>⚠️</span>
-          <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
+        <div className="flex flex-col gap-4">
+          <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
+          <div
+            className="flex flex-col items-center gap-4 py-8 px-4 rounded-2xl"
+            style={{ background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.18)' }}
+          >
+            <span style={{ fontSize: 44 }}>🏪</span>
+            <div className="text-center">
+              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>Создайте свой магазин</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Введите название чтобы начать продавать</p>
+            </div>
+            <div className="w-full flex flex-col gap-3">
+              {[
+                { value: newStoreName, set: setNewStoreName, placeholder: 'Название магазина', max: 255 },
+                { value: newStoreCity, set: setNewStoreCity, placeholder: 'Город (например: Ташкент)', max: 100 },
+                { value: newStoreTg,   set: setNewStoreTg,   placeholder: 'Telegram ссылка: @username или https://t.me/...', max: 200 },
+              ].map((field) => (
+                <input
+                  key={field.placeholder}
+                  value={field.value}
+                  onChange={(e) => field.set(e.target.value)}
+                  placeholder={field.placeholder}
+                  maxLength={field.max}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
+                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }}
+                />
+              ))}
+              {createError && (
+                <p className="text-xs" style={{ color: 'rgba(248,113,113,0.85)' }}>{createError}</p>
+              )}
+              <button
+                onClick={handleCreateStore}
+                disabled={creating}
+                className="w-full py-3 rounded-xl text-sm font-semibold"
+                style={{
+                  background: creating ? 'rgba(167,139,250,0.15)' : 'linear-gradient(135deg, #7C3AED, #A78BFA)',
+                  color: creating ? 'rgba(167,139,250,0.50)' : '#fff',
+                  cursor: creating ? 'wait' : 'pointer',
+                }}
+              >
+                {creating ? 'Создаём...' : 'Создать магазин'}
+              </button>
+            </div>
+          </div>
         </div>
       </AppShell>
     );
