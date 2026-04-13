@@ -8,7 +8,7 @@ import {
   clearTokens,
 } from '../auth/storage';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== 'undefined') {
   console.warn('[savdo] NEXT_PUBLIC_API_URL not set — API requests go to localhost');

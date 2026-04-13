@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { Product } from 'types';
 
-const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'}/api/v1`;
+const BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1`;
 
 async function fetchProduct(id: string): Promise<Product | null> {
   try {

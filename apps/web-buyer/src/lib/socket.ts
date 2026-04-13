@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { getAccessToken } from './auth/storage';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 let socket: Socket | null = null;
 
