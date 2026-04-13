@@ -17,17 +17,32 @@ export async function generateMetadata({
   try {
     const { slug } = await params;
     const store = await serverGetStoreBySlug(slug);
+    const desc = store.description ?? `Магазин ${store.name} в Telegram. Доставка по ${store.city}.`;
+    const ogImage = store.coverUrl ?? store.logoUrl ?? undefined;
+    const title = `${store.name} — Savdo`;
+
     return {
-      title: store.name,
-      description: store.description ?? `Магазин ${store.name} на Savdo`,
+      title,
+      description: desc,
+      alternates: { canonical: `/${slug}` },
       openGraph: {
-        title: store.name,
-        description: store.description ?? `Магазин ${store.name} на Savdo`,
-        ...(store.logoUrl ? { images: [{ url: store.logoUrl }] } : {}),
+        type: 'website',
+        siteName: 'Savdo',
+        title,
+        description: desc,
+        url: `/${slug}`,
+        locale: 'ru_RU',
+        ...(ogImage ? { images: [{ url: ogImage, alt: store.name }] } : {}),
+      },
+      twitter: {
+        card: ogImage ? 'summary_large_image' : 'summary',
+        title,
+        description: desc,
+        ...(ogImage ? { images: [ogImage] } : {}),
       },
     };
   } catch {
-    return { title: 'Магазин' };
+    return { title: 'Магазин — Savdo' };
   }
 }
 

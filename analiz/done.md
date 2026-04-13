@@ -1,5 +1,30 @@
 # Done — Азим + Полат
 
+## 2026-04-13 — Сессия 17: SEO / OG теги для web-buyer
+
+### ✅ [WEB-SEO-001] web-buyer: улучшен OG для страницы магазина
+- **Важность:** 🟡
+- **Дата:** 13.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx`
+- **Что сделано:** `generateMetadata` теперь использует coverUrl (шире для Telegram) с фолбэком на logoUrl. Добавлены twitter card, og:type, og:siteName, og:url, og:locale. Title формата "{store} — Savdo".
+
+### ✅ [WEB-SEO-002] web-buyer: добавлен generateMetadata на странице товара
+- **Важность:** 🟡
+- **Дата:** 13.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx` (новый)
+- **Что сделано:** Новый server-side layout с server fetch товара через `GET /storefront/products/:id`. OG image = первая mediaUrl, description = описание (обрезка 160 симв) или цена. Страница товара остаётся client component для интерактива.
+
+### ✅ [WEB-SEO-003] web-buyer: metadataBase + default OG в root layout
+- **Важность:** 🟡
+- **Дата:** 13.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/src/app/layout.tsx`
+- **Что сделано:** `metadataBase` из `NEXT_PUBLIC_BUYER_URL` — OG URLs теперь абсолютные (Telegram их требует). Добавлены default OG + twitter теги для главной. Title template "%s".
+
+---
+
 ## 2026-04-10 — Сессия 16b: Полный аудит + фиксы багов
 
 ### ✅ [AUDIT-001] TMA: JSON.parse crash fix — CartPage, StorePage, CheckoutPage
