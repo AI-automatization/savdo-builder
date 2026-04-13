@@ -8,12 +8,26 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { glass } from '@/lib/styles';
 
+interface OptionValue {
+  id: string;
+  value: string;
+}
+
+interface Variant {
+  id: string;
+  sku: string;
+  stockQuantity: number;
+  isActive: boolean;
+  optionValues: Array<{ optionValue: OptionValue }>;
+}
+
 interface Product {
   id: string;
   title: string;
   description: string | null;
   basePrice: number;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
+  variants?: Variant[];
 }
 
 export default function EditProductPage() {
@@ -28,6 +42,10 @@ export default function EditProductPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+
+  // stock editing: variantId → new stock value (string for input)
+  const [stockEdits, setStockEdits] = useState<Record<string, string>>({});
+  const [stockSaving, setStockSaving] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
@@ -51,6 +69,12 @@ export default function EditProductPage() {
       setTitle(p.title);
       setDescription(p.description ?? '');
       setPrice(String(p.basePrice));
+      // init stock edit inputs
+      if (p.variants) {
+        const initial: Record<string, string> = {};
+        for (const v of p.variants) initial[v.id] = String(v.stockQuantity);
+        setStockEdits(initial);
+      }
     } catch {
       setLoadError('Не удалось загрузить товар');
     } finally {
@@ -78,6 +102,38 @@ export default function EditProductPage() {
   } as const;
 
   const isValid = title.trim().length >= 2 && Number(price) > 0;
+
+  const handleStockSave = async (variant: Variant) => {
+    if (!id) return;
+    const newQty = Math.max(0, Number(stockEdits[variant.id]) || 0);
+    const delta = newQty - variant.stockQuantity;
+    if (delta === 0) return;
+    setStockSaving(variant.id);
+    try {
+      await api(`/seller/products/${id}/variants/${variant.id}/stock`, {
+        method: 'POST',
+        body: { delta, reason: 'Ручная корректировка в TMA' },
+      });
+      // update local state
+      setProduct((prev) =>
+        prev
+          ? {
+              ...prev,
+              variants: prev.variants?.map((v) =>
+                v.id === variant.id ? { ...v, stockQuantity: newQty } : v,
+              ),
+            }
+          : prev,
+      );
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('✅ Остаток обновлён');
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Ошибка обновления остатка');
+    } finally {
+      setStockSaving(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!isValid || !id) return;
@@ -307,6 +363,67 @@ export default function EditProductPage() {
                 <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 13 }}>{error}</p>
               )}
             </GlassCard>
+
+            {/* Остаток по вариантам */}
+            {product.variants && product.variants.length > 0 && (
+              <GlassCard className="p-4 flex flex-col gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Остаток на складе
+                </p>
+                {product.variants.map((v) => {
+                  const label = v.optionValues.length > 0
+                    ? v.optionValues.map((ov) => ov.optionValue.value).join(' / ')
+                    : 'Без размера';
+                  return (
+                    <div key={v.id} className="flex items-center gap-2">
+                      <div
+                        className="flex items-center justify-center text-xs font-bold shrink-0"
+                        style={{
+                          minWidth: 44, height: 36, borderRadius: 8, padding: '0 8px',
+                          background: 'rgba(167,139,250,0.12)',
+                          border: '1px solid rgba(167,139,250,0.20)',
+                          color: '#A78BFA',
+                        }}
+                      >
+                        {label}
+                      </div>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={stockEdits[v.id] ?? String(v.stockQuantity)}
+                        onChange={(e) =>
+                          setStockEdits((prev) => ({ ...prev, [v.id]: e.target.value }))
+                        }
+                        style={{
+                          ...inputStyle,
+                          flex: 1,
+                          padding: '8px 12px',
+                          fontSize: 13,
+                        }}
+                      />
+                      <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>
+                      <button
+                        onClick={() => handleStockSave(v)}
+                        disabled={stockSaving === v.id || stockEdits[v.id] === String(v.stockQuantity)}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 10,
+                          border: '1px solid rgba(52,211,153,0.25)',
+                          background: 'rgba(52,211,153,0.10)',
+                          color: '#34d399',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          opacity: stockEdits[v.id] === String(v.stockQuantity) ? 0.4 : 1,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {stockSaving === v.id ? '...' : '✓'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </GlassCard>
+            )}
 
             <Button
               onClick={handleSave}

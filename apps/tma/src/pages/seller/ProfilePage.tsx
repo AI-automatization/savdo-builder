@@ -135,6 +135,13 @@ export default function SellerProfilePage() {
             <span>📦</span> Управление товарами
           </button>
           <button
+            onClick={() => navigate('/buyer')}
+            className="flex items-center gap-3 py-2.5 text-sm"
+            style={{ color: 'rgba(52,211,153,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <span>🛍</span> Режим покупателя
+          </button>
+          <button
             onClick={openBot}
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
