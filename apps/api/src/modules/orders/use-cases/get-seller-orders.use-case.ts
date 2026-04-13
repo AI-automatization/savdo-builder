@@ -7,6 +7,9 @@ import { ErrorCode } from '../../../shared/constants/error-codes';
 export interface GetSellerOrdersInput {
   storeId: string;
   status?: OrderStatus;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
   page?: number;
   limit?: number;
 }
@@ -31,6 +34,9 @@ export class GetSellerOrdersUseCase {
 
     const result = await this.ordersRepo.findByStoreId(input.storeId, {
       status: input.status,
+      search: input.search,
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
       page,
       limit,
     });

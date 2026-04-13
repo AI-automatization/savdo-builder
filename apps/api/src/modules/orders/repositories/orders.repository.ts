@@ -10,6 +10,9 @@ export type OrderWithDetails = Order & {
 
 export interface OrderListFilters {
   status?: OrderStatus;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
   page?: number;
   limit?: number;
 }
@@ -51,10 +54,28 @@ export class OrdersRepository {
     const limit = Math.min(filters.limit ?? 20, 100);
     const skip = (page - 1) * limit;
 
-    const where = {
+    const where: any = {
       storeId,
       ...(filters.status ? { status: filters.status } : {}),
     };
+
+    if (filters.search) {
+      const s = filters.search.trim();
+      where.OR = [
+        { orderNumber: { contains: s, mode: 'insensitive' } },
+        { customerFullName: { contains: s, mode: 'insensitive' } },
+        { customerPhone: { contains: s, mode: 'insensitive' } },
+        { city: { contains: s, mode: 'insensitive' } },
+        { addressLine1: { contains: s, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters.dateFrom || filters.dateTo) {
+      where.placedAt = {
+        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+        ...(filters.dateTo   ? { lte: new Date(filters.dateTo)   } : {}),
+      };
+    }
 
     const [orders, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({

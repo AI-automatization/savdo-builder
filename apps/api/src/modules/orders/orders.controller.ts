@@ -123,6 +123,9 @@ export class OrdersController {
     return this.getSellerOrdersUseCase.execute({
       storeId,
       status: query.status,
+      search: query.search,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
       page: query.page,
       limit: query.limit,
     });
