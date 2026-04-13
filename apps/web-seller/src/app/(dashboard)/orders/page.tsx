@@ -224,6 +224,7 @@ export default function OrdersPage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [accOrders, setAccOrders] = useState<OrderListItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data, isLoading, isError, isFetching } = useSellerOrders({
     ...(activeFilter !== 'ALL' ? { status: activeFilter } : {}),
@@ -239,7 +240,15 @@ export default function OrdersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.data]);
 
-  const orders = accOrders;
+  const q = searchQuery.trim().toLowerCase().replace(/^#/, '');
+  const filteredOrders = q
+    ? accOrders.filter((o) =>
+        shortId(o.id).toLowerCase().includes(q) ||
+        o.deliveryAddress.city.toLowerCase().includes(q) ||
+        o.deliveryAddress.street.toLowerCase().includes(q),
+      )
+    : accOrders;
+  const orders = filteredOrders;
   const hasMore = data ? page * PAGE_LIMIT < data.meta.total : false;
   const isLoadingMore = isFetching && page > 1;
 
@@ -247,6 +256,7 @@ export default function OrdersPage() {
     setActiveFilter(key);
     setPage(1);
     setAccOrders([]);
+    setSearchQuery('');
   }
 
   async function handleAction(order: OrderListItem, toStatus: OrderStatus) {
@@ -277,7 +287,11 @@ export default function OrdersPage() {
       <div>
         <h1 className="text-xl font-bold text-white">Заказы</h1>
         <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
-          {isLoading ? 'Загрузка...' : `${data?.meta.total ?? 0} заказов`}
+          {isLoading
+            ? 'Загрузка...'
+            : q
+              ? `Найдено: ${orders.length} из ${accOrders.length} загруженных`
+              : `${data?.meta.total ?? 0} заказов`}
         </p>
       </div>
 
@@ -300,6 +314,42 @@ export default function OrdersPage() {
             </button>
           );
         })}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Поиск по № заказа, городу, адресу"
+          className="w-full h-10 pl-10 pr-10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            '--tw-ring-color': 'rgba(167,139,250,0.50)',
+          } as React.CSSProperties}
+        />
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: 'rgba(255,255,255,0.30)' }}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3m1.8-5.7a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
+        </svg>
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium transition-opacity hover:opacity-70"
+            style={{ color: 'rgba(255,255,255,0.40)' }}
+            aria-label="Очистить"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -333,7 +383,11 @@ export default function OrdersPage() {
         {!isLoading && !isError && orders.length === 0 && (
           <div className="px-5 py-10 text-center">
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {activeFilter === 'ALL' ? 'Заказов пока нет' : `Нет заказов со статусом "${STATUS_CONFIG[activeFilter]?.label}"`}
+              {q
+                ? `Ничего не найдено по запросу «${searchQuery}». Попробуйте загрузить больше заказов.`
+                : activeFilter === 'ALL'
+                  ? 'Заказов пока нет'
+                  : `Нет заказов со статусом "${STATUS_CONFIG[activeFilter]?.label}"`}
             </p>
           </div>
         )}

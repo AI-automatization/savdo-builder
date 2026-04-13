@@ -10,6 +10,34 @@
 
 ---
 
+## 🔴 Новые задачи для Полата (13.04.2026)
+
+- [ ] **[API-030]** CRUD endpoints для `ProductOptionGroup` / `ProductOptionValue`
+  - **Домен:** `apps/api`, `packages/types`
+  - **Зачем:** Сейчас `CreateVariantDto` принимает `optionValueIds`, но сами option groups нельзя создать через API — ломается связь «размер/цвет → variant». Вариантная торговля (одежда, обувь) не работает.
+  - **Нужно:**
+    - `POST /seller/products/:id/option-groups` — создать группу (name, code, sortOrder)
+    - `PATCH /seller/products/:id/option-groups/:gid` — переименовать/сортировка
+    - `DELETE /seller/products/:id/option-groups/:gid` — удалить (каскадно с values и variants)
+    - `POST /seller/products/:id/option-groups/:gid/values` — создать значение (value, code)
+    - `PATCH /seller/products/:id/option-groups/:gid/values/:vid` — редактировать
+    - `DELETE /seller/products/:id/option-groups/:gid/values/:vid`
+    - Expose `optionGroups` в `GET /seller/products/:id` response (уже в repository include'e, проверить что сериализуется)
+    - Добавить `OptionGroup` / `OptionValue` в `packages/types`
+  - **Почему важно:** Variants готовы на 90% — только этот блок тормозит. После — Азим сделает UI в web-seller + TMA + выбор варианта в buyer checkout.
+
+- [ ] **[API-031]** Продуктовое предупреждение: при удалении ProductOptionGroup нужно удалить все ProductVariant у которых есть хотя бы одна optionValue из этой группы — иначе variant «без размера» в БД.
+  - **Домен:** `apps/api`
+  - **Как:** В `delete option group` use-case — найти все variants с optionValues.optionGroupId=:gid → delete variants (и cartItems/orderItems? нет, эти immutable — вместо этого `isActive=false`)
+
+- [ ] **[API-032]** Расширить `GET /seller/orders` фильтрами: `search` (по последним 6 символам UUID или адресу/городу), `dateFrom`, `dateTo` (ISO date).
+  - **Домен:** `apps/api`
+  - **Зачем:** Продавцу нужно быстро найти заказ по номеру когда клиент звонит («#ABC123»). Client-side поиск работает только по текущей странице.
+  - **Формат:** `GET /seller/orders?search=ABC123&dateFrom=2026-04-10&dateTo=2026-04-13`
+  - **Backend:** `orders.repository.ts` → Prisma `OR` по `id.endsWith(search)` (хак) + `deliveryAddress` contains. Лучше новое поле `shortCode` в Order, 6-значный сгенерированный при create.
+
+---
+
 ## ✅ Разблокировано для Азима (07.04.2026)
 
 > Аудит кода показал: все задачи уже реализованы Абубакиром.
