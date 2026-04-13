@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-04-13 — Сессия 18: API фильтры заказов + Option Groups CRUD
+
+### ✅ [API-032] Фильтры для GET /seller/orders
+- **Важность:** 🟡
+- **Дата:** 13.04.2026
+- **Кто делал:** Полат
+- **Файлы:** `apps/api/src/modules/orders/dto/list-orders.dto.ts`, `repositories/orders.repository.ts`, `use-cases/get-seller-orders.use-case.ts`, `orders.controller.ts`
+- **Что сделано:** Добавлены параметры `search` (ищет по orderNumber, customerFullName, customerPhone, city, addressLine1), `dateFrom`, `dateTo` (ISO8601 фильтр по placedAt).
+
+### ✅ [API-030] CRUD для ProductOptionGroup / ProductOptionValue
+- **Важность:** 🔴
+- **Дата:** 13.04.2026
+- **Кто делал:** Полат
+- **Файлы:** `apps/api/src/modules/products/repositories/option-groups.repository.ts`, `dto/create-option-group.dto.ts`, `dto/update-option-group.dto.ts`, `dto/create-option-value.dto.ts`, `dto/update-option-value.dto.ts`, `products.controller.ts`, `products.module.ts`, `packages/types/src/api/products.ts`
+- **Что сделано:** 6 эндпоинтов (POST/PATCH/DELETE для групп и значений). OptionGroupsRepository с транзакционными удалениями. Типы OptionGroup/OptionValue добавлены в packages/types.
+
+### ✅ [API-031] Деактивация вариантов при удалении OptionGroup
+- **Важность:** 🔴
+- **Дата:** 13.04.2026
+- **Кто делал:** Полат
+- **Файлы:** `apps/api/src/modules/products/repositories/option-groups.repository.ts`
+- **Что сделано:** deleteGroup() в транзакции: находит затронутые варианты → isActive=false → удаляет junction записи → удаляет values → удаляет group.
+
 ## 2026-04-13 — Сессия 17: SEO / OG + поиск заказов + buyer UX + onboarding fix
 
 ### 🔴 [WEB-SELLER-060] Починен BUYER→SELLER onboarding flow
