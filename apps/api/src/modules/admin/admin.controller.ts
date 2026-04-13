@@ -315,6 +315,24 @@ export class AdminController {
     return this.getAnalyticsUseCase.execute();
   }
 
+  // GET /api/v1/admin/analytics/events?page=&limit=&eventName=&storeId=
+  @Get('analytics/events')
+  async getAnalyticsEvents(
+    @CurrentUser() user: JwtPayload,
+    @Query('page')      page      = '1',
+    @Query('limit')     limit     = '50',
+    @Query('eventName') eventName?: string,
+    @Query('storeId')   storeId?: string,
+  ) {
+    await this.resolveAdminUser(user);
+    return this.getAnalyticsUseCase.getEvents({
+      page:      Math.max(Number(page)  || 1,  1),
+      limit:     Math.min(Number(limit) || 50, 100),
+      eventName: eventName || undefined,
+      storeId:   storeId   || undefined,
+    });
+  }
+
   // ── Broadcast ─────────────────────────────────────────────────────────────
 
   // POST /api/v1/admin/broadcast

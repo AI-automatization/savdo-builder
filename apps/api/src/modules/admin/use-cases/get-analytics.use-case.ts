@@ -189,4 +189,30 @@ export class GetAnalyticsUseCase {
 
     return { kpi, ordersPerDay, topStores, funnel, growth };
   }
+
+  async getEvents(opts: {
+    page: number;
+    limit: number;
+    eventName?: string;
+    storeId?: string;
+  }) {
+    const { page, limit, eventName, storeId } = opts;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {};
+    if (eventName) where['eventName'] = eventName;
+    if (storeId)   where['storeId']   = storeId;
+
+    const [events, total] = await this.prisma.$transaction([
+      this.prisma.analyticsEvent.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.analyticsEvent.count({ where }),
+    ]);
+
+    return { events, total };
+  }
 }
