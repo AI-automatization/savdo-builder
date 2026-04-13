@@ -1,6 +1,27 @@
 import { ProductStatus } from '../enums';
 import { StoreRef } from './stores';
 
+// ── Option Groups / Values ────────────────────────────────────────────────────
+
+export interface OptionValue {
+  id: string;
+  optionGroupId: string;
+  value: string;
+  code: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface OptionGroup {
+  id: string;
+  productId: string;
+  name: string;
+  code: string;
+  sortOrder: number;
+  createdAt: string;
+  values: OptionValue[];
+}
+
 // ── Product Variant ───────────────────────────────────────────────────────────
 
 export interface ProductVariant {
@@ -41,6 +62,7 @@ export interface Product extends ProductListItem {
   sku: string | null;
   store: StoreRef;
   variants: ProductVariant[];
+  optionGroups: OptionGroup[];
   createdAt: string;
 }
 

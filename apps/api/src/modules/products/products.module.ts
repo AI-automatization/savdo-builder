@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ProductsController } from './products.controller';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
+import { OptionGroupsRepository } from './repositories/option-groups.repository';
 import { CreateProductUseCase } from './use-cases/create-product.use-case';
 import { UpdateProductUseCase } from './use-cases/update-product.use-case';
 import { ChangeProductStatusUseCase } from './use-cases/change-product-status.use-case';
@@ -20,6 +21,7 @@ import { TelegramModule } from '../telegram/telegram.module';
   providers: [
     ProductsRepository,
     VariantsRepository,
+    OptionGroupsRepository,
     CreateProductUseCase,
     UpdateProductUseCase,
     ChangeProductStatusUseCase,
@@ -29,6 +31,6 @@ import { TelegramModule } from '../telegram/telegram.module';
     DeleteVariantUseCase,
     AdjustStockUseCase,
   ],
-  exports: [ProductsRepository, VariantsRepository],
+  exports: [ProductsRepository, VariantsRepository, OptionGroupsRepository],
 })
 export class ProductsModule {}

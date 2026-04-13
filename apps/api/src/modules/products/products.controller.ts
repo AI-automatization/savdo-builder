@@ -30,6 +30,11 @@ import { DeleteVariantUseCase } from './use-cases/delete-variant.use-case';
 import { AdjustStockUseCase } from './use-cases/adjust-stock.use-case';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
+import { OptionGroupsRepository } from './repositories/option-groups.repository';
+import { CreateOptionGroupDto } from './dto/create-option-group.dto';
+import { UpdateOptionGroupDto } from './dto/update-option-group.dto';
+import { CreateOptionValueDto } from './dto/create-option-value.dto';
+import { UpdateOptionValueDto } from './dto/update-option-value.dto';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
@@ -51,6 +56,7 @@ export class ProductsController {
     private readonly adjustStock: AdjustStockUseCase,
     private readonly productsRepo: ProductsRepository,
     private readonly variantsRepo: VariantsRepository,
+    private readonly optionGroupsRepo: OptionGroupsRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
   ) {}
@@ -231,6 +237,125 @@ export class ProductsController {
     return this.adjustStock.execute(variantId, productId, storeId, dto.delta, dto.reason);
   }
 
+  // ─── Option groups ────────────────────────────────────────────────────────
+
+  @Post('seller/products/:id/option-groups')
+  @UseGuards(JwtAuthGuard)
+  async createOptionGroup(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Body() dto: CreateOptionGroupDto,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    return this.optionGroupsRepo.createGroup(productId, {
+      name: dto.name,
+      code: dto.code,
+      sortOrder: dto.sortOrder,
+    });
+  }
+
+  @Patch('seller/products/:id/option-groups/:gid')
+  @UseGuards(JwtAuthGuard)
+  async updateOptionGroup(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('gid') gid: string,
+    @Body() dto: UpdateOptionGroupDto,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    const group = await this.optionGroupsRepo.findGroupById(gid);
+    if (!group || group.productId !== productId) {
+      throw new DomainException(ErrorCode.OPTION_GROUP_NOT_FOUND, 'Option group not found', HttpStatus.NOT_FOUND);
+    }
+    return this.optionGroupsRepo.updateGroup(gid, { name: dto.name, sortOrder: dto.sortOrder });
+  }
+
+  @Delete('seller/products/:id/option-groups/:gid')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteOptionGroup(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('gid') gid: string,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    const group = await this.optionGroupsRepo.findGroupById(gid);
+    if (!group || group.productId !== productId) {
+      throw new DomainException(ErrorCode.OPTION_GROUP_NOT_FOUND, 'Option group not found', HttpStatus.NOT_FOUND);
+    }
+    await this.optionGroupsRepo.deleteGroup(gid);
+  }
+
+  // ─── Option values ────────────────────────────────────────────────────────
+
+  @Post('seller/products/:id/option-groups/:gid/values')
+  @UseGuards(JwtAuthGuard)
+  async createOptionValue(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('gid') gid: string,
+    @Body() dto: CreateOptionValueDto,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    const group = await this.optionGroupsRepo.findGroupById(gid);
+    if (!group || group.productId !== productId) {
+      throw new DomainException(ErrorCode.OPTION_GROUP_NOT_FOUND, 'Option group not found', HttpStatus.NOT_FOUND);
+    }
+    return this.optionGroupsRepo.createValue(gid, {
+      value: dto.value,
+      code: dto.code,
+      sortOrder: dto.sortOrder,
+    });
+  }
+
+  @Patch('seller/products/:id/option-groups/:gid/values/:vid')
+  @UseGuards(JwtAuthGuard)
+  async updateOptionValue(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('gid') gid: string,
+    @Param('vid') vid: string,
+    @Body() dto: UpdateOptionValueDto,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    const group = await this.optionGroupsRepo.findGroupById(gid);
+    if (!group || group.productId !== productId) {
+      throw new DomainException(ErrorCode.OPTION_GROUP_NOT_FOUND, 'Option group not found', HttpStatus.NOT_FOUND);
+    }
+    const optionValue = await this.optionGroupsRepo.findValueById(vid);
+    if (!optionValue || optionValue.optionGroupId !== gid) {
+      throw new DomainException(ErrorCode.OPTION_VALUE_NOT_FOUND, 'Option value not found', HttpStatus.NOT_FOUND);
+    }
+    return this.optionGroupsRepo.updateValue(vid, { value: dto.value, sortOrder: dto.sortOrder });
+  }
+
+  @Delete('seller/products/:id/option-groups/:gid/values/:vid')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteOptionValue(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('gid') gid: string,
+    @Param('vid') vid: string,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    const group = await this.optionGroupsRepo.findGroupById(gid);
+    if (!group || group.productId !== productId) {
+      throw new DomainException(ErrorCode.OPTION_GROUP_NOT_FOUND, 'Option group not found', HttpStatus.NOT_FOUND);
+    }
+    const optionValue = await this.optionGroupsRepo.findValueById(vid);
+    if (!optionValue || optionValue.optionGroupId !== gid) {
+      throw new DomainException(ErrorCode.OPTION_VALUE_NOT_FOUND, 'Option value not found', HttpStatus.NOT_FOUND);
+    }
+    await this.optionGroupsRepo.deleteValue(vid);
+  }
+
   // ─── Storefront routes (public) ──────────────────────────────────────────
 
   @Get('storefront/stores')
@@ -320,6 +445,16 @@ export class ProductsController {
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────
+
+  private async ensureProductOwnership(productId: string, storeId: string): Promise<void> {
+    const product = await this.productsRepo.findById(productId);
+    if (!product) {
+      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    if (product.storeId !== storeId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
+    }
+  }
 
   private async resolveStoreId(userId: string): Promise<string> {
     const seller = await this.sellersRepo.findByUserId(userId);
