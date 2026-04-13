@@ -77,7 +77,7 @@ export class ProductsRepository {
         ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
       },
       include: {
-        images: { orderBy: { sortOrder: 'asc' } },
+        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -87,7 +87,7 @@ export class ProductsRepository {
     return this.prisma.product.findFirst({
       where: { id, deletedAt: null },
       include: {
-        images: { orderBy: { sortOrder: 'asc' } },
+        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
         variants: {
           where: { deletedAt: null },
           include: { optionValues: { include: { optionValue: true } } },
@@ -105,7 +105,7 @@ export class ProductsRepository {
     return this.prisma.product.findFirst({
       where: { id, status: 'ACTIVE', deletedAt: null },
       include: {
-        images: { orderBy: { sortOrder: 'asc' } },
+        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
         variants: {
           where: { deletedAt: null, isActive: true },
           include: { optionValues: { include: { optionValue: true } } },
@@ -135,7 +135,7 @@ export class ProductsRepository {
         ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
       },
       include: {
-        images: { orderBy: { sortOrder: 'asc' } },
+        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

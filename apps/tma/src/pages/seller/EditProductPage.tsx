@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken } from '@/lib/api';
+import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -21,6 +22,13 @@ interface Variant {
   optionValues: Array<{ optionValue: OptionValue }>;
 }
 
+interface ProductImage {
+  id: string;
+  sortOrder: number;
+  isPrimary: boolean;
+  media: { objectKey: string; mimeType: string };
+}
+
 interface Product {
   id: string;
   title: string;
@@ -28,6 +36,28 @@ interface Product {
   basePrice: number;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   variants?: Variant[];
+  images?: ProductImage[];
+}
+
+function uploadWithProgress(
+  url: string,
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(new Error('Upload failed'));
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.send(file);
+  });
 }
 
 export default function EditProductPage() {
@@ -43,9 +73,15 @@ export default function EditProductPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
 
-  // stock editing: variantId → new stock value (string for input)
+  // Stock editing
   const [stockEdits, setStockEdits] = useState<Record<string, string>>({});
   const [stockSaving, setStockSaving] = useState<string | null>(null);
+
+  // Photo upload
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
@@ -69,7 +105,6 @@ export default function EditProductPage() {
       setTitle(p.title);
       setDescription(p.description ?? '');
       setPrice(String(p.basePrice));
-      // init stock edit inputs
       if (p.variants) {
         const initial: Record<string, string> = {};
         for (const v of p.variants) initial[v.id] = String(v.stockQuantity);
@@ -114,7 +149,6 @@ export default function EditProductPage() {
         method: 'POST',
         body: { delta, reason: 'Ручная корректировка в TMA' },
       });
-      // update local state
       setProduct((prev) =>
         prev
           ? {
@@ -150,7 +184,9 @@ export default function EditProductPage() {
       });
       tg?.HapticFeedback.notificationOccurred('success');
       showToast('✅ Сохранено');
-      setProduct((prev) => prev ? { ...prev, title: title.trim(), description: description.trim() || null, basePrice: Number(price) } : prev);
+      setProduct((prev) =>
+        prev ? { ...prev, title: title.trim(), description: description.trim() || null, basePrice: Number(price) } : prev,
+      );
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Ошибка сохранения';
       setError(msg);
@@ -215,6 +251,62 @@ export default function EditProductPage() {
     }
   };
 
+  const handleAddPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    if (fileRef.current) fileRef.current.value = '';
+
+    setPhotoUploading(true);
+    setUploadProgress(0);
+    try {
+      const { mediaFileId, uploadUrl } = await api<{ mediaFileId: string; uploadUrl: string }>(
+        '/media/upload-url',
+        {
+          method: 'POST',
+          body: { purpose: 'product_image', mimeType: file.type, sizeBytes: file.size },
+        },
+      );
+
+      await uploadWithProgress(uploadUrl, file, setUploadProgress);
+      await api(`/media/${mediaFileId}/confirm`, { method: 'POST' });
+
+      const newImage = await api<ProductImage>(`/seller/products/${id}/images`, {
+        method: 'POST',
+        body: { mediaId: mediaFileId },
+      });
+
+      setProduct((prev) =>
+        prev ? { ...prev, images: [...(prev.images ?? []), newImage] } : prev,
+      );
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('✅ Фото добавлено');
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Ошибка загрузки фото');
+    } finally {
+      setPhotoUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleDeletePhoto = async (imageId: string) => {
+    if (!id) return;
+    setDeletingImageId(imageId);
+    try {
+      await api(`/seller/products/${id}/images/${imageId}`, { method: 'DELETE' });
+      setProduct((prev) =>
+        prev ? { ...prev, images: prev.images?.filter((img) => img.id !== imageId) } : prev,
+      );
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('🗑 Фото удалено');
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Ошибка удаления фото');
+    } finally {
+      setDeletingImageId(null);
+    }
+  };
+
   return (
     <AppShell role="SELLER">
       {/* Toast */}
@@ -233,6 +325,7 @@ export default function EditProductPage() {
             fontSize: 14,
             zIndex: 100,
             backdropFilter: 'blur(12px)',
+            whiteSpace: 'nowrap',
           }}
         >
           {toast}
@@ -272,11 +365,7 @@ export default function EditProductPage() {
               «{product?.title}» будет удалён без возможности восстановления.
             </p>
             <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                className="flex-1"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
+              <Button variant="ghost" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>
                 Отмена
               </Button>
               <button
@@ -306,9 +395,7 @@ export default function EditProductPage() {
           Редактировать товар
         </h1>
 
-        {loading && (
-          <div className="flex justify-center py-10"><Spinner size={32} /></div>
-        )}
+        {loading && <div className="flex justify-center py-10"><Spinner size={32} /></div>}
 
         {!loading && loadError && (
           <GlassCard className="p-4 text-center">
@@ -319,6 +406,7 @@ export default function EditProductPage() {
 
         {!loading && !loadError && product && (
           <>
+            {/* Основная информация */}
             <GlassCard className="p-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -364,6 +452,149 @@ export default function EditProductPage() {
               )}
             </GlassCard>
 
+            {/* Фото */}
+            <GlassCard className="p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Фото товара
+                </p>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={photoUploading}
+                  style={{
+                    fontSize: 12,
+                    color: '#A78BFA',
+                    background: 'none',
+                    border: 'none',
+                    cursor: photoUploading ? 'wait' : 'pointer',
+                    opacity: photoUploading ? 0.5 : 1,
+                  }}
+                >
+                  {photoUploading ? `${uploadProgress}% загрузка...` : '+ Добавить'}
+                </button>
+              </div>
+
+              {/* Прогресс бар при загрузке */}
+              {photoUploading && (
+                <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.10)', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${uploadProgress}%`,
+                      background: 'linear-gradient(90deg, #7C3AED, #A78BFA)',
+                      transition: 'width 0.2s',
+                      borderRadius: 4,
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Grid фотографий */}
+              {(product.images?.length ?? 0) > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {product.images!.map((img) => {
+                    const url = getImageUrl(img.media.objectKey);
+                    return (
+                      <div key={img.id} style={{ position: 'relative', width: 72, height: 72 }}>
+                        {url ? (
+                          <img
+                            src={url}
+                            alt=""
+                            style={{
+                              width: 72,
+                              height: 72,
+                              objectFit: 'cover',
+                              borderRadius: 10,
+                              border: img.isPrimary
+                                ? '2px solid #A78BFA'
+                                : '2px solid rgba(255,255,255,0.10)',
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 72,
+                              height: 72,
+                              borderRadius: 10,
+                              background: 'rgba(255,255,255,0.08)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 20,
+                            }}
+                          >
+                            🖼
+                          </div>
+                        )}
+                        {img.isPrimary && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              bottom: 2,
+                              left: 2,
+                              background: 'rgba(124,58,237,0.85)',
+                              color: '#fff',
+                              fontSize: 8,
+                              fontWeight: 700,
+                              padding: '1px 4px',
+                              borderRadius: 4,
+                            }}
+                          >
+                            MAIN
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleDeletePhoto(img.id)}
+                          disabled={deletingImageId === img.id}
+                          style={{
+                            position: 'absolute',
+                            top: -4,
+                            right: -4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            background: 'rgba(248,113,113,0.90)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: 9,
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            lineHeight: 1,
+                          }}
+                        >
+                          {deletingImageId === img.id ? '…' : '✕'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  style={{
+                    border: '1px dashed rgba(167,139,250,0.30)',
+                    borderRadius: 12,
+                    padding: '16px 0',
+                    background: 'rgba(167,139,250,0.05)',
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                >
+                  <p className="text-sm" style={{ color: 'rgba(167,139,250,0.70)' }}>📷 Добавить фото</p>
+                </button>
+              )}
+
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={handleAddPhoto}
+              />
+            </GlassCard>
+
             {/* Остаток по вариантам */}
             {product.variants && product.variants.length > 0 && (
               <GlassCard className="p-4 flex flex-col gap-3">
@@ -394,12 +625,7 @@ export default function EditProductPage() {
                         onChange={(e) =>
                           setStockEdits((prev) => ({ ...prev, [v.id]: e.target.value }))
                         }
-                        style={{
-                          ...inputStyle,
-                          flex: 1,
-                          padding: '8px 12px',
-                          fontSize: 13,
-                        }}
+                        style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
                       />
                       <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>
                       <button
@@ -425,55 +651,32 @@ export default function EditProductPage() {
               </GlassCard>
             )}
 
-            <Button
-              onClick={handleSave}
-              disabled={!isValid || saving}
-              className="w-full"
-            >
+            <Button onClick={handleSave} disabled={!isValid || saving} className="w-full">
               {saving ? 'Сохранение...' : 'Сохранить изменения'}
             </Button>
 
-            {/* Divider */}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
 
-            {/* Status actions */}
             {product.status !== 'HIDDEN_BY_ADMIN' && (
               <div className="flex flex-col gap-2">
                 {product.status === 'ACTIVE' && (
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    disabled={statusChanging}
-                    onClick={() => handleStatusChange('ARCHIVED')}
-                  >
+                  <Button variant="ghost" className="w-full" disabled={statusChanging} onClick={() => handleStatusChange('ARCHIVED')}>
                     {statusChanging ? '...' : '📦 Архивировать'}
                   </Button>
                 )}
                 {product.status === 'DRAFT' && (
-                  <>
-                    <Button
-                      className="w-full"
-                      disabled={statusChanging}
-                      onClick={() => handleStatusChange('ACTIVE')}
-                    >
-                      {statusChanging ? '...' : '▶ Опубликовать'}
-                    </Button>
-                  </>
+                  <Button className="w-full" disabled={statusChanging} onClick={() => handleStatusChange('ACTIVE')}>
+                    {statusChanging ? '...' : '▶ Опубликовать'}
+                  </Button>
                 )}
                 {product.status === 'ARCHIVED' && (
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    disabled={statusChanging}
-                    onClick={() => handleStatusChange('DRAFT')}
-                  >
+                  <Button variant="ghost" className="w-full" disabled={statusChanging} onClick={() => handleStatusChange('DRAFT')}>
                     {statusChanging ? '...' : '📝 Восстановить в черновик'}
                   </Button>
                 )}
               </div>
             )}
 
-            {/* Delete — only for DRAFT or ARCHIVED */}
             {(product.status === 'DRAFT' || product.status === 'ARCHIVED') && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}

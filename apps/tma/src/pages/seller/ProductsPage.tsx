@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -8,12 +9,19 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 
+interface ProductImage {
+  id: string;
+  isPrimary: boolean;
+  media: { objectKey: string };
+}
+
 interface Product {
   id: string;
   title: string;
   basePrice: number;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   description: string | null;
+  images?: ProductImage[];
 }
 
 
@@ -97,13 +105,20 @@ export default function SellerProductsPage() {
           </GlassCard>
         )}
 
-        {!loading && products.map((product) => (
+        {!loading && products.map((product) => {
+          const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
+          const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
+          return (
           <GlassCard key={product.id} className="p-4 flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden"
               style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.20)' }}
             >
-              🛍
+              {thumbUrl ? (
+                <img src={thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                '🛍'
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
@@ -163,7 +178,8 @@ export default function SellerProductsPage() {
               )}
             </div>
           </GlassCard>
-        ))}
+          );
+        })}
       </div>
     </AppShell>
   );

@@ -35,6 +35,8 @@ import { CreateOptionGroupDto } from './dto/create-option-group.dto';
 import { UpdateOptionGroupDto } from './dto/update-option-group.dto';
 import { CreateOptionValueDto } from './dto/create-option-value.dto';
 import { UpdateOptionValueDto } from './dto/update-option-value.dto';
+import { AttachProductImageDto } from './dto/attach-product-image.dto';
+import { PrismaService } from '../../database/prisma.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
@@ -59,6 +61,7 @@ export class ProductsController {
     private readonly optionGroupsRepo: OptionGroupsRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   // ─── Seller routes ────────────────────────────────────────────────────────
@@ -354,6 +357,52 @@ export class ProductsController {
       throw new DomainException(ErrorCode.OPTION_VALUE_NOT_FOUND, 'Option value not found', HttpStatus.NOT_FOUND);
     }
     await this.optionGroupsRepo.deleteValue(vid);
+  }
+
+  // ─── Product images ───────────────────────────────────────────────────────
+
+  @Post('seller/products/:id/images')
+  @UseGuards(JwtAuthGuard)
+  async attachProductImage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Body() dto: AttachProductImageDto,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+
+    if (dto.isPrimary) {
+      await this.prisma.productImage.updateMany({
+        where: { productId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+    }
+
+    const existingCount = await this.prisma.productImage.count({ where: { productId } });
+    const isPrimary = dto.isPrimary ?? existingCount === 0;
+
+    return this.prisma.productImage.create({
+      data: {
+        productId,
+        mediaId: dto.mediaId,
+        sortOrder: dto.sortOrder ?? existingCount,
+        isPrimary,
+      },
+      include: { media: true },
+    });
+  }
+
+  @Delete('seller/products/:id/images/:imageId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async detachProductImage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('imageId') imageId: string,
+  ): Promise<void> {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    await this.prisma.productImage.deleteMany({ where: { id: imageId, productId } });
   }
 
   // ─── Storefront routes (public) ──────────────────────────────────────────

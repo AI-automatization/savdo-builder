@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { glass } from '@/lib/styles';
 
 interface SizeRow {
-  label: string; // S, M, L, XL …
+  label: string;
   stock: number;
 }
 
@@ -16,26 +16,54 @@ function slugify(text: string) {
   return text.trim().toUpperCase().replace(/[^A-ZА-ЯЁ0-9]/gi, '-').slice(0, 20);
 }
 
+function uploadWithProgress(
+  url: string,
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(new Error('Upload failed'));
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.send(file);
+  });
+}
+
 export default function AddProductPage() {
   const navigate = useNavigate();
   const { tg } = useTelegram();
 
-  const [title, setTitle]           = useState('');
+  const [title, setTitle]             = useState('');
   const [description, setDescription] = useState('');
-  const [price, setPrice]           = useState('');
-  const [stock, setStock]           = useState('0');
+  const [price, setPrice]             = useState('');
+  const [stock, setStock]             = useState('0');
 
   // Размеры
-  const [hasSizes, setHasSizes]     = useState(false);
-  const [sizes, setSizes]           = useState<SizeRow[]>([
+  const [hasSizes, setHasSizes] = useState(false);
+  const [sizes, setSizes]       = useState<SizeRow[]>([
     { label: 'S', stock: 0 },
     { label: 'M', stock: 0 },
     { label: 'L', stock: 0 },
   ]);
-  const [sizeInput, setSizeInput]   = useState('');
+  const [sizeInput, setSizeInput] = useState('');
 
-  const [saving, setSaving]         = useState(false);
-  const [error, setError]           = useState('');
+  // Фото
+  const fileRef               = useRef<HTMLInputElement>(null);
+  const [photoFile, setPhotoFile]     = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState('');
 
   useEffect(() => {
     tg?.BackButton.show();
@@ -73,6 +101,51 @@ export default function AddProductPage() {
     setSizes((prev) =>
       prev.map((s) => s.label === label ? { ...s, stock: Math.max(0, Number(val) || 0) } : s),
     );
+  };
+
+  const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview('');
+    setUploadProgress(0);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const uploadPhotoForProduct = async (pid: string, file: File): Promise<void> => {
+    setPhotoUploading(true);
+    setUploadProgress(0);
+    try {
+      // 1. Запросить presigned URL
+      const { mediaFileId, uploadUrl } = await api<{ mediaFileId: string; uploadUrl: string; objectKey: string }>(
+        '/media/upload-url',
+        {
+          method: 'POST',
+          body: { purpose: 'product_image', mimeType: file.type, sizeBytes: file.size },
+        },
+      );
+
+      // 2. Загрузить напрямую в R2 с прогрессом
+      await uploadWithProgress(uploadUrl, file, setUploadProgress);
+
+      // 3. Подтвердить загрузку
+      await api(`/media/${mediaFileId}/confirm`, { method: 'POST' });
+
+      // 4. Прикрепить к товару
+      await api(`/seller/products/${pid}/images`, {
+        method: 'POST',
+        body: { mediaId: mediaFileId },
+      });
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
   const handleSave = async (publish: boolean) => {
@@ -124,7 +197,12 @@ export default function AddProductPage() {
         });
       }
 
-      // 3. Публикация
+      // 3. Загрузить фото если выбрано
+      if (photoFile) {
+        await uploadPhotoForProduct(pid, photoFile);
+      }
+
+      // 4. Публикация
       if (publish) {
         await api(`/seller/products/${pid}/status`, {
           method: 'PATCH',
@@ -192,6 +270,81 @@ export default function AddProductPage() {
           </div>
         </GlassCard>
 
+        {/* Фото товара */}
+        <GlassCard className="p-4 flex flex-col gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            Фото товара
+          </p>
+
+          {photoPreview ? (
+            <div className="flex items-start gap-3">
+              <img
+                src={photoPreview}
+                alt="preview"
+                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
+              />
+              <div className="flex flex-col gap-1 flex-1 min-w-0">
+                <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  {photoFile?.name}
+                </p>
+                {photoUploading && (
+                  <div className="flex flex-col gap-1">
+                    <div
+                      style={{
+                        height: 4, borderRadius: 4,
+                        background: 'rgba(255,255,255,0.10)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${uploadProgress}%`,
+                          background: 'linear-gradient(90deg, #7C3AED, #A78BFA)',
+                          transition: 'width 0.2s',
+                          borderRadius: 4,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.70)' }}>
+                      {uploadProgress}%
+                    </p>
+                  </div>
+                )}
+                <button
+                  onClick={removePhoto}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                >
+                  <span className="text-xs" style={{ color: 'rgba(248,113,113,0.65)' }}>✕ Удалить</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileRef.current?.click()}
+              style={{
+                border: '1px dashed rgba(167,139,250,0.30)',
+                borderRadius: 12,
+                padding: '20px 0',
+                background: 'rgba(167,139,250,0.05)',
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              <p className="text-sm" style={{ color: 'rgba(167,139,250,0.70)' }}>📷 Выбрать фото</p>
+              <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>JPG, PNG, WEBP</p>
+            </button>
+          )}
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={pickPhoto}
+          />
+        </GlassCard>
+
         {/* Остаток / размеры */}
         <GlassCard className="p-4 flex flex-col gap-4">
           {/* Переключатель размеров */}
@@ -235,7 +388,6 @@ export default function AddProductPage() {
 
           {hasSizes ? (
             <div className="flex flex-col gap-3">
-              {/* Существующие размеры */}
               {sizes.map((sz) => (
                 <div key={sz.label} className="flex items-center gap-2">
                   <div
@@ -267,7 +419,6 @@ export default function AddProductPage() {
                 </div>
               ))}
 
-              {/* Добавить размер */}
               <div className="flex gap-2">
                 <input
                   value={sizeInput}
@@ -322,7 +473,7 @@ export default function AddProductPage() {
         <div className="flex flex-col gap-2">
           <Button
             onClick={() => handleSave(true)}
-            disabled={!isValid || saving}
+            disabled={!isValid || saving || photoUploading}
             className="w-full"
           >
             {saving ? 'Сохранение...' : '▶ Создать и опубликовать'}
@@ -330,7 +481,7 @@ export default function AddProductPage() {
           <Button
             variant="ghost"
             onClick={() => handleSave(false)}
-            disabled={!isValid || saving}
+            disabled={!isValid || saving || photoUploading}
             className="w-full"
           >
             Создать как черновик
