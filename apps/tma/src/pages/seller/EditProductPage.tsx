@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, getToken } from '@/lib/api';
+import { api, getToken, ApiError } from '@/lib/api';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
@@ -280,9 +280,10 @@ export default function EditProductPage() {
       );
       tg?.HapticFeedback.notificationOccurred('success');
       showToast('✅ Фото добавлено');
-    } catch {
+    } catch (e: unknown) {
+      const isStorageDown = e instanceof ApiError && e.status === 503;
       tg?.HapticFeedback.notificationOccurred('error');
-      showToast('❌ Ошибка загрузки фото');
+      showToast(isStorageDown ? '⚠️ Загрузка фото временно недоступна' : '❌ Ошибка загрузки фото');
     } finally {
       setPhotoUploading(false);
       setUploadProgress(0);

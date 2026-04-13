@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -197,9 +197,21 @@ export default function AddProductPage() {
         });
       }
 
-      // 3. Загрузить фото если выбрано
+      // 3. Загрузить фото если выбрано (отдельный try — ошибка фото не отменяет товар)
       if (photoFile) {
-        await uploadPhotoForProduct(pid, photoFile);
+        try {
+          await uploadPhotoForProduct(pid, photoFile);
+        } catch (photoErr: unknown) {
+          const isStorageDown = photoErr instanceof ApiError && photoErr.status === 503;
+          setError(
+            isStorageDown
+              ? 'Товар создан. Загрузка фото временно недоступна — добавьте фото позже.'
+              : 'Товар создан, но фото не загружено. Попробуйте добавить его позже.',
+          );
+          tg?.HapticFeedback.notificationOccurred('warning');
+          navigate('/seller/products');
+          return;
+        }
       }
 
       // 4. Публикация
