@@ -123,6 +123,7 @@ function OrdersList() {
   const [activeFilter, setActiveFilter] = useState<OrderStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [accOrders, setAccOrders] = useState<OrderListItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading, isError, isFetching } = useOrders({
     ...(activeFilter !== "ALL" ? { status: activeFilter } : {}),
@@ -137,7 +138,14 @@ function OrdersList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.data]);
 
-  const orders = accOrders;
+  const q = searchQuery.trim().toLowerCase().replace(/^#/, "");
+  const orders = q
+    ? accOrders.filter((o) =>
+        shortId(o.id).toLowerCase().includes(q) ||
+        o.deliveryAddress.city.toLowerCase().includes(q) ||
+        o.deliveryAddress.street.toLowerCase().includes(q),
+      )
+    : accOrders;
   const hasMore = data ? page * PAGE_LIMIT < data.meta.total : false;
   const isLoadingMore = isFetching && page > 1;
 
@@ -145,6 +153,7 @@ function OrdersList() {
     setActiveFilter(key);
     setPage(1);
     setAccOrders([]);
+    setSearchQuery("");
   }
 
   return (
@@ -170,6 +179,28 @@ function OrdersList() {
         })}
       </div>
 
+      {/* Search — only show if user has enough orders */}
+      {accOrders.length > 3 && (
+        <div className="relative">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Поиск по № заказа или адресу"
+            className="w-full h-10 pl-10 pr-10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2"
+            style={{ ...inputStyle, ["--tw-ring-color" as string]: "rgba(167,139,250,0.50)" } as React.CSSProperties}
+          />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "rgba(255,255,255,0.30)" }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3m1.8-5.7a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
+          </svg>
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium transition-opacity hover:opacity-70" style={{ color: "rgba(255,255,255,0.40)" }} aria-label="Очистить">
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
       {isLoading && (
         <div className="flex flex-col gap-3">
           <SkeletonCard />
@@ -186,10 +217,23 @@ function OrdersList() {
 
       {!isLoading && !isError && orders.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-3xl mb-3">📦</p>
+          <p className="text-3xl mb-3">{q ? "🔍" : "📦"}</p>
           <p className="text-sm font-medium text-white/60">
-            {activeFilter === "ALL" ? "У вас пока нет заказов" : `Нет заказов со статусом "${STATUS_CONFIG[activeFilter]?.label}"`}
+            {q
+              ? `Ничего не найдено по запросу «${searchQuery}»`
+              : activeFilter === "ALL"
+                ? "У вас пока нет заказов"
+                : `Нет заказов со статусом "${STATUS_CONFIG[activeFilter]?.label}"`}
           </p>
+          {!q && activeFilter === "ALL" && (
+            <Link
+              href="/"
+              className="inline-block mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.30)" }}
+            >
+              Перейти к магазинам
+            </Link>
+          )}
         </div>
       )}
 
