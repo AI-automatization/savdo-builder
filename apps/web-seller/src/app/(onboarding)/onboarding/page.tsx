@@ -7,6 +7,7 @@ import { useCreateStore, useSubmitStore, useStore } from '../../../hooks/use-sel
 import { useUpdateSellerProfile } from '../../../hooks/use-seller';
 import { useCreateProduct } from '../../../hooks/use-products';
 import { useAuth } from '../../../lib/auth/context';
+import { applySeller } from '../../../lib/api/seller.api';
 import { track } from '../../../lib/analytics';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -484,8 +485,8 @@ function Step4({
 
 export default function OnboardingPage() {
   const router      = useRouter();
-  const { isAuthenticated } = useAuth();
-  const { data: store, isLoading: storeLoading } = useStore();
+  const { isAuthenticated, user, login } = useAuth();
+  const { data: store, isLoading: storeLoading } = useStore({ enabled: user?.role === 'SELLER' });
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string>();
   const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
@@ -518,6 +519,12 @@ export default function OnboardingPage() {
     if (!step1Data) return;
     setError(undefined);
     try {
+      // Если пользователь ещё BUYER — сначала делаем upgrade до SELLER и получаем новые токены
+      if (user && user.role !== 'SELLER') {
+        const applied = await applySeller();
+        login(applied.accessToken, applied.refreshToken, applied.user);
+      }
+
       // Normalise telegram username
       const telegramUsername = data.telegramUsername.startsWith('@')
         ? data.telegramUsername

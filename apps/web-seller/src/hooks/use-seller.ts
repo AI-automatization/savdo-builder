@@ -38,11 +38,12 @@ export function useUpdateSellerProfile() {
 
 // ── Store ──────────────────────────────────────────────────────────────────────
 
-export function useStore() {
+export function useStore(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['seller', 'store'],
     queryFn: getStore,
     staleTime: 5 * 60 * 1000,
+    enabled: options?.enabled ?? true,
   });
 }
 

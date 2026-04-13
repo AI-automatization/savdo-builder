@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-04-13 — Сессия 17: SEO / OG + поиск заказов + buyer UX + onboarding fix
+
+### 🔴 [WEB-SELLER-060] Починен BUYER→SELLER onboarding flow
+- **Важность:** 🔴 КРИТИЧЕСКИЙ
+- **Дата:** 13.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`, `lib/api/seller.api.ts`, `hooks/use-seller.ts`
+- **Что сделано:**
+  - Onboarding вызывал `POST /seller/store` напрямую. Для BUYER это 403 (endpoint требует role=SELLER) — значит **ни один BUYER не мог стать продавцом через веб**.
+  - Теперь Step2 сначала вызывает `POST /seller/apply` (Polat, 5405462) если `user.role !== 'SELLER'` — меняется роль, приходят новые токены, сохраняются через `login()`.
+  - Добавлен `applySeller()` в `lib/api/seller.api.ts`, экспортирован тип `ApplySellerResponse`.
+  - `useStore()` теперь принимает `{ enabled }` — для BUYER на onboarding не дёргаем `/seller/store` (вернул бы 403 в консоль).
+
+---
+
 ## 2026-04-13 — Сессия 17: SEO / OG + поиск заказов + buyer UX
 
 ### ✅ [WEB-BUYER-050] web-buyer orders: поиск + CTA для пустого списка

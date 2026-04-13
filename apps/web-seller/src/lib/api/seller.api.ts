@@ -4,8 +4,22 @@ import type {
   Store,
   GlobalCategory,
   StoreCategory,
+  AuthUser,
 } from 'types';
 import { apiClient } from './client';
+
+// ── Apply Seller (BUYER → SELLER) ──────────────────────────────────────────────
+
+export interface ApplySellerResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: AuthUser;
+}
+
+export async function applySeller(): Promise<ApplySellerResponse> {
+  const res = await apiClient.post<ApplySellerResponse>('/seller/apply');
+  return res.data;
+}
 
 // ── Seller Profile ─────────────────────────────────────────────────────────────
 
