@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { api, getToken, ApiError } from '@/lib/api';
+import { api, apiUpload, getToken, ApiError } from '@/lib/api';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
@@ -26,7 +26,7 @@ interface ProductImage {
   id: string;
   sortOrder: number;
   isPrimary: boolean;
-  media: { objectKey: string; mimeType: string };
+  media: { id: string; objectKey: string; mimeType: string };
 }
 
 interface Product {
@@ -39,26 +39,6 @@ interface Product {
   images?: ProductImage[];
 }
 
-function uploadWithProgress(
-  url: string,
-  file: File,
-  onProgress: (pct: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300
-        ? resolve()
-        : reject(new Error('Upload failed'));
-    xhr.onerror = () => reject(new Error('Network error'));
-    xhr.open('PUT', url);
-    xhr.setRequestHeader('Content-Type', file.type);
-    xhr.send(file);
-  });
-}
 
 export default function EditProductPage() {
   const { id } = useParams<{ id: string }>();
@@ -270,22 +250,18 @@ export default function EditProductPage() {
     setPhotoUploading(true);
     setUploadProgress(0);
     try {
-      const { mediaFileId, uploadUrl } = await api<{ mediaFileId: string; uploadUrl: string }>(
-        '/media/upload-url',
-        {
-          method: 'POST',
-          body: { purpose: 'product_image', mimeType: file.type, sizeBytes: file.size },
-        },
+      const form = new FormData();
+      form.append('file', file);
+      form.append('purpose', 'product_image');
+      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+        '/media/upload',
+        form,
+        setUploadProgress,
       );
-
-      await uploadWithProgress(uploadUrl, file, setUploadProgress);
-      await api(`/media/${mediaFileId}/confirm`, { method: 'POST' });
-
       const newImage = await api<ProductImage>(`/seller/products/${id}/images`, {
         method: 'POST',
         body: { mediaId: mediaFileId },
       });
-
       setProduct((prev) =>
         prev ? { ...prev, images: [...(prev.images ?? []), newImage] } : prev,
       );
@@ -294,11 +270,7 @@ export default function EditProductPage() {
     } catch (e: unknown) {
       tg?.HapticFeedback.notificationOccurred('error');
       if (e instanceof ApiError && e.status === 503) {
-        showToast('⚠️ R2 хранилище не настроено — обратитесь к разработчику');
-      } else if (e instanceof Error && e.message === 'Network error') {
-        showToast('❌ Сетевая ошибка: проверьте CORS настройки R2');
-      } else if (e instanceof Error && e.message === 'Upload failed') {
-        showToast('❌ R2 отклонил загрузку (неверные ключи или bucket)');
+        showToast('⚠️ Telegram Storage не настроен — добавьте TELEGRAM_STORAGE_CHANNEL_ID в Railway');
       } else {
         showToast('❌ Ошибка загрузки фото');
       }
@@ -512,7 +484,7 @@ export default function EditProductPage() {
               {(product.images?.length ?? 0) > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {product.images!.map((img) => {
-                    const url = getImageUrl(img.media.objectKey);
+                    const url = getImageUrl(img.media.objectKey, img.media.id);
                     return (
                       <div key={img.id} style={{ position: 'relative', width: 72, height: 72 }}>
                         {url ? (

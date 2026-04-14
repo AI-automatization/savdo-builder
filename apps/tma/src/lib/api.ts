@@ -58,3 +58,33 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
 
   return res.json() as Promise<T>;
 }
+
+export async function apiUpload<T = unknown>(
+  path: string,
+  form: FormData,
+  onProgress?: (pct: number) => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText) as T); }
+        catch { reject(new ApiError(xhr.status, 'Invalid JSON response')); }
+      } else {
+        let message = `API error ${xhr.status}`;
+        try { message = (JSON.parse(xhr.responseText) as { message?: string }).message ?? message; } catch { /* ignore */ }
+        if (xhr.status === 401) { setToken(null); _onUnauthorized?.(); }
+        reject(new ApiError(xhr.status, message));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error'));
+    const base = (import.meta.env.VITE_API_URL as string) ?? '';
+    xhr.open('POST', `${base}/api/v1${path}`);
+    if (_token) xhr.setRequestHeader('Authorization', `Bearer ${_token}`);
+    // НЕ ставить Content-Type — браузер сам добавит multipart/form-data с boundary
+    xhr.send(form);
+  });
+}

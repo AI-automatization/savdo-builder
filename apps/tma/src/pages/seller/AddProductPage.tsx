@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, ApiError } from '@/lib/api';
+import { api, apiUpload, ApiError } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -16,26 +16,6 @@ function slugify(text: string) {
   return text.trim().toUpperCase().replace(/[^A-ZА-ЯЁ0-9]/gi, '-').slice(0, 20);
 }
 
-function uploadWithProgress(
-  url: string,
-  file: File,
-  onProgress: (pct: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300
-        ? resolve()
-        : reject(new Error('Upload failed'));
-    xhr.onerror = () => reject(new Error('Network error'));
-    xhr.open('PUT', url);
-    xhr.setRequestHeader('Content-Type', file.type);
-    xhr.send(file);
-  });
-}
 
 export default function AddProductPage() {
   const navigate = useNavigate();
@@ -124,22 +104,14 @@ export default function AddProductPage() {
     setPhotoUploading(true);
     setUploadProgress(0);
     try {
-      // 1. Запросить presigned URL
-      const { mediaFileId, uploadUrl } = await api<{ mediaFileId: string; uploadUrl: string; objectKey: string }>(
-        '/media/upload-url',
-        {
-          method: 'POST',
-          body: { purpose: 'product_image', mimeType: file.type, sizeBytes: file.size },
-        },
+      const form = new FormData();
+      form.append('file', file);
+      form.append('purpose', 'product_image');
+      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+        '/media/upload',
+        form,
+        setUploadProgress,
       );
-
-      // 2. Загрузить напрямую в R2 с прогрессом
-      await uploadWithProgress(uploadUrl, file, setUploadProgress);
-
-      // 3. Подтвердить загрузку
-      await api(`/media/${mediaFileId}/confirm`, { method: 'POST' });
-
-      // 4. Прикрепить к товару
       await api(`/seller/products/${pid}/images`, {
         method: 'POST',
         body: { mediaId: mediaFileId },
