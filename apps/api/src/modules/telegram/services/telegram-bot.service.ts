@@ -247,7 +247,8 @@ export class TelegramBotService implements OnApplicationBootstrap {
     }
   }
 
-  /** Send a photo (by Telegram file_id) to a channel with a caption */
+  /** Send a document (by Telegram file_id) to a channel with a caption.
+   *  file_id must be from sendDocument upload — cannot be used with sendPhoto. */
   async sendPhotoToChannel(
     channelId: string,
     fileId: string,
@@ -257,16 +258,16 @@ export class TelegramBotService implements OnApplicationBootstrap {
   ): Promise<void> {
     if (!this.botToken) return;
     try {
-      await axios.post(`${this.apiBase}/sendPhoto`, {
+      await axios.post(`${this.apiBase}/sendDocument`, {
         chat_id: channelId,
-        photo: fileId,
+        document: fileId,
         caption,
         ...(parseMode ? { parse_mode: parseMode } : {}),
         ...(urlButtons ? { reply_markup: { inline_keyboard: urlButtons } } : {}),
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`sendPhotoToChannel failed for ${channelId}: ${msg}`);
+      this.logger.error(`sendDocumentToChannel failed for ${channelId}: ${msg}`);
       // Fallback — отправить без фото
       await this.sendToChannel(channelId, caption, urlButtons, parseMode);
     }

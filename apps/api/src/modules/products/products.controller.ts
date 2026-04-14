@@ -515,7 +515,8 @@ export class ProductsController {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
     if (m.bucket === 'telegram') {
-      return `/api/v1/media/proxy/${m.id}`;
+      const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+      return `${appUrl}/api/v1/media/proxy/${m.id}`;
     }
     const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
     return r2Base ? `${r2Base}/${m.objectKey}` : '';
