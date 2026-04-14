@@ -19,6 +19,17 @@ export class R2StorageService {
     this.configured = Boolean(endpoint && accessKeyId && secretAccessKey);
 
     if (this.configured) {
+      try {
+        new URL(endpoint!); // validate URL format before trusting the value
+      } catch {
+        this.logger.error(
+          `STORAGE_ENDPOINT "${endpoint}" is not a valid URL — media upload disabled`,
+        );
+        this.configured = false;
+      }
+    }
+
+    if (this.configured) {
       this.s3Client = new S3Client({
         endpoint,
         region: 'auto',
@@ -29,7 +40,7 @@ export class R2StorageService {
         forcePathStyle: true,
       });
     } else {
-      this.logger.warn('R2 Storage not configured (STORAGE_ENDPOINT missing) — media upload disabled');
+      this.logger.warn('R2 Storage not configured (STORAGE_ENDPOINT missing or invalid) — media upload disabled');
     }
   }
 
