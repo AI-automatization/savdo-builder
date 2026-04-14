@@ -246,4 +246,29 @@ export class TelegramBotService implements OnApplicationBootstrap {
       this.logger.error(`sendToChannel failed for ${channelId}: ${msg}`);
     }
   }
+
+  /** Send a photo (by Telegram file_id) to a channel with a caption */
+  async sendPhotoToChannel(
+    channelId: string,
+    fileId: string,
+    caption: string,
+    urlButtons?: Array<Array<{ text: string; url: string }>>,
+    parseMode?: 'HTML' | 'Markdown',
+  ): Promise<void> {
+    if (!this.botToken) return;
+    try {
+      await axios.post(`${this.apiBase}/sendPhoto`, {
+        chat_id: channelId,
+        photo: fileId,
+        caption,
+        ...(parseMode ? { parse_mode: parseMode } : {}),
+        ...(urlButtons ? { reply_markup: { inline_keyboard: urlButtons } } : {}),
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`sendPhotoToChannel failed for ${channelId}: ${msg}`);
+      // Fallback — отправить без фото
+      await this.sendToChannel(channelId, caption, urlButtons, parseMode);
+    }
+  }
 }

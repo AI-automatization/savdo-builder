@@ -441,7 +441,11 @@ export class ProductsController {
     if (!store) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
-    return this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
+    const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
+    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }> }>).map((p) => ({
+      ...p,
+      images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+    }));
   }
 
   @Get('stores/:slug/products/:id')
@@ -460,7 +464,11 @@ export class ProductsController {
     if (product.storeId !== store.id) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    return product;
+    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }> };
+    return {
+      ...p,
+      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+    };
   }
 
   // ─── Storefront routes (public) ───────────────────────────────────────────
@@ -479,7 +487,11 @@ export class ProductsController {
       );
     }
 
-    return this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId });
+    const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId });
+    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }> }>).map((p) => ({
+      ...p,
+      images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+    }));
   }
 
   @Get('storefront/products/:id')
@@ -490,10 +502,24 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    return product;
+    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }> };
+    return {
+      ...p,
+      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+    };
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────
+
+  private resolveImageUrl(media: unknown): string {
+    const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
+    if (!m?.objectKey) return '';
+    if (m.bucket === 'telegram') {
+      return `/api/v1/media/proxy/${m.id}`;
+    }
+    const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
+    return r2Base ? `${r2Base}/${m.objectKey}` : '';
+  }
 
   private async ensureProductOwnership(productId: string, storeId: string): Promise<void> {
     const product = await this.productsRepo.findById(productId);

@@ -73,23 +73,30 @@ export class ChangeProductStatusUseCase {
     const store = await this.prisma.store.findUnique({ where: { id: product.storeId } });
     if (!store?.telegramChannelId) return;
 
-    const price   = `${Number(product.basePrice).toLocaleString('ru')} сум`;
+    const price       = `${Number(product.basePrice).toLocaleString('ru')} сум`;
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
     const tmaUrl      = process.env.TMA_URL ?? '';
-    // Deep link → открывает TMA сразу на витрине магазина
-    const deepLink = botUsername && store.slug
+    const deepLink    = botUsername && store.slug
       ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
       : tmaUrl;
     const text    = `🛍 <b>${product.title}</b>\n\n${product.description ? `${product.description}\n\n` : ''}💰 <b>${price}</b>\n\n🏪 ${store.name}`;
+    const buttons = [
+      [{ text: '🛒 Открыть магазин', url: deepLink }],
+      [{ text: '💬 Написать продавцу', url: store.telegramContactLink || deepLink }],
+    ] as Array<Array<{ text: string; url: string }>>;
 
-    await this.telegramBot.sendToChannel(
-      store.telegramChannelId,
-      text,
-      [
-        [{ text: '🛒 Открыть магазин', url: deepLink }],
-        [{ text: '💬 Написать продавцу', url: store.telegramContactLink || deepLink }],
-      ],
-      'HTML',
-    );
+    // Ищем главное фото товара
+    const primaryImage = await this.prisma.productImage.findFirst({
+      where: { productId: product.id, isPrimary: true },
+      include: { media: true },
+    });
+
+    const media = (primaryImage as unknown as { media?: { objectKey?: string; bucket?: string } } | null)?.media;
+    if (media?.bucket === 'telegram' && media.objectKey?.startsWith('tg:')) {
+      const fileId = media.objectKey.replace('tg:', '');
+      await this.telegramBot.sendPhotoToChannel(store.telegramChannelId, fileId, text, buttons, 'HTML');
+    } else {
+      await this.telegramBot.sendToChannel(store.telegramChannelId, text, buttons, 'HTML');
+    }
   }
 }
