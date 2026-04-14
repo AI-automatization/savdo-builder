@@ -23,6 +23,25 @@
 - **Файлы:** `apps/api/src/modules/products/repositories/option-groups.repository.ts`
 - **Что сделано:** deleteGroup() в транзакции: находит затронутые варианты → isActive=false → удаляет junction записи → удаляет values → удаляет group.
 
+---
+
+## 2026-04-14 — Сессия 18: TMA analytics instrumentation
+
+### ✅ [TMA-007] TMA отправляет track events в `/analytics/track`
+- **Важность:** 🟡
+- **Дата:** 14.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/lib/analytics.ts` (new), `apps/tma/src/lib/cart.ts`, `apps/tma/src/pages/buyer/StorePage.tsx`, `apps/tma/src/pages/buyer/CheckoutPage.tsx`
+- **Что сделано:**
+  - До этого TMA не слал ни одного события — покупатели через Telegram были невидимы в `/analytics/seller/summary`.
+  - Создан `lib/analytics.ts` (зеркало web-buyer): `storefrontViewed`, `productViewed`, `addToCart`, `checkoutStarted`, `orderCreated`. `source='tma'` по умолчанию.
+  - `StorePage`: `storefrontViewed` после загрузки (deduped через `trackedRef`), `addToCart` при клике на «+».
+  - `CheckoutPage`: `checkoutStarted` при маунте, `orderCreated` после успешного POST.
+  - В `CartItem` добавлено `storeId` (было только `storeSlug`) — иначе события не знают `store_id`. Старые корзины без `storeId` отфильтровываются `isValidItem` — пользователь получит пустую корзину при первом входе после обновления (приемлемо).
+  - TMA `tsc --noEmit` — 0 ошибок.
+
+---
+
 ## 2026-04-13 — Сессия 17: SEO / OG + поиск заказов + buyer UX + onboarding fix
 
 ### 🔴 [WEB-SELLER-060] Починен BUYER→SELLER onboarding flow

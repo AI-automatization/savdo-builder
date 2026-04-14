@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -31,6 +32,7 @@ export default function StorePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const trackedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -40,6 +42,10 @@ export default function StorePage() {
     ]).then(([storeResult, productsResult]) => {
       if (storeResult.status === 'fulfilled') {
         setStore(storeResult.value);
+        if (trackedRef.current !== storeResult.value.id) {
+          trackedRef.current = storeResult.value.id;
+          track.storefrontViewed(storeResult.value.id, storeResult.value.slug);
+        }
       } else {
         setError(true);
       }
@@ -50,8 +56,9 @@ export default function StorePage() {
   }, [slug]);
 
   const addToCart = (product: Product) => {
+    if (!store) return;
     tg?.HapticFeedback.impactOccurred('light');
-    let cart: Array<{ productId: string; title: string; price: number; qty: number; storeSlug: string; storeName: string }>;
+    let cart: Array<{ productId: string; title: string; price: number; qty: number; storeId: string; storeSlug: string; storeName: string }>;
     try {
       cart = JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
     } catch {
@@ -66,12 +73,14 @@ export default function StorePage() {
         title: product.title,
         price: Number(product.basePrice),
         qty: 1,
+        storeId: store.id,
         storeSlug: slug!,
-        storeName: store?.name ?? '',
+        storeName: store.name,
       });
     }
     localStorage.setItem('savdo_cart', JSON.stringify(cart));
     tg?.HapticFeedback.notificationOccurred('success');
+    track.addToCart(store.id, product.id, null, 1);
   };
 
   if (loading) return <AppShell role="BUYER"><div className="flex justify-center py-10"><Spinner size={32} /></div></AppShell>;

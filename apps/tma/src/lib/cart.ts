@@ -3,6 +3,7 @@ export interface CartItem {
   title: string;
   price: number;
   qty: number;
+  storeId: string;
   storeSlug: string;
   storeName: string;
 }
@@ -17,6 +18,7 @@ function isValidItem(item: unknown): item is CartItem {
     typeof i.title === 'string' &&
     typeof i.price === 'number' && i.price >= 0 &&
     typeof i.qty === 'number' && i.qty > 0 &&
+    typeof i.storeId === 'string' &&
     typeof i.storeSlug === 'string' &&
     typeof i.storeName === 'string'
   );

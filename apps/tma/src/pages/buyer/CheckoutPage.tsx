@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { AppShell } from '@/components/layout/AppShell';
@@ -21,6 +22,15 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
 
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const storeId = items[0]?.storeId;
+
+  useEffect(() => {
+    if (storeId && items.length) {
+      track.checkoutStarted(storeId, items.length, total);
+    }
+    // Fire once on mount for this cart snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim()) {
@@ -38,7 +48,7 @@ export default function CheckoutPage() {
     tg?.MainButton.showProgress();
 
     try {
-      await api('/orders', {
+      const order = await api<{ id: string; totalAmount: number }>('/orders', {
         method: 'POST',
         body: {
           items: items.map((i) => ({ productId: i.productId, quantity: i.qty })),
@@ -48,6 +58,9 @@ export default function CheckoutPage() {
         },
       });
 
+      if (storeId) {
+        track.orderCreated(storeId, order.id, Number(order.totalAmount ?? total), 'COD');
+      }
       clearCart();
       tg?.HapticFeedback.notificationOccurred('success');
       tg?.MainButton.hide();
