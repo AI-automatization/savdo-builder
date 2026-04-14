@@ -502,10 +502,13 @@ export default function OnboardingPage() {
   }, [isAuthenticated, router]);
 
   useEffect(() => {
-    if (!storeLoading && store) router.replace('/dashboard');
-  }, [storeLoading, store, router]);
+    // Redirect only if wizard hasn't started — means the seller already has a store
+    // and accidentally landed on /onboarding. After step 0 the store may appear in
+    // cache (via setQueryData in createStore.onSuccess) and we must NOT redirect mid-wizard.
+    if (!storeLoading && store && step === 0) router.replace('/dashboard');
+  }, [storeLoading, store, step, router]);
 
-  if (!isAuthenticated || (!storeLoading && store)) return null;
+  if (!isAuthenticated || (!storeLoading && store && step === 0)) return null;
 
   // ── Handlers ──
 

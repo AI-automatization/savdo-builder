@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useTelegram } from './TelegramProvider';
 import { authenticateWithTelegram } from '@/lib/auth';
 import { setUnauthorizedHandler, setToken } from '@/lib/api';
@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Omit<AuthCtx, 'logout' | 'reauth'>>({
     user: null, loading: true, authenticated: false, authVersion: 0,
   });
+  const reauthingRef = useRef(false);
 
   const doAuth = useCallback(async () => {
     if (!isTelegram) {
@@ -65,11 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     doAuth();
   }, [ready, doAuth]);
 
-  // При 401 — переаутентифицируемся автоматически
+  // При 401 — переаутентифицируемся автоматически.
+  // reauthingRef предотвращает параллельные re-auth когда несколько запросов
+  // одновременно получают 401 (например при истечении токена).
   useEffect(() => {
     setUnauthorizedHandler(() => {
+      if (reauthingRef.current) return;
+      reauthingRef.current = true;
       setState(prev => ({ ...prev, authenticated: false }));
-      doAuth();
+      void doAuth().finally(() => { reauthingRef.current = false; });
     });
   }, [doAuth]);
 

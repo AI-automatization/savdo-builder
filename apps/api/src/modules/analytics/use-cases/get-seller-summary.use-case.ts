@@ -12,8 +12,10 @@ export class GetSellerSummaryUseCase {
   ) {}
 
   async execute(user: JwtPayload): Promise<SellerSummary> {
-    const store = await this.prisma.store.findUnique({
-      where: { sellerId: user.sub },
+    // user.sub = User.id; Store.sellerId = Seller.id (not User.id)
+    // → must join through Seller to find the store
+    const store = await this.prisma.store.findFirst({
+      where: { seller: { userId: user.sub } },
       select: { id: true },
     });
 

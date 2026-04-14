@@ -206,8 +206,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!storeLoading && storeError) {
       const status = (storeError as { response?: { status?: number } }).response?.status;
-      // 404 = магазин не создан, 403 = нет прав (BUYER попал сюда)
-      if (status === 404 || status === 403) router.replace('/onboarding');
+      // 404 = магазин не создан → онбординг
+      // 403 = STORE_NOT_APPROVED / STORE_SUSPENDED → НЕ редиректим на онбординг,
+      //       иначе будет бесконечный цикл dashboard ↔ onboarding
+      if (status === 404) router.replace('/onboarding');
     }
   }, [storeLoading, storeError, router]);
 

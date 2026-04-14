@@ -35,12 +35,20 @@ export function useSellerSocket() {
     if (!store?.id) return;
 
     const socket = getSocket();
+    const storeId = store.id;
+
+    function joinRoom() {
+      socket.emit('join-seller-room', { storeId });
+    }
+
+    // Re-join on reconnect so we don't miss events after network blips
+    socket.on('connect', joinRoom);
 
     if (!socket.connected) {
       socket.connect();
+    } else {
+      joinRoom();
     }
-
-    socket.emit('join-seller-room', { storeId: store.id });
 
     function onOrderNew(payload: { id: string }) {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
@@ -76,6 +84,7 @@ export function useSellerSocket() {
     socket.on('chat:new_message', onChatNewMessage);
 
     return () => {
+      socket.off('connect', joinRoom);
       socket.off('order:new', onOrderNew);
       socket.off('order:status_changed', onOrderStatusChanged);
       socket.off('chat:new_message', onChatNewMessage);
