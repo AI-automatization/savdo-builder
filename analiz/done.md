@@ -25,7 +25,47 @@
 
 ---
 
-## 2026-04-14 — Сессия 18: TMA analytics instrumentation
+## 2026-04-14 — Сессия 18: TMA analytics + ProductDetailPage + polish
+
+### ✅ [TMA-008] Дополнение track-инструментации
+- **Важность:** 🟡
+- **Дата:** 14.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/lib/analytics.ts`, `apps/tma/src/pages/seller/{StorePage,ProfilePage}.tsx`, `apps/tma/src/pages/buyer/CartPage.tsx`, `apps/web-buyer/src/app/(minimal)/cart/page.tsx`
+- **Что сделано:**
+  - TMA analytics расширен: `storeLinkCopied`
+  - TMA seller StorePage и ProfilePage — шлют `storeLinkCopied` при копировании ссылки
+  - TMA CartPage — `addToCart` на +1 инкрементах
+  - web-buyer CartPage row — `addToCart` на +1 (раньше был только на product page)
+
+### ✅ [TMA-009] ProductDetailPage в TMA
+- **Важность:** 🟡
+- **Дата:** 14.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/App.tsx`, `apps/tma/src/pages/buyer/ProductPage.tsx` (new), `apps/tma/src/pages/buyer/StorePage.tsx`
+- **Что сделано:**
+  - Новый роут `/buyer/store/:slug/product/:id`
+  - Галерея mediaUrls с thumbnails, выбор варианта (disable при `stockQuantity<=0`), описание
+  - Telegram MainButton "В корзину — {price} сум" при открытой странице
+  - Fire `productViewed` + `addToCart` с вариантом
+  - StorePage: клик по карточке → детальная страница, "+" остаётся как quick-add (stopPropagation)
+
+### ✅ [WEB-BUYER-055] Product page — not-found состояние
+- **Важность:** 🟢
+- **Дата:** 14.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`
+- **Что сделано:** При 404 от `useProduct` раньше показывалась пустая галерея + disabled кнопка "В корзину". Теперь явный экран "Товар не найден" с кнопкой «К магазину».
+
+### ✅ [ENV-001] Синхронизация `.env.example`
+- **Важность:** 🟢
+- **Дата:** 14.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/.env.example`, `apps/tma/.env.example`
+- **Что сделано:**
+  - web-buyer: добавлен `NEXT_PUBLIC_BUYER_URL` (используется в `layout.tsx` для metadataBase)
+  - tma: добавлен `VITE_BOT_USERNAME` (используется в seller ProfilePage/StorePage для deep links)
+  - `apps/admin/.env.example` — у Полата неверный префикс (`NEXT_PUBLIC_` вместо `VITE_`), залогировано в `analiz/logs.md`
 
 ### ✅ [TMA-007] TMA отправляет track events в `/analytics/track`
 - **Важность:** 🟡
