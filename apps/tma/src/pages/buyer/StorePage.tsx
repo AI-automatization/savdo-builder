@@ -4,7 +4,6 @@ import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { glass } from '@/lib/styles';
 
@@ -129,7 +128,14 @@ export default function StorePage() {
 
         <div className="grid grid-cols-2 gap-3">
           {products.map((p) => (
-            <GlassCard key={p.id} className="flex flex-col gap-2 p-3">
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/buyer/store/${slug}/product/${p.id}`)}
+              className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
+              style={glass}
+            >
               <div className="w-full aspect-square rounded-xl flex items-center justify-center text-3xl"
                 style={{ background: 'rgba(255,255,255,0.04)' }}>
                 {p.images?.[0]?.url
@@ -144,14 +150,14 @@ export default function StorePage() {
                   {Number(p.basePrice).toLocaleString('ru')} сум
                 </p>
                 <button
-                  onClick={() => addToCart(p)}
+                  onClick={(e) => { e.stopPropagation(); addToCart(p); }}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
                   style={{ background: 'rgba(167,139,250,0.25)', border: '1px solid rgba(167,139,250,0.35)' }}
                 >
                   +
                 </button>
               </div>
-            </GlassCard>
+            </div>
           ))}
         </div>
       </div>

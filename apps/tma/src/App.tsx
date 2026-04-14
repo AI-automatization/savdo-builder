@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const BuyerStores = lazy(() => import('@/pages/buyer/StoresPage'));
 const BuyerStore = lazy(() => import('@/pages/buyer/StorePage'));
+const BuyerProduct = lazy(() => import('@/pages/buyer/ProductPage'));
 const BuyerCart = lazy(() => import('@/pages/buyer/CartPage'));
 const BuyerCheckout = lazy(() => import('@/pages/buyer/CheckoutPage'));
 const BuyerOrders = lazy(() => import('@/pages/buyer/OrdersPage'));
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/buyer" element={<BuyerStores />} />
         <Route path="/buyer/store/:slug" element={<BuyerStore />} />
+        <Route path="/buyer/store/:slug/product/:id" element={<BuyerProduct />} />
         <Route path="/buyer/cart" element={<BuyerCart />} />
         <Route path="/buyer/checkout" element={<BuyerCheckout />} />
         <Route path="/buyer/orders" element={<BuyerOrders />} />
