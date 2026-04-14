@@ -3,14 +3,15 @@
 
 import { api } from './api';
 
-type BuyerEvent =
+type TmaEvent =
   | { name: 'storefront_viewed';  payload: { store_id: string; store_slug: string; source: string } }
   | { name: 'product_viewed';     payload: { store_id: string; product_id: string } }
   | { name: 'add_to_cart';        payload: { store_id: string; product_id: string; variant_id: string | null; quantity: number } }
   | { name: 'checkout_started';   payload: { store_id: string; cart_items_count: number; cart_total: number } }
-  | { name: 'order_created';      payload: { store_id: string; order_id: string; gmv: number; payment_method: string } };
+  | { name: 'order_created';      payload: { store_id: string; order_id: string; gmv: number; payment_method: string } }
+  | { name: 'store_link_copied';  payload: { store_id: string } };
 
-function send(event: BuyerEvent): void {
+function send(event: TmaEvent): void {
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
     console.debug('[analytics:tma]', event.name, event.payload);
@@ -37,4 +38,7 @@ export const track = {
 
   orderCreated: (storeId: string, orderId: string, gmv: number, paymentMethod: string) =>
     send({ name: 'order_created', payload: { store_id: storeId, order_id: orderId, gmv, payment_method: paymentMethod } }),
+
+  storeLinkCopied: (storeId: string) =>
+    send({ name: 'store_link_copied', payload: { store_id: storeId } }),
 };

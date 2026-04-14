@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart, useUpdateCartItem, useRemoveCartItem } from "@/hooks/use-cart";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
+import { track } from "@/lib/analytics";
 import type { CartItem } from "types";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ const IcoBack    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 
 // ── Cart Item Row ──────────────────────────────────────────────────────────
 
-function CartItemRow({ item, pendingId }: { item: CartItem; pendingId: string | null }) {
+function CartItemRow({ item, storeId, pendingId }: { item: CartItem; storeId: string; pendingId: string | null }) {
   const update = useUpdateCartItem();
   const remove = useRemoveCartItem();
 
@@ -58,6 +59,9 @@ function CartItemRow({ item, pendingId }: { item: CartItem; pendingId: string | 
       remove.mutate(item.id);
     } else {
       update.mutate({ itemId: item.id, data: { quantity: next } });
+      if (delta > 0) {
+        track.addToCart(storeId, item.productId, item.variantId, delta);
+      }
     }
   }
 
@@ -210,7 +214,7 @@ export default function CartPage() {
           <>
             <div className="flex flex-col gap-3">
               {items.map((item) => (
-                <CartItemRow key={item.id} item={item} pendingId={null} />
+                <CartItemRow key={item.id} item={item} storeId={cart!.storeId} pendingId={null} />
               ))}
             </div>
 

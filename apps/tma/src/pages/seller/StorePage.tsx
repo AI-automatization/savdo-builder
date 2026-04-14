@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
+import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -50,6 +51,7 @@ export default function SellerStorePage() {
       tg?.HapticFeedback.notificationOccurred('success');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      track.storeLinkCopied(s.id);
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
     }

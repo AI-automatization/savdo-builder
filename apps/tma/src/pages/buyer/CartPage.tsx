@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -20,6 +21,10 @@ export default function CartPage() {
       .filter((i) => i.qty > 0);
     setItems(updated);
     saveCart(updated);
+    if (delta > 0) {
+      const item = items.find((i) => i.productId === productId);
+      if (item) track.addToCart(item.storeId, productId, null, delta);
+    }
   };
 
   const removeItem = (productId: string) => {

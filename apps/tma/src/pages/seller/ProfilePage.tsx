@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
@@ -8,6 +9,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 
 interface Store {
+  id: string;
   name: string;
   slug: string;
   status: string;
@@ -44,6 +46,7 @@ export default function SellerProfilePage() {
     const link = `https://t.me/${BOT_USERNAME}?startapp=store_${store.slug}`;
     navigator.clipboard.writeText(link).catch(() => {});
     tg?.HapticFeedback.notificationOccurred('success');
+    track.storeLinkCopied(store.id);
   };
 
   return (
