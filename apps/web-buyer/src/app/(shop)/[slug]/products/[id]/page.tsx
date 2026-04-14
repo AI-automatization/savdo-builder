@@ -56,7 +56,7 @@ export default function ProductPage() {
   const slug   = params.slug as string;
   const id     = params.id as string;
 
-  const { data: product, isLoading } = useProduct(id);
+  const { data: product, isLoading, isError } = useProduct(id);
   const addToCart = useAddToCart();
 
   const [activeImage,   setActiveImage]   = useState(0);
@@ -74,6 +74,7 @@ export default function ProductPage() {
     : (activeVariants.length > 0 && activeVariants.every(v => v.stockQuantity === 0));
 
   const images = product?.mediaUrls ?? [];
+  const notFound = !isLoading && (isError || !product);
 
   useEffect(() => {
     if (product) track.productViewed(product.storeId, product.id);
@@ -126,6 +127,23 @@ export default function ProductPage() {
             <IcoBack />
           </button>
         </div>
+
+        {notFound ? (
+          <div className="text-center py-20">
+            <p className="text-5xl mb-4">🔍</p>
+            <p className="text-sm font-medium text-white/70">Товар не найден</p>
+            <p className="text-xs mt-1.5 mb-5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Возможно, продавец его удалил или скрыл
+            </p>
+            <button
+              onClick={() => router.push(`/${slug}`)}
+              className="inline-block px-5 py-2.5 rounded-2xl text-sm font-medium"
+              style={{ background: "rgba(167,139,250,.22)", color: "#A78BFA" }}
+            >
+              К магазину
+            </button>
+          </div>
+        ) : (<>
 
         {/* ── Main image ── */}
         <div
@@ -241,9 +259,11 @@ export default function ProductPage() {
           </div>
         )}
 
+        </>)}
       </div>
 
       {/* ── Sticky CTA ── */}
+      {!notFound && (
       <div className="fixed left-0 right-0 px-4" style={{ bottom: 76, zIndex: 50 }}>
         <div className="max-w-md mx-auto flex gap-2.5">
           <button
@@ -276,6 +296,7 @@ export default function ProductPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* ── Bottom navigation ── */}
       <BottomNavBar active="store" storeSlug={slug} />
