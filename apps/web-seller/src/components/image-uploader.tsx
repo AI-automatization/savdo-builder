@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getUploadUrl, confirmUpload } from '../lib/api/media.api';
+import { uploadDirect } from '../lib/api/media.api';
 import type { MediaPurpose } from '../lib/api/media.api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -19,26 +19,6 @@ export interface ImageUploaderProps {
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function uploadWithProgress(
-  url: string,
-  file: File,
-  onProgress: (pct: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url);
-    xhr.setRequestHeader('Content-Type', file.type);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
-    xhr.onerror = () => reject(new Error('Network error during upload'));
-    xhr.send(file);
-  });
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -80,19 +60,13 @@ export function ImageUploader({
     try {
       setProgress(0);
 
-      // 1. Get presigned URL
-      const { mediaId, uploadUrl } = await getUploadUrl(file.type, purpose, file.size);
+      // Single request: multipart upload → stored in Telegram
+      const { mediaFileId } = await uploadDirect(file, purpose, setProgress);
 
-      // 2. Upload to R2
-      await uploadWithProgress(uploadUrl, file, setProgress);
-
-      // 3. Confirm
-      await confirmUpload(mediaId);
-
-      // 4. Set local preview + notify parent
+      // Set local preview + notify parent
       setLocalPreview(URL.createObjectURL(file));
       setProgress(null);
-      onChange(mediaId);
+      onChange(mediaFileId);
     } catch {
       setProgress(null);
       setError('Не удалось загрузить фото. Попробуйте снова.');
