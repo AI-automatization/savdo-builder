@@ -78,9 +78,10 @@ export class ProductsRepository {
       },
       include: {
         images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
+        _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    }) as unknown as Promise<Product[]>;
   }
 
   async findById(id: string): Promise<Product | null> {
@@ -136,9 +137,10 @@ export class ProductsRepository {
       },
       include: {
         images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
+        _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    }) as unknown as Promise<Product[]>;
   }
 
   async countByStoreId(storeId: string): Promise<number> {

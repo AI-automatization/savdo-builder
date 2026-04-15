@@ -55,6 +55,7 @@ export interface ProductListItem {
   globalCategoryId: string | null;
   storeCategoryId: string | null;
   mediaUrls: string[];
+  variantCount: number;
 }
 
 /** Full product detail response */

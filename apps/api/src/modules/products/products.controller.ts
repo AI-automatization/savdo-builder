@@ -75,7 +75,11 @@ export class ProductsController {
     @Query('storeCategoryId') storeCategoryId?: string,
   ) {
     const storeId = await this.resolveStoreId(user.sub);
-    return this.productsRepo.findByStoreId(storeId, { status, globalCategoryId, storeCategoryId });
+    const products = await this.productsRepo.findByStoreId(storeId, { status, globalCategoryId, storeCategoryId });
+    return (products as unknown as Array<Record<string, unknown> & { _count?: { variants?: number } }>).map((p) => {
+      const { _count, ...rest } = p;
+      return { ...rest, variantCount: _count?.variants ?? 0 };
+    });
   }
 
   @Post('seller/products')
@@ -446,10 +450,14 @@ export class ProductsController {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
     const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
-    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }> }>).map((p) => ({
-      ...p,
-      images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
-    }));
+    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
+      const { _count, ...rest } = p;
+      return {
+        ...rest,
+        images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+        variantCount: _count?.variants ?? 0,
+      };
+    });
   }
 
   @Get('stores/:slug/products/:id')
@@ -493,10 +501,14 @@ export class ProductsController {
     }
 
     const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId });
-    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }> }>).map((p) => ({
-      ...p,
-      images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
-    }));
+    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
+      const { _count, ...rest } = p;
+      return {
+        ...rest,
+        images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+        variantCount: _count?.variants ?? 0,
+      };
+    });
   }
 
   @Get('storefront/products/:id')
