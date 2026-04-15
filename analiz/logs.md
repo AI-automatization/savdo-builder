@@ -10,6 +10,14 @@
 
 ---
 
+## 2026-04-15 [API-VAR-001] Несовпадение контракта: variant.optionValueIds vs optionValues
+
+- **Статус:** 🟡 Предупреждение (домен Полата, не правлю)
+- **Что случилось:** `packages/types/src/api/products.ts` декларирует `ProductVariant.optionValueIds: string[]`, но backend возвращает junction-записи `optionValues: [{ optionValueId, optionValue }]`. Репозитории `variants.repository.ts` и `products.repository.ts` включают `optionValues: { include: { optionValue: true } }`, но мапперы в плоский `optionValueIds[]` нет. Любой фронт-код, читающий `v.optionValueIds`, получает `undefined`.
+- **Что сделано:** Я (Азим) во `product-variants-section.tsx` добавил защитный `extractOptionValueIds()` который читает оба формата. Нужен либо маппер на backend (возвращать `optionValueIds: string[]`), либо обновить тип в `packages/types` на `optionValues: Array<{ optionValueId: string }>`. Предпочтителен первый вариант — фронт не должен разбирать junction.
+
+---
+
 ## 2026-04-14 [ADM-ENV-001] apps/admin/.env.example — неверное имя переменной
 
 - **Статус:** 🟡 Предупреждение (домен Полата, не правлю)

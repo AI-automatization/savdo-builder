@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-04-15 — Сессия 19: Option Groups UI в web-seller
+
+### ✅ [WEB-SELLER-040] Option Groups + вариантные опции в редакторе товара
+- **Важность:** 🔴
+- **Дата:** 15.04.2026
+- **Кто делал:** Азим
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/product-options.api.ts` (new) — 6 функций CRUD groups/values
+  - `apps/web-seller/src/hooks/use-product-options.ts` (new) — TanStack Query мутации, инвалидируют product detail + variants
+  - `apps/web-seller/src/components/product-option-groups-section.tsx` (new) — секция «Опции товара» с inline CRUD групп и chip-редактированием значений, автоген `code` из имени (кириллица → латиница)
+  - `apps/web-seller/src/components/product-variants-section.tsx` — `InlineVariantForm` теперь рендерит селекты значений для каждой группы при создании (в редактировании скрыты, т.к. `UpdateVariantDto` не принимает `optionValueIds`); строка варианта показывает подпись `Размер: XL · Цвет: Красный`; кнопка «+ Добавить вариант» блокируется пока в группе нет значений
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — подключил `ProductOptionGroupsSection`, пробросил `optionGroups` в `ProductVariantsSection`
+- **Что сделано:** Полностью закрыт variants UI: seller создаёт группы («Размер», «Цвет»), добавляет значения (S/M/L), затем создаёт варианты с выбором из каждой группы. Галочка save disabled пока не выбраны все опции. Авто-генерация `titleOverride` из значений, если seller оставил поле пустым (иначе покупатель видит SKU вместо «S · Красный»). Обнаружен рассинхрон контракта `ProductVariant.optionValueIds` — defensive-хелпер `extractOptionValueIds` читает оба формата; баг залоггирован в `analiz/logs.md` [API-VAR-001]. TS-check чистый.
+
+---
+
 ## 2026-04-13 — Сессия 18: API фильтры заказов + Option Groups CRUD
 
 ### ✅ [API-032] Фильтры для GET /seller/orders

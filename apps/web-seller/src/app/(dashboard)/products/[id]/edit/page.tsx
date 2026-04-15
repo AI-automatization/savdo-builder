@@ -8,6 +8,7 @@ import { useStoreCategories } from '../../../../../hooks/use-seller';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
+import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -347,8 +348,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         </div>
       </form>
 
+      {/* Option groups */}
+      <ProductOptionGroupsSection productId={id} optionGroups={product.optionGroups ?? []} />
+
       {/* Variants */}
-      <ProductVariantsSection productId={id} productSku={product.sku} />
+      <ProductVariantsSection
+        productId={id}
+        productSku={product.sku}
+        optionGroups={product.optionGroups ?? []}
+      />
 
       {/* Status & danger actions */}
       {!isHiddenByAdmin && (

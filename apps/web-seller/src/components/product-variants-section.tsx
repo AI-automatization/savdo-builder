@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import type { ProductVariant } from 'types';
+import { useMemo, useState } from 'react';
+import type { OptionGroup, ProductVariant } from 'types';
 import {
   useProductVariants,
   useCreateVariant,
@@ -59,6 +59,35 @@ function formatPrice(price: number | null): string {
   return price.toLocaleString('ru-RU') + ' сум';
 }
 
+/**
+ * Extract option value ids from a variant.
+ *
+ * Backend currently returns junction records as `optionValues: [{ optionValueId, optionValue }]`
+ * even though `packages/types#ProductVariant` declares `optionValueIds: string[]`.
+ * This helper tolerates both shapes until the backend normalizes the response.
+ * See analiz/logs.md [API-VAR-001].
+ */
+function extractOptionValueIds(variant: ProductVariant): string[] {
+  if (Array.isArray(variant.optionValueIds) && variant.optionValueIds.length > 0) {
+    return variant.optionValueIds;
+  }
+  const junction = (variant as unknown as { optionValues?: Array<{ optionValueId: string }> }).optionValues;
+  if (Array.isArray(junction)) return junction.map((j) => j.optionValueId).filter(Boolean);
+  return [];
+}
+
+/** Build "Размер: XL · Цвет: Красный" from a variant's options */
+function describeOptions(variant: ProductVariant, optionGroups: OptionGroup[]): string | null {
+  const ids = extractOptionValueIds(variant);
+  if (ids.length === 0 || optionGroups.length === 0) return null;
+  const parts: string[] = [];
+  for (const g of optionGroups) {
+    const match = g.values.find((v) => ids.includes(v.id));
+    if (match) parts.push(`${g.name}: ${match.value}`);
+  }
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 // ── Inline form for add/edit ──────────────────────────────────────────────────
 
 interface VariantForm {
@@ -67,10 +96,19 @@ interface VariantForm {
   priceOverride: string;
   stockQuantity: string;
   isActive: boolean;
+  /** groupId → selected optionValueId (new variant only) */
+  optionSelection: Record<string, string>;
 }
 
 function emptyForm(sku?: string): VariantForm {
-  return { titleOverride: '', sku: sku ?? '', priceOverride: '', stockQuantity: '0', isActive: true };
+  return {
+    titleOverride: '',
+    sku: sku ?? '',
+    priceOverride: '',
+    stockQuantity: '0',
+    isActive: true,
+    optionSelection: {},
+  };
 }
 
 function variantToForm(v: ProductVariant): VariantForm {
@@ -80,6 +118,7 @@ function variantToForm(v: ProductVariant): VariantForm {
     priceOverride: v.priceOverride !== null ? String(v.priceOverride) : '',
     stockQuantity: String(v.stockQuantity),
     isActive:      v.isActive,
+    optionSelection: {},
   };
 }
 
@@ -88,16 +127,48 @@ interface InlineFormProps {
   onSave: (f: VariantForm) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
+  /** Option groups rendered as selects. Empty array = no selects shown. */
+  optionGroups: OptionGroup[];
+  /** Hide option selects (edit mode — options are immutable after creation). */
+  hideOptions: boolean;
 }
 
-function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProps) {
+function InlineVariantForm({
+  initial,
+  onSave,
+  onCancel,
+  saving,
+  optionGroups,
+  hideOptions,
+}: InlineFormProps) {
   const [f, setF] = useState<VariantForm>(initial);
-  const set = (k: keyof VariantForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setF((prev) => ({ ...prev, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+
+  const setField = <K extends keyof VariantForm>(k: K) => (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setF((prev) => ({ ...prev, [k]: val as VariantForm[K] }));
+  };
+
+  const setOptionValue = (groupId: string, valueId: string) => {
+    setF((prev) => ({
+      ...prev,
+      optionSelection: { ...prev.optionSelection, [groupId]: valueId },
+    }));
+  };
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') onCancel();
   }
+
+  // Every group must have a selected value before save is allowed (new variant)
+  const allOptionsSelected =
+    hideOptions ||
+    optionGroups.length === 0 ||
+    optionGroups.every((g) => {
+      const picked = f.optionSelection[g.id];
+      return picked && g.values.some((v) => v.id === picked);
+    });
 
   return (
     <div
@@ -105,16 +176,49 @@ function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProp
       style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
       onKeyDown={handleKeyDown}
     >
+      {/* Option selectors (only when adding and product has option groups) */}
+      {!hideOptions && optionGroups.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {optionGroups.map((g) => {
+            const hasValues = g.values.length > 0;
+            return (
+              <div key={g.id}>
+                <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  {g.name}
+                </label>
+                {hasValues ? (
+                  <select
+                    style={{ ...fieldStyle, appearance: 'none' } as React.CSSProperties}
+                    value={f.optionSelection[g.id] ?? ''}
+                    onChange={(e) => setOptionValue(g.id, e.target.value)}
+                  >
+                    <option value="" style={{ background: '#1a1d2e' }}>— выберите —</option>
+                    {g.values.map((v) => (
+                      <option key={v.id} value={v.id} style={{ background: '#1a1d2e' }}>
+                        {v.value}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-xs" style={{ color: '#fbbf24' }}>
+                    Добавьте значения в эту группу перед созданием варианта
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Row 1: title + sku */}
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Название</label>
           <input
-            autoFocus
             style={fieldStyle}
             placeholder="Красный / XL"
             value={f.titleOverride}
-            onChange={set('titleOverride')}
+            onChange={setField('titleOverride')}
           />
         </div>
         <div>
@@ -123,7 +227,7 @@ function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProp
             style={fieldStyle}
             placeholder="SKU-VAR-001"
             value={f.sku}
-            onChange={set('sku')}
+            onChange={setField('sku')}
           />
         </div>
       </div>
@@ -138,7 +242,7 @@ function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProp
             style={fieldStyle}
             placeholder="0"
             value={f.priceOverride}
-            onChange={set('priceOverride')}
+            onChange={setField('priceOverride')}
           />
         </div>
         <div>
@@ -149,7 +253,7 @@ function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProp
             style={fieldStyle}
             placeholder="0"
             value={f.stockQuantity}
-            onChange={set('stockQuantity')}
+            onChange={setField('stockQuantity')}
           />
         </div>
       </div>
@@ -161,7 +265,7 @@ function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProp
             type="checkbox"
             className="sr-only peer"
             checked={f.isActive}
-            onChange={set('isActive')}
+            onChange={setField('isActive')}
           />
           <div
             className="relative w-9 h-5 rounded-full transition-all peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white"
@@ -175,9 +279,9 @@ function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProp
           <button
             type="button"
             style={confirmBtn}
-            disabled={saving || !f.sku.trim()}
+            disabled={saving || !f.sku.trim() || !allOptionsSelected}
             onClick={() => onSave(f)}
-            title="Сохранить"
+            title={allOptionsSelected ? 'Сохранить' : 'Выберите значение для каждой группы опций'}
           >
             {saving ? '…' : '✓'}
           </button>
@@ -192,9 +296,10 @@ function InlineVariantForm({ initial, onSave, onCancel, saving }: InlineFormProp
 interface Props {
   productId: string;
   productSku: string | null;
+  optionGroups?: OptionGroup[];
 }
 
-export function ProductVariantsSection({ productId, productSku }: Props) {
+export function ProductVariantsSection({ productId, productSku, optionGroups = [] }: Props) {
   const { data: variants = [], isLoading } = useProductVariants(productId);
   const create = useCreateVariant();
   const update = useUpdateVariant();
@@ -204,17 +309,44 @@ export function ProductVariantsSection({ productId, productSku }: Props) {
   const [adding, setAdding]       = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const hasOptions = optionGroups.length > 0;
+
+  const variantLabel = useMemo(() => {
+    return (v: ProductVariant): string => {
+      const opts = describeOptions(v, optionGroups);
+      if (v.titleOverride) return v.titleOverride;
+      return opts ?? v.sku;
+    };
+  }, [optionGroups]);
+
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   async function handleAdd(f: VariantForm) {
     if (!f.sku.trim()) return;
+    const optionValueIds = hasOptions
+      ? Object.values(f.optionSelection).filter(Boolean)
+      : undefined;
+
+    // If seller left title empty but picked options, derive a human label
+    // ("S · Красный") so buyer-side chips don't fall back to SKU.
+    let title = f.titleOverride.trim();
+    if (!title && optionValueIds && optionValueIds.length > 0) {
+      const parts: string[] = [];
+      for (const g of optionGroups) {
+        const match = g.values.find((v) => optionValueIds.includes(v.id));
+        if (match) parts.push(match.value);
+      }
+      if (parts.length > 0) title = parts.join(' · ');
+    }
+
     await create.mutateAsync({
       productId,
       sku:           f.sku.trim(),
-      titleOverride: f.titleOverride.trim() || undefined,
+      titleOverride: title || undefined,
       priceOverride: f.priceOverride !== '' ? Number(f.priceOverride) : undefined,
       stockQuantity: Number(f.stockQuantity) || 0,
       isActive:      f.isActive,
+      optionValueIds: optionValueIds && optionValueIds.length > 0 ? optionValueIds : undefined,
     });
     setAdding(false);
   }
@@ -242,6 +374,9 @@ export function ProductVariantsSection({ productId, productSku }: Props) {
     }
   }
 
+  // Can't add a variant if any option group has no values yet
+  const canAdd = !hasOptions || optionGroups.every((g) => g.values.length > 0);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -268,62 +403,72 @@ export function ProductVariantsSection({ productId, productSku }: Props) {
       )}
 
       {/* Variant rows */}
-      {variants.map((v) => (
-        <div key={v.id}>
-          <div
-            className="flex items-center gap-3 py-2"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
-          >
-            {/* Active dot */}
-            <span
-              className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
-              style={{ background: v.isActive ? '#34d399' : 'rgba(255,255,255,0.20)' }}
-            />
+      {variants.map((v) => {
+        const subLabel = describeOptions(v, optionGroups);
+        return (
+          <div key={v.id}>
+            <div
+              className="flex items-center gap-3 py-2"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              {/* Active dot */}
+              <span
+                className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
+                style={{ background: v.isActive ? '#34d399' : 'rgba(255,255,255,0.20)' }}
+              />
 
-            {/* Name + stock */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white truncate">
-                {v.titleOverride ?? v.sku}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                {formatPrice(v.priceOverride)} · склад: {v.stockQuantity}
-              </p>
+              {/* Name + stock */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white truncate">
+                  {variantLabel(v)}
+                </p>
+                {subLabel && v.titleOverride && (
+                  <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.50)' }}>
+                    {subLabel}
+                  </p>
+                )}
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {formatPrice(v.priceOverride)} · склад: {v.stockQuantity}
+                </p>
+              </div>
+
+              {/* Edit / Delete */}
+              {editingId !== v.id && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    className="text-xs transition-opacity opacity-40 hover:opacity-80"
+                    style={{ color: '#A78BFA' }}
+                    onClick={() => { setAdding(false); setEditingId(v.id); }}
+                  >
+                    ✏
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
+                    style={{ color: '#f87171' }}
+                    disabled={deletingId === v.id}
+                    onClick={() => handleDelete(v.id)}
+                  >
+                    {deletingId === v.id ? '…' : '🗑'}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Edit / Delete */}
-            {editingId !== v.id && (
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  type="button"
-                  className="text-xs transition-opacity opacity-40 hover:opacity-80"
-                  style={{ color: '#A78BFA' }}
-                  onClick={() => { setAdding(false); setEditingId(v.id); }}
-                >
-                  ✏
-                </button>
-                <button
-                  type="button"
-                  className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
-                  style={{ color: '#f87171' }}
-                  disabled={deletingId === v.id}
-                  onClick={() => handleDelete(v.id)}
-                >
-                  {deletingId === v.id ? '…' : '🗑'}
-                </button>
-              </div>
+            {editingId === v.id && (
+              <InlineVariantForm
+                initial={variantToForm(v)}
+                saving={update.isPending}
+                onSave={(f) => handleUpdate(v.id, f)}
+                onCancel={() => setEditingId(null)}
+                optionGroups={optionGroups}
+                hideOptions
+              />
             )}
           </div>
-
-          {editingId === v.id && (
-            <InlineVariantForm
-              initial={variantToForm(v)}
-              saving={update.isPending}
-              onSave={(f) => handleUpdate(v.id, f)}
-              onCancel={() => setEditingId(null)}
-            />
-          )}
-        </div>
-      ))}
+        );
+      })}
 
       {/* Add form */}
       {adding && (
@@ -332,6 +477,8 @@ export function ProductVariantsSection({ productId, productSku }: Props) {
           saving={create.isPending}
           onSave={handleAdd}
           onCancel={() => setAdding(false)}
+          optionGroups={optionGroups}
+          hideOptions={false}
         />
       )}
 
@@ -339,9 +486,11 @@ export function ProductVariantsSection({ productId, productSku }: Props) {
       {!adding && (
         <button
           type="button"
-          className="text-xs font-semibold transition-opacity hover:opacity-80 text-left mt-1"
+          className="text-xs font-semibold transition-opacity hover:opacity-80 text-left mt-1 disabled:opacity-40"
           style={{ color: '#A78BFA' }}
+          disabled={!canAdd}
           onClick={() => { setEditingId(null); setAdding(true); }}
+          title={!canAdd ? 'Сначала добавьте значения в группы опций' : undefined}
         >
           + Добавить вариант
         </button>
