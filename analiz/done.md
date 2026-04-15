@@ -1,5 +1,32 @@
 # Done — Азим + Полат
 
+## 2026-04-15 — Сессия 19: итог (Азим, 4 коммита, 17 файлов)
+
+> Полный цикл вариативных товаров: от создания продавцом до выбора покупателем + deep links.
+
+| # | Коммит | Файлов | Что сделано |
+|---|--------|--------|-------------|
+| 1 | `918d9d1` | 7 (+766/-70) | **Option Groups UI в web-seller.** Продавец создаёт группы («Размер», «Цвет»), значения (S/M/L). При создании варианта — `<select>` для каждой группы. Авто-генерация `titleOverride` из выбранных значений. Опции immutable в edit (соответствует `UpdateVariantDto`). Defensive `extractOptionValueIds` из-за рассинхрона контракта. |
+| 2 | `e2a85cb` | 5 (+429/-43) | **Group-based variant selector в web-buyer + TMA.** Покупатель видит чипсы по группам: «Размер: S/M/L», «Цвет: Красный/Синий». Выбор в каждой группе → резолвим variant. Недоступные комбинации зачёркнуты. MainButton TMA реактивно меняет текст. Helper-модули `lib/variants.ts` в обоих апп. |
+| 3 | `4d3058d` | 5 (+59) | **next/image remotePatterns + chat_started.** Web-buyer принимает абсолютные image URL от api-хоста (нужно после Полатовского `6fdae3a`). Событие `chat_started` теперь fire-ится при клике на Telegram-кнопку (product page + order detail ×2). |
+| 4 | `ec25b6a` | 4 (+72/-8) | **TMA deep link на товар + share-кнопка.** `startapp=product_<id>` → TMA fetches `/storefront/products/:id` → редирект на `/buyer/store/<slug>/product/<id>`. В web-seller products list — вторая иконка (голубая плоскость) копирует Telegram-ссылку. Новая `NEXT_PUBLIC_TG_BOT_USERNAME` переменная. |
+
+### Новые файлы (5)
+- `apps/web-seller/src/lib/api/product-options.api.ts`
+- `apps/web-seller/src/hooks/use-product-options.ts`
+- `apps/web-seller/src/components/product-option-groups-section.tsx`
+- `apps/web-buyer/src/lib/variants.ts`
+- `apps/tma/src/lib/variants.ts`
+
+### Известные проблемы (для Полата — см. `analiz/tasks.md`)
+- **[API-VAR-001]** 🔴 Рассинхрон: backend возвращает `variant.optionValues[]` (junction), а тип декларирует `optionValueIds: string[]`. Фронт обходит через defensive helper.
+- **[API-LIST-001]** 🟡 `ProductListItem` не содержит `variantCount` — бейдж «есть варианты» на карточках пока невозможен.
+
+### Требует реального теста (TMA-002)
+Deep links, OG-превью, buyer+seller flow в настоящем Telegram. См. `analiz/next_session.md`.
+
+---
+
 ## 2026-04-15 — Сессия 19 (часть 4): TMA deep link на товар + Telegram-share кнопка
 
 ### ✅ [TMA-014] Deep link `startapp=product_<id>` → ProductDetailPage

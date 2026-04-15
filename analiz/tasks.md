@@ -12,6 +12,21 @@
 
 ## 🔴 Новые задачи для Полата (13.04.2026)
 
+---
+
+## 🔴 Новые задачи для Полата (15.04.2026) — после сессии 19 Азима
+
+- [ ] **[API-VAR-001]** Нормализовать ответ variants: `optionValueIds: string[]` вместо junction
+  - **Домен:** `apps/api`, `packages/types`
+  - **Детали:** Сейчас репозитории `variants.repository.ts` и `products.repository.ts` включают `optionValues: { include: { optionValue: true } }`, и это junction-формат уходит на фронт. Тип `ProductVariant` в `packages/types` декларирует `optionValueIds: string[]`. Нужен маппер в controller/use-case: для каждого variant → `optionValueIds = optionValues.map(j => j.optionValueId)`, поле `optionValues` убрать из ответа. Затронутые эндпоинты: `GET /seller/products/:id/variants`, `GET /seller/products/:id` (product detail), `GET /storefront/products/:id`, `POST/PATCH /seller/products/:id/variants`.
+  - **Заметка Азима:** На фронте я добавил defensive `extractOptionValueIds()` читающий оба формата. После твоей нормализации можно будет его упростить. См. `analiz/logs.md [API-VAR-001]`.
+
+- [ ] **[API-LIST-001]** Добавить `variantCount` в `ProductListItem`
+  - **Домен:** `apps/api`, `packages/types`
+  - **Детали:** Сейчас `GET /seller/products` и `GET /storefront/products` возвращают массив `ProductListItem` без информации о вариантах. На карточке товара (web-buyer ProductCard, web-seller список) хочется показывать бейдж «есть варианты» / «3 варианта». Добавить поле `variantCount: number` (считать активные variants с `deletedAt=null, isActive=true`). Обновить тип в `packages/types/src/api/products.ts`. Азим после этого допилит UI.
+
+- [ ] **[API-CONTRACT-001]** (опционально) Документация shape вариантов
+  - **Детали:** После API-VAR-001 обновить `docs/contracts/` если описаны variants. Сейчас docs нет для этих эндпоинтов.
 
 ---
 
