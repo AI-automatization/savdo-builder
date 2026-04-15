@@ -9,6 +9,13 @@ import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus } from "types";
 import { track } from "@/lib/analytics";
+import {
+  findVariantBySelection,
+  initialSelectionFromVariants,
+  isSelectionComplete,
+  isValueAvailable,
+  type OptionSelection,
+} from "@/lib/variants";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -60,15 +67,23 @@ export default function ProductPage() {
   const addToCart = useAddToCart();
 
   const [activeImage,   setActiveImage]   = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<OptionSelection>({});
   const [added, setAdded] = useState(false);
 
   const activeVariants = product?.variants.filter(v => v.isActive) ?? [];
-  const selectedVariantObj = activeVariants.find(v => v.id === selectedVariant) ?? null;
+  const optionGroups   = product?.optionGroups ?? [];
+  const hasGroups      = optionGroups.length > 0;
+
+  const selectedVariantObj = hasGroups
+    ? findVariantBySelection(activeVariants, selection, optionGroups)
+    : activeVariants.find(v => v.id === selectedVariantId) ?? null;
 
   const displayPrice = selectedVariantObj?.priceOverride ?? product?.basePrice ?? 0;
   const isUnavailable           = !product || product.status !== ProductStatus.ACTIVE || !product.isVisible;
-  const requiresVariantSelection = activeVariants.length > 0 && !selectedVariant;
+  const requiresVariantSelection = hasGroups
+    ? (optionGroups.length > 0 && !isSelectionComplete(selection, optionGroups))
+    : (activeVariants.length > 0 && !selectedVariantId);
   const isOutOfStock             = selectedVariantObj
     ? selectedVariantObj.stockQuantity === 0
     : (activeVariants.length > 0 && activeVariants.every(v => v.stockQuantity === 0));
@@ -80,19 +95,40 @@ export default function ProductPage() {
     if (product) track.productViewed(product.storeId, product.id);
   }, [product?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleVariantSelect(variantId: string) {
-    setSelectedVariant(variantId);
+  // Pre-select an in-stock variant so the CTA starts actionable.
+  useEffect(() => {
+    if (!product) return;
+    if (hasGroups) {
+      if (Object.keys(selection).length === 0) {
+        setSelection(initialSelectionFromVariants(activeVariants, optionGroups));
+      }
+    } else if (!selectedVariantId && activeVariants.length > 0) {
+      const firstInStock = activeVariants.find((v) => v.stockQuantity > 0);
+      if (firstInStock) setSelectedVariantId(firstInStock.id);
+    }
+  }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleFlatVariantSelect(variantId: string) {
+    setSelectedVariantId(variantId);
     if (product) track.variantSelected(product.storeId, product.id, variantId);
+  }
+
+  function handleOptionSelect(groupId: string, valueId: string) {
+    const next = { ...selection, [groupId]: valueId };
+    setSelection(next);
+    const matched = findVariantBySelection(activeVariants, next, optionGroups);
+    if (matched && product) track.variantSelected(product.storeId, product.id, matched.id);
   }
 
   async function handleAddToCart() {
     if (!product) return;
+    const variantId = selectedVariantObj?.id ?? null;
     await addToCart.mutateAsync({
       productId: product.id,
-      variantId: selectedVariant ?? undefined,
+      variantId: variantId ?? undefined,
       quantity:  1,
     });
-    track.addToCart(product.storeId, product.id, selectedVariant, 1);
+    track.addToCart(product.storeId, product.id, variantId, 1);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
@@ -216,8 +252,49 @@ export default function ProductPage() {
           </>
         )}
 
-        {/* ── Variants ── */}
-        {!isLoading && activeVariants.length > 0 && (
+        {/* ── Variant options ── */}
+        {!isLoading && hasGroups && (
+          <div className="mb-5 flex flex-col gap-4">
+            {optionGroups.map((g) => (
+              <div key={g.id}>
+                <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2.5">
+                  {g.name}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {g.values.map((val) => {
+                    const isSelected = selection[g.id] === val.id;
+                    const available  = isValueAvailable(val.id, g.id, activeVariants, selection, optionGroups);
+                    return (
+                      <button
+                        key={val.id}
+                        onClick={() => available && handleOptionSelect(g.id, val.id)}
+                        disabled={!available}
+                        className="px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all"
+                        style={
+                          !available
+                            ? { ...glassDim, color: "rgba(255,255,255,0.20)", cursor: "not-allowed", textDecoration: "line-through" }
+                            : isSelected
+                            ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.55)", boxShadow: "0 0 10px rgba(167,139,250,.25)" }
+                            : { ...glassDim, color: "rgba(255,255,255,0.65)" }
+                        }
+                      >
+                        {val.value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {selectedVariantObj && isOutOfStock && (
+              <p className="text-xs" style={{ color: "#fbbf24" }}>
+                Эта комбинация временно недоступна
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Fallback: flat variants when product has no option groups ── */}
+        {!isLoading && !hasGroups && activeVariants.length > 0 && (
           <div className="mb-5">
             <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2.5">
               Вариант
@@ -226,13 +303,13 @@ export default function ProductPage() {
               {activeVariants.map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => handleVariantSelect(v.id)}
+                  onClick={() => handleFlatVariantSelect(v.id)}
                   disabled={v.stockQuantity === 0}
                   className="px-3 py-1.5 rounded-xl text-sm font-semibold transition-all"
                   style={
                     v.stockQuantity === 0
                       ? { ...glassDim, color: "rgba(255,255,255,0.25)", cursor: "not-allowed" }
-                      : selectedVariant === v.id
+                      : selectedVariantId === v.id
                       ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.55)", boxShadow: "0 0 10px rgba(167,139,250,.25)" }
                       : { ...glassDim, color: "rgba(255,255,255,0.55)" }
                   }

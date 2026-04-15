@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-04-15 — Сессия 19 (часть 2): Group-based variant selector для покупателей
+
+### ✅ [BUYER-VAR-001] Групповой выбор опций в web-buyer и TMA
+- **Важность:** 🔴
+- **Дата:** 15.04.2026
+- **Кто делал:** Азим
+- **Файлы:**
+  - `apps/web-buyer/src/lib/variants.ts` (new)
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`
+  - `apps/tma/src/lib/variants.ts` (new)
+  - `apps/tma/src/pages/buyer/ProductPage.tsx`
+- **Что сделано:** Если у товара есть `optionGroups`, покупатель видит отдельные ряды чипсов по группе («Размер: S / M / L», «Цвет: Красный / Синий») вместо плоского списка вариантов. Выбор одного значения в каждой группе → резолвим variant из `activeVariants` через `findVariantBySelection`. Недоступные комбинации показаны зачёркнутым. Стартовая selection = первый in-stock вариант. В TMA MainButton меняет текст («Выберите вариант» / «Нет в наличии» / «В корзину — X»). Helper `getVariantOptionValueIds` handles junction-format (см. API-VAR-001). Fallback на старый плоский рендер когда групп нет.
+
+---
+
 ## 2026-04-15 — Сессия 19: Option Groups UI в web-seller
 
 ### ✅ [WEB-SELLER-040] Option Groups + вариантные опции в редакторе товара

@@ -7,13 +7,15 @@ import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { glass } from '@/lib/styles';
-
-interface Variant {
-  id: string;
-  titleOverride: string | null;
-  priceOverride: number | null;
-  stockQuantity: number;
-}
+import {
+  findVariantBySelection,
+  initialSelectionFromVariants,
+  isSelectionComplete,
+  isValueAvailable,
+  type OptionGroupMin,
+  type OptionSelection,
+  type VariantMin,
+} from '@/lib/variants';
 
 interface Product {
   id: string;
@@ -22,7 +24,8 @@ interface Product {
   description: string | null;
   basePrice: number;
   mediaUrls: string[];
-  variants?: Variant[];
+  variants?: VariantMin[];
+  optionGroups?: OptionGroupMin[];
   store?: { name: string; slug: string };
 }
 
@@ -34,8 +37,13 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<OptionSelection>({});
   const trackedRef = useRef<string | null>(null);
+
+  const activeVariants = product?.variants?.filter((v) => v.isActive !== false) ?? [];
+  const optionGroups   = product?.optionGroups ?? [];
+  const hasGroups      = optionGroups.length > 0;
 
   useEffect(() => {
     if (!slug || !id) return;
@@ -46,23 +54,43 @@ export default function ProductPage() {
           trackedRef.current = p.id;
           track.productViewed(p.storeId, p.id);
         }
-        if (p.variants?.length) setSelectedVariant(p.variants[0].id);
+        const groups = p.optionGroups ?? [];
+        const variants = p.variants ?? [];
+        if (groups.length > 0) {
+          setSelection(initialSelectionFromVariants(variants, groups));
+        } else if (variants.length > 0) {
+          const firstInStock = variants.find((v) => v.stockQuantity > 0);
+          setSelectedVariantId((firstInStock ?? variants[0]).id);
+        }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [slug, id]);
 
-  const unitPrice = (() => {
-    if (!product) return 0;
-    if (selectedVariant && product.variants) {
-      const v = product.variants.find((x) => x.id === selectedVariant);
-      if (v?.priceOverride != null) return Number(v.priceOverride);
-    }
-    return Number(product.basePrice);
-  })();
+  const selectedVariant = hasGroups
+    ? findVariantBySelection(activeVariants, selection, optionGroups)
+    : activeVariants.find((v) => v.id === selectedVariantId) ?? null;
+
+  const unitPrice = selectedVariant?.priceOverride != null
+    ? Number(selectedVariant.priceOverride)
+    : Number(product?.basePrice ?? 0);
+
+  const requiresVariantSelection = hasGroups
+    ? !isSelectionComplete(selection, optionGroups)
+    : (activeVariants.length > 0 && !selectedVariantId);
+
+  const isOutOfStock = selectedVariant
+    ? selectedVariant.stockQuantity <= 0
+    : (activeVariants.length > 0 && activeVariants.every((v) => v.stockQuantity <= 0));
+
+  function handleOptionSelect(groupId: string, valueId: string) {
+    setSelection((prev) => ({ ...prev, [groupId]: valueId }));
+  }
+
+  const canAddToCart = !!product && !requiresVariantSelection && !isOutOfStock;
 
   const addToCart = () => {
-    if (!product) return;
+    if (!product || !canAddToCart) return;
     tg?.HapticFeedback.impactOccurred('light');
     let cart: Array<{ productId: string; title: string; price: number; qty: number; storeId: string; storeSlug: string; storeName: string }>;
     try {
@@ -86,21 +114,37 @@ export default function ProductPage() {
     }
     localStorage.setItem('savdo_cart', JSON.stringify(cart));
     tg?.HapticFeedback.notificationOccurred('success');
-    track.addToCart(product.storeId, product.id, selectedVariant, 1);
+    track.addToCart(product.storeId, product.id, selectedVariant?.id ?? null, 1);
     navigate('/buyer/cart');
   };
 
   useEffect(() => {
     if (!tg || !product) return;
-    tg.MainButton.setText(`В корзину — ${unitPrice.toLocaleString('ru')} сум`);
+
+    const label = requiresVariantSelection
+      ? 'Выберите вариант'
+      : isOutOfStock
+      ? 'Нет в наличии'
+      : `В корзину — ${unitPrice.toLocaleString('ru')} сум`;
+
+    tg.MainButton.setText(label);
     tg.MainButton.show();
-    tg.MainButton.onClick(addToCart);
-    return () => {
-      tg.MainButton.offClick(addToCart);
-      tg.MainButton.hide();
-    };
+
+    if (canAddToCart) {
+      tg.MainButton.enable?.();
+      tg.MainButton.onClick(addToCart);
+      return () => {
+        tg.MainButton.offClick(addToCart);
+        tg.MainButton.hide();
+      };
+    } else {
+      tg.MainButton.disable?.();
+      return () => {
+        tg.MainButton.hide();
+      };
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tg, product, selectedVariant, unitPrice]);
+  }, [tg, product, selectedVariant?.id, unitPrice, requiresVariantSelection, isOutOfStock, canAddToCart]);
 
   if (loading) {
     return (
@@ -167,21 +211,62 @@ export default function ProductPage() {
           </p>
         </div>
 
-        {/* Variants */}
-        {product.variants && product.variants.length > 0 && (
+        {/* Variant options (grouped) */}
+        {hasGroups && (
+          <div className="flex flex-col gap-4">
+            {optionGroups.map((g) => (
+              <div key={g.id} className="flex flex-col gap-2">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {g.name}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {g.values.map((val) => {
+                    const isSel = selection[g.id] === val.id;
+                    const avail = isValueAvailable(val.id, g.id, activeVariants, selection);
+                    return (
+                      <button
+                        key={val.id}
+                        disabled={!avail}
+                        onClick={() => handleOptionSelect(g.id, val.id)}
+                        className="px-3.5 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-40"
+                        style={{
+                          background: isSel ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.05)',
+                          border:     isSel ? '1px solid rgba(167,139,250,0.45)' : '1px solid rgba(255,255,255,0.10)',
+                          color:      isSel ? '#A78BFA' : 'rgba(255,255,255,0.75)',
+                          textDecoration: avail ? undefined : 'line-through',
+                          cursor:     avail ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        {val.value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {selectedVariant && isOutOfStock && (
+              <p className="text-xs" style={{ color: '#fbbf24' }}>
+                Эта комбинация временно недоступна
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Fallback: flat variants when product has no option groups */}
+        {!hasGroups && activeVariants.length > 0 && (
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
               Вариант
             </p>
             <div className="flex flex-wrap gap-2">
-              {product.variants.map((v) => {
-                const active = v.id === selectedVariant;
+              {activeVariants.map((v) => {
+                const active = v.id === selectedVariantId;
                 const disabled = v.stockQuantity <= 0;
                 return (
                   <button
                     key={v.id}
                     disabled={disabled}
-                    onClick={() => setSelectedVariant(v.id)}
+                    onClick={() => setSelectedVariantId(v.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
                     style={{
                       background: active ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.05)',

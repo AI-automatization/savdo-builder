@@ -1,0 +1,101 @@
+// Minimal shapes mirroring packages/types (TMA doesn't depend on the types package).
+
+export interface OptionValueMin {
+  id: string;
+  value: string;
+}
+
+export interface OptionGroupMin {
+  id: string;
+  name: string;
+  values: OptionValueMin[];
+}
+
+export interface VariantMin {
+  id: string;
+  titleOverride: string | null;
+  priceOverride: number | null;
+  stockQuantity: number;
+  isActive?: boolean;
+  optionValueIds?: string[];
+  optionValues?: Array<{ optionValueId: string }>;
+}
+
+/**
+ * Backend currently returns variant.optionValues[] (junction records) while
+ * packages/types declares optionValueIds: string[]. Handle both shapes.
+ * See analiz/logs.md [API-VAR-001].
+ */
+export function getVariantOptionValueIds(variant: VariantMin): string[] {
+  if (Array.isArray(variant.optionValueIds) && variant.optionValueIds.length > 0) {
+    return variant.optionValueIds;
+  }
+  if (Array.isArray(variant.optionValues)) {
+    return variant.optionValues.map((j) => j.optionValueId).filter(Boolean);
+  }
+  return [];
+}
+
+export type OptionSelection = Record<string, string>;
+
+export function isSelectionComplete(
+  selection: OptionSelection,
+  optionGroups: OptionGroupMin[],
+): boolean {
+  if (optionGroups.length === 0) return false;
+  return optionGroups.every((g) => !!selection[g.id]);
+}
+
+export function findVariantBySelection(
+  variants: VariantMin[],
+  selection: OptionSelection,
+  optionGroups: OptionGroupMin[],
+): VariantMin | null {
+  if (!isSelectionComplete(selection, optionGroups)) return null;
+  const wantedIds = new Set(Object.values(selection));
+
+  for (const v of variants) {
+    const ids = getVariantOptionValueIds(v);
+    if (ids.length !== wantedIds.size) continue;
+    if (ids.every((id) => wantedIds.has(id))) return v;
+  }
+  return null;
+}
+
+export function isValueAvailable(
+  valueId: string,
+  groupId: string,
+  variants: VariantMin[],
+  selection: OptionSelection,
+): boolean {
+  const requiredIds = new Set(
+    Object.entries(selection)
+      .filter(([gid, vid]) => gid !== groupId && !!vid)
+      .map(([, vid]) => vid),
+  );
+
+  return variants.some((v) => {
+    if (v.isActive === false) return false;
+    const ids = new Set(getVariantOptionValueIds(v));
+    if (!ids.has(valueId)) return false;
+    for (const req of requiredIds) if (!ids.has(req)) return false;
+    return true;
+  });
+}
+
+export function initialSelectionFromVariants(
+  variants: VariantMin[],
+  optionGroups: OptionGroupMin[],
+): OptionSelection {
+  const active = variants.filter((v) => v.isActive !== false && v.stockQuantity > 0);
+  const candidate = active[0] ?? variants.find((v) => v.isActive !== false) ?? null;
+  if (!candidate) return {};
+
+  const ids = new Set(getVariantOptionValueIds(candidate));
+  const sel: OptionSelection = {};
+  for (const g of optionGroups) {
+    const match = g.values.find((v) => ids.has(v.id));
+    if (match) sel[g.id] = match.id;
+  }
+  return sel;
+}
