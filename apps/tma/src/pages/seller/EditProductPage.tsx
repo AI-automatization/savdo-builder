@@ -7,6 +7,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
+import { ImageCropper } from '@/components/ui/ImageCropper';
 import { glass } from '@/lib/styles';
 
 interface OptionValue {
@@ -63,6 +64,7 @@ export default function EditProductPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string>('');
 
   const [saving, setSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
@@ -242,16 +244,23 @@ export default function EditProductPage() {
     }
   };
 
-  const handleAddPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id) return;
     if (fileRef.current) fileRef.current.value = '';
+    const reader = new FileReader();
+    reader.onload = (ev) => setCropSrc(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
+  const handleCropConfirm = async (croppedFile: File) => {
+    setCropSrc('');
+    if (!id) return;
     setPhotoUploading(true);
     setUploadProgress(0);
     try {
       const form = new FormData();
-      form.append('file', file);
+      form.append('file', croppedFile);
       form.append('purpose', 'product_image');
       const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
         '/media/upload',
@@ -299,6 +308,14 @@ export default function EditProductPage() {
   };
 
   return (
+    <>
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc('')}
+        />
+      )}
     <AppShell role="SELLER">
       {/* Toast */}
       {toast && (
@@ -690,5 +707,6 @@ export default function EditProductPage() {
         )}
       </div>
     </AppShell>
+    </>
   );
 }

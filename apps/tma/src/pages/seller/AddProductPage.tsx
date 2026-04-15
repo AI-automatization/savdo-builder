@@ -5,6 +5,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
+import { ImageCropper } from '@/components/ui/ImageCropper';
 import { glass } from '@/lib/styles';
 
 interface SizeRow {
@@ -36,9 +37,10 @@ export default function AddProductPage() {
   const [sizeInput, setSizeInput] = useState('');
 
   // Фото
-  const fileRef               = useRef<HTMLInputElement>(null);
-  const [photoFile, setPhotoFile]     = useState<File | null>(null);
+  const fileRef                         = useRef<HTMLInputElement>(null);
+  const [photoFile, setPhotoFile]       = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [cropSrc, setCropSrc]           = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [photoUploading, setPhotoUploading] = useState(false);
 
@@ -86,15 +88,23 @@ export default function AddProductPage() {
   const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPhotoFile(file);
+    if (fileRef.current) fileRef.current.value = '';
     const reader = new FileReader();
-    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.onload = (ev) => setCropSrc(ev.target?.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const handleCropConfirm = (croppedFile: File) => {
+    setCropSrc('');
+    setPhotoFile(croppedFile);
+    const url = URL.createObjectURL(croppedFile);
+    setPhotoPreview(url);
   };
 
   const removePhoto = () => {
     setPhotoFile(null);
     setPhotoPreview('');
+    setCropSrc('');
     setUploadProgress(0);
     setPhotoUploading(false);
     if (fileRef.current) fileRef.current.value = '';
@@ -210,6 +220,14 @@ export default function AddProductPage() {
   };
 
   return (
+    <>
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => { setCropSrc(''); }}
+        />
+      )}
     <AppShell role="SELLER">
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
@@ -481,5 +499,6 @@ export default function AddProductPage() {
         </p>
       </div>
     </AppShell>
+    </>
   );
 }
