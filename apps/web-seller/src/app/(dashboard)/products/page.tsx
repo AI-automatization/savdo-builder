@@ -47,18 +47,30 @@ function Skeleton({ className }: { className?: string }) {
   );
 }
 
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
+
 export default function ProductsPage() {
   const { data: products, isLoading } = useSellerProducts();
   const { mutate: updateStatus, isPending: isStatusPending, variables: statusVars } = useUpdateProductStatus();
   const { data: store } = useStore();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [tgCopiedId, setTgCopiedId] = useState<string | null>(null);
 
   function copyProductLink(productId: string) {
     if (!store) return;
-    const url = `https://savdo.uz/${store.slug}/products/${productId}`;
+    const base = process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz';
+    const url = `${base}/${store.slug}/products/${productId}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(productId);
       setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
+
+  function copyTelegramLink(productId: string) {
+    const url = `https://t.me/${BOT_USERNAME}?startapp=product_${productId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setTgCopiedId(productId);
+      setTimeout(() => setTgCopiedId(null), 2000);
     });
   }
   const [search, setSearch] = useState('');
@@ -209,13 +221,25 @@ export default function ProductsPage() {
                 <div className="flex items-center gap-2.5">
                   <button
                     onClick={() => copyProductLink(p.id)}
-                    title="Скопировать ссылку на товар"
+                    title="Скопировать веб-ссылку"
                     className="text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ color: copiedId === p.id ? "rgba(52,211,153,0.90)" : "rgba(255,255,255,0.30)" }}
                   >
                     {copiedId === p.id ? "✓" : (
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-3.5 h-3.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => copyTelegramLink(p.id)}
+                    title="Скопировать Telegram-ссылку (открывает TMA)"
+                    className="text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ color: tgCopiedId === p.id ? "rgba(52,211,153,0.90)" : "rgba(42,171,238,0.70)" }}
+                  >
+                    {tgCopiedId === p.id ? "✓" : (
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
                       </svg>
                     )}
                   </button>

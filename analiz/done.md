@@ -1,5 +1,23 @@
 # Done — Азим + Полат
 
+## 2026-04-15 — Сессия 19 (часть 4): TMA deep link на товар + Telegram-share кнопка
+
+### ✅ [TMA-014] Deep link `startapp=product_<id>` → ProductDetailPage
+- **Важность:** 🟡
+- **Дата:** 15.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/tma/src/pages/HomePage.tsx`
+- **Что сделано:** `parseStartParam` теперь возвращает `{type, value}`. Для `store_<slug>` — редирект `/buyer/store/<slug>` (как раньше). Для `product_<id>` — fetch `/storefront/products/:id` → из ответа берём `store.slug` и редиректим на `/buyer/store/<slug>/product/<id>`. На ошибку fetch — редирект на `/buyer`.
+
+### ✅ [WEB-SELLER-041] «Telegram-ссылка» на карточке товара в списке
+- **Важность:** 🟡
+- **Дата:** 15.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`, `apps/web-seller/.env.example`
+- **Что сделано:** Рядом с копированием web-ссылки добавлена вторая кнопка (голубая иконка плоскости) которая копирует `https://t.me/<BOT_USERNAME>?startapp=product_<id>`. Клик по такой ссылке в Telegram → TMA открывается сразу на странице товара. Новая переменная `NEXT_PUBLIC_TG_BOT_USERNAME` в .env.example (fallback `savdo_builderBOT`). Заодно починил хардкод `savdo.uz` в existing copy — теперь использует `NEXT_PUBLIC_BUYER_URL` (уже был в env).
+
+---
+
 ## 2026-04-15 — Сессия 19 (часть 3): remotePatterns для cross-domain медиа + chatStarted
 
 ### ✅ [WEB-BUYER-056] next.config remotePatterns для абсолютных image URL
