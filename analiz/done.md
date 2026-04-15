@@ -1,5 +1,23 @@
 # Done — Азим + Полат
 
+## 2026-04-15 — Сессия 19 (часть 3): remotePatterns для cross-domain медиа + chatStarted
+
+### ✅ [WEB-BUYER-056] next.config remotePatterns для абсолютных image URL
+- **Важность:** 🟡
+- **Дата:** 15.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/next.config.ts`
+- **Что сделано:** Полат в `6fdae3a` стал возвращать абсолютные URL (`https://<api-host>/api/v1/media/proxy/<id>`) для Telegram-bucket фотографий. `next/image` в продакшене отклоняет хосты не из `remotePatterns`. Добавил patterns: API-host из `NEXT_PUBLIC_API_URL`, `**.r2.dev`, `**.r2.cloudflarestorage.com`, `**.up.railway.app`. Web-seller использует `<img>` (не Image) → config не нужен.
+
+### ✅ [WEB-BUYER-057] chat_started track event — подключён
+- **Важность:** 🟢
+- **Дата:** 15.04.2026
+- **Кто делал:** Азим
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`, `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx`
+- **Что сделано:** `track.chatStarted` был объявлен в `analytics.ts`, но не вызывался. Добавил onClick на Telegram-кнопку на product page (thread_type='product') и в двух местах order detail page (badge + sticky CTA, thread_type='order'). Store page — server component, пропущен. Новый баг открыт: `[API-LIST-001]` — `ProductListItem` не содержит variantCount, бейдж на карточке требует backend изменения.
+
+---
+
 ## 2026-04-15 — Сессия 19 (часть 2): Group-based variant selector для покупателей
 
 ### ✅ [BUYER-VAR-001] Групповой выбор опций в web-buyer и TMA

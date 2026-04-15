@@ -363,6 +363,7 @@ export default function ProductPage() {
               href={product.store.telegramContactLink}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => track.chatStarted(product.storeId, "product")}
               className="w-14 flex items-center justify-center rounded-2xl text-white transition-opacity hover:opacity-85 active:scale-[0.97]"
               style={{ background: "linear-gradient(135deg, #1d6fa4 0%, #2AABEE 100%)", boxShadow: "0 8px 24px rgba(42,171,238,.28)" }}
             >

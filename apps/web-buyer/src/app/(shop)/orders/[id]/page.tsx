@@ -6,6 +6,7 @@ import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OrderStatus, DeliveryType } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
 import { useBuyerSocket } from "@/hooks/use-buyer-socket";
+import { track } from "@/lib/analytics";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -233,6 +234,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   href={order.store.telegramContactLink}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => track.chatStarted(order.storeId, "order")}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
                   style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.28)" }}
                 >
@@ -317,6 +319,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 href={order.store.telegramContactLink}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => track.chatStarted(order.storeId, "order")}
                 className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                 style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,.38)" }}
               >

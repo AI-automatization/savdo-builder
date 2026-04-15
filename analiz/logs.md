@@ -10,6 +10,14 @@
 
 ---
 
+## 2026-04-15 [API-LIST-001] ProductListItem не содержит variantCount/hasVariants
+
+- **Статус:** 🟡 Улучшение (запрос Полата)
+- **Что случилось:** На карточке товара (web-buyer ProductCard, web-seller products list) хочется показывать бейдж «есть варианты» / «3 варианта». Но `GET /seller/products` и `GET /storefront/products` возвращают `ProductListItem` без info о вариантах. Запрашивать детали каждого — дорого.
+- **Что нужно:** Полат — добавить в `ProductListItem` поле `variantCount: number` (или `hasVariants: boolean`). После — Азим допилит бейдж.
+
+---
+
 ## 2026-04-15 [API-VAR-001] Несовпадение контракта: variant.optionValueIds vs optionValues
 
 - **Статус:** 🟡 Предупреждение (домен Полата, не правлю)
