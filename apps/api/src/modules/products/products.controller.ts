@@ -114,7 +114,8 @@ export class ProductsController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
     }
 
-    return product;
+    const p = product as unknown as Record<string, unknown> & { variants?: unknown[] };
+    return { ...p, variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)) };
   }
 
   @Patch('seller/products/:id')
@@ -176,7 +177,8 @@ export class ProductsController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
     }
 
-    return this.variantsRepo.findByProductId(productId);
+    const variants = await this.variantsRepo.findByProductId(productId);
+    return variants.map((v) => this.normalizeVariant(v));
   }
 
   @Post('seller/products/:id/variants')
@@ -187,7 +189,7 @@ export class ProductsController {
     @Body() dto: CreateVariantDto,
   ) {
     const storeId = await this.resolveStoreId(user.sub);
-    return this.createVariant.execute(productId, storeId, {
+    const variant = await this.createVariant.execute(productId, storeId, {
       sku: dto.sku,
       priceOverride: dto.priceOverride,
       stockQuantity: dto.stockQuantity,
@@ -195,6 +197,7 @@ export class ProductsController {
       titleOverride: dto.titleOverride,
       optionValueIds: dto.optionValueIds,
     });
+    return this.normalizeVariant(variant);
   }
 
   @Patch('seller/products/:id/variants/:variantId')
@@ -206,13 +209,14 @@ export class ProductsController {
     @Body() dto: UpdateVariantDto,
   ) {
     const storeId = await this.resolveStoreId(user.sub);
-    return this.updateVariant.execute(variantId, productId, storeId, {
+    const variant = await this.updateVariant.execute(variantId, productId, storeId, {
       sku: dto.sku,
       priceOverride: dto.priceOverride,
       stockQuantity: dto.stockQuantity,
       isActive: dto.isActive,
       titleOverride: dto.titleOverride,
     });
+    return this.normalizeVariant(variant);
   }
 
   @Delete('seller/products/:id/variants/:variantId')
@@ -464,10 +468,11 @@ export class ProductsController {
     if (product.storeId !== store.id) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }> };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[] };
     return {
       ...p,
       mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
 
@@ -502,14 +507,23 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }> };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[] };
     return {
       ...p,
       mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────
+
+  private normalizeVariant(variant: unknown): unknown {
+    const v = variant as Record<string, unknown>;
+    const junctions = (v['optionValues'] ?? []) as Array<{ optionValueId: string }>;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { optionValues: _drop, ...rest } = v;
+    return { ...rest, optionValueIds: junctions.map((j) => j.optionValueId) };
+  }
 
   private resolveImageUrl(media: unknown): string {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
