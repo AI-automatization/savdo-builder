@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, Package, ShoppingCart, RefreshCw, AlertCircle, ChevronRight, Search } from 'lucide-react'
+import { Store, Package, ShoppingCart, RefreshCw, AlertCircle, ChevronRight, Search, ShieldCheck } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { api } from '../lib/api'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -42,6 +43,8 @@ export default function StoresPage() {
   const [filter, setFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const LIMIT = 20
 
   const query = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
@@ -50,17 +53,33 @@ export default function StoresPage() {
     `/api/v1/admin/stores?${query}`, [page, filter],
   )
 
-  const stores = data?.stores ?? []
+  const [localStores, setLocalStores] = useState<StoreItem[]>([])
+  useEffect(() => { setLocalStores(data?.stores ?? []) }, [data])
+
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / LIMIT)
 
   const filtered = search
-    ? stores.filter(s =>
+    ? localStores.filter(s =>
         s.name.toLowerCase().includes(search.toLowerCase()) ||
         s.slug.toLowerCase().includes(search.toLowerCase()) ||
         s.seller?.fullName?.toLowerCase().includes(search.toLowerCase())
       )
-    : stores
+    : localStores
+
+  async function approveStore(storeId: string) {
+    setLocalStores(prev => prev.map(s => s.id === storeId ? { ...s, status: 'APPROVED' } : s))
+    setActionLoading(storeId)
+    setActionError(null)
+    try {
+      await api.post(`/api/v1/admin/stores/${storeId}/approve`, {})
+    } catch (e: any) {
+      setLocalStores(data?.stores ?? [])
+      setActionError(e.message ?? 'Ошибка верификации')
+    } finally {
+      setActionLoading(null)
+    }
+  }
 
   return (
     <div className="p-8 min-h-screen">
@@ -79,10 +98,10 @@ export default function StoresPage() {
       </div>
 
       {/* Error */}
-      {error && (
+      {(error || actionError) && (
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-5 text-xs border"
           style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)', color: 'var(--error)' }}>
-          <AlertCircle size={13} /> {error}
+          <AlertCircle size={13} /> {error ?? actionError}
         </div>
       )}
 
@@ -190,9 +209,30 @@ export default function StoresPage() {
                     {new Date(s.createdAt).toLocaleDateString('ru-RU')}
                   </td>
 
-                  {/* Arrow */}
+                  {/* Actions */}
                   <td className="px-4 py-3">
-                    <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
+                    <div className="flex items-center justify-end gap-2">
+                      {s.status === 'PENDING_REVIEW' && (
+                        <button
+                          disabled={actionLoading === s.id}
+                          onClick={(e) => { e.stopPropagation(); approveStore(s.id) }}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                            cursor: actionLoading === s.id ? 'not-allowed' : 'pointer',
+                            opacity: actionLoading === s.id ? 0.5 : 1,
+                            border: '1px solid rgba(16,185,129,0.35)',
+                            background: 'rgba(16,185,129,0.08)',
+                            color: '#10B981',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <ShieldCheck size={12} />
+                          Верифицировать
+                        </button>
+                      )}
+                      <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
+                    </div>
                   </td>
                 </tr>
               )
