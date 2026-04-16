@@ -212,7 +212,7 @@ export default function StoresPage() {
                   {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      {s.status === 'PENDING_REVIEW' && (
+                      {(s.status === 'PENDING_REVIEW' || s.status === 'DRAFT') && (
                         <button
                           disabled={actionLoading === s.id}
                           onClick={(e) => { e.stopPropagation(); approveStore(s.id) }}

@@ -187,6 +187,7 @@ export default function StoreDetailPage() {
   const isRejected    = store.status === 'REJECTED'
   const isArchived    = store.status === 'ARCHIVED'
   const isPendingReview = store.status === 'PENDING_REVIEW'
+  const canApprove = store.status === 'PENDING_REVIEW' || store.status === 'DRAFT'
   const suspendEntry = auditData?.logs?.find(e => e.action === 'STORE_SUSPENDED')
   const suspendReason: string | null = suspendEntry?.payload?.reason ?? null
 
@@ -233,9 +234,9 @@ export default function StoreDetailPage() {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {isPendingReview && (
+          {canApprove && (
             <button onClick={() => setModal('approve')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <CheckCircle size={14} /> Одобрить
+              <CheckCircle size={14} /> Верифицировать
             </button>
           )}
           {isSuspended ? (
@@ -499,9 +500,9 @@ export default function StoreDetailPage() {
       )}
       {modal === 'approve' && (
         <ConfirmModal
-          title="Одобрить магазин"
-          description={`Магазин «${store.name}» будет одобрен и получит статус APPROVED.`}
-          actionLabel="Одобрить"
+          title="Верифицировать магазин"
+          description={`Магазин «${store.name}» будет верифицирован, опубликован и появится в поиске покупателей.`}
+          actionLabel="Верифицировать"
           actionColor="#10B981"
           requireReason={false}
           onConfirm={handleAction}

@@ -13,10 +13,10 @@ export class ApproveStoreUseCase {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
 
-    if (store.status !== 'PENDING_REVIEW') {
+    if (store.status !== 'PENDING_REVIEW' && store.status !== 'DRAFT') {
       throw new DomainException(
         ErrorCode.STORE_INVALID_TRANSITION,
-        'Store is not pending review',
+        'Store cannot be approved from current status',
         HttpStatus.CONFLICT,
       );
     }
