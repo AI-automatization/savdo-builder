@@ -80,6 +80,7 @@ export default function StoresPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
             placeholder="Поиск магазинов..."
             className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none"
             style={{
