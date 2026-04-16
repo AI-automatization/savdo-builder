@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -12,6 +12,26 @@ interface AuditEntry {
   payload: Record<string, any> | null
   createdAt: string
   actorUser?: { phone: string }
+}
+
+interface StoreProduct {
+  id: string
+  title: string
+  status: string
+  basePrice: number
+  currencyCode: string
+}
+
+interface ProductsResponse {
+  products: StoreProduct[]
+  total: number
+}
+
+const PRODUCT_STATUS: Record<string, { label: string; color: string }> = {
+  ACTIVE:          { label: 'Активен',  color: '#10B981' },
+  DRAFT:           { label: 'Черновик', color: '#94A3B8' },
+  ARCHIVED:        { label: 'Архив',    color: '#94A3B8' },
+  HIDDEN_BY_ADMIN: { label: 'Скрыт',   color: '#EF4444' },
 }
 
 interface StoreDetail {
@@ -90,10 +110,41 @@ export default function StoreDetailPage() {
     `/api/v1/admin/audit-log?entityType=Store&entityId=${store?.id ?? 'none'}&limit=20`,
     [store?.id],
   )
+  const { data: productsData, refetch: refetchProducts } = useFetch<ProductsResponse>(
+    `/api/v1/admin/products?storeId=${store?.id ?? 'none'}&limit=50`,
+    [store?.id],
+  )
 
   const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'reject' | 'archive' | 'approve' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [productActionLoading, setProductActionLoading] = useState<string | null>(null)
+  const [confirmDeleteProduct, setConfirmDeleteProduct] = useState<string | null>(null)
+
+  async function toggleProductHide(product: StoreProduct) {
+    const isHidden = product.status === 'HIDDEN_BY_ADMIN'
+    const endpoint = isHidden
+      ? `/api/v1/admin/products/${product.id}/restore`
+      : `/api/v1/admin/products/${product.id}/hide`
+    setProductActionLoading(product.id)
+    try {
+      await api.patch(endpoint, {})
+      refetchProducts()
+    } finally {
+      setProductActionLoading(null)
+    }
+  }
+
+  async function deleteStoreProduct(productId: string) {
+    setConfirmDeleteProduct(null)
+    setProductActionLoading(productId)
+    try {
+      await api.delete(`/api/v1/admin/products/${productId}`)
+      refetchProducts()
+    } finally {
+      setProductActionLoading(null)
+    }
+  }
 
   const MODAL_ENDPOINT: Record<string, string> = {
     suspend:   'suspend',
@@ -292,6 +343,81 @@ export default function StoreDetailPage() {
               <span style={{ color: 'var(--text)', fontSize: 13, fontFamily: 'monospace' }}>{c.value}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Products */}
+      {productsData && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
+            Товары ({productsData.total})
+          </div>
+          {productsData.products.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Товаров нет</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Название', 'Цена', 'Статус', ''].map(h => (
+                    <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {productsData.products.map(p => {
+                  const ps = PRODUCT_STATUS[p.status] ?? { label: p.status, color: '#94A3B8' }
+                  const isHidden = p.status === 'HIDDEN_BY_ADMIN'
+                  const loading = productActionLoading === p.id
+                  return (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 10px', color: 'var(--text)', maxWidth: 220 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</span>
+                      </td>
+                      <td style={{ padding: '8px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {new Intl.NumberFormat('ru-RU').format(p.basePrice)} {p.currencyCode}
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: ps.color + '1a', color: ps.color }}>
+                          {ps.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => toggleProductHide(p)}
+                            disabled={loading}
+                            title={isHidden ? 'Восстановить' : 'Скрыть'}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 6, border: `1px solid ${isHidden ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, background: isHidden ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', color: isHidden ? '#10B981' : '#EF4444', fontSize: 12, cursor: loading ? 'wait' : 'pointer' }}
+                          >
+                            {isHidden ? <Eye size={12} /> : <EyeOff size={12} />}
+                            {isHidden ? 'Восстановить' : 'Скрыть'}
+                          </button>
+                          {confirmDeleteProduct === p.id ? (
+                            <>
+                              <button onClick={() => deleteStoreProduct(p.id)} disabled={loading} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.15)', color: '#EF4444', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                                Да
+                              </button>
+                              <button onClick={() => setConfirmDeleteProduct(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
+                                Нет
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteProduct(p.id)}
+                              title="Удалить"
+                              style={{ display: 'flex', alignItems: 'center', padding: '4px 6px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'transparent', color: 'rgba(239,68,68,0.5)', cursor: 'pointer' }}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 

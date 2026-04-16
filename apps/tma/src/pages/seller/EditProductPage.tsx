@@ -414,6 +414,22 @@ export default function EditProductPage() {
 
         {!loading && !loadError && product && (
           <>
+            {/* Предупреждение: скрыт администратором */}
+            {product.status === 'HIDDEN_BY_ADMIN' && (
+              <div
+                className="flex items-start gap-3 p-3 rounded-xl"
+                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1.4 }}>🚫</span>
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: '#f87171' }}>Товар скрыт администратором</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'rgba(248,113,113,0.65)' }}>
+                    Товар не виден покупателям. Вы можете отредактировать его данные или удалить.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Основная информация */}
             <GlassCard className="p-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
@@ -685,7 +701,7 @@ export default function EditProductPage() {
               </div>
             )}
 
-            {(product.status === 'DRAFT' || product.status === 'ARCHIVED') && (
+            {(product.status === 'DRAFT' || product.status === 'ARCHIVED' || product.status === 'HIDDEN_BY_ADMIN') && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 style={{

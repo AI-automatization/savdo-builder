@@ -111,7 +111,11 @@ export default function SellerProductsPage() {
           const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
           const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
           return (
-          <GlassCard key={product.id} className="p-4 flex items-center gap-3">
+          <GlassCard
+            key={product.id}
+            className="p-4 flex items-center gap-3 cursor-pointer active:opacity-70"
+            onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+          >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden"
               style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.20)' }}
@@ -134,29 +138,9 @@ export default function SellerProductsPage() {
 
             <div className="flex items-center gap-2 shrink-0">
               <Badge status={product.status} />
-              {/* Edit button */}
-              <button
-                onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-                title="Редактировать"
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  border: 'none',
-                  background: 'rgba(167,139,250,0.12)',
-                  color: '#A78BFA',
-                  fontSize: 15,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                ✏️
-              </button>
               {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
                 <button
-                  onClick={() => toggleStatus(product)}
+                  onClick={(e) => { e.stopPropagation(); toggleStatus(product); }}
                   disabled={togglingId === product.id}
                   title={product.status === 'ACTIVE' ? 'Снять с публикации' : 'Опубликовать'}
                   style={{

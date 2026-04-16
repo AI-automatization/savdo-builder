@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive, Trash2 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
@@ -41,7 +41,11 @@ export default function ProductsPage() {
   const query = statusFilter ? `status=${statusFilter}&limit=50` : 'limit=50'
   const { data, loading, error, refetch } = useFetch<ProductsResponse>(`/api/v1/admin/products?${query}`, [statusFilter])
 
-  const products = (data?.products ?? []).filter(p =>
+  // Локальный список — обновляется при загрузке и при оптимистичных изменениях
+  const [localProducts, setLocalProducts] = useState<Product[]>([])
+  useEffect(() => { setLocalProducts(data?.products ?? []) }, [data])
+
+  const products = localProducts.filter(p =>
     !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.id.includes(search)
   )
 
@@ -50,13 +54,17 @@ export default function ProductsPage() {
     const endpoint = isHidden
       ? `/api/v1/admin/products/${product.id}/restore`
       : `/api/v1/admin/products/${product.id}/hide`
+    const newStatus = isHidden ? 'ACTIVE' : 'HIDDEN_BY_ADMIN'
 
+    // Оптимистичное обновление — без перезагрузки страницы
+    setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: newStatus } : p))
     setActionLoading(product.id)
     setActionError(null)
     try {
       await api.patch(endpoint, {})
-      refetch()
     } catch (e: any) {
+      // Откат при ошибке
+      setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: product.status } : p))
       setActionError(e.message ?? 'Ошибка')
     } finally {
       setActionLoading(null)
@@ -64,12 +72,14 @@ export default function ProductsPage() {
   }
 
   async function archiveProduct(product: Product) {
+    // Оптимистичное обновление
+    setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: 'ARCHIVED' } : p))
     setActionLoading(product.id)
     setActionError(null)
     try {
       await api.patch(`/api/v1/admin/products/${product.id}/archive`, {})
-      refetch()
     } catch (e: any) {
+      setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: product.status } : p))
       setActionError(e.message ?? 'Ошибка')
     } finally {
       setActionLoading(null)
@@ -78,12 +88,15 @@ export default function ProductsPage() {
 
   async function deleteProduct(productId: string) {
     setConfirmDelete(null)
+    // Оптимистичное удаление из списка
+    setLocalProducts(prev => prev.filter(p => p.id !== productId))
     setActionLoading(productId)
     setActionError(null)
     try {
       await api.delete(`/api/v1/admin/products/${productId}`)
-      refetch()
     } catch (e: any) {
+      // При ошибке — восстанавливаем из оригинальных данных
+      setLocalProducts(data?.products ?? [])
       setActionError(e.message ?? 'Ошибка')
     } finally {
       setActionLoading(null)
