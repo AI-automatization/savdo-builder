@@ -59,12 +59,12 @@ export default function StoresPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 14px rgba(167,139,250,.40)' }}
+            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 14px rgba(168,85,247,.40)' }}
           >
             <Sticker emoji="🛒" size={26} />
           </div>
           <div>
-            <h1 className="text-base font-bold" style={{ color: '#A78BFA' }}>Savdo</h1>
+            <h1 className="text-base font-bold" style={{ color: '#A855F7' }}>Savdo</h1>
             {user && (
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
                 Привет, {user.first_name}!
@@ -104,7 +104,7 @@ export default function StoresPage() {
           <div className="flex flex-col items-center gap-2 py-10">
             <Sticker emoji="⚠️" size={56} />
             <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-            <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A78BFA' }}>Попробовать снова</button>
+            <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
           </div>
         )}
 
@@ -125,7 +125,7 @@ export default function StoresPage() {
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(167,139,250,0.20)', border: '1px solid rgba(167,139,250,0.25)' }}
+              style={{ background: 'rgba(168,85,247,0.20)', border: '1px solid rgba(168,85,247,0.25)' }}
             >
               <Sticker emoji="🏪" size={26} />
             </div>
@@ -135,7 +135,7 @@ export default function StoresPage() {
                 <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>{store.description}</p>
               )}
               {store.city && (
-                <p className="text-[11px] mt-0.5" style={{ color: 'rgba(167,139,250,0.65)' }}>
+                <p className="text-[11px] mt-0.5" style={{ color: 'rgba(168,85,247,0.65)' }}>
                   📍 {store.city}
                 </p>
               )}

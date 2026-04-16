@@ -6,7 +6,7 @@ export function Spinner({ size = 24 }: { size?: number }) {
         width: size,
         height: size,
         borderColor: 'rgba(167,139,250,0.30)',
-        borderTopColor: '#A78BFA',
+        borderTopColor: '#A855F7',
       }}
     />
   );

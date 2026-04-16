@@ -160,7 +160,7 @@ export default function ProductPage() {
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Товар не найден</p>
-          <button onClick={() => navigate(-1)} style={{ color: '#A78BFA', fontSize: 14 }}>← Назад</button>
+          <button onClick={() => navigate(-1)} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
         </div>
       </AppShell>
     );
@@ -192,7 +192,7 @@ export default function ProductPage() {
                 onClick={() => setActiveImage(idx)}
                 className="shrink-0 w-14 h-14 rounded-lg overflow-hidden"
                 style={{
-                  border: idx === activeImage ? '2px solid #A78BFA' : '1px solid rgba(255,255,255,0.10)',
+                  border: idx === activeImage ? '2px solid #A855F7' : '1px solid rgba(255,255,255,0.10)',
                 }}
               >
                 <img src={url} alt="" className="w-full h-full object-cover" />
@@ -206,7 +206,7 @@ export default function ProductPage() {
           <h1 className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>
             {product.title}
           </h1>
-          <p className="text-xl font-bold" style={{ color: '#A78BFA' }}>
+          <p className="text-xl font-bold" style={{ color: '#A855F7' }}>
             {unitPrice.toLocaleString('ru')} сум
           </p>
         </div>
@@ -232,7 +232,7 @@ export default function ProductPage() {
                         style={{
                           background: isSel ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.05)',
                           border:     isSel ? '1px solid rgba(167,139,250,0.45)' : '1px solid rgba(255,255,255,0.10)',
-                          color:      isSel ? '#A78BFA' : 'rgba(255,255,255,0.75)',
+                          color:      isSel ? '#A855F7' : 'rgba(255,255,255,0.75)',
                           textDecoration: avail ? undefined : 'line-through',
                           cursor:     avail ? 'pointer' : 'not-allowed',
                         }}
@@ -271,7 +271,7 @@ export default function ProductPage() {
                     style={{
                       background: active ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.05)',
                       border: active ? '1px solid rgba(167,139,250,0.45)' : '1px solid rgba(255,255,255,0.10)',
-                      color: active ? '#A78BFA' : 'rgba(255,255,255,0.70)',
+                      color: active ? '#A855F7' : 'rgba(255,255,255,0.70)',
                     }}
                   >
                     {v.titleOverride ?? `#${v.id.slice(-4)}`}

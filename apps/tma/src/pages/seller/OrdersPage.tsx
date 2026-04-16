@@ -83,7 +83,7 @@ export default function SellerOrdersPage() {
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
             <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить заказы</p>
-            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: '#A78BFA' }}>Попробовать снова</button>
+            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
           </div>
         )}
 
@@ -106,7 +106,7 @@ export default function SellerOrdersPage() {
                   </p>
                   <Badge status={o.status} />
                 </div>
-                <p className="text-sm font-bold" style={{ color: '#A78BFA' }}>
+                <p className="text-sm font-bold" style={{ color: '#A855F7' }}>
                   {Number(o.totalAmount).toLocaleString('ru')} сум
                 </p>
               </div>
@@ -123,7 +123,7 @@ export default function SellerOrdersPage() {
                       onClick={() => changeStatus(o.id, next.status)}
                       disabled={isUpdating}
                       className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
-                      style={{ background: 'rgba(167,139,250,0.20)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.30)' }}
+                      style={{ background: 'rgba(167,139,250,0.20)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.30)' }}
                     >
                       {isUpdating ? '...' : next.label}
                     </button>

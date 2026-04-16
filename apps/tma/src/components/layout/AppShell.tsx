@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { BottomNav } from './BottomNav';
 import { BackButton } from './BackButton';
-import { gradientBg } from '@/lib/styles';
+import { gradientBg, COLORS } from '@/lib/styles';
 
 interface Props {
   children: ReactNode;
@@ -11,24 +11,26 @@ interface Props {
 export function AppShell({ children, role }: Props) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: gradientBg }}>
-      {/* Ambient orbs */}
+      {/* Ambient depth layers — Cyber Orchid + Arctic Cyan */}
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: 400, height: 400, top: -150, right: -100,
-            background: 'radial-gradient(circle, rgba(167,139,250,.18) 0%, transparent 70%)',
-            filter: 'blur(60px)',
-          }}
-        />
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: 300, height: 300, bottom: -80, left: -80,
-            background: 'radial-gradient(circle, rgba(34,197,94,.10) 0%, transparent 70%)',
-            filter: 'blur(48px)',
-          }}
-        />
+        {/* Top-right: Cyber Orchid */}
+        <div className="absolute rounded-full" style={{
+          width: 480, height: 480, top: -180, right: -120,
+          background: `radial-gradient(circle, ${COLORS.orchidGlow} 0%, transparent 68%)`,
+          filter: 'blur(72px)',
+        }} />
+        {/* Bottom-left: Arctic Cyan */}
+        <div className="absolute rounded-full" style={{
+          width: 320, height: 320, bottom: -100, left: -80,
+          background: `radial-gradient(circle, ${COLORS.cyanDim} 0%, transparent 70%)`,
+          filter: 'blur(56px)',
+        }} />
+        {/* Center subtle: navy depth */}
+        <div className="absolute rounded-full" style={{
+          width: 260, height: 260, top: '40%', left: '50%', transform: 'translateX(-50%)',
+          background: 'radial-gradient(circle, rgba(13,17,32,0.60) 0%, transparent 70%)',
+          filter: 'blur(40px)',
+        }} />
       </div>
 
       <BackButton />

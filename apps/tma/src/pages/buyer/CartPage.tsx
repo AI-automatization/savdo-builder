@@ -65,7 +65,7 @@ export default function CartPage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.88)' }}>{item.title}</p>
               <p className="text-xs" style={{ color: 'rgba(167,139,250,0.80)' }}>{item.storeName}</p>
-              <p className="text-xs font-bold mt-0.5" style={{ color: '#A78BFA' }}>
+              <p className="text-xs font-bold mt-0.5" style={{ color: '#A855F7' }}>
                 {(item.price * item.qty).toLocaleString('ru')} сум
               </p>
             </div>
@@ -83,7 +83,7 @@ export default function CartPage() {
               <button
                 onClick={() => updateQty(item.productId, 1)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                style={{ background: 'rgba(167,139,250,0.25)', color: '#A78BFA' }}
+                style={{ background: 'rgba(167,139,250,0.25)', color: '#A855F7' }}
               >
                 +
               </button>
@@ -101,7 +101,7 @@ export default function CartPage() {
         {items.length > 0 && (
           <div className="flex items-center justify-between px-2 py-3">
             <span className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>Итого:</span>
-            <span className="text-base font-bold" style={{ color: '#A78BFA' }}>
+            <span className="text-base font-bold" style={{ color: '#A855F7' }}>
               {total.toLocaleString('ru')} сум
             </span>
           </div>

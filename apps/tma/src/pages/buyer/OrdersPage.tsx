@@ -65,7 +65,7 @@ export default function OrdersPage() {
                 {new Date(o.createdAt).toLocaleDateString('ru')}
               </p>
             </div>
-            <p className="text-sm font-bold shrink-0" style={{ color: '#A78BFA' }}>
+            <p className="text-sm font-bold shrink-0" style={{ color: '#A855F7' }}>
               {Number(o.totalAmount).toLocaleString('ru')} сум
             </p>
           </GlassCard>

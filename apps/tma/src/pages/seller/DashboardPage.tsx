@@ -60,12 +60,12 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 14px rgba(167,139,250,.40)' }}
+            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 14px rgba(168,85,247,.40)' }}
           >
             <Sticker emoji="🏪" size={26} />
           </div>
           <div>
-            <h1 className="text-base font-bold" style={{ color: '#A78BFA' }}>Панель продавца</h1>
+            <h1 className="text-base font-bold" style={{ color: '#A855F7' }}>Панель продавца</h1>
             {user && (
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
                 {user.first_name}
@@ -98,7 +98,7 @@ export default function DashboardPage() {
           <button
             onClick={() => navigate('/seller/products')}
             className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.25)' }}
+            style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)' }}
           >
             <span>📦</span> Мои товары
           </button>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
           <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Последние заказы
           </h2>
-          <button onClick={() => navigate('/seller/orders')} className="text-xs" style={{ color: '#A78BFA' }}>
+          <button onClick={() => navigate('/seller/orders')} className="text-xs" style={{ color: '#A855F7' }}>
             Все →
           </button>
         </div>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
                 {new Date(o.createdAt).toLocaleDateString('ru')}
               </p>
             </div>
-            <p className="text-sm font-bold shrink-0" style={{ color: '#A78BFA' }}>
+            <p className="text-sm font-bold shrink-0" style={{ color: '#A855F7' }}>
               {Number(o.totalAmount).toLocaleString('ru')} сум
             </p>
           </GlassCard>

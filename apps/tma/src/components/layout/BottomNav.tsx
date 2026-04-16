@@ -39,10 +39,11 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
     <nav
       className="fixed bottom-0 left-0 right-0 flex justify-around z-50"
       style={{
-        background: 'rgba(15,10,30,0.94)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(11,14,20,0.92)',
+        backdropFilter: 'blur(25px)',
+        WebkitBackdropFilter: 'blur(25px)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
         paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         paddingTop: 8,
       }}
@@ -73,7 +74,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             </span>
             <span
               className="text-[10px] font-medium truncate w-full text-center"
-              style={{ color: active ? '#A78BFA' : 'rgba(255,255,255,0.32)' }}
+              style={{ color: active ? '#A855F7' : 'rgba(255,255,255,0.30)' }}
             >
               {tab.label}
             </span>
@@ -85,7 +86,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
                   width: 20,
                   height: 2,
                   borderRadius: 1,
-                  background: '#A78BFA',
+                  background: 'linear-gradient(90deg, #A855F7, #22D3EE)',
                 }}
               />
             )}

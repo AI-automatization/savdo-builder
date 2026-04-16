@@ -12,7 +12,7 @@ export function GlassCard({ children, className = '', style, onClick }: Props) {
   const Tag = onClick ? 'button' : 'div';
   return (
     <Tag
-      className={`w-full text-left transition-opacity active:opacity-70 ${className}`}
+      className={`w-full text-left glass-shimmer transition-all active:scale-[0.985] active:opacity-75 ${className}`}
       style={{ ...glass, ...style }}
       onClick={onClick}
     >

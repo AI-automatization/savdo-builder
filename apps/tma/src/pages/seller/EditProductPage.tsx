@@ -487,7 +487,7 @@ export default function EditProductPage() {
                   disabled={photoUploading}
                   style={{
                     fontSize: 12,
-                    color: '#A78BFA',
+                    color: '#A855F7',
                     background: 'none',
                     border: 'none',
                     cursor: photoUploading ? 'wait' : 'pointer',
@@ -505,7 +505,7 @@ export default function EditProductPage() {
                     style={{
                       height: '100%',
                       width: `${uploadProgress}%`,
-                      background: 'linear-gradient(90deg, #7C3AED, #A78BFA)',
+                      background: 'linear-gradient(90deg, #7C3AED, #A855F7)',
                       transition: 'width 0.2s',
                       borderRadius: 4,
                     }}
@@ -530,7 +530,7 @@ export default function EditProductPage() {
                               objectFit: 'cover',
                               borderRadius: 10,
                               border: img.isPrimary
-                                ? '2px solid #A78BFA'
+                                ? '2px solid #A855F7'
                                 : '2px solid rgba(255,255,255,0.10)',
                             }}
                           />
@@ -637,7 +637,7 @@ export default function EditProductPage() {
                           minWidth: 44, height: 36, borderRadius: 8, padding: '0 8px',
                           background: 'rgba(167,139,250,0.12)',
                           border: '1px solid rgba(167,139,250,0.20)',
-                          color: '#A78BFA',
+                          color: '#A855F7',
                         }}
                       >
                         {label}

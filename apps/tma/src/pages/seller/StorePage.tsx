@@ -151,7 +151,7 @@ export default function SellerStorePage() {
           <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 14 }}>{fetchError}</p>
           <button
             onClick={() => { setFetchError(''); setLoading(true); api<Store>('/seller/store').then((s) => { setStore(s); setName(s.name); setDescription(s.description ?? ''); }).catch((err: unknown) => { if (!(err instanceof ApiError && err.status === 404)) setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.'); }).finally(() => setLoading(false)); }}
-            style={{ padding: '8px 20px', borderRadius: 12, background: 'rgba(167,139,250,0.18)', color: '#A78BFA', fontSize: 13, fontWeight: 600, border: '1px solid rgba(167,139,250,0.3)' }}
+            style={{ padding: '8px 20px', borderRadius: 12, background: 'rgba(168,85,247,0.18)', color: '#A855F7', fontSize: 13, fontWeight: 600, border: '1px solid rgba(168,85,247,0.3)' }}
           >
             Попробовать снова
           </button>
@@ -167,7 +167,7 @@ export default function SellerStorePage() {
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
           <div
             className="flex flex-col items-center gap-4 py-8 px-4 rounded-2xl"
-            style={{ background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.18)' }}
+            style={{ background: 'rgba(168,85,247,0.07)', border: '1px solid rgba(168,85,247,0.18)' }}
           >
             <span style={{ fontSize: 44 }}>🏪</span>
             <div className="text-center">
@@ -198,8 +198,8 @@ export default function SellerStorePage() {
                 disabled={creating}
                 className="w-full py-3 rounded-xl text-sm font-semibold"
                 style={{
-                  background: creating ? 'rgba(167,139,250,0.15)' : 'linear-gradient(135deg, #7C3AED, #A78BFA)',
-                  color: creating ? 'rgba(167,139,250,0.50)' : '#fff',
+                  background: creating ? 'rgba(168,85,247,0.15)' : 'linear-gradient(135deg, #7C3AED, #A855F7)',
+                  color: creating ? 'rgba(168,85,247,0.50)' : '#fff',
                   cursor: creating ? 'wait' : 'pointer',
                 }}
               >
@@ -220,12 +220,12 @@ export default function SellerStorePage() {
         <GlassCard className="p-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-              style={{ background: 'rgba(167,139,250,0.20)', border: '1px solid rgba(167,139,250,0.25)' }}>
+              style={{ background: 'rgba(168,85,247,0.20)', border: '1px solid rgba(168,85,247,0.25)' }}>
               🏪
             </div>
             <div>
               <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
-              <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>savdo.uz/{store.slug}</p>
+              <p className="text-[11px]" style={{ color: 'rgba(168,85,247,0.80)' }}>savdo.uz/{store.slug}</p>
             </div>
             <Badge status={store.status} />
           </div>

@@ -306,7 +306,7 @@ export default function AddProductPage() {
                         style={{
                           height: '100%',
                           width: `${uploadProgress}%`,
-                          background: 'linear-gradient(90deg, #7C3AED, #A78BFA)',
+                          background: 'linear-gradient(90deg, #7C3AED, #A855F7)',
                           transition: 'width 0.2s',
                           borderRadius: 4,
                         }}
@@ -402,7 +402,7 @@ export default function AddProductPage() {
                       width: 36, height: 36, borderRadius: 8,
                       background: 'rgba(167,139,250,0.15)',
                       border: '1px solid rgba(167,139,250,0.25)',
-                      color: '#A78BFA',
+                      color: '#A855F7',
                     }}
                   >
                     {sz.label}
@@ -441,7 +441,7 @@ export default function AddProductPage() {
                     borderRadius: 10,
                     border: '1px solid rgba(167,139,250,0.30)',
                     background: 'rgba(167,139,250,0.12)',
-                    color: '#A78BFA',
+                    color: '#A855F7',
                     fontSize: 13,
                     cursor: sizeInput.trim() ? 'pointer' : 'not-allowed',
                     opacity: sizeInput.trim() ? 1 : 0.5,

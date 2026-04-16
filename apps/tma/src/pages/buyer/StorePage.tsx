@@ -104,7 +104,7 @@ export default function StorePage() {
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
-          <button onClick={() => navigate('/buyer')} style={{ color: '#A78BFA', fontSize: 14 }}>← Назад</button>
+          <button onClick={() => navigate('/buyer')} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
         </div>
       </AppShell>
     );
@@ -160,7 +160,7 @@ export default function StorePage() {
                 {p.title}
               </p>
               <div className="flex items-center justify-between mt-auto">
-                <p className="text-xs font-bold" style={{ color: '#A78BFA' }}>
+                <p className="text-xs font-bold" style={{ color: '#A855F7' }}>
                   {Number(p.basePrice).toLocaleString('ru')} сум
                 </p>
                 <button

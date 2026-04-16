@@ -58,7 +58,7 @@ export default function SellerProfilePage() {
         <GlassCard className="p-4 flex items-center gap-3">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
           >
             {tgUser?.first_name?.[0] ?? '?'}
           </div>
@@ -75,7 +75,7 @@ export default function SellerProfilePage() {
           </div>
           <span
             className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: 'rgba(167,139,250,0.18)', color: '#A78BFA' }}
+            style={{ background: 'rgba(168,85,247,0.18)', color: '#A855F7' }}
           >
             Продавец
           </span>
@@ -91,7 +91,7 @@ export default function SellerProfilePage() {
               <Badge status={store.status} />
             </div>
             <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.88)' }}>{store.name}</p>
-            <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.70)' }}>savdo.uz/{store.slug}</p>
+            <p className="text-[11px]" style={{ color: 'rgba(168,85,247,0.70)' }}>savdo.uz/{store.slug}</p>
 
             {store.telegramChannelId ? (
               <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
@@ -111,7 +111,7 @@ export default function SellerProfilePage() {
             <button
               onClick={copyStoreLink}
               className="flex items-center gap-2 text-xs"
-              style={{ color: '#A78BFA' }}
+              style={{ color: '#A855F7' }}
             >
               🔗 Скопировать ссылку на магазин
             </button>

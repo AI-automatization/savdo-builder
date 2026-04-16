@@ -104,7 +104,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
           style={{
             containerStyle: { background: 'transparent' },
             cropAreaStyle: {
-              border: '2px solid #A78BFA',
+              border: '2px solid #A855F7',
               boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
             },
           }}
@@ -120,7 +120,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
           step={0.01}
           value={zoom}
           onChange={(e) => setZoom(Number(e.target.value))}
-          style={{ width: '100%', accentColor: '#A78BFA' }}
+          style={{ width: '100%', accentColor: '#A855F7' }}
         />
       </div>
 
@@ -133,7 +133,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
             width: '100%',
             padding: '14px 0',
             borderRadius: 14,
-            background: processing ? 'rgba(124,58,237,0.40)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)',
+            background: processing ? 'rgba(124,58,237,0.40)' : 'linear-gradient(135deg,#7C3AED,#A855F7)',
             border: 'none',
             color: '#fff',
             fontSize: 15,
