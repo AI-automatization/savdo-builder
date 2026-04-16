@@ -1,5 +1,76 @@
 # Done — Азим + Полат
 
+## 2026-04-16 — [API-VAR-001, API-LIST-001, API-CONTRACT-001] Нормализация variants — проверено, уже реализовано (Полат)
+
+### ✅ [API-VAR-001] normalizeVariant() реализован и применён ко всем эндпоинтам
+- **Важность:** 🔴
+- **Дата:** 16.04.2026
+- **Файлы:** `apps/api/src/modules/products/products.controller.ts` (lines 532-538)
+- **Что сделано:** `normalizeVariant()` уже реализован (Абубакир) и применяется ко всем variant-возвращающим эндпоинтам: `GET /seller/products/:id/variants`, `GET /seller/products/:id`, `GET /storefront/products/:id`, `POST/PATCH /seller/products/:id/variants`. Junction-формат `optionValues[]` удаляется, ответ содержит `optionValueIds: string[]`. Задача удалена из tasks.md.
+
+### ✅ [API-LIST-001] variantCount в ProductListItem — уже реализован
+- **Важность:** 🟡
+- **Дата:** 16.04.2026
+- **Файлы:** `apps/api/src/modules/products/products.controller.ts` (lines 81, 458, 509), `packages/types/src/api/products.ts` (line 58)
+- **Что сделано:** `variantCount: _count?.variants ?? 0` присутствует во всех list-эндпоинтах (seller + storefront). Тип `ProductListItem.variantCount: number` задекларирован. Задача удалена из tasks.md.
+
+### ✅ [API-CONTRACT-001] Закрыт
+- **Важность:** 🟢
+- **Дата:** 16.04.2026
+- **Что сделано:** Отдельная docs-страница не создавалась — контракт соответствует типам в `packages/types`. Задача удалена из tasks.md.
+
+---
+
+## 2026-04-16 — [ADM-AUDIT-001, ADM-ENV-001, ADM-CAST-001] Аудит недочётов и исправления (Полат)
+
+### ✅ [ADM-AUDIT-001] Добавлены audit logs в hideProduct и restoreProduct
+- **Важность:** 🔴
+- **Дата:** 16.04.2026
+- **Файлы:** `apps/api/src/modules/admin/admin.controller.ts`
+- **Что сделано:** `hideProduct` и `restoreProduct` не писали audit_log — нарушение INV-A01 ("Admin action always writes audit_log"). Добавлены `writeAuditLog` с action `PRODUCT_HIDDEN` и `PRODUCT_RESTORED`. Теперь все 4 product admin-действия логируются: hide, restore, archive, forceDelete.
+
+### ✅ [ADM-ENV-001] apps/admin/.env.example исправлен
+- **Важность:** 🔴
+- **Дата:** 16.04.2026
+- **Файлы:** `apps/admin/.env.example`
+- **Что сделано:** `NEXT_PUBLIC_API_URL` заменён на `VITE_API_URL` (admin — Vite SPA, не Next.js). Добавлена `VITE_BUYER_URL` (использовалась в StoreDetailPage.tsx но отсутствовала в примере). Лог ADM-ENV-001 закрыт.
+
+### ✅ [ADM-CAST-001] Убран лишний тип-каст в forceDeleteProduct
+- **Важность:** 🟡
+- **Дата:** 16.04.2026
+- **Файлы:** `apps/api/src/modules/admin/admin.controller.ts` (line 435)
+- **Что сделано:** `(product as unknown as Record<string, unknown>)['title']` → `product.title`. Prisma-тип `Product.title: String` — не optional, каст был излишним.
+
+---
+
+## 2026-04-16 — [TMA-FIX-STORES] StoresPage: город + контакты продавца + поиск по городу (Полат)
+
+### ✅ [TMA-FIX-STORES] Карточки магазинов показывают город и кнопку «написать продавцу»
+- **Важность:** 🟡
+- **Дата:** 16.04.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/StoresPage.tsx`
+  - `apps/api/src/modules/stores/repositories/stores.repository.ts`
+- **Что сделано:**
+  - Backend: `findAllPublished()` теперь возвращает `city` и `telegramContactLink` в select
+  - Frontend: интерфейс `Store` расширен (`city`, `telegramContactLink`); поиск учитывает город; карточка показывает `📍 Город`; кнопка ✈️ открывает Telegram-контакт через `tg.openTelegramLink` (fallback `window.open`), клик изолирован от навигации по карточке
+
+---
+
+## 2026-04-16 — [ADM-FORCE-DELETE] Принудительное удаление товара в админке (Полат)
+
+### ✅ [ADM-FORCE-DELETE] Принудительное удаление товара продавца
+- **Важность:** 🔴
+- **Дата:** 16.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/admin.controller.ts`
+  - `apps/admin/src/pages/ProductsPage.tsx`
+- **Что сделано:**
+  - Backend: добавлен `DELETE /api/v1/admin/products/:id` — soft delete без ограничений по статусу (обходит продавецкое правило "нельзя удалить ACTIVE"), пишет `PRODUCT_FORCE_DELETED` в audit_log
+  - Frontend: добавлена кнопка "Удалить" в таблице товаров с inline-подтверждением ("Да, удалить" / "Отмена") — destructive action защищена двойным кликом
+
+---
+
 ## 2026-04-15 — Сессия 19: итог (Азим, 4 коммита, 17 файлов)
 
 > Полный цикл вариативных товаров: от создания продавцом до выбора покупателем + deep links.

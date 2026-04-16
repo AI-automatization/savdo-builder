@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive } from 'lucide-react'
+import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive, Trash2 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -36,6 +36,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const query = statusFilter ? `status=${statusFilter}&limit=50` : 'limit=50'
   const { data, loading, error, refetch } = useFetch<ProductsResponse>(`/api/v1/admin/products?${query}`, [statusFilter])
@@ -67,6 +68,20 @@ export default function ProductsPage() {
     setActionError(null)
     try {
       await api.patch(`/api/v1/admin/products/${product.id}/archive`, {})
+      refetch()
+    } catch (e: any) {
+      setActionError(e.message ?? 'Ошибка')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function deleteProduct(productId: string) {
+    setConfirmDelete(null)
+    setActionLoading(productId)
+    setActionError(null)
+    try {
+      await api.delete(`/api/v1/admin/products/${productId}`)
       refetch()
     } catch (e: any) {
       setActionError(e.message ?? 'Ошибка')
@@ -166,7 +181,7 @@ export default function ProductsPage() {
                     {p.id.slice(0, 8)}…
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                    <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                       <button
                         disabled={isProcessing}
                         onClick={() => toggleHide(p)}
@@ -195,6 +210,51 @@ export default function ProductsPage() {
                           }}
                         >
                           <Archive size={13} /> В архив
+                        </button>
+                      )}
+                      {confirmDelete === p.id ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <button
+                            disabled={isProcessing}
+                            onClick={() => deleteProduct(p.id)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                              cursor: isProcessing ? 'not-allowed' : 'pointer',
+                              border: '1px solid rgba(239,68,68,0.5)',
+                              background: 'rgba(239,68,68,0.15)',
+                              color: '#EF4444',
+                            }}
+                          >
+                            Да, удалить
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(null)}
+                            style={{
+                              padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                              cursor: 'pointer',
+                              border: '1px solid var(--border)',
+                              background: 'var(--surface)',
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            Отмена
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => setConfirmDelete(p.id)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                            cursor: isProcessing ? 'not-allowed' : 'pointer',
+                            border: '1px solid rgba(239,68,68,0.25)',
+                            background: 'rgba(239,68,68,0.05)',
+                            color: '#EF4444',
+                          }}
+                        >
+                          <Trash2 size={13} /> Удалить
                         </button>
                       )}
                     </div>

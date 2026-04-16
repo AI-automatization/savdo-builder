@@ -28,6 +28,17 @@ function SellerGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Защищает транзакционные buyer-маршруты (корзина, checkout, заказы).
+// Просмотр магазинов и товаров остаётся открытым для всех.
+function BuyerGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (user && (user.role === 'SELLER' || user.role === 'ADMIN')) {
+    return <Navigate to="/seller" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <Suspense fallback={<LoadingScreen />}>
@@ -36,9 +47,9 @@ export default function App() {
         <Route path="/buyer" element={<BuyerStores />} />
         <Route path="/buyer/store/:slug" element={<BuyerStore />} />
         <Route path="/buyer/store/:slug/product/:id" element={<BuyerProduct />} />
-        <Route path="/buyer/cart" element={<BuyerCart />} />
-        <Route path="/buyer/checkout" element={<BuyerCheckout />} />
-        <Route path="/buyer/orders" element={<BuyerOrders />} />
+        <Route path="/buyer/cart" element={<BuyerGuard><BuyerCart /></BuyerGuard>} />
+        <Route path="/buyer/checkout" element={<BuyerGuard><BuyerCheckout /></BuyerGuard>} />
+        <Route path="/buyer/orders" element={<BuyerGuard><BuyerOrders /></BuyerGuard>} />
         <Route path="/buyer/profile" element={<BuyerProfile />} />
         <Route path="/seller" element={<SellerGuard><SellerDashboard /></SellerGuard>} />
         <Route path="/seller/orders" element={<SellerGuard><SellerOrders /></SellerGuard>} />

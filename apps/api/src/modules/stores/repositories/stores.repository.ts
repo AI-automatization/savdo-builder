@@ -37,7 +37,15 @@ export class StoresRepository {
   async findAllPublished() {
     return this.prisma.store.findMany({
       where: { isPublic: true },
-      select: { id: true, name: true, slug: true, description: true, status: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        status: true,
+        city: true,
+        telegramContactLink: true,
+      },
       orderBy: { publishedAt: 'desc' },
       take: 50,
     });

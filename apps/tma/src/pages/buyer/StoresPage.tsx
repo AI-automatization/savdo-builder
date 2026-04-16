@@ -12,11 +12,23 @@ interface Store {
   slug: string;
   description: string | null;
   status: string;
+  city: string | null;
+  telegramContactLink: string | null;
 }
 
 export default function StoresPage() {
   const navigate = useNavigate();
-  const { user } = useTelegram();
+  const { user, tg } = useTelegram();
+
+  const openTgContact = (e: React.MouseEvent, link: string) => {
+    e.stopPropagation();
+    const url = link.startsWith('http') ? link : `https://t.me/${link.replace(/^@/, '')}`;
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -33,7 +45,10 @@ export default function StoresPage() {
     if (!query.trim()) return stores;
     const q = query.toLowerCase().trim();
     return stores.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q),
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.description?.toLowerCase().includes(q) ||
+        s.city?.toLowerCase().includes(q),
     );
   }, [stores, query]);
 
@@ -117,10 +132,27 @@ export default function StoresPage() {
               {store.description && (
                 <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>{store.description}</p>
               )}
+              {store.city && (
+                <p className="text-[11px] mt-0.5" style={{ color: 'rgba(167,139,250,0.65)' }}>
+                  📍 {store.city}
+                </p>
+              )}
             </div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
+            <div className="flex items-center gap-2 shrink-0">
+              {store.telegramContactLink && (
+                <button
+                  onClick={(e) => openTgContact(e, store.telegramContactLink!)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+                  style={{ background: 'rgba(37,99,235,0.20)', border: '1px solid rgba(37,99,235,0.35)' }}
+                  title="Написать продавцу"
+                >
+                  ✈️
+                </button>
+              )}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
           </GlassCard>
         ))}
       </div>

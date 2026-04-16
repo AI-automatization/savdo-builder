@@ -28,9 +28,9 @@
 
 ## 2026-04-14 [ADM-ENV-001] apps/admin/.env.example — неверное имя переменной
 
-- **Статус:** 🟡 Предупреждение (домен Полата, не правлю)
+- **Статус:** ✅ Исправлено (16.04.2026)
 - **Что случилось:** `apps/admin/.env.example` содержит `NEXT_PUBLIC_API_URL=...`, но admin — это Vite SPA, в коде читается `VITE_API_URL`. Также используется `VITE_BUYER_URL`, которого нет в примере. При чистом деплое из примера — API-запросы валятся.
-- **Что сделано:** Не правил (домен Полата). Нужно заменить `NEXT_PUBLIC_API_URL` на `VITE_API_URL` и добавить `VITE_BUYER_URL`.
+- **Что сделано:** `NEXT_PUBLIC_API_URL` заменён на `VITE_API_URL`, добавлена `VITE_BUYER_URL=https://savdo-buyer-production.up.railway.app`.
 
 ---
 

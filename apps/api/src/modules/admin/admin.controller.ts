@@ -399,6 +399,13 @@ export class AdminController {
     if (!product) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'PRODUCT_HIDDEN',
+      entityType: 'Product',
+      entityId: id,
+      payload: { previousStatus: product.status },
+    });
     return this.productsRepo.updateStatus(id, 'HIDDEN_BY_ADMIN' as any);
   }
 
@@ -413,7 +420,36 @@ export class AdminController {
     if (!product) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'PRODUCT_RESTORED',
+      entityType: 'Product',
+      entityId: id,
+      payload: { previousStatus: product.status },
+    });
     return this.productsRepo.updateStatus(id, 'ACTIVE' as any);
+  }
+
+  // DELETE /api/v1/admin/products/:id  — принудительное удаление (soft delete, любой статус)
+  @Delete('products/:id')
+  async forceDeleteProduct(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const product = await this.productsRepo.findById(id);
+    if (!product) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'PRODUCT_FORCE_DELETED',
+      entityType: 'Product',
+      entityId: id,
+      payload: { previousStatus: product.status, title: product.title },
+    });
+    await this.productsRepo.delete(id);
+    return { success: true };
   }
 
   // PATCH /api/v1/admin/products/:id/archive

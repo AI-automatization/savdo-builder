@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -33,6 +33,7 @@ export default function SellerStorePage() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   // Create store flow
+  const [fetchError, setFetchError] = useState('');
   const [creating, setCreating] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
   const [newStoreCity, setNewStoreCity] = useState('');
@@ -60,13 +61,20 @@ export default function SellerStorePage() {
   useEffect(() => {
     setLoading(true);
     setStore(null);
+    setFetchError('');
     api<Store>('/seller/store')
       .then((s) => {
         setStore(s);
         setName(s.name);
         setDescription(s.description ?? '');
       })
-      .catch(() => { /* 404 = нет магазина → показываем форму создания */ })
+      .catch((err: unknown) => {
+        // 404 = магазина нет → показываем форму создания (это нормально)
+        // Всё остальное — реальная ошибка, показываем пользователю
+        if (!(err instanceof ApiError && err.status === 404)) {
+          setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [authVersion]);
 
@@ -117,6 +125,23 @@ export default function SellerStorePage() {
 
   if (loading) {
     return <AppShell role="SELLER"><div className="flex justify-center py-10"><Spinner size={32} /></div></AppShell>;
+  }
+
+  if (fetchError) {
+    return (
+      <AppShell role="SELLER">
+        <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
+          <span style={{ fontSize: 36 }}>⚠️</span>
+          <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 14 }}>{fetchError}</p>
+          <button
+            onClick={() => { setFetchError(''); setLoading(true); api<Store>('/seller/store').then((s) => { setStore(s); setName(s.name); setDescription(s.description ?? ''); }).catch((err: unknown) => { if (!(err instanceof ApiError && err.status === 404)) setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.'); }).finally(() => setLoading(false)); }}
+            style={{ padding: '8px 20px', borderRadius: 12, background: 'rgba(167,139,250,0.18)', color: '#A78BFA', fontSize: 13, fontWeight: 600, border: '1px solid rgba(167,139,250,0.3)' }}
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </AppShell>
+    );
   }
 
   if (!store) {

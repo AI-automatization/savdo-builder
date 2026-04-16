@@ -182,7 +182,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
-  const { data: store, isLoading: storeLoading, error: storeError } = useStore();
+  const { data: store, isLoading: storeLoading, error: storeError } = useStore({ enabled: user?.role === 'SELLER' });
   const { toasts } = useSellerSocket();
   const { data: unreadCount = 0 } = useUnreadCount();
   const unreadChatCount = useUnreadChatCount();

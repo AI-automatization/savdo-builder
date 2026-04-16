@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
+import { getCart, saveCart } from '@/lib/cart';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui/Spinner';
@@ -57,17 +58,13 @@ export default function StorePage() {
   const addToCart = (product: Product) => {
     if (!store) return;
     tg?.HapticFeedback.impactOccurred('light');
-    let cart: Array<{ productId: string; title: string; price: number; qty: number; storeId: string; storeSlug: string; storeName: string }>;
-    try {
-      cart = JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
-    } catch {
-      cart = [];
-    }
-    const existing = cart.find((i) => i.productId === product.id);
-    if (existing) {
-      existing.qty += 1;
-    } else {
-      cart.push({
+
+    const cart = getCart();
+
+    // INV-C01: корзина = один магазин. Если в корзине товары другого магазина — сбрасываем.
+    const hasOtherStore = cart.length > 0 && cart[0].storeId !== store.id;
+    if (hasOtherStore) {
+      saveCart([{
         productId: product.id,
         title: product.title,
         price: Number(product.basePrice),
@@ -75,9 +72,26 @@ export default function StorePage() {
         storeId: store.id,
         storeSlug: slug!,
         storeName: store.name,
-      });
+      }]);
+      tg?.HapticFeedback.notificationOccurred('warning');
+      track.addToCart(store.id, product.id, null, 1);
+      return;
     }
-    localStorage.setItem('savdo_cart', JSON.stringify(cart));
+
+    const existing = cart.find((i) => i.productId === product.id);
+    if (existing) {
+      saveCart(cart.map((i) => i.productId === product.id ? { ...i, qty: i.qty + 1 } : i));
+    } else {
+      saveCart([...cart, {
+        productId: product.id,
+        title: product.title,
+        price: Number(product.basePrice),
+        qty: 1,
+        storeId: store.id,
+        storeSlug: slug!,
+        storeName: store.name,
+      }]);
+    }
     tg?.HapticFeedback.notificationOccurred('success');
     track.addToCart(store.id, product.id, null, 1);
   };
