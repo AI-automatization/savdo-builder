@@ -36,7 +36,7 @@ export class StoresRepository {
 
   async findAllPublished() {
     return this.prisma.store.findMany({
-      where: { isPublic: true },
+      where: { isPublic: true, deletedAt: null },
       select: {
         id: true,
         name: true,

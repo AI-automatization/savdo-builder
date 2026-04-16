@@ -17,6 +17,7 @@ interface Store {
   slug: string;
   description: string | null;
   status: string;
+  isPublic: boolean;
   telegramChannelId: string | null;
   telegramChannelTitle: string | null;
 }
@@ -32,6 +33,7 @@ export default function SellerStorePage() {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   // Create store flow
   const [fetchError, setFetchError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -55,6 +57,20 @@ export default function SellerStorePage() {
       track.storeLinkCopied(s.id);
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
+    }
+  };
+
+  const togglePublish = async (s: Store) => {
+    setPublishing(true);
+    try {
+      const endpoint = s.isPublic ? '/seller/store/unpublish' : '/seller/store/publish';
+      const updated = await api<Store>(endpoint, { method: 'POST' });
+      setStore(updated);
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -258,6 +274,20 @@ export default function SellerStorePage() {
             <Button className="w-full" onClick={() => copyLink(store)}>
               {copied ? '✅ Ссылка скопирована!' : '🔗 Скопировать ссылку'}
             </Button>
+            {store.status === 'APPROVED' || store.isPublic ? (
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => togglePublish(store)}
+                disabled={publishing}
+              >
+                {publishing
+                  ? '...'
+                  : store.isPublic
+                  ? '🔴 Скрыть магазин'
+                  : '🟢 Опубликовать магазин'}
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               className="w-full"

@@ -21,7 +21,7 @@ export class ApproveStoreUseCase {
       );
     }
 
-    const updated = await this.adminRepo.updateStoreStatus(storeId, 'APPROVED');
+    const updated = await this.adminRepo.approveAndPublishStore(storeId);
 
     // INV-A01
     await this.adminRepo.writeAuditLog({
