@@ -18,22 +18,6 @@ export interface VariantMin {
   stockQuantity: number;
   isActive?: boolean;
   optionValueIds?: string[];
-  optionValues?: Array<{ optionValueId: string }>;
-}
-
-/**
- * Backend currently returns variant.optionValues[] (junction records) while
- * packages/types declares optionValueIds: string[]. Handle both shapes.
- * See analiz/logs.md [API-VAR-001].
- */
-export function getVariantOptionValueIds(variant: VariantMin): string[] {
-  if (Array.isArray(variant.optionValueIds) && variant.optionValueIds.length > 0) {
-    return variant.optionValueIds;
-  }
-  if (Array.isArray(variant.optionValues)) {
-    return variant.optionValues.map((j) => j.optionValueId).filter(Boolean);
-  }
-  return [];
 }
 
 export type OptionSelection = Record<string, string>;
@@ -55,7 +39,7 @@ export function findVariantBySelection(
   const wantedIds = new Set(Object.values(selection));
 
   for (const v of variants) {
-    const ids = getVariantOptionValueIds(v);
+    const ids = v.optionValueIds ?? [];
     if (ids.length !== wantedIds.size) continue;
     if (ids.every((id) => wantedIds.has(id))) return v;
   }
@@ -76,7 +60,7 @@ export function isValueAvailable(
 
   return variants.some((v) => {
     if (v.isActive === false) return false;
-    const ids = new Set(getVariantOptionValueIds(v));
+    const ids = new Set(v.optionValueIds ?? []);
     if (!ids.has(valueId)) return false;
     for (const req of requiredIds) if (!ids.has(req)) return false;
     return true;
@@ -91,7 +75,7 @@ export function initialSelectionFromVariants(
   const candidate = active[0] ?? variants.find((v) => v.isActive !== false) ?? null;
   if (!candidate) return {};
 
-  const ids = new Set(getVariantOptionValueIds(candidate));
+  const ids = new Set(candidate.optionValueIds ?? []);
   const sel: OptionSelection = {};
   for (const g of optionGroups) {
     const match = g.values.find((v) => ids.has(v.id));

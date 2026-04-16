@@ -60,26 +60,9 @@ function formatPrice(price: number | null): string {
   return price.toLocaleString('ru-RU') + ' сум';
 }
 
-/**
- * Extract option value ids from a variant.
- *
- * Backend currently returns junction records as `optionValues: [{ optionValueId, optionValue }]`
- * even though `packages/types#ProductVariant` declares `optionValueIds: string[]`.
- * This helper tolerates both shapes until the backend normalizes the response.
- * See analiz/logs.md [API-VAR-001].
- */
-function extractOptionValueIds(variant: ProductVariant): string[] {
-  if (Array.isArray(variant.optionValueIds) && variant.optionValueIds.length > 0) {
-    return variant.optionValueIds;
-  }
-  const junction = (variant as unknown as { optionValues?: Array<{ optionValueId: string }> }).optionValues;
-  if (Array.isArray(junction)) return junction.map((j) => j.optionValueId).filter(Boolean);
-  return [];
-}
-
 /** Build "Размер: XL · Цвет: Красный" from a variant's options */
 function describeOptions(variant: ProductVariant, optionGroups: OptionGroup[]): string | null {
-  const ids = extractOptionValueIds(variant);
+  const ids = variant.optionValueIds ?? [];
   if (ids.length === 0 || optionGroups.length === 0) return null;
   const parts: string[] = [];
   for (const g of optionGroups) {

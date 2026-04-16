@@ -1,5 +1,35 @@
 # Done — Азим + Полат
 
+## 2026-04-17 — Сессия 21 (Азим): доделать фронт после API-VAR-001 + API-LIST-001
+
+### ✅ [FE-VAR-CLEANUP-001] Удалены defensive `extractOptionValueIds` / `getVariantOptionValueIds` helpers
+- **Важность:** 🟢
+- **Дата:** 17.04.2026
+- **Кто делал:** Азим
+- **Файлы:**
+  - `apps/web-seller/src/components/product-variants-section.tsx` (-19 строк)
+  - `apps/web-buyer/src/lib/variants.ts` (-15 строк, -1 import)
+  - `apps/tma/src/lib/variants.ts` (-15 строк, убрано поле `optionValues?` из `VariantMin`)
+- **Что сделано:** Полат закрыл API-VAR-001 (`f5b0226`) — backend теперь отдаёт плоский `optionValueIds: string[]` на всех variant эндпоинтах. Убраны все defensive хелперы. Все call-сайты читают `variant.optionValueIds ?? []` напрямую. Комментарии про «backend returns junction» удалены.
+
+### ✅ [FE-VARIANT-BADGE-001] Бейдж «N вариантов» на карточках товара
+- **Важность:** 🟡
+- **Дата:** 17.04.2026
+- **Кто делал:** Азим
+- **Файлы:**
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — pill с `Layers` icon + count в top-left изображения, только если `variantCount > 0 && !isUnavailable`, liquid-authority glass-стиль (фиолетовая заливка rgba(167,139,250,.22), blur)
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx` — компактный чип рядом с title в products table, тот же glass-стиль
+- **Что сделано:** Полат закрыл API-LIST-001 (`780e79e`) — `ProductListItem.variantCount: number` теперь в ответе. Подключил бейдж в обоих фронтах. Покупатель видит сразу что у товара есть опции, продавец видит в списке сколько вариантов активно.
+
+### ✅ [CONFLICT-LUCIDE-001] Резолв конфликта lucide-react ↔ TMA redesign
+- **Важность:** 🔴
+- **Дата:** 17.04.2026
+- **Кто делал:** Азим
+- **Коммит:** `a1e2797` (на main)
+- **Что сделано:** Наш `5950a71` (замена эмодзи на lucide-react во всех 3 фронтах) конфликтовал с редизайном TMA Полата (`9f2d224`) и его анимированным `<Sticker>` (`f210994`). Дропнули TMA часть коммита, оставили только web-buyer + web-seller (26 файлов, +135/-108). Rebase прошёл чисто. TMA остался с анимированными стикерами Полата (это намеренный дизайн-элемент, а не забытые эмодзи).
+
+---
+
 ## 2026-04-16 — [API-VAR-001, API-LIST-001, API-CONTRACT-001] Нормализация variants — проверено, уже реализовано (Полат)
 
 ### ✅ [API-VAR-001] normalizeVariant() реализован и применён ко всем эндпоинтам

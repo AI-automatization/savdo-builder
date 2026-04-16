@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { ProductListItem } from "types";
 import { ProductStatus } from "types";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Layers } from "lucide-react";
 
 type Props = {
   product: ProductListItem;
@@ -39,6 +39,24 @@ export default function ProductCard({ product, storeSlug }: Props) {
             />
           ) : (
             <ShoppingBag size={20} style={{ color: '#A78BFA' }} />
+          )}
+
+          {/* Variants badge */}
+          {product.variantCount > 0 && !isUnavailable && (
+            <div
+              className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+              style={{
+                background: "rgba(167,139,250,0.22)",
+                color: "#C4B5FD",
+                border: "1px solid rgba(167,139,250,0.35)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
+                zIndex: 1,
+              }}
+            >
+              <Layers size={10} />
+              {product.variantCount}
+            </div>
           )}
 
           {/* Out of stock overlay */}

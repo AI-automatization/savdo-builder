@@ -12,17 +12,17 @@
 
 ## 2026-04-15 [API-LIST-001] ProductListItem не содержит variantCount/hasVariants
 
-- **Статус:** 🟡 Улучшение (запрос Полата)
+- **Статус:** ✅ Исправлено (17.04.2026)
 - **Что случилось:** На карточке товара (web-buyer ProductCard, web-seller products list) хочется показывать бейдж «есть варианты» / «3 варианта». Но `GET /seller/products` и `GET /storefront/products` возвращают `ProductListItem` без info о вариантах. Запрашивать детали каждого — дорого.
-- **Что нужно:** Полат — добавить в `ProductListItem` поле `variantCount: number` (или `hasVariants: boolean`). После — Азим допилит бейдж.
+- **Что сделано:** Полат добавил `variantCount: number` в `ProductListItem` (`780e79e`). Азим подключил бейдж «N» с иконкой `Layers` в обоих фронтах (web-buyer `ProductCard`, web-seller products list).
 
 ---
 
 ## 2026-04-15 [API-VAR-001] Несовпадение контракта: variant.optionValueIds vs optionValues
 
-- **Статус:** 🟡 Предупреждение (домен Полата, не правлю)
-- **Что случилось:** `packages/types/src/api/products.ts` декларирует `ProductVariant.optionValueIds: string[]`, но backend возвращает junction-записи `optionValues: [{ optionValueId, optionValue }]`. Репозитории `variants.repository.ts` и `products.repository.ts` включают `optionValues: { include: { optionValue: true } }`, но мапперы в плоский `optionValueIds[]` нет. Любой фронт-код, читающий `v.optionValueIds`, получает `undefined`.
-- **Что сделано:** Я (Азим) во `product-variants-section.tsx` добавил защитный `extractOptionValueIds()` который читает оба формата. Нужен либо маппер на backend (возвращать `optionValueIds: string[]`), либо обновить тип в `packages/types` на `optionValues: Array<{ optionValueId: string }>`. Предпочтителен первый вариант — фронт не должен разбирать junction.
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** `packages/types/src/api/products.ts` декларирует `ProductVariant.optionValueIds: string[]`, но backend возвращал junction-записи `optionValues: [{ optionValueId, optionValue }]`. Любой фронт-код, читающий `v.optionValueIds`, получал `undefined`.
+- **Что сделано:** Полат добавил `normalizeVariant` helper в `products.controller.ts` (`f5b0226`) — backend теперь отдаёт плоский `optionValueIds: string[]` на GET/POST/PATCH variants + GET product detail. Азим удалил defensive `extractOptionValueIds` / `getVariantOptionValueIds` из `apps/web-seller/src/components/product-variants-section.tsx`, `apps/web-buyer/src/lib/variants.ts`, `apps/tma/src/lib/variants.ts`. Все call-сайты читают `variant.optionValueIds ?? []` напрямую.
 
 ---
 

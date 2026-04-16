@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products';
-import { Check, Link2, Send } from 'lucide-react';
+import { Check, Link2, Send, Layers } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
 
@@ -194,7 +194,23 @@ export default function ProductsPage() {
                 className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5"
                 style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <span className="text-sm font-medium text-white truncate">{p.title}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-medium text-white truncate">{p.title}</span>
+                  {p.variantCount > 0 && (
+                    <span
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+                      style={{
+                        background: "rgba(167,139,250,0.15)",
+                        color: "#C4B5FD",
+                        border: "1px solid rgba(167,139,250,0.25)",
+                      }}
+                      title={`${p.variantCount} активных вариантов`}
+                    >
+                      <Layers size={10} />
+                      {p.variantCount}
+                    </span>
+                  )}
+                </div>
                 <span className="text-sm font-medium" style={{ color: "#A78BFA" }}>
                   {fmt(p.basePrice)}
                 </span>
