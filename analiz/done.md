@@ -21,6 +21,17 @@
   - `apps/web-seller/src/app/(dashboard)/products/page.tsx` — компактный чип рядом с title в products table, тот же glass-стиль
 - **Что сделано:** Полат закрыл API-LIST-001 (`780e79e`) — `ProductListItem.variantCount: number` теперь в ответе. Подключил бейдж в обоих фронтах. Покупатель видит сразу что у товара есть опции, продавец видит в списке сколько вариантов активно.
 
+### ✅ [WEB-BUYER-058] Telegram share-кнопка на странице товара (web-buyer)
+- **Важность:** 🟢
+- **Дата:** 17.04.2026
+- **Кто делал:** Азим
+- **Коммит:** `2086aac`
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — Share2 icon кнопка в top bar справа, копирует `t.me/<BOT>?startapp=product_<id>` в clipboard, иконка меняется на Check на 2s после копирования
+  - `apps/web-buyer/.env.example` — новая `NEXT_PUBLIC_TG_BOT_USERNAME=savdo_builderBOT` (fallback для кнопки)
+- **Что сделано:** Зеркалит share-flow из web-seller products list (см. `ec25b6a`). Покупатель на странице товара может скопировать Telegram deep link и отправить другу — получатель кликом попадает сразу в TMA на этот товар.
+- **⚠️ Railway TODO:** Добавить `NEXT_PUBLIC_TG_BOT_USERNAME=savdo_builderBOT` в Variables сервиса `savdo-buyer`. Без переменной fallback работает, но лучше выставить явно.
+
 ### ✅ [CONFLICT-LUCIDE-001] Резолв конфликта lucide-react ↔ TMA redesign
 - **Важность:** 🔴
 - **Дата:** 17.04.2026
