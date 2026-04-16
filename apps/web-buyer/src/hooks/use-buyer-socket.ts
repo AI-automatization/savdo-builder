@@ -14,12 +14,19 @@ export function useBuyerSocket() {
     if (!user?.id) return;
 
     const socket = getSocket();
+    const buyerId = user.id;
+
+    function joinRoom() {
+      socket.emit('join-buyer-room', { buyerId });
+    }
+
+    socket.on('connect', joinRoom);
 
     if (!socket.connected) {
       socket.connect();
+    } else {
+      joinRoom();
     }
-
-    socket.emit('join-buyer-room', { buyerId: user.id });
 
     function onOrderStatusChanged(payload: { id: string; status?: string }) {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
@@ -29,6 +36,7 @@ export function useBuyerSocket() {
     socket.on('order:status_changed', onOrderStatusChanged);
 
     return () => {
+      socket.off('connect', joinRoom);
       socket.off('order:status_changed', onOrderStatusChanged);
     };
   }, [user?.id, queryClient]);
