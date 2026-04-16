@@ -9,7 +9,9 @@ import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus } from "types";
 import { track } from "@/lib/analytics";
-import { Search, ShoppingBag } from "lucide-react";
+import { Search, ShoppingBag, Share2, Check } from "lucide-react";
+
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
 import {
   findVariantBySelection,
   initialSelectionFromVariants,
@@ -71,6 +73,15 @@ export default function ProductPage() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selection, setSelection] = useState<OptionSelection>({});
   const [added, setAdded] = useState(false);
+  const [shared, setShared] = useState(false);
+
+  function handleShare() {
+    const url = `https://t.me/${BOT_USERNAME}?startapp=product_${id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    });
+  }
 
   const activeVariants = product?.variants.filter(v => v.isActive) ?? [];
   const optionGroups   = product?.optionGroups ?? [];
@@ -163,6 +174,20 @@ export default function ProductPage() {
           >
             <IcoBack />
           </button>
+          {!notFound && (
+            <button
+              onClick={handleShare}
+              aria-label="Поделиться в Telegram"
+              title={shared ? 'Ссылка скопирована' : 'Поделиться в Telegram'}
+              className="ml-auto w-9 h-9 flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
+              style={{
+                ...glass,
+                color: shared ? 'rgba(52,211,153,0.90)' : 'rgba(255,255,255,0.70)',
+              }}
+            >
+              {shared ? <Check size={18} /> : <Share2 size={18} />}
+            </button>
+          )}
         </div>
 
         {notFound ? (
