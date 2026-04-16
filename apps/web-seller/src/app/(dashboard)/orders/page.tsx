@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { OrderStatus } from 'types';
+import { X } from 'lucide-react';
 import type { OrderListItem } from 'types';
 import { useSellerOrders, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
@@ -347,7 +348,7 @@ export default function OrdersPage() {
             style={{ color: 'rgba(255,255,255,0.40)' }}
             aria-label="Очистить"
           >
-            ✕
+            <X size={14} />
           </button>
         )}
       </div>

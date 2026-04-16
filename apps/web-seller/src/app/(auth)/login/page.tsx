@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useRequestOtp, useVerifyOtp } from "../../../hooks/use-auth";
+import { ShoppingCart } from "lucide-react";
 import { useAuth } from "../../../lib/auth/context";
 import { track } from "../../../lib/analytics";
 
@@ -92,7 +93,7 @@ export default function LoginPage() {
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3"
             style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 12px 36px rgba(167,139,250,.40)" }}
           >
-            🛒
+            <ShoppingCart size={28} color="#fff" />
           </div>
           <h1 className="text-2xl font-bold text-white">Savdo</h1>
           <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>Панель продавца</p>

@@ -8,6 +8,7 @@ import {
   useUpdateVariant,
   useDeleteVariant,
 } from '../hooks/use-products';
+import { X, Check, Pencil, Trash2 } from 'lucide-react';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -275,7 +276,7 @@ function InlineVariantForm({
         </label>
 
         <div className="flex gap-2">
-          <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена">✕</button>
+          <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена"><X size={14} /></button>
           <button
             type="button"
             style={confirmBtn}
@@ -283,7 +284,7 @@ function InlineVariantForm({
             onClick={() => onSave(f)}
             title={allOptionsSelected ? 'Сохранить' : 'Выберите значение для каждой группы опций'}
           >
-            {saving ? '…' : '✓'}
+            {saving ? '…' : <Check size={14} />}
           </button>
         </div>
       </div>
@@ -441,7 +442,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                     style={{ color: '#A78BFA' }}
                     onClick={() => { setAdding(false); setEditingId(v.id); }}
                   >
-                    ✏
+                    <Pencil size={14} />
                   </button>
                   <button
                     type="button"
@@ -450,7 +451,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                     disabled={deletingId === v.id}
                     onClick={() => handleDelete(v.id)}
                   >
-                    {deletingId === v.id ? '…' : '🗑'}
+                    {deletingId === v.id ? '…' : <Trash2 size={14} />}
                   </button>
                 </div>
               )}

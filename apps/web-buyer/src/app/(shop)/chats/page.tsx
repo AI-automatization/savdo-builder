@@ -8,6 +8,7 @@ import { UserRole } from "types";
 import type { ChatThread } from "types";
 import { useAuth } from "@/lib/auth/context";
 import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
+import { MessageSquare, Store } from "lucide-react";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
       style={active ? { background: "rgba(167,139,250,.10)" } : {}}>
       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
         style={{ background: "rgba(167,139,250,.22)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.30)" }}>
-        💬
+        <MessageSquare size={20} style={{ color: '#A78BFA' }} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white">
@@ -151,7 +152,7 @@ function ChatView({ thread }: { thread: ChatThread }) {
             <div key={m.id} className={`flex ${isBuyer ? "justify-end" : "justify-start"}`}>
               {!isBuyer && (
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 mr-2 self-end"
-                  style={{ background: "rgba(167,139,250,.22)", color: "#A78BFA" }}>🏪</div>
+                  style={{ background: "rgba(167,139,250,.22)", color: "#A78BFA" }}><Store size={18} /></div>
               )}
               <div className="max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm text-white"
                 style={isBuyer
@@ -239,7 +240,7 @@ function ChatsView() {
             {isError && <p className="px-4 py-6 text-xs text-center" style={{ color: "rgba(248,113,113,.70)" }}>Ошибка загрузки</p>}
             {!isLoading && !isError && threads?.length === 0 && (
               <div className="px-4 py-10 text-center">
-                <p className="text-2xl mb-2">💬</p>
+                <MessageSquare size={28} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px' }} />
                 <p className="text-xs" style={{ color: "rgba(255,255,255,0.30)" }}>Чатов пока нет</p>
                 <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.20)" }}>Напишите продавцу со страницы заказа</p>
               </div>
@@ -264,7 +265,7 @@ function ChatsView() {
         ) : (
           <div className="hidden md:flex flex-1 items-center justify-center">
             <div className="text-center">
-              <p className="text-3xl mb-2">💬</p>
+              <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px' }} />
               <p className="text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>Выберите чат</p>
             </div>
           </div>

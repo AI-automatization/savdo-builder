@@ -6,6 +6,7 @@ import { useCart, useUpdateCartItem, useRemoveCartItem } from "@/hooks/use-cart"
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { track } from "@/lib/analytics";
 import type { CartItem } from "types";
+import { Package, ShoppingCart } from "lucide-react";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ function CartItemRow({ item, storeId, pendingId }: { item: CartItem; storeId: st
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-2xl">📦</span>
+          <Package size={24} style={{ color: '#A78BFA' }} />
         )}
       </div>
 
@@ -197,7 +198,7 @@ export default function CartPage() {
         {/* Empty */}
         {!isLoading && !isError && items.length === 0 && (
           <div className="text-center py-24">
-            <p className="text-5xl mb-4">🛒</p>
+            <ShoppingCart size={48} style={{ color: 'rgba(255,255,255,0.3)' }} className="mb-4 mx-auto" />
             <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.40)" }}>Корзина пуста</p>
             <Link
               href="/"

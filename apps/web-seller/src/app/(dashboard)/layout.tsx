@@ -12,6 +12,7 @@ import { useUnreadCount } from "../../hooks/use-notifications";
 import { useUnreadChatCount } from "../../hooks/use-chat";
 import { useSellerOrders } from "../../hooks/use-orders";
 import { OrderStatus } from "types";
+import { ShoppingCart } from "lucide-react";
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -83,10 +84,10 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
         >
-          🛒
+          <ShoppingCart size={16} color="#fff" />
         </div>
         <span className="text-base font-bold" style={{ color: "#A78BFA" }}>Savdo</span>
         <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA" }}>Beta</span>
@@ -358,7 +359,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 animation: 'fadeSlideIn 0.25s ease',
               }}
             >
-              <span className="text-base">🛒</span>
+              <ShoppingCart size={16} style={{ color: '#A78BFA' }} />
               {t.text}
             </div>
           ))}

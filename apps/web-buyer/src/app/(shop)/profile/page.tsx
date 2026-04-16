@@ -6,6 +6,7 @@ import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
 import { useAuth } from "@/lib/auth/context";
 import { useLogout } from "@/hooks/use-auth";
+import { User as UserIcon } from "lucide-react";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function ProfileView() {
           className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
           style={{ background: "rgba(167,139,250,.22)", border: "1px solid rgba(167,139,250,.35)" }}
         >
-          👤
+          <UserIcon size={20} style={{ color: '#A78BFA' }} />
         </div>
         <div>
           <p className="text-base font-bold text-white">{user?.phone}</p>
@@ -139,7 +140,7 @@ export default function ProfilePage() {
         <h1 className="text-xl font-bold text-white mb-5">Профиль</h1>
         {isAuthenticated ? <ProfileView /> : (
           <OtpGate
-            icon={<span className="text-3xl">👤</span>}
+            icon={<UserIcon size={32} style={{ color: '#A78BFA' }} />}
             title="Войдите в аккаунт"
           />
         )}

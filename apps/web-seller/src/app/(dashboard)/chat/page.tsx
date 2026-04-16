@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { UserRole } from 'types';
 import type { ChatThread } from 'types';
+import { MessageSquare } from 'lucide-react';
 import { useThreads, useMessages, useSendMessage, useResolveThread, useChatSocket } from '@/hooks/use-chat';
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ function EmptyState() {
   return (
     <div className="flex-1 rounded-2xl flex items-center justify-center" style={glassDim}>
       <div className="text-center">
-        <p className="text-3xl mb-2">💬</p>
+        <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px' }} />
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>Выберите чат</p>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   useUpdateOptionValue,
   useDeleteOptionValue,
 } from '../hooks/use-product-options';
+import { X, Check, Pencil, Trash2 } from 'lucide-react';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -108,7 +109,7 @@ function InlineTextForm({ initial, placeholder, saving, onSave, onCancel }: Inli
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKey}
       />
-      <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена">✕</button>
+      <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена"><X size={14} /></button>
       <button
         type="button"
         style={confirmBtn}
@@ -116,7 +117,7 @@ function InlineTextForm({ initial, placeholder, saving, onSave, onCancel }: Inli
         onClick={() => onSave(text.trim())}
         title="Сохранить"
       >
-        {saving ? '…' : '✓'}
+        {saving ? '…' : <Check size={14} />}
       </button>
     </div>
   );
@@ -170,7 +171,7 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
         onClick={() => setEditing(true)}
         title="Редактировать"
       >
-        ✏
+        <Pencil size={12} />
       </button>
       <button
         type="button"
@@ -180,7 +181,7 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
         onClick={handleDelete}
         title="Удалить"
       >
-        ✕
+        <X size={12} />
       </button>
     </div>
   );
@@ -248,7 +249,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
               onClick={() => setEditingName(true)}
               title="Переименовать"
             >
-              ✏
+              <Pencil size={14} />
             </button>
             <button
               type="button"
@@ -258,7 +259,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
               onClick={handleRemove}
               title="Удалить группу"
             >
-              🗑
+              <Trash2 size={14} />
             </button>
           </>
         )}

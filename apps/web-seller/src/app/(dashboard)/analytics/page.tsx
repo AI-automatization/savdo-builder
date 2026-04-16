@@ -1,6 +1,7 @@
 'use client';
 
 import { useSellerSummary } from '@/hooks/use-analytics';
+import { Star } from 'lucide-react';
 import { useSellerProduct } from '@/hooks/use-products';
 
 // ── Glass token ────────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ function TopProductCard({
           className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
           style={{ background: 'rgba(251,191,36,0.15)', color: 'rgba(251,191,36,0.85)' }}
         >
-          ★
+          <Star size={16} />
         </span>
       </div>
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories, useCreateStoreCategory, useUpdateStoreCategory, useDeleteStoreCategory } from '@/hooks/use-seller';
+import { X, Check, Trash2 } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
 import type { Store, StoreCategory } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
@@ -216,13 +217,13 @@ function StoreCategoriesSection() {
                 }}
                 style={rowInputStyle}
               />
-              <button type="button" style={confirmBtn} onClick={() => saveEdit(cat.id)}>✓</button>
+              <button type="button" style={confirmBtn} onClick={() => saveEdit(cat.id)}><Check size={14} /></button>
               <button
                 type="button"
                 style={cancelBtn}
                 onMouseDown={(e) => { e.preventDefault(); cancelEdit(); }}
               >
-                ✕
+                <X size={14} />
               </button>
             </>
           ) : (
@@ -242,7 +243,7 @@ function StoreCategoriesSection() {
                 style={{ color: '#f87171' }}
                 aria-label="Удалить"
               >
-                🗑
+                <Trash2 size={14} />
               </button>
             </>
           )}
@@ -268,14 +269,14 @@ function StoreCategoriesSection() {
             onClick={saveAdd}
             disabled={create.isPending}
           >
-            {create.isPending ? '...' : '✓'}
+            {create.isPending ? '...' : <Check size={14} />}
           </button>
           <button
             type="button"
             style={cancelBtn}
             onMouseDown={(e) => { e.preventDefault(); cancelAdd(); }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
       )}

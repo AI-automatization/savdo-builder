@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
+import { ShoppingCart, Package, MessageSquare } from "lucide-react";
 
 const glass = {
   background:           "rgba(255,255,255,0.08)",
@@ -56,7 +57,7 @@ export default function HomePage() {
             className="w-20 h-20 rounded-3xl flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 12px 40px rgba(167,139,250,.45)" }}
           >
-            <span className="text-4xl select-none">🛒</span>
+            <ShoppingCart size={40} style={{ color: '#A78BFA' }} />
           </div>
           <span className="text-2xl font-bold tracking-tight" style={{ color: "#A78BFA", letterSpacing: "-0.02em" }}>
             Savdo
@@ -120,7 +121,7 @@ export default function HomePage() {
             style={glassDim}
           >
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "rgba(167,139,250,.18)", border: "1px solid rgba(167,139,250,.25)" }}>
-              📦
+              <Package size={20} style={{ color: '#A78BFA' }} />
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Мои заказы</p>
@@ -137,7 +138,7 @@ export default function HomePage() {
             style={glassDim}
           >
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "rgba(167,139,250,.18)", border: "1px solid rgba(167,139,250,.25)" }}>
-              💬
+              <MessageSquare size={20} style={{ color: '#A78BFA' }} />
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Чаты с продавцами</p>

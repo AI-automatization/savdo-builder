@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNotifications, useReadAll } from '../../../hooks/use-notifications';
 import type { NotificationItem } from '../../../lib/api/notifications.api';
+import { ShoppingCart, CheckCircle, AlertTriangle, Package, Bell } from 'lucide-react';
 
 // ── Glass token ───────────────────────────────────────────────────────────────
 
@@ -26,12 +27,12 @@ function relativeTime(iso: string): string {
   return `${Math.floor(hrs / 24)} дн назад`;
 }
 
-function notifIcon(title: string): string {
+function NotifIcon({ title }: { title: string }) {
   const t = title.toLowerCase();
-  if (t.includes('заказ') || t.includes('order')) return '🛒';
-  if (t.includes('одобр') || t.includes('approved')) return '✅';
-  if (t.includes('откло') || t.includes('reject')) return '⚠️';
-  return '📦';
+  if (t.includes('з��каз') || t.includes('order')) return <ShoppingCart size={18} style={{ color: '#A78BFA' }} />;
+  if (t.includes('одобр') || t.includes('approved')) return <CheckCircle size={18} style={{ color: '#22C55E' }} />;
+  if (t.includes('откло') || t.includes('reject')) return <AlertTriangle size={18} style={{ color: '#F59E0B' }} />;
+  return <Package size={18} style={{ color: '#A78BFA' }} />;
 }
 
 const ORDER_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -54,7 +55,7 @@ function NotifRow({ item }: { item: NotificationItem }) {
       className="flex items-start gap-4 px-5 py-4 rounded-2xl transition-opacity hover:opacity-80 cursor-pointer"
       style={item.isRead ? { ...glass, opacity: 0.7 } : { ...glass, background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.20)' }}
     >
-      <span className="text-xl flex-shrink-0 mt-0.5">{notifIcon(item.title)}</span>
+      <span className="flex-shrink-0 mt-0.5"><NotifIcon title={item.title} /></span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-white">{item.title}</p>
         <p className="text-xs mt-0.5 text-white/50 leading-relaxed">{item.body}</p>
@@ -154,7 +155,7 @@ export default function NotificationsPage() {
           className="rounded-2xl px-5 py-10 text-center"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <p className="text-2xl mb-2">🔔</p>
+          <Bell size={28} style={{ color: 'rgba(255,255,255,0.4)', margin: '0 auto 8px' }} />
           <p className="text-sm font-medium text-white/60">Уведомлений пока нет</p>
         </div>
       ) : (

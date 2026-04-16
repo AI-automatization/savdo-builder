@@ -6,6 +6,7 @@ import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { useAuth } from "@/lib/auth/context";
 import { useNotifications, useReadAll } from "@/hooks/use-notifications";
 import type { NotificationItem } from "@/lib/api/notifications.api";
+import { CheckCircle, Truck, Package, XCircle, ShoppingBag, Bell } from "lucide-react";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -28,14 +29,14 @@ function relativeTime(iso: string): string {
   return `${Math.floor(hrs / 24)} дн`;
 }
 
-function notifIcon(title: string): string {
+function NotifIcon({ title }: { title: string }) {
   const t = title.toLowerCase();
-  if (t.includes("подтверждён") || t.includes("confirm")) return "✅";
-  if (t.includes("отправлен") || t.includes("ship")) return "🚚";
-  if (t.includes("доставлен") || t.includes("deliver")) return "📦";
-  if (t.includes("отменён") || t.includes("cancel")) return "❌";
-  if (t.includes("заказ") || t.includes("order")) return "🛍️";
-  return "🔔";
+  if (t.includes("подтверждён") || t.includes("confirm")) return <CheckCircle size={18} style={{ color: '#22C55E' }} />;
+  if (t.includes("отправлен") || t.includes("ship")) return <Truck size={18} style={{ color: '#A78BFA' }} />;
+  if (t.includes("доставлен") || t.includes("deliver")) return <Package size={18} style={{ color: '#A78BFA' }} />;
+  if (t.includes("отменён") || t.includes("cancel")) return <XCircle size={18} style={{ color: '#EF4444' }} />;
+  if (t.includes("заказ") || t.includes("order")) return <ShoppingBag size={18} style={{ color: '#A78BFA' }} />;
+  return <Bell size={18} style={{ color: '#A78BFA' }} />;
 }
 
 const ORDER_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -60,7 +61,7 @@ function NotifRow({ item }: { item: NotificationItem }) {
           : { ...glass, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.22)" }
       }
     >
-      <span className="text-xl flex-shrink-0 mt-0.5">{notifIcon(item.title)}</span>
+      <span className="text-xl flex-shrink-0 mt-0.5"><NotifIcon title={item.title} /></span>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <p className="text-[13px] font-semibold text-white leading-snug">{item.title}</p>
@@ -106,7 +107,7 @@ function AuthGate() {
   const router = useRouter();
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
-      <span className="text-4xl">🔔</span>
+      <Bell size={40} style={{ color: 'rgba(255,255,255,0.4)' }} />
       <p className="text-base font-semibold text-white">Войдите, чтобы видеть уведомления</p>
       <p className="text-sm" style={{ color: "rgba(255,255,255,0.40)" }}>
         Уведомления об изменении статуса заказов и другие важные события
@@ -206,7 +207,7 @@ export default function NotificationsPage() {
               </div>
             ) : filtered.length === 0 ? (
               <div className="rounded-2xl py-14 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <p className="text-3xl mb-2">🔔</p>
+                <Bell size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px' }} />
                 <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
                   {tab === "unread" ? "Нет непрочитанных" : "Уведомлений пока нет"}
                 </p>

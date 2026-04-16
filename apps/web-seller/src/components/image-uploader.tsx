@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { uploadDirect } from '../lib/api/media.api';
 import type { MediaPurpose } from '../lib/api/media.api';
+import { AlertTriangle, Camera, X } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ export function ImageUploader({
         style={{ ...base, background: 'rgba(248,113,113,.08)', border: '2px dashed rgba(248,113,113,.50)', gap: 8, padding: 16 }}
         onClick={() => { setError(null); inputRef.current?.click(); }}
       >
-        <span style={{ fontSize: 28 }}>⚠️</span>
+        <AlertTriangle size={28} style={{ color: 'rgba(248,113,113,.85)' }} />
         <span style={{ fontSize: 11, color: 'rgba(248,113,113,.85)', textAlign: 'center', lineHeight: 1.4 }}>{error}</span>
         <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(248,113,113,.85)', background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.25)', borderRadius: 8, padding: '4px 10px' }}>
           Попробовать снова
@@ -143,7 +144,7 @@ export function ImageUploader({
           onClick={handleRemove}
           style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: 'rgba(0,0,0,.65)', border: '1px solid rgba(255,255,255,.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'rgba(255,255,255,.85)', cursor: 'pointer' }}
         >
-          ✕
+          <X size={14} />
         </button>
         <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
       </div>
@@ -155,7 +156,7 @@ export function ImageUploader({
       style={{ ...base, background: 'rgba(255,255,255,.06)', border: '2px dashed rgba(255,255,255,.18)', gap: 8 }}
       onClick={() => inputRef.current?.click()}
     >
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(167,139,250,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📷</div>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(167,139,250,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={20} style={{ color: '#A78BFA' }} /></div>
       <span style={{ fontSize: 12, color: 'rgba(255,255,255,.38)', fontWeight: 500, textAlign: 'center', lineHeight: 1.4 }}>Добавить<br />фото</span>
       <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
     </div>

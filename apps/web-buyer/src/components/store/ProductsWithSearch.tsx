@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import type { ProductListItem } from "types";
 import ProductCard from "@/components/store/ProductCard";
+import { Package, Search } from "lucide-react";
 
 type Props = {
   products: ProductListItem[];
@@ -28,7 +29,7 @@ export default function ProductsWithSearch({ products, storeSlug }: Props) {
   if (products.length === 0) {
     return (
       <div className="text-center py-20">
-        <p className="text-5xl mb-4">📦</p>
+        <Package size={48} style={{ color: 'rgba(255,255,255,0.3)' }} className="mb-4 mx-auto" />
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
           Товаров в этой категории пока нет
         </p>
@@ -63,7 +64,7 @@ export default function ProductsWithSearch({ products, storeSlug }: Props) {
 
       {filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-4xl mb-3">🔍</p>
+          <Search size={40} style={{ color: 'rgba(255,255,255,0.3)' }} className="mb-3 mx-auto" />
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
             Ничего не найдено
           </p>

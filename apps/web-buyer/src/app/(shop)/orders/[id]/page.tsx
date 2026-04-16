@@ -7,6 +7,8 @@ import { OrderStatus, DeliveryType } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
 import { useBuyerSocket } from "@/hooks/use-buyer-socket";
 import { track } from "@/lib/analytics";
+import { CheckCircle, Truck, Package, Frown } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -31,11 +33,11 @@ const shortId = (id: string) => id.slice(-6).toUpperCase();
 
 // ── Status progress ────────────────────────────────────────────────────────
 
-const PROGRESS_STEPS: { key: OrderStatus; label: string; emoji: string }[] = [
-  { key: OrderStatus.PENDING,   label: "Ожидает",    emoji: "⏳" },
-  { key: OrderStatus.CONFIRMED, label: "Подтверждён", emoji: "✅" },
-  { key: OrderStatus.SHIPPED,   label: "В пути",     emoji: "🚚" },
-  { key: OrderStatus.DELIVERED, label: "Доставлен",  emoji: "📦" },
+const PROGRESS_STEPS: { key: OrderStatus; label: string; icon: LucideIcon | null }[] = [
+  { key: OrderStatus.PENDING,   label: "Ожидает",    icon: null },
+  { key: OrderStatus.CONFIRMED, label: "Подтверждён", icon: CheckCircle },
+  { key: OrderStatus.SHIPPED,   label: "В пути",     icon: Truck },
+  { key: OrderStatus.DELIVERED, label: "Доставлен",  icon: Package },
 ];
 
 const ACTIVE_STEP: Record<string, number> = {
@@ -154,7 +156,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
         {isError && (
           <div className="text-center py-16">
-            <p className="text-3xl mb-3">😕</p>
+            <Frown size={32} style={{ color: 'rgba(255,255,255,0.3)' }} className="mb-3 mx-auto" />
             <p className="text-sm" style={{ color: "rgba(248,113,113,.80)" }}>Не удалось загрузить заказ</p>
             <Link href="/orders" className="text-xs mt-3 inline-block" style={{ color: "#A78BFA" }}>← Назад к заказам</Link>
           </div>
@@ -212,8 +214,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <div className="flex justify-between mt-2">
                   {PROGRESS_STEPS.map((step, i) => (
-                    <span key={step.key} className="text-base flex-1 text-center" style={{ opacity: i <= currentStep ? 1 : 0.25 }}>
-                      {step.emoji}
+                    <span key={step.key} className="flex-1 flex justify-center" style={{ opacity: i <= currentStep ? 1 : 0.25 }}>
+                      {step.icon ? <step.icon size={16} /> : <span className="text-base">&#8987;</span>}
                     </span>
                   ))}
                 </div>
@@ -249,7 +251,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    📦
+                    <Package size={16} style={{ color: '#A78BFA' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white leading-snug">{item.title}</p>

@@ -7,6 +7,7 @@ import { useSellerOrders } from '../../../hooks/use-orders';
 import { useSellerSummary } from '../../../hooks/use-analytics';
 import { OrderStatus, StoreStatus } from 'types';
 import { track } from '../../../lib/analytics';
+import { Package, Eye, Link2, Clock, Plus, ClipboardList, BarChart3 } from 'lucide-react';
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ export default function DashboardPage() {
 
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Добро пожаловать 👋</h1>
+        <h1 className="text-2xl font-bold text-white">Добро пожаловать</h1>
         <div className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.42)" }}>
           {storeLoading ? (
             <Skeleton className="h-4 w-40 inline-block" />
@@ -114,7 +115,7 @@ export default function DashboardPage() {
         {/* Orders today (pending) */}
         <div className="rounded-2xl p-4" style={glass}>
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">📦</span>
+            <Package size={24} style={{ color: '#A78BFA' }} />
             {ordersLoading ? (
               <Skeleton className="h-5 w-8" />
             ) : pendingCount > 0 ? (
@@ -137,7 +138,7 @@ export default function DashboardPage() {
         {/* Views */}
         <div className="rounded-2xl p-4" style={glass}>
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">👁</span>
+            <Eye size={24} style={{ color: '#A78BFA' }} />
           </div>
           {summaryLoading ? (
             <Skeleton className="h-6 w-16 mb-1" />
@@ -156,7 +157,7 @@ export default function DashboardPage() {
           onClick={handleCopyLink}
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">🔗</span>
+            <Link2 size={24} style={{ color: '#A78BFA' }} />
             {copied && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(52,211,153,.15)", color: "#34d399" }}>
                 Скопировано
@@ -176,7 +177,7 @@ export default function DashboardPage() {
         {/* Pending orders */}
         <div className="rounded-2xl p-4" style={glass}>
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">⏳</span>
+            <Clock size={24} style={{ color: '#A78BFA' }} />
           </div>
           {ordersLoading ? (
             <Skeleton className="h-6 w-8 mb-1" />
@@ -240,20 +241,23 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: "Добавить товар",    href: "/products/create", icon: "➕" },
-          { label: "Обработать заказы", href: "/orders",          icon: "📋" },
-          { label: "Аналитика",         href: "/analytics",       icon: "📊" },
-        ].map((a) => (
-          <Link
-            key={a.label}
-            href={a.href}
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white transition-all hover:opacity-80"
-            style={glassDim}
-          >
-            <span className="text-xl">{a.icon}</span>
-            {a.label}
-          </Link>
-        ))}
+          { label: "Добавить товар",    href: "/products/create", icon: Plus },
+          { label: "Обработать заказы", href: "/orders",          icon: ClipboardList },
+          { label: "Аналитика",         href: "/analytics",       icon: BarChart3 },
+        ].map((a) => {
+          const Icon = a.icon;
+          return (
+            <Link
+              key={a.label}
+              href={a.href}
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white transition-all hover:opacity-80"
+              style={glassDim}
+            >
+              <Icon size={20} style={{ color: '#A78BFA' }} />
+              {a.label}
+            </Link>
+          );
+        })}
       </div>
 
     </div>

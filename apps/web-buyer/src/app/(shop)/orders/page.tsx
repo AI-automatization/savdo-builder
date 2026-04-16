@@ -9,6 +9,7 @@ import type { OrderListItem } from "types";
 import { useAuth } from "@/lib/auth/context";
 import { useOrders } from "@/hooks/use-orders";
 import { useBuyerSocket } from "@/hooks/use-buyer-socket";
+import { X, Search, Package } from "lucide-react";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ function OrdersList() {
           </svg>
           {searchQuery && (
             <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium transition-opacity hover:opacity-70" style={{ color: "rgba(255,255,255,0.40)" }} aria-label="Очистить">
-              ✕
+              <X size={14} />
             </button>
           )}
         </div>
@@ -217,7 +218,7 @@ function OrdersList() {
 
       {!isLoading && !isError && orders.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-3xl mb-3">{q ? "🔍" : "📦"}</p>
+          <div className="mb-3 mx-auto" style={{ color: 'rgba(255,255,255,0.3)' }}>{q ? <Search size={32} /> : <Package size={32} />}</div>
           <p className="text-sm font-medium text-white/60">
             {q
               ? `Ничего не найдено по запросу «${searchQuery}»`

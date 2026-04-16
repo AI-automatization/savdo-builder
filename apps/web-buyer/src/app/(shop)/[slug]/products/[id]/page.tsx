@@ -9,6 +9,7 @@ import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus } from "types";
 import { track } from "@/lib/analytics";
+import { Search, ShoppingBag } from "lucide-react";
 import {
   findVariantBySelection,
   initialSelectionFromVariants,
@@ -166,7 +167,7 @@ export default function ProductPage() {
 
         {notFound ? (
           <div className="text-center py-20">
-            <p className="text-5xl mb-4">🔍</p>
+            <Search size={48} style={{ color: 'rgba(255,255,255,0.3)' }} className="mb-4 mx-auto" />
             <p className="text-sm font-medium text-white/70">Товар не найден</p>
             <p className="text-xs mt-1.5 mb-5" style={{ color: "rgba(255,255,255,0.35)" }}>
               Возможно, продавец его удалил или скрыл
@@ -198,7 +199,7 @@ export default function ProductPage() {
               priority
             />
           ) : (
-            <span className="text-[96px] select-none">🛍</span>
+            <ShoppingBag size={96} style={{ color: 'rgba(255,255,255,0.15)' }} />
           )}
 
           {images.length > 1 && (

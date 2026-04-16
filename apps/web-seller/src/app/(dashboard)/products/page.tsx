@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products';
+import { Check, Link2, Send } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
 
@@ -225,11 +226,7 @@ export default function ProductsPage() {
                     className="text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ color: copiedId === p.id ? "rgba(52,211,153,0.90)" : "rgba(255,255,255,0.30)" }}
                   >
-                    {copiedId === p.id ? "✓" : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-3.5 h-3.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                      </svg>
-                    )}
+                    {copiedId === p.id ? <Check size={14} /> : <Link2 size={14} />}
                   </button>
                   <button
                     onClick={() => copyTelegramLink(p.id)}
@@ -237,11 +234,7 @@ export default function ProductsPage() {
                     className="text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ color: tgCopiedId === p.id ? "rgba(52,211,153,0.90)" : "rgba(42,171,238,0.70)" }}
                   >
-                    {tgCopiedId === p.id ? "✓" : (
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
-                      </svg>
-                    )}
+                    {tgCopiedId === p.id ? <Check size={14} /> : <Send size={14} />}
                   </button>
                   <Link
                     href={`/products/${p.id}/edit`}

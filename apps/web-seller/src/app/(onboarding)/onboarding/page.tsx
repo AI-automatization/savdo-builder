@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { Rocket, ShoppingCart } from 'lucide-react';
 import { useCreateStore, useSubmitStore, useStore } from '../../../hooks/use-seller';
 import { useUpdateSellerProfile } from '../../../hooks/use-seller';
 import { useCreateProduct } from '../../../hooks/use-products';
@@ -425,7 +426,7 @@ function Step4({
           className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4"
           style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 8px 24px rgba(167,139,250,.40)" }}
         >
-          🚀
+          <Rocket size={28} color="#fff" />
         </div>
         <h1 className="text-xl font-bold text-white mb-1">Почти готово!</h1>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.40)" }}>
@@ -591,7 +592,7 @@ export default function OnboardingPage() {
           className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
           style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
         >
-          🛒
+          <ShoppingCart size={16} color="#fff" />
         </div>
         <span className="text-base font-bold" style={{ color: "#A78BFA" }}>Savdo</span>
       </div>

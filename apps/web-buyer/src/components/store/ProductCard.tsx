@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { ProductListItem } from "types";
 import { ProductStatus } from "types";
+import { ShoppingBag } from "lucide-react";
 
 type Props = {
   product: ProductListItem;
@@ -37,7 +38,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
               sizes="(max-width: 768px) 50vw, 200px"
             />
           ) : (
-            <span>🛍</span>
+            <ShoppingBag size={20} style={{ color: '#A78BFA' }} />
           )}
 
           {/* Out of stock overlay */}
