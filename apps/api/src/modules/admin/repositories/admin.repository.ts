@@ -259,6 +259,16 @@ export class AdminRepository {
     });
   }
 
+  async unapproveStore(id: string) {
+    return this.prisma.store.update({
+      where: { id },
+      data: {
+        status: 'DRAFT' as any,
+        isPublic: false,
+      },
+    });
+  }
+
   // ── Global search ─────────────────────────────────────────────────────────
 
   async globalSearch(q: string) {

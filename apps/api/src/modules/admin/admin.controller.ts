@@ -40,6 +40,7 @@ import { UnsuspendStoreUseCase } from './use-cases/unsuspend-store.use-case';
 import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
 import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
+import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
@@ -71,6 +72,7 @@ export class AdminController {
     private readonly rejectStoreUseCase: RejectStoreUseCase,
     private readonly archiveStoreUseCase: ArchiveStoreUseCase,
     private readonly approveStoreUseCase: ApproveStoreUseCase,
+    private readonly unapproveStoreUseCase: UnapproveStoreUseCase,
     private readonly adminCancelOrderUseCase: AdminCancelOrderUseCase,
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
     private readonly getAnalyticsUseCase: GetAnalyticsUseCase,
@@ -285,6 +287,15 @@ export class AdminController {
   ) {
     await this.resolveAdminUser(user);
     return this.approveStoreUseCase.execute(id, user.sub);
+  }
+
+  @Post('stores/:id/unapprove')
+  async unapproveStore(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    return this.unapproveStoreUseCase.execute(id, user.sub);
   }
 
   // PATCH /api/v1/admin/orders/:id/status  { status: 'CANCELLED', reason: string }
