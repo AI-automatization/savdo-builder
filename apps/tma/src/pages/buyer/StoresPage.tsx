@@ -5,6 +5,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
+import { Sticker } from '@/components/ui/Sticker';
 
 interface Store {
   id: string;
@@ -57,10 +58,10 @@ export default function StoresPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
             style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 14px rgba(167,139,250,.40)' }}
           >
-            🛒
+            <Sticker emoji="🛒" size={26} />
           </div>
           <div>
             <h1 className="text-base font-bold" style={{ color: '#A78BFA' }}>Savdo</h1>
@@ -101,7 +102,7 @@ export default function StoresPage() {
 
         {!loading && error && (
           <div className="flex flex-col items-center gap-2 py-10">
-            <span style={{ fontSize: 36 }}>⚠️</span>
+            <Sticker emoji="⚠️" size={56} />
             <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
             <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A78BFA' }}>Попробовать снова</button>
           </div>
@@ -109,7 +110,7 @@ export default function StoresPage() {
 
         {!loading && !error && !filtered.length && (
           <div className="flex flex-col items-center gap-2 py-10">
-            <span style={{ fontSize: 36 }}>🏪</span>
+            <Sticker emoji="🏪" size={56} />
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
               {query.trim() ? 'Ничего не найдено' : 'Магазинов пока нет'}
             </p>
@@ -123,10 +124,10 @@ export default function StoresPage() {
             onClick={() => navigate(`/buyer/store/${store.slug}`)}
           >
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: 'rgba(167,139,250,0.20)', border: '1px solid rgba(167,139,250,0.25)' }}
             >
-              🏪
+              <Sticker emoji="🏪" size={26} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>

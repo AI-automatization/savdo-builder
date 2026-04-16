@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { Sticker } from '@/components/ui/Sticker';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 interface Order {
@@ -58,10 +59,10 @@ export default function DashboardPage() {
         {/* Заголовок */}
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
             style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 14px rgba(167,139,250,.40)' }}
           >
-            🏪
+            <Sticker emoji="🏪" size={26} />
           </div>
           <div>
             <h1 className="text-base font-bold" style={{ color: '#A78BFA' }}>Панель продавца</h1>
@@ -84,7 +85,7 @@ export default function DashboardPage() {
               { label: 'Новые',   value: pendingCount,         icon: '🔔' },
             ].map((s) => (
               <GlassCard key={s.label} className="flex flex-col items-center gap-1 py-3 px-2">
-                <span style={{ fontSize: 20 }}>{s.icon}</span>
+                <Sticker emoji={s.icon} size={28} />
                 <span className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{s.value}</span>
                 <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
               </GlassCard>
@@ -122,7 +123,7 @@ export default function DashboardPage() {
 
         {!loading && orders.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8">
-            <span style={{ fontSize: 36 }}>📭</span>
+            <Sticker emoji="📭" size={56} />
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
           </div>
         )}
