@@ -10,17 +10,23 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { glass } from '@/lib/styles';
 
-interface OptionValue {
-  id: string;
-  value: string;
-}
-
 interface Variant {
   id: string;
   sku: string;
   stockQuantity: number;
   isActive: boolean;
-  optionValues: Array<{ optionValue: OptionValue }>;
+  optionValueIds: string[];
+}
+
+interface OptionGroupValue {
+  id: string;
+  value: string;
+}
+
+interface OptionGroup {
+  id: string;
+  name: string;
+  values: OptionGroupValue[];
 }
 
 interface ProductImage {
@@ -38,6 +44,7 @@ interface Product {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   variants?: Variant[];
   images?: ProductImage[];
+  optionGroups?: OptionGroup[];
 }
 
 
@@ -626,8 +633,11 @@ export default function EditProductPage() {
                   Остаток на складе
                 </p>
                 {product.variants.map((v) => {
-                  const label = v.optionValues.length > 0
-                    ? v.optionValues.map((ov) => ov.optionValue.value).join(' / ')
+                  const allValues = (product.optionGroups ?? []).flatMap((g) => g.values);
+                  const label = v.optionValueIds.length > 0
+                    ? v.optionValueIds
+                        .map((vid) => allValues.find((val) => val.id === vid)?.value ?? vid)
+                        .join(' / ')
                     : 'Без размера';
                   return (
                     <div key={v.id} className="flex items-center gap-2">

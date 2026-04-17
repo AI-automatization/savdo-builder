@@ -85,8 +85,9 @@ export class AnalyticsRepository {
   async getSellerSummary(storeId: string): Promise<SellerSummary> {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const [views, orderCount, storefrontViews, topProductRows] =
-      await this.prisma.$transaction([
+    try {
+      // Run queries separately — $queryRaw is not supported inside $transaction([]) array form
+      const [views, orderCount, storefrontViews, topProductRows] = await Promise.all([
         this.prisma.analyticsEvent.count({
           where: {
             storeId,
@@ -100,9 +101,9 @@ export class AnalyticsRepository {
         this.prisma.analyticsEvent.count({
           where: { storeId, eventName: 'storefront_viewed', createdAt: { gte: thirtyDaysAgo } },
         }),
-        this.prisma.$queryRaw<{ productId: string; views: number }[]>`
+        this.prisma.$queryRaw<{ productId: string; views: bigint }[]>`
           SELECT event_payload->>'productId' AS "productId",
-                 COUNT(*)::int              AS views
+                 COUNT(*)                   AS views
           FROM   analytics_events
           WHERE  store_id   = ${storeId}
             AND  event_name = 'product_viewed'
@@ -114,13 +115,20 @@ export class AnalyticsRepository {
         `,
       ]);
 
-    return {
-      views,
-      topProduct: topProductRows[0] ?? null,
-      conversionRate:
-        storefrontViews > 0
-          ? Math.round((orderCount / storefrontViews) * 1000) / 10
-          : 0,
-    };
+      const topRow = topProductRows[0] ?? null;
+
+      return {
+        views,
+        topProduct: topRow
+          ? { productId: topRow.productId, views: Number(topRow.views) }
+          : null,
+        conversionRate:
+          storefrontViews > 0
+            ? Math.round((orderCount / storefrontViews) * 1000) / 10
+            : 0,
+      };
+    } catch {
+      return { views: 0, topProduct: null, conversionRate: 0 };
+    }
   }
 }
