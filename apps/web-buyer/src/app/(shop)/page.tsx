@@ -20,15 +20,40 @@ const glassDim = {
   border:               "1px solid rgba(255,255,255,0.09)",
 } as const;
 
+const SLUG_RE = /^[a-z0-9-]+$/;
+
+function extractSlug(raw: string): string | null {
+  const trimmed = raw.trim().replace(/\s+/g, "");
+  if (!trimmed) return null;
+
+  // Telegram deep link: t.me/<bot>?startapp=store_<slug>  (или &start= / start=)
+  const tgMatch = trimmed.match(/[?&](?:startapp|start)=store_([^&#]+)/i);
+  if (tgMatch) {
+    const s = tgMatch[1].toLowerCase();
+    return SLUG_RE.test(s) ? s : null;
+  }
+
+  // Полный URL savdo.uz/<slug> или https://savdo.uz/<slug>
+  const urlMatch = trimmed.match(/^(?:https?:\/\/)?(?:www\.)?savdo\.uz\/([^/?#]+)/i);
+  if (urlMatch) {
+    const s = urlMatch[1].toLowerCase();
+    return SLUG_RE.test(s) ? s : null;
+  }
+
+  // Просто slug
+  const s = trimmed.toLowerCase();
+  return SLUG_RE.test(s) ? s : null;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [slug, setSlug]   = useState("");
   const [error, setError] = useState(false);
 
   function handleGo() {
-    const val = slug.trim().toLowerCase().replace(/\s+/g, "");
-    if (!val) { setError(true); return; }
-    router.push(`/${val}`);
+    const parsed = extractSlug(slug);
+    if (!parsed) { setError(true); return; }
+    router.push(`/${parsed}`);
   }
 
   return (
@@ -104,7 +129,11 @@ export default function HomePage() {
               Перейти
             </button>
           </div>
-          {error && <p className="text-[11px]" style={{ color: "rgba(239,68,68,.80)" }}>Введите ссылку магазина</p>}
+          {error && (
+            <p className="text-[11px]" style={{ color: "rgba(239,68,68,.80)" }}>
+              Проверьте ссылку — подойдёт slug (например <span style={{ color: "#fff" }}>nike-uz</span>), <span style={{ color: "#fff" }}>savdo.uz/nike-uz</span> или Telegram-ссылка магазина.
+            </p>
+          )}
         </div>
 
         {/* Quick links */}
