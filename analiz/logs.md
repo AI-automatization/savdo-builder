@@ -56,6 +56,65 @@
 
 ---
 
+## 2026-04-17 [WEB-SELLER-ACCESS-001] Ложная тревога — «не открывается seller» было падением клиента, не сетью
+
+- **Статус:** ✅ Диагностировано (17.04.2026, сессия 24). Исправление клиента см. `SELLER-DASH-GUARD-001`, серверная часть — `API-SUMMARY-500-001`.
+- **Что оказалось:** Диагноз сессии 23 («DNS/сеть у Азима режет только этот хост») — **неверный**. Страница `/dashboard` физически грузилась, но в консоли:
+  1. `GET /analytics/seller/summary` → **HTTP 500** от API.
+  2. `Uncaught TypeError: Cannot read properties of undefined (reading 'city')` на `dashboard/page.tsx:221` и `orders/page.tsx:152,248` и т.д. — какой-то заказ приходит без `deliveryAddress`, optional chaining нигде не было.
+  Критический TypeError убивал React-tree → Edge/Chrome/Яндекс.Браузер показывали свою generic `This page couldn't load` error page (одну и ту же, поэтому выглядело «как будто соединение не идёт»).
+- **Почему curl «работал», а браузер нет:** curl не делал JS-рендер, просто получал HTML. С моей сети «работало» потому что я не авторизован → middleware редиректит на `/login` → до падающего dashboard не доходит.
+- **Почему не поймали в сессии 23:** не сделали `F12 → Console` у Азима. Полчаса диагностики DNS/nslookup/curl/hosts впустую. **Урок:** при «This page couldn't load» в Chromium — **первым делом** F12 → Console, а не tracert.
+- **Правка `.env.example` (NEXT_PUBLIC_BUYER_URL с мёртвого домена на живой) — осталась, не связана с багом, подлежит коммиту.
+
+---
+
+## 2026-04-17 [API-SUMMARY-500-001] `GET /analytics/seller/summary` возвращает HTTP 500
+
+- **Статус:** 🔴 Баг — домен Полата (`apps/api`), Азим не правит
+- **Где воспроизводится:** web-seller dashboard у Азима (аккаунт продавца, production, 17.04.2026 ~21:30). В DevTools → Network запрос `GET https://savdo-api-production.up.railway.app/analytics/seller/summary` → `500 Internal Server Error`.
+- **Что сломалось на фронте:** `apps/web-seller/src/lib/api/analytics.api.ts:10` бросает, блок с summary-цифрами не рендерится (но весь dashboard не падал из-за этого — TanStack Query изолирует). Сам крах dashboard был из другого места — см. `SELLER-DASH-GUARD-001`.
+- **Что нужно (Полат):** Посмотреть логи Railway `savdo-api` за 2026-04-17 ~16:00 UTC (21:00 UZT), фильтр по запросу `/analytics/seller/summary`. Типичные причины: новый Prisma.query после миграции без индекса, `groupBy`/`count` на пустом сторе, refactor SellerSummary контракта.
+- **Контракт фронта (что web-seller ожидает):**
+  ```ts
+  interface SellerSummary {
+    views: number;
+    topProduct: { productId: string; views: number } | null;
+    conversionRate: number;
+  }
+  ```
+- **Что сделано:** Запротоколировано. Коммит Азима с guard'ами — см. SELLER-DASH-GUARD-001.
+
+---
+
+## 2026-04-17 [SELLER-DASH-GUARD-001] dashboard/orders падают на `order.deliveryAddress === undefined`
+
+- **Статус:** ✅ Исправлено (17.04.2026, сессия 24, Азим)
+- **Что случилось:** Какой-то заказ приходит без `deliveryAddress` (либо реально, либо API-VAR-001-подобный рассинк контракта). Рендер `{order.deliveryAddress.city}` → TypeError → весь React-tree unmount → Edge показывает generic error page (см. WEB-SELLER-ACCESS-001, где это ошибочно диагностировали как «сеть»).
+- **Что сделано:** Добавлен optional chaining + fallback `'—'` во всех 5 местах web-seller:
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx:221`
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx:78` (cancel modal)
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx:152,155` (OrderRow)
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx:248-249` (search filter — там была `.toLowerCase()` → тоже с guard'ом)
+  - `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx:317,319` (детали)
+- **Что это НЕ решает:** Если у заказа реально нет `deliveryAddress` — UI покажет `—, —`. Это защита от краша, но не объяснение, почему адрес отсутствует. Нужен backend-аудит — см. `API-ORDER-ADDR-001` ниже (если найдём).
+- **Домен:** `apps/web-seller` — Азим. Backend контракт Order — Полат, если обнаружится что поле реально приходит пустым.
+
+---
+
+## 2026-04-18 [TMA-EDIT-001] Чёрный экран при открытии товара в seller-панели TMA
+
+- **Статус:** 🔴 Баг — домен Полата (`apps/tma`), Азим не правит
+- **Где воспроизводится:** TMA (@savdo_builderBOT) → seller panel → «Мои товары» → тап на товар. Вместо страницы редактирования — полностью чёрный экран (только SB logo + меню + X сверху и `@savdo_builderBOT` footer). Скриншот: `c:/Users/marti/Desktop/Снимок экрана 2026-04-17 112143.png`.
+- **Что случилось:** Регрессия от API-VAR-001. В `apps/api/src/modules/products/products.controller.ts:532-538` helper `normalizeVariant` удаляет поле `optionValues` и отдаёт плоский `optionValueIds: string[]` на `GET /seller/products/:id`. Но `apps/tma/src/pages/seller/EditProductPage.tsx:18-24` всё ещё описывает `Variant.optionValues: Array<{ optionValue: OptionValue }>`, а строки **629-631** читают `v.optionValues.length` и `v.optionValues.map(...)`. У товара с вариантами `v.optionValues === undefined` → `TypeError: Cannot read properties of undefined (reading 'length')` → React unmounts → чёрный экран. У товара без вариантов блок `{product.variants && product.variants.length > 0 && ...}` не рендерится, страница живая — значит баг триггерится только на товарах **с** вариантами.
+- **Что нужно сделать (Полат):**
+  1. `apps/tma/src/pages/seller/EditProductPage.tsx:18-24` — заменить `optionValues: Array<{ optionValue: OptionValue }>` на `optionValueIds: string[]` (и убрать интерфейс `OptionValue` если больше не нужен).
+  2. Строки 628-631 — вычислить `label` не из локальной формы варианта, а из справочника опций продукта. Варианты с одним optionValueId ищут значение в `product.options[].values[]` по id. Альтернативно — backend может добавить в normalizeVariant поля `optionValueLabels: string[]` для удобства фронта (решение Полата).
+  3. Проверить что остальные места чтения `v.optionValues` в TMA обновлены (я трогал `apps/tma/src/lib/variants.ts` в сессии 21, а EditProductPage пропустил — потому что его Азим не читает обычно).
+- **Что сделано:** Не правил (чужой домен). Записано сюда. Азим сообщит Полату.
+
+---
+
 ## 2026-04-15 [API-LIST-001] ProductListItem не содержит variantCount/hasVariants
 
 - **Статус:** ✅ Исправлено (17.04.2026)

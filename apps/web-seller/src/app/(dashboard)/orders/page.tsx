@@ -75,7 +75,7 @@ function CancelModal({
       <div className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4" style={glass}>
         <h2 className="text-lg font-bold text-white">Отменить заказ #{shortId(order.id)}</h2>
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>
-          {order.deliveryAddress.city}, {order.deliveryAddress.street}
+          {order.deliveryAddress?.city ?? '—'}, {order.deliveryAddress?.street ?? '—'}
         </p>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
@@ -149,10 +149,10 @@ function OrderRow({
       <div className="flex items-start justify-between gap-2">
         <Link href={`/orders/${order.id}`} className="hover:opacity-80 transition-opacity">
           <p className="text-sm font-medium text-white">
-            {order.deliveryAddress.city}
+            {order.deliveryAddress?.city ?? '—'}
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
-            {order.deliveryAddress.street} · #{shortId(order.id)}
+            {order.deliveryAddress?.street ?? '—'} · #{shortId(order.id)}
           </p>
         </Link>
         {/* Status badge — mobile only */}
@@ -245,8 +245,8 @@ export default function OrdersPage() {
   const filteredOrders = q
     ? accOrders.filter((o) =>
         shortId(o.id).toLowerCase().includes(q) ||
-        o.deliveryAddress.city.toLowerCase().includes(q) ||
-        o.deliveryAddress.street.toLowerCase().includes(q),
+        (o.deliveryAddress?.city?.toLowerCase() ?? '').includes(q) ||
+        (o.deliveryAddress?.street?.toLowerCase() ?? '').includes(q),
       )
     : accOrders;
   const orders = filteredOrders;

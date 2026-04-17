@@ -314,9 +314,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           <div>
             <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Адрес</p>
             <p className="text-sm text-white">
-              {order.deliveryAddress.city}, {order.deliveryAddress.street}
+              {order.deliveryAddress?.city ?? '—'}, {order.deliveryAddress?.street ?? '—'}
             </p>
-            {order.deliveryAddress.region && (
+            {order.deliveryAddress?.region && (
               <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
                 {order.deliveryAddress.region}
               </p>

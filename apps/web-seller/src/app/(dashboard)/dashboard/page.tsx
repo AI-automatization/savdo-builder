@@ -218,7 +218,7 @@ export default function DashboardPage() {
                   #{o.id.slice(-4).toUpperCase()}
                 </span>
                 <span className="flex-1 text-sm text-white truncate">
-                  {o.deliveryAddress.city}
+                  {o.deliveryAddress?.city ?? '—'}
                 </span>
                 <span className="text-sm font-medium shrink-0" style={{ color: "#A78BFA" }}>
                   {fmt(o.totalAmount)}
