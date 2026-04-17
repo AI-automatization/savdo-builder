@@ -333,13 +333,26 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
         {order.buyer?.phone && (
           <div>
-            <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Телефон покупателя</p>
+            <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Номер аккаунта</p>
             <a
               href={`tel:${order.buyer.phone}`}
-              className="text-sm font-medium transition-opacity hover:opacity-80"
+              className="text-sm font-semibold transition-opacity hover:opacity-80"
               style={{ color: '#A78BFA' }}
             >
               {order.buyer.phone}
+            </a>
+          </div>
+        )}
+
+        {order.customerPhone && order.customerPhone !== order.buyer?.phone && (
+          <div>
+            <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Резервный номер</p>
+            <a
+              href={`tel:${order.customerPhone}`}
+              className="text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ color: 'rgba(255,255,255,0.65)' }}
+            >
+              {order.customerPhone}
             </a>
           </div>
         )}

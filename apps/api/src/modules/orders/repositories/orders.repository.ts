@@ -83,6 +83,11 @@ export class OrdersRepository {
         orderBy: { placedAt: 'desc' },
         skip,
         take: limit,
+        include: {
+          buyer: {
+            include: { user: { select: { phone: true } } },
+          },
+        },
       }),
       this.prisma.order.count({ where }),
     ]);

@@ -28,12 +28,19 @@ export interface OrderListItem {
   deliveryAddress: DeliveryAddress;
   deliveryFee: number;
   createdAt: string;
+  /** Buyer's registered account phone (from User record) */
+  buyer?: { phone: string } | null;
+  /** Phone entered at checkout — shown as backup/reserve number to seller */
+  customerPhone?: string;
+  customerFullName?: string;
 }
 
 /** Full order detail */
 export interface Order extends OrderListItem {
   buyerId: string;
   buyer: { phone: string } | null;
+  /** Phone entered at checkout — backup/reserve number */
+  customerPhone: string;
   buyerNote: string | null;
   store: Pick<StoreRef, 'name' | 'telegramContactLink'>;
   items: OrderItem[];

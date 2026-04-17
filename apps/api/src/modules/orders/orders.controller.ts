@@ -139,8 +139,14 @@ export class OrdersController {
     @Param('id') orderId: string,
   ) {
     const storeId = await this.resolveStoreId(user.sub);
+    const order = await this.getOrderDetailUseCase.execute({ orderId, storeId });
 
-    return this.getOrderDetailUseCase.execute({ orderId, storeId });
+    // Flatten buyer.user.phone → buyer.phone for frontend
+    const { buyer, ...rest } = order as any;
+    return {
+      ...rest,
+      buyer: buyer ? { phone: buyer.user?.phone ?? null } : null,
+    };
   }
 
   // PATCH /api/v1/seller/orders/:id/status

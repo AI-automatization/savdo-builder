@@ -16,11 +16,12 @@ interface Order {
 }
 
 const NEXT_STATUS: Record<string, { label: string; status: string } | null> = {
-  PENDING:   { label: '✅ Подтвердить', status: 'CONFIRMED' },
-  CONFIRMED: { label: '🚚 Отправить',   status: 'SHIPPED' },
-  SHIPPED:   { label: '📦 Доставлен',   status: 'DELIVERED' },
-  DELIVERED: null,
-  CANCELLED: null,
+  PENDING:    { label: '✅ Подтвердить', status: 'CONFIRMED' },
+  CONFIRMED:  { label: '🚚 Отправить',   status: 'SHIPPED' },
+  PROCESSING: { label: '🚚 Отправить',   status: 'SHIPPED' },
+  SHIPPED:    { label: '📦 Доставлен',   status: 'DELIVERED' },
+  DELIVERED:  null,
+  CANCELLED:  null,
 };
 
 export default function SellerOrdersPage() {

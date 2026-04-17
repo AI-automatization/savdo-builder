@@ -41,8 +41,16 @@ export class GetSellerOrdersUseCase {
       limit,
     });
 
+    const data = result.orders.map((o: any) => {
+      const { buyer, ...rest } = o;
+      return {
+        ...rest,
+        buyer: buyer ? { phone: buyer.user?.phone ?? null } : null,
+      };
+    });
+
     return {
-      data: result.orders,
+      data,
       meta: {
         total: result.total,
         page,

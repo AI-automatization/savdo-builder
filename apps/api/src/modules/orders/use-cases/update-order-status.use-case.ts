@@ -13,6 +13,7 @@ type ActorRole = 'SELLER' | 'BUYER';
 const ALLOWED_TRANSITIONS: Partial<Record<TransitionKey, ActorRole>> = {
   'PENDING__CONFIRMED': 'SELLER',
   'CONFIRMED__PROCESSING': 'SELLER',
+  'CONFIRMED__SHIPPED': 'SELLER',   // seller may skip PROCESSING for simple flows
   'PROCESSING__SHIPPED': 'SELLER',
   'SHIPPED__DELIVERED': 'SELLER',
   'PENDING__CANCELLED': 'BUYER',   // buyer cancels PENDING — overridden below for seller

@@ -215,9 +215,26 @@ export default function ProductPage() {
           <h1 className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>
             {product.title}
           </h1>
-          <p className="text-xl font-bold" style={{ color: '#A855F7' }}>
-            {unitPrice.toLocaleString('ru')} сум
-          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <p className="text-xl font-bold" style={{ color: '#A855F7' }}>
+              {unitPrice.toLocaleString('ru')} сум
+            </p>
+            {selectedVariant && !isOutOfStock && selectedVariant.stockQuantity <= 5 && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' }}>
+                Осталось: {selectedVariant.stockQuantity} шт
+              </span>
+            )}
+            {selectedVariant && !isOutOfStock && selectedVariant.stockQuantity > 5 && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(34,197,94,0.10)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.20)' }}>
+                В наличии: {selectedVariant.stockQuantity} шт
+              </span>
+            )}
+            {isOutOfStock && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(239,68,68,0.10)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}>
+                Нет в наличии
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Variant options (grouped) */}
