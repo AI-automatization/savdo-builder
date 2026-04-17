@@ -51,7 +51,7 @@ export default function CheckoutPage() {
       const order = await api<{ id: string; totalAmount: number }>('/orders', {
         method: 'POST',
         body: {
-          items: items.map((i) => ({ productId: i.productId, quantity: i.qty })),
+          items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, quantity: i.qty })),
           buyerName: name.trim(),
           buyerPhone: phone.replace(/[\s\-()]/g, ''),
           deliveryAddress: address.trim() || undefined,

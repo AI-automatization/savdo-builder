@@ -29,6 +29,7 @@ export interface UpdateOrderStatusInput {
   reason?: string;
   actorRole: ActorRole;
   actorUserId: string;
+  storeId?: string;
 }
 
 @Injectable()
@@ -72,6 +73,15 @@ export class UpdateOrderStatusUseCase {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         `Role ${input.actorRole} is not permitted to perform this status transition`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Sellers may only update orders belonging to their own store
+    if (input.actorRole === 'SELLER' && input.storeId && order.storeId !== input.storeId) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not have access to this order',
         HttpStatus.FORBIDDEN,
       );
     }

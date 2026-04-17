@@ -1,5 +1,57 @@
 # Done — Азим + Полат
 
+## 2026-04-17 — Сессия 22: Комплексный аудит + 7 критических фиксов
+
+### ✅ [BUG-001] Checkout исправлен — новый CreateDirectOrderUseCase
+- **Важность:** 🔴 КРИТИЧНО
+- **Дата:** 17.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/checkout/dto/create-direct-order.dto.ts` — НОВЫЙ
+  - `apps/api/src/modules/checkout/use-cases/create-direct-order.use-case.ts` — НОВЫЙ
+  - `apps/api/src/modules/checkout/orders-create.controller.ts` — переключён на новый use case
+  - `apps/api/src/modules/checkout/checkout.module.ts` — зарегистрирован новый use case
+- **Что сделано:** Создан `CreateDirectOrderUseCase` принимающий items напрямую (без корзины в БД). Валидирует продукты, one-store constraint (INV-C01), stock для вариантов, создаёт Order атомарно.
+
+### ✅ [BUG-002] Seller не может менять статус чужих заказов
+- **Важность:** 🔴 КРИТИЧНО (security)
+- **Дата:** 17.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/orders/use-cases/update-order-status.use-case.ts`
+  - `apps/api/src/modules/orders/orders.controller.ts`
+- **Что сделано:** Добавлена ownership проверка: `order.storeId !== storeId → 403 Forbidden`.
+
+### ✅ [BUG-003] Товары неопубликованных магазинов скрыты
+- **Важность:** 🟡
+- **Дата:** 17.04.2026
+- **Файлы:** `apps/api/src/modules/products/products.controller.ts`
+- **Что сделано:** `stores/:slug/products` и `stores/:slug/products/:id` — добавлена проверка `!store.isPublic → 404`.
+
+### ✅ [BUG-004] variantId сохраняется в корзине
+- **Важность:** 🟡
+- **Дата:** 17.04.2026
+- **Файлы:** `apps/tma/src/lib/cart.ts`, `apps/tma/src/pages/buyer/ProductPage.tsx`, `apps/tma/src/pages/buyer/CheckoutPage.tsx`
+- **Что сделано:** `CartItem` добавлен `variantId?: string`, сохраняется при добавлении и передаётся на checkout.
+
+### ✅ [BUG-005] Error state в OrdersPage seller
+- **Важность:** 🟢
+- **Дата:** 17.04.2026
+- **Файлы:** `apps/tma/src/pages/seller/OrdersPage.tsx`
+- **Что сделано:** `changeStatus()` и `cancelOrder()` показывают ошибку в UI через `updateError` state.
+
+### ✅ [BUG-006] Out-of-stock вариант больше не выбирается по умолчанию
+- **Важность:** 🟢
+- **Дата:** 17.04.2026
+- **Файлы:** `apps/tma/src/pages/buyer/ProductPage.tsx`
+- **Что сделано:** `firstInStock?.id ?? null` вместо `(firstInStock ?? variants[0]).id`.
+
+### ✅ [BUG-007] Same-store validation при добавлении в корзину (INV-C01)
+- **Важность:** 🟡
+- **Дата:** 17.04.2026
+- **Файлы:** `apps/tma/src/lib/cart.ts`, `apps/tma/src/pages/buyer/ProductPage.tsx`
+- **Что сделано:** `isSameStore()` проверяет storeId при addToCart, при несовпадении корзина очищается автоматически.
+
+---
+
 ## 2026-04-17 — Сессия 21 (Азим): доделать фронт после API-VAR-001 + API-LIST-001
 
 ### ✅ [FE-VAR-CLEANUP-001] Удалены defensive `extractOptionValueIds` / `getVariantOptionValueIds` helpers

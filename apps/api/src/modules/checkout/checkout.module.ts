@@ -4,6 +4,7 @@ import { OrdersCreateController } from './orders-create.controller';
 import { CheckoutRepository } from './repositories/checkout.repository';
 import { PreviewCheckoutUseCase } from './use-cases/preview-checkout.use-case';
 import { ConfirmCheckoutUseCase } from './use-cases/confirm-checkout.use-case';
+import { CreateDirectOrderUseCase } from './use-cases/create-direct-order.use-case';
 import { CartModule } from '../cart/cart.module';
 import { ProductsModule } from '../products/products.module';
 import { UsersModule } from '../users/users.module';
@@ -16,6 +17,7 @@ import { SocketModule } from '../../socket/socket.module';
     CheckoutRepository,
     PreviewCheckoutUseCase,
     ConfirmCheckoutUseCase,
+    CreateDirectOrderUseCase,
   ],
   exports: [CheckoutRepository],
 })

@@ -151,12 +151,14 @@ export class OrdersController {
     @Param('id') orderId: string,
     @Body() dto: UpdateOrderStatusDto,
   ) {
+    const storeId = await this.resolveStoreId(user.sub);
     return this.updateOrderStatusUseCase.execute({
       orderId,
       newStatus: dto.status,
       reason: dto.reason,
       actorRole: 'SELLER',
       actorUserId: user.sub,
+      storeId,
     });
   }
 

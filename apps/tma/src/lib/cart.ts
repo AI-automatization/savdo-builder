@@ -1,5 +1,6 @@
 export interface CartItem {
   productId: string;
+  variantId?: string;
   title: string;
   price: number;
   qty: number;
@@ -41,4 +42,9 @@ export function saveCart(items: CartItem[]): void {
 
 export function clearCart(): void {
   localStorage.removeItem(CART_KEY);
+}
+
+/** Returns true if the cart is empty or all items are from the same store. */
+export function isSameStore(cart: CartItem[], storeId: string): boolean {
+  return cart.length === 0 || cart[0].storeId === storeId;
 }

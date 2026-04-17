@@ -446,7 +446,7 @@ export class ProductsController {
     @Query('storeCategoryId') storeCategoryId?: string,
   ) {
     const store = await this.storesRepo.findBySlug(slug);
-    if (!store) {
+    if (!store || !(store as any).isPublic) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
     const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
@@ -466,7 +466,7 @@ export class ProductsController {
     @Param('id') id: string,
   ) {
     const store = await this.storesRepo.findBySlug(slug);
-    if (!store) {
+    if (!store || !(store as any).isPublic) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
     const product = await this.productsRepo.findPublicById(id);

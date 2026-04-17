@@ -16,6 +16,7 @@ import {
   type OptionSelection,
   type VariantMin,
 } from '@/lib/variants';
+import { getCart, saveCart, isSameStore } from '@/lib/cart';
 
 interface Product {
   id: string;
@@ -60,7 +61,7 @@ export default function ProductPage() {
           setSelection(initialSelectionFromVariants(variants, groups));
         } else if (variants.length > 0) {
           const firstInStock = variants.find((v) => v.stockQuantity > 0);
-          setSelectedVariantId((firstInStock ?? variants[0]).id);
+          setSelectedVariantId(firstInStock?.id ?? null);
         }
       })
       .catch(() => setError(true))
@@ -92,18 +93,25 @@ export default function ProductPage() {
   const addToCart = () => {
     if (!product || !canAddToCart) return;
     tg?.HapticFeedback.impactOccurred('light');
-    let cart: Array<{ productId: string; title: string; price: number; qty: number; storeId: string; storeSlug: string; storeName: string }>;
-    try {
-      cart = JSON.parse(localStorage.getItem('savdo_cart') ?? '[]');
-    } catch {
+
+    let cart = getCart();
+
+    // If cart has items from a different store — clear it first (INV-C01)
+    if (!isSameStore(cart, product.storeId)) {
       cart = [];
     }
-    const existing = cart.find((i) => i.productId === product.id);
+
+    const variantId = selectedVariant?.id;
+    const existing = cart.find(
+      (i) => i.productId === product.id && i.variantId === variantId,
+    );
+
     if (existing) {
       existing.qty += 1;
     } else {
       cart.push({
         productId: product.id,
+        variantId,
         title: product.title,
         price: unitPrice,
         qty: 1,
@@ -112,9 +120,10 @@ export default function ProductPage() {
         storeName: product.store?.name ?? '',
       });
     }
-    localStorage.setItem('savdo_cart', JSON.stringify(cart));
+
+    saveCart(cart);
     tg?.HapticFeedback.notificationOccurred('success');
-    track.addToCart(product.storeId, product.id, selectedVariant?.id ?? null, 1);
+    track.addToCart(product.storeId, product.id, variantId ?? null, 1);
     navigate('/buyer/cart');
   };
 

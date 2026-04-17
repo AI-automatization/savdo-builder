@@ -10,6 +10,32 @@
 
 ---
 
+## 2026-04-17 [BUG-001] Checkout полностью сломан — DTO мисматч + нет backend cart
+
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** TMA `CheckoutPage.tsx` отправлял `items[]`, `buyerName`, `buyerPhone` в POST /orders, но backend `ConfirmCheckoutDto` отклонял их (`forbidNonWhitelisted`). Дополнительно: backend ожидал корзину в БД, TMA хранит в localStorage — архитектурный разрыв.
+- **Что сделано:** Создан `CreateDirectOrderUseCase` + `CreateDirectOrderDto` принимающий items напрямую (без cart в БД). `orders-create.controller.ts` переключён на новый use case.
+
+## 2026-04-17 [BUG-002] Seller может менять статус чужих заказов
+
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** `UpdateOrderStatusUseCase` не проверял что `order.storeId` совпадает с storeId продавца из JWT. Любой продавец мог изменить статус любого заказа.
+- **Что сделано:** Добавлен `storeId?` в `UpdateOrderStatusInput`, проверка `order.storeId !== input.storeId` → 403. `orders.controller.ts` передаёт `storeId` в use case.
+
+## 2026-04-17 [BUG-003] Товары из неопубликованных магазинов доступны
+
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** `GET /stores/:slug/products` и `GET /stores/:slug/products/:id` не проверяли `store.isPublic`. Покупатели могли видеть товары магазинов в статусе DRAFT.
+- **Что сделано:** Добавлена проверка `!store.isPublic → 404` в обоих маршрутах в `products.controller.ts`.
+
+## 2026-04-17 [BUG-004] variantId не сохранялся в localStorage корзине
+
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** `ProductPage.tsx` добавлял товар в корзину без `variantId`, поэтому на checkout приходила неверная цена и variant не валидировался на backend.
+- **Что сделано:** `CartItem` добавлен `variantId?: string`. `addToCart()` сохраняет `variantId`. `CheckoutPage.tsx` включает `variantId` в каждый item.
+
+---
+
 ## 2026-04-15 [API-LIST-001] ProductListItem не содержит variantCount/hasVariants
 
 - **Статус:** ✅ Исправлено (17.04.2026)

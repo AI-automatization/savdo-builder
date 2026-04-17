@@ -29,6 +29,7 @@ export default function SellerOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const fetchOrders = () => {
     setError(false);
@@ -42,6 +43,7 @@ export default function SellerOrdersPage() {
 
   const changeStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
+    setUpdateError(null);
     try {
       await api(`/seller/orders/${orderId}/status`, {
         method: 'PATCH',
@@ -49,8 +51,9 @@ export default function SellerOrdersPage() {
       });
       tg?.HapticFeedback.notificationOccurred('success');
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
-    } catch {
+    } catch (err) {
       tg?.HapticFeedback.notificationOccurred('error');
+      setUpdateError(err instanceof Error ? err.message : 'Не удалось изменить статус');
     } finally {
       setUpdating(null);
     }
@@ -58,6 +61,7 @@ export default function SellerOrdersPage() {
 
   const cancelOrder = async (orderId: string) => {
     setUpdating(orderId);
+    setUpdateError(null);
     try {
       await api(`/seller/orders/${orderId}/status`, {
         method: 'PATCH',
@@ -65,8 +69,9 @@ export default function SellerOrdersPage() {
       });
       tg?.HapticFeedback.notificationOccurred('success');
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: 'CANCELLED' } : o));
-    } catch {
+    } catch (err) {
       tg?.HapticFeedback.notificationOccurred('error');
+      setUpdateError(err instanceof Error ? err.message : 'Не удалось отменить заказ');
     } finally {
       setUpdating(null);
     }
@@ -78,6 +83,16 @@ export default function SellerOrdersPage() {
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
 
         {loading && <div className="flex justify-center py-8"><Spinner /></div>}
+
+        {updateError && (
+          <div
+            className="px-4 py-3 rounded-xl text-xs flex items-center justify-between gap-3"
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(239,68,68,0.90)' }}
+          >
+            <span>⚠️ {updateError}</span>
+            <button onClick={() => setUpdateError(null)} style={{ color: 'rgba(239,68,68,0.60)', fontSize: 16, lineHeight: 1 }}>×</button>
+          </div>
+        )}
 
         {!loading && error && (
           <div className="flex flex-col items-center gap-2 py-10">

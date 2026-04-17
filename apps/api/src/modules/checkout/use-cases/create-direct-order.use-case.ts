@@ -1,0 +1,161 @@
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { Order } from '@prisma/client';
+import { ProductsRepository } from '../../products/repositories/products.repository';
+import { VariantsRepository } from '../../products/repositories/variants.repository';
+import { CheckoutRepository } from '../repositories/checkout.repository';
+import { OrdersGateway } from '../../../socket/orders.gateway';
+import { DomainException } from '../../../common/exceptions/domain.exception';
+import { ErrorCode } from '../../../shared/constants/error-codes';
+import { CreateDirectOrderDto } from '../dto/create-direct-order.dto';
+
+function generateOrderNumber(): string {
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `ORD-${ts}-${rand}`;
+}
+
+export interface CreateDirectOrderInput {
+  buyerId: string;
+  userId: string;
+  dto: CreateDirectOrderDto;
+}
+
+@Injectable()
+export class CreateDirectOrderUseCase {
+  private readonly logger = new Logger(CreateDirectOrderUseCase.name);
+
+  constructor(
+    private readonly productsRepo: ProductsRepository,
+    private readonly variantsRepo: VariantsRepository,
+    private readonly checkoutRepo: CheckoutRepository,
+    private readonly ordersGateway: OrdersGateway,
+  ) {}
+
+  async execute(input: CreateDirectOrderInput): Promise<Order> {
+    const { dto } = input;
+
+    if (!dto.items.length) {
+      throw new DomainException(
+        ErrorCode.CART_EMPTY,
+        'Order must contain at least one item',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    // Load and validate all products
+    const products = await Promise.all(
+      dto.items.map(async (item) => {
+        const product = await this.productsRepo.findById(item.productId);
+        if (!product || (product as any).status !== 'ACTIVE' || (product as any).deletedAt) {
+          throw new DomainException(
+            ErrorCode.PRODUCT_NOT_FOUND,
+            `Product ${item.productId} is not available`,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+        return product;
+      }),
+    );
+
+    // All items must be from the same store (INV-C01)
+    const storeIds = [...new Set(products.map((p) => (p as any).storeId as string))];
+    if (storeIds.length > 1) {
+      throw new DomainException(
+        ErrorCode.CART_STORE_MISMATCH,
+        'All items must be from the same store',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    const storeId = storeIds[0];
+
+    // Validate variants and compute per-item prices
+    const itemsMeta: Array<{ unitPrice: number; variantLabel?: string }> = [];
+
+    for (let i = 0; i < dto.items.length; i++) {
+      const item = dto.items[i];
+      const product = products[i];
+      let unitPrice = Number((product as any).basePrice);
+      let variantLabel: string | undefined;
+
+      if (item.variantId) {
+        const variant = await this.variantsRepo.findById(item.variantId);
+
+        if (
+          !variant ||
+          (variant as any).productId !== product.id ||
+          !(variant as any).isActive ||
+          (variant as any).deletedAt
+        ) {
+          throw new DomainException(
+            ErrorCode.PRODUCT_NOT_FOUND,
+            `Variant not found or not available`,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+
+        if ((variant as any).stockQuantity < item.quantity) {
+          throw new DomainException(
+            ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+            `Insufficient stock for "${(product as any).title}"`,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+
+        if ((variant as any).priceOverride != null) {
+          unitPrice = Number((variant as any).priceOverride);
+        }
+        variantLabel = (variant as any).titleOverride ?? undefined;
+      }
+
+      itemsMeta.push({ unitPrice, variantLabel });
+    }
+
+    // Resolve store → sellerId
+    const store = await this.checkoutRepo.findStoreWithSeller(storeId);
+    if (!store) {
+      throw new DomainException(
+        ErrorCode.STORE_NOT_FOUND,
+        'Store not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const subtotalAmount = dto.items.reduce(
+      (sum, item, i) => sum + itemsMeta[i].unitPrice * item.quantity,
+      0,
+    );
+    const deliveryFeeAmount = 0;
+    const totalAmount = subtotalAmount + deliveryFeeAmount;
+
+    const order = await this.checkoutRepo.createOrder({
+      buyerId: input.buyerId,
+      storeId,
+      sellerId: store.sellerId,
+      orderNumber: generateOrderNumber(),
+      subtotalAmount,
+      deliveryFeeAmount,
+      totalAmount,
+      currencyCode: 'UZS',
+      customerFullName: dto.buyerName,
+      customerPhone: dto.buyerPhone,
+      customerComment: dto.buyerNote,
+      addressLine1: dto.deliveryAddress,
+      items: dto.items.map((item, i) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        productTitleSnapshot: (products[i] as any).title as string,
+        variantLabelSnapshot: itemsMeta[i].variantLabel,
+        unitPriceSnapshot: itemsMeta[i].unitPrice,
+        quantity: item.quantity,
+        lineTotalAmount: itemsMeta[i].unitPrice * item.quantity,
+      })),
+    });
+
+    this.logger.log(
+      `Direct order ${order.orderNumber} created for buyer ${input.buyerId}`,
+    );
+    this.ordersGateway.emitOrderNew(order);
+
+    return order;
+  }
+}
