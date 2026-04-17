@@ -25,10 +25,11 @@ export async function generateMetadata({
 
   if (!product) return { title: 'Товар — Savdo' };
 
-  const price = product.basePrice.toLocaleString('ru-RU');
+  const price = Number(product.basePrice).toLocaleString('ru-RU');
   const desc = product.description?.slice(0, 160) ?? `${price} сум. Купить в Telegram на Savdo.`;
-  const ogImage = product.mediaUrls[0];
-  const title = `${product.title} — ${product.store.name}`;
+  const ogImage = product.mediaUrls?.[0];
+  const storeName = product.store?.name;
+  const title = storeName ? `${product.title} — ${storeName}` : product.title;
 
   return {
     title,
