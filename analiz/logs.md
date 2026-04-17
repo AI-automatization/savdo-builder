@@ -36,6 +36,26 @@
 
 ---
 
+## 2026-04-17 [BUG-011] confirm-checkout: variant.productId не валидировался
+
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** `ConfirmCheckoutUseCase` не проверял что `variant.productId === cartItem.productId`. Теоретически можно было подменить вариант из другого товара.
+- **Что сделано:** Добавлена проверка `variant.productId !== cartItem.productId → invalid item`.
+
+## 2026-04-17 [BUG-015] TMA buyer OrdersPage — неверный формат ответа API
+
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** Страница читала `res.orders` но backend возвращает `{ data: [], meta: {} }`. Заказы всегда показывались пустыми.
+- **Что сделано:** Исправлено на `res.data ?? []`. Добавлен error state + кнопка "Загрузить ещё" для pagination.
+
+## 2026-04-17 [BUG-016] broadcast.message без валидации (Telegram markdown injection)
+
+- **Статус:** ✅ Исправлено (17.04.2026)
+- **Что случилось:** Endpoint принимал `body: { message: string }` без DTO → ValidationPipe не работал, длина не ограничена.
+- **Что сделано:** Создан `BroadcastDto` с `@IsString() @MaxLength(4096)`.
+
+---
+
 ## 2026-04-15 [API-LIST-001] ProductListItem не содержит variantCount/hasVariants
 
 - **Статус:** ✅ Исправлено (17.04.2026)

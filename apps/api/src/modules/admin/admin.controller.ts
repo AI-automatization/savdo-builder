@@ -26,6 +26,7 @@ import { ListSellersDto } from './dto/list-sellers.dto';
 import { ListStoresDto } from './dto/list-stores.dto';
 import { AdminActionDto } from './dto/admin-action.dto';
 import { ListAuditLogDto } from './dto/list-audit-log.dto';
+import { BroadcastDto } from './dto/broadcast.dto';
 
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
 import { GetUserDetailUseCase } from './use-cases/get-user-detail.use-case';
@@ -349,13 +350,13 @@ export class AdminController {
   // POST /api/v1/admin/broadcast
   @Post('broadcast')
   async broadcast(
-    @Body() body: { message: string; preview_mode?: boolean },
+    @Body() dto: BroadcastDto,
     @CurrentUser() user: JwtPayload,
   ) {
     await this.resolveAdminUser(user);
     return this.broadcastUseCase.execute({
-      message: body.message,
-      previewMode: body.preview_mode ?? false,
+      message: dto.message,
+      previewMode: dto.preview_mode ?? false,
       adminUserId: user.sub,
     });
   }

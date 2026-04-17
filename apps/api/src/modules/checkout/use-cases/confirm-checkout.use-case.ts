@@ -130,6 +130,13 @@ export class ConfirmCheckoutUseCase {
             reason: 'Variant not found',
           });
           itemInvalid = true;
+        } else if ((variant as any).productId !== cartItem.productId) {
+          invalidItems.push({
+            productId: cartItem.productId,
+            variantId: cartItem.variantId,
+            reason: 'Variant does not belong to this product',
+          });
+          itemInvalid = true;
         } else if (!(variant as any).isActive) {
           invalidItems.push({
             productId: cartItem.productId,
