@@ -2,9 +2,27 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import axios from 'axios';
 import { uploadDirect } from '../lib/api/media.api';
 import type { MediaPurpose } from '../lib/api/media.api';
 import { AlertTriangle, Camera, X } from 'lucide-react';
+
+function describeUploadError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const serverMsg = (err.response?.data as { message?: string } | undefined)?.message;
+
+    if (status === 401) return 'Сессия истекла. Войдите заново.';
+    if (status === 403) return 'Нет прав на загрузку фото.';
+    if (status === 413) return 'Файл слишком большой для сервера.';
+    if (status === 415) return 'Формат не поддерживается сервером.';
+    if (status === 503) return 'Хранилище фото отключено на сервере.';
+    if (status && status >= 500) return `Сервер вернул ${status}. Попробуйте позже.`;
+    if (!err.response) return 'Нет связи с сервером.';
+    return serverMsg ?? `Ошибка загрузки (${status ?? '?'}).`;
+  }
+  return 'Не удалось загрузить фото. Попробуйте снова.';
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,9 +86,10 @@ export function ImageUploader({
       setLocalPreview(URL.createObjectURL(file));
       setProgress(null);
       onChange(mediaFileId);
-    } catch {
+    } catch (err) {
+      console.error('[ImageUploader] upload failed', err);
       setProgress(null);
-      setError('Не удалось загрузить фото. Попробуйте снова.');
+      setError(describeUploadError(err));
     }
   }
 
