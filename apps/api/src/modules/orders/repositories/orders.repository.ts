@@ -87,6 +87,15 @@ export class OrdersRepository {
           buyer: {
             include: { user: { select: { phone: true } } },
           },
+          items: {
+            take: 1,
+            orderBy: { createdAt: 'asc' as const },
+            select: {
+              productTitleSnapshot: true,
+              primaryImageUrlSnapshot: true,
+            },
+          },
+          _count: { select: { items: true } },
         },
       }),
       this.prisma.order.count({ where }),

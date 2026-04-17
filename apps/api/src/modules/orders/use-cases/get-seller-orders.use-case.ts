@@ -42,9 +42,29 @@ export class GetSellerOrdersUseCase {
     });
 
     const data = result.orders.map((o: any) => {
-      const { buyer, ...rest } = o;
+      const { buyer, items, _count, city, region, addressLine1, addressLine2, ...rest } = o;
+
+      const deliveryAddress = city
+        ? { street: addressLine1 ?? '', city, region: region ?? undefined }
+        : undefined;
+
+      const firstItem = items?.[0] ?? null;
+      const preview = firstItem
+        ? {
+            title: firstItem.productTitleSnapshot as string,
+            imageUrl: (firstItem.primaryImageUrlSnapshot as string | null) ?? null,
+            itemCount: (_count?.items ?? 1) as number,
+          }
+        : null;
+
       return {
         ...rest,
+        city,
+        region,
+        addressLine1,
+        addressLine2,
+        deliveryAddress,
+        preview,
         buyer: buyer ? { phone: buyer.user?.phone ?? null } : null,
       };
     });

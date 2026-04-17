@@ -25,7 +25,8 @@ export interface OrderListItem {
   status: OrderStatus;
   totalAmount: number;
   currencyCode: string;
-  deliveryAddress: DeliveryAddress;
+  /** May be undefined for orders created before address migration */
+  deliveryAddress?: DeliveryAddress;
   deliveryFee: number;
   createdAt: string;
   /** Buyer's registered account phone (from User record) */
@@ -33,6 +34,12 @@ export interface OrderListItem {
   /** Phone entered at checkout — shown as backup/reserve number to seller */
   customerPhone?: string;
   customerFullName?: string;
+  /** First item preview for order list UI */
+  preview?: {
+    title: string;
+    imageUrl: string | null;
+    itemCount: number;
+  } | null;
 }
 
 /** Full order detail */
