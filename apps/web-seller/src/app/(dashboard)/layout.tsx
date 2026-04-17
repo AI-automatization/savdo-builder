@@ -83,13 +83,15 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
     <>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
-        >
-          <ShoppingCart size={16} color="#fff" />
-        </div>
-        <span className="text-base font-bold" style={{ color: "#A78BFA" }}>Savdo</span>
+        <Link href="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
+          >
+            <ShoppingCart size={16} color="#fff" />
+          </div>
+          <span className="text-base font-bold" style={{ color: "#A78BFA" }}>Savdo</span>
+        </Link>
         <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA" }}>Beta</span>
       </div>
 
