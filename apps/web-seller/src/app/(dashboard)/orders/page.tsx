@@ -251,6 +251,7 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [accOrders, setAccOrders] = useState<OrderListItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hideCompleted, setHideCompleted] = useState(false);
 
   const { data, isLoading, isError, isFetching } = useSellerOrders({
     ...(activeFilter !== 'ALL' ? { status: activeFilter } : {}),
@@ -267,7 +268,7 @@ export default function OrdersPage() {
   }, [data?.data]);
 
   const q = searchQuery.trim().toLowerCase().replace(/^#/, '');
-  const filteredOrders = q
+  const searchFiltered = q
     ? accOrders.filter((o) =>
         shortId(o.id).toLowerCase().includes(q) ||
         (o.deliveryAddress?.city?.toLowerCase() ?? '').includes(q) ||
@@ -275,7 +276,9 @@ export default function OrdersPage() {
         (o.preview?.title?.toLowerCase() ?? '').includes(q),
       )
     : accOrders;
-  const orders = filteredOrders;
+  const orders = hideCompleted && activeFilter === 'ALL'
+    ? searchFiltered.filter((o) => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.CANCELLED)
+    : searchFiltered;
   const hasMore = data ? page * PAGE_LIMIT < data.meta.total : false;
   const isLoadingMore = isFetching && page > 1;
 
@@ -323,7 +326,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {FILTER_TABS.map((tab) => {
           const active = tab.key === activeFilter;
           return (
@@ -341,6 +344,20 @@ export default function OrdersPage() {
             </button>
           );
         })}
+        {activeFilter === 'ALL' && (
+          <button
+            onClick={() => setHideCompleted((v) => !v)}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ml-auto"
+            title="Скрыть заказы в статусах Доставлен и Отменён"
+            style={
+              hideCompleted
+                ? { background: 'rgba(52,211,153,0.18)', color: 'rgba(52,211,153,0.95)', border: '1px solid rgba(52,211,153,0.30)' }
+                : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }
+            }
+          >
+            {hideCompleted ? '✓ ' : ''}Скрыть завершённые
+          </button>
+        )}
       </div>
 
       {/* Search */}

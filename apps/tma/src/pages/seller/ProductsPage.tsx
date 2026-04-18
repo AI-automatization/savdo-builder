@@ -71,6 +71,42 @@ export default function SellerProductsPage() {
     }
   };
 
+  const archiveProduct = async (product: Product) => {
+    if (!window.confirm(`Архивировать «${product.title}»?\n\nТовар исчезнет из магазина, но сохранится в истории заказов.`)) return;
+    setTogglingId(product.id);
+    try {
+      await api(`/seller/products/${product.id}/status`, {
+        method: 'PATCH',
+        body: { status: 'ARCHIVED' },
+      });
+      tg?.HapticFeedback.notificationOccurred('success');
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, status: 'ARCHIVED' } : p)),
+      );
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+      window.alert('Не удалось архивировать товар');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const deleteProduct = async (product: Product) => {
+    if (!window.confirm(`Удалить «${product.title}» навсегда?\n\nЭто действие нельзя отменить.`)) return;
+    setTogglingId(product.id);
+    try {
+      await api(`/seller/products/${product.id}`, { method: 'DELETE' });
+      tg?.HapticFeedback.notificationOccurred('success');
+      setProducts((prev) => prev.filter((p) => p.id !== product.id));
+    } catch (err) {
+      tg?.HapticFeedback.notificationOccurred('error');
+      const msg = err instanceof Error ? err.message : 'Не удалось удалить товар';
+      window.alert(msg);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const price = (p: Product) =>
     `${Number(p.basePrice).toLocaleString('ru')} сум`;
 
@@ -136,7 +172,7 @@ export default function SellerProductsPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Badge status={product.status} />
               {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
                 <button
@@ -144,15 +180,15 @@ export default function SellerProductsPage() {
                   disabled={togglingId === product.id}
                   title={product.status === 'ACTIVE' ? 'Снять с публикации' : 'Опубликовать'}
                   style={{
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     borderRadius: 10,
                     border: 'none',
                     background: product.status === 'ACTIVE'
                       ? 'rgba(248,113,113,0.15)'
                       : 'rgba(52,211,153,0.15)',
                     color: product.status === 'ACTIVE' ? '#f87171' : '#34d399',
-                    fontSize: 16,
+                    fontSize: 14,
                     cursor: togglingId === product.id ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -160,6 +196,50 @@ export default function SellerProductsPage() {
                   }}
                 >
                   {togglingId === product.id ? '…' : product.status === 'ACTIVE' ? '⏸' : '▶'}
+                </button>
+              )}
+              {(product.status === 'ACTIVE' || product.status === 'DRAFT') && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); archiveProduct(product); }}
+                  disabled={togglingId === product.id}
+                  title="Архивировать"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    border: 'none',
+                    background: 'rgba(251,191,36,0.15)',
+                    color: '#fbbf24',
+                    fontSize: 14,
+                    cursor: togglingId === product.id ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  📥
+                </button>
+              )}
+              {product.status !== 'ACTIVE' && product.status !== 'HIDDEN_BY_ADMIN' && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteProduct(product); }}
+                  disabled={togglingId === product.id}
+                  title="Удалить навсегда"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    border: 'none',
+                    background: 'rgba(248,113,113,0.15)',
+                    color: '#f87171',
+                    fontSize: 14,
+                    cursor: togglingId === product.id ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  🗑
                 </button>
               )}
             </div>

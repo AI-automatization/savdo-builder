@@ -97,7 +97,7 @@ export default function EditProductPage() {
       setPrice(String(p.basePrice));
       if (p.variants) {
         const initial: Record<string, string> = {};
-        for (const v of p.variants) initial[v.id] = String(v.stockQuantity);
+        for (const v of p.variants) initial[v.id] = v.stockQuantity === 0 ? '' : String(v.stockQuantity);
         setStockEdits(initial);
       }
     } catch {
@@ -655,10 +655,14 @@ export default function EditProductPage() {
                       <input
                         type="number"
                         inputMode="numeric"
-                        value={stockEdits[v.id] ?? String(v.stockQuantity)}
+                        value={stockEdits[v.id] ?? (v.stockQuantity === 0 ? '' : String(v.stockQuantity))}
                         onChange={(e) =>
-                          setStockEdits((prev) => ({ ...prev, [v.id]: e.target.value }))
+                          setStockEdits((prev) => ({
+                            ...prev,
+                            [v.id]: e.target.value.replace(/^0+(?=\d)/, ''),
+                          }))
                         }
+                        placeholder="0"
                         style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
                       />
                       <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>

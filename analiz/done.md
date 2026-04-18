@@ -1,5 +1,30 @@
 # Done — Азим + Полат
 
+## 2026-04-18 — Сессия 26 (Азим, продолжение)
+
+### ✅ [TMA-STOCK-INPUT-001] Ведущий `0` в input остатка — починено
+- **Важность:** 🟡 UX
+- **Дата:** 18.04.2026
+- **Файлы:** `apps/tma/src/pages/seller/AddProductPage.tsx`, `apps/tma/src/pages/seller/EditProductPage.tsx`
+- **Что сделано:** Initial state stock → `''`, onChange стрипает ведущие нули `/^0+(?=\d)/`, placeholder "0" остался. Теперь при вводе "5" получаем "5", а не "05".
+
+### ✅ [TMA-PRODUCT-DELETE-ARCHIVE-001] Кнопки «Архивировать» + «Удалить» в ProductsPage
+- **Важность:** 🟡 UX
+- **Дата:** 18.04.2026
+- **Файлы:** `apps/tma/src/pages/seller/ProductsPage.tsx`
+- **Что сделано:** Добавлены две новые кнопки рядом с pause/play:
+  - 📥 **Архивировать** (для ACTIVE / DRAFT) — `PATCH /seller/products/:id/status { status: ARCHIVED }`
+  - 🗑 **Удалить** (для всего кроме ACTIVE и HIDDEN_BY_ADMIN) — `DELETE /seller/products/:id`. Backend запрещает delete ACTIVE (INV-P04), поэтому UI скрывает кнопку.
+  - Оба с `window.confirm` подтверждением.
+
+### ✅ [WEB-ORDER-HIDE-COMPLETED-001] Toggle «Скрыть завершённые» в orders list
+- **Важность:** 🟢 UX
+- **Дата:** 18.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/orders/page.tsx`, `apps/tma/src/pages/seller/OrdersPage.tsx`
+- **Что сделано:** Добавлен toggle-кнопка «Скрыть завершённые» — фильтрует DELIVERED + CANCELLED из списка. Default: OFF (старые заказы видны как раньше). В web-seller показывается только на tab «Все» (на specific tabs уже фильтр по статусу). INV-C03 соблюдён — заказы НЕ удаляются, только скрываются в UI.
+
+---
+
 ## 2026-04-18 — Сессия 26 (Азим)
 
 ### ✅ [WEB-ORDER-PREVIEW-001] Превью товара в списке заказов (web-seller + TMA)

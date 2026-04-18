@@ -10,6 +10,39 @@
 
 ---
 
+## 2026-04-18 [TMA-STOCK-INPUT-001] Leading `0` не уходит из input остатка в AddProduct/EditProduct
+
+- **Статус:** ✅ Исправлено (18.04.2026, Азим)
+- **Что случилось:** В `AddProductPage.tsx` поля количества (main stock + S/M/L size stocks) были `useState('0')` / `useState<number>(0)`, при вводе "5" браузер делал "05" и React не стрипал ведущий ноль. Аналогично в `EditProductPage.tsx` поле `stockEdits[v.id]` инициализировалось как `String(0) = "0"`.
+- **Что сделано:**
+  - `apps/tma/src/pages/seller/AddProductPage.tsx` — initial `stock` = `''`, onChange стрипает `/^0+(?=\d)/`; size stocks `value={sz.stock || ''}`.
+  - `apps/tma/src/pages/seller/EditProductPage.tsx` — initial `stockEdits[v.id] = v.stockQuantity === 0 ? '' : String(...)`, onChange стрипает ведущие нули.
+  - Placeholder "0" остался, визуально поле выглядит как "0" но это плейсхолдер.
+
+---
+
+## 2026-04-18 [TMA-ORDER-PREVIEW-NULL-001] У старых заказов preview пустой — показывается «Без товаров»
+
+- **Статус:** 🟡 Наблюдение (18.04.2026). Ждём проверку после Railway-деплоя `42f45cd`.
+- **Где воспроизводится:** TMA seller panel / web-seller /orders → заказ `#ORD-MO2NEAFC-VZ27 (ДОСТАВЛЕН)` и другие старые доставленные.
+- **Что случилось (предположение):** Backend `preview` строится из первого `OrderItem` (коммит `9946af5` Полата). Если у старого заказа orderItems связаны с удалёнными товарами или `productTitleSnapshot=null` — preview может быть `null`, UI показывает «Без товаров».
+- **Что нужно проверить:** После Railway-деплоя open DevTools Network → `/seller/orders` → посмотреть поле `preview` в response старых заказов. Если `null` — баг в `get-seller-orders.use-case.ts` у Полата (не берёт snapshot). Если preview есть, но фронт не показывает — наш баг.
+- **Домен:** диагностика Азим, потенциальный фикс — Полат.
+
+---
+
+## 2026-04-18 [TMA-PRODUCT-IMAGE-NULL-001] У товара в preview нет фото — показывается 📦 fallback
+
+- **Статус:** 🟡 Наблюдение (18.04.2026). Зависит от TG-BOT-ADMIN-001.
+- **Что случилось:** Preview-thumbnail в orders list показывает серый квадрат с 📦 вместо фото товара.
+- **Корневые причины (порядок проверки):**
+  1. У товара реально нет фото (пользователь не загрузил) — правильное поведение.
+  2. `TG-BOT-ADMIN-001` не сделан — `@savdo_builderBOT` не админ канала `-1003760300539`, upload фото через Telegram storage падает тихо, товар создаётся с `imageUrl=null`.
+  3. Баг в `telegram-storage.service.ts` (Полат) — даже если бот админ.
+- **Что нужно сделать Азиму:** Проверить админ-статус бота в Telegram-канале. Если не сделано — сделать и перезалить фото товара. Если сделано и всё равно null — пинг Полату с Railway-логом upload.
+
+---
+
 ## 2026-04-17 [BUG-001] Checkout полностью сломан — DTO мисматч + нет backend cart
 
 - **Статус:** ✅ Исправлено (17.04.2026)

@@ -36,6 +36,7 @@ export default function SellerOrdersPage() {
   const [error, setError] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [hideCompleted, setHideCompleted] = useState(false);
 
   const fetchOrders = () => {
     setError(false);
@@ -86,7 +87,22 @@ export default function SellerOrdersPage() {
   return (
     <AppShell role="SELLER">
       <div className="flex flex-col gap-4">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
+          {orders.length > 0 && (
+            <button
+              onClick={() => setHideCompleted((v) => !v)}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all"
+              style={
+                hideCompleted
+                  ? { background: 'rgba(52,211,153,0.18)', color: 'rgba(52,211,153,0.95)', border: '1px solid rgba(52,211,153,0.30)' }
+                  : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.10)' }
+              }
+            >
+              {hideCompleted ? '✓ ' : ''}Скрыть завершённые
+            </button>
+          )}
+        </div>
 
         {loading && <div className="flex justify-center py-8"><Spinner /></div>}
 
@@ -115,7 +131,7 @@ export default function SellerOrdersPage() {
           </div>
         )}
 
-        {orders.map((o) => {
+        {(hideCompleted ? orders.filter((o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED') : orders).map((o) => {
           const next = NEXT_STATUS[o.status];
           const isUpdating = updating === o.id;
           return (

@@ -25,7 +25,7 @@ export default function AddProductPage() {
   const [title, setTitle]             = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice]             = useState('');
-  const [stock, setStock]             = useState('0');
+  const [stock, setStock]             = useState('');
 
   // Размеры
   const [hasSizes, setHasSizes] = useState(false);
@@ -410,7 +410,7 @@ export default function AddProductPage() {
                   <input
                     type="number"
                     inputMode="numeric"
-                    value={sz.stock}
+                    value={sz.stock || ''}
                     onChange={(e) => updateSizeStock(sz.label, e.target.value)}
                     placeholder="0"
                     style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
@@ -462,7 +462,7 @@ export default function AddProductPage() {
                   type="number"
                   inputMode="numeric"
                   value={stock}
-                  onChange={(e) => setStock(e.target.value)}
+                  onChange={(e) => setStock(e.target.value.replace(/^0+(?=\d)/, ''))}
                   placeholder="0"
                   style={{ ...inputStyle, flex: 1 }}
                 />
