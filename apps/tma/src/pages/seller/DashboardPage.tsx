@@ -9,12 +9,19 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Sticker } from '@/components/ui/Sticker';
 import { useTelegram } from '@/providers/TelegramProvider';
 
+interface OrderPreview {
+  title: string;
+  imageUrl: string | null;
+  itemCount: number;
+}
+
 interface Order {
   id: string;
   orderNumber: string | null;
   status: string;
   totalAmount: number | string;
   createdAt: string;
+  preview?: OrderPreview | null;
 }
 
 interface PagedResponse<T> {
@@ -131,23 +138,42 @@ export default function DashboardPage() {
         {orders.map((o) => (
           <GlassCard
             key={o.id}
-            className="flex items-center gap-3 px-4 py-3.5"
+            className="flex items-center gap-3 px-3 py-3"
             onClick={() => navigate('/seller/orders')}
           >
+            {/* Thumbnail */}
+            <div
+              className="shrink-0 w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center"
+              style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
+            >
+              {o.preview?.imageUrl ? (
+                <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span style={{ fontSize: 18 }}>📦</span>
+              )}
+            </div>
+            {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.88)' }}>
-                  #{o.orderNumber ?? o.id.slice(-6)}
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
+                  {o.preview?.title ?? `#${o.orderNumber ?? o.id.slice(-6)}`}
+                  {o.preview && o.preview.itemCount > 1 && (
+                    <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.90)' }}>
+                      +{o.preview.itemCount - 1}
+                    </span>
+                  )}
                 </p>
                 <Badge status={o.status} />
               </div>
-              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                {new Date(o.createdAt).toLocaleDateString('ru')}
-              </p>
+              <div className="flex items-center justify-between mt-0.5">
+                <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                  {new Date(o.createdAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
+                </p>
+                <p className="text-xs font-bold" style={{ color: '#A855F7' }}>
+                  {Number(o.totalAmount).toLocaleString('ru')} сум
+                </p>
+              </div>
             </div>
-            <p className="text-sm font-bold shrink-0" style={{ color: '#A855F7' }}>
-              {Number(o.totalAmount).toLocaleString('ru')} сум
-            </p>
           </GlassCard>
         ))}
       </div>

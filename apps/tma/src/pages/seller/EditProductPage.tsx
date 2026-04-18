@@ -36,12 +36,18 @@ interface ProductImage {
   media: { id: string; objectKey: string; mimeType: string };
 }
 
+interface StoreCategory {
+  id: string;
+  name: string;
+}
+
 interface Product {
   id: string;
   title: string;
   description: string | null;
   basePrice: number;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
+  storeCategoryId?: string | null;
   variants?: Variant[];
   images?: ProductImage[];
   optionGroups?: OptionGroup[];
@@ -73,6 +79,10 @@ export default function EditProductPage() {
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string>('');
 
+  // Категории
+  const [categories, setCategories]           = useState<StoreCategory[]>([]);
+  const [storeCategoryId, setStoreCategoryId] = useState<string>('');
+
   const [saving, setSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -95,6 +105,7 @@ export default function EditProductPage() {
       setTitle(p.title);
       setDescription(p.description ?? '');
       setPrice(String(p.basePrice));
+      setStoreCategoryId(p.storeCategoryId ?? '');
       if (p.variants) {
         const initial: Record<string, string> = {};
         for (const v of p.variants) initial[v.id] = v.stockQuantity === 0 ? '' : String(v.stockQuantity);
@@ -114,6 +125,10 @@ export default function EditProductPage() {
     tg?.BackButton.onClick(goBack);
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [load, navigate, tg]);
+
+  useEffect(() => {
+    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
+  }, []);
 
   // Показать ошибку фото переданную из AddProductPage
   useEffect(() => {
@@ -180,12 +195,13 @@ export default function EditProductPage() {
           title: title.trim(),
           description: description.trim() || null,
           basePrice: Number(price),
+          storeCategoryId: storeCategoryId || null,
         },
       });
       tg?.HapticFeedback.notificationOccurred('success');
       showToast('✅ Сохранено');
       setProduct((prev) =>
-        prev ? { ...prev, title: title.trim(), description: description.trim() || null, basePrice: Number(price) } : prev,
+        prev ? { ...prev, title: title.trim(), description: description.trim() || null, basePrice: Number(price), storeCategoryId: storeCategoryId || null } : prev,
       );
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Ошибка сохранения';
@@ -482,6 +498,34 @@ export default function EditProductPage() {
                 <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 13 }}>{error}</p>
               )}
             </GlassCard>
+
+            {/* Категория */}
+            {categories.length > 0 && (
+              <GlassCard className="p-4 flex flex-col gap-2.5">
+                <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Категория
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((c) => {
+                    const active = storeCategoryId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setStoreCategoryId(active ? '' : c.id)}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                        style={{
+                          background: active ? 'rgba(124,58,237,0.30)' : 'rgba(255,255,255,0.07)',
+                          border: `1px solid ${active ? 'rgba(124,58,237,0.55)' : 'rgba(255,255,255,0.12)'}`,
+                          color: active ? '#A855F7' : 'rgba(255,255,255,0.55)',
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            )}
 
             {/* Фото */}
             <GlassCard className="p-4 flex flex-col gap-3">

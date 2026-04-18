@@ -13,6 +13,11 @@ interface SizeRow {
   stock: number;
 }
 
+interface StoreCategory {
+  id: string;
+  name: string;
+}
+
 function slugify(text: string) {
   return text.trim().toUpperCase().replace(/[^A-ZА-ЯЁ0-9]/gi, '-').slice(0, 20);
 }
@@ -44,6 +49,10 @@ export default function AddProductPage() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [photoUploading, setPhotoUploading] = useState(false);
 
+  // Категории
+  const [categories, setCategories]       = useState<StoreCategory[]>([]);
+  const [storeCategoryId, setStoreCategoryId] = useState<string>('');
+
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
@@ -52,6 +61,10 @@ export default function AddProductPage() {
     tg?.BackButton.onClick(() => navigate('/seller/products'));
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(() => navigate('/seller/products')); };
   }, [navigate, tg]);
+
+  useEffect(() => {
+    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
+  }, []);
 
   const inputStyle = {
     ...glass,
@@ -143,6 +156,7 @@ export default function AddProductPage() {
           title: title.trim(),
           description: description.trim() || null,
           basePrice: Number(price),
+          ...(storeCategoryId ? { storeCategoryId } : {}),
         },
       });
       const pid = product.id;
@@ -275,6 +289,34 @@ export default function AddProductPage() {
             />
           </div>
         </GlassCard>
+
+        {/* Категория */}
+        {categories.length > 0 && (
+          <GlassCard className="p-4 flex flex-col gap-2.5">
+            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Категория
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((c) => {
+                const active = storeCategoryId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setStoreCategoryId(active ? '' : c.id)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                    style={{
+                      background: active ? 'rgba(124,58,237,0.30)' : 'rgba(255,255,255,0.07)',
+                      border: `1px solid ${active ? 'rgba(124,58,237,0.55)' : 'rgba(255,255,255,0.12)'}`,
+                      color: active ? '#A855F7' : 'rgba(255,255,255,0.55)',
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Фото товара */}
         <GlassCard className="p-4 flex flex-col gap-3">

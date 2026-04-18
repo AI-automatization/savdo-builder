@@ -291,6 +291,13 @@ export default function SellerStorePage() {
             <Button
               variant="ghost"
               className="w-full"
+              onClick={() => navigate('/seller/categories')}
+            >
+              🏷️ Категории товаров
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
               onClick={() => navigate(`/buyer/store/${store.slug}`)}
             >
               👁 Посмотреть каталог
