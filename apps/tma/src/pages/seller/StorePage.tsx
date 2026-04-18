@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -22,6 +22,12 @@ interface Store {
   telegramChannelTitle: string | null;
 }
 
+interface StoreCategory {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
+
 export default function SellerStorePage() {
   const { tg } = useTelegram();
   const navigate = useNavigate();
@@ -34,6 +40,14 @@ export default function SellerStorePage() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  // Categories inline
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
+  const [catInput, setCatInput] = useState('');
+  const [catAdding, setCatAdding] = useState(false);
+  const [catDeletingId, setCatDeletingId] = useState<string | null>(null);
+  const catInputRef = useRef<HTMLInputElement>(null);
+
   // Create store flow
   const [fetchError, setFetchError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -85,13 +99,15 @@ export default function SellerStorePage() {
         setDescription(s.description ?? '');
       })
       .catch((err: unknown) => {
-        // 404 = магазина нет → показываем форму создания (это нормально)
-        // Всё остальное — реальная ошибка, показываем пользователю
         if (!(err instanceof ApiError && err.status === 404)) {
           setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.');
         }
       })
       .finally(() => setLoading(false));
+  }, [authVersion]);
+
+  useEffect(() => {
+    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
   }, [authVersion]);
 
   const save = async () => {
@@ -109,6 +125,44 @@ export default function SellerStorePage() {
       tg?.HapticFeedback.notificationOccurred('error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addCategory = async () => {
+    const n = catInput.trim();
+    if (!n || categories.length >= 20) return;
+    setCatAdding(true);
+    try {
+      const created = await api<StoreCategory>('/seller/categories', {
+        method: 'POST',
+        body: { name: n },
+      });
+      setCategories((prev) => [...prev, created]);
+      setCatInput('');
+      tg?.HapticFeedback.notificationOccurred('success');
+      catInputRef.current?.focus();
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setCatAdding(false);
+    }
+  };
+
+  const deleteCategory = async (cat: StoreCategory) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (tg?.showConfirm) tg.showConfirm(`Удалить «${cat.name}»?`, resolve);
+      else resolve(window.confirm(`Удалить «${cat.name}»?`));
+    });
+    if (!confirmed) return;
+    setCatDeletingId(cat.id);
+    try {
+      await api(`/seller/categories/${cat.id}`, { method: 'DELETE' });
+      setCategories((prev) => prev.filter((c) => c.id !== cat.id));
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setCatDeletingId(null);
     }
   };
 
@@ -217,13 +271,14 @@ export default function SellerStorePage() {
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
 
+        {/* Store info */}
         <GlassCard className="p-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
               style={{ background: 'rgba(168,85,247,0.20)', border: '1px solid rgba(168,85,247,0.25)' }}>
               🏪
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
               <p className="text-[11px]" style={{ color: 'rgba(168,85,247,0.80)' }}>savdo.uz/{store.slug}</p>
             </div>
@@ -242,6 +297,7 @@ export default function SellerStorePage() {
           )}
         </GlassCard>
 
+        {/* Edit form or actions */}
         {editing ? (
           <div className="flex flex-col gap-3">
             <input
@@ -274,27 +330,16 @@ export default function SellerStorePage() {
             <Button className="w-full" onClick={() => copyLink(store)}>
               {copied ? '✅ Ссылка скопирована!' : '🔗 Скопировать ссылку'}
             </Button>
-            {store.status === 'APPROVED' || store.isPublic ? (
+            {(store.status === 'APPROVED' || store.isPublic) && (
               <Button
                 variant="ghost"
                 className="w-full"
                 onClick={() => togglePublish(store)}
                 disabled={publishing}
               >
-                {publishing
-                  ? '...'
-                  : store.isPublic
-                  ? '🔴 Скрыть магазин'
-                  : '🟢 Опубликовать магазин'}
+                {publishing ? '...' : store.isPublic ? '🔴 Скрыть магазин' : '🟢 Опубликовать магазин'}
               </Button>
-            ) : null}
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() => navigate('/seller/categories')}
-            >
-              🏷️ Категории товаров
-            </Button>
+            )}
             <Button
               variant="ghost"
               className="w-full"
@@ -304,6 +349,98 @@ export default function SellerStorePage() {
             </Button>
           </div>
         )}
+
+        {/* Categories inline section */}
+        <GlassCard className="p-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Категории
+            </p>
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+              style={{
+                background: categories.length >= 20 ? 'rgba(239,68,68,0.12)' : 'rgba(167,139,250,0.10)',
+                color: categories.length >= 20 ? 'rgba(239,68,68,0.70)' : 'rgba(167,139,250,0.60)',
+              }}
+            >
+              {categories.length}/20
+            </span>
+          </div>
+
+          {/* Existing categories as chips */}
+          {categories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map((cat) => (
+                <div
+                  key={cat.id}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full"
+                  style={{
+                    background: 'rgba(167,139,250,0.12)',
+                    border: '1px solid rgba(167,139,250,0.20)',
+                  }}
+                >
+                  <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                    {cat.name}
+                  </span>
+                  <button
+                    onClick={() => deleteCategory(cat)}
+                    disabled={catDeletingId === cat.id}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '0 2px',
+                      cursor: catDeletingId === cat.id ? 'not-allowed' : 'pointer',
+                      color: catDeletingId === cat.id ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.35)',
+                      fontSize: 12,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add input */}
+          {categories.length < 20 && (
+            <div className="flex gap-2">
+              <input
+                ref={catInputRef}
+                value={catInput}
+                onChange={(e) => setCatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+                placeholder="Новая категория"
+                maxLength={100}
+                className="flex-1 px-3 py-2 rounded-xl text-sm text-white placeholder-white/25 outline-none"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+              />
+              <button
+                onClick={addCategory}
+                disabled={!catInput.trim() || catAdding}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 10,
+                  background: catInput.trim() && !catAdding ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(167,139,250,0.20)',
+                  color: catInput.trim() && !catAdding ? '#A855F7' : 'rgba(167,139,250,0.30)',
+                  fontSize: 16,
+                  fontWeight: 500,
+                  flexShrink: 0,
+                  cursor: catInput.trim() && !catAdding ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {catAdding ? '…' : '+'}
+              </button>
+            </div>
+          )}
+
+          {categories.length === 0 && (
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              Добавьте категории чтобы организовать товары
+            </p>
+          )}
+        </GlassCard>
       </div>
     </AppShell>
   );
