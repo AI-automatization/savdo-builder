@@ -71,7 +71,7 @@
 
 ## 2026-04-17 [API-SUMMARY-500-001] `GET /analytics/seller/summary` возвращает HTTP 500
 
-- **Статус:** 🔴 Баг — домен Полата (`apps/api`), Азим не правит
+- **Статус:** ✅ Исправлено (18.04.2026, коммит `cdaeff6`, Полат — `apps/api/.../analytics.repository.ts`)
 - **Где воспроизводится:** web-seller dashboard у Азима (аккаунт продавца, production, 17.04.2026 ~21:30). В DevTools → Network запрос `GET https://savdo-api-production.up.railway.app/analytics/seller/summary` → `500 Internal Server Error`.
 - **Что сломалось на фронте:** `apps/web-seller/src/lib/api/analytics.api.ts:10` бросает, блок с summary-цифрами не рендерится (но весь dashboard не падал из-за этого — TanStack Query изолирует). Сам крах dashboard был из другого места — см. `SELLER-DASH-GUARD-001`.
 - **Что нужно (Полат):** Посмотреть логи Railway `savdo-api` за 2026-04-17 ~16:00 UTC (21:00 UZT), фильтр по запросу `/analytics/seller/summary`. Типичные причины: новый Prisma.query после миграции без индекса, `groupBy`/`count` на пустом сторе, refactor SellerSummary контракта.
@@ -104,7 +104,7 @@
 
 ## 2026-04-18 [TMA-EDIT-001] Чёрный экран при открытии товара в seller-панели TMA
 
-- **Статус:** 🔴 Баг — домен Полата (`apps/tma`), Азим не правит
+- **Статус:** ✅ Исправлено (18.04.2026, коммит `cdaeff6`, Полат — `apps/tma/src/pages/seller/EditProductPage.tsx`). Доп: Error Boundary добавлен в `9946af5` — будущие регрессии не дадут чёрный экран.
 - **Где воспроизводится:** TMA (@savdo_builderBOT) → seller panel → «Мои товары» → тап на товар. Вместо страницы редактирования — полностью чёрный экран (только SB logo + меню + X сверху и `@savdo_builderBOT` footer). Скриншот: `c:/Users/marti/Desktop/Снимок экрана 2026-04-17 112143.png`.
 - **Что случилось:** Регрессия от API-VAR-001. В `apps/api/src/modules/products/products.controller.ts:532-538` helper `normalizeVariant` удаляет поле `optionValues` и отдаёт плоский `optionValueIds: string[]` на `GET /seller/products/:id`. Но `apps/tma/src/pages/seller/EditProductPage.tsx:18-24` всё ещё описывает `Variant.optionValues: Array<{ optionValue: OptionValue }>`, а строки **629-631** читают `v.optionValues.length` и `v.optionValues.map(...)`. У товара с вариантами `v.optionValues === undefined` → `TypeError: Cannot read properties of undefined (reading 'length')` → React unmounts → чёрный экран. У товара без вариантов блок `{product.variants && product.variants.length > 0 && ...}` не рендерится, страница живая — значит баг триггерится только на товарах **с** вариантами.
 - **Что нужно сделать (Полат):**

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { OrderStatus } from 'types';
-import { X } from 'lucide-react';
+import { X, Package } from 'lucide-react';
 import type { OrderListItem } from 'types';
 import { useSellerOrders, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
@@ -145,19 +145,44 @@ function OrderRow({
         #{shortId(order.id)}
       </Link>
 
-      {/* Buyer info (address) */}
-      <div className="flex items-start justify-between gap-2">
-        <Link href={`/orders/${order.id}`} className="hover:opacity-80 transition-opacity">
-          <p className="text-sm font-medium text-white">
-            {order.deliveryAddress?.city ?? '—'}
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
-            {order.deliveryAddress?.street ?? '—'} · #{shortId(order.id)}
-          </p>
+      {/* Preview + address */}
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <Link href={`/orders/${order.id}`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+          {/* Thumbnail */}
+          <div
+            className="shrink-0 w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {order.preview?.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={order.preview.imageUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <Package size={18} strokeWidth={1.6} style={{ color: 'rgba(255,255,255,0.28)' }} />
+            )}
+          </div>
+          {/* Text */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-sm font-medium text-white truncate">
+                {order.preview?.title ?? 'Без товаров'}
+              </p>
+              {order.preview && order.preview.itemCount > 1 && (
+                <span
+                  className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(167,139,250,0.18)', color: 'rgba(167,139,250,0.95)' }}
+                >
+                  +{order.preview.itemCount - 1}
+                </span>
+              )}
+            </div>
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              {order.deliveryAddress?.city ?? '—'} · {order.deliveryAddress?.street ?? '—'} · #{shortId(order.id)}
+            </p>
+          </div>
         </Link>
         {/* Status badge — mobile only */}
         <span
-          className="sm:hidden shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+          className="sm:hidden shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-full self-start"
           style={{ background: cfg.color + '22', color: cfg.color }}
         >
           {cfg.label}
@@ -246,7 +271,8 @@ export default function OrdersPage() {
     ? accOrders.filter((o) =>
         shortId(o.id).toLowerCase().includes(q) ||
         (o.deliveryAddress?.city?.toLowerCase() ?? '').includes(q) ||
-        (o.deliveryAddress?.street?.toLowerCase() ?? '').includes(q),
+        (o.deliveryAddress?.street?.toLowerCase() ?? '').includes(q) ||
+        (o.preview?.title?.toLowerCase() ?? '').includes(q),
       )
     : accOrders;
   const orders = filteredOrders;
@@ -323,7 +349,7 @@ export default function OrdersPage() {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Поиск по № заказа, городу, адресу"
+          placeholder="Поиск по № заказа, городу, адресу, товару"
           className="w-full h-10 pl-10 pr-10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2"
           style={{
             background: 'rgba(255,255,255,0.06)',
@@ -361,7 +387,7 @@ export default function OrdersPage() {
           style={{ color: 'rgba(255,255,255,0.28)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
         >
           <span>#</span>
-          <span>Адрес доставки</span>
+          <span>Заказ</span>
           <span>Сумма</span>
           <span>Статус</span>
           <span>Действия</span>

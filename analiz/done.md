@@ -1,5 +1,85 @@
 # Done — Азим + Полат
 
+## 2026-04-18 — Сессия 26 (Азим)
+
+### ✅ [WEB-ORDER-PREVIEW-001] Превью товара в списке заказов (web-seller + TMA)
+- **Важность:** 🟢 UX
+- **Дата:** 18.04.2026
+- **Кто делал:** Азим
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx` — OrderRow: thumbnail 44×44, title + бейдж `+N`, адрес второстепенно; поиск расширен на `preview.title`; заголовок колонки «Адрес доставки» → «Заказ»; `Package` из lucide как fallback.
+  - `apps/tma/src/pages/seller/OrdersPage.tsx` — `Order.preview` в интерфейс; внутри `GlassCard` добавлена строка thumbnail 40×40 + title + бейдж `+N`, fallback 📦.
+- **Что сделано:** Подключено новое поле `OrderListItem.preview` от Полата (коммит `9946af5`). Продавец теперь видит товар сразу в списке, не кликая в детали. Стиль — существующий glass-purple web-seller/TMA (liquid-authority остаётся для buyer/admin).
+- **Проверено:** визуально по коду. Live-тест после деплоя Railway.
+
+---
+
+## 2026-04-18 — Сессия 25: Полат пакетно закрыл 6 задач (до их выдачи)
+
+### ✅ [TMA-EDIT-001] Чёрный экран при открытии товара с вариантами
+- **Важность:** 🔴 Блокер
+- **Дата:** 18.04.2026
+- **Кто делал:** Полат
+- **Коммит:** `cdaeff6`
+- **Файлы:** `apps/tma/src/pages/seller/EditProductPage.tsx`
+- **Что сделано:** Регрессия от API-VAR-001 (`v.optionValues.length` на новом плоском контракте) устранена. Интерфейс `Variant` приведён к `optionValueIds: string[]`, label собирается из `product.options[].values[]`.
+
+### ✅ [API-SUMMARY-500-001] `/analytics/seller/summary` → HTTP 500 починен
+- **Важность:** 🔴 Блокер
+- **Дата:** 18.04.2026
+- **Кто делал:** Полат
+- **Коммит:** `cdaeff6`
+- **Файлы:** `apps/api/src/modules/analytics/repositories/analytics.repository.ts`
+- **Что сделано:** Analytics repository больше не падает на пустом сторе / рассинхронизированном контракте. Dashboard web-seller получает `{views, topProduct, conversionRate}`.
+
+### ✅ [TMA-ERR-BOUNDARY-001] Error Boundary в TMA
+- **Важность:** 🟡 Инфраструктура
+- **Дата:** 18.04.2026
+- **Кто делал:** Полат
+- **Коммит:** `9946af5`
+- **Файлы:** `apps/tma/src/App.tsx`
+- **Что сделано:** Класс `ErrorBoundary` оборачивает `<Suspense>+<Routes>`. Crash → fallback «Что-то пошло не так» + кнопка домой, Telegram BackButton восстанавливается. Защита от всех будущих регрессий в TMA.
+
+### ✅ [API-ORDER-ADDR-001] Заказ без `deliveryAddress` больше не ломает UI
+- **Важность:** 🟡 Баг данных
+- **Дата:** 18.04.2026
+- **Кто делал:** Полат
+- **Коммит:** `9946af5`
+- **Файлы:**
+  - `apps/api/src/modules/orders/use-cases/get-seller-orders.use-case.ts` — строит `deliveryAddress` из `city + addressLine1`
+  - `packages/types/src/api/orders.ts` — `deliveryAddress` optional
+- **Что сделано:** Старые заказы (city=null) отдаются с `deliveryAddress=undefined`. Guard Азима (`abb0c41`) корректно отрабатывает. Контракт выровнен.
+
+### ✅ [API-ORDER-PREVIEW-001] Превью товара в списке заказов
+- **Важность:** 🟢 UX
+- **Дата:** 18.04.2026
+- **Кто делал:** Полат
+- **Коммит:** `9946af5`
+- **Файлы:**
+  - `apps/api/src/modules/orders/repositories/orders.repository.ts` — `include items(take:1) + _count`
+  - `apps/api/src/modules/orders/use-cases/get-seller-orders.use-case.ts` — строит `preview {title, imageUrl, itemCount}`
+  - `packages/types/src/api/orders.ts` — поле `preview` в `OrderListItem`
+- **Что сделано:** Новое опциональное `preview` в `OrderListItem`. Азиму осталось отрендерить в `OrderRow` (web-seller + TMA) — задача `WEB-ORDER-PREVIEW-001`.
+
+### ✅ [API-UPLOAD-ENV-001] Env vars Telegram storage в Railway API
+- **Важность:** 🟡 Инфраструктура
+- **Дата:** 18.04.2026
+- **Кто делал:** Азим (Railway Variables) + Полат (запросил)
+- **Что сделано:** `TELEGRAM_BOT_TOKEN` и `TELEGRAM_STORAGE_CHANNEL_ID=-1003760300539` добавлены в Railway `savdo-api`.
+- **Осталось на Азиме (не код):** добавить `@savdo_builderBOT` администратором канала через Telegram-клиент.
+
+### ✅ Пакет багов 17.04.2026 (коммит `e5c79ad`)
+- BUG-006 Cascade deletes — миграция `20260417085123`
+- BUG-008 Cart partial unique index — миграция `20260417090000`
+- BUG-009 `storeId` передаётся в `UpdateOrderStatus`
+- BUG-010 Admin DB whitelist — уже был
+- BUG-020 CONFIRMED→SHIPPED в state machine
+- BUG-021 Покупатель видит состав заказа (раскрывающиеся карточки)
+- BUG-022 Stock badge на ProductPage TMA (зел/жёлт/красн)
+- FIX `buyer.user.phone` → `buyer.phone` нормализация
+
+---
+
 ## 2026-04-17 — Сессия 22: Комплексный аудит + 7 критических фиксов
 
 ### ✅ [BUG-001] Checkout исправлен — новый CreateDirectOrderUseCase

@@ -13,6 +13,11 @@ interface Order {
   totalAmount: number | string;
   createdAt: string;
   buyer?: { phone?: string; firstName?: string };
+  preview?: {
+    title: string;
+    imageUrl: string | null;
+    itemCount: number;
+  } | null;
 }
 
 const NEXT_STATUS: Record<string, { label: string; status: string } | null> = {
@@ -126,6 +131,34 @@ export default function SellerOrdersPage() {
                   {Number(o.totalAmount).toLocaleString('ru')} сум
                 </p>
               </div>
+
+              {o.preview && (
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="shrink-0 w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    {o.preview.imageUrl ? (
+                      <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span style={{ fontSize: 18 }}>📦</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                    <p className="text-xs font-medium truncate" style={{ color: 'rgba(255,255,255,0.78)' }}>
+                      {o.preview.title}
+                    </p>
+                    {o.preview.itemCount > 1 && (
+                      <span
+                        className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ background: 'rgba(167,139,250,0.18)', color: 'rgba(167,139,250,0.95)' }}
+                      >
+                        +{o.preview.itemCount - 1}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
                 <span>{new Date(o.createdAt).toLocaleDateString('ru')}</span>
