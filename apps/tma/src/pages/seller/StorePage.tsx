@@ -149,10 +149,7 @@ export default function SellerStorePage() {
   };
 
   const deleteCategory = async (cat: StoreCategory) => {
-    const confirmed = await new Promise<boolean>((resolve) => {
-      if (tg?.showConfirm) tg.showConfirm(`Удалить «${cat.name}»?`, resolve);
-      else resolve(window.confirm(`Удалить «${cat.name}»?`));
-    });
+    const confirmed = window.confirm(`Удалить «${cat.name}»?`);
     if (!confirmed) return;
     setCatDeletingId(cat.id);
     try {
