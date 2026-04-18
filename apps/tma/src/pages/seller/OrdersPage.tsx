@@ -29,6 +29,15 @@ const NEXT_STATUS: Record<string, { label: string; status: string } | null> = {
   CANCELLED:  null,
 };
 
+function shortOrderNumber(o: { orderNumber: string | null; id: string }): string {
+  if (o.orderNumber) return o.orderNumber.replace(/^ORD-/, '');
+  return o.id.slice(-6).toUpperCase();
+}
+
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+}
+
 export default function SellerOrdersPage() {
   const { tg } = useTelegram();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -136,53 +145,52 @@ export default function SellerOrdersPage() {
           const isUpdating = updating === o.id;
           return (
             <GlassCard key={o.id} className="flex flex-col gap-3 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.88)' }}>
-                    #{o.orderNumber ?? o.id.slice(-6)}
-                  </p>
-                  <Badge status={o.status} />
+              {/* Main row: thumbnail + title/meta + amount/badge */}
+              <div className="flex items-start gap-3 min-w-0">
+                {/* Thumbnail */}
+                <div
+                  className="shrink-0 w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center"
+                  style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
+                >
+                  {o.preview?.imageUrl ? (
+                    <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span style={{ fontSize: 20 }}>📦</span>
+                  )}
                 </div>
-                <p className="text-sm font-bold" style={{ color: '#A855F7' }}>
-                  {Number(o.totalAmount).toLocaleString('ru')} сум
-                </p>
-              </div>
 
-              {o.preview && (
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="shrink-0 w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  >
-                    {o.preview.imageUrl ? (
-                      <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span style={{ fontSize: 18 }}>📦</span>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                    <p className="text-xs font-medium truncate" style={{ color: 'rgba(255,255,255,0.78)' }}>
-                      {o.preview.title}
+                {/* Middle: title + meta line with right-side amount + badge */}
+                <div className="min-w-0 flex-1 flex flex-col gap-1">
+                  {/* Row 1: title · amount */}
+                  <div className="flex items-baseline justify-between gap-2 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                      {o.preview?.title ?? 'Без товаров'}
+                      {o.preview && o.preview.itemCount > 1 && (
+                        <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
+                          +{o.preview.itemCount - 1}
+                        </span>
+                      )}
                     </p>
-                    {o.preview.itemCount > 1 && (
-                      <span
-                        className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                        style={{ background: 'rgba(167,139,250,0.18)', color: 'rgba(167,139,250,0.95)' }}
-                      >
-                        +{o.preview.itemCount - 1}
-                      </span>
-                    )}
+                    <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: '#A855F7' }}>
+                      {Number(o.totalAmount).toLocaleString('ru')} сум
+                    </p>
+                  </div>
+                  {/* Row 2: meta · badge */}
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                      #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
+                      {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
+                    </p>
+                    <div className="shrink-0">
+                      <Badge status={o.status} />
+                    </div>
                   </div>
                 </div>
-              )}
-
-              <div className="flex items-center gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                <span>{new Date(o.createdAt).toLocaleDateString('ru')}</span>
-                {o.buyer?.phone && <span>{o.buyer.phone}</span>}
               </div>
 
+              {/* Actions */}
               {(next || o.status === 'PENDING' || o.status === 'CONFIRMED') && (
-                <div className="flex gap-2 mt-1">
+                <div className="flex gap-2">
                   {next && (
                     <button
                       onClick={() => changeStatus(o.id, next.status)}
@@ -200,7 +208,7 @@ export default function SellerOrdersPage() {
                       className="py-2 px-3 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
                       style={{ background: 'rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}
                     >
-                      ✕
+                      ✕ Отменить
                     </button>
                   )}
                 </div>
