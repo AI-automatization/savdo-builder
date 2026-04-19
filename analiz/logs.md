@@ -97,12 +97,25 @@
 
 ---
 
-## 2026-04-19 [API-CART-MERGE-401-001] `POST /cart/merge` 401 после логина покупателя
+## 2026-04-19 [API-CART-MERGE-401-001] `Buyer profile not found` — 401 на /cart/merge, /checkout/preview, /checkout/confirm
 
-- **Статус:** 🟡 Наблюдение (19.04.2026). Нужна backend-диагностика от Полата.
-- **Где воспроизводится:** web-buyer → OTP-логин покупателя → `auth/context.tsx:46` дёргает `mergeCart({ sessionKey })` → `POST /api/v1/cart/merge` → **401** дважды (второй — через refresh-interceptor). Ошибка ловится `try/catch`, UI не падает, но гостевая корзина не сливается в авторизованную, `sessionToken` не очищается.
-- **Возможные причины:** В `cart.controller.ts:161-168` `mergeGuestCart` явно кидает 401 если `buyerRepo.findByUserId(user.sub)` возвращает null. То есть: у юзера есть валидный JWT, но нет Buyer-записи в БД. Либо buyer-профиль не создаётся при OTP-регистрации покупателя, либо удаляется где-то.
-- **Что нужно Полату:** Посмотреть Railway-логи `/cart/merge` за 2026-04-19, проверить use-case OTP-верификации для role=BUYER — создаётся ли `Buyer` через `buyerRepo.create(...)` параллельно с `User`.
+- **Статус:** 🔴 Баг на бэкенде. Юзеры БЛОКИРОВАНЫ оформлением заказа (19.04.2026, визуально подтверждено — «Не удалось оформить заказ. Buyer profile not found»).
+- **Где воспроизводится:** web-buyer → OTP-логин → попытка mergeCart/preview/confirm → 401. При клике «Подтвердить заказ» → `apiError = "Buyer profile not found"` (ErrorBanner внизу формы).
+- **Root cause:** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:41-44`
+  ```ts
+  let user = await this.authRepo.findUserByPhone(phone);
+  if (!user) {
+    user = await this.authRepo.createUserWithBuyer({ phone });
+  }
+  ```
+  Buyer создаётся **только при первом появлении User**. Если тот же `phone` уже существует как SELLER (`createUserWithSeller`) или был ghost-аккаунтом из Telegram без `Buyer`-relation — verifyOtp возвращает валидный JWT, но `fullUser.buyer === null`. Далее:
+  - `cart.controller.ts:161-168` → 401 «Buyer profile not found»
+  - `checkout.controller.ts:49-55` → 401 в preview и confirm
+- **Что нужно Полату (варианты в порядке приоритета):**
+  1. В `verify-otp.use-case.ts:41` — после `findUserByPhone`, если `user && !user.buyer` и `purpose !== 'seller-onboarding'`, создать buyer: `await authRepo.ensureBuyerProfile(user.id)` (новый метод-helper через `prisma.buyer.upsert({ where: { userId }, create: { userId }, update: {} })`).
+  2. **Альтернативно** — сделать auto-ensure в `cart.controller.ts:161` и `checkout.controller.ts:49`: вместо 401 кидать `buyerRepo.ensureForUser(user.sub)` и продолжить. Дешевле для будущих UX-сбоев.
+  3. Ручной fix для текущих заблокированных аккаунтов: `INSERT INTO "buyer" (id, "userId") SELECT gen_random_uuid(), u.id FROM "user" u WHERE u.role = 'BUYER' AND NOT EXISTS (SELECT 1 FROM "buyer" b WHERE b."userId" = u.id);` — для всех пострадавших юзеров.
+- **На фронте:** пока этого фикса нет — заказы оформить невозможно, что бы мы ни делали в UI. Это блокер MVP.
 
 ---
 
