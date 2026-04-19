@@ -1,5 +1,13 @@
 # Done — Азим + Полат
 
+## 2026-04-19 — Сессия 28 (Азим) — Seller order detail crash + cart thumbnail
+
+### ✅ [WEB-SELLER-ORDER-DETAIL-CRASH-001] Клик по заказу → `Cannot read properties of undefined (reading 'toLocaleString')`
+- **Важность:** 🔴 Блокер (нельзя открыть ни один заказ)
+- **Дата:** 19.04.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx`
+- **Что сделано:** `fmt(n)` принимал `number` и сразу делал `n.toLocaleString` → undefined ломал страницу. Заменил на `toNum()` + `fmt(unknown)`. Defensive `?? 0` на `deliveryFee`, `items` массив, `STATUS_CONFIG[status]` и `PAYMENT_STATUS_LABELS[paymentStatus]`. `new Date(createdAt)` обёрнут в проверку. Корневая причина (бэк mapper отсутствует) — `API-SELLER-ORDER-DETAIL-MAPPER-001` для Полата.
+
 ## 2026-04-19 — Сессия 28 (Азим) — Cart thumbnail fallback
 
 ### ✅ [WEB-BUYER-CART-THUMB-001] Сломанная картинка товара + alt-текст вылезает из плейсхолдера в `/cart`

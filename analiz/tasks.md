@@ -10,6 +10,17 @@
 
 ---
 
+## 🟡 [API-SELLER-ORDER-DETAIL-MAPPER-001] `GET /seller/orders/:id` отдаёт сырой prisma — числа undefined → frontend крашится
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🟡 Азим уже защитил фронт (19.04.2026), но корень — отсутствие mapper'а как у `/cart`.
+- **Файлы:** искать по `apps/api/src/modules/orders/` — use-case/controller для `findOne` (seller view).
+- **Симптом:** `web-seller /orders/:id` падал с `Cannot read properties of undefined (reading 'toLocaleString')` на полях `totalAmount`, `items[].subtotal`, `items[].unitPrice`. Те же поля что в `cart`, та же проблема — либо undefined, либо Prisma Decimal без `.toString()`.
+- **Что нужно:** mapper аналогичный `cart.mapper.ts` (можно вынести `toNum` в общий util), который даёт фронту: `{ id, status, createdAt, totalAmount: number, deliveryFee: number, items: [{ id, title, variantTitle?, quantity, unitPrice: number, subtotal: number }], deliveryAddress, paymentMethod, paymentStatus, buyer, customerPhone, buyerNote }`. Все числа — number, не Decimal; createdAt — ISO string.
+- **Аналогично проверить:** `GET /seller/orders` (список) — на скрине у Азима там 300000 рендерится корректно, но если поле приходит как Decimal, в edge-cases может тоже сломаться.
+
+---
+
 ## 🔴 [API-CART-MEDIA-001] `cart.mapper.ts` отдаёт сырой `mediaId` в поле `mediaUrl` — все картинки в корзине 404
 - **Домен:** `apps/api`
 - **Кто взял:** Полат

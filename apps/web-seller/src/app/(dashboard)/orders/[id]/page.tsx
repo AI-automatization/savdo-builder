@@ -45,8 +45,15 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   REFUNDED: 'Возврат',
 };
 
-function fmt(n: number) {
-  return n.toLocaleString('ru-RU') + ' сум';
+function toNum(v: unknown): number {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  if (v && typeof v === 'object') { const n = Number(String(v)); return Number.isFinite(n) ? n : 0; }
+  return 0;
+}
+
+function fmt(n: unknown) {
+  return toNum(n).toLocaleString('ru-RU') + ' сум';
 }
 
 function shortId(id: string) {
@@ -196,7 +203,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const cfg  = STATUS_CONFIG[order.status];
+  const cfg  = STATUS_CONFIG[order.status] ?? { label: String(order.status ?? '—'), color: 'rgba(255,255,255,.5)' };
   const next = NEXT_TRANSITION[order.status];
   const canCancel = CANCELLABLE.includes(order.status);
 
@@ -225,10 +232,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </span>
           </div>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {new Date(order.createdAt).toLocaleString('ru-RU', {
-              day: '2-digit', month: 'long', year: 'numeric',
-              hour: '2-digit', minute: '2-digit',
-            })}
+            {order.createdAt
+              ? new Date(order.createdAt).toLocaleString('ru-RU', {
+                  day: '2-digit', month: 'long', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })
+              : '—'}
           </p>
         </div>
       </div>
@@ -266,9 +275,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           className="px-5 py-3 text-xs font-semibold uppercase tracking-widest"
           style={{ color: 'rgba(255,255,255,0.28)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
         >
-          Товары ({order.items.length})
+          Товары ({order.items?.length ?? 0})
         </div>
-        {order.items.map((item) => (
+        {(order.items ?? []).map((item) => (
           <div
             key={item.id}
             className="flex items-center justify-between gap-4 px-5 py-3.5"
@@ -295,7 +304,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <div className="px-5 py-4 flex flex-col gap-2">
           <div className="flex items-center justify-between text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>
             <span>Доставка</span>
-            <span>{order.deliveryFee > 0 ? fmt(order.deliveryFee) : 'Бесплатно'}</span>
+            <span>{toNum(order.deliveryFee) > 0 ? fmt(order.deliveryFee) : 'Бесплатно'}</span>
           </div>
           <div className="flex items-center justify-between text-base font-bold text-white">
             <span>Итого</span>
@@ -326,7 +335,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Оплата</p>
             <p className="text-sm text-white">{order.paymentMethod ?? 'Не указан'}</p>
             <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
-              {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+              {PAYMENT_STATUS_LABELS[order.paymentStatus] ?? '—'}
             </p>
           </div>
         </div>

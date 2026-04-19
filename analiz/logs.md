@@ -19,6 +19,21 @@
 
 ---
 
+## 2026-04-19 [WEB-SELLER-ORDER-DETAIL-CRASH-001] `Cannot read properties of undefined (reading 'toLocaleString')` при клике на заказ
+
+- **Статус:** ✅ Frontend защищён (Азим, 19.04.2026). 🟡 Корневая причина бэка — задача `API-SELLER-ORDER-DETAIL-MAPPER-001`.
+- **Что случилось:** В `web-seller` клик по любому заказу (`/orders/:id`) рушит страницу — рендерится `This page couldn't load`. В консоли `Uncaught TypeError: Cannot read properties of undefined (reading 'toLocaleString')`. Список заказов (`/orders`) работает.
+- **Что сделано (фронт):** `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx`:
+  - `fmt(n)` теперь принимает `unknown`, гонит через `toNum()` (Number/string/Decimal-object → safe number). Никаких прямых `n.toLocaleString` на сырых полях.
+  - `order.items` → `order.items ?? []` и `?.length ?? 0`.
+  - `order.deliveryFee > 0` → `toNum(order.deliveryFee) > 0`.
+  - `STATUS_CONFIG[order.status]` → fallback `{ label, color }` если статус не в перечне.
+  - `PAYMENT_STATUS_LABELS[order.paymentStatus] ?? '—'`.
+  - `new Date(order.createdAt)` обёрнут в проверку.
+- **Корневая причина (бэк):** `GET /seller/orders/:id` возвращает что-то с `undefined` в `totalAmount` или `items[].subtotal`/`unitPrice`. Скорее всего то же что было с `/cart` (см. `WEB-BUYER-PRICE-ZERO-001`) — Prisma Decimal не сериализован, либо нет mapper'а. Список (`/seller/orders`) работает потому что использует другой endpoint/mapper.
+
+---
+
 ## 2026-04-19 [WEB-BUYER-CART-THUMB-001] Картинка товара 404 + alt-текст вылезает из 62×62 плейсхолдера в `/cart`
 
 - **Статус:** ✅ Frontend защищён (Азим, 19.04.2026). 🔴 Корневая причина — баг бэка, задача `API-CART-MEDIA-001` для Полата.
