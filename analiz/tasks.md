@@ -10,6 +10,23 @@
 
 ---
 
+## 🔴 [API-MEDIA-UPLOAD-500-001] `POST /media/upload` отдаёт 500 — нельзя загрузить картинку товара / лого магазина
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🔴 Блокер — продавцы не могут добавить товар с фото / поставить лого магазина / баннер.
+- **Файлы:** `apps/api/src/modules/media/use-cases/upload-direct.use-case.ts`, `apps/api/src/modules/media/services/telegram-storage.service.ts`, `apps/api/src/modules/media/repositories/media.repository.ts`, `apps/api/src/modules/media/media.controller.ts:56`
+- **Симптом:** Азим (19.04.2026) репортнул в console: `POST .../api/v1/media/upload 500`, axios `Request failed with status code 500`. Triggered из `<ImageUploader>` (web-seller — products/create, products/[id]/edit, settings/store-logo, settings/store-banner). Фронт шлёт корректный multipart (`file` + `purpose`).
+- **Что нужно (Полат):**
+  1. Открыть Railway logs `savdo-api-production`, найти трейс stack для этого запроса (по таймстампу или endpoint `/media/upload`).
+  2. Самые вероятные причины:
+     - `tgStorage.uploadFile()` бросает — Telegram bot token протух / rate limit / file > 10 МБ для Telegram photo endpoint / api.telegram.org недоступен.
+     - `mediaRepo.create()` бросает — Prisma constraint на `bucket`/`objectKey`, проблема с `BigInt(file.size)` при сериализации.
+     - `multer` middleware на роуте `/media/upload` не сконфигурен → `file` undefined → `file.buffer` бросает.
+  3. Если виновник Telegram — обернуть в try/catch и бросить `DomainException(MEDIA_UPLOAD_FAILED, ..., 502)` чтобы не было 500.
+  4. Добавить логирование `console.error` или NestJS `Logger.error` с stacktrace перед тем как NestJS превратит исключение в 500-respond.
+
+---
+
 ## 🟡 [API-SELLER-ORDER-DETAIL-MAPPER-001] `GET /seller/orders/:id` отдаёт сырой prisma — числа undefined → frontend крашится
 - **Домен:** `apps/api`
 - **Кто взял:** Полат

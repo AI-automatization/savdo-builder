@@ -19,6 +19,24 @@
 
 ---
 
+## 2026-04-19 [WEB-SELLER-MEDIA-UPLOAD-500-001] `POST /media/upload` 500 → нельзя загрузить картинку товара/лого магазина
+
+- **Статус:** 🔴 Бэкенд-баг (Полат). Фронт корректен. Задача `API-MEDIA-UPLOAD-500-001`.
+- **Что случилось:** Из `<ImageUploader>` в web-seller (products/create, products/[id]/edit, settings) `POST /media/upload` отдаёт 500. Console: `[ImageUploader] upload failed AxiosError: Request failed with status code 500`.
+- **Анализ фронта:** `apps/web-seller/src/lib/api/media.api.ts:48-65` — корректно собирает FormData (`file` + `purpose`), отправляет через axios. Валидация на клиенте (mime, 10 МБ) проходит до запроса.
+- **Что нужно Полату:** Посмотреть Railway logs за момент upload — что бросилось в `UploadDirectUseCase.execute()`. Скорее всего `telegramStorage.uploadFile()` или `mediaRepo.create()`. Обернуть в try/catch + log + бросить осмысленную `DomainException`, а не давать NestJS вернуть голый 500.
+
+---
+
+## 2026-04-19 [WEB-SELLER-NOTIFICATIONS-LOAD-FAIL-001] «Не удалось загрузить уведомления» вместо empty-state
+
+- **Статус:** 🟡 Зависит от подтверждения. Если 401 — связано с auth-серией, если 404/500 — отдельный бэкенд-баг.
+- **Что случилось:** В `/notifications` рендерится «Последние 0 уведомлений» + красная плашка «Не удалось загрузить» одновременно. Это **не** empty state — empty state показывает колокольчик и текст «Уведомлений пока нет» (`apps/web-seller/src/app/(dashboard)/notifications/page.tsx:153-160`). Красная плашка рендерится при `isError === true` от `useNotifications()`.
+- **Корневая причина:** `GET /notifications/inbox` возвращает не 200. На предыдущих скринах консоли уже фиксировали `/notifications/inbox/unread-count 401`. Вероятно тот же auth-флоу — JWT токен невалиден / expired для seller user. Часть серии 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`.
+- **Что нужно:** Подтвердить статус через DevTools → Network → `notifications/inbox`. Если 401 — это часть общей auth-проблемы (не репортить отдельно пока не подтвердим источник). Если другой код — отдельная задача для Полата.
+
+---
+
 ## 2026-04-19 [WEB-SELLER-ORDER-DETAIL-CRASH-001] `Cannot read properties of undefined (reading 'toLocaleString')` при клике на заказ
 
 - **Статус:** ✅ Frontend защищён (Азим, 19.04.2026). 🟡 Корневая причина бэка — задача `API-SELLER-ORDER-DETAIL-MAPPER-001`.
