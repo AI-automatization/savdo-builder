@@ -10,6 +10,55 @@
 
 ---
 
+## 🔴 КРИТИЧЕСКОЕ — Buyer flow на production сломан (19.04.2026)
+
+> Азим в сессии 27 закрыл 6 blocker'ов на фронте (web-buyer). Бэкенд требует 5 задач — без них заказы оформить нельзя.
+
+## 🔴 [API-BUYER-PROFILE-001] `Buyer profile not found` блокирует оформление заказов
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🔴 MVP блокер. Без этого никто не может оформить заказ.
+- **Root cause:** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:41-44`. Buyer создаётся только если User не существовал. Если телефон уже зарегистрирован (как SELLER или как Telegram-ghost) — JWT валидный, но `fullUser.buyer === null` → 401 на `/cart/merge`, `/checkout/preview`, `/checkout/confirm`.
+- **Файлы:** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts`, `apps/api/src/modules/auth/repositories/auth.repository.ts`, `apps/api/src/modules/cart/cart.controller.ts:161`, `apps/api/src/modules/checkout/checkout.controller.ts:49`
+- **Что нужно:**
+  1. `verify-otp.use-case.ts:41-44` — после `findUserByPhone`, если `user && !user.buyer`, вызвать `authRepo.ensureBuyerProfile(user.id)` (новый метод через `prisma.buyer.upsert({ where: { userId }, create: { userId }, update: {} })`).
+  2. Альтернативно (дополнительно) — `cart.controller.ts` и `checkout.controller.ts` вместо 401 вызывать auto-ensure через `buyerRepo.ensureForUser(user.sub)`.
+  3. Ручной backfill для заблокированных текущих аккаунтов: SQL `INSERT INTO "buyer" (id, "userId") SELECT gen_random_uuid(), u.id FROM "user" u WHERE u.role = 'BUYER' AND NOT EXISTS (SELECT 1 FROM "buyer" b WHERE b."userId" = u.id);`
+
+## 🔴 [API-CART-RESPONSE-001] `POST /cart/items` и `PATCH /cart/items/:id` возвращают `CartItem` вместо `Cart`
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🟡 (Азим закрыл временный костыль через invalidateQueries)
+- **Файлы:** `apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts:27`, `apps/api/src/modules/cart/use-cases/update-cart-item.use-case.ts:19`
+- **Что нужно:** вернуть полный `Cart` (с items + totalAmount + currencyCode) как обещает `packages/types/src/api/cart.ts:22`. Сейчас возвращается одиночный `prisma.CartItem` и это ломало TanStack-кэш на фронте.
+
+## 🔴 [API-CART-CONTRACT-001] `GET /cart` отдаёт prisma-сырец вместо обещанного `Cart`
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🔴 Данные кривые. Из-за этого фронт был вынужден делать fallback на product.basePrice.
+- **Файлы:** `apps/api/src/modules/cart/use-cases/get-cart.use-case.ts`, `apps/api/src/modules/cart/repositories/cart.repository.ts`
+- **Что нужно:** добавить mapper который:
+  1. `unitPrice = Number(item.salePriceSnapshot ?? item.unitPriceSnapshot)` и `subtotal = unitPrice * quantity`
+  2. `totalAmount = sum(items.subtotal)`, `currencyCode = 'UZS'`
+  3. `product.mediaUrl` — полный URL через storage (сейчас `images[0].mediaId`)
+- **Контракт:** `packages/types/src/api/cart.ts`
+
+## 🔴 [API-CHECKOUT-CONTRACT-001] `/checkout/preview` возвращает `validItems`/`currency` вместо `items`/`currencyCode`
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🟡 (фронт принимает оба варианта)
+- **Файлы:** `apps/api/src/modules/checkout/use-cases/preview-checkout.use-case.ts:153-163`
+- **Что нужно:** привести к контракту `packages/types/src/api/cart.ts#CheckoutPreview`: `items` (не `validItems`), `currencyCode` (не `currency`), `stockWarnings: string[]` (собрать из `invalidItems`). Подумать про `items` с полями `title, variantTitle, unitPrice, subtotal` вместо `productTitleSnapshot, variantLabelSnapshot, unitPrice, lineTotal`.
+
+## 🔴 [API-DECIMAL-NAN-001] `Number(Prisma.Decimal)` возвращает NaN → цены теряются
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🔴 Root cause бага «0 сум». Цепной эффект на cart + checkout + возможно orders.
+- **Файлы:** `apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts:45,66,72`, `apps/api/src/modules/checkout/use-cases/preview-checkout.use-case.ts:86,120`, и везде где `Number((x as any).basePrice)` или `Number(Decimal)`.
+- **Что нужно:** использовать `.toNumber()` вместо `Number()` на Prisma Decimal. Прогнать grep по всему apps/api на паттерн `Number((.*) as any)` и `Number(.*\.(?:basePrice|priceOverride|.*Snapshot))` — поправить.
+
+---
+
 ## ✅ Задачи закрыты (18.04.2026)
 
 | ID | Приоритет | Что | Статус |

@@ -1,5 +1,61 @@
 # Done — Азим + Полат
 
+## 2026-04-19 — Сессия 27 (Азим) — Buyer flow на production: серия каскадных фиксов web-buyer
+
+### ✅ [WEB-BUYER-CART-CACHE-001] Краш `reading 'reduce'` после «Добавить в корзину»
+- **Важность:** 🔴 Блокер
+- **Дата:** 19.04.2026
+- **Коммит:** `f9fe75e`
+- **Файлы:** `apps/web-buyer/src/hooks/use-cart.ts`, `apps/web-buyer/src/components/layout/Header.tsx`
+- **Что сделано:** `useAddToCart` / `useUpdateCartItem` писали в TanStack-кэш `['cart']` результат мутации. Бэк возвращает сырой `CartItem`, а не `Cart` → `cart.items === undefined` → `Header.tsx:13 cart?.items.reduce(...)` падал с `undefined.reduce`. Заменил `setQueryData` на `invalidateQueries` (кэш обновляется через `GET /cart`). Добавил defensive `?.` на `items` в Header.
+
+### ✅ [WEB-BUYER-ORDERS-ADDR-GUARD-001] Railway TS-билд падал на `order.deliveryAddress.street`
+- **Важность:** 🔴 Блокер (билд не проходил)
+- **Дата:** 19.04.2026
+- **Коммит:** `7a0ad5e`
+- **Файлы:** `apps/web-buyer/src/app/(shop)/orders/page.tsx`, `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx`
+- **Что сделано:** После `API-ORDER-ADDR-001` Полата `deliveryAddress` стал optional в контракте, а в web-buyer три места читали поля напрямую. Защитил `?.` + fallback (тернарник «Самовывоз» в списке, `'—'` в детали). Паттерн из `SELLER-DASH-GUARD-001` (сессия 24).
+
+### ✅ [WEB-BUYER-CART-RENDER-002] Чёрный экран на `/cart` — `fmt(undefined).toLocaleString`
+- **Важность:** 🔴 Блокер
+- **Дата:** 19.04.2026
+- **Коммит:** `a4a917e`
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx`
+- **Что сделано:** Бэкенд возвращает сырой prisma-cart без `totalAmount`/`subtotal`/`currencyCode`. `fmt()` теперь coerce через `Number(n) || 0`. `totalAmount` считается на клиенте из items если бэк не прислал. 4 места `fmt(cart!.totalAmount)` заменены на `fmt(totalAmount)`.
+
+### ✅ [WEB-BUYER-PRICE-ZERO-001] Товары в корзине и в оформлении показывают «0 сум»
+- **Важность:** 🔴 Блокер
+- **Дата:** 19.04.2026
+- **Коммиты:** `9968cca`, `214ecaa`
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx`, `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Бэк делает `Number(Prisma.Decimal)` → NaN → `unitPrice = 0`. Ввёл helper `itemUnitPrice(i)` с цепочкой fallback: `variant.salePriceOverride → variant.priceOverride → salePriceSnapshot → unitPrice → unitPriceSnapshot → product.salePrice → product.basePrice`. `toNum()` проверяет `Number.isFinite`. На checkout «Состав заказа» теперь рендерится из `useCart()` (product.basePrice гарантированно есть).
+
+### ✅ [WEB-BUYER-CHECKOUT-BOUNCE-001] На `/checkout` юзера выкидывает обратно в корзину через пару секунд
+- **Важность:** 🔴 Блокер
+- **Дата:** 19.04.2026
+- **Коммит:** `fab6310`
+- **Файлы:** `apps/web-buyer/src/hooks/use-checkout.ts`, `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** `useCheckoutPreview` имел `staleTime: 0` + default `refetchOnWindowFocus: true` → любой клик в input → refetch → если `/checkout/preview` падал с 401/422, `preview.data` становился undefined → useEffect редиректил на /cart. Поднял `staleTime` до 60с, выключил refetchOnWindowFocus, редирект только при `isSuccess && items.length === 0 && cartItems.length === 0`. Фронт принимает оба варианта бэка: `items` или `validItems`.
+
+### ✅ [WEB-BUYER-CONFIRM-SILENT-001] Кнопка «Подтвердить заказ» ничего не делала
+- **Важность:** 🔴 Блокер
+- **Дата:** 19.04.2026
+- **Коммит:** `88cb747`
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** `handleConfirm` имел ранний `return` на `!preview.data` — если preview упал с 401/422, клик тихо игнорировался. Убрал этот guard (бэк confirm не зависит от preview — берёт buyerId из JWT, cart из БД). Добавил `scrollTo` вниз при ошибке чтобы ErrorBanner был виден под sticky-кнопкой. `storeId` для аналитики берётся fallback'ом из `cart?.storeId`.
+
+### 📋 Сводка Пуш-коммитов (8 штук):
+- `f9fe75e` — cart cache invalidate
+- `7a0ad5e` — deliveryAddress optional guards
+- `a4a917e` — fmt defensive + client-side total
+- `9968cca` — unitPriceSnapshot fallback
+- `fab6310` — checkout no-bounce + contract tolerance
+- `214ecaa` — price fallback chain (basePrice)
+- `88cb747` — confirm allows missing preview
+- `e068953` — docs: pinpoint verify-otp root cause
+
+---
+
 ## 2026-04-18 — Сессия 26 (Азим, продолжение 2)
 
 ### ✅ [TMA-ORDER-CARD-REDESIGN-001] Перерисована карточка заказа в TMA seller
