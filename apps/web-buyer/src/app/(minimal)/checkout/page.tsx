@@ -15,12 +15,18 @@ import type { CheckoutPreview, CheckoutPreviewItem } from "types";
 type DeliveryMode = "delivery" | "pickup";
 type PageStep = "otp-phone" | "otp-code" | "form";
 
-// Extend preview type — API returns deliveryFee/total but shared type doesn't include them yet
-type PreviewWithFee = CheckoutPreview & { deliveryFee?: number; total?: number };
+// Extend preview type — API returns deliveryFee/total + validItems (not items) but shared type doesn't match yet
+type PreviewItemLoose = CheckoutPreviewItem & { title?: string; productTitleSnapshot?: string; variantLabelSnapshot?: string | null; lineTotal?: number };
+type PreviewWithFee = CheckoutPreview & {
+  deliveryFee?: number;
+  total?: number;
+  validItems?: PreviewItemLoose[];
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const fmt = (n: number) => n.toLocaleString("ru-RU");
+const fmt = (n: number | null | undefined) =>
+  (typeof n === "number" ? n : Number(n) || 0).toLocaleString("ru-RU");
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -248,24 +254,32 @@ export default function CheckoutPage() {
   const [apiError, setApiError] = useState<string>();
 
   const previewData = preview.data as PreviewWithFee | undefined;
+  const previewItems: PreviewItemLoose[] =
+    previewData?.items ?? previewData?.validItems ?? [];
   const storeDeliveryFee = previewData?.deliveryFee ?? 0;
   const deliveryFee = mode === "delivery" ? storeDeliveryFee : 0;
   const subtotal    = previewData?.subtotal ?? 0;
   const total       = subtotal + deliveryFee;
 
-  // Redirect if cart is empty after loading
+  // Redirect only if preview succeeded AND the cart is explicitly empty.
+  // A transient fetch error must not kick the user out while they type.
   useEffect(() => {
-    if (step === "form" && !preview.isLoading && !preview.data) {
+    if (
+      step === "form" &&
+      preview.isSuccess &&
+      previewData &&
+      previewItems.length === 0
+    ) {
       router.replace("/cart");
     }
-  }, [step, preview.isLoading, preview.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, preview.isSuccess, previewData, previewItems.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Analytics
   useEffect(() => {
-    if (preview.data) {
-      track.checkoutStarted(preview.data.storeId, preview.data.items.length, subtotal);
+    if (previewData) {
+      track.checkoutStarted(previewData.storeId, previewItems.length, subtotal);
     }
-  }, [preview.data?.storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [previewData?.storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSubmit =
     step === "form" &&
@@ -396,21 +410,26 @@ export default function CheckoutPage() {
                   <Skeleton className="h-10 w-full" />
                 </>
               ) : (
-                preview.data?.items.map((item: CheckoutPreviewItem) => (
-                  <div key={item.productId + (item.variantId ?? "")}
-                    className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white/85 truncate">{item.title}</p>
-                      {item.variantTitle && (
-                        <p className="text-xs text-white/40 mt-0.5">{item.variantTitle}</p>
-                      )}
-                      <p className="text-xs text-white/35 mt-0.5">× {item.quantity}</p>
+                previewItems.map((item) => {
+                  const label = item.title ?? item.productTitleSnapshot ?? "Товар";
+                  const variantLabel = item.variantTitle ?? item.variantLabelSnapshot ?? null;
+                  const lineTotal = item.subtotal ?? item.lineTotal ?? 0;
+                  return (
+                    <div key={item.productId + (item.variantId ?? "")}
+                      className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white/85 truncate">{label}</p>
+                        {variantLabel && (
+                          <p className="text-xs text-white/40 mt-0.5">{variantLabel}</p>
+                        )}
+                        <p className="text-xs text-white/35 mt-0.5">× {item.quantity}</p>
+                      </div>
+                      <span className="text-sm font-medium flex-shrink-0" style={{ color: "#A78BFA" }}>
+                        {fmt(lineTotal)} сум
+                      </span>
                     </div>
-                    <span className="text-sm font-medium flex-shrink-0" style={{ color: "#A78BFA" }}>
-                      {fmt(item.subtotal)} сум
-                    </span>
-                  </div>
-                ))
+                  );
+                })
               )}
 
               {/* Stock warnings */}

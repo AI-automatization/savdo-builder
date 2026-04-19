@@ -8,7 +8,9 @@ export function useCheckoutPreview() {
   return useQuery({
     queryKey: ['checkout', 'preview'],
     queryFn: getCheckoutPreview,
-    staleTime: 0,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 

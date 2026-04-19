@@ -10,6 +10,24 @@
 
 ---
 
+## 2026-04-19 [WEB-BUYER-CHECKOUT-BOUNCE-001] На `/checkout` юзера выкидывает обратно в корзину через пару секунд
+
+- **Статус:** ✅ Исправлено (19.04.2026, Азим).
+- **Где воспроизводится:** web-buyer → «Оформить заказ» → заполняю улицу/город → через несколько секунд `router.replace('/cart')`.
+- **Что случилось:**
+  - `useCheckoutPreview` стоял с `staleTime: 0` → каждый фокус/клик в input → default `refetchOnWindowFocus: true` → refetch.
+  - Контракт `/checkout/preview` разошёлся: backend `preview-checkout.use-case.ts:153-163` возвращает `{ validItems, invalidItems, subtotal, deliveryFee, total, currency, ... }`, а frontend `CheckoutPreview` ждал `{ items, subtotal, currencyCode, stockWarnings }`.
+  - Если refetch ловил ошибку (`CART_EMPTY` 422 или `Buyer profile not found` 401 — хвост `API-CART-MERGE-401-001`), `preview.data` становился undefined.
+  - Строки `checkout/page.tsx:257-261`: `if (!preview.isLoading && !preview.data) router.replace('/cart')` — выкидывало при любой временной ошибке, даже когда user печатал.
+- **Что сделано:**
+  - `apps/web-buyer/src/hooks/use-checkout.ts` — `staleTime: 60_000`, `refetchOnWindowFocus: false`, `retry: 1`.
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — redirect только при `preview.isSuccess && items.length === 0` (реально пустая корзина), а не при любой ошибке.
+  - Принимаем оба варианта ответа от бэка: `previewData.items ?? previewData.validItems`. Маппинг `title ?? productTitleSnapshot`, `variantTitle ?? variantLabelSnapshot`, `subtotal ?? lineTotal`.
+  - `fmt()` защищён от undefined (как в cart).
+- **Что нужно Полату:** `preview-checkout.use-case.ts` должен возвращать поля из контракта `packages/types/src/api/cart.ts` — `items` (не `validItems`), `currencyCode` (не `currency`), `stockWarnings: string[]` (составляется из `invalidItems`). Сейчас фронт вынужден поддерживать оба варианта.
+
+---
+
 ## 2026-04-19 [API-CART-CONTRACT-MISMATCH-001] Бэкенд `/cart` отдаёт prisma-сырец вместо обещанного типа `Cart`
 
 - **Статус:** 🔴 Баг на бэкенде (Полат). Фронт зашит defensive-fallback'ами (см. `WEB-BUYER-CART-RENDER-002`), но это костыль.
