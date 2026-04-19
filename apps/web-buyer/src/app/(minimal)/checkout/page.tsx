@@ -7,8 +7,9 @@ import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { useAuth } from "@/lib/auth/context";
 import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
 import { useCheckoutPreview, useConfirmCheckout } from "@/hooks/use-checkout";
+import { useCart } from "@/hooks/use-cart";
 import { track } from "@/lib/analytics";
-import type { CheckoutPreview, CheckoutPreviewItem } from "types";
+import type { CheckoutPreview, CheckoutPreviewItem, CartItem } from "types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,32 @@ type PreviewWithFee = CheckoutPreview & {
 
 const fmt = (n: number | null | undefined) =>
   (typeof n === "number" ? n : Number(n) || 0).toLocaleString("ru-RU");
+
+const toNum = (v: unknown): number => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  return 0;
+};
+
+const cartItemUnitPrice = (i: CartItem) => {
+  const raw = i as unknown as {
+    unitPrice?: number | string;
+    salePriceSnapshot?: number | string | null;
+    unitPriceSnapshot?: number | string | null;
+    product?: { basePrice?: number | string; salePrice?: number | string | null };
+    variant?: { priceOverride?: number | string | null; salePriceOverride?: number | string | null };
+  };
+  return (
+    toNum(raw.variant?.salePriceOverride) ||
+    toNum(raw.variant?.priceOverride) ||
+    toNum(raw.salePriceSnapshot) ||
+    toNum(raw.unitPrice) ||
+    toNum(raw.unitPriceSnapshot) ||
+    toNum(raw.product?.salePrice) ||
+    toNum(raw.product?.basePrice) ||
+    0
+  );
+};
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -246,6 +273,8 @@ export default function CheckoutPage() {
 
   const preview   = useCheckoutPreview();
   const confirm   = useConfirmCheckout();
+  const { data: cart } = useCart();
+  const cartItems = cart?.items ?? [];
 
   const [mode,    setMode]    = useState<DeliveryMode>("delivery");
   const [street,  setStreet]  = useState("");
@@ -258,21 +287,28 @@ export default function CheckoutPage() {
     previewData?.items ?? previewData?.validItems ?? [];
   const storeDeliveryFee = previewData?.deliveryFee ?? 0;
   const deliveryFee = mode === "delivery" ? storeDeliveryFee : 0;
-  const subtotal    = previewData?.subtotal ?? 0;
+  // Cart is authoritative for display: the backend preview currently returns 0
+  // when unitPriceSnapshot serialises oddly. Fall back to cart-computed total.
+  const cartSubtotal = cartItems.reduce(
+    (s, it) => s + cartItemUnitPrice(it) * (it.quantity || 0),
+    0,
+  );
+  const rawSubtotal = toNum(previewData?.subtotal);
+  const subtotal    = rawSubtotal > 0 ? rawSubtotal : cartSubtotal;
   const total       = subtotal + deliveryFee;
 
-  // Redirect only if preview succeeded AND the cart is explicitly empty.
-  // A transient fetch error must not kick the user out while they type.
+  // Redirect only when BOTH the preview and the cart agree that the cart is
+  // empty. Transient preview errors must not kick the user out mid-typing.
   useEffect(() => {
     if (
       step === "form" &&
       preview.isSuccess &&
-      previewData &&
-      previewItems.length === 0
+      previewItems.length === 0 &&
+      cartItems.length === 0
     ) {
       router.replace("/cart");
     }
-  }, [step, preview.isSuccess, previewData, previewItems.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, preview.isSuccess, previewItems.length, cartItems.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Analytics
   useEffect(() => {
@@ -410,19 +446,21 @@ export default function CheckoutPage() {
                   <Skeleton className="h-10 w-full" />
                 </>
               ) : (
-                previewItems.map((item) => {
-                  const label = item.title ?? item.productTitleSnapshot ?? "Товар";
-                  const variantLabel = item.variantTitle ?? item.variantLabelSnapshot ?? null;
-                  const lineTotal = item.subtotal ?? item.lineTotal ?? 0;
+                cartItems.map((it) => {
+                  const label = (it as unknown as { product?: { title?: string } }).product?.title
+                    ?? "Товар";
+                  const variantLabel = it.variant?.titleOverride ?? null;
+                  const unit = cartItemUnitPrice(it);
+                  const lineTotal = unit * (it.quantity || 0);
                   return (
-                    <div key={item.productId + (item.variantId ?? "")}
+                    <div key={it.id}
                       className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white/85 truncate">{label}</p>
                         {variantLabel && (
                           <p className="text-xs text-white/40 mt-0.5">{variantLabel}</p>
                         )}
-                        <p className="text-xs text-white/35 mt-0.5">× {item.quantity}</p>
+                        <p className="text-xs text-white/35 mt-0.5">× {it.quantity}</p>
                       </div>
                       <span className="text-sm font-medium flex-shrink-0" style={{ color: "#A78BFA" }}>
                         {fmt(lineTotal)} сум

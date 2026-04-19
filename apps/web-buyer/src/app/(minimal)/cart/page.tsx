@@ -34,13 +34,29 @@ const glassDim = {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const fmt = (n: number | null | undefined) => (typeof n === "number" ? n : Number(n) || 0).toLocaleString("ru-RU");
+const toNum = (v: unknown): number => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  return 0;
+};
 const itemUnitPrice = (i: CartItem) => {
   const raw = i as unknown as {
     unitPrice?: number | string;
     salePriceSnapshot?: number | string | null;
     unitPriceSnapshot?: number | string | null;
+    product?: { basePrice?: number | string; salePrice?: number | string | null };
+    variant?: { priceOverride?: number | string | null; salePriceOverride?: number | string | null };
   };
-  return Number(raw.unitPrice ?? raw.salePriceSnapshot ?? raw.unitPriceSnapshot ?? 0) || 0;
+  return (
+    toNum(raw.variant?.salePriceOverride) ||
+    toNum(raw.variant?.priceOverride) ||
+    toNum(raw.salePriceSnapshot) ||
+    toNum(raw.unitPrice) ||
+    toNum(raw.unitPriceSnapshot) ||
+    toNum(raw.product?.salePrice) ||
+    toNum(raw.product?.basePrice) ||
+    0
+  );
 };
 const itemSubtotal = (i: CartItem) =>
   typeof i.subtotal === "number"

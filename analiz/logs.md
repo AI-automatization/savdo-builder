@@ -10,6 +10,20 @@
 
 ---
 
+## 2026-04-19 [WEB-BUYER-PRICE-ZERO-001] В корзине и в оформлении цена показывается «0 сум»
+
+- **Статус:** ✅ Костыль на фронте (19.04.2026, Азим). Реальный фикс — бэкенд (см. ниже).
+- **Что случилось:** И корзина, и `/checkout/preview` показывают 0 сум у товаров с непустой ценой. Бэкенд в `preview-checkout.use-case.ts:86` делает `Number(cartItem.unitPriceSnapshot)`, а в `add-to-cart.use-case.ts:45` — `Number((product as any).basePrice)`. Когда Prisma Decimal сериализуется в JSON не как строка, `Number(obj)` → NaN → `lineTotal = 0 × quantity = 0` → subtotal = 0. Либо старые cart items были созданы до корректного сохранения snapshot.
+- **Что сделано:**
+  - `apps/web-buyer/src/app/(minimal)/cart/page.tsx` — `itemUnitPrice(i)` расширен цепочкой fallback: `variant.salePriceOverride → variant.priceOverride → salePriceSnapshot → unitPrice → unitPriceSnapshot → product.salePrice → product.basePrice → 0`. Используется `toNum()` с проверкой `Number.isFinite`.
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — «Состав заказа» рендерится из `useCart()` (там есть `product.basePrice`), не из preview. `subtotal` берётся из preview только если `> 0`, иначе пересчитывается из cart.
+- **Что нужно Полату:**
+  1. `add-to-cart.use-case.ts:45,66,72` — убедиться что `Number()` на Prisma Decimal даёт число (использовать `.toNumber()` вместо `Number()`).
+  2. `preview-checkout.use-case.ts:86,120` — то же.
+  3. `get-cart.use-case.ts` — добавить mapper который пересчитывает `unitPrice` / `subtotal` / `totalAmount` в соответствии с `packages/types/src/api/cart.ts` (сейчас prisma-сырец возвращается).
+
+---
+
 ## 2026-04-19 [WEB-BUYER-CHECKOUT-BOUNCE-001] На `/checkout` юзера выкидывает обратно в корзину через пару секунд
 
 - **Статус:** ✅ Исправлено (19.04.2026, Азим).
