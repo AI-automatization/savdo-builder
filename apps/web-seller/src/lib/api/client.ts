@@ -31,7 +31,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
-    if (error.response?.status !== 401 || original._retry) {
+    const url: string = original?.url ?? '';
+    // Never try to refresh on auth-flow endpoints — refreshing logout/refresh/login
+    // 401s creates infinite loops (logout 401 → refresh 401 → clearTokens →
+    // savdo:auth:expired → logout again → ...).
+    const isAuthEndpoint =
+      url.includes('/auth/logout') ||
+      url.includes('/auth/refresh') ||
+      url.includes('/auth/otp/');
+    if (error.response?.status !== 401 || original._retry || isAuthEndpoint) {
       return Promise.reject(error);
     }
     original._retry = true;

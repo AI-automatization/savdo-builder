@@ -1,5 +1,19 @@
 # Done — Азим + Полат
 
+## 2026-04-19 — Сессия 28 (Азим) — Auth infinite-loop fix (web-seller + web-buyer)
+
+### ✅ [WEB-AUTH-LOGOUT-LOOP-001] Бесконечный цикл `POST /auth/logout 401` после logout
+- **Важность:** 🔴 Блокер. Сотни запросов в секунду, нельзя зайти в seller-аккаунт.
+- **Дата:** 19.04.2026
+- **Файлы:** `apps/web-seller/src/lib/api/client.ts`, `apps/web-seller/src/lib/auth/context.tsx`, `apps/web-buyer/src/lib/api/client.ts`, `apps/web-buyer/src/lib/auth/context.tsx`
+- **Цепочка бага:** Клик «Выйти» → `POST /auth/logout` со старым токеном → 401 → axios interceptor пробует `/auth/refresh` → тоже 401 → `clearTokens()` + dispatchEvent `savdo:auth:expired` → AuthProvider слушает → вызывает `logout()` снова → goto step 1. Console: бесконечно `logout:1 401`.
+- **Что сделано:**
+  1. `client.ts`: interceptor пропускает refresh для `/auth/logout`, `/auth/refresh`, `/auth/otp/*` — рефрешить токен на самом logout-вызове бессмысленно и вызывает loop.
+  2. `context.tsx`: добавлен `localLogout()` — только локальная очистка (`clearTokens` + `setUser(null)` + `queryClient.clear()`), без сетевого `/auth/logout`. `onExpired` handler и mount-`getMe`-catch теперь зовут `localLogout()`, а не полный `logout()`. Цикл разомкнут.
+- **Применено к обоим:** web-seller и web-buyer (один паттерн).
+
+---
+
 ## 2026-04-19 — Сессия 28 (Азим) — Seller order detail crash + cart thumbnail
 
 ### ✅ [WEB-SELLER-ORDER-DETAIL-CRASH-001] Клик по заказу → `Cannot read properties of undefined (reading 'toLocaleString')`

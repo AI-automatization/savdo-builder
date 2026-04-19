@@ -45,6 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [queryClient]);
 
+  // Local-only cleanup — used by the savdo:auth:expired handler so we don't
+  // re-call /auth/logout (which would 401 and re-fire the same event, looping).
+  const localLogout = useCallback(() => {
+    clearTokens();
+    setUser(null);
+    queryClient.clear();
+  }, [queryClient]);
+
   useEffect(() => { logoutRef.current = logout; }, [logout]);
 
   // Refresh user from server on mount (validates token + gets fresh data)
@@ -57,15 +65,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(freshUser);
       })
       .catch(() => {
-        logoutRef.current();
+        // Token is bad — clean local state, no need to call /auth/logout
+        // (which would 401 again and fire savdo:auth:expired in a loop).
+        localLogout();
       });
-  }, []);
+  }, [localLogout]);
 
   useEffect(() => {
-    function onExpired() { logoutRef.current(); }
+    function onExpired() { localLogout(); }
     window.addEventListener('savdo:auth:expired', onExpired);
     return () => window.removeEventListener('savdo:auth:expired', onExpired);
-  }, []);
+  }, [localLogout]);
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>

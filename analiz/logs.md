@@ -19,6 +19,18 @@
 
 ---
 
+## 2026-04-19 [WEB-AUTH-LOGOUT-LOOP-001] Бесконечный `POST /auth/logout 401` после клика «Выйти» — нельзя залогиниться
+
+- **Статус:** ✅ Исправлено (Азим, 19.04.2026, web-seller + web-buyer).
+- **Что случилось:** Азим выходил из seller-аккаунта и пытался залогиниться обратно — выкидывало на регистрацию. В консоли — сотни строк `logout:1 Failed to load resource: 401`.
+- **Корневая причина:** Axios interceptor пытался refresh-нуть токен на 401 от `/auth/logout`. Refresh тоже 401 → `clearTokens` + `savdo:auth:expired` event → AuthProvider слушал и звал `logout()` снова → бесконечный цикл.
+- **Что сделано:**
+  1. `apps/web-seller/src/lib/api/client.ts` и `apps/web-buyer/src/lib/api/client.ts` — interceptor пропускает refresh для `/auth/logout`, `/auth/refresh`, `/auth/otp/*`.
+  2. `context.tsx` (оба app): добавлен `localLogout()` (только локальная очистка). `onExpired` event handler и `getMe` catch теперь зовут `localLogout()`, а не полный `logout()` который опять бил по сети.
+- **Также важно:** **причина первого 401** (почему вообще `logout` падает с 401) — отдельный вопрос для бэка. Скорее всего токен expired или backend не принимает session-id из refresh-token. Это не блокер сейчас, но Полату стоит глянуть. Можно после теста.
+
+---
+
 ## 2026-04-19 [WEB-SELLER-MEDIA-UPLOAD-500-001] `POST /media/upload` 500 → нельзя загрузить картинку товара/лого магазина
 
 - **Статус:** 🔴 Бэкенд-баг (Полат). Фронт корректен. Задача `API-MEDIA-UPLOAD-500-001`.
