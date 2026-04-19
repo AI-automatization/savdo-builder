@@ -117,6 +117,14 @@ export class AuthRepository {
     });
   }
 
+  async ensureBuyerProfile(userId: string): Promise<void> {
+    await this.prisma.buyer.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    });
+  }
+
   async createSession(data: {
     id?: string;
     userId: string;

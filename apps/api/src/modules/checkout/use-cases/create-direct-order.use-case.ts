@@ -7,6 +7,7 @@ import { OrdersGateway } from '../../../socket/orders.gateway';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { CreateDirectOrderDto } from '../dto/create-direct-order.dto';
+import { toNum } from '../../cart/cart.mapper';
 
 function generateOrderNumber(): string {
   const ts = Date.now().toString(36).toUpperCase();
@@ -74,7 +75,7 @@ export class CreateDirectOrderUseCase {
     for (let i = 0; i < dto.items.length; i++) {
       const item = dto.items[i];
       const product = products[i];
-      let unitPrice = Number((product as any).basePrice);
+      let unitPrice = toNum((product as any).basePrice);
       let variantLabel: string | undefined;
 
       if (item.variantId) {
@@ -102,7 +103,7 @@ export class CreateDirectOrderUseCase {
         }
 
         if ((variant as any).priceOverride != null) {
-          unitPrice = Number((variant as any).priceOverride);
+          unitPrice = toNum((variant as any).priceOverride);
         }
         variantLabel = (variant as any).titleOverride ?? undefined;
       }

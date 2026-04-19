@@ -41,6 +41,9 @@ export class VerifyOtpUseCase {
     let user = await this.authRepo.findUserByPhone(phone);
     if (!user) {
       user = (await this.authRepo.createUserWithBuyer({ phone })) as unknown as typeof user;
+    } else if (!user.buyer) {
+      // Пользователь уже есть (SELLER или ghost), но buyer-профиля нет — создаём
+      await this.authRepo.ensureBuyerProfile(user.id);
     }
     // user is guaranteed non-null at this point (created above if missing)
     const resolvedUser = user!;

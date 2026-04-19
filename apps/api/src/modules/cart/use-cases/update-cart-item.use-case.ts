@@ -1,8 +1,8 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
-import { CartRepository } from '../repositories/cart.repository';
+import { CartRepository, CartWithItems } from '../repositories/cart.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
-import { CartItem } from '@prisma/client';
+import { MappedCart, mapCart } from '../cart.mapper';
 
 export interface UpdateCartItemInput {
   itemId: string;
@@ -16,7 +16,7 @@ export class UpdateCartItemUseCase {
 
   constructor(private readonly cartRepo: CartRepository) {}
 
-  async execute(input: UpdateCartItemInput): Promise<CartItem | void> {
+  async execute(input: UpdateCartItemInput): Promise<MappedCart> {
     const item = await this.cartRepo.findItemById(input.itemId);
 
     if (!item) {
@@ -27,7 +27,6 @@ export class UpdateCartItemUseCase {
       );
     }
 
-    // Verify item belongs to this cart
     if (item.cartId !== input.cartId) {
       throw new DomainException(
         ErrorCode.CART_ITEM_NOT_FOUND,
@@ -36,7 +35,6 @@ export class UpdateCartItemUseCase {
       );
     }
 
-    // INV-C02: quantity >= 1 (DTO already validates, double-check)
     if (input.quantity < 1) {
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
@@ -45,6 +43,9 @@ export class UpdateCartItemUseCase {
       );
     }
 
-    return this.cartRepo.updateItemQuantity(input.itemId, input.quantity);
+    await this.cartRepo.updateItemQuantity(input.itemId, input.quantity);
+
+    const updated = await this.cartRepo.findById(item.cartId) as CartWithItems;
+    return mapCart(updated);
   }
 }

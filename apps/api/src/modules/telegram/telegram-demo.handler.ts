@@ -538,7 +538,7 @@ export class TelegramDemoHandler {
     const product = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!product) return;
 
-    const price = `${Number(product.basePrice).toLocaleString('ru')} сум`;
+    const price = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;
     const text = `🛍 <b>${product.title}</b>\n\n${product.description ? `📝 ${product.description}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${store.name}`;
 
     // Deep link: открывает TMA сразу на магазине → startapp=store_{slug}
@@ -744,7 +744,7 @@ export class TelegramDemoHandler {
     });
 
     const productLines = products.length
-      ? products.map((p, i) => `${i + 1}. <b>${p.title}</b> — ${Number(p.basePrice).toLocaleString('ru')} сум`).join('\n')
+      ? products.map((p, i) => `${i + 1}. <b>${p.title}</b> — ${Number(String(p.basePrice ?? 0)).toLocaleString('ru')} сум`).join('\n')
       : '📭 Товаров пока нет';
 
     const tmaUrl = process.env.TMA_URL ?? 'https://savdo.uz';

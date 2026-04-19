@@ -73,7 +73,7 @@ export class ChangeProductStatusUseCase {
     const store = await this.prisma.store.findUnique({ where: { id: product.storeId } });
     if (!store?.telegramChannelId) return;
 
-    const price       = `${Number(product.basePrice).toLocaleString('ru')} сум`;
+    const price       = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
     const tmaUrl      = process.env.TMA_URL ?? '';
     const deepLink    = botUsername && store.slug

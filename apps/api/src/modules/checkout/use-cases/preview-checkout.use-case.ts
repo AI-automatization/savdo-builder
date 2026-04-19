@@ -4,6 +4,7 @@ import { ProductsRepository } from '../../products/repositories/products.reposit
 import { VariantsRepository } from '../../products/repositories/variants.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { toNum } from '../../cart/cart.mapper';
 
 export interface PreviewCheckoutInput {
   buyerId: string;
@@ -12,30 +13,24 @@ export interface PreviewCheckoutInput {
 export interface PreviewItem {
   productId: string;
   variantId: string | null;
-  productTitleSnapshot: string;
-  variantLabelSnapshot: string | null;
+  title: string;
+  variantTitle: string | null;
   skuSnapshot: string | null;
   unitPrice: number;
   quantity: number;
-  lineTotal: number;
-}
-
-export interface InvalidItem {
-  productId: string;
-  variantId: string | null;
-  reason: string;
+  subtotal: number;
 }
 
 export interface CheckoutPreviewResult {
   valid: boolean;
   cartId: string;
   storeId: string;
-  validItems: PreviewItem[];
-  invalidItems: InvalidItem[];
+  items: PreviewItem[];
+  stockWarnings: string[];
   subtotal: number;
   deliveryFee: number;
   total: number;
-  currency: string;
+  currencyCode: string;
 }
 
 @Injectable()
@@ -60,7 +55,7 @@ export class PreviewCheckoutUseCase {
     }
 
     const validItems: PreviewItem[] = [];
-    const invalidItems: InvalidItem[] = [];
+    const invalidItems: Array<{ productId: string; variantId: string | null; reason: string }> = [];
 
     for (const cartItem of cart.items) {
       const product = await this.productsRepo.findById(cartItem.productId);
@@ -83,7 +78,7 @@ export class PreviewCheckoutUseCase {
         continue;
       }
 
-      let unitPrice = Number(cartItem.unitPriceSnapshot);
+      let unitPrice = toNum(cartItem.unitPriceSnapshot);
       let variantLabelSnapshot: string | null = null;
       let skuSnapshot: string | null = null;
       let itemInvalid = false;
@@ -117,7 +112,7 @@ export class PreviewCheckoutUseCase {
             (variant as any).priceOverride !== null &&
             (variant as any).priceOverride !== undefined
           ) {
-            unitPrice = Number((variant as any).priceOverride);
+            unitPrice = toNum((variant as any).priceOverride);
           }
           // Build variant label from option values
           const optionValues = (variant as any).optionValues ?? [];
@@ -137,29 +132,30 @@ export class PreviewCheckoutUseCase {
         validItems.push({
           productId: cartItem.productId,
           variantId: cartItem.variantId ?? null,
-          productTitleSnapshot: (product as any).title,
-          variantLabelSnapshot,
+          title: (product as any).title,
+          variantTitle: variantLabelSnapshot,
           skuSnapshot,
           unitPrice,
           quantity: cartItem.quantity,
-          lineTotal: unitPrice * cartItem.quantity,
+          subtotal: unitPrice * cartItem.quantity,
         });
       }
     }
 
-    const subtotal = validItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const subtotal = validItems.reduce((sum, item) => sum + item.subtotal, 0);
     const deliveryFee = 0; // MVP: always 0, seller-defined later
+    const stockWarnings = invalidItems.map((i) => i.reason);
 
     return {
       valid: invalidItems.length === 0,
       cartId: cart.id,
       storeId: cart.storeId,
-      validItems,
-      invalidItems,
+      items: validItems,
+      stockWarnings,
       subtotal,
       deliveryFee,
       total: subtotal + deliveryFee,
-      currency: cart.currencyCode,
+      currencyCode: cart.currencyCode,
     };
   }
 }

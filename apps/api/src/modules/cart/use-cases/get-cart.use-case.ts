@@ -1,22 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { CartRepository, CartWithItems } from '../repositories/cart.repository';
+import { MappedCart, mapCart, mapEmptyCart } from '../cart.mapper';
 
 export interface GetCartInput {
   buyerId?: string;
   sessionKey?: string;
 }
 
-export interface EmptyCartResult {
-  id: null;
-  storeId: null;
-  items: [];
-}
-
 @Injectable()
 export class GetCartUseCase {
   constructor(private readonly cartRepo: CartRepository) {}
 
-  async execute(input: GetCartInput): Promise<CartWithItems | EmptyCartResult> {
+  async execute(input: GetCartInput): Promise<MappedCart | ReturnType<typeof mapEmptyCart>> {
     let cart: CartWithItems | null = null;
 
     if (input.buyerId) {
@@ -26,9 +21,9 @@ export class GetCartUseCase {
     }
 
     if (!cart) {
-      return { id: null, storeId: null, items: [] };
+      return mapEmptyCart();
     }
 
-    return cart;
+    return mapCart(cart);
   }
 }

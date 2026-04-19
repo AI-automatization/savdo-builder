@@ -9,6 +9,7 @@ import { OrdersGateway } from '../../../socket/orders.gateway';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { DeliveryAddressDto } from '../dto/confirm-checkout.dto';
+import { toNum } from '../../cart/cart.mapper';
 
 export interface ConfirmCheckoutInput {
   buyerId: string;
@@ -115,7 +116,7 @@ export class ConfirmCheckoutUseCase {
         continue;
       }
 
-      let unitPrice = Number(cartItem.unitPriceSnapshot);
+      let unitPrice = toNum(cartItem.unitPriceSnapshot);
       let variantLabelSnapshot: string | undefined;
       let skuSnapshot: string | undefined;
       let itemInvalid = false;
@@ -156,7 +157,7 @@ export class ConfirmCheckoutUseCase {
             (variant as any).priceOverride !== null &&
             (variant as any).priceOverride !== undefined
           ) {
-            unitPrice = Number((variant as any).priceOverride);
+            unitPrice = toNum((variant as any).priceOverride);
           }
           const optionValues = (variant as any).optionValues ?? [];
           if (optionValues.length > 0) {

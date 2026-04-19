@@ -4,7 +4,7 @@ import { ProductsRepository } from '../../products/repositories/products.reposit
 import { VariantsRepository } from '../../products/repositories/variants.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
-import { CartItem } from '@prisma/client';
+import { MappedCart, mapCart, toNum } from '../cart.mapper';
 
 export interface AddToCartInput {
   productId: string;
@@ -24,7 +24,7 @@ export class AddToCartUseCase {
     private readonly variantsRepo: VariantsRepository,
   ) {}
 
-  async execute(input: AddToCartInput): Promise<CartItem> {
+  async execute(input: AddToCartInput): Promise<MappedCart> {
     // INV-C03: product must be ACTIVE
     const product = await this.productsRepo.findById(input.productId);
     if (!product) {
@@ -42,7 +42,7 @@ export class AddToCartUseCase {
       );
     }
 
-    let unitPriceSnapshot = Number((product as any).basePrice);
+    let unitPriceSnapshot = toNum((product as any).basePrice);
     let salePriceSnapshot: number | undefined;
 
     // INV-C03: variant must be active and in stock
@@ -62,14 +62,11 @@ export class AddToCartUseCase {
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
-      if ((variant as any).priceOverride !== null && (variant as any).priceOverride !== undefined) {
-        unitPriceSnapshot = Number((variant as any).priceOverride);
+      if ((variant as any).priceOverride != null) {
+        unitPriceSnapshot = toNum((variant as any).priceOverride);
       }
-      if (
-        (variant as any).salePriceOverride !== null &&
-        (variant as any).salePriceOverride !== undefined
-      ) {
-        salePriceSnapshot = Number((variant as any).salePriceOverride);
+      if ((variant as any).salePriceOverride != null) {
+        salePriceSnapshot = toNum((variant as any).salePriceOverride);
       }
     }
 
@@ -97,16 +94,20 @@ export class AddToCartUseCase {
 
     if (existingItem) {
       const newQty = Math.min(existingItem.quantity + input.quantity, 100);
-      return this.cartRepo.updateItemQuantity(existingItem.id, newQty);
+      await this.cartRepo.updateItemQuantity(existingItem.id, newQty);
+    } else {
+      await this.cartRepo.addItem(cart.id, {
+        productId: input.productId,
+        variantId: input.variantId,
+        quantity: input.quantity,
+        unitPriceSnapshot,
+        salePriceSnapshot,
+      });
     }
 
-    return this.cartRepo.addItem(cart.id, {
-      productId: input.productId,
-      variantId: input.variantId,
-      quantity: input.quantity,
-      unitPriceSnapshot,
-      salePriceSnapshot,
-    });
+    // Reload and return full mapped cart
+    const updated = await this.cartRepo.findById(cart.id) as CartWithItems;
+    return mapCart(updated);
   }
 
   private async getOrCreateCart(
