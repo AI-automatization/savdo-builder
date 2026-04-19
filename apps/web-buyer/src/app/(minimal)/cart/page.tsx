@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart, useUpdateCartItem, useRemoveCartItem } from "@/hooks/use-cart";
@@ -79,6 +80,7 @@ const IcoBack    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 function CartItemRow({ item, storeId, pendingId }: { item: CartItem; storeId: string; pendingId: string | null }) {
   const update = useUpdateCartItem();
   const remove = useRemoveCartItem();
+  const [imgFailed, setImgFailed] = useState(false);
 
   const busy = pendingId === item.id || update.isPending || remove.isPending;
 
@@ -101,13 +103,14 @@ function CartItemRow({ item, storeId, pendingId }: { item: CartItem; storeId: st
         className="w-[62px] h-[62px] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
         style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
       >
-        {item.product.mediaUrl ? (
+        {item.product.mediaUrl && !imgFailed ? (
           <Image
             src={item.product.mediaUrl}
             alt={item.product.title}
             width={62}
             height={62}
             className="w-full h-full object-cover"
+            onError={() => setImgFailed(true)}
           />
         ) : (
           <Package size={24} style={{ color: '#A78BFA' }} />

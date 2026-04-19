@@ -1,5 +1,15 @@
 # Done — Азим + Полат
 
+## 2026-04-19 — Сессия 28 (Азим) — Cart thumbnail fallback
+
+### ✅ [WEB-BUYER-CART-THUMB-001] Сломанная картинка товара + alt-текст вылезает из плейсхолдера в `/cart`
+- **Важность:** 🟡 UI-баг (заметный, не блокер)
+- **Дата:** 19.04.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx`
+- **Что сделано:** `next/image` при 404 рисует системный broken-icon + alt-текст («Белая футболка»), который ломает 62×62 плейсхолдер. Добавил локальный `imgFailed` state в `CartItemRow` + `onError={() => setImgFailed(true)}`. При ошибке падаем на тот же `<Package>` иконку, что и при отсутствии `mediaUrl`.
+
+---
+
 ## 2026-04-19 — Сессия 27 (Азим) — Buyer flow на production: серия каскадных фиксов web-buyer
 
 ### ✅ [WEB-BUYER-CART-CACHE-001] Краш `reading 'reduce'` после «Добавить в корзину»
