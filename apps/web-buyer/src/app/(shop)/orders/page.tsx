@@ -88,7 +88,9 @@ function OrderCard({ order }: { order: OrderListItem }) {
           </span>
         </div>
         <p className="text-xs mt-1 truncate" style={{ color: "rgba(255,255,255,0.40)" }}>
-          {order.deliveryAddress.city}, {order.deliveryAddress.street}
+          {order.deliveryAddress
+            ? `${order.deliveryAddress.city}, ${order.deliveryAddress.street}`
+            : 'Самовывоз'}
         </p>
         <p className="text-sm font-medium mt-1.5" style={{ color: "#A78BFA" }}>
           {fmt(order.totalAmount)} сум
@@ -143,8 +145,8 @@ function OrdersList() {
   const orders = q
     ? accOrders.filter((o) =>
         shortId(o.id).toLowerCase().includes(q) ||
-        o.deliveryAddress.city.toLowerCase().includes(q) ||
-        o.deliveryAddress.street.toLowerCase().includes(q),
+        (o.deliveryAddress?.city?.toLowerCase().includes(q) ?? false) ||
+        (o.deliveryAddress?.street?.toLowerCase().includes(q) ?? false),
       )
     : accOrders;
   const hasMore = data ? page * PAGE_LIMIT < data.meta.total : false;

@@ -10,6 +10,17 @@
 
 ---
 
+## 2026-04-19 [WEB-BUYER-ORDERS-ADDR-GUARD-001] Railway билд web-buyer падает на `order.deliveryAddress.street`
+
+- **Статус:** ✅ Исправлено (19.04.2026, Азим). Следствие `API-ORDER-ADDR-001` — Полат сделал `deliveryAddress?` optional в контракте, web-buyer не был обновлён (в отличие от web-seller, где было сделано в сессии 24 — `SELLER-DASH-GUARD-001`).
+- **Где воспроизводится:** Railway build `savdo-builder-by` → `Failed to type check. ./src/app/(shop)/orders/[id]/page.tsx:277:59 Type error: 'order.deliveryAddress' is possibly 'undefined'.` → билд падает, Docker exit 1.
+- **Что сделано:**
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:277-279` — `order.deliveryAddress?.street ?? '—'` + `order.deliveryAddress?.city ?? '—'` + `order.deliveryAddress?.region && ...`.
+  - `apps/web-buyer/src/app/(shop)/orders/page.tsx:91-93` — тернарник: если `deliveryAddress` есть — `city, street`, иначе `Самовывоз`.
+  - `apps/web-buyer/src/app/(shop)/orders/page.tsx:146-147` — поиск с `?.?.toLowerCase()?.includes(q) ?? false`.
+
+---
+
 ## 2026-04-19 [WEB-BUYER-CART-CACHE-001] Краш `reading 'reduce'` после добавления в корзину (web-buyer, не TMA)
 
 - **Статус:** ✅ Исправлено на фронте (19.04.2026, Азим). Backend-часть → Полату (см. ниже).

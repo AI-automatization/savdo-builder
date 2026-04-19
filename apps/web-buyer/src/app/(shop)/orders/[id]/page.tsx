@@ -274,8 +274,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <span className="mt-0.5 flex-shrink-0" style={{ color: "#A78BFA" }}><IcoPin /></span>
                   <div>
                     <p className="text-[11px] text-white/38 mb-0.5">Адрес доставки</p>
-                    <p className="text-sm text-white/80">{order.deliveryAddress.street}, {order.deliveryAddress.city}</p>
-                    {order.deliveryAddress.region && (
+                    <p className="text-sm text-white/80">{order.deliveryAddress?.street ?? '—'}, {order.deliveryAddress?.city ?? '—'}</p>
+                    {order.deliveryAddress?.region && (
                       <p className="text-xs text-white/40 mt-0.5">{order.deliveryAddress.region}</p>
                     )}
                   </div>
