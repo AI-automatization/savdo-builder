@@ -68,3 +68,9 @@ web-build
 
 # Git worktrees
 .worktrees/
+
+# Superpowers — локальные артефакты skill (brainstorm и т.п.)
+.superpowers/
+
+# Windows bash crash dumps
+*.stackdump
