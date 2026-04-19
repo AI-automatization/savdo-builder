@@ -10,6 +10,27 @@
 
 ---
 
+## 2026-04-19 [WEB-BUYER-CART-CACHE-001] Краш `reading 'reduce'` после добавления в корзину (web-buyer, не TMA)
+
+- **Статус:** ✅ Исправлено на фронте (19.04.2026, Азим). Backend-часть → Полату (см. ниже).
+- **Где воспроизводится:** web-buyer (`savdo-builder-by`) → магазин → «Добавить в корзину» → любая страница с Header крашится → Edge/Chrome рисует generic «This page couldn't load». Визуально выглядит как «баг при переходе на корзину» (скрин `c:/Users/marti/Desktop/photo_2026-04-19_15-39-33.jpg`). В консоли `Uncaught TypeError: Cannot read properties of undefined (reading 'reduce')` + `401 ×2 на /cart/merge`.
+- **Что случилось:** Несовпадение контрактов. Backend `POST /cart/items` (`apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts:27`) и `PATCH /cart/items/:id` (`update-cart-item.use-case.ts:19`) возвращают **одиночный `CartItem`** (prisma-модель) — `{id, cartId, productId, quantity, unitPriceSnapshot, ...}`. Но `packages/types/src/api/cart.ts:22` и `apps/web-buyer/src/lib/api/cart.api.ts:22` декларируют `Promise<Cart>`. `useAddToCart` (`hooks/use-cart.ts:27`) писал этот `CartItem` в кэш `['cart']` через `setQueryData` — кэш испорчен, `cart.items === undefined`. Дальше `Header.tsx:13` с незащищённым `cart?.items.reduce(...)` (`?.` только на `cart`) → `undefined.reduce` → TypeError → unmount дерева. Паттерн идентичен `SELLER-DASH-GUARD-001`.
+- **Что сделано (фронт, Азим):**
+  - `apps/web-buyer/src/hooks/use-cart.ts:27,37` — `setQueryData(CART_KEY, cart)` → `invalidateQueries({ queryKey: CART_KEY })`. Кэш обновляется через `GET /cart` (всегда правильная форма).
+  - `apps/web-buyer/src/components/layout/Header.tsx:13` — `cart?.items?.reduce(...)` (двойной optional chaining, как в `BottomNavBar.tsx:30`).
+- **Что нужно Полату:** `POST /cart/items` и `PATCH /cart/items/:id` должны возвращать полный `Cart` (с items + totalAmount), а не голый `CartItem` — контракт в `packages/types/src/api/cart.ts:22` уже это обещает. Сейчас бэк врёт форме, фронт вынужден делать лишний GET. Это backend-bug.
+
+---
+
+## 2026-04-19 [API-CART-MERGE-401-001] `POST /cart/merge` 401 после логина покупателя
+
+- **Статус:** 🟡 Наблюдение (19.04.2026). Нужна backend-диагностика от Полата.
+- **Где воспроизводится:** web-buyer → OTP-логин покупателя → `auth/context.tsx:46` дёргает `mergeCart({ sessionKey })` → `POST /api/v1/cart/merge` → **401** дважды (второй — через refresh-interceptor). Ошибка ловится `try/catch`, UI не падает, но гостевая корзина не сливается в авторизованную, `sessionToken` не очищается.
+- **Возможные причины:** В `cart.controller.ts:161-168` `mergeGuestCart` явно кидает 401 если `buyerRepo.findByUserId(user.sub)` возвращает null. То есть: у юзера есть валидный JWT, но нет Buyer-записи в БД. Либо buyer-профиль не создаётся при OTP-регистрации покупателя, либо удаляется где-то.
+- **Что нужно Полату:** Посмотреть Railway-логи `/cart/merge` за 2026-04-19, проверить use-case OTP-верификации для role=BUYER — создаётся ли `Buyer` через `buyerRepo.create(...)` параллельно с `User`.
+
+---
+
 ## 2026-04-18 [TMA-STOCK-INPUT-001] Leading `0` не уходит из input остатка в AddProduct/EditProduct
 
 - **Статус:** ✅ Исправлено (18.04.2026, Азим)

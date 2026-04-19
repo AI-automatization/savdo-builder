@@ -10,7 +10,7 @@ export default function Header() {
   const slug = params?.slug as string | undefined;
   const { data: unreadCount = 0 } = useUnreadCount();
   const { data: cart } = useCart();
-  const cartCount = cart?.items.reduce((s, i) => s + i.quantity, 0) ?? 0;
+  const cartCount = cart?.items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
 
   return (
     <header
