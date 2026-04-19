@@ -10,6 +10,26 @@
 
 ---
 
+## 🔴 [API-CART-MEDIA-001] `cart.mapper.ts` отдаёт сырой `mediaId` в поле `mediaUrl` — все картинки в корзине 404
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🔴 Видимая регрессия. После твоего коммита `5ca0666` (новый `cart.mapper.ts`) в корзине у всех товаров вместо фото — placeholder-иконка. Раньше фотки рендерились.
+- **Файлы:** `apps/api/src/modules/cart/cart.mapper.ts:57`, `apps/api/src/modules/cart/repositories/cart.repository.ts`
+- **Root cause:** `cart.mapper.ts:57` пишет `mediaUrl: product?.images?.[0]?.mediaId ?? null`. `mediaId` — это UUID FK на `MediaFile` (см. `packages/db/prisma/schema.prisma:407-420`), а не URL. Браузер шлёт GET на строку UUID → 404 → фронт показывает fallback-иконку.
+- **Как должно быть:** использовать тот же helper что в `products.controller.ts:540` `resolveImageUrl(media)`:
+  ```ts
+  // для telegram bucket
+  return `${APP_URL}/api/v1/media/proxy/${m.id}`;
+  // для r2
+  return `${STORAGE_PUBLIC_URL}/${m.objectKey}`;
+  ```
+- **Что нужно:**
+  1. В `cart.repository.ts` (метод что грузит cart) добавить `include: { product: { include: { images: { include: { media: true }, orderBy: { sortOrder: 'asc' }, take: 1 } } } }`.
+  2. В `cart.mapper.ts:57` собрать URL из `product.images[0].media` (logic выделить в shared `resolveMediaUrl(media)` чтобы не дублировать с `products.controller`).
+  3. Проверить в DevTools Network → `GET /cart` → response → `items[].product.mediaUrl` должно быть `https://...up.railway.app/api/v1/media/proxy/<uuid>` или R2-ссылкой, а не голым UUID.
+
+---
+
 ## 🟡 [API-BUYER-AVATAR-001] Buyer profile avatar — нет схемы / endpoint / поля в `auth/me`
 - **Домен:** `apps/api`, `packages/db`, `packages/types`
 - **Кто взял:** Полат

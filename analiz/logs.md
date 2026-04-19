@@ -21,9 +21,10 @@
 
 ## 2026-04-19 [WEB-BUYER-CART-THUMB-001] Картинка товара 404 + alt-текст вылезает из 62×62 плейсхолдера в `/cart`
 
-- **Статус:** ✅ Исправлено (Азим, 19.04.2026, фронт).
-- **Что случилось:** В корзине при сломанной `mediaUrl` (404 на `/api/v1/media/proxy/...`) `next/image` рендерил системный broken-icon + alt-текст («Белая футболка»). Текст вылезал из 62×62 плейсхолдера и ломал layout строки.
-- **Что сделано:** В `apps/web-buyer/src/app/(minimal)/cart/page.tsx` добавлен локальный state `imgFailed` + `onError={() => setImgFailed(true)}`. При ошибке загрузки рендерим тот же `<Package>` placeholder что и при пустой `mediaUrl`. **Корневая причина (404 на media)** — отдельный вопрос: либо просрочка прокси-токена Telegram, либо отсутствие fallback в `media-proxy` — потенциальная задача для Полата, но репорт не подтверждён.
+- **Статус:** ✅ Frontend защищён (Азим, 19.04.2026). 🔴 Корневая причина — баг бэка, задача `API-CART-MEDIA-001` для Полата.
+- **Что случилось:** В корзине при сломанной `mediaUrl` `next/image` рендерил системный broken-icon + alt-текст («Белая футболка»). Текст вылезал из 62×62 плейсхолдера и ломал layout строки.
+- **Что сделано (фронт):** В `apps/web-buyer/src/app/(minimal)/cart/page.tsx` добавлен локальный state `imgFailed` + `onError={() => setImgFailed(true)}`. При ошибке загрузки рендерим тот же `<Package>` placeholder что и при пустой `mediaUrl`.
+- **Корневая причина (бэк) — найдена 19.04.2026:** в новом `apps/api/src/modules/cart/cart.mapper.ts:57` (commit `5ca0666` Полата) поле `mediaUrl` заполняется голым `mediaId` (UUID), а не URL. Браузер делает `GET /<uuid>` → 404 → срабатывает мой fallback. До этого коммита фотки в корзине показывались. Задача `API-CART-MEDIA-001` (использовать `resolveImageUrl(media)` как в `products.controller.ts:540`) — заведена в `analiz/tasks.md`.
 
 ---
 
