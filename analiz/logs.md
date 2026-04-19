@@ -10,6 +10,38 @@
 
 ---
 
+## 2026-04-19 [API-CART-CONTRACT-MISMATCH-001] Бэкенд `/cart` отдаёт prisma-сырец вместо обещанного типа `Cart`
+
+- **Статус:** 🔴 Баг на бэкенде (Полат). Фронт зашит defensive-fallback'ами (см. `WEB-BUYER-CART-RENDER-002`), но это костыль.
+- **Где воспроизводится:** web-buyer `/cart`, чёрный экран + консоль `Uncaught TypeError: Cannot read properties of undefined (reading 'toLocaleString')` → `fmt(undefined)`.
+- **Контракт в `packages/types/src/api/cart.ts`:**
+  - `Cart.totalAmount: number`, `Cart.currencyCode: string`
+  - `CartItem.unitPrice: number`, `CartItem.subtotal: number`
+  - `CartItem.product: ProductRef` (c mediaUrl, title)
+- **Что возвращает бэк (`apps/api/src/modules/cart/repositories/cart.repository.ts` + `use-cases/get-cart.use-case.ts`):**
+  - сырой `prisma.cart.findFirst({ include: { items: { include: { product, variant }}}})` — то есть `totalAmount`/`currencyCode` **не вычисляются и не возвращаются**.
+  - Items содержат `unitPriceSnapshot: Decimal` (prisma Decimal, не number!), `subtotal` **нет вовсе**.
+  - `product.images[0].mediaId` вместо `product.mediaUrl` / полноценного URL.
+- **Что нужно Полату:** добавить mapper в `get-cart.use-case.ts` (и `add-to-cart`/`update-cart-item`) который:
+  1. Пересчитывает `unitPrice = Number(item.salePriceSnapshot ?? item.unitPriceSnapshot)` и `subtotal = unitPrice * quantity`.
+  2. Считает `totalAmount = sum(items.subtotal)` + устанавливает `currencyCode` ('UZS').
+  3. Мапит `product.images[0]` через storage в полный URL (`mediaUrl`).
+  4. Возвращать полный `Cart` (а не `CartItem`) из POST/PATCH `/cart/items` — см. `WEB-BUYER-CART-CACHE-001`.
+
+---
+
+## 2026-04-19 [WEB-BUYER-CART-RENDER-002] `fmt(undefined)` на `/cart` после первого добавления — чёрный экран
+
+- **Статус:** ✅ Костыль-фикс на фронте (19.04.2026, Азим). Реальный фикс — бэкенд (`API-CART-CONTRACT-MISMATCH-001`).
+- **Где воспроизводится:** web-buyer → добавить товар → `/cart` → консоль `Cannot read properties of undefined (reading 'toLocaleString')` → React unmount → generic Chromium error page.
+- **Что случилось:** После исправления `WEB-BUYER-CART-CACHE-001` кэш перечитывается через `GET /cart`, но бэкенд возвращает сырой prisma-cart без `totalAmount`/`unitPrice`/`subtotal` (см. выше). `fmt(cart.totalAmount)` и `fmt(item.unitPrice)` ломались на `undefined.toLocaleString`.
+- **Что сделано:**
+  - `apps/web-buyer/src/app/(minimal)/cart/page.tsx:36-40` — `fmt(n)` теперь `(typeof n === "number" ? n : Number(n) || 0).toLocaleString(...)`. Добавлен `itemSubtotal(i)` — fallback через `unitPrice * quantity` если `subtotal` нет.
+  - `cart/page.tsx:158-162` — `totalAmount` вычисляется на клиенте из items если бэк не прислал.
+  - Все `fmt(cart!.totalAmount)` → `fmt(totalAmount)` (4 места).
+
+---
+
 ## 2026-04-19 [WEB-BUYER-ORDERS-ADDR-GUARD-001] Railway билд web-buyer падает на `order.deliveryAddress.street`
 
 - **Статус:** ✅ Исправлено (19.04.2026, Азим). Следствие `API-ORDER-ADDR-001` — Полат сделал `deliveryAddress?` optional в контракте, web-buyer не был обновлён (в отличие от web-seller, где было сделано в сессии 24 — `SELLER-DASH-GUARD-001`).

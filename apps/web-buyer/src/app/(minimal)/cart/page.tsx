@@ -33,7 +33,11 @@ const glassDim = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const fmt = (n: number) => n.toLocaleString("ru-RU");
+const fmt = (n: number | null | undefined) => (typeof n === "number" ? n : Number(n) || 0).toLocaleString("ru-RU");
+const itemSubtotal = (i: CartItem) =>
+  typeof i.subtotal === "number"
+    ? i.subtotal
+    : (Number(i.unitPrice) || 0) * (i.quantity || 0);
 const plural = (n: number) => n === 1 ? "товар" : n < 5 ? "товара" : "товаров";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
@@ -150,6 +154,10 @@ export default function CartPage() {
 
   const items = cart?.items ?? [];
   const totalQty = items.reduce((s, it) => s + it.quantity, 0);
+  const totalAmount =
+    typeof cart?.totalAmount === "number"
+      ? cart.totalAmount
+      : items.reduce((s, it) => s + itemSubtotal(it), 0);
 
 
   return (
@@ -227,7 +235,7 @@ export default function CartPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span style={{ color: "rgba(255,255,255,0.55)" }}>Товары ({totalQty})</span>
-                  <span style={{ color: "rgba(255,255,255,0.75)" }}>{fmt(cart!.totalAmount)} сум</span>
+                  <span style={{ color: "rgba(255,255,255,0.75)" }}>{fmt(totalAmount)} сум</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span style={{ color: "rgba(255,255,255,0.55)" }}>Доставка</span>
@@ -236,7 +244,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between items-center mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.09)" }}>
                 <span className="text-base font-semibold text-white">Товары</span>
-                <span className="text-base font-bold" style={{ color: "#A78BFA" }}>{fmt(cart!.totalAmount)} сум</span>
+                <span className="text-base font-bold" style={{ color: "#A78BFA" }}>{fmt(totalAmount)} сум</span>
               </div>
             </div>
           </>
@@ -252,7 +260,7 @@ export default function CartPage() {
               className="w-full py-4 rounded-2xl text-[15px] font-semibold text-white tracking-wide active:scale-[0.98] transition-transform flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,0.38)" }}
             >
-              Оформить заказ · {fmt(cart!.totalAmount)} сум
+              Оформить заказ · {fmt(totalAmount)} сум
             </Link>
           </div>
         </div>
