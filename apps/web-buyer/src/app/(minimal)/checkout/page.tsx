@@ -323,7 +323,7 @@ export default function CheckoutPage() {
     (mode === "pickup" || (street.trim() !== "" && city.trim() !== ""));
 
   async function handleConfirm() {
-    if (!canSubmit || !preview.data) return;
+    if (!canSubmit) return;
     setApiError(undefined);
     try {
       const order = await confirm.mutateAsync({
@@ -333,11 +333,15 @@ export default function CheckoutPage() {
         buyerNote: note || undefined,
         deliveryFee,
       });
-      track.orderCreated(preview.data.storeId, order.id, order.totalAmount, "COD");
+      const storeId = previewData?.storeId ?? cart?.storeId ?? "";
+      if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, "COD");
       router.replace(`/orders/${order.id}`);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
       setApiError(err?.response?.data?.message ?? "Не удалось оформить заказ. Попробуйте ещё раз.");
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      }
     }
   }
 
