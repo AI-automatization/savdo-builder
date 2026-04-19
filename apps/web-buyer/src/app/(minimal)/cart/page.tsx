@@ -34,10 +34,18 @@ const glassDim = {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const fmt = (n: number | null | undefined) => (typeof n === "number" ? n : Number(n) || 0).toLocaleString("ru-RU");
+const itemUnitPrice = (i: CartItem) => {
+  const raw = i as unknown as {
+    unitPrice?: number | string;
+    salePriceSnapshot?: number | string | null;
+    unitPriceSnapshot?: number | string | null;
+  };
+  return Number(raw.unitPrice ?? raw.salePriceSnapshot ?? raw.unitPriceSnapshot ?? 0) || 0;
+};
 const itemSubtotal = (i: CartItem) =>
   typeof i.subtotal === "number"
     ? i.subtotal
-    : (Number(i.unitPrice) || 0) * (i.quantity || 0);
+    : itemUnitPrice(i) * (i.quantity || 0);
 const plural = (n: number) => n === 1 ? "товар" : n < 5 ? "товара" : "товаров";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
@@ -99,7 +107,7 @@ function CartItemRow({ item, storeId, pendingId }: { item: CartItem; storeId: st
           </p>
         )}
         <span className="text-sm font-semibold" style={{ color: "#A78BFA" }}>
-          {fmt(item.unitPrice)} сум
+          {fmt(itemUnitPrice(item))} сум
         </span>
       </div>
 
