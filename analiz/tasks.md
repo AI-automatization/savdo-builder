@@ -1,12 +1,29 @@
-# Tasks — Полат
+# Tasks
 
-Домен: `apps/api`, `packages/db`, `packages/types`, `apps/admin`, `apps/mobile-buyer`, `apps/mobile-seller`
-
-> ⚠️ Admin panel передана Полату (ранее Яхьо). Яхьо больше не работает над `apps/admin`.
-
-> ADM Phase A (ADM-001..008) — выполнено 01.04.2026, перенесено в `done.md`
+> Раздел сверху — что делать **Полату** (бэк), ниже — что делать **Азиму** (фронт).
+> Закрытые задачи переносятся в `analiz/done.md`.
 
 ---
+
+# 📋 Снимок состояния (на 19.04.2026, конец сессии 28)
+
+## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
+
+| ID | Важность | Кратко |
+|----|----------|--------|
+| `API-MEDIA-UPLOAD-500-001` | 🔴 | `POST /media/upload` отдаёт 500 — нельзя загрузить фото товара/лого/баннер. Смотреть Railway logs. |
+| `API-CART-MEDIA-001` | 🔴 | `cart.mapper.ts:57` отдаёт `mediaId` (UUID) в поле `mediaUrl` → все картинки в корзине 404 → иконка-заглушка. |
+| `API-SELLER-ORDER-DETAIL-MAPPER-001` | 🟡 | `GET /seller/orders/:id` без mapper — числа undefined. Фронт уже защищён, но цены = 0 пока бэк не сделает mapper. |
+| `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Азим прикрутит UI. |
+| **Auth-стор**ия | 🟡 | Почему `/auth/logout` отдаёт 401 при первом же выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — глянуть JWT-валидацию / session-id из refresh-token. Не блокер пока, но мутный auth. |
+
+## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
+
+| ID | Важность | Кратко |
+|----|----------|--------|
+| `WEB-BUYER-AVATAR-UI-001` | 🟢 | Когда Полат закроет `API-BUYER-AVATAR-001` — на `/profile` повесить `<Image>` + `<input type=file>`, инвалидировать `['auth','me']`. |
+| Тест auth-loop фикса | 🟡 | Завтра проверить: после `00a5b80` (logout-loop break) — выход/вход чистый, без петли. Если всё ещё кидает на `/onboarding` — снять Network на `/auth/otp/verify` и `/seller/store`. |
+| Подтвердить причину `/notifications` ошибки | 🟢 | Открыть Network, глянуть статус `/notifications/inbox`. 401 = часть auth-серии (Полат), 404/500 = отдельная задача. |
 
 ---
 
