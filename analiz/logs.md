@@ -10,6 +10,17 @@
 
 ---
 
+## 2026-04-21 [WEB-BUYER-CHECKOUT-REDIRECT-FAIL-001] После `Оформить заказ` → редирект на `/orders/{id}` показывает «Не удалось загрузить заказ»
+
+- **Статус:** 🟡 Симптом замаскирован на фронте (Азим, 21.04.2026, коммит `b937573`). Корень — `API-BUYER-ORDER-DETAIL-MAPPER-001` (Полат).
+- **Где воспроизводится:** web-buyer → корзина → «Оформить заказ» → форма → «Подтвердить заказ». POST `/checkout/confirm` возвращает 200 c валидным `Order.id`. Затем `router.replace('/orders/{id}')`. Скриншот: `c:/Users/marti/Desktop/Снимок экрана 2026-04-21 002439.png` — шапка «Заказ #…», Frown-иконка, «Не удалось загрузить заказ», «← Назад к заказам».
+- **Что случилось:** `useOrder(id)` делает `GET /buyer/orders/{id}` сразу после создания. Этот запрос возвращает не-2xx (точная причина требует Network-скрина; вероятные — 401 из auth-серии, 404 или 500 из-за отсутствующего mapper/store include). `useQuery.isError = true` → рендерится error-state.
+- **Что сделано (фронт):** `apps/web-buyer/src/hooks/use-checkout.ts` — `useConfirmCheckout.onSuccess` кладёт полученный Order в `queryClient.setQueryData(orderKeys.detail(order.id), order)`. Invalidate сужен до `['orders', 'list']` чтобы prepopulated detail не стирался. Благодаря `staleTime: 2 мин` в `useOrder(id)`, страница сразу после checkout рендерит order из кэша, не делает GET.
+- **Что не решено:** Если зайти в этот заказ позже (из списка, через refresh страницы, из истории) — `useOrder(id)` выполнит GET и снова покажет error-state. Полный фикс — `API-BUYER-ORDER-DETAIL-MAPPER-001` (общий mapper + `include: store`).
+- **Диагностика для Полата:** Открыть Railway logs, сделать тестовый заказ, поймать трейс `GET /buyer/orders/{id}` сразу после `POST /checkout/confirm`. Точный статус (401/404/500) покажет какую из ветвей чинить в первую очередь.
+
+---
+
 ## 2026-04-21 [AUDIT-SESSION-30] Полный аудит web-buyer + web-seller — найдено 8 проблем, 7 исправлено на фронте
 
 - **Статус:** ✅ Фронт починен (Азим, 21.04.2026). 1 осталось на Полате.
