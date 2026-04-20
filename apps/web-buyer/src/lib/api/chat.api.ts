@@ -1,8 +1,13 @@
-import type { ChatThread, MessagesResponse, SendMessageRequest } from 'types';
+import type { ChatThread, MessagesResponse, SendMessageRequest, CreateThreadRequest } from 'types';
 import { apiClient } from './client';
 
 export async function getThreads(): Promise<ChatThread[]> {
   const res = await apiClient.get<ChatThread[]>('/chat/threads');
+  return res.data;
+}
+
+export async function createThread(data: CreateThreadRequest): Promise<ChatThread> {
+  const res = await apiClient.post<ChatThread>('/chat/threads', data);
   return res.data;
 }
 

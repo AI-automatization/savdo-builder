@@ -9,7 +9,9 @@ import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus } from "types";
 import { track } from "@/lib/analytics";
-import { Search, ShoppingBag, Share2, Check } from "lucide-react";
+import { Search, ShoppingBag, Share2, Check, MessageSquare } from "lucide-react";
+import { ThreadType } from "types";
+import ChatComposerModal from "@/components/chat/ChatComposerModal";
 
 const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
 import {
@@ -77,6 +79,7 @@ export default function ProductPage() {
   const [selection, setSelection] = useState<OptionSelection>({});
   const [added, setAdded] = useState(false);
   const [shared, setShared] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   function handleShare() {
     const url = `https://t.me/${BOT_USERNAME}?startapp=product_${id}`;
@@ -387,6 +390,21 @@ export default function ProductPage() {
             {isLoading ? "Загрузка..." : isOutOfStock ? "Нет в наличии" : requiresVariantSelection ? "Выберите вариант" : added ? "Добавлено ✓" : "В корзину"}
           </button>
 
+          {product && (
+            <button
+              onClick={() => {
+                track.chatStarted(product.storeId, "product");
+                setChatOpen(true);
+              }}
+              aria-label="Чат с продавцом"
+              title="Чат с продавцом"
+              className="w-14 flex items-center justify-center rounded-2xl text-white transition-opacity hover:opacity-85 active:scale-[0.97]"
+              style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 24px rgba(167,139,250,.30)" }}
+            >
+              <MessageSquare size={20} />
+            </button>
+          )}
+
           {product?.store?.telegramContactLink && (
             <a
               href={product.store.telegramContactLink}
@@ -403,6 +421,15 @@ export default function ProductPage() {
           )}
         </div>
       </div>
+      )}
+
+      {chatOpen && product && (
+        <ChatComposerModal
+          contextType={ThreadType.PRODUCT}
+          contextId={product.id}
+          title={product.title}
+          onClose={() => setChatOpen(false)}
+        />
       )}
 
       {/* ── Bottom navigation ── */}

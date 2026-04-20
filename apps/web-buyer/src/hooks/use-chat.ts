@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { SendMessageRequest } from 'types';
-import { getThreads, getMessages, sendMessage } from '../lib/api/chat.api';
+import type { SendMessageRequest, CreateThreadRequest } from 'types';
+import { getThreads, getMessages, sendMessage, createThread } from '../lib/api/chat.api';
 import { getSocket } from '../lib/socket';
 
 export const chatKeys = {
@@ -50,6 +50,16 @@ export function useChatSocket(threadId: string | null) {
       socket.off('chat:message', onMessage);
     };
   }, [threadId, queryClient]);
+}
+
+export function useCreateThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateThreadRequest) => createThread(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.threads });
+    },
+  });
 }
 
 export function useSendMessage(threadId: string) {

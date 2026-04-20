@@ -3,12 +3,13 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
-import { OrderStatus, DeliveryType } from "types";
+import { OrderStatus, DeliveryType, ThreadType } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
 import { useBuyerSocket } from "@/hooks/use-buyer-socket";
 import { track } from "@/lib/analytics";
-import { CheckCircle, Truck, Package, Frown } from "lucide-react";
+import { CheckCircle, Truck, Package, Frown, MessageSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import ChatComposerModal from "@/components/chat/ChatComposerModal";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -174,6 +175,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const cancelOrder = useCancelOrder();
   useBuyerSocket();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const order = rawOrder ? normalizeOrder(rawOrder) : null;
 
@@ -377,17 +379,30 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {order && !isCancelled && (
         <div className="fixed left-0 right-0 px-4" style={{ bottom: 76, zIndex: 50 }}>
           <div className="max-w-md mx-auto flex flex-col gap-2.5">
+            <button
+              onClick={() => {
+                track.chatStarted(order.storeId, "order");
+                setChatOpen(true);
+              }}
+              className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,.38)" }}
+            >
+              <MessageSquare size={18} />
+              Чат по заказу
+            </button>
             {order.store?.telegramContactLink && (
               <a
                 href={order.store.telegramContactLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => track.chatStarted(order.storeId, "order")}
-                className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-                style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,.38)" }}
+                className="w-full py-2.5 rounded-2xl text-sm font-medium tracking-wide flex items-center justify-center gap-2 transition-opacity hover:opacity-85"
+                style={{ background: "rgba(42,171,238,.14)", color: "rgba(42,171,238,.95)", border: "1px solid rgba(42,171,238,.28)" }}
               >
-                <IcoMsg />
-                Написать продавцу
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
+                </svg>
+                Открыть Telegram
               </a>
             )}
             {canCancel && !confirmCancel && (
@@ -426,6 +441,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
       <BottomNavBar active="orders" />
+
+      {chatOpen && order && (
+        <ChatComposerModal
+          contextType={ThreadType.ORDER}
+          contextId={order.id}
+          title={`Заказ #${shortId(order.id)}`}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>
   );
 }
