@@ -4,7 +4,6 @@ import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { glass } from '@/lib/styles';
 
