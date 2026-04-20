@@ -18,6 +18,12 @@ import {
 } from '@/lib/variants';
 import { getCart, saveCart, isSameStore } from '@/lib/cart';
 
+interface ProductAttribute {
+  id: string;
+  name: string;
+  value: string;
+}
+
 interface Product {
   id: string;
   storeId: string;
@@ -27,6 +33,7 @@ interface Product {
   mediaUrls: string[];
   variants?: VariantMin[];
   optionGroups?: OptionGroupMin[];
+  attributes?: ProductAttribute[];
   store?: { name: string; slug: string };
 }
 
@@ -317,6 +324,22 @@ export default function ProductPage() {
             <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.70)' }}>
               {product.description}
             </p>
+          </GlassCard>
+        )}
+
+        {/* Attributes / Characteristics */}
+        {(product.attributes ?? []).length > 0 && (
+          <GlassCard className="p-4 flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Характеристики
+            </p>
+            {(product.attributes ?? []).map((a) => (
+              <div key={a.id} className="flex items-baseline justify-between gap-2">
+                <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>{a.name}</span>
+                <span className="flex-1 border-b border-dashed" style={{ borderColor: 'rgba(255,255,255,0.10)' }} />
+                <span className="text-xs font-medium shrink-0" style={{ color: 'rgba(255,255,255,0.80)' }}>{a.value}</span>
+              </div>
+            ))}
           </GlassCard>
         )}
 

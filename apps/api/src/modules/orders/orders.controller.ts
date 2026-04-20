@@ -25,6 +25,7 @@ import { GetBuyerOrdersUseCase } from './use-cases/get-buyer-orders.use-case';
 import { GetSellerOrdersUseCase } from './use-cases/get-seller-orders.use-case';
 import { GetOrderDetailUseCase } from './use-cases/get-order-detail.use-case';
 import { UpdateOrderStatusUseCase } from './use-cases/update-order-status.use-case';
+import { toNum } from '../cart/cart.mapper';
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -141,11 +142,39 @@ export class OrdersController {
     const storeId = await this.resolveStoreId(user.sub);
     const order = await this.getOrderDetailUseCase.execute({ orderId, storeId });
 
-    // Flatten buyer.user.phone → buyer.phone for frontend
-    const { buyer, ...rest } = order as any;
+    const o = order as any;
     return {
-      ...rest,
-      buyer: buyer ? { phone: buyer.user?.phone ?? null } : null,
+      id: o.id,
+      orderNumber: o.orderNumber,
+      status: o.status,
+      placedAt: o.placedAt,
+      updatedAt: o.updatedAt,
+      storeId: o.storeId,
+      buyerId: o.buyerId,
+      totalAmount: toNum(o.totalAmount),
+      subtotalAmount: toNum(o.subtotalAmount),
+      deliveryFeeAmount: toNum(o.deliveryFeeAmount),
+      currencyCode: o.currencyCode ?? 'UZS',
+      customerFullName: o.customerFullName ?? null,
+      customerPhone: o.customerPhone ?? null,
+      customerComment: o.customerComment ?? null,
+      city: o.city ?? null,
+      region: o.region ?? null,
+      addressLine1: o.addressLine1 ?? null,
+      paymentMethod: o.paymentMethod ?? null,
+      paymentStatus: o.paymentStatus ?? null,
+      items: (o.items ?? []).map((i: any) => ({
+        id: i.id,
+        productId: i.productId,
+        variantId: i.variantId ?? null,
+        title: i.productTitleSnapshot ?? '',
+        variantTitle: i.variantLabelSnapshot ?? null,
+        sku: i.skuSnapshot ?? null,
+        quantity: i.quantity,
+        unitPrice: toNum(i.unitPriceSnapshot),
+        subtotal: toNum(i.lineTotalAmount),
+      })),
+      buyer: o.buyer ? { phone: o.buyer.user?.phone ?? null } : null,
     };
   }
 

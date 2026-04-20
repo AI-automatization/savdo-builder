@@ -413,6 +413,70 @@ export class ProductsController {
     await this.prisma.productImage.deleteMany({ where: { id: imageId, productId } });
   }
 
+  // ─── Product Attributes ──────────────────────────────────────────────────
+
+  @Get('seller/products/:id/attributes')
+  @UseGuards(JwtAuthGuard)
+  async listProductAttributes(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    return this.prisma.productAttribute.findMany({
+      where: { productId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  @Post('seller/products/:id/attributes')
+  @UseGuards(JwtAuthGuard)
+  async addProductAttribute(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Body() body: { name: string; value: string; sortOrder?: number },
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    return this.prisma.productAttribute.create({
+      data: {
+        productId,
+        name: body.name,
+        value: body.value,
+        sortOrder: body.sortOrder ?? 0,
+      },
+    });
+  }
+
+  @Patch('seller/products/:id/attributes/:attrId')
+  @UseGuards(JwtAuthGuard)
+  async updateProductAttribute(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('attrId') attrId: string,
+    @Body() body: { name?: string; value?: string; sortOrder?: number },
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    return this.prisma.productAttribute.update({
+      where: { id: attrId },
+      data: { ...body },
+    });
+  }
+
+  @Delete('seller/products/:id/attributes/:attrId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteProductAttribute(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('attrId') attrId: string,
+  ): Promise<void> {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+    await this.prisma.productAttribute.deleteMany({ where: { id: attrId, productId } });
+  }
+
   // ─── Storefront routes (public) ──────────────────────────────────────────
 
   @Get('storefront/stores')

@@ -24,7 +24,7 @@ const CART_ITEMS_INCLUDE = {
           storeId: true,
           images: {
             where: { isPrimary: true },
-            select: { mediaId: true },
+            include: { media: true },
             take: 1,
           },
         },

@@ -1,4 +1,4 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { MediaVisibility } from '@prisma/client';
 import { TelegramStorageService } from '../services/telegram-storage.service';
 import { MediaRepository } from '../repositories/media.repository';
@@ -21,6 +21,8 @@ export interface UploadedFile {
 
 @Injectable()
 export class UploadDirectUseCase {
+  private readonly logger = new Logger(UploadDirectUseCase.name);
+
   constructor(
     private readonly tgStorage: TelegramStorageService,
     private readonly mediaRepo: MediaRepository,
@@ -59,11 +61,17 @@ export class UploadDirectUseCase {
       );
     }
 
-    const fileId = await this.tgStorage.uploadFile(
-      file.buffer,
-      file.originalname,
-      file.mimetype,
-    );
+    let fileId: string;
+    try {
+      fileId = await this.tgStorage.uploadFile(file.buffer, file.originalname, file.mimetype);
+    } catch (err: unknown) {
+      this.logger.error('Telegram upload failed', err instanceof Error ? err.stack : err);
+      throw new DomainException(
+        ErrorCode.MEDIA_UPLOAD_FAILED,
+        'File upload failed — storage unavailable',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
 
     const mediaFile = await this.mediaRepo.create({
       ownerUserId: userId,

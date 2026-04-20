@@ -18,6 +18,17 @@ interface StoreCategory {
   name: string;
 }
 
+interface GlobalCategory {
+  id: string;
+  nameRu: string;
+}
+
+interface AttrRow {
+  id: string;
+  name: string;
+  value: string;
+}
+
 function slugify(text: string) {
   return text.trim().toUpperCase().replace(/[^A-ZА-ЯЁ0-9]/gi, '-').slice(0, 20);
 }
@@ -50,8 +61,13 @@ export default function AddProductPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // Категории
-  const [categories, setCategories]       = useState<StoreCategory[]>([]);
+  const [categories, setCategories]           = useState<StoreCategory[]>([]);
   const [storeCategoryId, setStoreCategoryId] = useState<string>('');
+  const [globalCategories, setGlobalCategories]   = useState<GlobalCategory[]>([]);
+  const [globalCategoryId, setGlobalCategoryId]   = useState<string>('');
+  const [attrs, setAttrs] = useState<AttrRow[]>([]);
+  const [attrName, setAttrName] = useState('');
+  const [attrValue, setAttrValue] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
@@ -64,6 +80,7 @@ export default function AddProductPage() {
 
   useEffect(() => {
     api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
+    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
   }, []);
 
   const inputStyle = {
@@ -157,6 +174,7 @@ export default function AddProductPage() {
           description: description.trim() || null,
           basePrice: Number(price),
           ...(storeCategoryId ? { storeCategoryId } : {}),
+          ...(globalCategoryId ? { globalCategoryId } : {}),
         },
       });
       const pid = product.id;
@@ -194,7 +212,18 @@ export default function AddProductPage() {
         });
       }
 
-      // 3. Загрузить фото если выбрано (отдельный try — ошибка фото не отменяет товар)
+      // 3. Сохранить атрибуты
+      for (let i = 0; i < attrs.length; i++) {
+        const a = attrs[i];
+        if (a.name.trim() && a.value.trim()) {
+          await api(`/seller/products/${pid}/attributes`, {
+            method: 'POST',
+            body: { name: a.name.trim(), value: a.value.trim(), sortOrder: i },
+          }).catch(() => {});
+        }
+      }
+
+      // 4. Загрузить фото если выбрано (отдельный try — ошибка фото не отменяет товар)
       if (photoFile) {
         try {
           await uploadPhotoForProduct(pid, photoFile);
@@ -317,6 +346,84 @@ export default function AddProductPage() {
             </div>
           </GlassCard>
         )}
+
+        {/* Тип товара (GlobalCategory) */}
+        {globalCategories.length > 0 && (
+          <GlassCard className="p-4 flex flex-col gap-2.5">
+            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Тип товара
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {globalCategories.map((c) => {
+                const active = globalCategoryId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setGlobalCategoryId(active ? '' : c.id)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                    style={{
+                      background: active ? 'rgba(6,182,212,0.20)' : 'rgba(255,255,255,0.07)',
+                      border: `1px solid ${active ? 'rgba(6,182,212,0.50)' : 'rgba(255,255,255,0.12)'}`,
+                      color: active ? '#22D3EE' : 'rgba(255,255,255,0.55)',
+                    }}
+                  >
+                    {c.nameRu}
+                  </button>
+                );
+              })}
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Характеристики товара */}
+        <GlassCard className="p-4 flex flex-col gap-3">
+          <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            Характеристики
+          </label>
+          {attrs.map((a) => (
+            <div key={a.id} className="flex items-center gap-2">
+              <span className="text-xs flex-1 truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                <b>{a.name}</b>: {a.value}
+              </span>
+              <button
+                onClick={() => setAttrs((prev) => prev.filter((x) => x.id !== a.id))}
+                style={{ color: 'rgba(248,113,113,0.65)', fontSize: 15, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <input
+              value={attrName}
+              onChange={(e) => setAttrName(e.target.value)}
+              placeholder="Материал"
+              style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+            />
+            <input
+              value={attrValue}
+              onChange={(e) => setAttrValue(e.target.value)}
+              placeholder="Хлопок"
+              style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+            />
+            <button
+              onClick={() => {
+                if (!attrName.trim() || !attrValue.trim()) return;
+                setAttrs((prev) => [...prev, { id: Date.now().toString(), name: attrName.trim(), value: attrValue.trim() }]);
+                setAttrName('');
+                setAttrValue('');
+              }}
+              style={{
+                padding: '8px 12px', borderRadius: 10,
+                border: '1px solid rgba(167,139,250,0.30)',
+                background: 'rgba(167,139,250,0.12)',
+                color: '#A855F7', fontSize: 18, cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              +
+            </button>
+          </div>
+        </GlassCard>
 
         {/* Фото товара */}
         <GlassCard className="p-4 flex flex-col gap-3">

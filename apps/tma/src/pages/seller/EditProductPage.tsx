@@ -41,6 +41,18 @@ interface StoreCategory {
   name: string;
 }
 
+interface GlobalCategory {
+  id: string;
+  nameRu: string;
+}
+
+interface ProductAttr {
+  id: string;
+  name: string;
+  value: string;
+  sortOrder: number;
+}
+
 interface Product {
   id: string;
   title: string;
@@ -48,6 +60,7 @@ interface Product {
   basePrice: number;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   storeCategoryId?: string | null;
+  globalCategoryId?: string | null;
   variants?: Variant[];
   images?: ProductImage[];
   optionGroups?: OptionGroup[];
@@ -80,8 +93,14 @@ export default function EditProductPage() {
   const [cropSrc, setCropSrc] = useState<string>('');
 
   // Категории
-  const [categories, setCategories]           = useState<StoreCategory[]>([]);
-  const [storeCategoryId, setStoreCategoryId] = useState<string>('');
+  const [categories, setCategories]               = useState<StoreCategory[]>([]);
+  const [storeCategoryId, setStoreCategoryId]     = useState<string>('');
+  const [globalCategories, setGlobalCategories]   = useState<GlobalCategory[]>([]);
+  const [globalCategoryId, setGlobalCategoryId]   = useState<string>('');
+  const [attrs, setAttrs] = useState<ProductAttr[]>([]);
+  const [attrName, setAttrName] = useState('');
+  const [attrValue, setAttrValue] = useState('');
+  const [attrSaving, setAttrSaving] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
@@ -106,11 +125,14 @@ export default function EditProductPage() {
       setDescription(p.description ?? '');
       setPrice(String(p.basePrice));
       setStoreCategoryId(p.storeCategoryId ?? '');
+      setGlobalCategoryId(p.globalCategoryId ?? '');
       if (p.variants) {
         const initial: Record<string, string> = {};
         for (const v of p.variants) initial[v.id] = v.stockQuantity === 0 ? '' : String(v.stockQuantity);
         setStockEdits(initial);
       }
+      // Load attributes
+      api<ProductAttr[]>(`/seller/products/${id}/attributes`).then(setAttrs).catch(() => {});
     } catch {
       setLoadError('Не удалось загрузить товар');
     } finally {
@@ -128,6 +150,7 @@ export default function EditProductPage() {
 
   useEffect(() => {
     api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
+    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
   }, []);
 
   // Показать ошибку фото переданную из AddProductPage
@@ -184,6 +207,30 @@ export default function EditProductPage() {
     }
   };
 
+  const addAttr = async () => {
+    if (!attrName.trim() || !attrValue.trim() || !id) return;
+    setAttrSaving(true);
+    try {
+      const created = await api<ProductAttr>(`/seller/products/${id}/attributes`, {
+        method: 'POST',
+        body: { name: attrName.trim(), value: attrValue.trim(), sortOrder: attrs.length },
+      });
+      setAttrs((prev) => [...prev, created]);
+      setAttrName('');
+      setAttrValue('');
+    } catch {
+      showToast('❌ Ошибка добавления');
+    } finally {
+      setAttrSaving(false);
+    }
+  };
+
+  const deleteAttr = async (attrId: string) => {
+    if (!id) return;
+    await api(`/seller/products/${id}/attributes/${attrId}`, { method: 'DELETE' }).catch(() => {});
+    setAttrs((prev) => prev.filter((a) => a.id !== attrId));
+  };
+
   const handleSave = async () => {
     if (!isValid || !id) return;
     setSaving(true);
@@ -196,6 +243,7 @@ export default function EditProductPage() {
           description: description.trim() || null,
           basePrice: Number(price),
           storeCategoryId: storeCategoryId || null,
+          globalCategoryId: globalCategoryId || null,
         },
       });
       tg?.HapticFeedback.notificationOccurred('success');
@@ -526,6 +574,83 @@ export default function EditProductPage() {
                 </div>
               </GlassCard>
             )}
+
+            {/* Тип товара (GlobalCategory) */}
+            {globalCategories.length > 0 && (
+              <GlassCard className="p-4 flex flex-col gap-2.5">
+                <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Тип товара
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {globalCategories.map((c) => {
+                    const active = globalCategoryId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setGlobalCategoryId(active ? '' : c.id)}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                        style={{
+                          background: active ? 'rgba(6,182,212,0.20)' : 'rgba(255,255,255,0.07)',
+                          border: `1px solid ${active ? 'rgba(6,182,212,0.50)' : 'rgba(255,255,255,0.12)'}`,
+                          color: active ? '#22D3EE' : 'rgba(255,255,255,0.55)',
+                        }}
+                      >
+                        {c.nameRu}
+                      </button>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Характеристики */}
+            <GlassCard className="p-4 flex flex-col gap-3">
+              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Характеристики
+              </label>
+              {attrs.map((a) => (
+                <div key={a.id} className="flex items-center gap-2">
+                  <span className="text-xs flex-1 truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                    <b>{a.name}</b>: {a.value}
+                  </span>
+                  <button
+                    onClick={() => deleteAttr(a.id)}
+                    style={{ color: 'rgba(248,113,113,0.65)', fontSize: 15, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <input
+                  value={attrName}
+                  onChange={(e) => setAttrName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addAttr()}
+                  placeholder="Материал"
+                  style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+                />
+                <input
+                  value={attrValue}
+                  onChange={(e) => setAttrValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addAttr()}
+                  placeholder="Хлопок"
+                  style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+                />
+                <button
+                  onClick={addAttr}
+                  disabled={!attrName.trim() || !attrValue.trim() || attrSaving}
+                  style={{
+                    padding: '8px 12px', borderRadius: 10,
+                    border: '1px solid rgba(167,139,250,0.30)',
+                    background: 'rgba(167,139,250,0.12)',
+                    color: '#A855F7', fontSize: 18, cursor: 'pointer', flexShrink: 0,
+                    opacity: (!attrName.trim() || !attrValue.trim()) ? 0.5 : 1,
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </GlassCard>
 
             {/* Фото */}
             <GlassCard className="p-4 flex flex-col gap-3">

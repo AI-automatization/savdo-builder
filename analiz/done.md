@@ -1,5 +1,51 @@
 # Done — Азим + Полат
 
+## 2026-04-20 — Сессия 29 (Полат) — 3 фикса + категории + атрибуты + чат TMA + admin broadcast toolbar
+
+### ✅ [API-CART-MEDIA-001] cart.mapper.ts отдавал mediaId (UUID) вместо URL
+- **Важность:** 🔴
+- **Дата:** 20.04.2026
+- **Файлы:** `apps/api/src/modules/cart/repositories/cart.repository.ts`, `apps/api/src/modules/cart/cart.mapper.ts`
+- **Что сделано:** `CART_ITEMS_INCLUDE` изменён с `select: { mediaId: true }` на `include: { media: true }`. Добавлен `resolveMediaUrl(media)` — строит proxy-URL для telegram-bucket или R2 URL для других.
+
+### ✅ [API-MEDIA-UPLOAD-500-001] POST /media/upload отдавал 500
+- **Важность:** 🔴
+- **Дата:** 20.04.2026
+- **Файлы:** `apps/api/src/modules/media/use-cases/upload-direct.use-case.ts`, `apps/api/src/shared/constants/error-codes.ts`
+- **Что сделано:** Обёрнут `tgStorage.uploadFile()` в try/catch → `DomainException(MEDIA_UPLOAD_FAILED, ..., 502)` + `Logger.error` со stacktrace. Добавлен `MEDIA_UPLOAD_FAILED` в error-codes.
+
+### ✅ [API-SELLER-ORDER-DETAIL-MAPPER-001] GET /seller/orders/:id без mapper → числа undefined
+- **Важность:** 🟡
+- **Дата:** 20.04.2026
+- **Файлы:** `apps/api/src/modules/orders/orders.controller.ts`
+- **Что сделано:** Полный mapper в `getSellerOrderDetail` — `toNum()` на `totalAmount`, `subtotalAmount`, `deliveryFeeAmount`, `unitPriceSnapshot`, `lineTotalAmount`.
+
+### ✅ [TMA-GLOBAL-CATEGORY-001] GlobalCategory picker в AddProduct + EditProduct + buyer filter
+- **Важность:** 🟡
+- **Дата:** 20.04.2026
+- **Файлы:** `apps/tma/src/pages/seller/AddProductPage.tsx`, `apps/tma/src/pages/seller/EditProductPage.tsx`, `apps/tma/src/pages/buyer/StorePage.tsx`
+- **Что сделано:** Chip-picker "Тип товара" (fetch /storefront/categories) в формах продавца. Горизонтальные chips-фильтр над товарами для покупателя с клиентской фильтрацией.
+
+### ✅ [TMA-PRODUCT-ATTRIBUTES-001] Параметры товара (ProductAttribute)
+- **Важность:** 🟡
+- **Дата:** 20.04.2026
+- **Файлы:** `packages/db/prisma/schema.prisma`, `packages/db/prisma/migrations/20260420000000_add_product_attributes/migration.sql`, `apps/api/src/modules/products/repositories/products.repository.ts`, `apps/api/src/modules/products/products.controller.ts`, `apps/tma/src/pages/seller/AddProductPage.tsx`, `apps/tma/src/pages/seller/EditProductPage.tsx`, `apps/tma/src/pages/buyer/ProductPage.tsx`
+- **Что сделано:** Новая модель `ProductAttribute` в схеме + миграция. 4 API endpoint-а (GET/POST/PATCH/DELETE). Inline редактор в TMA продавца. Секция "Характеристики" на странице товара покупателя.
+
+### ✅ [TMA-CHAT-001] Чат в TMA (buyer + seller)
+- **Важность:** 🟡
+- **Дата:** 20.04.2026
+- **Файлы:** `apps/tma/src/lib/socket.ts`, `apps/tma/src/pages/buyer/ChatPage.tsx`, `apps/tma/src/pages/seller/ChatPage.tsx`, `apps/tma/src/App.tsx`, `apps/tma/package.json`
+- **Что сделано:** Создан `socket.ts` (singleton getSocket/destroySocket). BuyerChatPage + SellerChatPage: список тредов, просмотр сообщений, отправка, Socket.IO real-time. SellerChatPage: кнопка "Закрыть тред" + бейдж непрочитанных. Маршруты `/buyer/chat` и `/seller/chat` добавлены в App.tsx.
+
+### ✅ [ADMIN-BROADCAST-TOOLBAR-001] Rich text toolbar в Admin Broadcast
+- **Важность:** 🟢
+- **Дата:** 20.04.2026
+- **Файлы:** `apps/admin/src/pages/BroadcastPage.tsx`
+- **Что сделано:** Toolbar над textarea: Жирный, Курсив, Ссылка, 5 emoji-кнопок. `wrapSelection()` DOM-утилита без внешних deps. Счётчик символов (4096 лимит Telegram), красный при превышении 4000.
+
+---
+
 ## 2026-04-19 — Сессия 28 (Азим) — Auth infinite-loop fix (web-seller + web-buyer)
 
 ### ✅ [WEB-AUTH-LOGOUT-LOOP-001] Бесконечный цикл `POST /auth/logout 401` после logout

@@ -5,17 +5,23 @@
 
 ---
 
-# 📋 Снимок состояния (на 19.04.2026, конец сессии 28)
+# 📋 Снимок состояния (на 20.04.2026, конец сессии 29)
+
+## ✅ Закрыто в сессии 29 — Полат
+- `API-CART-MEDIA-001` → resolveMediaUrl + include media
+- `API-MEDIA-UPLOAD-500-001` → try/catch + DomainException 502
+- `API-SELLER-ORDER-DETAIL-MAPPER-001` → полный mapper с toNum()
+- `TMA-GLOBAL-CATEGORY-001` → GlobalCategory chip-picker в TMA
+- `TMA-PRODUCT-ATTRIBUTES-001` → ProductAttribute модель + API + TMA UI
+- `TMA-CHAT-001` → BuyerChatPage + SellerChatPage + socket.ts + App.tsx routes
+- `ADMIN-BROADCAST-TOOLBAR-001` → Rich text toolbar + char counter
 
 ## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-MEDIA-UPLOAD-500-001` | 🔴 | `POST /media/upload` отдаёт 500 — нельзя загрузить фото товара/лого/баннер. Смотреть Railway logs. |
-| `API-CART-MEDIA-001` | 🔴 | `cart.mapper.ts:57` отдаёт `mediaId` (UUID) в поле `mediaUrl` → все картинки в корзине 404 → иконка-заглушка. |
-| `API-SELLER-ORDER-DETAIL-MAPPER-001` | 🟡 | `GET /seller/orders/:id` без mapper — числа undefined. Фронт уже защищён, но цены = 0 пока бэк не сделает mapper. |
 | `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Азим прикрутит UI. |
-| **Auth-стор**ия | 🟡 | Почему `/auth/logout` отдаёт 401 при первом же выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — глянуть JWT-валидацию / session-id из refresh-token. Не блокер пока, но мутный auth. |
+| **Auth-история** | 🟡 | Почему `/auth/logout` отдаёт 401 при первом же выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — глянуть JWT-валидацию / session-id из refresh-token. Не блокер пока, но мутный auth. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 

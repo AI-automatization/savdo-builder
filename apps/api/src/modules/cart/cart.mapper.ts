@@ -1,5 +1,13 @@
 import { CartWithItems } from './repositories/cart.repository';
 
+function resolveMediaUrl(media: any): string | null {
+  if (!media) return null;
+  const appUrl = process.env.APP_URL ?? '';
+  if (media.bucket === 'telegram') return `${appUrl}/api/v1/media/proxy/${media.id}`;
+  const storageUrl = process.env.STORAGE_PUBLIC_URL ?? '';
+  return `${storageUrl}/${media.objectKey}`;
+}
+
 export interface MappedCartItem {
   id: string;
   productId: string;
@@ -54,7 +62,7 @@ export function mapCart(cart: CartWithItems): MappedCart {
       product: {
         id: product?.id ?? item.productId,
         title: product?.title ?? '',
-        mediaUrl: product?.images?.[0]?.mediaId ?? null,
+        mediaUrl: resolveMediaUrl(product?.images?.[0]?.media) ?? null,
       },
       variant: variant
         ? { id: variant.id, sku: variant.sku ?? null, title: variantTitle }

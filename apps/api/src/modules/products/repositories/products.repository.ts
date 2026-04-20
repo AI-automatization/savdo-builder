@@ -116,6 +116,7 @@ export class ProductsRepository {
           include: { values: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
         },
+        attributes: { orderBy: { sortOrder: 'asc' } },
       },
     });
   }

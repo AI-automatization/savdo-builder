@@ -14,6 +14,7 @@ interface Product {
   description: string | null;
   basePrice: number;
   status: string;
+  globalCategoryId?: string | null;
   images?: { url: string }[];
 }
 
@@ -22,6 +23,11 @@ interface Store {
   name: string;
   slug: string;
   description: string | null;
+}
+
+interface GlobalCategory {
+  id: string;
+  nameRu: string;
 }
 
 export default function StorePage() {
@@ -33,6 +39,12 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const trackedRef = useRef<string | null>(null);
+  const [globalCategories, setGlobalCategories] = useState<GlobalCategory[]>([]);
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -129,11 +141,46 @@ export default function StorePage() {
           )}
         </div>
 
+        {/* GlobalCategory filter chips */}
+        {globalCategories.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
+            <button
+              onClick={() => setActiveCat(null)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
+              style={{
+                background: activeCat === null ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
+                border: `1px solid ${activeCat === null ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
+                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
+              }}
+            >
+              Все
+            </button>
+            {globalCategories.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
+                style={{
+                  background: activeCat === c.id ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
+                  border: `1px solid ${activeCat === c.id ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
+                  color: activeCat === c.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
+                }}
+              >
+                {c.nameRu}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(() => {
+          const filtered = activeCat ? products.filter((p) => p.globalCategoryId === activeCat) : products;
+          return (
+            <>
         <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          Товары ({products.length})
+          Товары ({filtered.length}{activeCat && products.length !== filtered.length ? `/${products.length}` : ''})
         </h2>
 
-        {!products.length && (
+        {!filtered.length && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Товаров пока нет</p>
@@ -141,7 +188,7 @@ export default function StorePage() {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          {products.map((p) => (
+          {filtered.map((p) => (
             <div
               key={p.id}
               role="button"
@@ -174,6 +221,9 @@ export default function StorePage() {
             </div>
           ))}
         </div>
+            </>
+          );
+        })()}
       </div>
     </AppShell>
   );

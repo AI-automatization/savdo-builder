@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Send, Eye, AlertCircle, CheckCircle, RefreshCw, Megaphone } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
@@ -44,8 +44,36 @@ function TelegramPreview({ text }: { text: string }) {
   )
 }
 
+const TOOLBAR_BUTTONS = [
+  { label: 'B', title: 'Жирный', open: '<b>', close: '</b>', style: { fontWeight: 800 } },
+  { label: 'I', title: 'Курсив', open: '<i>', close: '</i>', style: { fontStyle: 'italic' } },
+  { label: '🔗', title: 'Ссылка', open: '<a href="">', close: '</a>', style: {} },
+  { label: '🎉', title: 'Праздник', open: '🎉', close: '', style: {} },
+  { label: '🔥', title: 'Огонь', open: '🔥', close: '', style: {} },
+  { label: '✅', title: 'Галочка', open: '✅', close: '', style: {} },
+  { label: '⚠️', title: 'Внимание', open: '⚠️', close: '', style: {} },
+  { label: '📢', title: 'Рупор', open: '📢', close: '', style: {} },
+]
+
+function wrapSelection(
+  el: HTMLTextAreaElement,
+  open: string,
+  close: string,
+  setter: (v: string) => void,
+) {
+  const { selectionStart: s, selectionEnd: e, value } = el;
+  const newVal = value.slice(0, s) + open + value.slice(s, e) + close + value.slice(e);
+  setter(newVal);
+  setTimeout(() => {
+    el.focus();
+    el.selectionStart = s + open.length;
+    el.selectionEnd = e + open.length;
+  }, 0);
+}
+
 export default function BroadcastPage() {
   const [message, setMessage] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [sending, setSending] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [previewCount, setPreviewCount] = useState<number | null>(null)
@@ -111,13 +139,42 @@ export default function BroadcastPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
         {/* Composer */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>Сообщение</div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 10 }}>
-            Поддерживается HTML: <code style={{ background: 'var(--surface2)', padding: '1px 5px', borderRadius: 4 }}>&lt;b&gt;</code>{' '}
-            <code style={{ background: 'var(--surface2)', padding: '1px 5px', borderRadius: 4 }}>&lt;i&gt;</code>{' '}
-            <code style={{ background: 'var(--surface2)', padding: '1px 5px', borderRadius: 4 }}>&lt;a href=""&gt;</code>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Сообщение</span>
+            <span style={{ fontSize: 11, color: message.length > 4000 ? '#EF4444' : 'var(--text-dim)' }}>
+              {message.length} / 4096
+            </span>
           </div>
+
+          {/* Rich text toolbar */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            {TOOLBAR_BUTTONS.map((btn) => (
+              <button
+                key={btn.label}
+                title={btn.title}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (textareaRef.current) {
+                    wrapSelection(textareaRef.current, btn.open, btn.close, (v) => {
+                      setMessage(v);
+                      setResult(null);
+                      setSendError(null);
+                    });
+                  }
+                }}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
+                  background: 'var(--surface2)', color: 'var(--text)', fontSize: 13,
+                  cursor: 'pointer', lineHeight: 1.4, ...btn.style,
+                }}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+
           <textarea
+            ref={textareaRef}
             value={message}
             onChange={e => { setMessage(e.target.value); setResult(null); setSendError(null) }}
             placeholder="Введите текст рассылки..."
