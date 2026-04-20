@@ -83,7 +83,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
           <p className="text-sm font-medium text-white leading-snug line-clamp-2">{product.title}</p>
           <div className="mt-auto">
             <span className="text-sm font-bold" style={{ color: "#A78BFA" }}>
-              {product.basePrice.toLocaleString("ru-RU")} сум
+              {Number(product.basePrice).toLocaleString("ru-RU")} сум
             </span>
           </div>
         </div>

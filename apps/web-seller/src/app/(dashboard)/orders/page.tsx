@@ -47,8 +47,23 @@ const FILTER_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
   { key: OrderStatus.DELIVERED,    label: 'Доставлены' },
 ];
 
-function fmt(amount: number) {
-  return amount.toLocaleString('ru-RU') + ' сум';
+function toNum(v: unknown): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  if (v && typeof v === "object") { const n = Number(String(v)); return Number.isFinite(n) ? n : 0; }
+  return 0;
+}
+
+function fmt(amount: unknown) {
+  return toNum(amount).toLocaleString('ru-RU') + ' сум';
+}
+
+function getAddr(o: OrderListItem) {
+  const raw = o as unknown as { city?: string | null; addressLine1?: string | null };
+  return {
+    city: o.deliveryAddress?.city ?? raw.city ?? null,
+    street: o.deliveryAddress?.street ?? raw.addressLine1 ?? null,
+  };
 }
 
 function shortId(id: string) {
@@ -75,7 +90,7 @@ function CancelModal({
       <div className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4" style={glass}>
         <h2 className="text-lg font-bold text-white">Отменить заказ #{shortId(order.id)}</h2>
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>
-          {order.deliveryAddress?.city ?? '—'}, {order.deliveryAddress?.street ?? '—'}
+          {(() => { const a = getAddr(order); return `${a.city ?? '—'}, ${a.street ?? '—'}`; })()}
         </p>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
@@ -176,7 +191,7 @@ function OrderRow({
               )}
             </div>
             <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>
-              {order.deliveryAddress?.city ?? '—'} · {order.deliveryAddress?.street ?? '—'} · #{shortId(order.id)}
+              {(() => { const a = getAddr(order); return `${a.city ?? '—'} · ${a.street ?? '—'}`; })()} · #{shortId(order.id)}
             </p>
           </div>
         </Link>
@@ -269,12 +284,13 @@ export default function OrdersPage() {
 
   const q = searchQuery.trim().toLowerCase().replace(/^#/, '');
   const searchFiltered = q
-    ? accOrders.filter((o) =>
-        shortId(o.id).toLowerCase().includes(q) ||
-        (o.deliveryAddress?.city?.toLowerCase() ?? '').includes(q) ||
-        (o.deliveryAddress?.street?.toLowerCase() ?? '').includes(q) ||
-        (o.preview?.title?.toLowerCase() ?? '').includes(q),
-      )
+    ? accOrders.filter((o) => {
+        const a = getAddr(o);
+        return shortId(o.id).toLowerCase().includes(q) ||
+          (a.city?.toLowerCase() ?? '').includes(q) ||
+          (a.street?.toLowerCase() ?? '').includes(q) ||
+          (o.preview?.title?.toLowerCase() ?? '').includes(q);
+      })
     : accOrders;
   const orders = hideCompleted && activeFilter === 'ALL'
     ? searchFiltered.filter((o) => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.CANCELLED)

@@ -35,8 +35,9 @@ const STATUS_FILTERS: { key: ProductStatus | 'ALL'; label: string }[] = [
   { key: ProductStatus.ARCHIVED,     label: 'Архив' },
 ];
 
-function fmt(n: number) {
-  return n.toLocaleString('ru-RU') + ' сум';
+function fmt(n: unknown) {
+  const num = typeof n === "number" ? n : Number(n);
+  return (Number.isFinite(num) ? num : 0).toLocaleString('ru-RU') + ' сум';
 }
 
 function Skeleton({ className }: { className?: string }) {

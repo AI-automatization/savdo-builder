@@ -21,6 +21,8 @@
 | ID | Важность | Кратко |
 |----|----------|--------|
 | `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Азим прикрутит UI. |
+| `API-SELLER-ORDER-DETAIL-CONTRACT-001` | 🟡 | `GET /seller/orders/:id` отдаёт `city`/`region`/`addressLine1`/`deliveryFeeAmount`/`customerComment`/`placedAt` — но `packages/types/src/api/orders.ts` определяет `deliveryAddress`/`deliveryFee`/`buyerNote`/`createdAt`. Фронт web-seller показывает `—, —` вместо адреса. |
+| `API-BUYER-ORDER-DETAIL-MAPPER-001` | 🔴 | `GET /buyer/orders/:id` отдаёт сырой Prisma `Order` без mapper и без `store` include. Фронт web-buyer крэшился на `order.store.name.charAt(0)`. Азим защитил 21.04 фолбэками, но без бэк-фикса продавца в карточке заказа не видно. |
 | **Auth-история** | 🟡 | Почему `/auth/logout` отдаёт 401 при первом же выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — глянуть JWT-валидацию / session-id из refresh-token. Не блокер пока, но мутный auth. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
@@ -30,6 +32,75 @@
 | `WEB-BUYER-AVATAR-UI-001` | 🟢 | Когда Полат закроет `API-BUYER-AVATAR-001` — на `/profile` повесить `<Image>` + `<input type=file>`, инвалидировать `['auth','me']`. |
 | Тест auth-loop фикса | 🟡 | Завтра проверить: после `00a5b80` (logout-loop break) — выход/вход чистый, без петли. Если всё ещё кидает на `/onboarding` — снять Network на `/auth/otp/verify` и `/seller/store`. |
 | Подтвердить причину `/notifications` ошибки | 🟢 | Открыть Network, глянуть статус `/notifications/inbox`. 401 = часть auth-серии (Полат), 404/500 = отдельная задача. |
+
+---
+
+## 🔴 [API-BUYER-ORDER-DETAIL-MAPPER-001] `GET /buyer/orders/:id` отдаёт сырой Prisma `Order` без mapper и без `store`
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🔴 Покупатель не видит ни названия магазина, ни кнопки «Написать продавцу», ни комментария к заказу. Без фронтового фолбэка — crash.
+- **Файлы:** `apps/api/src/modules/orders/use-cases/get-order-detail.use-case.ts`, `apps/api/src/modules/orders/repositories/orders.repository.ts` (`findById`), `apps/api/src/modules/orders/orders.controller.ts` (`getBuyerOrderDetail`, `getOrderById`).
+- **Что ломается:** `findById` делает `include: { items, history, buyer }` — но НЕ `store`. Для buyer-роутов controller возвращает `order` как есть (без inline-mapper, в отличие от seller-роута после сессии 29). Фронт `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` читал по контракту `packages/types/src/api/orders.ts#Order`: `order.store.name.charAt(0)`, `order.items[].title`, `order.items[].subtotal`, `order.deliveryFee`, `order.buyerNote`, `order.deliveryAddress.street` — у raw Prisma таких полей нет вообще (вместо них `productTitleSnapshot`, `lineTotalAmount`, `deliveryFeeAmount`, `customerComment`, `addressLine1`). Крэш был на `store.name.charAt`.
+- **Что сделано на фронте (Азим, 21.04.2026):** Добавил `normalizeOrder()` который читает оба варианта (store guard, items fallback на snapshot-поля, toNum, flat address в `deliveryAddress`). `items.reduce` защищён. Это маскирует баг, но покупатель всё равно не видит карточку магазина — её просто нет в ответе.
+- **Что нужно:**
+  1. `findById` → добавить `include: { store: { select: { id: true, name: true, slug: true, telegramContactLink: true, logoUrl: true } } }`.
+  2. Сделать общий mapper по контракту `Order`:
+     ```ts
+     {
+       id, orderNumber, status, storeId, buyerId,
+       createdAt, updatedAt,
+       totalAmount: toNum, currencyCode: 'UZS', deliveryFee: toNum(deliveryFeeAmount),
+       deliveryType, paymentMethod, paymentStatus,
+       deliveryAddress: city || addressLine1 ? { street: addressLine1, city, region } : undefined,
+       buyerNote: customerComment, customerPhone,
+       buyer: { phone: buyer?.user?.phone ?? null },
+       store: { name, telegramContactLink },
+       items: items.map(i => ({
+         id, productId, variantId,
+         title: productTitleSnapshot, variantTitle: variantLabelSnapshot,
+         quantity, unitPrice: toNum(unitPriceSnapshot), subtotal: toNum(lineTotalAmount),
+       })),
+     }
+     ```
+  3. Использовать тот же mapper и для seller-роута вместо inline (решит `API-SELLER-ORDER-DETAIL-CONTRACT-001` заодно) — вынести в `orders.mapper.ts` по образцу `cart.mapper.ts`.
+
+---
+
+## 🟡 [API-SELLER-ORDER-DETAIL-CONTRACT-001] `GET /seller/orders/:id` разошёлся с контрактом `Order` в `packages/types`
+- **Домен:** `apps/api`
+- **Кто взял:** Полат
+- **Важность:** 🟡 Не крэш (фронт закрыт optional chaining'ом от сессии 24), но данные пропадают из UI: адрес / дата / комментарий покупателя не видны продавцу.
+- **Файлы:** `apps/api/src/modules/orders/orders.controller.ts:146-178`, `packages/types/src/api/orders.ts`
+- **Что ломается:** После сессии 29 inline-mapper в `getSellerOrderDetail` отдаёт:
+  ```json
+  { "placedAt": ..., "deliveryFeeAmount": ..., "customerComment": ..., "city": ..., "region": ..., "addressLine1": ... }
+  ```
+  Фронт `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx` читает (по типу `Order` из `packages/types`):
+  ```ts
+  order.createdAt
+  order.deliveryFee
+  order.buyerNote
+  order.deliveryAddress?.city / street / region
+  ```
+  → все четыре становятся `undefined` → рендерится `—, —`, «Бесплатно», дата пустая, блок комментария скрыт.
+- **Что нужно:** Привести ответ к контракту `packages/types/src/api/orders.ts#Order`:
+  ```ts
+  {
+    id, storeId, status, totalAmount, currencyCode,
+    createdAt: string,          // из placedAt
+    updatedAt: string,
+    deliveryFee: number,         // из deliveryFeeAmount
+    deliveryAddress: {           // собрать из flat полей
+      street: addressLine1,
+      city, region,
+    } | undefined,
+    buyerNote: string | null,    // из customerComment
+    customerPhone, buyer, items, paymentMethod, paymentStatus, deliveryType,
+    store: { name, telegramContactLink },
+  }
+  ```
+  Поля которые бэк уже отдаёт правильно: `totalAmount`, `currencyCode`, `items[].unitPrice`, `items[].subtotal`, `buyer.phone`.
+- **Альтернатива (если хочется flat):** поменять контракт в `packages/types/src/api/orders.ts` + прогнать фронт web-buyer и web-seller под него — но это дороже и ломает уже рабочие места (`/buyer/orders/:id`).
 
 ---
 

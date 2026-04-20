@@ -10,6 +10,47 @@
 
 ---
 
+## 2026-04-21 [AUDIT-SESSION-30] Полный аудит web-buyer + web-seller — найдено 8 проблем, 7 исправлено на фронте
+
+- **Статус:** ✅ Фронт починен (Азим, 21.04.2026). 1 осталось на Полате.
+- **Что проверено:** `apps/web-buyer` (cart, checkout, orders list/detail, product, store, ProductCard), `apps/web-seller` (dashboard, orders list/detail, products, analytics, settings). Проверка: unsafe `.toLocaleString`, undefined-доступ, контракты с `packages/types`, missing guards, auth/session.
+- **Найдено и исправлено:**
+  1. 🔴 **web-buyer `/orders/:id` CRASH** — `order.store.name.charAt(0)` крэшил страницу, т.к. `findById` в бэке не делает `include: { store }`. Добавлен `normalizeOrder()` (flat→nested, snapshot-поля, toNum), блок магазина условный. Корень — `API-BUYER-ORDER-DETAIL-MAPPER-001` (задача Полату).
+  2. 🔴 **web-buyer `/orders/:id` items.reduce/map** без guard на undefined — защищено через `Array.isArray` в normalize.
+  3. 🟡 **web-buyer `/orders/:id` fmt** читал `order.deliveryFee`, `item.subtotal` (всё из контракта) → при raw-Prisma было `undefined.toLocaleString` → NaN/crash. Теперь `toNum()` через `fmt`.
+  4. 🟡 **web-buyer `/orders` list fmt + address** — `fmt(n: number)` без guard + `order.deliveryAddress.city` без fallback. Исправлено: safe `fmt(unknown)` + fallback `raw.city`/`raw.addressLine1`.
+  5. 🟡 **web-buyer `ProductCard`** — `product.basePrice.toLocaleString()` падал, если basePrice пришёл как Prisma Decimal-строка. `Number()` оборачивание.
+  6. 🟡 **web-buyer `[slug]/products/[id]`** — `fmt(n: number)` без guard. Safe-fmt через Number.
+  7. 🟡 **web-seller orders list** — `fmt(amount: number)` без guard + search по `deliveryAddress` без flat-fallback. Заменено на `toNum + getAddr()`.
+  8. 🟡 **web-seller dashboard + products list** — `fmt(n)` без guard. Safe-fmt.
+- **Осталось Полату:** `API-BUYER-ORDER-DETAIL-MAPPER-001` — общий `orders.mapper.ts` по контракту `Order`, плюс `store` в `findById`. Закроет и `API-SELLER-ORDER-DETAIL-CONTRACT-001`.
+- **Файлы фронта:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx`, `apps/web-buyer/src/app/(shop)/orders/page.tsx`, `apps/web-buyer/src/components/store/ProductCard.tsx`, `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`, `apps/web-seller/src/app/(dashboard)/orders/page.tsx`, `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx`, `apps/web-seller/src/app/(dashboard)/products/page.tsx`.
+
+---
+
+## 2026-04-21 [API-SELLER-ORDER-DETAIL-CONTRACT-001] `/seller/orders/:id` после FIX-C отдаёт flat `city`/`region`/`deliveryFeeAmount`/`customerComment`/`placedAt` — расходится с `Order` типом
+
+- **Статус:** 🔴 Контракт-регрессия (Полат). Заведено в `analiz/tasks.md`.
+- **Что случилось:** В сессии 29 Полат сделал inline-mapper для `/seller/orders/:id` чтобы починить undefined-числа (коммит `d974d81`). Числа теперь `toNum()`-безопасны ✅, но он заново собрал форму и пошёл против существующего типа `Order` (`packages/types/src/api/orders.ts`):
+  - Вместо `deliveryAddress: { street, city, region }` → flat `city`, `region`, `addressLine1`
+  - Вместо `deliveryFee` → `deliveryFeeAmount`
+  - Вместо `buyerNote` → `customerComment`
+  - Вместо `createdAt` → `placedAt`
+- **Эффект на фронте web-seller:** `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx:236,307,326-330,375` — всё optional-chain'ится, так что крэша нет. Но пользователь видит `—, —` вместо адреса, «Бесплатно» вместо доставки, дата пустая, комментарий не рендерится (`{order.buyerNote && ...}` → false).
+- **Как обнаружено (Азим, 21.04.2026):** сверка backend controller ↔ `packages/types/src/api/orders.ts` ↔ reader в `web-seller/orders/[id]/page.tsx`.
+- **Что дальше:** На бэке нормализовать под тип `Order` (см. `analiz/tasks.md`). Фронт НЕ трогать — контракт `packages/types` — источник истины.
+- **Не забыть:** проверить что `/buyer/orders/:id` (тот же use-case, без inline-mapper в controller) отдаёт правильный `deliveryAddress`. Если тоже сломан — расширить задачу.
+
+---
+
+## 2026-04-21 [WEB-BUYER-CART-THUMB-FIX-VERIFIED] `cart.mapper` теперь отдаёт `mediaUrl` как URL — фронт-workaround остаётся защитой
+
+- **Статус:** ✅ Верифицировано (Азим, 21.04.2026).
+- **Что проверено:** После `d974d81` (Полат) `cart.mapper.ts:65` вызывает `resolveMediaUrl(product?.images?.[0]?.media)` → для telegram-bucket → `${APP_URL}/api/v1/media/proxy/${media.id}`, для остальных → `${STORAGE_PUBLIC_URL}/${media.objectKey}`. `cart.repository.ts` теперь `include: { media: true }` вместо `select: { mediaId: true }`.
+- **Фронт:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx` — `imgFailed` state + `onError` fallback к `<Package>` иконке. После бэк-фикса URL валидный → картинки грузятся. Костыль безвреден (сработает только если реально 404 / broken image), удалять не надо — защита от будущих регрессий.
+
+---
+
 ## 2026-04-19 [WEB-BUYER-PROFILE-AVATAR-MISSING-001] В `/profile` нет возможности поставить фото
 
 - **Статус:** 🟡 Фича отсутствует — задача переведена на Полата (`API-BUYER-AVATAR-001` в tasks.md).

@@ -54,8 +54,15 @@ const STORE_STATUS_LABELS: Record<string, string> = {
   [StoreStatus.ARCHIVED]:       "Архивирован",
 };
 
-function fmt(n: number) {
-  return n.toLocaleString('ru-RU') + ' сум';
+function toNum(v: unknown): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  if (v && typeof v === "object") { const n = Number(String(v)); return Number.isFinite(n) ? n : 0; }
+  return 0;
+}
+
+function fmt(n: unknown) {
+  return toNum(n).toLocaleString('ru-RU') + ' сум';
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -218,7 +225,7 @@ export default function DashboardPage() {
                   #{o.id.slice(-4).toUpperCase()}
                 </span>
                 <span className="flex-1 text-sm text-white truncate">
-                  {o.deliveryAddress?.city ?? '—'}
+                  {o.deliveryAddress?.city ?? (o as unknown as { city?: string | null }).city ?? '—'}
                 </span>
                 <span className="text-sm font-medium shrink-0" style={{ color: "#A78BFA" }}>
                   {fmt(o.totalAmount)}

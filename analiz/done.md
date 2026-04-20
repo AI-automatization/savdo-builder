@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-04-21 — Сессия 30 (Азим) — Аудит web-buyer + web-seller
+
+### ✅ [AUDIT-SESSION-30] Полный аудит двух web-приложений: 7 фиксов, 1 задача Полату
+- **Важность:** 🔴 (один crash-фикс в buyer order detail + 6 visual guards)
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` — `normalizeOrder()` (store/items/snapshot-fields), safe fmt, store block conditional
+  - `apps/web-buyer/src/app/(shop)/orders/page.tsx` — safe fmt + flat-address fallback
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — `Number(basePrice)`
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — safe fmt
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx` — toNum + getAddr() helper
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — safe fmt + flat city fallback
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx` — safe fmt (basePrice Decimal)
+- **Что сделано:**
+  - **CRASH fix:** `/orders/:id` у покупателя больше не падает на отсутствующем `order.store`. Добавлен normalizer который принимает как `Order` контракт, так и сырой Prisma (snapshot-поля + flat-адрес + `customerComment`/`deliveryFeeAmount`).
+  - **Safe fmt:** все `n.toLocaleString('ru-RU')` обёрнуты в `toNum()` — теперь не крашатся на undefined/Decimal-string, показывают `0 сум` вместо NaN/crash.
+  - **Flat-address fallback:** web-seller orders list (OrderRow, CancelModal, search) + web-seller dashboard «последние заказы» + web-buyer orders list читают `raw.city`/`raw.addressLine1` когда `deliveryAddress` объект отсутствует.
+- **Что на Полате:** `API-BUYER-ORDER-DETAIL-MAPPER-001` (новая задача в `tasks.md`) — общий `orders.mapper.ts` + `include: { store }`. Закроет сразу и `API-SELLER-ORDER-DETAIL-CONTRACT-001`.
+- **Чего не трогал:** defensive workarounds с прошлых сессий (imgFailed в cart, toNum в seller order detail) — оставил как защиту, как раньше договаривались.
+
+---
+
+## 2026-04-21 — Сессия 30 (Азим) — Верификация бэк-фиксов сессии 29
+
+### ✅ [API-CART-MEDIA-001] Верификация со стороны web-buyer
+- **Важность:** 🔴
+- **Дата:** 21.04.2026
+- **Файлы:** читал `apps/api/src/modules/cart/cart.mapper.ts`, `apps/api/src/modules/cart/repositories/cart.repository.ts`, `packages/types/src/api/cart.ts`, `apps/web-buyer/src/app/(minimal)/cart/page.tsx`
+- **Что сделано:** Сверил mapper Полата с контрактом `Cart`/`CartItem`/`ProductRef` из `packages/types`. Всё совпадает: `mediaUrl` теперь URL (telegram proxy или R2), `unitPrice`/`subtotal`/`totalAmount: number`, `currencyCode: 'UZS'`. Наш `imgFailed` fallback в `CartItemRow` остаётся как защита на случай деплой-гэпа между API и storage — безвреден, удалять не надо.
+
+### ⚠️ [API-SELLER-ORDER-DETAIL-MAPPER-001] FIX-C — поля из `/seller/orders/:id` НЕ совпадают с `packages/types/src/api/orders.ts`
+- **Важность:** 🟡
+- **Дата:** 21.04.2026
+- **Файлы:** читал `apps/api/src/modules/orders/orders.controller.ts:146-178`, `packages/types/src/api/orders.ts`, `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx`
+- **Что сделано:** Убедился что числовой крэш починен (`toNum` на всех суммах — ✅). Но поля разошлись с контрактом:
+  - Ожидается `deliveryAddress: DeliveryAddress` → отдаётся flat `city` / `region` / `addressLine1`
+  - Ожидается `deliveryFee` → отдаётся `deliveryFeeAmount`
+  - Ожидается `buyerNote` → отдаётся `customerComment`
+  - Ожидается `createdAt` → отдаётся `placedAt`
+- **Последствия на фронте:** `order.deliveryAddress?.city` → undefined → `—, —`. Дата пустая. Комментарий покупателя не отображается. Крэша нет (optional chaining защищает), но данные «невидимы».
+- **Что дальше:** Задача `API-SELLER-ORDER-DETAIL-CONTRACT-001` заведена в `analiz/tasks.md` для Полата — нормализовать под существующий тип `Order`. До этого FIX-C закрывать нельзя.
+
+---
+
 ## 2026-04-20 — Сессия 29 (Полат) — 3 фикса + категории + атрибуты + чат TMA + admin broadcast toolbar
 
 ### ✅ [API-CART-MEDIA-001] cart.mapper.ts отдавал mediaId (UUID) вместо URL

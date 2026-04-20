@@ -61,7 +61,13 @@ const FILTER_TABS: { key: OrderStatus | "ALL"; label: string }[] = [
   { key: OrderStatus.DELIVERED,    label: "Доставлены" },
 ];
 
-const fmt = (n: number) => n.toLocaleString("ru-RU");
+const toNum = (v: unknown): number => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  if (v && typeof v === "object") { const n = Number(String(v)); return Number.isFinite(n) ? n : 0; }
+  return 0;
+};
+const fmt = (n: unknown) => toNum(n).toLocaleString("ru-RU");
 const shortId = (id: string) => id.slice(-6).toUpperCase();
 
 
@@ -71,6 +77,11 @@ const shortId = (id: string) => id.slice(-6).toUpperCase();
 
 function OrderCard({ order }: { order: OrderListItem }) {
   const cfg = STATUS_CONFIG[order.status] ?? { label: order.status, color: "rgba(255,255,255,.5)" };
+  // Fallback to flat Prisma fields (city/addressLine1) until buyer endpoint returns Order shape.
+  const raw = order as unknown as { city?: string | null; addressLine1?: string | null };
+  const addrCity = order.deliveryAddress?.city ?? raw.city ?? null;
+  const addrStreet = order.deliveryAddress?.street ?? raw.addressLine1 ?? null;
+  const hasAddress = !!(addrCity || addrStreet);
   return (
     <Link
       href={`/orders/${order.id}`}
@@ -88,9 +99,7 @@ function OrderCard({ order }: { order: OrderListItem }) {
           </span>
         </div>
         <p className="text-xs mt-1 truncate" style={{ color: "rgba(255,255,255,0.40)" }}>
-          {order.deliveryAddress
-            ? `${order.deliveryAddress.city}, ${order.deliveryAddress.street}`
-            : 'Самовывоз'}
+          {hasAddress ? `${addrCity ?? '—'}, ${addrStreet ?? '—'}` : 'Самовывоз'}
         </p>
         <p className="text-sm font-medium mt-1.5" style={{ color: "#A78BFA" }}>
           {fmt(order.totalAmount)} сум

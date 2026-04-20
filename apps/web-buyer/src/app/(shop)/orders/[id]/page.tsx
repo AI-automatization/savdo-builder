@@ -28,8 +28,43 @@ const glassDim = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const fmt = (n: number) => n.toLocaleString("ru-RU");
+const toNum = (v: unknown): number => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  if (v && typeof v === "object") { const n = Number(String(v)); return Number.isFinite(n) ? n : 0; }
+  return 0;
+};
+const fmt = (n: unknown) => toNum(n).toLocaleString("ru-RU");
 const shortId = (id: string) => id.slice(-6).toUpperCase();
+
+// Normalize backend response: support both `Order` type from packages/types
+// AND raw Prisma shape (buyer endpoint lacks mapper — tracked as API-BUYER-ORDER-DETAIL-MAPPER-001).
+function normalizeOrder(raw: any) {
+  const items = Array.isArray(raw.items) ? raw.items : [];
+  const deliveryAddress = raw.deliveryAddress
+    ?? (raw.city || raw.addressLine1
+      ? { street: raw.addressLine1 ?? '', city: raw.city ?? '', region: raw.region ?? undefined }
+      : undefined);
+  return {
+    id: raw.id as string,
+    status: raw.status,
+    storeId: raw.storeId as string,
+    store: raw.store ?? null,
+    items: items.map((it: any) => ({
+      id: it.id,
+      title: it.title ?? it.productTitleSnapshot ?? '',
+      variantTitle: it.variantTitle ?? it.variantLabelSnapshot ?? null,
+      quantity: it.quantity ?? 0,
+      unitPrice: toNum(it.unitPrice ?? it.unitPriceSnapshot),
+      subtotal: toNum(it.subtotal ?? it.lineTotalAmount),
+    })),
+    totalAmount: toNum(raw.totalAmount),
+    deliveryFee: toNum(raw.deliveryFee ?? raw.deliveryFeeAmount),
+    deliveryType: raw.deliveryType,
+    deliveryAddress,
+    buyerNote: raw.buyerNote ?? raw.customerComment ?? null,
+  };
+}
 
 // ── Status progress ────────────────────────────────────────────────────────
 
@@ -112,11 +147,12 @@ function PageSkeleton() {
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { data: order, isLoading, isError } = useOrder(id);
+  const { data: rawOrder, isLoading, isError } = useOrder(id);
   const cancelOrder = useCancelOrder();
   useBuyerSocket();
   const [confirmCancel, setConfirmCancel] = useState(false);
 
+  const order = rawOrder ? normalizeOrder(rawOrder) : null;
 
   const currentStep = order ? (ACTIVE_STEP[order.status] ?? 0) : 0;
   const isCancelled = order?.status === OrderStatus.CANCELLED;
@@ -223,28 +259,30 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             )}
 
             {/* Store card */}
-            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl" style={glass}>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0" style={{ background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.4)" }}>
-                {order.store.name.charAt(0).toUpperCase()}
+            {order.store && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-2xl" style={glass}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0" style={{ background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.4)" }}>
+                  {order.store.name?.charAt(0)?.toUpperCase() ?? '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{order.store.name ?? 'Магазин'}</p>
+                  <p className="text-[11px] text-white/35 mt-0.5">Магазин</p>
+                </div>
+                {order.store.telegramContactLink && (
+                  <a
+                    href={order.store.telegramContactLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => track.chatStarted(order.storeId, "order")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.28)" }}
+                  >
+                    <IcoMsg />
+                    Написать
+                  </a>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{order.store.name}</p>
-                <p className="text-[11px] text-white/35 mt-0.5">Магазин</p>
-              </div>
-              {order.store.telegramContactLink && (
-                <a
-                  href={order.store.telegramContactLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => track.chatStarted(order.storeId, "order")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
-                  style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.28)" }}
-                >
-                  <IcoMsg />
-                  Написать
-                </a>
-              )}
-            </div>
+            )}
 
             {/* Items */}
             <Section label="Товары" icon={<IcoOrders />}>
@@ -295,7 +333,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="rounded-2xl px-4 py-3 flex flex-col gap-2" style={glassDim}>
               <p className="text-[11px] font-semibold text-white/35 uppercase tracking-widest mb-1">Итого к оплате</p>
               <div className="flex justify-between text-sm">
-                <span className="text-white/50">Товары ({order.items.reduce((s, i) => s + i.quantity, 0)} шт.)</span>
+                <span className="text-white/50">Товары ({order.items.reduce((s, i) => s + (i.quantity ?? 0), 0)} шт.)</span>
                 <span className="text-white/70">{fmt(subtotal)} сум</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -316,7 +354,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {order && !isCancelled && (
         <div className="fixed left-0 right-0 px-4" style={{ bottom: 76, zIndex: 50 }}>
           <div className="max-w-md mx-auto flex flex-col gap-2.5">
-            {order.store.telegramContactLink && (
+            {order.store?.telegramContactLink && (
               <a
                 href={order.store.telegramContactLink}
                 target="_blank"

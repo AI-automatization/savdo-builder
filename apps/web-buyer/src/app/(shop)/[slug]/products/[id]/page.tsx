@@ -36,7 +36,10 @@ const glassDim = {
   border:               "1px solid rgba(255,255,255,0.09)",
 } as const;
 
-const fmt = (n: number) => n.toLocaleString("ru-RU");
+const fmt = (n: unknown) => {
+  const num = typeof n === "number" ? n : Number(n);
+  return (Number.isFinite(num) ? num : 0).toLocaleString("ru-RU");
+};
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 

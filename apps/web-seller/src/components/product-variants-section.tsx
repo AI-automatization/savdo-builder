@@ -57,7 +57,8 @@ const cancelBtn = {
 
 function formatPrice(price: number | null): string {
   if (price === null) return '—';
-  return price.toLocaleString('ru-RU') + ' сум';
+  const num = typeof price === 'number' ? price : Number(price);
+  return (Number.isFinite(num) ? num : 0).toLocaleString('ru-RU') + ' сум';
 }
 
 /** Build "Размер: XL · Цвет: Красный" from a variant's options */
