@@ -39,18 +39,41 @@ const shortId = (id: string) => id.slice(-6).toUpperCase();
 
 // Normalize backend response: support both `Order` type from packages/types
 // AND raw Prisma shape (buyer endpoint lacks mapper — tracked as API-BUYER-ORDER-DETAIL-MAPPER-001).
-function normalizeOrder(raw: any) {
-  const items = Array.isArray(raw.items) ? raw.items : [];
-  const deliveryAddress = raw.deliveryAddress
+type NormalizedItem = {
+  id: string;
+  title: string;
+  variantTitle: string | null;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+};
+type NormalizedAddress = { street: string; city: string; region?: string } | undefined;
+type NormalizedStore = { name?: string; telegramContactLink?: string | null } | null;
+type NormalizedOrder = {
+  id: string;
+  status: OrderStatus;
+  storeId: string;
+  store: NormalizedStore;
+  items: NormalizedItem[];
+  totalAmount: number;
+  deliveryFee: number;
+  deliveryType: DeliveryType;
+  deliveryAddress: NormalizedAddress;
+  buyerNote: string | null;
+};
+
+function normalizeOrder(raw: any): NormalizedOrder {
+  const rawItems: any[] = Array.isArray(raw.items) ? raw.items : [];
+  const deliveryAddress: NormalizedAddress = raw.deliveryAddress
     ?? (raw.city || raw.addressLine1
       ? { street: raw.addressLine1 ?? '', city: raw.city ?? '', region: raw.region ?? undefined }
       : undefined);
   return {
-    id: raw.id as string,
+    id: raw.id,
     status: raw.status,
-    storeId: raw.storeId as string,
+    storeId: raw.storeId,
     store: raw.store ?? null,
-    items: items.map((it: any) => ({
+    items: rawItems.map((it: any): NormalizedItem => ({
       id: it.id,
       title: it.title ?? it.productTitleSnapshot ?? '',
       variantTitle: it.variantTitle ?? it.variantLabelSnapshot ?? null,
