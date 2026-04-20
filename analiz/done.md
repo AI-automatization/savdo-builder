@@ -2,6 +2,31 @@
 
 ## 2026-04-21 — Сессия 30 (Азим) — Аудит web-buyer + web-seller
 
+### ✅ [WEB-BUYER-CHAT-COMPOSER-001] In-app чат: создание тредов из product + order pages
+- **Важность:** 🔴 (чат был полностью недоступен — backend готов, фронт не подключен)
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/chat.api.ts` — функция `createThread(data: CreateThreadRequest)`
+  - `apps/web-buyer/src/hooks/use-chat.ts` — `useCreateThread()` с invalidate `chatKeys.threads`
+  - `apps/web-buyer/src/components/chat/ChatComposerModal.tsx` — новый компонент (textarea + send)
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — фиолетовая кнопка чата в sticky CTA (PRODUCT thread) + модал
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` — основная кнопка «Чат по заказу» (ORDER thread), Telegram-линк демотирован в secondary
+- **Что сделано:** Backend `POST /api/v1/chat/threads` работал давно, но фронт не мог его дёрнуть. Теперь: на странице товара и заказа — кнопка → модал с первым сообщением → POST → `chatKeys.threads` invalidate → router.push('/chats') → новый тред в списке (sorted by lastMessageAt) → автоселект → переписка. Seller видит тред на `/chat` через тот же polling+socket.
+- **Зависимость:** Если `GET /chat/threads` у buyer или seller возвращает 401 (см. `Auth-история` у Полата) — списки будут пустые. Нужно отловить в prod.
+
+### ✅ [WEB-BUYER-CHECKOUT-REDIRECT-FAIL-001] Маскировка фейла GET /buyer/orders/:id после checkout
+- **Важность:** 🟡 (UX-симптом; корень на бэке)
+- **Дата:** 21.04.2026
+- **Файл:** `apps/web-buyer/src/hooks/use-checkout.ts`
+- **Что сделано:** `useConfirmCheckout.onSuccess` кладёт полученный `Order` в `queryClient.setQueryData(orderKeys.detail(order.id), order)`. Invalidate сужен до `['orders', 'list']` чтобы prepopulated detail не стирался. `useOrder(id)` с `staleTime: 2 min` не делает второй GET → страница `/orders/{id}` рендерит заказ сразу из кэша.
+- **Что не решено:** Открытие того же заказа позже (refresh/список) → `useOrder` делает GET → снова ошибка. Ждём `API-BUYER-ORDER-DETAIL-MAPPER-001` у Полата.
+
+### ✅ [RAILWAY-TS-FIX] Типизация `normalizeOrder` для Railway билда
+- **Важность:** 🔴 (первый пуш аудита провалил Docker build)
+- **Дата:** 21.04.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx`
+- **Что сделано:** После первого пуша сессии (`466a9e9`) Railway упал на tsc `Parameter 's' implicitly has an 'any' type` в `order?.items.reduce`. Причина: `normalizeOrder(raw: any)` пропускал `any` через весь return type. Добавил явные типы `NormalizedItem`, `NormalizedOrder`, `NormalizedAddress`, `NormalizedStore` — инференс вернулся. Коммит `b355cf4`.
+
 ### ✅ [AUDIT-SESSION-30] Полный аудит двух web-приложений: 7 фиксов, 1 задача Полату
 - **Важность:** 🔴 (один crash-фикс в buyer order detail + 6 visual guards)
 - **Дата:** 21.04.2026

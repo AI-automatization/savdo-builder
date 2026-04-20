@@ -5,33 +5,38 @@
 
 ---
 
-# 📋 Снимок состояния (на 20.04.2026, конец сессии 29)
+# 📋 Снимок состояния (на 21.04.2026, конец сессии 30)
+
+## ✅ Закрыто в сессии 30 — Азим (фронт)
+- `AUDIT-SESSION-30` → 7 guard-фиксов (safe fmt, flat-address fallback) + crash-фикс buyer order detail + `normalizeOrder()`
+- `FIX-A` FIX-A cart media — верификация со стороны web-buyer (cart.mapper OK, `imgFailed` workaround оставлен как защита)
+- `WEB-BUYER-CHAT-COMPOSER-001` → **новая фича**: создание чатов из product/order pages (модал + `createThread` API + кнопки в sticky CTA)
+- `WEB-BUYER-CHECKOUT-REDIRECT-FAIL-001` → маскировка через prepopulate `orderKeys.detail(id)` в `useConfirmCheckout` (коммит `b937573`)
+- `RAILWAY-TS-FIX` → типизация `NormalizedOrder` чтобы tsc не падал на `reduce` (коммит `b355cf4`)
 
 ## ✅ Закрыто в сессии 29 — Полат
 - `API-CART-MEDIA-001` → resolveMediaUrl + include media
 - `API-MEDIA-UPLOAD-500-001` → try/catch + DomainException 502
-- `API-SELLER-ORDER-DETAIL-MAPPER-001` → полный mapper с toNum()
-- `TMA-GLOBAL-CATEGORY-001` → GlobalCategory chip-picker в TMA
-- `TMA-PRODUCT-ATTRIBUTES-001` → ProductAttribute модель + API + TMA UI
-- `TMA-CHAT-001` → BuyerChatPage + SellerChatPage + socket.ts + App.tsx routes
-- `ADMIN-BROADCAST-TOOLBAR-001` → Rich text toolbar + char counter
+- `API-SELLER-ORDER-DETAIL-MAPPER-001` (частично — числа ок, контракт разошёлся, новая задача `API-SELLER-ORDER-DETAIL-CONTRACT-001`)
+- `TMA-GLOBAL-CATEGORY-001`, `TMA-PRODUCT-ATTRIBUTES-001`, `TMA-CHAT-001`, `ADMIN-BROADCAST-TOOLBAR-001`
 
 ## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Азим прикрутит UI. |
-| `API-SELLER-ORDER-DETAIL-CONTRACT-001` | 🟡 | `GET /seller/orders/:id` отдаёт `city`/`region`/`addressLine1`/`deliveryFeeAmount`/`customerComment`/`placedAt` — но `packages/types/src/api/orders.ts` определяет `deliveryAddress`/`deliveryFee`/`buyerNote`/`createdAt`. Фронт web-seller показывает `—, —` вместо адреса. |
-| `API-BUYER-ORDER-DETAIL-MAPPER-001` | 🔴 | `GET /buyer/orders/:id` отдаёт сырой Prisma `Order` без mapper и без `store` include. Фронт web-buyer крэшился на `order.store.name.charAt(0)`. Азим защитил 21.04 фолбэками, но без бэк-фикса продавца в карточке заказа не видно. |
-| **Auth-история** | 🟡 | Почему `/auth/logout` отдаёт 401 при первом же выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — глянуть JWT-валидацию / session-id из refresh-token. Не блокер пока, но мутный auth. |
+| `API-BUYER-ORDER-DETAIL-MAPPER-001` | 🔴 | `GET /buyer/orders/:id` отдаёт сырой Prisma `Order` без mapper и без `store` include. Azim замаскировал крэш через normalizer + cache-prepopulate в useConfirmCheckout, но **корень не починен**: если открыть заказ позже (из списка/refresh) — снова GET, снова error. Общий `orders.mapper.ts` по контракту `Order` + `include: { store }` закроет и `API-SELLER-ORDER-DETAIL-CONTRACT-001` заодно. |
+| `API-SELLER-ORDER-DETAIL-CONTRACT-001` | 🟡 | `GET /seller/orders/:id` отдаёт `city`/`region`/`addressLine1`/`deliveryFeeAmount`/`customerComment`/`placedAt` — но `packages/types/src/api/orders.ts` определяет `deliveryAddress`/`deliveryFee`/`buyerNote`/`createdAt`. Web-seller показывает `—, —` вместо адреса. **Решится вместе с `API-BUYER-ORDER-DETAIL-MAPPER-001`** если вынести mapper в shared. |
+| `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Azim прикрутит UI. |
+| **Auth-история** | 🟡 | Почему `/auth/logout` 401 при первом выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — JWT/session-id из refresh-token. Подозрение: часть `/buyer/orders/:id` fail после checkout тоже здесь. Сделать тестовый заказ в prod и поймать трейс в Railway logs. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
+| Тест chat composer end-to-end | 🔴 | После Railway-билда: товар → фиолетовая кнопка чата → отправить → должно редиректнуть в `/chats`. Проверить что seller на `/chat` видит новый тред. Если оба списка пустые — auth-серия 401 (Полат). |
+| Тест checkout redirect prepopulate | 🟡 | После билда: оформить заказ → `/orders/{id}` должно открыться сразу (из кэша). Перезагрузить страницу → если снова error — подтвердилось что backend GET `/buyer/orders/:id` падает (ждём Полата). |
 | `WEB-BUYER-AVATAR-UI-001` | 🟢 | Когда Полат закроет `API-BUYER-AVATAR-001` — на `/profile` повесить `<Image>` + `<input type=file>`, инвалидировать `['auth','me']`. |
-| Тест auth-loop фикса | 🟡 | Завтра проверить: после `00a5b80` (logout-loop break) — выход/вход чистый, без петли. Если всё ещё кидает на `/onboarding` — снять Network на `/auth/otp/verify` и `/seller/store`. |
-| Подтвердить причину `/notifications` ошибки | 🟢 | Открыть Network, глянуть статус `/notifications/inbox`. 401 = часть auth-серии (Полат), 404/500 = отдельная задача. |
+| Подтвердить причину `/notifications` ошибки | 🟢 | F12 Network → `/notifications/inbox`. 401 = часть auth-серии, 404/500 = отдельная задача. |
 
 ---
 
