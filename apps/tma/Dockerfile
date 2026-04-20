@@ -9,7 +9,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY package.json ./package.json
 COPY apps/tma/package.json ./apps/tma/package.json
 
-RUN pnpm install --filter tma --frozen-lockfile
+RUN pnpm install --filter tma --no-frozen-lockfile
 
 COPY apps/tma/ ./apps/tma/
 
