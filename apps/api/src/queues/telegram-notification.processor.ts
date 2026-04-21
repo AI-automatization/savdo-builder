@@ -72,18 +72,18 @@ export class TelegramNotificationProcessor extends WorkerHost {
 
         case TELEGRAM_JOB_BROADCAST: {
           const d = job.data as { chatId: string; message: string; broadcastLogId: string };
-          try {
-            await this.telegramBot.sendMessage(d.chatId, d.message, { parseMode: 'HTML' });
-            await this.prisma.broadcastLog.update({
-              where: { id: d.broadcastLogId },
-              data: { sentCount: { increment: 1 } },
-            });
-          } catch {
-            await this.prisma.broadcastLog.update({
-              where: { id: d.broadcastLogId },
-              data: { failedCount: { increment: 1 } },
-            });
+          // sendMessage catches errors internally and returns null on failure.
+          // Try HTML first, fall back to plain text if Telegram rejects HTML markup.
+          let msgId = await this.telegramBot.sendMessage(d.chatId, d.message, { parseMode: 'HTML' });
+          if (msgId === null) {
+            msgId = await this.telegramBot.sendMessage(d.chatId, d.message);
           }
+          await this.prisma.broadcastLog.update({
+            where: { id: d.broadcastLogId },
+            data: msgId !== null
+              ? { sentCount: { increment: 1 } }
+              : { failedCount: { increment: 1 } },
+          });
           break;
         }
 

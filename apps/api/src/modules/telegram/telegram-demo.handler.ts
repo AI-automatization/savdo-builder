@@ -212,6 +212,13 @@ export class TelegramDemoHandler {
 
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
       if (seller) {
+        // Save telegramChatId so this seller receives broadcast messages
+        if (!seller.telegramChatId) {
+          await this.prisma.seller.update({
+            where: { id: seller.id },
+            data: { telegramChatId: BigInt(chatId), telegramNotificationsActive: true },
+          });
+        }
         await this.showSellerMenu(chatId, firstName ?? normalized);
       } else {
         await this.showBuyerMenu(chatId, firstName ?? normalized);
@@ -230,6 +237,13 @@ export class TelegramDemoHandler {
 
       const seller = await this.prisma.seller.findUnique({ where: { userId: ghost.id } });
       if (seller) {
+        // Save telegramChatId so this seller receives broadcast messages
+        if (!seller.telegramChatId) {
+          await this.prisma.seller.update({
+            where: { id: seller.id },
+            data: { telegramChatId: BigInt(chatId), telegramNotificationsActive: true },
+          });
+        }
         // Продавец — проверяем есть ли магазин
         const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
         if (store) {
