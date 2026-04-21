@@ -27,15 +27,13 @@ interface OrderDetail {
   orderNumber: string | null;
   status: string;
   totalAmount: number;
-  subtotalAmount?: number;
-  deliveryFeeAmount?: number;
+  createdAt?: string;
   currencyCode?: string;
   customerFullName?: string | null;
   customerPhone?: string | null;
-  customerComment?: string | null;
-  city?: string | null;
-  region?: string | null;
-  addressLine1?: string | null;
+  buyerNote?: string | null;
+  deliveryFee?: number;
+  deliveryAddress?: { street?: string | null; city?: string | null; region?: string | null } | null;
   buyer?: { phone?: string | null } | null;
   items?: Array<{
     id: string;
@@ -62,7 +60,10 @@ function shortOrderNumber(o: { orderNumber: string | null; id: string }): string
 }
 
 function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+  const d = new Date(iso);
+  const date = d.toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+  const time = d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  return `${date} ${time}`;
 }
 
 export default function SellerOrdersPage() {
@@ -232,10 +233,10 @@ export default function SellerOrdersPage() {
 
               {/* Actions */}
               {(next || o.status === 'PENDING' || o.status === 'CONFIRMED') && (
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   {next && (
                     <button
-                      onClick={() => changeStatus(o.id, next.status)}
+                      onClick={(e) => { e.stopPropagation(); changeStatus(o.id, next.status); }}
                       disabled={isUpdating}
                       className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
                       style={{ background: 'rgba(167,139,250,0.20)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.30)' }}
@@ -245,7 +246,7 @@ export default function SellerOrdersPage() {
                   )}
                   {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
                     <button
-                      onClick={() => cancelOrder(o.id)}
+                      onClick={(e) => { e.stopPropagation(); cancelOrder(o.id); }}
                       disabled={isUpdating}
                       className="py-2 px-3 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
                       style={{ background: 'rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}
@@ -272,6 +273,13 @@ export default function SellerOrdersPage() {
           )}
           {!detailLoading && detail && (
             <div className="px-5 py-4 flex flex-col gap-5 pb-8">
+              {/* Дата и время */}
+              {detail.createdAt && (
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  🕐 {new Date(detail.createdAt).toLocaleString('ru', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+
               {/* Покупатель */}
               <div className="flex flex-col gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -312,20 +320,20 @@ export default function SellerOrdersPage() {
               )}
 
               {/* Адрес */}
-              {(detail.city || detail.addressLine1) && (
+              {(detail.deliveryAddress?.city || detail.deliveryAddress?.street) && (
                 <div className="flex flex-col gap-1">
                   <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>📍 Адрес</p>
                   <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                    {[detail.city, detail.region, detail.addressLine1].filter(Boolean).join(', ')}
+                    {[detail.deliveryAddress.city, detail.deliveryAddress.region, detail.deliveryAddress.street].filter(Boolean).join(', ')}
                   </p>
                 </div>
               )}
 
               {/* Комментарий */}
-              {detail.customerComment && (
+              {detail.buyerNote && (
                 <div className="flex flex-col gap-1">
                   <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>💬 Комментарий</p>
-                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>{detail.customerComment}</p>
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>{detail.buyerNote}</p>
                 </div>
               )}
 

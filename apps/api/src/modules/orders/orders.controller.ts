@@ -52,14 +52,32 @@ export class OrdersController {
     @Query() query: ListOrdersDto,
   ) {
     const buyerId = await this.resolveBuyerId(user.sub);
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Number(query.limit) || 20, 100);
 
-    return this.getBuyerOrdersUseCase.execute({
+    const result = await this.getBuyerOrdersUseCase.execute({
       userId: user.sub,
       buyerId,
       status: query.status,
-      page: query.page,
-      limit: query.limit,
+      page,
+      limit,
     });
+
+    const orders = (result as any).orders ?? [];
+    const total = (result as any).total ?? 0;
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      data: orders.map((o: any) => ({
+        id: o.id,
+        orderNumber: o.orderNumber ?? null,
+        status: o.status,
+        totalAmount: Number(String(o.totalAmount)),
+        currencyCode: o.currencyCode ?? 'UZS',
+        createdAt: (o.placedAt ?? o.createdAt ?? new Date()).toISOString(),
+      })),
+      meta: { total, page, limit, totalPages },
+    };
   }
 
   // GET /api/v1/orders/:id — alias for buyer/orders/:id
