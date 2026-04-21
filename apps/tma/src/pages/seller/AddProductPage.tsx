@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, apiUpload, ApiError } from '@/lib/api';
+import { CategoryModal } from '@/components/ui/CategoryModal';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -69,6 +70,8 @@ export default function AddProductPage() {
   const [attrName, setAttrName] = useState('');
   const [attrValue, setAttrValue] = useState('');
 
+  const [showStoreCatModal, setShowStoreCatModal] = useState(false);
+  const [showGlobalCatModal, setShowGlobalCatModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
@@ -296,7 +299,6 @@ export default function AddProductPage() {
               Цена (сум) *
             </label>
             <input
-              type="number"
               inputMode="numeric"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -319,60 +321,65 @@ export default function AddProductPage() {
           </div>
         </GlassCard>
 
-        {/* Категория */}
+        {/* Категория магазина */}
         {categories.length > 0 && (
-          <GlassCard className="p-4 flex flex-col gap-2.5">
+          <GlassCard className="p-4 flex flex-col gap-2">
             <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Категория
+              Категория магазина
             </label>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => {
-                const active = storeCategoryId === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setStoreCategoryId(active ? '' : c.id)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                    style={{
-                      background: active ? 'rgba(124,58,237,0.30)' : 'rgba(255,255,255,0.07)',
-                      border: `1px solid ${active ? 'rgba(124,58,237,0.55)' : 'rgba(255,255,255,0.12)'}`,
-                      color: active ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                    }}
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              onClick={() => setShowStoreCatModal(true)}
+              className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
+              style={{
+                background: storeCategoryId ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${storeCategoryId ? 'rgba(124,58,237,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                color: storeCategoryId ? '#A855F7' : 'rgba(255,255,255,0.40)',
+              }}
+            >
+              <span>{categories.find((c) => c.id === storeCategoryId)?.name ?? 'Выберите категорию...'}</span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>▼</span>
+            </button>
           </GlassCard>
         )}
 
         {/* Тип товара (GlobalCategory) */}
         {globalCategories.length > 0 && (
-          <GlassCard className="p-4 flex flex-col gap-2.5">
+          <GlassCard className="p-4 flex flex-col gap-2">
             <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
               Тип товара
             </label>
-            <div className="flex flex-wrap gap-2">
-              {globalCategories.map((c) => {
-                const active = globalCategoryId === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setGlobalCategoryId(active ? '' : c.id)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                    style={{
-                      background: active ? 'rgba(6,182,212,0.20)' : 'rgba(255,255,255,0.07)',
-                      border: `1px solid ${active ? 'rgba(6,182,212,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                      color: active ? '#22D3EE' : 'rgba(255,255,255,0.55)',
-                    }}
-                  >
-                    {c.nameRu}
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              onClick={() => setShowGlobalCatModal(true)}
+              className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
+              style={{
+                background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${globalCategoryId ? 'rgba(6,182,212,0.40)' : 'rgba(255,255,255,0.12)'}`,
+                color: globalCategoryId ? '#22D3EE' : 'rgba(255,255,255,0.40)',
+              }}
+            >
+              <span>{globalCategories.find((c) => c.id === globalCategoryId)?.nameRu ?? 'Выберите тип...'}</span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>▼</span>
+            </button>
           </GlassCard>
+        )}
+
+        {showStoreCatModal && (
+          <CategoryModal
+            title="Категория магазина"
+            items={categories.map((c) => ({ id: c.id, nameRu: c.name }))}
+            selectedId={storeCategoryId || null}
+            onSelect={(id) => setStoreCategoryId(id ?? '')}
+            onClose={() => setShowStoreCatModal(false)}
+          />
+        )}
+        {showGlobalCatModal && (
+          <CategoryModal
+            title="Тип товара"
+            items={globalCategories}
+            selectedId={globalCategoryId || null}
+            onSelect={(id) => setGlobalCategoryId(id ?? '')}
+            onClose={() => setShowGlobalCatModal(false)}
+          />
         )}
 
         {/* Характеристики товара */}
@@ -557,7 +564,6 @@ export default function AddProductPage() {
                     {sz.label}
                   </div>
                   <input
-                    type="number"
                     inputMode="numeric"
                     value={sz.stock || ''}
                     onChange={(e) => updateSizeStock(sz.label, e.target.value)}
@@ -608,7 +614,6 @@ export default function AddProductPage() {
               </label>
               <div className="flex items-center gap-2">
                 <input
-                  type="number"
                   inputMode="numeric"
                   value={stock}
                   onChange={(e) => setStock(e.target.value.replace(/^0+(?=\d)/, ''))}

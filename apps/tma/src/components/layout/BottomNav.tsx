@@ -13,6 +13,7 @@ const buyerTabs: NavItem[] = [
   { path: '/buyer',         label: 'Магазины', icon: '🏪', exact: true },
   { path: '/buyer/cart',    label: 'Корзина',  icon: '🛒' },
   { path: '/buyer/orders',  label: 'Заказы',   icon: '📦' },
+  { path: '/buyer/chat',    label: 'Чат',      icon: '💬' },
   { path: '/buyer/profile', label: 'Профиль',  icon: '👤' },
 ];
 
@@ -21,7 +22,7 @@ const sellerTabs: NavItem[] = [
   { path: '/seller/products', label: 'Товары',  icon: '📦' },
   { path: '/seller/store',    label: 'Магазин', icon: '🏪' },
   { path: '/seller/orders',   label: 'Заказы',  icon: '📋' },
-  { path: '/seller/profile',  label: 'Профиль', icon: '👤' },
+  { path: '/seller/chat',     label: 'Чат',     icon: '💬' },
 ];
 
 function isActive(tab: NavItem, pathname: string): boolean {

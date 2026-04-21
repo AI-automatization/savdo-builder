@@ -13,10 +13,10 @@ import { type CartItem, getCart, clearCart } from '@/lib/cart';
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { tg } = useTelegram();
-  const { authenticated } = useAuth();
+  const { authenticated, user } = useAuth();
   const [items] = useState<CartItem[]>(getCart);
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(user?.phone ?? '');
   const [address, setAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -119,7 +119,7 @@ export default function CheckoutPage() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Телефон (+998...)"
-            type="tel"
+            inputMode="tel"
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
             style={{ ...glass, background: 'rgba(255,255,255,0.05)' }}
           />

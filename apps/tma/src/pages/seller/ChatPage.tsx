@@ -5,6 +5,8 @@ import { getSocket } from '@/lib/socket';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui/Spinner';
+import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
+import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
 interface ChatThread {
@@ -93,8 +95,10 @@ export default function SellerChatPage() {
         body: { body: text.trim(), messageType: 'text' },
       });
       setText('');
+      showToast('✅ Сообщение отправлено');
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Не удалось отправить', 'error');
     } finally {
       setSending(false);
     }
@@ -108,8 +112,10 @@ export default function SellerChatPage() {
       setActiveThread((t) => t ? { ...t, status: 'resolved' } : t);
       setThreads((prev) => prev.map((t) => t.id === activeThread.id ? { ...t, status: 'resolved' } : t));
       tg?.HapticFeedback.notificationOccurred('success');
+      showToast('✅ Диалог закрыт');
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Не удалось закрыть', 'error');
     } finally {
       setResolving(false);
     }
@@ -223,7 +229,7 @@ export default function SellerChatPage() {
           Сообщения
         </h1>
 
-        {loading && <div className="flex justify-center py-10"><Spinner size={32} /></div>}
+        {loading && [1,2,3].map((i) => <ThreadRowSkeleton key={i} />)}
 
         {!loading && threads.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16">

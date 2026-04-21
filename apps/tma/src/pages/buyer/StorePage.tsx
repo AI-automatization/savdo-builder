@@ -5,7 +5,8 @@ import { track } from '@/lib/analytics';
 import { getCart, saveCart } from '@/lib/cart';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
+import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
 interface Product {
@@ -105,10 +106,17 @@ export default function StorePage() {
       }]);
     }
     tg?.HapticFeedback.notificationOccurred('success');
+    showToast('✅ Добавлено в корзину');
     track.addToCart(store.id, product.id, null, 1);
   };
 
-  if (loading) return <AppShell role="BUYER"><div className="flex justify-center py-10"><Spinner size={32} /></div></AppShell>;
+  if (loading) return (
+    <AppShell role="BUYER">
+      <div className="grid grid-cols-2 gap-3 pt-2">
+        {[1,2,3,4,5,6].map((i) => <ProductCardSkeleton key={i} />)}
+      </div>
+    </AppShell>
+  );
 
   if (error || !store) {
     return (

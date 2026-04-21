@@ -15,6 +15,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Skeleton shimmer ────────────────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ── Cyber Orchid glow pulse (AI node / active states) ────────────────────── */
 @keyframes orchid-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(168,85,247,0); }

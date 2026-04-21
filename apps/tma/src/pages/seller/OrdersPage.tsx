@@ -4,7 +4,9 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { OrderRowSkeleton } from '@/components/ui/Skeleton';
+import { showToast } from '@/components/ui/Toast';
 
 interface Order {
   id: string;
@@ -12,12 +14,37 @@ interface Order {
   status: string;
   totalAmount: number | string;
   createdAt: string;
-  buyer?: { phone?: string; firstName?: string };
+  buyer?: { phone?: string; firstName?: string } | null;
   preview?: {
     title: string;
     imageUrl: string | null;
     itemCount: number;
   } | null;
+}
+
+interface OrderDetail {
+  id: string;
+  orderNumber: string | null;
+  status: string;
+  totalAmount: number;
+  subtotalAmount?: number;
+  deliveryFeeAmount?: number;
+  currencyCode?: string;
+  customerFullName?: string | null;
+  customerPhone?: string | null;
+  customerComment?: string | null;
+  city?: string | null;
+  region?: string | null;
+  addressLine1?: string | null;
+  buyer?: { phone?: string | null } | null;
+  items?: Array<{
+    id: string;
+    title: string;
+    variantTitle?: string | null;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+  }>;
 }
 
 const NEXT_STATUS: Record<string, { label: string; status: string } | null> = {
@@ -46,6 +73,9 @@ export default function SellerOrdersPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [hideCompleted, setHideCompleted] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<OrderDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchOrders = () => {
     setError(false);
@@ -57,6 +87,16 @@ export default function SellerOrdersPage() {
 
   useEffect(() => { fetchOrders(); }, []);
 
+  const openDetail = (orderId: string) => {
+    setDetailId(orderId);
+    setDetail(null);
+    setDetailLoading(true);
+    api<OrderDetail>(`/seller/orders/${orderId}`)
+      .then(setDetail)
+      .catch(() => {})
+      .finally(() => setDetailLoading(false));
+  };
+
   const changeStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
     setUpdateError(null);
@@ -66,9 +106,11 @@ export default function SellerOrdersPage() {
         body: { status: newStatus },
       });
       tg?.HapticFeedback.notificationOccurred('success');
+      showToast('✅ Статус обновлён');
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
     } catch (err) {
       tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Не удалось изменить статус', 'error');
       setUpdateError(err instanceof Error ? err.message : 'Не удалось изменить статус');
     } finally {
       setUpdating(null);
@@ -113,7 +155,7 @@ export default function SellerOrdersPage() {
           )}
         </div>
 
-        {loading && <div className="flex justify-center py-8"><Spinner /></div>}
+        {loading && [1,2,3].map((i) => <OrderRowSkeleton key={i} />)}
 
         {updateError && (
           <div
@@ -144,7 +186,7 @@ export default function SellerOrdersPage() {
           const next = NEXT_STATUS[o.status];
           const isUpdating = updating === o.id;
           return (
-            <GlassCard key={o.id} className="flex flex-col gap-3 p-4">
+            <GlassCard key={o.id} className="flex flex-col gap-3 p-4" style={{ cursor: 'pointer' }} onClick={() => openDetail(o.id)}>
               {/* Main row: thumbnail + title/meta + amount/badge */}
               <div className="flex items-start gap-3 min-w-0">
                 {/* Thumbnail */}
@@ -217,6 +259,87 @@ export default function SellerOrdersPage() {
           );
         })}
       </div>
+
+      {detailId && (
+        <BottomSheet
+          title={`Заказ #${detail ? (detail.orderNumber?.replace(/^ORD-/, '') ?? detail.id.slice(-6).toUpperCase()) : '...'}`}
+          onClose={() => { setDetailId(null); setDetail(null); }}
+        >
+          {detailLoading && (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(167,139,250,0.3)', borderTopColor: '#A855F7' }} />
+            </div>
+          )}
+          {!detailLoading && detail && (
+            <div className="px-5 py-4 flex flex-col gap-5 pb-8">
+              {/* Покупатель */}
+              <div className="flex flex-col gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  👤 Покупатель
+                </p>
+                {detail.customerFullName && (
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>{detail.customerFullName}</p>
+                )}
+                {detail.customerPhone && (
+                  <a href={`tel:${detail.customerPhone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#22D3EE' }}>
+                    📞 {detail.customerPhone} <span style={{ fontSize: 10, opacity: 0.6 }}>при заказе</span>
+                  </a>
+                )}
+                {detail.buyer?.phone && detail.buyer.phone !== detail.customerPhone && (
+                  <a href={`tel:${detail.buyer.phone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#A78BFA' }}>
+                    📱 {detail.buyer.phone} <span style={{ fontSize: 10, opacity: 0.6 }}>аккаунт</span>
+                  </a>
+                )}
+              </div>
+
+              {/* Товары */}
+              {(detail.items ?? []).length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    📦 Товары
+                  </p>
+                  {(detail.items ?? []).map((item) => (
+                    <div key={item.id} className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm flex-1 truncate" style={{ color: 'rgba(255,255,255,0.80)' }}>
+                        {item.title}{item.variantTitle ? ` · ${item.variantTitle}` : ''} × {item.quantity}
+                      </span>
+                      <span className="text-sm font-semibold shrink-0" style={{ color: '#A855F7' }}>
+                        {Number(item.subtotal).toLocaleString('ru')} сум
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Адрес */}
+              {(detail.city || detail.addressLine1) && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>📍 Адрес</p>
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                    {[detail.city, detail.region, detail.addressLine1].filter(Boolean).join(', ')}
+                  </p>
+                </div>
+              )}
+
+              {/* Комментарий */}
+              {detail.customerComment && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>💬 Комментарий</p>
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>{detail.customerComment}</p>
+                </div>
+              )}
+
+              {/* Итого */}
+              <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Итого</span>
+                <span className="text-base font-bold" style={{ color: '#A855F7' }}>
+                  {Number(detail.totalAmount).toLocaleString('ru')} сум
+                </span>
+              </div>
+            </div>
+          )}
+        </BottomSheet>
+      )}
     </AppShell>
   );
 }

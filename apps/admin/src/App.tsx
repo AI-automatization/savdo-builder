@@ -16,6 +16,7 @@ import UsersPage from './pages/UsersPage'
 import UserDetailPage from './pages/UserDetailPage'
 import DatabasePage from './pages/DatabasePage'
 import BroadcastPage from './pages/BroadcastPage'
+import ChatsPage from './pages/ChatsPage'
 import AnalyticsDashboardPage from './pages/AnalyticsDashboardPage'
 import AnalyticsEventsPage from './pages/AnalyticsEventsPage'
 
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="users/:id" element={<UserDetailPage />} />
           <Route path="database" element={<DatabasePage />} />
           <Route path="broadcast" element={<BroadcastPage />} />
+          <Route path="chats" element={<ChatsPage />} />
           <Route path="analytics" element={<AnalyticsDashboardPage />} />
           <Route path="analytics/events" element={<AnalyticsEventsPage />} />
         </Route>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { showToast } from '@/components/ui/Toast';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
@@ -130,6 +131,7 @@ export default function ProductPage() {
 
     saveCart(cart);
     tg?.HapticFeedback.notificationOccurred('success');
+    showToast('✅ Добавлено в корзину');
     track.addToCart(product.storeId, product.id, variantId ?? null, 1);
     navigate('/buyer/cart');
   };

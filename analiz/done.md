@@ -1,5 +1,78 @@
 # Done — Азим + Полат
 
+## 2026-04-21 — Сессия 30 (Полат) — Спринт 30: UX/полнота платформы TMA + Admin
+
+### ✅ [TMA-CATEGORY-MODAL-001] Searchable Category Modal — замена chip-пикеров
+- **Важность:** 🟡
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/CategoryModal.tsx` — СОЗДАН (overlay + search + scrollable list)
+  - `apps/tma/src/pages/seller/AddProductPage.tsx` — chip → button trigger + CategoryModal
+  - `apps/tma/src/pages/seller/EditProductPage.tsx` — то же
+- **Что сделано:** Заменены chip-пикеры для «Тип товара» и «Категория магазина» на кнопку-триггер с поиском. Модал: backdrop blur, search input, список с галочкой активного, кнопка «Очистить», закрытие по оверлею.
+
+### ✅ [TMA-BOTTOM-SHEET-001] BottomSheet + детальная карточка заказа для продавца
+- **Важность:** 🟡
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/BottomSheet.tsx` — СОЗДАН
+  - `apps/tma/src/pages/seller/OrdersPage.tsx` — state detailId + fetch + BottomSheet с полной инфой покупателя
+- **Что сделано:** Тап на заказ → slide-up sheet с именем, телефоном покупателя (заказ + аккаунт), tel: ссылки, список товаров с qty×price, адрес, комментарий, итого.
+
+### ✅ [TMA-CHECKOUT-PHONE-001] Auto-fill телефона при оформлении заказа
+- **Важность:** 🟢
+- **Дата:** 21.04.2026
+- **Файл:** `apps/tma/src/pages/buyer/CheckoutPage.tsx`
+- **Что сделано:** `useState('')` → `useState(user?.phone ?? '')`. Поле телефона предзаполняется из профиля покупателя.
+
+### ✅ [TMA-TOAST-001] Toast уведомления
+- **Важность:** 🟡
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/Toast.tsx` — СОЗДАН (singleton через CustomEvent)
+  - `apps/tma/src/components/layout/AppShell.tsx` — добавлен `<ToastContainer />`
+  - `apps/tma/src/pages/buyer/ProductPage.tsx` — toast при добавлении в корзину
+  - `apps/tma/src/pages/buyer/StorePage.tsx` — toast при добавлении в корзину
+  - `apps/tma/src/pages/buyer/ChatPage.tsx` — toast при отправке
+  - `apps/tma/src/pages/seller/ChatPage.tsx` — toast при отправке + закрытии треда
+  - `apps/tma/src/pages/seller/OrdersPage.tsx` — toast при обновлении статуса
+- **Что сделано:** Глобальная toast-система без React context. `showToast(msg, type?)` диспатчит CustomEvent → `ToastContainer` показывает 2.5с.
+
+### ✅ [TMA-SKELETON-001] Skeleton loaders вместо Spinner
+- **Важность:** 🟢
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/Skeleton.tsx` — СОЗДАН (shimmer анимация + пресеты)
+  - `apps/tma/src/index.css` — добавлена `@keyframes skeleton-shimmer`
+  - `apps/tma/src/pages/buyer/StorePage.tsx` — ProductCardSkeleton вместо Spinner
+  - `apps/tma/src/pages/seller/OrdersPage.tsx` — OrderRowSkeleton
+  - `apps/tma/src/pages/buyer/ChatPage.tsx` — ThreadRowSkeleton
+  - `apps/tma/src/pages/seller/ChatPage.tsx` — ThreadRowSkeleton
+
+### ✅ [TMA-BOTTOMNAV-CHAT-001] Добавлен чат в BottomNav (buyer + seller)
+- **Важность:** 🟡
+- **Дата:** 21.04.2026
+- **Файл:** `apps/tma/src/components/layout/BottomNav.tsx`
+- **Что сделано:** Buyer — 5 вкладок: Магазин/Корзина/Заказы/Чат/Профиль. Seller — 5 вкладок: Дашборд/Товары/Магазин/Заказы/Чат.
+
+### ✅ [TMA-INPUT-FIX-001] Исправлены type="number" / type="tel" инпуты
+- **Важность:** 🟢
+- **Дата:** 21.04.2026
+- **Файлы:** `apps/tma/src/pages/seller/AddProductPage.tsx`, `EditProductPage.tsx`, `buyer/CheckoutPage.tsx`
+- **Что сделано:** Заменены `type="number"` → `inputMode="numeric"`, `type="tel"` → `inputMode="tel"`. Исправлены дублирующиеся атрибуты (TS17001).
+
+### ✅ [ADMIN-CHAT-001] Admin — мониторинг чатов
+- **Важность:** 🟡
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/api/src/modules/chat/chat.controller.ts` — 2 новых endpoint (ADMIN роль): `GET admin/chat/threads`, `GET admin/chat/threads/:id/messages`
+  - `apps/admin/src/pages/ChatsPage.tsx` — СОЗДАН (таблица тредов + правая панель сообщений)
+  - `apps/admin/src/App.tsx` — добавлен route `/chats`
+  - `apps/admin/src/layouts/DashboardLayout.tsx` — добавлен пункт «Чаты» в меню
+- **Что сделано:** Админ видит все треды со store/buyer инфой, фильтр по статусу, поиск. Клик → история сообщений (read-only).
+
+---
+
 ## 2026-04-21 — Сессия 30 (Азим) — Аудит web-buyer + web-seller
 
 ### ✅ [WEB-BUYER-CHAT-COMPOSER-001] In-app чат: создание тредов из product + order pages

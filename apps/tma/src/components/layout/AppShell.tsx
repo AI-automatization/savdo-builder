@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BottomNav } from './BottomNav';
 import { BackButton } from './BackButton';
+import { ToastContainer } from '@/components/ui/Toast';
 import { gradientBg, COLORS } from '@/lib/styles';
 
 interface Props {
@@ -33,6 +34,7 @@ export function AppShell({ children, role }: Props) {
         }} />
       </div>
 
+      <ToastContainer />
       <BackButton />
       <div className="relative z-10 flex-1 px-4 pt-4 pb-20">
         {children}

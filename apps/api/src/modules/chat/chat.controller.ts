@@ -18,6 +18,7 @@ import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { UsersRepository } from '../users/repositories/users.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
+import { PrismaService } from '../../database/prisma.service';
 import { CreateThreadDto } from './dto/create-thread.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ListMessagesDto } from './dto/list-messages.dto';
@@ -35,6 +36,7 @@ export class ChatController {
   constructor(
     private readonly usersRepo: UsersRepository,
     private readonly sellersRepo: SellersRepository,
+    private readonly prisma: PrismaService,
     private readonly createThreadUseCase: CreateThreadUseCase,
     private readonly sendMessageUseCase: SendMessageUseCase,
     private readonly getThreadMessagesUseCase: GetThreadMessagesUseCase,
@@ -118,6 +120,87 @@ export class ChatController {
       threadId,
       sellerUserId: sellerId,
     });
+  }
+
+  // ─── Admin endpoints ────────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/chat/threads
+  @Get('admin/chat/threads')
+  @Roles('ADMIN')
+  async adminListThreads(
+    @Query('page') page = 1,
+    @Query('limit') limit = 30,
+    @Query('status') status?: string,
+  ) {
+    const where = status ? { status } : {};
+    const [threads, total] = await Promise.all([
+      this.prisma.chatThread.findMany({
+        where,
+        orderBy: { lastMessageAt: 'desc' },
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit),
+        include: {
+          buyer: { include: { user: { select: { phone: true } } } },
+          seller: { include: { store: { select: { name: true, slug: true } } } },
+          messages: {
+            where: { isDeleted: false },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      }),
+      this.prisma.chatThread.count({ where }),
+    ]);
+
+    return {
+      data: threads.map((t) => ({
+        id: t.id,
+        status: t.status,
+        threadType: t.threadType,
+        lastMessageAt: t.lastMessageAt,
+        storeName: t.seller?.store?.name ?? null,
+        storeSlug: t.seller?.store?.slug ?? null,
+        buyerPhone: t.buyer?.user?.phone ?? null,
+        lastMessage: t.messages[0]?.body ?? null,
+      })),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    };
+  }
+
+  // GET /api/v1/admin/chat/threads/:id/messages
+  @Get('admin/chat/threads/:id/messages')
+  @Roles('ADMIN')
+  async adminGetMessages(@Param('id') threadId: string) {
+    const thread = await this.prisma.chatThread.findUnique({
+      where: { id: threadId },
+      include: {
+        buyer: { include: { user: { select: { phone: true } } } },
+        seller: { include: { store: { select: { name: true } } } },
+        messages: {
+          where: { isDeleted: false },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!thread) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
+    }
+
+    return {
+      id: thread.id,
+      status: thread.status,
+      storeName: thread.seller?.store?.name ?? null,
+      buyerPhone: thread.buyer?.user?.phone ?? null,
+      messages: thread.messages.map((m) => ({
+        id: m.id,
+        senderUserId: m.senderUserId,
+        body: m.body,
+        createdAt: m.createdAt,
+      })),
+    };
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
