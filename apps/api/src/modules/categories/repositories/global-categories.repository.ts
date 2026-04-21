@@ -78,6 +78,18 @@ export class GlobalCategoriesRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.globalCategory.delete({ where: { id } });
+    await this.prisma.$transaction([
+      // Отвязать дочерние категории (parentId → null)
+      this.prisma.globalCategory.updateMany({
+        where: { parentId: id },
+        data: { parentId: null },
+      }),
+      // Отвязать товары (globalCategoryId → null)
+      this.prisma.product.updateMany({
+        where: { globalCategoryId: id },
+        data: { globalCategoryId: null },
+      }),
+      this.prisma.globalCategory.delete({ where: { id } }),
+    ]);
   }
 }
