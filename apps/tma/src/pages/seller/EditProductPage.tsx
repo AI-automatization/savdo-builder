@@ -177,7 +177,7 @@ export default function EditProductPage() {
     borderRadius: 12,
   } as const;
 
-  const isValid = title.trim().length >= 2 && Number(price) > 0;
+  const isValid = title.trim().length >= 2 && Number(price) > 0 && !!globalCategoryId;
 
   const handleStockSave = async (variant: Variant) => {
     if (!id) return;
@@ -570,26 +570,27 @@ export default function EditProductPage() {
               </GlassCard>
             )}
 
-            {/* Тип товара (GlobalCategory) */}
-            {globalCategories.length > 0 && (
-              <GlassCard className="p-4 flex flex-col gap-2">
-                <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  Тип товара
-                </label>
-                <button
-                  onClick={() => setShowGlobalCatModal(true)}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
-                  style={{
-                    background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${globalCategoryId ? 'rgba(6,182,212,0.40)' : 'rgba(255,255,255,0.12)'}`,
-                    color: globalCategoryId ? '#22D3EE' : 'rgba(255,255,255,0.40)',
-                  }}
-                >
-                  <span>{globalCategories.find((c) => c.id === globalCategoryId)?.nameRu ?? 'Выберите тип...'}</span>
-                  <span style={{ fontSize: 12, opacity: 0.5 }}>▼</span>
-                </button>
-              </GlassCard>
-            )}
+            {/* Тип товара (GlobalCategory) — обязательно */}
+            <GlassCard className="p-4 flex flex-col gap-2">
+              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Тип товара <span style={{ color: '#f87171' }}>*</span>
+              </label>
+              <button
+                onClick={() => setShowGlobalCatModal(true)}
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
+                style={{
+                  background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${globalCategoryId ? 'rgba(6,182,212,0.40)' : 'rgba(239,68,68,0.35)'}`,
+                  color: globalCategoryId ? '#22D3EE' : 'rgba(255,255,255,0.40)',
+                }}
+              >
+                <span>{globalCategories.find((c) => c.id === globalCategoryId)?.nameRu ?? 'Выберите тип товара...'}</span>
+                <span style={{ fontSize: 12, opacity: 0.5 }}>▼</span>
+              </button>
+              {!globalCategoryId && (
+                <p className="text-xs" style={{ color: 'rgba(239,68,68,0.80)' }}>Необходимо выбрать тип товара</p>
+              )}
+            </GlassCard>
 
             {showStoreCatModal && (
               <CategoryModal

@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
+import { api } from '@/lib/api';
+import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -9,6 +11,7 @@ import { type CartItem, getCart, saveCart } from '@/lib/cart';
 
 export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>(getCart);
+  const [contacting, setContacting] = useState(false);
   const navigate = useNavigate();
   const { tg } = useTelegram();
 
@@ -33,6 +36,28 @@ export default function CartPage() {
     setItems(updated);
     saveCart(updated);
   };
+
+  const handleContactSeller = useCallback(async () => {
+    if (!items.length || contacting) return;
+    setContacting(true);
+    try {
+      const firstItem = items[0];
+      const itemList = items.map((i) => `• ${i.title} × ${i.qty}`).join('\n');
+      await api('/chat/threads', {
+        method: 'POST',
+        body: {
+          contextType: 'PRODUCT',
+          contextId: firstItem.productId,
+          firstMessage: `Хочу уточнить по товарам из корзины:\n${itemList}`,
+        },
+      });
+      navigate('/buyer/chat');
+    } catch {
+      showToast('❌ Не удалось открыть чат', 'error');
+    } finally {
+      setContacting(false);
+    }
+  }, [items, contacting, navigate]);
 
   useEffect(() => {
     if (!tg || !items.length) { tg?.MainButton.hide(); return; }
@@ -105,6 +130,17 @@ export default function CartPage() {
               {total.toLocaleString('ru')} сум
             </span>
           </div>
+        )}
+
+        {items.length > 0 && (
+          <button
+            onClick={handleContactSeller}
+            disabled={contacting}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-semibold disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.70)' }}
+          >
+            💬 {contacting ? 'Открываем чат...' : 'Уточнить у продавца'}
+          </button>
         )}
 
         {items.length > 0 && (

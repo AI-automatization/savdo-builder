@@ -98,6 +98,7 @@ export class ProductsRepository {
           include: { values: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
         },
+        globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
       },
     });
   }
@@ -117,6 +118,7 @@ export class ProductsRepository {
           orderBy: { sortOrder: 'asc' },
         },
         attributes: { orderBy: { sortOrder: 'asc' } },
+        globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
       },
     });
   }

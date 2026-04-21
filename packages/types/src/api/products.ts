@@ -65,6 +65,7 @@ export interface Product extends ProductListItem {
   variants: ProductVariant[];
   optionGroups: OptionGroup[];
   createdAt: string;
+  globalCategory: { id: string; nameRu: string; nameUz: string } | null;
 }
 
 /** Compact product info embedded in cart item */

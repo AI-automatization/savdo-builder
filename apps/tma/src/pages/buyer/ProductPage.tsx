@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -36,6 +36,7 @@ interface Product {
   optionGroups?: OptionGroupMin[];
   attributes?: ProductAttribute[];
   store?: { name: string; slug: string };
+  globalCategory?: { id: string; nameRu: string } | null;
 }
 
 export default function ProductPage() {
@@ -48,6 +49,7 @@ export default function ProductPage() {
   const [activeImage, setActiveImage] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selection, setSelection] = useState<OptionSelection>({});
+  const [contacting, setContacting] = useState(false);
   const trackedRef = useRef<string | null>(null);
 
   const activeVariants = product?.variants?.filter((v) => v.isActive !== false) ?? [];
@@ -95,6 +97,26 @@ export default function ProductPage() {
   function handleOptionSelect(groupId: string, valueId: string) {
     setSelection((prev) => ({ ...prev, [groupId]: valueId }));
   }
+
+  const handleContactSeller = useCallback(async () => {
+    if (!product || contacting) return;
+    setContacting(true);
+    try {
+      await api('/chat/threads', {
+        method: 'POST',
+        body: {
+          contextType: 'PRODUCT',
+          contextId: product.id,
+          firstMessage: `Хочу уточнить по товару «${product.title}»`,
+        },
+      });
+      navigate('/buyer/chat');
+    } catch {
+      showToast('❌ Не удалось открыть чат', 'error');
+    } finally {
+      setContacting(false);
+    }
+  }, [product, contacting, navigate]);
 
   const canAddToCart = !!product && !requiresVariantSelection && !isOutOfStock;
 
@@ -224,6 +246,12 @@ export default function ProductPage() {
           <h1 className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>
             {product.title}
           </h1>
+          {product.globalCategory && (
+            <span className="self-start text-xs px-2 py-0.5 rounded-full font-medium"
+              style={{ background: 'rgba(167,139,250,0.12)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.25)' }}>
+              {product.globalCategory.nameRu}
+            </span>
+          )}
           <div className="flex items-center gap-3 flex-wrap">
             <p className="text-xl font-bold" style={{ color: '#A855F7' }}>
               {unitPrice.toLocaleString('ru')} сум
@@ -364,6 +392,16 @@ export default function ProductPage() {
             </svg>
           </button>
         )}
+
+        {/* Contact seller */}
+        <button
+          onClick={handleContactSeller}
+          disabled={contacting}
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-semibold disabled:opacity-50"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.70)' }}
+        >
+          💬 {contacting ? 'Открываем чат...' : 'Задать вопрос продавцу'}
+        </button>
       </div>
     </AppShell>
   );
