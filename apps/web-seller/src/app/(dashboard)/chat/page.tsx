@@ -190,12 +190,21 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
 
 // ── Empty state ────────────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ noThreads }: { noThreads: boolean }) {
   return (
-    <div className="flex-1 rounded-2xl flex items-center justify-center" style={glassDim}>
-      <div className="text-center">
-        <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px' }} />
-        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>Выберите чат</p>
+    <div className="flex-1 rounded-2xl flex items-center justify-center p-8" style={glassDim}>
+      <div className="text-center max-w-sm">
+        <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 10px' }} />
+        {noThreads ? (
+          <>
+            <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>Здесь появятся диалоги с покупателями</p>
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              Продавец не может начать чат первым. Покупатель напишет вам со страницы товара или заказа — диалог сразу появится в списке слева.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>Выберите чат</p>
+        )}
       </div>
     </div>
   );
@@ -247,9 +256,15 @@ export default function ChatPage() {
           )}
 
           {!isLoading && !isError && threads?.length === 0 && (
-            <p className="px-4 py-6 text-xs text-center" style={{ color: 'rgba(255,255,255,0.30)' }}>
-              Чатов пока нет
-            </p>
+            <div className="px-4 py-8 text-center flex flex-col items-center gap-3">
+              <MessageSquare size={28} style={{ color: 'rgba(255,255,255,0.3)' }} />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.60)' }}>Чатов пока нет</p>
+                <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Покупатели первыми пишут вам<br />со страницы товара или заказа
+                </p>
+              </div>
+            </div>
           )}
 
           {threads?.map((thread) => (
@@ -264,7 +279,7 @@ export default function ChatPage() {
       </div>
 
       {/* Chat window or empty */}
-      {activeThread ? <ChatWindow thread={activeThread} /> : <EmptyState />}
+      {activeThread ? <ChatWindow thread={activeThread} /> : <EmptyState noThreads={!threads || threads.length === 0} />}
     </div>
   );
 }

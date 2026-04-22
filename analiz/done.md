@@ -1,5 +1,26 @@
 # Done — Азим + Полат
 
+## 2026-04-21 — Сессия 31 (Азим) — Empty-state чата на web-buyer и web-seller
+
+### ✅ [WEB-CHAT-EMPTY-STATE-001] Понятный empty-state на странице чатов
+- **Важность:** 🟡
+- **Дата:** 21.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — левая панель (thread list empty) + правая панель (desktop, когда нет тредов)
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — левая панель + `EmptyState({ noThreads })`
+- **Что сделано:** Пользователь жаловался на скрин `c:/Users/marti/Desktop/Снимок экрана 2026-04-21 222607.png` — «Чатов пока нет, Напишите продавцу со страницы заказа» + «Выберите чат» рядом. Текст «со страницы заказа» устарел (с вчерашнего `e28ffd0` треды создаются и с product-страниц). На seller-стороне пусто и никак не сказано, что продавец не может начать чат сам.
+  - **web-buyer:** empty копирайт + CTA-кнопка «Перейти к магазинам» (link href=`/`) + та же контекстная подсказка на правой панели десктопа при 0 тредов.
+  - **web-seller:** empty копирайт объясняет, что покупатель пишет первым; правая панель через `EmptyState({ noThreads })` показывает ту же подсказку, а когда треды есть и просто не выбран — старое «Выберите чат».
+- **Bundle:** нет новых зависимостей, только JSX-правки и текст.
+
+### ✅ [WEB-CHAT-THREAD-LABEL-001] Корректный label для PRODUCT-тредов в web-buyer
+- **Важность:** 🟢
+- **Дата:** 21.04.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/chats/page.tsx`
+- **Что сделано:** `ThreadItem` (line ~74) и заголовок `ChatView` (line ~126) больше не рендерят «Заказ ···ABC» безусловно. Добавлен хелпер `contextLabel(thread)` — для `thread.contextType === ThreadType.PRODUCT` показывает «Товар ···ABC», иначе «Заказ ···ABC». Импорт `ThreadType` добавлен к уже существующему `UserRole` из `'types'`. Развилка на основе `contextType` из `ChatThread` — backend не трогали.
+
+---
+
 ## 2026-04-21 — Сессия 30 (Полат) — Спринт 30: UX/полнота платформы TMA + Admin
 
 ### ✅ [TMA-CATEGORY-MODAL-001] Searchable Category Modal — замена chip-пикеров

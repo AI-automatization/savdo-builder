@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
-import { UserRole } from "types";
+import { UserRole, ThreadType } from "types";
 import type { ChatThread } from "types";
 import { useAuth } from "@/lib/auth/context";
 import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
@@ -44,6 +44,11 @@ function timeLabel(iso: string): string {
   return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+function contextLabel(thread: ChatThread): string {
+  const suffix = thread.contextId.slice(-6).toUpperCase();
+  return thread.contextType === ThreadType.PRODUCT ? `Товар ···${suffix}` : `Заказ ···${suffix}`;
+}
+
 // ── Icons ──────────────────────────────────────────────────────────────────
 
 const IcoShop    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>;
@@ -71,7 +76,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white">
-          Заказ ···{thread.contextId.slice(-6).toUpperCase()}
+          {contextLabel(thread)}
         </p>
         <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.38)" }}>
           {thread.lastMessage?.text ?? "Нет сообщений"}
@@ -123,7 +128,7 @@ function ChatView({ thread }: { thread: ChatThread }) {
           <IcoBack />
         </button>
         <div>
-          <p className="text-sm font-semibold text-white">Заказ ···{thread.contextId.slice(-6).toUpperCase()}</p>
+          <p className="text-sm font-semibold text-white">{contextLabel(thread)}</p>
           <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
             {thread.status === "OPEN" ? "Открыт" : "Закрыт"}
           </p>
@@ -239,10 +244,21 @@ function ChatsView() {
             )}
             {isError && <p className="px-4 py-6 text-xs text-center" style={{ color: "rgba(248,113,113,.70)" }}>Ошибка загрузки</p>}
             {!isLoading && !isError && threads?.length === 0 && (
-              <div className="px-4 py-10 text-center">
-                <MessageSquare size={28} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px' }} />
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.30)" }}>Чатов пока нет</p>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.20)" }}>Напишите продавцу со страницы заказа</p>
+              <div className="px-4 py-10 text-center flex flex-col items-center gap-3">
+                <MessageSquare size={28} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.60)" }}>Чатов пока нет</p>
+                  <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    Откройте магазин или заказ и нажмите<br />кнопку чата — напишите продавцу
+                  </p>
+                </div>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold mt-1"
+                  style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", color: "white" }}
+                >
+                  <Store size={14} /> Перейти к магазинам
+                </Link>
               </div>
             )}
             {threads?.map((thread) => (
@@ -263,10 +279,19 @@ function ChatsView() {
             <ChatView thread={activeThread} />
           </div>
         ) : (
-          <div className="hidden md:flex flex-1 items-center justify-center">
-            <div className="text-center">
-              <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px' }} />
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>Выберите чат</p>
+          <div className="hidden md:flex flex-1 items-center justify-center p-8">
+            <div className="text-center max-w-sm">
+              <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 10px' }} />
+              {threads && threads.length === 0 ? (
+                <>
+                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>Здесь появятся ваши диалоги</p>
+                  <p className="text-xs mt-2 leading-relaxed" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    Зайдите в любой магазин, откройте товар и нажмите фиолетовую кнопку чата — отправьте первое сообщение продавцу.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>Выберите чат</p>
+              )}
             </div>
           </div>
         )}
