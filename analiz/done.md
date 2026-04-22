@@ -1,6 +1,12 @@
 # Done — Азим + Полат
 
-## 2026-04-23 — Сессия 32 (Азим) — Recent stores на главной web-buyer
+## 2026-04-23 — Сессия 32 (Азим) — Recent stores + диагностика чата + чистка backlog
+
+### ✅ [DIAG-CHAT-403-001] Диагностика чата 403 на dual-role аккаунтах
+- **Важность:** 🔴 (root cause найден, фикс на Полате)
+- **Дата:** 23.04.2026
+- **Файлы (проверены, не менялись):** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:44-70`, `apps/api/src/modules/chat/chat.controller.ts:62`, `apps/api/src/common/guards/roles.guard.ts:28-30`
+- **Что сделано:** Азим получил 403 «Insufficient permissions» при попытке отправить сообщение через ChatComposerModal. По коду (без F12) подтверждена причина: `User.role='SELLER'` для телефонов уже зарегистрированных как seller → JWT `role: "SELLER"` → `@Roles('BUYER')` guard → 403. `ensureBuyerProfile` создаёт Buyer-запись, но User.role не меняет — архитектурная несостыковка (dual-role пользователи + скалярный JWT role). Заведён `API-CHAT-ROLE-GUARD-001` 🔴 в `tasks.md` с двумя вариантами фикса (минимальный: убрать `@Roles('BUYER')` с POST /chat/threads — в методе уже есть `resolveBuyerId` который бросает 422). Трейс в `logs.md` → `WEB-BUYER-CHAT-CREATE-403-001`. Ждёт Полата.
 
 ### ✅ [WEB-BUYER-RECENT-STORES-001] Недавние магазины под инпутом на главной
 - **Важность:** 🟡 UX
