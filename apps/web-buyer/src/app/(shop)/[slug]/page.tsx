@@ -6,6 +6,7 @@ import ProductsWithSearch from "@/components/store/ProductsWithSearch";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { serverGetStoreBySlug, serverGetProducts } from "@/lib/api/storefront-server";
 import { TrackStorefrontView } from "@/components/TrackView";
+import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ export default async function StorePage({
   return (
     <div className="relative min-h-screen">
       <TrackStorefrontView storeId={store.id} storeSlug={slug} />
+      <RegisterRecentStore slug={slug} name={store.name} logoUrl={store.logoUrl ?? null} />
 
       {/* ── Ambient glow orbs ── */}
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>

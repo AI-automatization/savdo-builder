@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
+import { RecentStores } from "@/components/home/RecentStores";
 import { ShoppingCart, Package, MessageSquare } from "lucide-react";
 
 const glass = {
@@ -135,6 +136,9 @@ export default function HomePage() {
             </p>
           )}
         </div>
+
+        {/* Recent stores */}
+        <RecentStores />
 
         {/* Quick links */}
         <div className="w-full flex flex-col gap-3">
