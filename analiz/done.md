@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-04-23 — Сессия 32 (Азим) — Recent stores на главной web-buyer
+
+### ✅ [WEB-BUYER-RECENT-STORES-001] Недавние магазины под инпутом на главной
+- **Важность:** 🟡 UX
+- **Дата:** 23.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/recent-stores.ts` — СОЗДАН (localStorage helper)
+  - `apps/web-buyer/src/components/store/RegisterRecentStore.tsx` — СОЗДАН (client-компонент для mount-записи)
+  - `apps/web-buyer/src/components/home/RecentStores.tsx` — СОЗДАН (отображение ряда карточек + крестик «забыть»)
+  - `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` — добавлен `<RegisterRecentStore>` в рендер магазина
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — добавлен `<RecentStores>` под инпутом «Перейти в магазин»
+- **Что сделано:** Каждый раз вводить slug стал только первый раз — после открытия магазина он остаётся на главной в блоке «Недавние магазины» (до 8 последних). Кнопка X на карточке локально удаляет из списка. Данные только в localStorage (`savdo:buyer:recent-stores`), между устройствами не синхронизируются — полноценные favorites требуют бэка (отдельной задачи).
+- **Bundle:** без новых зависимостей.
+
+### ✅ [ANALIZ-CLEANUP-001] Чистка tasks.md — перенос закрытых задач
+- **Важность:** 🟢 Гигиена
+- **Дата:** 23.04.2026
+- **Файлы:** `analiz/tasks.md`, `analiz/logs.md`
+- **Что сделано:** Убраны из `tasks.md` развёрнутые секции по `API-BUYER-ORDER-DETAIL-MAPPER-001`, `API-SELLER-ORDER-DETAIL-CONTRACT-001`, `API-MEDIA-UPLOAD-500-001`, `API-SELLER-ORDER-DETAIL-MAPPER-001`, `API-CART-MEDIA-001`, `API-BUYER-PROFILE-001`, `API-CART-RESPONSE-001`, `API-CART-CONTRACT-001`, `API-CHECKOUT-CONTRACT-001`, `API-DECIMAL-NAN-001` — все закрыты коммитами Полата `5ca0666` (сессия 27), `f3a40a7` (сессия 29), `3e8d337` (сессия 30). Добавлена новая `API-CHAT-ROLE-GUARD-001` + запись в `logs.md`. Очередь Полата теперь: 3 задачи (`API-CHAT-ROLE-GUARD-001`, `API-BUYER-AVATAR-001`, Auth-история).
+
+---
+
+## 2026-04-19..21 — Сессии 27-30 (Полат) — Закрыты бэкенд-блокеры buyer flow
+
+> Сводная запись. Отдельно в `tasks.md` детали не писали — Полат правил напрямую.
+
+### ✅ Закрыто в коммите `5ca0666` (19.04.2026)
+- `API-DECIMAL-NAN-001` — `toNum()` вместо `Number(Decimal)` в cart/checkout/products
+- `API-BUYER-PROFILE-001` — `ensureBuyerProfile` в `verify-otp.use-case.ts` для существующих SELLER/ghost users
+- `API-CART-CONTRACT-001` — `GET /cart` возвращает mapped Cart через `cart.mapper.ts`
+- `API-CART-RESPONSE-001` — `POST/PATCH /cart/items` возвращают full mapped Cart
+- `API-CHECKOUT-CONTRACT-001` — `/checkout/preview` по контракту `CheckoutPreview`
+
+### ✅ Закрыто в коммите `f3a40a7` (20.04.2026)
+- `API-CART-MEDIA-001` — `cart.mapper` вызывает `resolveMediaUrl` вместо голого `mediaId`
+- `API-MEDIA-UPLOAD-500-001` — upload обёрнут в try/catch, 502 `DomainException` вместо 500
+- `API-SELLER-ORDER-DETAIL-MAPPER-001` — `toNum()` на Decimal-полях seller-order detail
+
+### ✅ Закрыто в коммите `3e8d337` (21.04.2026)
+- `API-BUYER-ORDER-DETAIL-MAPPER-001` — общий `orders.mapper.ts#mapOrderDetail()` по контракту `Order`, `findById` теперь включает `store`
+- `API-SELLER-ORDER-DETAIL-CONTRACT-001` — оба endpoints (buyer и seller) используют тот же mapper, контракт сходится с `packages/types`
+
+---
+
 ## 2026-04-21 — Сессия 31 (Азим) — Empty-state чата на web-buyer и web-seller
 
 ### ✅ [WEB-CHAT-EMPTY-STATE-001] Понятный empty-state на странице чатов

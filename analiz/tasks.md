@@ -5,158 +5,55 @@
 
 ---
 
-# 📋 Снимок состояния (на 21.04.2026, конец сессии 30)
+# 📋 Снимок состояния (на 23.04.2026, сессия 32)
 
-## ✅ Закрыто в сессии 30 — Азим (фронт)
-- `AUDIT-SESSION-30` → 7 guard-фиксов (safe fmt, flat-address fallback) + crash-фикс buyer order detail + `normalizeOrder()`
-- `FIX-A` FIX-A cart media — верификация со стороны web-buyer (cart.mapper OK, `imgFailed` workaround оставлен как защита)
-- `WEB-BUYER-CHAT-COMPOSER-001` → **новая фича**: создание чатов из product/order pages (модал + `createThread` API + кнопки в sticky CTA)
-- `WEB-BUYER-CHECKOUT-REDIRECT-FAIL-001` → маскировка через prepopulate `orderKeys.detail(id)` в `useConfirmCheckout` (коммит `b937573`)
-- `RAILWAY-TS-FIX` → типизация `NormalizedOrder` чтобы tsc не падал на `reduce` (коммит `b355cf4`)
+## ✅ Закрыто Полатом в коммитах `5ca0666`, `f3a40a7`, `3e8d337` (сессии 29-31)
 
-## ✅ Закрыто в сессии 29 — Полат
-- `API-CART-MEDIA-001` → resolveMediaUrl + include media
-- `API-MEDIA-UPLOAD-500-001` → try/catch + DomainException 502
-- `API-SELLER-ORDER-DETAIL-MAPPER-001` (частично — числа ок, контракт разошёлся, новая задача `API-SELLER-ORDER-DETAIL-CONTRACT-001`)
-- `TMA-GLOBAL-CATEGORY-001`, `TMA-PRODUCT-ATTRIBUTES-001`, `TMA-CHAT-001`, `ADMIN-BROADCAST-TOOLBAR-001`
+- `API-DECIMAL-NAN-001` → `toNum()` в cart.mapper везде
+- `API-BUYER-PROFILE-001` → `ensureBuyerProfile` для существующих SELLER/ghost users
+- `API-CART-CONTRACT-001` → `GET /cart` возвращает mapped Cart
+- `API-CART-RESPONSE-001` → POST/PATCH /cart/items возвращают full Cart
+- `API-CHECKOUT-CONTRACT-001` → preview-checkout по контракту CheckoutPreview
+- `API-CART-MEDIA-001` → cart.mapper resolveMediaUrl
+- `API-MEDIA-UPLOAD-500-001` → try/catch + 502 DomainException
+- `API-SELLER-ORDER-DETAIL-MAPPER-001` / `API-BUYER-ORDER-DETAIL-MAPPER-001` / `API-SELLER-ORDER-DETAIL-CONTRACT-001` → общий `orders.mapper.ts` с `mapOrderDetail()` + `include: store`
 
 ## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-BUYER-ORDER-DETAIL-MAPPER-001` | 🔴 | `GET /buyer/orders/:id` отдаёт сырой Prisma `Order` без mapper и без `store` include. Azim замаскировал крэш через normalizer + cache-prepopulate в useConfirmCheckout, но **корень не починен**: если открыть заказ позже (из списка/refresh) — снова GET, снова error. Общий `orders.mapper.ts` по контракту `Order` + `include: { store }` закроет и `API-SELLER-ORDER-DETAIL-CONTRACT-001` заодно. |
-| `API-SELLER-ORDER-DETAIL-CONTRACT-001` | 🟡 | `GET /seller/orders/:id` отдаёт `city`/`region`/`addressLine1`/`deliveryFeeAmount`/`customerComment`/`placedAt` — но `packages/types/src/api/orders.ts` определяет `deliveryAddress`/`deliveryFee`/`buyerNote`/`createdAt`. Web-seller показывает `—, —` вместо адреса. **Решится вместе с `API-BUYER-ORDER-DETAIL-MAPPER-001`** если вынести mapper в shared. |
+| `API-CHAT-ROLE-GUARD-001` | 🔴 | `POST /chat/threads` с `@Roles('BUYER')` даёт 403 пользователям с User.role=SELLER, у которых есть Buyer-профиль. Блокирует чат на dual-role аккаунтах. См. detail-секцию ниже. |
 | `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Azim прикрутит UI. |
-| **Auth-история** | 🟡 | Почему `/auth/logout` 401 при первом выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — JWT/session-id из refresh-token. Подозрение: часть `/buyer/orders/:id` fail после checkout тоже здесь. Сделать тестовый заказ в prod и поймать трейс в Railway logs. |
+| **Auth-история** | 🟡 | Почему `/auth/logout` 401 при первом выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — JWT/session-id из refresh-token. Сделать тестовый заказ в prod и поймать трейс в Railway logs. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| Тест chat composer end-to-end | 🔴 | После Railway-билда: товар → фиолетовая кнопка чата → отправить → должно редиректнуть в `/chats`. Проверить что seller на `/chat` видит новый тред. Если оба списка пустые — auth-серия 401 (Полат). |
-| Тест checkout redirect prepopulate | 🟡 | После билда: оформить заказ → `/orders/{id}` должно открыться сразу (из кэша). Перезагрузить страницу → если снова error — подтвердилось что backend GET `/buyer/orders/:id` падает (ждём Полата). |
+| Тест chat composer end-to-end | 🔴 | Блокирован `API-CHAT-ROLE-GUARD-001`. После фикса Полата — протестировать e2e на dual-role аккаунте. |
+| Тест checkout redirect prepopulate | 🟡 | После закрытия `API-BUYER-ORDER-DETAIL-MAPPER-001` (уже закрыт) — проверить что `/orders/{id}` открывается сразу после checkout без `prepopulate`-костыля. Можно снять костыль из `useConfirmCheckout` и проверить что GET больше не падает. |
 | `WEB-BUYER-AVATAR-UI-001` | 🟢 | Когда Полат закроет `API-BUYER-AVATAR-001` — на `/profile` повесить `<Image>` + `<input type=file>`, инвалидировать `['auth','me']`. |
 | Подтвердить причину `/notifications` ошибки | 🟢 | F12 Network → `/notifications/inbox`. 401 = часть auth-серии, 404/500 = отдельная задача. |
 
 ---
 
-## 🔴 [API-BUYER-ORDER-DETAIL-MAPPER-001] `GET /buyer/orders/:id` отдаёт сырой Prisma `Order` без mapper и без `store`
+## 🔴 [API-CHAT-ROLE-GUARD-001] `POST /chat/threads` → 403 на dual-role аккаунтах (SELLER + Buyer-профиль)
+
 - **Домен:** `apps/api`
 - **Кто взял:** Полат
-- **Важность:** 🔴 Покупатель не видит ни названия магазина, ни кнопки «Написать продавцу», ни комментария к заказу. Без фронтового фолбэка — crash.
-- **Файлы:** `apps/api/src/modules/orders/use-cases/get-order-detail.use-case.ts`, `apps/api/src/modules/orders/repositories/orders.repository.ts` (`findById`), `apps/api/src/modules/orders/orders.controller.ts` (`getBuyerOrderDetail`, `getOrderById`).
-- **Что ломается:** `findById` делает `include: { items, history, buyer }` — но НЕ `store`. Для buyer-роутов controller возвращает `order` как есть (без inline-mapper, в отличие от seller-роута после сессии 29). Фронт `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` читал по контракту `packages/types/src/api/orders.ts#Order`: `order.store.name.charAt(0)`, `order.items[].title`, `order.items[].subtotal`, `order.deliveryFee`, `order.buyerNote`, `order.deliveryAddress.street` — у raw Prisma таких полей нет вообще (вместо них `productTitleSnapshot`, `lineTotalAmount`, `deliveryFeeAmount`, `customerComment`, `addressLine1`). Крэш был на `store.name.charAt`.
-- **Что сделано на фронте (Азим, 21.04.2026):** Добавил `normalizeOrder()` который читает оба варианта (store guard, items fallback на snapshot-поля, toNum, flat address в `deliveryAddress`). `items.reduce` защищён. Это маскирует баг, но покупатель всё равно не видит карточку магазина — её просто нет в ответе.
-- **НОВЫЙ симптом (21.04.2026):** После успешного `POST /checkout/confirm` фронт делает `router.replace('/orders/{id}')` → страница показывает «Не удалось загрузить заказ» (скрин от Азима). То есть GET `/buyer/orders/{id}` возвращает НЕ 2xx сразу после создания заказа. Возможные причины: (а) 401 из auth-серии, (б) 404 `Order not found`, (в) 500 из Prisma `findById` — точная причина требует Network-скрина с DevTools.
-- **Временный фикс (Азим, 21.04.2026, коммит `b937573`):** В `apps/web-buyer/src/hooks/use-checkout.ts` `useConfirmCheckout.onSuccess` кладёт созданный Order в `queryClient.setQueryData(orderKeys.detail(order.id), order)` + invalidate ограничил списком `['orders', 'list']`. Благодаря `staleTime: 2 * 60 * 1000` в `useOrder(id)` страница `/orders/{id}` сразу после checkout рендерится из кэша без второго GET. НО: если открыть тот же заказ позже (через список / refresh / из истории) — `useOrder(id)` сделает GET и снова увидит ошибку, пока этот backend-баг не починен.
-- **Что ещё нужно проверить Полату когда будет заниматься этим таском:** Открыть Railway logs `savdo-api-production`, сделать тестовый заказ и посмотреть трейс на `GET /buyer/orders/{id}` сразу после `POST /checkout/confirm`. Если 404 — смотреть транзакции в `checkout.repository.createOrder` vs `findById`. Если 401 — связано с auth-серией (см. `Auth-история` в этом же tasks.md). Если 500 — смотреть Prisma include.
-- **Что нужно:**
-  1. `findById` → добавить `include: { store: { select: { id: true, name: true, slug: true, telegramContactLink: true, logoUrl: true } } }`.
-  2. Сделать общий mapper по контракту `Order`:
-     ```ts
-     {
-       id, orderNumber, status, storeId, buyerId,
-       createdAt, updatedAt,
-       totalAmount: toNum, currencyCode: 'UZS', deliveryFee: toNum(deliveryFeeAmount),
-       deliveryType, paymentMethod, paymentStatus,
-       deliveryAddress: city || addressLine1 ? { street: addressLine1, city, region } : undefined,
-       buyerNote: customerComment, customerPhone,
-       buyer: { phone: buyer?.user?.phone ?? null },
-       store: { name, telegramContactLink },
-       items: items.map(i => ({
-         id, productId, variantId,
-         title: productTitleSnapshot, variantTitle: variantLabelSnapshot,
-         quantity, unitPrice: toNum(unitPriceSnapshot), subtotal: toNum(lineTotalAmount),
-       })),
-     }
-     ```
-  3. Использовать тот же mapper и для seller-роута вместо inline (решит `API-SELLER-ORDER-DETAIL-CONTRACT-001` заодно) — вынести в `orders.mapper.ts` по образцу `cart.mapper.ts`.
-
----
-
-## 🟡 [API-SELLER-ORDER-DETAIL-CONTRACT-001] `GET /seller/orders/:id` разошёлся с контрактом `Order` в `packages/types`
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🟡 Не крэш (фронт закрыт optional chaining'ом от сессии 24), но данные пропадают из UI: адрес / дата / комментарий покупателя не видны продавцу.
-- **Файлы:** `apps/api/src/modules/orders/orders.controller.ts:146-178`, `packages/types/src/api/orders.ts`
-- **Что ломается:** После сессии 29 inline-mapper в `getSellerOrderDetail` отдаёт:
-  ```json
-  { "placedAt": ..., "deliveryFeeAmount": ..., "customerComment": ..., "city": ..., "region": ..., "addressLine1": ... }
-  ```
-  Фронт `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx` читает (по типу `Order` из `packages/types`):
-  ```ts
-  order.createdAt
-  order.deliveryFee
-  order.buyerNote
-  order.deliveryAddress?.city / street / region
-  ```
-  → все четыре становятся `undefined` → рендерится `—, —`, «Бесплатно», дата пустая, блок комментария скрыт.
-- **Что нужно:** Привести ответ к контракту `packages/types/src/api/orders.ts#Order`:
-  ```ts
-  {
-    id, storeId, status, totalAmount, currencyCode,
-    createdAt: string,          // из placedAt
-    updatedAt: string,
-    deliveryFee: number,         // из deliveryFeeAmount
-    deliveryAddress: {           // собрать из flat полей
-      street: addressLine1,
-      city, region,
-    } | undefined,
-    buyerNote: string | null,    // из customerComment
-    customerPhone, buyer, items, paymentMethod, paymentStatus, deliveryType,
-    store: { name, telegramContactLink },
-  }
-  ```
-  Поля которые бэк уже отдаёт правильно: `totalAmount`, `currencyCode`, `items[].unitPrice`, `items[].subtotal`, `buyer.phone`.
-- **Альтернатива (если хочется flat):** поменять контракт в `packages/types/src/api/orders.ts` + прогнать фронт web-buyer и web-seller под него — но это дороже и ломает уже рабочие места (`/buyer/orders/:id`).
-
----
-
-## 🔴 [API-MEDIA-UPLOAD-500-001] `POST /media/upload` отдаёт 500 — нельзя загрузить картинку товара / лого магазина
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🔴 Блокер — продавцы не могут добавить товар с фото / поставить лого магазина / баннер.
-- **Файлы:** `apps/api/src/modules/media/use-cases/upload-direct.use-case.ts`, `apps/api/src/modules/media/services/telegram-storage.service.ts`, `apps/api/src/modules/media/repositories/media.repository.ts`, `apps/api/src/modules/media/media.controller.ts:56`
-- **Симптом:** Азим (19.04.2026) репортнул в console: `POST .../api/v1/media/upload 500`, axios `Request failed with status code 500`. Triggered из `<ImageUploader>` (web-seller — products/create, products/[id]/edit, settings/store-logo, settings/store-banner). Фронт шлёт корректный multipart (`file` + `purpose`).
-- **Что нужно (Полат):**
-  1. Открыть Railway logs `savdo-api-production`, найти трейс stack для этого запроса (по таймстампу или endpoint `/media/upload`).
-  2. Самые вероятные причины:
-     - `tgStorage.uploadFile()` бросает — Telegram bot token протух / rate limit / file > 10 МБ для Telegram photo endpoint / api.telegram.org недоступен.
-     - `mediaRepo.create()` бросает — Prisma constraint на `bucket`/`objectKey`, проблема с `BigInt(file.size)` при сериализации.
-     - `multer` middleware на роуте `/media/upload` не сконфигурен → `file` undefined → `file.buffer` бросает.
-  3. Если виновник Telegram — обернуть в try/catch и бросить `DomainException(MEDIA_UPLOAD_FAILED, ..., 502)` чтобы не было 500.
-  4. Добавить логирование `console.error` или NestJS `Logger.error` с stacktrace перед тем как NestJS превратит исключение в 500-respond.
-
----
-
-## 🟡 [API-SELLER-ORDER-DETAIL-MAPPER-001] `GET /seller/orders/:id` отдаёт сырой prisma — числа undefined → frontend крашится
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🟡 Азим уже защитил фронт (19.04.2026), но корень — отсутствие mapper'а как у `/cart`.
-- **Файлы:** искать по `apps/api/src/modules/orders/` — use-case/controller для `findOne` (seller view).
-- **Симптом:** `web-seller /orders/:id` падал с `Cannot read properties of undefined (reading 'toLocaleString')` на полях `totalAmount`, `items[].subtotal`, `items[].unitPrice`. Те же поля что в `cart`, та же проблема — либо undefined, либо Prisma Decimal без `.toString()`.
-- **Что нужно:** mapper аналогичный `cart.mapper.ts` (можно вынести `toNum` в общий util), который даёт фронту: `{ id, status, createdAt, totalAmount: number, deliveryFee: number, items: [{ id, title, variantTitle?, quantity, unitPrice: number, subtotal: number }], deliveryAddress, paymentMethod, paymentStatus, buyer, customerPhone, buyerNote }`. Все числа — number, не Decimal; createdAt — ISO string.
-- **Аналогично проверить:** `GET /seller/orders` (список) — на скрине у Азима там 300000 рендерится корректно, но если поле приходит как Decimal, в edge-cases может тоже сломаться.
-
----
-
-## 🔴 [API-CART-MEDIA-001] `cart.mapper.ts` отдаёт сырой `mediaId` в поле `mediaUrl` — все картинки в корзине 404
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🔴 Видимая регрессия. После твоего коммита `5ca0666` (новый `cart.mapper.ts`) в корзине у всех товаров вместо фото — placeholder-иконка. Раньше фотки рендерились.
-- **Файлы:** `apps/api/src/modules/cart/cart.mapper.ts:57`, `apps/api/src/modules/cart/repositories/cart.repository.ts`
-- **Root cause:** `cart.mapper.ts:57` пишет `mediaUrl: product?.images?.[0]?.mediaId ?? null`. `mediaId` — это UUID FK на `MediaFile` (см. `packages/db/prisma/schema.prisma:407-420`), а не URL. Браузер шлёт GET на строку UUID → 404 → фронт показывает fallback-иконку.
-- **Как должно быть:** использовать тот же helper что в `products.controller.ts:540` `resolveImageUrl(media)`:
-  ```ts
-  // для telegram bucket
-  return `${APP_URL}/api/v1/media/proxy/${m.id}`;
-  // для r2
-  return `${STORAGE_PUBLIC_URL}/${m.objectKey}`;
-  ```
-- **Что нужно:**
-  1. В `cart.repository.ts` (метод что грузит cart) добавить `include: { product: { include: { images: { include: { media: true }, orderBy: { sortOrder: 'asc' }, take: 1 } } } }`.
-  2. В `cart.mapper.ts:57` собрать URL из `product.images[0].media` (logic выделить в shared `resolveMediaUrl(media)` чтобы не дублировать с `products.controller`).
-  3. Проверить в DevTools Network → `GET /cart` → response → `items[].product.mediaUrl` должно быть `https://...up.railway.app/api/v1/media/proxy/<uuid>` или R2-ссылкой, а не голым UUID.
+- **Важность:** 🔴 Блокирует чат для всех SELLER-пользователей которые зашли на web-buyer через тот же телефон (типичный кейс — тестирование своего магазина как покупатель). Юзер видит молчаливую красную ошибку при отправке первого сообщения.
+- **Файлы:** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:66-70`, `apps/api/src/modules/chat/chat.controller.ts:61-62`, `apps/api/src/common/guards/roles.guard.ts:28-30`
+- **Воспроизведено (Азим, 23.04.2026, prod):** web-buyer → OTP-login тем телефоном, что зарегистрирован как SELLER → магазин → товар → фиолетовая кнопка чата → «Отправить» → Console `POST .../api/v1/chat/threads 403`.
+- **Цепочка причин:**
+  1. `verify-otp.use-case.ts:44-47` — для существующего User вызывает `ensureBuyerProfile` (ок), но **не меняет `User.role`**. Остаётся SELLER.
+  2. `verify-otp.use-case.ts:66-70` — в JWT кладётся `role: resolvedUser.role` → `role: "SELLER"`.
+  3. `chat.controller.ts:62` — `POST /chat/threads` декорирован `@Roles('BUYER')`.
+  4. `roles.guard.ts:28-30` — `user.role` (SELLER) не в whitelist → 403 FORBIDDEN «Insufficient permissions».
+- **Архитектурная несостыковка:** у одного User может быть и Buyer, и Seller профиль (один телефон). Но JWT `role` — скалярное поле. Endpoints через `@Roles('BUYER')` видят только User.role — первую созданную.
+- **Варианты фикса (в порядке сложности):**
+  1. **Минимальный, рекомендую:** убрать `@Roles('BUYER')` с `POST /chat/threads` в `chat.controller.ts:62`. Метод уже вызывает `resolveBuyerId(user.sub)` (строка 253-265), который бросает 422 «Buyer profile not found» если у User нет Buyer-записи. Это даёт нужную проверку — «любой с Buyer-профилем может создать тред». SELLER с Buyer-профилем больше не ловит 403. Аналогично стоит посмотреть `GET /chat/threads`, `GET /chat/threads/:id/messages`, `POST /chat/threads/:id/messages` — там `@Roles('BUYER', 'SELLER')`, на практике работает, но логика «смотри на профиль, а не на User.role» корректнее.
+  2. **Системный:** в JWT класть `roles: string[]` вместо скаляра + обновить `RolesGuard` на пересечение. Закрывает серию похожих багов для dual-role пользователей.
+- **Плюс фронт (Азим):** запланирован UX-toast на 403 с чат-mutation — показывать «чат временно недоступен» вместо молчаливой плашки. Это маскировка, снять после фикса.
 
 ---
 
@@ -171,55 +68,6 @@
   4. **`GET /auth/me`:** поле `avatarUrl` в `User.buyer` ответе.
   5. **`packages/types`:** добавить `avatarUrl?: string | null` в `BuyerProfile` (см. `packages/types/src/api/auth.ts` где определён `User`).
 - **Когда готово — Азим (web-buyer):** на `/profile` рядом с `<UserIcon>` рендерит круглую `<Image>` с `avatarUrl`, под ней кнопка «Изменить фото» — открывает `<input type="file" accept="image/*">`, шлёт в новый endpoint, инвалидирует `['auth','me']`.
-
----
-
-## 🔴 КРИТИЧЕСКОЕ — Buyer flow на production сломан (19.04.2026)
-
-> Азим в сессии 27 закрыл 6 blocker'ов на фронте (web-buyer). Бэкенд требует 5 задач — без них заказы оформить нельзя.
-
-## 🔴 [API-BUYER-PROFILE-001] `Buyer profile not found` блокирует оформление заказов
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🔴 MVP блокер. Без этого никто не может оформить заказ.
-- **Root cause:** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:41-44`. Buyer создаётся только если User не существовал. Если телефон уже зарегистрирован (как SELLER или как Telegram-ghost) — JWT валидный, но `fullUser.buyer === null` → 401 на `/cart/merge`, `/checkout/preview`, `/checkout/confirm`.
-- **Файлы:** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts`, `apps/api/src/modules/auth/repositories/auth.repository.ts`, `apps/api/src/modules/cart/cart.controller.ts:161`, `apps/api/src/modules/checkout/checkout.controller.ts:49`
-- **Что нужно:**
-  1. `verify-otp.use-case.ts:41-44` — после `findUserByPhone`, если `user && !user.buyer`, вызвать `authRepo.ensureBuyerProfile(user.id)` (новый метод через `prisma.buyer.upsert({ where: { userId }, create: { userId }, update: {} })`).
-  2. Альтернативно (дополнительно) — `cart.controller.ts` и `checkout.controller.ts` вместо 401 вызывать auto-ensure через `buyerRepo.ensureForUser(user.sub)`.
-  3. Ручной backfill для заблокированных текущих аккаунтов: SQL `INSERT INTO "buyer" (id, "userId") SELECT gen_random_uuid(), u.id FROM "user" u WHERE u.role = 'BUYER' AND NOT EXISTS (SELECT 1 FROM "buyer" b WHERE b."userId" = u.id);`
-
-## 🔴 [API-CART-RESPONSE-001] `POST /cart/items` и `PATCH /cart/items/:id` возвращают `CartItem` вместо `Cart`
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🟡 (Азим закрыл временный костыль через invalidateQueries)
-- **Файлы:** `apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts:27`, `apps/api/src/modules/cart/use-cases/update-cart-item.use-case.ts:19`
-- **Что нужно:** вернуть полный `Cart` (с items + totalAmount + currencyCode) как обещает `packages/types/src/api/cart.ts:22`. Сейчас возвращается одиночный `prisma.CartItem` и это ломало TanStack-кэш на фронте.
-
-## 🔴 [API-CART-CONTRACT-001] `GET /cart` отдаёт prisma-сырец вместо обещанного `Cart`
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🔴 Данные кривые. Из-за этого фронт был вынужден делать fallback на product.basePrice.
-- **Файлы:** `apps/api/src/modules/cart/use-cases/get-cart.use-case.ts`, `apps/api/src/modules/cart/repositories/cart.repository.ts`
-- **Что нужно:** добавить mapper который:
-  1. `unitPrice = Number(item.salePriceSnapshot ?? item.unitPriceSnapshot)` и `subtotal = unitPrice * quantity`
-  2. `totalAmount = sum(items.subtotal)`, `currencyCode = 'UZS'`
-  3. `product.mediaUrl` — полный URL через storage (сейчас `images[0].mediaId`)
-- **Контракт:** `packages/types/src/api/cart.ts`
-
-## 🔴 [API-CHECKOUT-CONTRACT-001] `/checkout/preview` возвращает `validItems`/`currency` вместо `items`/`currencyCode`
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🟡 (фронт принимает оба варианта)
-- **Файлы:** `apps/api/src/modules/checkout/use-cases/preview-checkout.use-case.ts:153-163`
-- **Что нужно:** привести к контракту `packages/types/src/api/cart.ts#CheckoutPreview`: `items` (не `validItems`), `currencyCode` (не `currency`), `stockWarnings: string[]` (собрать из `invalidItems`). Подумать про `items` с полями `title, variantTitle, unitPrice, subtotal` вместо `productTitleSnapshot, variantLabelSnapshot, unitPrice, lineTotal`.
-
-## 🔴 [API-DECIMAL-NAN-001] `Number(Prisma.Decimal)` возвращает NaN → цены теряются
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🔴 Root cause бага «0 сум». Цепной эффект на cart + checkout + возможно orders.
-- **Файлы:** `apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts:45,66,72`, `apps/api/src/modules/checkout/use-cases/preview-checkout.use-case.ts:86,120`, и везде где `Number((x as any).basePrice)` или `Number(Decimal)`.
-- **Что нужно:** использовать `.toNumber()` вместо `Number()` на Prisma Decimal. Прогнать grep по всему apps/api на паттерн `Number((.*) as any)` и `Number(.*\.(?:basePrice|priceOverride|.*Snapshot))` — поправить.
 
 ---
 

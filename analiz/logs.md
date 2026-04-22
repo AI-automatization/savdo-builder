@@ -10,6 +10,23 @@
 
 ---
 
+## 2026-04-23 [WEB-BUYER-CHAT-CREATE-403-001] `POST /chat/threads` → 403 «Insufficient permissions» если телефон buyer'а также Seller
+
+- **Статус:** 🔴 Баг бэка (Полат). На фронте без фикса юзер видит молчаливую ошибку при отправке первого сообщения.
+- **Где воспроизводится:** web-buyer, пользователь чей телефон уже зарегистрирован как SELLER. Incognito → OTP-login через Telegram → магазин → товар → фиолетовая кнопка чата в sticky CTA → ввести текст → «Отправить». POST `/api/v1/chat/threads` → **HTTP 403** с `{ code: "FORBIDDEN", message: "Insufficient permissions" }`. Проверено 23.04.2026 Азимом в проде.
+- **Цепочка причин (по коду):**
+  1. `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:44-47` — если `User` уже существует (был создан как SELLER), `ensureBuyerProfile` создаёт Buyer-запись, но **не меняет `User.role`**.
+  2. Тот же файл, строки 66-70 — в JWT кладётся `role: resolvedUser.role`. Для нашего кейса → `role: "SELLER"`.
+  3. `apps/api/src/modules/chat/chat.controller.ts:61-62` — `POST /chat/threads` декорирован `@Roles('BUYER')`.
+  4. `apps/api/src/common/guards/roles.guard.ts:28-30` — если `user.role` не входит в requiredRoles, бросает `DomainException(FORBIDDEN, 'Insufficient permissions', 403)`.
+- **Архитектурная несостыковка:** у одного `User` может быть и `Buyer`, и `Seller` профиль одновременно (один телефон). Но в JWT `role` — скалярное поле. Endpoints которые проверяют роль через декоратор (`@Roles('BUYER')`) видят только ту роль, что лежит в User-таблице — первая созданная.
+- **Варианты фикса (Полат):**
+  1. **Минимальный, рекомендую:** убрать `@Roles('BUYER')` с `POST /chat/threads` в `chat.controller.ts:62`. Метод уже вызывает `resolveBuyerId(user.sub)`, который в `chat.controller.ts:253-265` бросает 422 «Buyer profile not found» если у User нет Buyer-записи. Это уже даёт нужную проверку — «кто угодно с Buyer-профилем может создать тред». SELLER с Buyer-профилем больше не будет ловить 403.
+  2. **Системный:** в JWT класть не `role: scalar`, а `roles: string[]` + список доступных профилей. `RolesGuard` апдейтится чтобы проверять пересечение. Большой рефакторинг, но закрывает всю серию проблем для dual-role пользователей (этот баг — пример, будет ещё в других местах).
+- **Что на фронте (Азим):** Запланирован UX-фикс — toast на 403 с чат-mutation, чтобы юзер видел «чат сейчас недоступен, обратитесь в поддержку» вместо немой ошибки. Это маскировка, снять после бэк-фикса.
+
+---
+
 ## 2026-04-21 [WEB-BUYER-CHECKOUT-REDIRECT-FAIL-001] После `Оформить заказ` → редирект на `/orders/{id}` показывает «Не удалось загрузить заказ»
 
 - **Статус:** 🟡 Симптом замаскирован на фронте (Азим, 21.04.2026, коммит `b937573`). Корень — `API-BUYER-ORDER-DETAIL-MAPPER-001` (Полат).
