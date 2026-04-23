@@ -1,14 +1,63 @@
 'use client';
 
-import { use, useEffect, useRef, useState } from 'react';
+import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct } from '../../../../../hooks/use-products';
-import { useStoreCategories } from '../../../../../hooks/use-seller';
+import { useStoreCategories, useGlobalCategories } from '../../../../../hooks/use-seller';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
 import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';
+
+// Keep these in sync with create/page.tsx. When this list grows, extract to
+// lib/product-examples.ts and import in both pages.
+const TITLE_EXAMPLES_BY_SLUG: Record<string, string> = {
+  'electronics':   'Например: iPhone 15 Pro 128 GB',
+  'phones':        'Например: iPhone 15 Pro 128 GB',
+  'smartphones':   'Например: Samsung Galaxy S24',
+  'laptops':       'Например: MacBook Pro 14 M3',
+  'computers':     'Например: ПК i7 / 32GB RAM / RTX 4070',
+  'tv':            'Например: Samsung Smart TV 55"',
+  'audio':         'Например: AirPods Pro 2',
+  'cameras':       'Например: Canon EOS R50',
+  'appliances':    'Например: Стиральная машина Bosch 7кг',
+  'clothing':      'Например: Футболка Nike, размер M',
+  'shoes':         'Например: Кроссовки Nike Air Max 90',
+  'bags':          'Например: Сумка через плечо, кожа',
+  'accessories':   'Например: Часы Casio G-Shock',
+  'furniture':     'Например: Офисное кресло с сеткой',
+  'beds':          'Например: Кровать двуспальная 160×200',
+  'books':         'Например: Мастер и Маргарита, Булгаков',
+  'cars':          'Например: Chevrolet Cobalt 2018, 1.5L',
+  'auto':          'Например: Автомобиль/запчасть',
+  'bicycles':      'Например: Велосипед Trek Marlin 7',
+  'outdoor':       'Например: Палатка 3-местная',
+  'toys':          'Например: LEGO Classic 11019',
+  'beauty':        'Например: Крем для лица Nivea 50ml',
+};
+
+const DESCRIPTION_EXAMPLES_BY_SLUG: Record<string, string> = {
+  'clothing':    'Материал, состав, размерная сетка, страна производства...',
+  'shoes':       'Материал верха и подошвы, сезон, страна производства...',
+  'electronics': 'Характеристики, комплектация, гарантия...',
+  'phones':      'Объём памяти, цвет, состояние, комплектация, гарантия...',
+  'laptops':     'Процессор, ОЗУ, диск, экран, состояние...',
+  'cars':        'Год, пробег, двигатель, КПП, состояние, история...',
+  'furniture':   'Материал, размеры, цвет, сборка...',
+  'books':       'Автор, жанр, год, язык, состояние...',
+};
+
+function titlePlaceholder(categoryName?: string | null, slug?: string | null): string {
+  if (slug && TITLE_EXAMPLES_BY_SLUG[slug]) return TITLE_EXAMPLES_BY_SLUG[slug];
+  if (categoryName) return `Например: товар из категории «${categoryName}»`;
+  return 'Название товара';
+}
+
+function descriptionPlaceholder(slug?: string | null): string {
+  if (slug && DESCRIPTION_EXAMPLES_BY_SLUG[slug]) return DESCRIPTION_EXAMPLES_BY_SLUG[slug];
+  return 'Подробное описание товара...';
+}
 
 // ── Glass tokens ──────────────────────────────────────────────────────────────
 
@@ -22,11 +71,12 @@ const glass = {
 // ── Form types ────────────────────────────────────────────────────────────────
 
 interface EditProductForm {
-  title:       string;
-  description: string;
-  basePrice:   number;
-  sku:         string;
-  isVisible:   boolean;
+  title:            string;
+  description:      string;
+  basePrice:        number;
+  sku:              string;
+  isVisible:        boolean;
+  globalCategoryId: string;
 }
 
 // ── Field components ──────────────────────────────────────────────────────────
@@ -71,25 +121,36 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<EditProductForm>({
-    defaultValues: { isVisible: true, basePrice: 0 },
+    defaultValues: { isVisible: true, basePrice: 0, globalCategoryId: '' },
   });
 
   const [mediaId, setMediaId] = useState<string | null>(null);
   const { data: categories = [] } = useStoreCategories();
+  const { data: globalCategories = [] } = useGlobalCategories();
   const [storeCategoryId, setStoreCategoryId] = useState<string | null>(null);
   const initialCategoryIdRef = useRef<string | null>(null);
+
+  const watchedCategoryId = watch('globalCategoryId');
+  const pickedCategory = useMemo(
+    () => globalCategories.find((c) => c.id === watchedCategoryId) ?? null,
+    [globalCategories, watchedCategoryId],
+  );
+  const titleHint       = titlePlaceholder(pickedCategory?.name, pickedCategory?.slug);
+  const descriptionHint = descriptionPlaceholder(pickedCategory?.slug);
 
   // Populate form once product loads
   useEffect(() => {
     if (product) {
       reset({
-        title:       product.title,
-        description: product.description ?? '',
-        basePrice:   product.basePrice,
-        sku:         product.sku ?? '',
-        isVisible:   product.isVisible,
+        title:            product.title,
+        description:      product.description ?? '',
+        basePrice:        product.basePrice,
+        sku:              product.sku ?? '',
+        isVisible:        product.isVisible,
+        globalCategoryId: product.globalCategoryId ?? '',
       });
       setStoreCategoryId(product.storeCategoryId ?? null);
       initialCategoryIdRef.current = product.storeCategoryId ?? null;
@@ -99,13 +160,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   async function onSubmit(values: EditProductForm) {
     await update.mutateAsync({
       id,
-      title:           values.title,
-      description:     values.description || undefined,
-      basePrice:       Number(values.basePrice),
-      sku:             values.sku || undefined,
-      isVisible:       values.isVisible,
-      mediaId:         mediaId ?? undefined,
-      storeCategoryId: storeCategoryId ?? undefined,
+      title:            values.title,
+      description:      values.description || undefined,
+      basePrice:        Number(values.basePrice),
+      sku:              values.sku || undefined,
+      isVisible:        values.isVisible,
+      mediaId:          mediaId ?? undefined,
+      storeCategoryId:  storeCategoryId ?? undefined,
+      globalCategoryId: values.globalCategoryId || undefined,
     });
     router.push('/products');
   }
@@ -225,17 +287,41 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {/* Category */}
+          {/* Global category */}
+          {globalCategories.length > 0 && (
+            <div>
+              <Label>Категория товара</Label>
+              <select
+                className={focusCls}
+                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
+                {...register('globalCategoryId')}
+              >
+                <option value="" style={{ background: '#1a1d2e' }}>— Выберите категорию —</option>
+                {globalCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[11px]" style={{ color: "rgba(255,255,255,0.38)" }}>
+                {pickedCategory
+                  ? 'Товар покажется в этой категории и попадёт под её фильтры.'
+                  : 'Выберите что продаёте: одежда, обувь, электроника, авто, мебель и т.д.'}
+              </p>
+            </div>
+          )}
+
+          {/* Store-local section */}
           {categories.length > 0 && (
             <div>
-              <Label>Категория</Label>
+              <Label>Раздел магазина</Label>
               <select
                 value={storeCategoryId ?? ''}
                 onChange={(e) => setStoreCategoryId(e.target.value || null)}
                 className={focusCls}
                 style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
               >
-                <option value="" style={{ background: '#1a1d2e' }}>— Без категории —</option>
+                <option value="" style={{ background: '#1a1d2e' }}>— Без раздела —</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
                     {cat.name}
@@ -251,7 +337,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <input
               className={focusCls}
               style={inputStyle}
-              placeholder="Например: Кроссовки Nike Air Max"
+              placeholder={titleHint}
               {...register('title', { required: 'Введите название товара' })}
             />
             <FieldError message={errors.title?.message} />
@@ -263,7 +349,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <textarea
               className={focusCls}
               style={{ ...inputStyle, resize: "none", minHeight: 96 }}
-              placeholder="Подробное описание товара..."
+              placeholder={descriptionHint}
               {...register('description')}
             />
           </div>
