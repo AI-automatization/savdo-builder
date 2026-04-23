@@ -26,10 +26,12 @@ import { CreateStoreCategoryUseCase } from './use-cases/create-store-category.us
 import { UpdateStoreCategoryUseCase } from './use-cases/update-store-category.use-case';
 import { DeleteStoreCategoryUseCase } from './use-cases/delete-store-category.use-case';
 import { GlobalCategoriesRepository } from './repositories/global-categories.repository';
+import { GlobalCategoriesSeedService } from './global-categories-seed.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+import { PrismaService } from '../../database/prisma.service';
 
 class CreateGlobalCategoryDto {
   @IsString() @IsNotEmpty() @MaxLength(120)
@@ -80,6 +82,8 @@ export class CategoriesController {
     private readonly updateStoreCategory: UpdateStoreCategoryUseCase,
     private readonly deleteStoreCategory: DeleteStoreCategoryUseCase,
     private readonly globalCategoriesRepo: GlobalCategoriesRepository,
+    private readonly seedService: GlobalCategoriesSeedService,
+    private readonly prisma: PrismaService,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
   ) {}
@@ -89,6 +93,23 @@ export class CategoriesController {
   @Get('storefront/categories')
   async listGlobalCategories() {
     return this.getGlobalCategories.execute();
+  }
+
+  @Get('storefront/categories/:slug/filters')
+  async getCategoryFilters(@Param('slug') slug: string) {
+    const filters = await this.prisma.categoryFilter.findMany({
+      where: { categorySlug: slug },
+      orderBy: { sortOrder: 'asc' },
+    });
+    return filters.map((f) => ({
+      key: f.key,
+      nameRu: f.nameRu,
+      nameUz: f.nameUz,
+      fieldType: f.fieldType,
+      options: f.options ? (() => { try { return JSON.parse(f.options!) as string[]; } catch { return null; } })() : null,
+      unit: f.unit,
+      sortOrder: f.sortOrder,
+    }));
   }
 
   // ─── Seller ───────────────────────────────────────────────────────────────────
@@ -133,6 +154,17 @@ export class CategoriesController {
   }
 
   // ─── Admin — GlobalCategory CRUD ─────────────────────────────────────────────
+
+  @Post('admin/categories/seed')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async adminSeedCategories() {
+    const [cats, filters] = await Promise.all([
+      this.seedService.seedCategories(),
+      this.seedService.seedFilters(),
+    ]);
+    return { success: true, categoriesUpserted: cats, filtersUpserted: filters };
+  }
 
   @Get('admin/categories')
   @UseGuards(JwtAuthGuard, RolesGuard)

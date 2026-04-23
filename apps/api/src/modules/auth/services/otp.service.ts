@@ -40,27 +40,41 @@ export class OtpService {
   }
 
   // SEC-002: Brute-force protection — track failed attempts per phone
+  // Redis errors degrade gracefully: if Redis is unavailable, protection is skipped (no crash).
   async checkVerifyAttempts(phone: string): Promise<void> {
-    const key = OTP_VERIFY_ATTEMPTS_KEY(phone);
-    const attempts = await this.redis.get(key);
-    if (attempts && Number(attempts) >= OTP_MAX_ATTEMPTS) {
-      throw new DomainException(
-        ErrorCode.OTP_SEND_LIMIT,
-        'Слишком много неверных попыток. Подождите 15 минут.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+    try {
+      const key = OTP_VERIFY_ATTEMPTS_KEY(phone);
+      const attempts = await this.redis.get(key);
+      if (attempts && Number(attempts) >= OTP_MAX_ATTEMPTS) {
+        throw new DomainException(
+          ErrorCode.OTP_SEND_LIMIT,
+          'Слишком много неверных попыток. Подождите 15 минут.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    } catch (err) {
+      if (err instanceof DomainException) throw err;
+      this.logger.warn('Redis unavailable — skipping brute-force check');
     }
   }
 
   async recordFailedAttempt(phone: string): Promise<void> {
-    const key = OTP_VERIFY_ATTEMPTS_KEY(phone);
-    const current = await this.redis.get(key);
-    const next = current ? Number(current) + 1 : 1;
-    await this.redis.set(key, String(next), OTP_BLOCK_TTL_SECONDS);
+    try {
+      const key = OTP_VERIFY_ATTEMPTS_KEY(phone);
+      const current = await this.redis.get(key);
+      const next = current ? Number(current) + 1 : 1;
+      await this.redis.set(key, String(next), OTP_BLOCK_TTL_SECONDS);
+    } catch {
+      this.logger.warn('Redis unavailable — failed attempt not recorded');
+    }
   }
 
   async clearVerifyAttempts(phone: string): Promise<void> {
-    await this.redis.del(OTP_VERIFY_ATTEMPTS_KEY(phone));
+    try {
+      await this.redis.del(OTP_VERIFY_ATTEMPTS_KEY(phone));
+    } catch {
+      this.logger.warn('Redis unavailable — attempts counter not cleared');
+    }
   }
 
   async sendOtp(phone: string, code: string): Promise<void> {

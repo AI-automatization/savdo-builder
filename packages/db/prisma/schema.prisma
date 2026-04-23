@@ -340,6 +340,22 @@ model GlobalCategory {
   @@map("global_categories")
 }
 
+model CategoryFilter {
+  id           String  @id @default(uuid())
+  categorySlug String
+  key          String
+  nameRu       String
+  nameUz       String
+  fieldType    String  @default("TEXT")
+  options      String?
+  unit         String?
+  sortOrder    Int     @default(0)
+
+  @@unique([categorySlug, key])
+  @@index([categorySlug])
+  @@map("category_filters")
+}
+
 model StoreCategory {
   id        String   @id @default(uuid())
   storeId   String
