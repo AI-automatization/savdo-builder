@@ -1,5 +1,22 @@
 # Done — Азим + Полат
 
+## 2026-04-23 — Сессия 33 (Азим) — Design token refactor (фаза 1, web-buyer)
+
+### ✅ [WEB-BUYER-DESIGN-TOKENS-001] Вынес все glass-токены в `lib/styles.ts`
+- **Важность:** 🟡 Гигиена — фундамент под дальнейшую дизайн-работу
+- **Дата:** 23.04.2026
+- **Файлы:** 15 файлов в `apps/web-buyer/src`
+- **Что сделано:** В проекте было 13 копий `const glass = {...}` / `const glassDim = {...}` / `const glassDark = {...}` разбросанных по страницам с мини-расхождениями (border 0.13 vs 0.15, blur 10/12/16). Все удалены, заменены на импорт из существующего `apps/web-buyer/src/lib/styles.ts`. Файл расширен комментариями (описание каждого токена + контекст ролей buyer/seller), добавлен `glassDark` (heavy surface для checkout summary). Ничего визуально не меняется — точные значения те же. Унифицирована мелочь: `notifications` использовал border 0.13 — теперь все страницы на 0.15.
+- **Файлы:**
+  - `apps/web-buyer/src/lib/styles.ts` — расширен комментариями и добавлен `glassDark`
+  - `apps/web-buyer/src/app/(shop)/page.tsx`, `chats/page.tsx`, `profile/page.tsx`, `notifications/page.tsx`, `orders/page.tsx`, `orders/[id]/page.tsx`, `[slug]/page.tsx`, `[slug]/products/[id]/page.tsx`
+  - `apps/web-buyer/src/app/(minimal)/cart/page.tsx`, `checkout/page.tsx`
+  - `apps/web-buyer/src/components/chat/ChatComposerModal.tsx`, `home/RecentStores.tsx`, `layout/BottomNavBar.tsx`, `store/ProductsWithSearch.tsx`
+- **Результат:** 15 файлов, **+36 / -186 строк** — минус 150 строк copy-paste. Теперь правка `glass` = правка одного файла. Готов фундамент под стратегию (C) — в следующей фазе seller/admin получат свой `surface-*` набор токенов (solid, без blur) для чистого dashboard.
+- **Что НЕ сделано (запланировано как следующий шаг):** такой же refactor в web-seller (там ~10 файлов с теми же copy-paste токенами) и разделение — seller получит собственный `lib/styles.ts` с **solid surface'ами вместо glass** (фаза 2 стратегии C).
+
+---
+
 ## 2026-04-23 — Сессия 33 (Азим) — Форма товара теперь под любой ассортимент + чат + корзина
 
 ### ✅ [WEB-SELLER-PRODUCT-FORM-FLEX-001] Форма создания/редактирования товара — универсальная под любой ассортимент

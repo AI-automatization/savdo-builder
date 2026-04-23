@@ -10,29 +10,7 @@ import type { CartItem } from "types";
 import { ThreadType } from "types";
 import { Package, ShoppingCart, MessageSquare } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
-
-// ── Glass tokens ───────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.08)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.15)",
-} as const;
-
-const glassDark = {
-  background:           "rgba(255,255,255,0.05)",
-  backdropFilter:       "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
-  border:               "1px solid rgba(255,255,255,0.10)",
-} as const;
-
-const glassDim = {
-  background:           "rgba(255,255,255,0.04)",
-  backdropFilter:       "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border:               "1px solid rgba(255,255,255,0.09)",
-} as const;
+import { glass, glassDim, glassDark } from "@/lib/styles";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

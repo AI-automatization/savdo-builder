@@ -9,22 +9,7 @@ import type { ChatThreadView } from "@/lib/api/chat.api";
 import { useAuth } from "@/lib/auth/context";
 import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
 import { MessageSquare, Store } from "lucide-react";
-
-// ── Glass tokens ───────────────────────────────────────────────────────────
-
-const glass = {
-  background: "rgba(255,255,255,0.08)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.15)",
-} as const;
-
-const glassDim = {
-  background: "rgba(255,255,255,0.04)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border: "1px solid rgba(255,255,255,0.09)",
-} as const;
+import { glass, glassDim } from "@/lib/styles";
 
 const inputStyle = {
   background: "rgba(255,255,255,0.06)",

@@ -5,13 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { getRecentStores, removeRecentStore, type RecentStore } from "@/lib/recent-stores";
-
-const glassDim = {
-  background: "rgba(255,255,255,0.04)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border: "1px solid rgba(255,255,255,0.09)",
-} as const;
+import { glassDim } from "@/lib/styles";
 
 export function RecentStores() {
   const [stores, setStores] = useState<RecentStore[]>([]);

@@ -22,21 +22,7 @@ import {
   type OptionSelection,
 } from "@/lib/variants";
 
-// ── Glass tokens ──────────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.08)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.15)",
-} as const;
-
-const glassDim = {
-  background:           "rgba(255,255,255,0.04)",
-  backdropFilter:       "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border:               "1px solid rgba(255,255,255,0.09)",
-} as const;
+import { glass, glassDim } from "@/lib/styles";
 
 const fmt = (n: unknown) => {
   const num = typeof n === "number" ? n : Number(n);

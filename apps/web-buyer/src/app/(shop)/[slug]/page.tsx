@@ -7,6 +7,7 @@ import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { serverGetStoreBySlug, serverGetProducts } from "@/lib/api/storefront-server";
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
+import { glass, glassDim } from "@/lib/styles";
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
 
@@ -46,22 +47,6 @@ export async function generateMetadata({
     return { title: 'Магазин — Savdo' };
   }
 }
-
-// ── Glass tokens ──────────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.08)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.15)",
-} as const;
-
-const glassDim = {
-  background:           "rgba(255,255,255,0.04)",
-  backdropFilter:       "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border:               "1px solid rgba(255,255,255,0.09)",
-} as const;
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 

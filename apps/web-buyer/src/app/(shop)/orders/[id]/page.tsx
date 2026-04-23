@@ -10,22 +10,7 @@ import { track } from "@/lib/analytics";
 import { CheckCircle, Truck, Package, Frown, MessageSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
-
-// ── Glass tokens ───────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.08)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.15)",
-} as const;
-
-const glassDim = {
-  background:           "rgba(255,255,255,0.04)",
-  backdropFilter:       "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border:               "1px solid rgba(255,255,255,0.09)",
-} as const;
+import { glass, glassDim } from "@/lib/styles";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

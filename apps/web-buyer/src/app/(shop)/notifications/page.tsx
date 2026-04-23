@@ -7,15 +7,7 @@ import { useAuth } from "@/lib/auth/context";
 import { useNotifications, useReadAll } from "@/hooks/use-notifications";
 import type { NotificationItem } from "@/lib/api/notifications.api";
 import { CheckCircle, Truck, Package, XCircle, ShoppingBag, Bell } from "lucide-react";
-
-// ── Glass tokens ───────────────────────────────────────────────────────────
-
-const glass = {
-  background: "rgba(255,255,255,0.08)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.13)",
-} as const;
+import { glass } from "@/lib/styles";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

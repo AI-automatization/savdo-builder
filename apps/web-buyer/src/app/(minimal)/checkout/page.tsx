@@ -10,6 +10,7 @@ import { useCheckoutPreview, useConfirmCheckout } from "@/hooks/use-checkout";
 import { useCart } from "@/hooks/use-cart";
 import { track } from "@/lib/analytics";
 import type { CheckoutPreview, CheckoutPreviewItem, CartItem } from "types";
+import { glass, glassDim } from "@/lib/styles";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -54,22 +55,6 @@ const cartItemUnitPrice = (i: CartItem) => {
     0
   );
 };
-
-// ── Glass tokens ───────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.08)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.15)",
-} as const;
-
-const glassDim = {
-  background:           "rgba(255,255,255,0.04)",
-  backdropFilter:       "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border:               "1px solid rgba(255,255,255,0.09)",
-} as const;
 
 const inputStyle = {
   background:  "rgba(255,255,255,0.06)",

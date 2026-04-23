@@ -5,15 +5,9 @@ import Link from 'next/link';
 import { useUnreadCount } from '@/hooks/use-notifications';
 import { useCart } from '@/hooks/use-cart';
 import { IcoShop, IcoCart, IcoChat, IcoOrders, IcoProfile } from '@/components/icons';
+import { glassDim } from '@/lib/styles';
 
 export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile';
-
-const glassDim = {
-  background:           'rgba(255,255,255,0.04)',
-  backdropFilter:       'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
-  border:               '1px solid rgba(255,255,255,0.09)',
-} as const;
 
 export function BottomNavBar({
   active,

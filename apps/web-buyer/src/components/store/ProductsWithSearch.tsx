@@ -4,18 +4,12 @@ import { useState, useMemo } from "react";
 import type { ProductListItem } from "types";
 import ProductCard from "@/components/store/ProductCard";
 import { Package, Search } from "lucide-react";
+import { glassDim } from "@/lib/styles";
 
 type Props = {
   products: ProductListItem[];
   storeSlug: string;
 };
-
-const glassDim = {
-  background:           "rgba(255,255,255,0.04)",
-  backdropFilter:       "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border:               "1px solid rgba(255,255,255,0.09)",
-} as const;
 
 export default function ProductsWithSearch({ products, storeSlug }: Props) {
   const [query, setQuery] = useState("");

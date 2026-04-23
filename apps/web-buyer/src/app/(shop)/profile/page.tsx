@@ -7,22 +7,7 @@ import { OtpGate } from "@/components/auth/OtpGate";
 import { useAuth } from "@/lib/auth/context";
 import { useLogout } from "@/hooks/use-auth";
 import { User as UserIcon } from "lucide-react";
-
-// ── Glass tokens ───────────────────────────────────────────────────────────
-
-const glass = {
-  background: "rgba(255,255,255,0.08)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.15)",
-} as const;
-
-const glassDim = {
-  background: "rgba(255,255,255,0.04)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border: "1px solid rgba(255,255,255,0.09)",
-} as const;
+import { glass, glassDim } from "@/lib/styles";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 
