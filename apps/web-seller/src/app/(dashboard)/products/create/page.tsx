@@ -46,9 +46,13 @@ const DESCRIPTION_EXAMPLES_BY_SLUG: Record<string, string> = {
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
 // до тех пор, пока Полат не уберёт их из seed'а на бэке
-// (API-CATEGORY-SEED-CLEANUP-001).
-const HIDDEN_CATEGORY_SLUGS = new Set(['cars', 'auto', 'automobiles']);
-const HIDDEN_CATEGORY_NAME_RE = /авто/i;
+// (API-CATEGORY-SEED-CLEANUP-001). Полат засеял корневую `automotive`
+// + детей `cars` / `cars_used` / `motorcycles` в global-categories-seed.ts.
+const HIDDEN_CATEGORY_SLUGS = new Set([
+  'automotive', 'cars', 'cars_used', 'motorcycles',
+  'auto', 'automobiles',
+]);
+const HIDDEN_CATEGORY_NAME_RE = /(авто|мотоц|avtomo|mototsik)/i;
 function isHiddenCategory(cat: { slug: string; name: string }): boolean {
   return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.name);
 }
