@@ -1,6 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChatThread } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
@@ -9,6 +8,52 @@ export interface ListMyThreadsInput {
   role: string;
   buyerId?: string;
   sellerId?: string;
+}
+
+export interface ThreadListItem {
+  id: string;
+  threadType: string;
+  status: string;
+  lastMessageAt: string | null;
+  lastMessage: string | null;
+  productTitle: string | null;
+  orderNumber: string | null;
+  storeName: string | null;
+  storeSlug: string | null;
+  buyerPhone: string | null;
+}
+
+type BuyerThread = Awaited<ReturnType<ChatRepository['findThreadsByBuyer']>>[number];
+type SellerThread = Awaited<ReturnType<ChatRepository['findThreadsBySeller']>>[number];
+
+function mapBuyerThread(t: BuyerThread): ThreadListItem {
+  return {
+    id: t.id,
+    threadType: t.threadType,
+    status: t.status,
+    lastMessageAt: t.lastMessageAt?.toISOString() ?? null,
+    lastMessage: t.messages[0]?.body ?? null,
+    productTitle: t.product?.title ?? null,
+    orderNumber: t.order?.orderNumber ?? null,
+    storeName: t.seller?.store?.name ?? null,
+    storeSlug: t.seller?.store?.slug ?? null,
+    buyerPhone: null,
+  };
+}
+
+function mapSellerThread(t: SellerThread): ThreadListItem {
+  return {
+    id: t.id,
+    threadType: t.threadType,
+    status: t.status,
+    lastMessageAt: t.lastMessageAt?.toISOString() ?? null,
+    lastMessage: t.messages[0]?.body ?? null,
+    productTitle: t.product?.title ?? null,
+    orderNumber: t.order?.orderNumber ?? null,
+    storeName: null,
+    storeSlug: null,
+    buyerPhone: t.buyer?.user?.phone ?? null,
+  };
 }
 
 @Injectable()
@@ -20,7 +65,7 @@ export class ListMyThreadsUseCase {
     private readonly config: ConfigService,
   ) {}
 
-  async execute(input: ListMyThreadsInput): Promise<ChatThread[]> {
+  async execute(input: ListMyThreadsInput): Promise<ThreadListItem[]> {
     const chatEnabled = this.config.get<boolean>('features.chatEnabled');
 
     if (!chatEnabled) {
@@ -39,8 +84,8 @@ export class ListMyThreadsUseCase {
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
-
-      return this.chatRepo.findThreadsByBuyer(input.buyerId);
+      const threads = await this.chatRepo.findThreadsByBuyer(input.buyerId);
+      return threads.map(mapBuyerThread);
     }
 
     if (input.role === 'SELLER') {
@@ -51,27 +96,30 @@ export class ListMyThreadsUseCase {
           HttpStatus.NOT_FOUND,
         );
       }
-
-      return this.chatRepo.findThreadsBySeller(input.sellerId);
+      const threads = await this.chatRepo.findThreadsBySeller(input.sellerId);
+      return threads.map(mapSellerThread);
     }
 
-    // ADMIN or dual-role: merge buyer + seller threads, deduplicate, sort by lastMessageAt
+    // ADMIN or dual-role: merge buyer + seller threads, deduplicate, sort
     const [buyerThreads, sellerThreads] = await Promise.all([
       input.buyerId ? this.chatRepo.findThreadsByBuyer(input.buyerId) : Promise.resolve([]),
       input.sellerId ? this.chatRepo.findThreadsBySeller(input.sellerId) : Promise.resolve([]),
     ]);
 
     const seen = new Set<string>();
-    const merged = [...buyerThreads, ...sellerThreads].filter((t) => {
+    const merged: ThreadListItem[] = [
+      ...buyerThreads.map(mapBuyerThread),
+      ...sellerThreads.map(mapSellerThread),
+    ].filter((t) => {
       if (seen.has(t.id)) return false;
       seen.add(t.id);
       return true;
     });
 
     return merged.sort((a, b) => {
-      const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
-      const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
-      return bTime - aTime;
+      const at = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bt = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return bt - at;
     });
   }
 }

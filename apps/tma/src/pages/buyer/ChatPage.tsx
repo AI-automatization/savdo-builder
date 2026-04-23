@@ -14,8 +14,12 @@ interface ChatThread {
   threadType: string;
   status: string;
   lastMessageAt: string | null;
-  product?: { title: string } | null;
-  order?: { orderNumber: string } | null;
+  lastMessage: string | null;
+  productTitle: string | null;
+  orderNumber: string | null;
+  storeName: string | null;
+  storeSlug: string | null;
+  buyerPhone: string | null;
 }
 
 interface ChatMessage {
@@ -63,20 +67,20 @@ export default function BuyerChatPage() {
     if (!activeThread) return;
     setMsgLoading(true);
     api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${activeThread.id}/messages`)
-      .then((res) => setMessages(res.messages ?? []))
+      .then((res) => setMessages((res.messages ?? []).slice().reverse()))
       .catch(() => {})
       .finally(() => setMsgLoading(false));
 
     const socket = getSocket();
     socket.emit('join-chat-room', { threadId: activeThread.id });
-    const onNewMessage = (msg: ChatMessage) => {
+    const onMessage = (msg: ChatMessage) => {
       setMessages((prev) => [...prev, msg]);
     };
-    socket.on('chat:new_message', onNewMessage);
+    socket.on('chat:message', onMessage);
 
     return () => {
       socket.emit('leave-chat-room', { threadId: activeThread.id });
-      socket.off('chat:new_message', onNewMessage);
+      socket.off('chat:message', onMessage);
     };
   }, [activeThread]);
 
@@ -93,7 +97,6 @@ export default function BuyerChatPage() {
         body: { text: text.trim() },
       });
       setText('');
-      showToast('✅ Сообщение отправлено');
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
       showToast('❌ Не удалось отправить', 'error');
@@ -103,8 +106,9 @@ export default function BuyerChatPage() {
   };
 
   const threadLabel = (t: ChatThread) => {
-    if (t.product?.title) return `Товар: ${t.product.title}`;
-    if (t.order?.orderNumber) return `Заказ: ${t.order.orderNumber}`;
+    if (t.storeName) return t.storeName;
+    if (t.productTitle) return `Товар: ${t.productTitle}`;
+    if (t.orderNumber) return `Заказ: ${t.orderNumber}`;
     return 'Диалог';
   };
 
@@ -112,31 +116,59 @@ export default function BuyerChatPage() {
     return (
       <AppShell role="BUYER">
         <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+          {/* Header */}
           <div className="pb-2 mb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <h2 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              {threadLabel(activeThread)}
-            </h2>
-            <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-              {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col min-w-0">
+                <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                  {threadLabel(activeThread)}
+                </h2>
+                <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                  {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                </span>
+              </div>
+              {activeThread.storeSlug && (
+                <button
+                  onClick={() => navigate(`/buyer/store/${activeThread.storeSlug}`)}
+                  className="text-[11px] px-3 py-1 rounded-lg shrink-0"
+                  style={{
+                    background: 'rgba(124,58,237,0.15)',
+                    border: '1px solid rgba(124,58,237,0.30)',
+                    color: '#a78bfa',
+                  }}
+                >
+                  Открыть магазин
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto flex flex-col gap-2 pb-2">
             {msgLoading
               ? <div className="flex justify-center py-8"><Spinner size={24} /></div>
               : messages.map((m) => (
-                <div key={m.id} className="flex flex-col max-w-[80%]" style={{ alignSelf: 'flex-end' }}>
+                <div
+                  key={m.id}
+                  className="flex flex-col max-w-[80%]"
+                  style={{ alignSelf: m.senderRole === 'BUYER' ? 'flex-end' : 'flex-start' }}
+                >
                   <div
                     className="px-3 py-2 rounded-xl text-sm"
                     style={{
-                      background: 'rgba(124,58,237,0.30)',
-                      border: '1px solid rgba(124,58,237,0.40)',
+                      background: m.senderRole === 'BUYER'
+                        ? 'rgba(124,58,237,0.30)'
+                        : 'rgba(255,255,255,0.08)',
+                      border: `1px solid ${m.senderRole === 'BUYER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
                       color: 'rgba(255,255,255,0.88)',
                     }}
                   >
                     {m.text}
                   </div>
-                  <span className="text-[10px] mt-0.5 text-right" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  <span
+                    className="text-[10px] mt-0.5"
+                    style={{ color: 'rgba(255,255,255,0.25)', textAlign: m.senderRole === 'BUYER' ? 'right' : 'left' }}
+                  >
                     {new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -145,6 +177,7 @@ export default function BuyerChatPage() {
             <div ref={bottomRef} />
           </div>
 
+          {/* Input */}
           {activeThread.status === 'OPEN' && (
             <div className="flex gap-2 pt-2">
               <input
@@ -219,8 +252,8 @@ export default function BuyerChatPage() {
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {threadLabel(t)}
               </p>
-              <p className="text-[11px]" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+              <p className="text-[11px] truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                {t.lastMessage ?? (t.status === 'OPEN' ? 'Открыт' : 'Закрыт')}
               </p>
             </div>
             {t.lastMessageAt && (

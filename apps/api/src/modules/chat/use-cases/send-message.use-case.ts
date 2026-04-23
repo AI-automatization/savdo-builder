@@ -54,7 +54,7 @@ export class SendMessageUseCase {
       );
     }
 
-    if (thread.status === 'resolved') {
+    if (thread.status === 'CLOSED') {
       throw new DomainException(
         ErrorCode.THREAD_CLOSED,
         'Thread is resolved and no longer accepts messages',

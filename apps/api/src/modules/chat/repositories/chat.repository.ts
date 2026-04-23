@@ -53,17 +53,39 @@ export class ChatRepository {
     return this.prisma.chatThread.findFirst({ where });
   }
 
-  async findThreadsByBuyer(buyerId: string): Promise<ChatThread[]> {
+  async findThreadsByBuyer(buyerId: string) {
     return this.prisma.chatThread.findMany({
       where: { buyerId },
       orderBy: { lastMessageAt: 'desc' },
+      include: {
+        seller: { include: { store: { select: { id: true, name: true, slug: true } } } },
+        product: { select: { title: true } },
+        order: { select: { orderNumber: true } },
+        messages: {
+          where: { isDeleted: false },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { body: true },
+        },
+      },
     });
   }
 
-  async findThreadsBySeller(sellerId: string): Promise<ChatThread[]> {
+  async findThreadsBySeller(sellerId: string) {
     return this.prisma.chatThread.findMany({
       where: { sellerId },
       orderBy: { lastMessageAt: 'desc' },
+      include: {
+        buyer: { include: { user: { select: { phone: true } } } },
+        product: { select: { title: true } },
+        order: { select: { orderNumber: true } },
+        messages: {
+          where: { isDeleted: false },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { body: true },
+        },
+      },
     });
   }
 

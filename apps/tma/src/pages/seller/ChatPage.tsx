@@ -14,9 +14,12 @@ interface ChatThread {
   threadType: string;
   status: string;
   lastMessageAt: string | null;
-  unreadCount?: number;
-  product?: { title: string } | null;
-  order?: { orderNumber: string } | null;
+  lastMessage: string | null;
+  productTitle: string | null;
+  orderNumber: string | null;
+  storeName: string | null;
+  storeSlug: string | null;
+  buyerPhone: string | null;
 }
 
 interface ChatMessage {
@@ -39,6 +42,7 @@ export default function SellerChatPage() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [showBuyerInfo, setShowBuyerInfo] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +50,7 @@ export default function SellerChatPage() {
     const goBack = () => {
       if (activeThread) {
         setActiveThread(null);
+        setShowBuyerInfo(false);
       } else {
         navigate('/seller');
       }
@@ -64,21 +69,22 @@ export default function SellerChatPage() {
   useEffect(() => {
     if (!activeThread) return;
     setMsgLoading(true);
+    setShowBuyerInfo(false);
     api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${activeThread.id}/messages`)
-      .then((res) => setMessages(res.messages ?? []))
+      .then((res) => setMessages((res.messages ?? []).slice().reverse()))
       .catch(() => {})
       .finally(() => setMsgLoading(false));
 
     const socket = getSocket();
     socket.emit('join-chat-room', { threadId: activeThread.id });
-    const onNewMessage = (msg: ChatMessage) => {
+    const onMessage = (msg: ChatMessage) => {
       setMessages((prev) => [...prev, msg]);
     };
-    socket.on('chat:new_message', onNewMessage);
+    socket.on('chat:message', onMessage);
 
     return () => {
       socket.emit('leave-chat-room', { threadId: activeThread.id });
-      socket.off('chat:new_message', onNewMessage);
+      socket.off('chat:message', onMessage);
     };
   }, [activeThread]);
 
@@ -95,7 +101,6 @@ export default function SellerChatPage() {
         body: { text: text.trim() },
       });
       setText('');
-      showToast('✅ Сообщение отправлено');
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
       showToast('❌ Не удалось отправить', 'error');
@@ -105,7 +110,7 @@ export default function SellerChatPage() {
   };
 
   const resolveThread = async () => {
-    if (!activeThread || activeThread.status !== 'open') return;
+    if (!activeThread || activeThread.status !== 'OPEN') return;
     setResolving(true);
     try {
       await api(`/chat/threads/${activeThread.id}/resolve`, { method: 'PATCH' });
@@ -122,57 +127,100 @@ export default function SellerChatPage() {
   };
 
   const threadLabel = (t: ChatThread) => {
-    if (t.product?.title) return `Товар: ${t.product.title}`;
-    if (t.order?.orderNumber) return `Заказ: ${t.order.orderNumber}`;
-    return 'Диалог';
+    if (t.buyerPhone) return t.buyerPhone;
+    if (t.productTitle) return `Товар: ${t.productTitle}`;
+    if (t.orderNumber) return `Заказ: ${t.orderNumber}`;
+    return 'Покупатель';
   };
 
   if (activeThread) {
     return (
       <AppShell role="SELLER">
         <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
-          <div className="pb-2 mb-2 flex items-start justify-between gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <div>
-              <h2 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                {threadLabel(activeThread)}
-              </h2>
-              <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-              </span>
-            </div>
-            {activeThread.status === 'OPEN' && (
+          {/* Header */}
+          <div className="pb-2 mb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="flex items-start justify-between gap-2">
               <button
-                onClick={resolveThread}
-                disabled={resolving}
-                className="text-[11px] px-3 py-1 rounded-lg shrink-0"
-                style={{
-                  background: 'rgba(34,197,94,0.12)',
-                  border: '1px solid rgba(34,197,94,0.25)',
-                  color: '#4ade80',
-                  opacity: resolving ? 0.5 : 1,
-                }}
+                onClick={() => setShowBuyerInfo((v) => !v)}
+                className="flex flex-col min-w-0 text-left"
               >
-                {resolving ? '...' : 'Закрыть тред'}
+                <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                  {threadLabel(activeThread)}
+                </h2>
+                <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                  {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                  {activeThread.productTitle && ` · ${activeThread.productTitle}`}
+                </span>
               </button>
+              {activeThread.status === 'OPEN' && (
+                <button
+                  onClick={resolveThread}
+                  disabled={resolving}
+                  className="text-[11px] px-3 py-1 rounded-lg shrink-0"
+                  style={{
+                    background: 'rgba(34,197,94,0.12)',
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    color: '#4ade80',
+                    opacity: resolving ? 0.5 : 1,
+                  }}
+                >
+                  {resolving ? '...' : 'Закрыть тред'}
+                </button>
+              )}
+            </div>
+
+            {/* Buyer info card */}
+            {showBuyerInfo && activeThread.buyerPhone && (
+              <div
+                className="mt-2 px-3 py-2 rounded-xl flex items-center justify-between gap-3"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+              >
+                <div>
+                  <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>Покупатель</p>
+                  <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace' }}>
+                    {activeThread.buyerPhone}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(activeThread.buyerPhone!).catch(() => {});
+                    showToast('✅ Скопировано');
+                  }}
+                  className="text-[11px] px-2 py-1 rounded-lg"
+                  style={{ background: 'rgba(124,58,237,0.20)', border: '1px solid rgba(124,58,237,0.30)', color: '#a78bfa' }}
+                >
+                  Копировать
+                </button>
+              </div>
             )}
           </div>
 
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto flex flex-col gap-2 pb-2">
             {msgLoading
               ? <div className="flex justify-center py-8"><Spinner size={24} /></div>
               : messages.map((m) => (
-                <div key={m.id} className="flex flex-col max-w-[80%]" style={{ alignSelf: 'flex-end' }}>
+                <div
+                  key={m.id}
+                  className="flex flex-col max-w-[80%]"
+                  style={{ alignSelf: m.senderRole === 'SELLER' ? 'flex-end' : 'flex-start' }}
+                >
                   <div
                     className="px-3 py-2 rounded-xl text-sm"
                     style={{
-                      background: 'rgba(124,58,237,0.30)',
-                      border: '1px solid rgba(124,58,237,0.40)',
+                      background: m.senderRole === 'SELLER'
+                        ? 'rgba(124,58,237,0.30)'
+                        : 'rgba(255,255,255,0.08)',
+                      border: `1px solid ${m.senderRole === 'SELLER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
                       color: 'rgba(255,255,255,0.88)',
                     }}
                   >
                     {m.text}
                   </div>
-                  <span className="text-[10px] mt-0.5 text-right" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  <span
+                    className="text-[10px] mt-0.5"
+                    style={{ color: 'rgba(255,255,255,0.25)', textAlign: m.senderRole === 'SELLER' ? 'right' : 'left' }}
+                  >
                     {new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -181,6 +229,7 @@ export default function SellerChatPage() {
             <div ref={bottomRef} />
           </div>
 
+          {/* Input */}
           {activeThread.status === 'OPEN' && (
             <div className="flex gap-2 pt-2">
               <input
@@ -250,21 +299,13 @@ export default function SellerChatPage() {
             <div className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
               style={{ background: 'rgba(167,139,250,0.15)' }}>
               💬
-              {(t.unreadCount ?? 0) > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
-                  style={{ background: '#EF4444', color: '#fff' }}
-                >
-                  {t.unreadCount! > 9 ? '9+' : t.unreadCount}
-                </span>
-              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {threadLabel(t)}
               </p>
-              <p className="text-[11px]" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+              <p className="text-[11px] truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                {t.lastMessage ?? (t.status === 'OPEN' ? 'Открыт' : 'Закрыт')}
               </p>
             </div>
             {t.lastMessageAt && (
