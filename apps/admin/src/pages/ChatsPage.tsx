@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MessageSquare, RefreshCw, X } from 'lucide-react'
+import { MessageSquare, RefreshCw, Trash2, X } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -30,8 +30,8 @@ function formatDate(iso: string | null) {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  open:     { bg: 'rgba(34,211,238,0.10)', color: '#22D3EE' },
-  resolved: { bg: 'rgba(148,163,184,0.10)', color: '#94A3B8' },
+  OPEN:   { bg: 'rgba(34,211,238,0.10)', color: '#22D3EE' },
+  CLOSED: { bg: 'rgba(148,163,184,0.10)', color: '#94A3B8' },
 }
 
 export default function ChatsPage() {
@@ -40,6 +40,7 @@ export default function ChatsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<ThreadDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const { data: raw, loading, refetch } = useFetch<{ data: ThreadRow[]; total: number }>(
     `/api/v1/admin/chat/threads${statusFilter ? `?status=${statusFilter}` : ''}`,
@@ -58,6 +59,18 @@ export default function ChatsPage() {
       setDetail(res)
     } catch { /* noop */ }
     finally { setDetailLoading(false) }
+  }
+
+  const deleteThread = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Удалить этот диалог и все его сообщения?')) return
+    setDeletingId(id)
+    try {
+      await api.delete(`/api/v1/admin/chat/threads/${id}`)
+      if (selectedId === id) { setSelectedId(null); setDetail(null) }
+      refetch()
+    } catch { /* noop */ }
+    finally { setDeletingId(null) }
   }
 
   return (
@@ -88,7 +101,7 @@ export default function ChatsPage() {
           placeholder="Поиск по магазину или телефону..."
           style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none' }}
         />
-        {(['', 'open', 'resolved'] as const).map((s) => (
+        {(['', 'OPEN', 'CLOSED'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
@@ -99,7 +112,7 @@ export default function ChatsPage() {
               color: statusFilter === s ? '#fff' : 'var(--text-muted)',
             }}
           >
-            {s === '' ? 'Все' : s === 'open' ? 'Открытые' : 'Закрытые'}
+            {s === '' ? 'Все' : s === 'OPEN' ? 'Открытые' : 'Закрытые'}
           </button>
         ))}
       </div>
@@ -110,7 +123,7 @@ export default function ChatsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-                {['Магазин', 'Покупатель', 'Статус', 'Последнее сообщение', 'Дата'].map((h) => (
+                {['Магазин', 'Покупатель', 'Статус', 'Последнее сообщение', 'Дата', ''].map((h) => (
                   <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</th>
                 ))}
               </tr>
@@ -147,7 +160,7 @@ export default function ChatsPage() {
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color }}>
-                        {t.status === 'open' ? 'Открыт' : 'Закрыт'}
+                        {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12, maxWidth: 200 }}>
@@ -157,6 +170,20 @@ export default function ChatsPage() {
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {formatDate(t.lastMessageAt)}
+                    </td>
+                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => deleteThread(t.id, e)}
+                        disabled={deletingId === t.id}
+                        title="Удалить диалог"
+                        style={{
+                          background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)',
+                          borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#f87171',
+                          opacity: deletingId === t.id ? 0.5 : 1, display: 'flex', alignItems: 'center',
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </td>
                   </tr>
                 )

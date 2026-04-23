@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpStatus,
   Logger,
@@ -202,6 +203,19 @@ export class ChatController {
         createdAt: m.createdAt,
       })),
     };
+  }
+
+  // DELETE /api/v1/admin/chat/threads/:id
+  @Delete('admin/chat/threads/:id')
+  @Roles('ADMIN')
+  async adminDeleteThread(@Param('id') threadId: string) {
+    const thread = await this.prisma.chatThread.findUnique({ where: { id: threadId } });
+    if (!thread) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
+    }
+    await this.prisma.chatMessage.deleteMany({ where: { threadId } });
+    await this.prisma.chatThread.delete({ where: { id: threadId } });
+    return { success: true };
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
