@@ -19,13 +19,9 @@ export function useConfirmCheckout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CheckoutConfirmRequest) => confirmCheckout(data),
-    onSuccess: (order) => {
+    onSuccess: () => {
       queryClient.setQueryData(['cart'], null);
-      // Prepopulate order detail cache so /orders/[id] renders immediately
-      // without a second GET that could race against backend or hit auth-series 401.
-      queryClient.setQueryData(orderKeys.detail(order.id), order);
-      // Invalidate only list queries — don't nuke the detail we just set.
-      queryClient.invalidateQueries({ queryKey: ['orders', 'list'] });
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
     },
   });
 }

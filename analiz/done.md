@@ -1,5 +1,78 @@
 # Done — Азим + Полат
 
+## 2026-04-23 — Сессия 33 (Азим) — Фикс крашащегося чата + категорный бейдж + характеристики + prepopulate
+
+### ✅ [WEB-CHAT-LIST-CRASH-001] Фикс чёрного экрана `/chats` после отправки сообщения
+- **Важность:** 🔴 Блокер — чат полностью не работал в web-buyer после Sprint 31
+- **Дата:** 23.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/chat.api.ts` — добавлен `ChatThreadView` + `normalizeThread(raw)`
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — переведён на `ChatThreadView`, убран `contextLabel`/`.slice`
+  - `apps/web-seller/src/lib/api/chat.api.ts` — аналогичный адаптер (для sellerview — title через `buyerPhone`)
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — та же миграция, `<UserIcon>` вместо `initials(buyerId)`
+- **Что сделано:** После Sprint 31 Полата (`d794f18`) API `/chat/threads` возвращает совсем другую форму (`threadType`, `storeName`, `productTitle`, `orderNumber`, `buyerPhone`, `lastMessage: string`), а `packages/types/ChatThread` остался со старыми полями (`contextType`, `contextId`, `buyerId`, `unreadCount`, `lastMessage: {text}`). Фронт читал `thread.contextId.slice(-6)` — `undefined` → React crash → чёрный экран. Сделал адаптер в `chat.api.ts` обоих апп: нормализует raw-ответ в стабильный view-model (`title`, `subtitle`, `lastMessageText`, `unreadCount` с fallback). Web-buyer теперь видит название магазина в списке, web-seller — телефон покупателя (как и задумал Полат в Sprint 31). Запись в `logs.md`.
+- **Заведено Полату:** `API-CHAT-THREAD-CONTRACT-001` 🔴 — обновить тип `ChatThread` под новую форму + вернуть `unreadCount` в ответ. `API-BUYER-ORDERS-ROLE-GUARD-001` 🔴 — тот же dual-role 403 что был в чате, теперь на `GET /buyer/orders`.
+
+### ✅ [WEB-BUYER-PRODUCT-ATTRIBUTES-001] Блок «Характеристики» на странице товара
+
+### ✅ [WEB-BUYER-PRODUCT-ATTRIBUTES-001] Блок «Характеристики» на странице товара
+- **Важность:** 🟡 UX — товарные атрибуты теперь видны покупателю
+- **Дата:** 23.04.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` (+ тип `ProductAttribute`, derived `productAttributes`, блок под описанием)
+- **Что сделано:** `findPublicById` в `products.repository.ts:120` уже делает `include: attributes`, бэк возвращает массив `{id, name, value, sortOrder}`. Но в `packages/types/src/api/products.ts:62` тип `Product` пока без `attributes`. Объявил локальный тип `ProductAttribute` и `productAttributes = (product as { attributes?: ... }).attributes ?? []`. Блок «Характеристики» под описанием — пары «name: value», неяркая таблица. Рендерится только если `attributes.length > 0`.
+- **Для Полата:** заведён `API-PRODUCT-ATTRIBUTES-TYPE-001` — добавить `attributes: ProductAttribute[]` в тип `Product` в `packages/types`. После — убрать локальный cast в web-buyer.
+
+### ✅ Снят prepopulate-костыль из `useConfirmCheckout`
+- **Важность:** 🟡 Чистка
+- **Дата:** 23.04.2026
+- **Файл:** `apps/web-buyer/src/hooks/use-checkout.ts`
+- **Что сделано:** После закрытия `API-BUYER-ORDER-DETAIL-MAPPER-001` Полатом (`3e8d337`, сессия 30) `GET /buyer/orders/:id` возвращает корректно смаппленный `Order` (нет race с `undefined.toLocaleString`). Убрал `setQueryData(orderKeys.detail(order.id), order)` и зауженный `invalidateQueries(['orders','list'])`. Теперь `onSuccess` просто: очистить `['cart']` + `invalidateQueries(orderKeys.all)`. После confirm → `/orders/{id}` делает чистый GET, который работает по контракту. Остаётся `setQueryData(['cart'], null)` — безопасный, просто очищает корзину немедленно.
+- **Риск:** Если auth-401 регрессирует (задача Полата ещё открыта), сначала проявится именно тут. Но это общий баг, маскировать его в одном месте — плохая стратегия.
+
+### ✅ [WEB-BUYER-CATEGORY-BADGE-001] Бейдж глобальной категории на странице товара
+
+### ✅ [WEB-BUYER-CATEGORY-BADGE-001] Бейдж глобальной категории на странице товара
+- **Важность:** 🟡 UX — покупатель видит к какой категории принадлежит товар
+- **Дата:** 23.04.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` (строки 279-291)
+- **Что сделано:** Между заголовком товара и ценой добавлен неяркий пурпурный тег с `product.globalCategory.nameRu`. Рендерится только если `globalCategory !== null` — товары без категории остаются как были. Стиль согласован с existing glass-токенами (background `rgba(167,139,250,0.14)`, цвет `#C4B5FD`). Пока некликабельный (span) — будущий `WEB-BUYER-CATEGORY-FILTERS-001` сделает из него навигацию на страницу категории.
+- **Контракт:** `packages/types/src/api/products.ts:68` — `Product.globalCategory: { id, nameRu, nameUz } | null` уже был готов (Полат, сессия 33). Новые коды в `Product` ответе API уже доступны.
+- **Не тронуто:** web-seller (нет buyer-режима просмотра — только create/edit/list), ProductListItem карточки (у них нет `globalCategory` в контракте — только `globalCategoryId`).
+
+---
+
+## 2026-04-23 — Сессия 33 (Полат) — Sprint 31 категории + чат real-time + OTP security
+
+### ✅ [API-CHAT-ROLE-GUARD-001] 403 на dual-role аккаунтах — закрыт
+- **Важность:** 🔴
+- **Дата:** 23.04.2026
+- **Коммит:** `907f39f fix(security+chat): OTP brute-force protection, media visibility guard, chat UX fixes`
+- **Файлы:** `apps/api/src/modules/chat/chat.controller.ts:63-64` (снят `@Roles('BUYER')`), `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:50-53` (`ensureBuyerProfile` для существующих users)
+- **Что сделано Полатом:** Применён минимальный вариант фикса, который мы рекомендовали в сессии 32. `POST /chat/threads` теперь без role-guard — защита только через `resolveBuyerId()` (422 если нет Buyer-профиля). SELLER-пользователи с Buyer-профилем больше не ловят 403.
+- **Разблокировано Азиму:** chat composer e2e тест — можно прогнать в проде после Railway-билда.
+
+### ✅ Sprint 31 — глобальные категории + фильтры (бэк)
+- **Важность:** 🟡
+- **Дата:** 23.04.2026
+- **Коммиты:** `fb79db2 feat(categories): add CategoryFilter model + auto-seed 34 categories + 130 filters on startup`, `2b148d2 feat(sprint-31): глобальные категории в DB + связаться с продавцом + категория у покупателя`
+- **Что сделано Полатом:** 34 категории автосидятся через OnModuleInit (upsert, идемпотентно), 130 фильтров типов TEXT/SELECT/NUMBER/BOOLEAN привязано к категориям. `Product` API теперь включает `globalCategory { id, nameRu, nameUz }`. Новые эндпоинты: `GET /api/v1/storefront/categories/:slug/filters` (публичный), `POST /api/v1/admin/categories/seed` (ADMIN).
+- **Открыто Азиму:** `WEB-BUYER-CATEGORY-BADGE-001` (бейдж на ProductPage), `WEB-BUYER-CATEGORY-FILTERS-001` (фильтры на странице категории).
+
+### ✅ Chat real-time + UI polish (бэк + TMA)
+- **Важность:** 🟡
+- **Дата:** 23.04.2026
+- **Коммиты:** `d794f18 feat(chat): real-time messages`, `b4ae1c3 fix(chat): unify thread status values to OPEN/CLOSED`, `6cf024b fix(chat): ADMIN role`, `5243efa fix(admin/chat): STATUS_COLORS fallback`, `f2aed55 feat(admin/chat): delete thread`, `1111150 fix(admin): safe delete GlobalCategory`
+- **Что сделано Полатом:** Унификация события socket на `chat:message` (TMA слушал `chat:new_message`). Статусы тредов `active/resolved` → `OPEN/CLOSED` во всех слоях. Имена в списке — название магазина / телефон покупателя + превью последнего сообщения. Запрет отправки в CLOSED треды. Админка: кнопка удаления чатов + DELETE endpoint. Crash в `STATUS_COLORS.resolved` → fallback на `CLOSED`. Бандл 900→300KB (Vite chunking).
+- **Проверено у нас:** `apps/web-buyer/src/hooks/use-chat.ts:47` и `apps/web-seller/src/hooks/use-chat.ts:71` слушают `chat:message` — правильно, изменений не требуется.
+
+### ✅ Security — OTP brute-force + media visibility (бэк)
+- **Важность:** 🟡
+- **Дата:** 23.04.2026
+- **Коммит:** `907f39f`
+- **Что сделано Полатом:** OTP через `crypto.randomInt` вместо `Math.random`. Брутфорс-защита: 5 попыток → блок 15 мин (Redis). Media `/proxy/:id` отдаёт только `visibility = PUBLIC`. Удалены дубли `/auth/otp/send` и `/auth/otp/verify`. OTP graceful degrade при Redis-down. `JSON.parse(options)` обёрнут в try/catch.
+
+---
+
 ## 2026-04-23 — Сессия 32 (Азим) — Recent stores + диагностика чата + чистка backlog
 
 ### ✅ [DIAG-CHAT-403-001] Диагностика чата 403 на dual-role аккаунтах

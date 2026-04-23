@@ -5,55 +5,38 @@
 
 ---
 
-# 📋 Снимок состояния (на 23.04.2026, сессия 32)
+# 📋 Снимок состояния (на 23.04.2026, сессия 33)
 
-## ✅ Закрыто Полатом в коммитах `5ca0666`, `f3a40a7`, `3e8d337` (сессии 29-31)
+## ✅ Закрыто Полатом в коммитах `907f39f`, `fb79db2` (сессия 33)
 
-- `API-DECIMAL-NAN-001` → `toNum()` в cart.mapper везде
-- `API-BUYER-PROFILE-001` → `ensureBuyerProfile` для существующих SELLER/ghost users
-- `API-CART-CONTRACT-001` → `GET /cart` возвращает mapped Cart
-- `API-CART-RESPONSE-001` → POST/PATCH /cart/items возвращают full Cart
-- `API-CHECKOUT-CONTRACT-001` → preview-checkout по контракту CheckoutPreview
-- `API-CART-MEDIA-001` → cart.mapper resolveMediaUrl
-- `API-MEDIA-UPLOAD-500-001` → try/catch + 502 DomainException
-- `API-SELLER-ORDER-DETAIL-MAPPER-001` / `API-BUYER-ORDER-DETAIL-MAPPER-001` / `API-SELLER-ORDER-DETAIL-CONTRACT-001` → общий `orders.mapper.ts` с `mapOrderDetail()` + `include: store`
+- `API-CHAT-ROLE-GUARD-001` → `@Roles('BUYER')` снят с `POST /chat/threads` (chat.controller.ts:63-64); + `ensureBuyerProfile` в verify-otp для существующих users
+- **Chat real-time fix** — TMA слушал `chat:new_message`, gateway шлёт `chat:message` → привели к одному event (web-buyer/web-seller у нас уже слушали правильно)
+- **Chat status unification** — `active/resolved` → `OPEN/CLOSED` во всех слоях (API + TMA + admin)
+- **Chat UI** — имена тредов (название магазина / телефон), превью последнего сообщения, запрет отправки в CLOSED треды
+- **Admin chats** — кнопка удаления + DELETE endpoint; fix STATUS_COLORS crash; bundle 900→300KB
+- **Sprint 31 Categories** — 34 категории + 130 фильтров в БД, автосид через OnModuleInit; `GET /api/v1/storefront/categories/:slug/filters` (публичный); `POST /api/v1/admin/categories/seed` (ADMIN); `Product` API теперь включает `globalCategory { nameRu, nameUz }`
+- **Security** — OTP через `crypto.randomInt`, брутфорс-защита (5 попыток → блок 15 мин через Redis), `/proxy/:id` только для PUBLIC, удалены дубли `/auth/otp/send|verify`
+- **DB/Redis audit** — OTP graceful degrade при Redis down, try/catch на `JSON.parse(options)`
 
 ## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-CHAT-ROLE-GUARD-001` | 🔴 | `POST /chat/threads` с `@Roles('BUYER')` даёт 403 пользователям с User.role=SELLER, у которых есть Buyer-профиль. Блокирует чат на dual-role аккаунтах. См. detail-секцию ниже. |
+| `API-CHAT-THREAD-CONTRACT-001` | 🔴 | **Sprint 31 сломал контракт чата.** `list-my-threads.use-case.ts` возвращает `{id, threadType, status, lastMessage: string, storeName, storeSlug, productTitle, orderNumber, buyerPhone}`, но тип `packages/types/src/api/chat.ts#ChatThread` всё ещё описывает старое `{id, contextType, contextId, buyerId, sellerId, unreadCount, lastMessage: {text}}`. Фронт падал с `Cannot read properties of undefined (reading 'slice')` на странице чатов. Обновить тип в packages/types (+ `unreadCount`, которого сейчас нет в API ответе). Web-buyer и web-seller переведены на локальный `ChatThreadView` через адаптер — после правки типа можно упростить. |
+| `API-BUYER-ORDERS-ROLE-GUARD-001` | 🔴 | Те же грабли что были с чатом: `orders.controller.ts:48-49,85,97,108` декорированы `@Roles('BUYER')`. SELLER-пользователь с Buyer-профилем (dual-role) ловит 403 на `GET /buyer/orders` и не может посмотреть свои покупки. Минимальный фикс — снять `@Roles('BUYER')` с buyer-эндпоинтов (там есть `resolveBuyerId` по аналогии с чатом). Проверить заодно `/cart`, `/checkout` — те же `@Roles('BUYER')`? |
 | `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Azim прикрутит UI. |
+| `API-PRODUCT-ATTRIBUTES-TYPE-001` | 🟡 | `findPublicById` (products.repository.ts:120) уже делает `include: attributes`, но в `packages/types/src/api/products.ts:62-69` поле `attributes: ProductAttribute[]` отсутствует. Добавить в тип `Product` (и в `ProductAttribute` с полями `id, name, value, sortOrder`). Фронт пока читает через локальный cast (см. web-buyer ProductPage, блок «Характеристики»). |
+| `API-STOREFRONT-PRODUCT-FILTERS-001` | 🟡 | `GET /storefront/products?storeId=X` принимает только `globalCategoryId` / `storeCategoryId`. Для использования 130 фильтров Sprint 31 нужно принимать attribute-фильтры (напр. `?filters[brand]=Samsung&filters[ram]=8`). Без этого новый endpoint `/storefront/categories/:slug/filters` — просто метаданные без применения. |
 | **Auth-история** | 🟡 | Почему `/auth/logout` 401 при первом выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — JWT/session-id из refresh-token. Сделать тестовый заказ в prod и поймать трейс в Railway logs. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| Тест chat composer end-to-end | 🔴 | Блокирован `API-CHAT-ROLE-GUARD-001`. После фикса Полата — протестировать e2e на dual-role аккаунте. |
-| Тест checkout redirect prepopulate | 🟡 | После закрытия `API-BUYER-ORDER-DETAIL-MAPPER-001` (уже закрыт) — проверить что `/orders/{id}` открывается сразу после checkout без `prepopulate`-костыля. Можно снять костыль из `useConfirmCheckout` и проверить что GET больше не падает. |
+| Тест chat composer end-to-end | 🔴 | Разблокирован Полатом в `907f39f`. После Railway-билда — протестировать e2e на dual-role аккаунте. |
+| `WEB-BUYER-CATEGORY-FILTERS-001` | 🟡 | Блокирован `API-STOREFRONT-PRODUCT-FILTERS-001`. Endpoint `/storefront/categories/:slug/filters` отдаёт метаданные, но `/storefront/products` их не принимает → чистая витрина без применения. Ждём бэка. |
 | `WEB-BUYER-AVATAR-UI-001` | 🟢 | Когда Полат закроет `API-BUYER-AVATAR-001` — на `/profile` повесить `<Image>` + `<input type=file>`, инвалидировать `['auth','me']`. |
 | Подтвердить причину `/notifications` ошибки | 🟢 | F12 Network → `/notifications/inbox`. 401 = часть auth-серии, 404/500 = отдельная задача. |
-
----
-
-## 🔴 [API-CHAT-ROLE-GUARD-001] `POST /chat/threads` → 403 на dual-role аккаунтах (SELLER + Buyer-профиль)
-
-- **Домен:** `apps/api`
-- **Кто взял:** Полат
-- **Важность:** 🔴 Блокирует чат для всех SELLER-пользователей которые зашли на web-buyer через тот же телефон (типичный кейс — тестирование своего магазина как покупатель). Юзер видит молчаливую красную ошибку при отправке первого сообщения.
-- **Файлы:** `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:66-70`, `apps/api/src/modules/chat/chat.controller.ts:61-62`, `apps/api/src/common/guards/roles.guard.ts:28-30`
-- **Воспроизведено (Азим, 23.04.2026, prod):** web-buyer → OTP-login тем телефоном, что зарегистрирован как SELLER → магазин → товар → фиолетовая кнопка чата → «Отправить» → Console `POST .../api/v1/chat/threads 403`.
-- **Цепочка причин:**
-  1. `verify-otp.use-case.ts:44-47` — для существующего User вызывает `ensureBuyerProfile` (ок), но **не меняет `User.role`**. Остаётся SELLER.
-  2. `verify-otp.use-case.ts:66-70` — в JWT кладётся `role: resolvedUser.role` → `role: "SELLER"`.
-  3. `chat.controller.ts:62` — `POST /chat/threads` декорирован `@Roles('BUYER')`.
-  4. `roles.guard.ts:28-30` — `user.role` (SELLER) не в whitelist → 403 FORBIDDEN «Insufficient permissions».
-- **Архитектурная несостыковка:** у одного User может быть и Buyer, и Seller профиль (один телефон). Но JWT `role` — скалярное поле. Endpoints через `@Roles('BUYER')` видят только User.role — первую созданную.
-- **Варианты фикса (в порядке сложности):**
-  1. **Минимальный, рекомендую:** убрать `@Roles('BUYER')` с `POST /chat/threads` в `chat.controller.ts:62`. Метод уже вызывает `resolveBuyerId(user.sub)` (строка 253-265), который бросает 422 «Buyer profile not found» если у User нет Buyer-записи. Это даёт нужную проверку — «любой с Buyer-профилем может создать тред». SELLER с Buyer-профилем больше не ловит 403. Аналогично стоит посмотреть `GET /chat/threads`, `GET /chat/threads/:id/messages`, `POST /chat/threads/:id/messages` — там `@Roles('BUYER', 'SELLER')`, на практике работает, но логика «смотри на профиль, а не на User.role» корректнее.
-  2. **Системный:** в JWT класть `roles: string[]` вместо скаляра + обновить `RolesGuard` на пересечение. Закрывает серию похожих багов для dual-role пользователей.
-- **Плюс фронт (Азим):** запланирован UX-toast на 403 с чат-mutation — показывать «чат временно недоступен» вместо молчаливой плашки. Это маскировка, снять после фикса.
 
 ---
 

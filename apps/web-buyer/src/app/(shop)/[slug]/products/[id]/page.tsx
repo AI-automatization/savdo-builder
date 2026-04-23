@@ -43,6 +43,10 @@ const fmt = (n: unknown) => {
   return (Number.isFinite(num) ? num : 0).toLocaleString("ru-RU");
 };
 
+// Backend returns `attributes` on GET /storefront/products/:id but the
+// shared Product type (packages/types) doesn't yet expose it. Read defensively.
+type ProductAttribute = { id: string; name: string; value: string; sortOrder: number };
+
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 
 const IcoBack    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}    className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>;
@@ -92,6 +96,8 @@ export default function ProductPage() {
   const activeVariants = product?.variants.filter(v => v.isActive) ?? [];
   const optionGroups   = product?.optionGroups ?? [];
   const hasGroups      = optionGroups.length > 0;
+  const productAttributes =
+    ((product as unknown as { attributes?: ProductAttribute[] } | undefined)?.attributes ?? []);
 
   const selectedVariantObj = hasGroups
     ? findVariantBySelection(activeVariants, selection, optionGroups)
@@ -276,6 +282,20 @@ export default function ProductPage() {
         ) : (
           <>
             <h1 className="text-xl font-bold text-white leading-snug mb-2">{product?.title}</h1>
+            {product?.globalCategory && (
+              <div className="mb-3">
+                <span
+                  className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium tracking-wide"
+                  style={{
+                    background: "rgba(167,139,250,0.14)",
+                    color:      "#C4B5FD",
+                    border:     "1px solid rgba(167,139,250,0.22)",
+                  }}
+                >
+                  {product.globalCategory.nameRu}
+                </span>
+              </div>
+            )}
             <div className="flex items-baseline gap-3 mb-5">
               <span className="text-2xl font-bold" style={{ color: "#A78BFA" }}>
                 {fmt(displayPrice)} сум
@@ -360,11 +380,28 @@ export default function ProductPage() {
 
         {/* ── Description ── */}
         {!isLoading && product?.description && (
-          <div className="rounded-2xl p-4" style={glassDim}>
+          <div className="rounded-2xl p-4 mb-3" style={glassDim}>
             <p className="text-[11px] font-semibold text-white/35 uppercase tracking-widest mb-2">Описание</p>
             <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.60)" }}>
               {product.description}
             </p>
+          </div>
+        )}
+
+        {/* ── Attributes / характеристики товара ─────────────────────────── */}
+        {!isLoading && productAttributes.length > 0 && (
+          <div className="rounded-2xl p-4" style={glassDim}>
+            <p className="text-[11px] font-semibold text-white/35 uppercase tracking-widest mb-2.5">Характеристики</p>
+            <div className="flex flex-col gap-2">
+              {productAttributes.map((attr) => (
+                <div key={attr.id} className="flex justify-between gap-4 text-sm">
+                  <span style={{ color: "rgba(255,255,255,0.45)" }}>{attr.name}</span>
+                  <span className="text-right font-medium" style={{ color: "rgba(255,255,255,0.80)" }}>
+                    {attr.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

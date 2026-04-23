@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
-import { UserRole, ThreadType } from "types";
-import type { ChatThread } from "types";
+import { UserRole } from "types";
+import type { ChatThreadView } from "@/lib/api/chat.api";
 import { useAuth } from "@/lib/auth/context";
 import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
 import { MessageSquare, Store } from "lucide-react";
@@ -44,10 +44,6 @@ function timeLabel(iso: string): string {
   return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-function contextLabel(thread: ChatThread): string {
-  const suffix = thread.contextId.slice(-6).toUpperCase();
-  return thread.contextType === ThreadType.PRODUCT ? `Товар ···${suffix}` : `Заказ ···${suffix}`;
-}
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +62,7 @@ const IcoChatGate = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 
 // ── Thread Item ────────────────────────────────────────────────────────────
 
-function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
+function ThreadItem({ thread, active, onClick }: { thread: ChatThreadView; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/5"
       style={active ? { background: "rgba(167,139,250,.10)" } : {}}>
@@ -75,11 +71,11 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
         <MessageSquare size={20} style={{ color: '#A78BFA' }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white">
-          {contextLabel(thread)}
+        <p className="text-sm font-medium text-white truncate">
+          {thread.title}
         </p>
         <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.38)" }}>
-          {thread.lastMessage?.text ?? "Нет сообщений"}
+          {thread.lastMessageText ?? thread.subtitle ?? "Нет сообщений"}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -101,7 +97,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 
 // ── Chat View ──────────────────────────────────────────────────────────────
 
-function ChatView({ thread }: { thread: ChatThread }) {
+function ChatView({ thread }: { thread: ChatThreadView }) {
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
@@ -127,9 +123,10 @@ function ChatView({ thread }: { thread: ChatThread }) {
         <button onClick={() => {/* handled by parent */}} className="w-8 h-8 flex items-center justify-center rounded-xl text-white/60 md:hidden" style={glassDim}>
           <IcoBack />
         </button>
-        <div>
-          <p className="text-sm font-semibold text-white">{contextLabel(thread)}</p>
-          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-white truncate">{thread.title}</p>
+          <p className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
+            {thread.subtitle ? `${thread.subtitle} · ` : ""}
             {thread.status === "OPEN" ? "Открыт" : "Закрыт"}
           </p>
         </div>

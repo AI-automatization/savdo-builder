@@ -10,9 +10,28 @@
 
 ---
 
+## 2026-04-23 [WEB-CHAT-LIST-CRASH-001] `Cannot read properties of undefined (reading 'slice')` на /chats — чёрный экран после отправки сообщения
+
+- **Статус:** ✅ Frontend защищён адаптером (23.04.2026, Азим, web-buyer + web-seller). 🔴 Корень — `API-CHAT-THREAD-CONTRACT-001` у Полата.
+- **Где воспроизводится:** web-buyer → товар → фиолетовая кнопка чата → ввести сообщение → «Отправить» → redirect на `/chats` → весь React-tree крашится, браузер показывает generic `This page couldn't load`. В консоли: `Uncaught TypeError: Cannot read properties of undefined (reading 'slice')`. Воспроизведено у Азима 23.04.2026 в проде.
+- **Цепочка причин:**
+  1. Sprint 31 (`d794f18 feat(chat): real-time messages, buyer/seller names in thread list`). Полат переписал `list-my-threads.use-case.ts` — `ThreadListItem` теперь возвращает новую форму: `{id, threadType, status, lastMessageAt, lastMessage: string, productTitle, orderNumber, storeName, storeSlug, buyerPhone}`.
+  2. `packages/types/src/api/chat.ts#ChatThread` **не обновлён** — всё ещё описывает старую форму `{id, contextType, contextId, buyerId, sellerId, unreadCount, lastMessage: {text}}`.
+  3. `apps/web-buyer/src/app/(shop)/chats/page.tsx:48` — `thread.contextId.slice(-6).toUpperCase()` на `undefined`. Рендер падает, React unmount, Chromium показывает error page. Паттерн `SELLER-DASH-GUARD-001` × `WEB-SELLER-ACCESS-001`.
+  4. Web-seller `apps/web-seller/src/app/(dashboard)/chat/page.tsx:46,106,108` — три места с `thread.buyerId.slice(-4)` и `thread.contextId.slice(-6)`. Тоже бы упал.
+- **Что сделано (фронт):**
+  - `apps/web-buyer/src/lib/api/chat.api.ts` — добавлен локальный `ChatThreadView` + `normalizeThread(raw)`. Маппит новый API-ответ в стабильную view-модель: `title` (derived из `storeName`/`productTitle`/`orderNumber`), `subtitle`, `lastMessageText` (поддерживает и строку, и legacy объект), `unreadCount` (fallback 0). `getThreads()` возвращает `ChatThreadView[]`.
+  - Аналогичный адаптер в `apps/web-seller/src/lib/api/chat.api.ts` — `title` приоритет: `buyerPhone` → `productTitle` → `orderNumber` → `storeName` → `'Покупатель'`.
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — убран импорт `ChatThread` из `types`, использует `ChatThreadView`. `contextLabel()` удалён — используется `thread.title` / `thread.subtitle`. `lastMessage?.text` → `lastMessageText`.
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — то же. `initials(buyerId)` удалён, вместо инициалов — `<UserIcon>`. Подпись «Покупатель ···XXXX» заменена на `thread.title` (реальный телефон покупателя).
+- **Что нужно Полату (`API-CHAT-THREAD-CONTRACT-001` 🔴):** обновить `packages/types/src/api/chat.ts#ChatThread` под новую форму ответа. Плюс вернуть `unreadCount` в ответ API (сейчас его нет — счётчики непрочитанных у нас фиктивные нули). После — фронт можно упростить, убрав локальный view-type.
+- **Бонус 403 `/buyer/orders`:** в консоли Азима ещё видны `403` на `/buyer/orders?page=1&limit=20` — это тот же паттерн dual-role, что был в чате. Заведён `API-BUYER-ORDERS-ROLE-GUARD-001` Полату.
+
+---
+
 ## 2026-04-23 [WEB-BUYER-CHAT-CREATE-403-001] `POST /chat/threads` → 403 «Insufficient permissions» если телефон buyer'а также Seller
 
-- **Статус:** 🔴 Баг бэка (Полат). На фронте без фикса юзер видит молчаливую ошибку при отправке первого сообщения.
+- **Статус:** ✅ Исправлено Полатом (сессия 33, коммит `907f39f`). Проверено по коду: `chat.controller.ts:63-64` — `@Roles('BUYER')` снят с `POST /chat/threads`, осталась только `resolveBuyerId()` → 422 если нет профиля. `verify-otp.use-case.ts:50-53` — `ensureBuyerProfile` для существующих SELLER users. Ждёт e2e теста в проде после Railway-билда.
 - **Где воспроизводится:** web-buyer, пользователь чей телефон уже зарегистрирован как SELLER. Incognito → OTP-login через Telegram → магазин → товар → фиолетовая кнопка чата в sticky CTA → ввести текст → «Отправить». POST `/api/v1/chat/threads` → **HTTP 403** с `{ code: "FORBIDDEN", message: "Insufficient permissions" }`. Проверено 23.04.2026 Азимом в проде.
 - **Цепочка причин (по коду):**
   1. `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts:44-47` — если `User` уже существует (был создан как SELLER), `ensureBuyerProfile` создаёт Buyer-запись, но **не меняет `User.role`**.

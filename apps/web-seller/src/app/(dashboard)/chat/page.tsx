@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { UserRole } from 'types';
-import type { ChatThread } from 'types';
-import { MessageSquare } from 'lucide-react';
+import type { ChatThreadView } from '@/lib/api/chat.api';
+import { MessageSquare, User as UserIcon } from 'lucide-react';
 import { useThreads, useMessages, useSendMessage, useResolveThread, useChatSocket } from '@/hooks/use-chat';
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
@@ -22,13 +22,9 @@ function timeLabel(iso: string): string {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-function initials(id: string): string {
-  return id.slice(0, 2).toUpperCase();
-}
-
 // ── Thread List ────────────────────────────────────────────────────────────
 
-function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
+function ThreadItem({ thread, active, onClick }: { thread: ChatThreadView; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -36,17 +32,17 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
       style={active ? { background: 'rgba(167,139,250,.10)' } : {}}
     >
       <div
-        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
         style={{ background: 'rgba(167,139,250,.25)', color: '#A78BFA' }}
       >
-        {initials(thread.buyerId)}
+        <UserIcon size={16} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">
-          Покупатель ···{thread.buyerId.slice(-4)}
+          {thread.title}
         </p>
         <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>
-          {thread.lastMessage?.text ?? 'Нет сообщений'}
+          {thread.lastMessageText ?? thread.subtitle ?? 'Нет сообщений'}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -73,7 +69,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 
 // ── Chat Window ────────────────────────────────────────────────────────────
 
-function ChatWindow({ thread }: { thread: ChatThread }) {
+function ChatWindow({ thread }: { thread: ChatThreadView }) {
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
@@ -98,14 +94,14 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
     <div className="flex-1 rounded-2xl flex flex-col overflow-hidden" style={glass}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: 'rgba(167,139,250,.25)', color: '#A78BFA' }}>
-            {initials(thread.buyerId)}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(167,139,250,.25)', color: '#A78BFA' }}>
+            <UserIcon size={15} />
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white">Покупатель ···{thread.buyerId.slice(-4)}</p>
-            <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {thread.contextType} · {thread.contextId.slice(-6).toUpperCase()}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white truncate">{thread.title}</p>
+            <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {thread.subtitle ?? (thread.threadType === 'ORDER' ? 'Заказ' : 'Товар')}
             </p>
           </div>
         </div>
