@@ -70,7 +70,8 @@ export class SendMessageUseCase {
 
     this.logger.log(`Message sent to thread ${input.threadId} by user ${input.senderUserId}`);
 
-    this.chatGateway.emitChatMessage(message);
+    const senderRole = message.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER';
+    this.chatGateway.emitChatMessage(message, senderRole);
 
     // Notify seller-room when buyer sends a message
     const storeId = thread.seller.store?.id;

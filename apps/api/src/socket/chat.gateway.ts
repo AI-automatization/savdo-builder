@@ -25,12 +25,22 @@ export class ChatGateway {
     this.logger.debug(`Client ${client.id} joined room ${room}`);
   }
 
-  emitChatMessage(message: ChatMessage): void {
+  @SubscribeMessage('leave-chat-room')
+  handleLeaveChatRoom(
+    @MessageBody() data: { threadId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const room = `thread:${data.threadId}`;
+    client.leave(room);
+    this.logger.debug(`Client ${client.id} left room ${room}`);
+  }
+
+  emitChatMessage(message: ChatMessage, senderRole: 'BUYER' | 'SELLER'): void {
     const payload = {
       id: message.id,
       threadId: message.threadId,
-      senderUserId: message.senderUserId,
-      body: message.body,
+      text: message.body ?? '',
+      senderRole,
       createdAt: message.createdAt.toISOString(),
     };
     this.server.to(`thread:${message.threadId}`).emit('chat:message', payload);

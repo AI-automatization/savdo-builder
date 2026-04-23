@@ -33,9 +33,13 @@ export class AuthRepository {
     });
   }
 
-  async countRecentOtpRequests(phone: string, since: Date): Promise<number> {
+  async countRecentOtpRequests(phone: string, since: Date, purpose?: string): Promise<number> {
     return this.prisma.otpRequest.count({
-      where: { phone, createdAt: { gte: since } },
+      where: {
+        phone,
+        createdAt: { gte: since },
+        ...(purpose ? { purpose } : {}),
+      },
     });
   }
 

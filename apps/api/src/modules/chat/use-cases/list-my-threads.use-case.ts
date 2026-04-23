@@ -55,10 +55,23 @@ export class ListMyThreadsUseCase {
       return this.chatRepo.findThreadsBySeller(input.sellerId);
     }
 
-    throw new DomainException(
-      ErrorCode.FORBIDDEN,
-      'Only buyers and sellers can list chat threads',
-      HttpStatus.FORBIDDEN,
-    );
+    // ADMIN or dual-role: merge buyer + seller threads, deduplicate, sort by lastMessageAt
+    const [buyerThreads, sellerThreads] = await Promise.all([
+      input.buyerId ? this.chatRepo.findThreadsByBuyer(input.buyerId) : Promise.resolve([]),
+      input.sellerId ? this.chatRepo.findThreadsBySeller(input.sellerId) : Promise.resolve([]),
+    ]);
+
+    const seen = new Set<string>();
+    const merged = [...buyerThreads, ...sellerThreads].filter((t) => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+
+    return merged.sort((a, b) => {
+      const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return bTime - aTime;
+    });
   }
 }

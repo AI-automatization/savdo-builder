@@ -45,6 +45,7 @@ interface StoreCategory {
 interface GlobalCategory {
   id: string;
   nameRu: string;
+  parentId?: string | null;
 }
 
 interface ProductAttr {

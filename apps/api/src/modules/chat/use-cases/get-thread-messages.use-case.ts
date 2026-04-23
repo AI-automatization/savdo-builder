@@ -1,6 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChatMessage } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
@@ -12,6 +11,19 @@ export interface GetThreadMessagesInput {
   before?: string;
 }
 
+export interface MappedChatMessage {
+  id: string;
+  threadId: string;
+  text: string;
+  senderRole: 'BUYER' | 'SELLER';
+  createdAt: string;
+}
+
+export interface GetThreadMessagesOutput {
+  messages: MappedChatMessage[];
+  hasMore: boolean;
+}
+
 @Injectable()
 export class GetThreadMessagesUseCase {
   private readonly logger = new Logger(GetThreadMessagesUseCase.name);
@@ -21,7 +33,7 @@ export class GetThreadMessagesUseCase {
     private readonly config: ConfigService,
   ) {}
 
-  async execute(input: GetThreadMessagesInput): Promise<ChatMessage[]> {
+  async execute(input: GetThreadMessagesInput): Promise<GetThreadMessagesOutput> {
     const chatEnabled = this.config.get<boolean>('features.chatEnabled');
 
     if (!chatEnabled) {
@@ -53,17 +65,23 @@ export class GetThreadMessagesUseCase {
       );
     }
 
-    const messages = await this.chatRepo.findMessages(input.threadId, {
-      limit: input.limit,
+    const limit = input.limit ?? 50;
+    const raw = await this.chatRepo.findMessages(input.threadId, {
+      limit: limit + 1,
       before: input.before,
     });
 
-    // Mark messages from the other participant as read — fire-and-forget
-    // We use the buyerId/sellerId stored on the thread to identify the counterpart.
-    // "Read" means: messages whose senderUserId is NOT the current reader.
-    // The schema does not have an isRead field on ChatMessage, so this operation
-    // is a no-op in Phase A. The hook is in place for Phase B when the field is added.
+    const hasMore = raw.length > limit;
+    const slice = hasMore ? raw.slice(0, limit) : raw;
 
-    return messages;
+    const messages: MappedChatMessage[] = slice.map((m) => ({
+      id: m.id,
+      threadId: m.threadId,
+      text: m.body ?? '',
+      senderRole: m.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+      createdAt: m.createdAt.toISOString(),
+    }));
+
+    return { messages, hasMore };
   }
 }

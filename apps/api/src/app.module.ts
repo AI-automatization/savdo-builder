@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_FILTER } from '@nestjs/core';
 import { appConfig } from './config/app.config';
 import { dbConfig } from './config/db.config';
@@ -40,6 +41,7 @@ import { QueuesModule } from './queues/queues.module';
       validationSchema: envValidationSchema,
     }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
     DatabaseModule,
     RedisModule,
     QueuesModule,

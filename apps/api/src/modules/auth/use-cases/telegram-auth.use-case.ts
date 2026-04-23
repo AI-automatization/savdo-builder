@@ -1,6 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { createHmac } from 'crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
 import { AuthRepository } from '../repositories/auth.repository';
 import { TokenService } from '../services/token.service';
 import { RedisService } from '../../../shared/redis.service';
@@ -44,7 +43,14 @@ export class TelegramAuthUseCase {
     const secretKey = createHmac('sha256', 'WebAppData').update(botToken).digest();
     const expectedHash = createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
-    if (expectedHash !== hash) {
+    const hashMatch = (() => {
+      try {
+        return timingSafeEqual(Buffer.from(expectedHash, 'hex'), Buffer.from(hash, 'hex'));
+      } catch {
+        return false;
+      }
+    })();
+    if (!hashMatch) {
       throw new DomainException(ErrorCode.UNAUTHORIZED, 'Invalid Telegram initData signature', HttpStatus.UNAUTHORIZED);
     }
 

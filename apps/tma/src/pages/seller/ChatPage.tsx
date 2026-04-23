@@ -21,9 +21,9 @@ interface ChatThread {
 
 interface ChatMessage {
   id: string;
-  senderUserId: string;
-  messageType: string;
-  body: string;
+  threadId: string;
+  text: string;
+  senderRole: 'BUYER' | 'SELLER';
   createdAt: string;
 }
 
@@ -64,21 +64,21 @@ export default function SellerChatPage() {
   useEffect(() => {
     if (!activeThread) return;
     setMsgLoading(true);
-    api<{ messages: ChatMessage[] }>(`/chat/threads/${activeThread.id}/messages`)
+    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${activeThread.id}/messages`)
       .then((res) => setMessages(res.messages ?? []))
       .catch(() => {})
       .finally(() => setMsgLoading(false));
 
     const socket = getSocket();
-    socket.connect();
     socket.emit('join-chat-room', { threadId: activeThread.id });
-    socket.on('chat:new_message', (msg: ChatMessage) => {
+    const onNewMessage = (msg: ChatMessage) => {
       setMessages((prev) => [...prev, msg]);
-    });
+    };
+    socket.on('chat:new_message', onNewMessage);
 
     return () => {
-      socket.off('chat:new_message');
-      socket.disconnect();
+      socket.emit('leave-chat-room', { threadId: activeThread.id });
+      socket.off('chat:new_message', onNewMessage);
     };
   }, [activeThread]);
 
@@ -92,7 +92,7 @@ export default function SellerChatPage() {
     try {
       await api(`/chat/threads/${activeThread.id}/messages`, {
         method: 'POST',
-        body: { body: text.trim(), messageType: 'text' },
+        body: { text: text.trim() },
       });
       setText('');
       showToast('✅ Сообщение отправлено');
@@ -170,7 +170,7 @@ export default function SellerChatPage() {
                       color: 'rgba(255,255,255,0.88)',
                     }}
                   >
-                    {m.body}
+                    {m.text}
                   </div>
                   <span className="text-[10px] mt-0.5 text-right" style={{ color: 'rgba(255,255,255,0.25)' }}>
                     {new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}

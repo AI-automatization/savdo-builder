@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -59,7 +60,6 @@ export class ChatController {
 
   // POST /api/v1/chat/threads
   @Post('chat/threads')
-  @Roles('BUYER')
   async createThread(@CurrentUser() user: JwtPayload, @Body() dto: CreateThreadDto) {
     const buyerId = await this.resolveBuyerId(user.sub);
 
@@ -95,6 +95,7 @@ export class ChatController {
 
   // POST /api/v1/chat/threads/:id/messages
   @Post('chat/threads/:id/messages')
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @Roles('BUYER', 'SELLER')
   async sendMessage(
     @CurrentUser() user: JwtPayload,
@@ -207,7 +208,7 @@ export class ChatController {
 
   /**
    * Returns buyerId and/or sellerId (profile IDs, not user IDs) based on role.
-   * Used for list-threads where the use case needs the profile ID.
+   * For ADMIN: resolves whichever profiles exist on the user account.
    */
   private async resolveParticipant(
     userId: string,
@@ -223,13 +224,17 @@ export class ChatController {
       return { sellerId };
     }
 
-    return {};
+    // ADMIN or dual-role: resolve profiles from DB directly
+    const user = await this.usersRepo.findById(userId);
+    return {
+      buyerId: user?.buyer?.id,
+      sellerId: user?.seller?.id,
+    };
   }
 
   /**
-   * Returns a single `participantId` — either buyer.id or seller.id —
-   * to be used as the identity for thread participation checks.
-   * The ChatThread stores buyerId (Buyer.id) and sellerId (Seller.id).
+   * Returns a single `participantId` for message access checks.
+   * For ADMIN: prefers buyer profile, falls back to seller.
    */
   private async resolveParticipantId(
     userId: string,
@@ -243,11 +248,17 @@ export class ChatController {
       return { participantId: await this.resolveSellerProfileId(userId) };
     }
 
-    throw new DomainException(
-      ErrorCode.FORBIDDEN,
-      'Only buyers and sellers can access chat',
-      HttpStatus.FORBIDDEN,
-    );
+    // ADMIN: try buyer first, then seller
+    const user = await this.usersRepo.findById(userId);
+    const profileId = user?.buyer?.id ?? user?.seller?.id;
+    if (!profileId) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'No buyer or seller profile found for this account',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    return { participantId: profileId };
   }
 
   private async resolveBuyerId(userId: string): Promise<string> {

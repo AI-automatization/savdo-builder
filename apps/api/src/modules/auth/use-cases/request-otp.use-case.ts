@@ -18,9 +18,9 @@ export class RequestOtpUseCase {
   ) {}
 
   async execute(phone: string, purpose: string): Promise<{ expiresAt: Date }> {
-    // Rate limit: max 3 OTP requests per 10 minutes per phone
+    // Rate limit: max 3 OTP requests per 10 minutes per phone per purpose
     const windowStart = new Date(Date.now() - OTP_RATE_WINDOW_MINUTES * 60 * 1000);
-    const recentCount = await this.authRepo.countRecentOtpRequests(phone, windowStart);
+    const recentCount = await this.authRepo.countRecentOtpRequests(phone, windowStart, purpose);
 
     if (recentCount >= OTP_RATE_LIMIT) {
       throw new DomainException(

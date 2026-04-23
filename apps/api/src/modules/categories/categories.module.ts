@@ -7,6 +7,7 @@ import { GetStoreCategoriesUseCase } from './use-cases/get-store-categories.use-
 import { CreateStoreCategoryUseCase } from './use-cases/create-store-category.use-case';
 import { UpdateStoreCategoryUseCase } from './use-cases/update-store-category.use-case';
 import { DeleteStoreCategoryUseCase } from './use-cases/delete-store-category.use-case';
+import { GlobalCategoriesSeedService } from './global-categories-seed.service';
 import { StoresModule } from '../stores/stores.module';
 import { SellersModule } from '../sellers/sellers.module';
 
@@ -21,6 +22,7 @@ import { SellersModule } from '../sellers/sellers.module';
     CreateStoreCategoryUseCase,
     UpdateStoreCategoryUseCase,
     DeleteStoreCategoryUseCase,
+    GlobalCategoriesSeedService,
   ],
 })
 export class CategoriesModule {}
