@@ -7,7 +7,9 @@ import { useCart, useUpdateCartItem, useRemoveCartItem } from "@/hooks/use-cart"
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { track } from "@/lib/analytics";
 import type { CartItem } from "types";
-import { Package, ShoppingCart } from "lucide-react";
+import { ThreadType } from "types";
+import { Package, ShoppingCart, MessageSquare } from "lucide-react";
+import ChatComposerModal from "@/components/chat/ChatComposerModal";
 
 // ── Glass tokens ───────────────────────────────────────────────────────────
 
@@ -178,6 +180,7 @@ function SkeletonItem() {
 
 export default function CartPage() {
   const { data: cart, isLoading, isError } = useCart();
+  const [chatOpen, setChatOpen] = useState(false);
 
   const items = cart?.items ?? [];
   const totalQty = items.reduce((s, it) => s + it.quantity, 0);
@@ -185,6 +188,14 @@ export default function CartPage() {
     typeof cart?.totalAmount === "number"
       ? cart.totalAmount
       : items.reduce((s, it) => s + itemSubtotal(it), 0);
+
+  const firstItem = items[0];
+  const cartAsChatMessage = items
+    .map((it) => `• ${it.product?.title ?? "Товар"} × ${it.quantity}`)
+    .join("\n");
+  const chatInitialText = items.length > 0
+    ? `Хочу уточнить по товарам из корзины:\n${cartAsChatMessage}`
+    : "";
 
 
   return (
@@ -281,16 +292,40 @@ export default function CartPage() {
       {/* CTA */}
       {items.length > 0 && (
         <div className="fixed left-0 right-0 px-4" style={{ bottom: 80, zIndex: 50 }}>
-          <div className="max-w-md mx-auto">
+          <div className="max-w-md mx-auto flex gap-2.5">
             <Link
               href="/checkout"
-              className="w-full py-4 rounded-2xl text-[15px] font-semibold text-white tracking-wide active:scale-[0.98] transition-transform flex items-center justify-center"
+              className="flex-1 py-4 rounded-2xl text-[15px] font-semibold text-white tracking-wide active:scale-[0.98] transition-transform flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)", boxShadow: "0 8px 28px rgba(167,139,250,0.38)" }}
             >
-              Оформить заказ · {fmt(totalAmount)} сум
+              Оформить · {fmt(totalAmount)} сум
             </Link>
+            {firstItem && (
+              <button
+                onClick={() => {
+                  track.chatStarted(cart?.storeId ?? "", "cart");
+                  setChatOpen(true);
+                }}
+                aria-label="Уточнить у продавца"
+                title="Уточнить у продавца"
+                className="w-14 flex items-center justify-center rounded-2xl text-white transition-opacity hover:opacity-85 active:scale-[0.97]"
+                style={{ background: "linear-gradient(135deg, #1d6fa4 0%, #2AABEE 100%)", boxShadow: "0 8px 24px rgba(42,171,238,.28)" }}
+              >
+                <MessageSquare size={20} />
+              </button>
+            )}
           </div>
         </div>
+      )}
+
+      {chatOpen && firstItem && (
+        <ChatComposerModal
+          contextType={ThreadType.PRODUCT}
+          contextId={firstItem.productId}
+          title={`Корзина · ${totalQty} ${plural(totalQty)}`}
+          initialText={chatInitialText}
+          onClose={() => setChatOpen(false)}
+        />
       )}
 
       <BottomNavBar active="cart" cartBadge={totalQty} />

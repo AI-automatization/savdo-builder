@@ -16,13 +16,14 @@ type Props = {
   contextType: ThreadType;
   contextId: string;
   title: string;
+  initialText?: string;
   onClose: () => void;
 };
 
-export default function ChatComposerModal({ contextType, contextId, title, onClose }: Props) {
+export default function ChatComposerModal({ contextType, contextId, title, initialText, onClose }: Props) {
   const router = useRouter();
   const create = useCreateThread();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText ?? "");
   const [error, setError] = useState<string | null>(null);
 
   async function handleSend() {

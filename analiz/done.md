@@ -1,6 +1,17 @@
 # Done — Азим + Полат
 
-## 2026-04-23 — Сессия 33 (Азим) — Фикс крашащегося чата + категорный бейдж + характеристики + prepopulate
+## 2026-04-23 — Сессия 33 (Азим) — Фикс чата + бейдж + характеристики + «Уточнить у продавца» в корзине
+
+### ✅ [WEB-BUYER-CART-CONTACT-SELLER-001] Кнопка «Уточнить у продавца» на /cart
+- **Важность:** 🟡 UX — паритет с TMA (Полат сделал в Sprint 31)
+- **Дата:** 23.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/(minimal)/cart/page.tsx` — кнопка Telegram-цвета рядом с «Оформить», открывает ChatComposerModal с предзаполненным списком
+  - `apps/web-buyer/src/components/chat/ChatComposerModal.tsx` — добавлен prop `initialText?: string`, в `useState(initialText ?? "")`
+- **Что сделано:** В проде на TMA у Полата есть кнопка «Связаться с продавцом» на CartPage (Sprint 31, коммит `2b148d2`). В web-buyer такой кнопки не было. Добавил рядом с «Оформить заказ» иконочную Telegram-цветную кнопку (`#2AABEE`, как у Telegram deep-link справа на ProductPage). Клик → ChatComposerModal с уже заполненным текстом `Хочу уточнить по товарам из корзины:\n• Товар × N\n• ...` — покупатель может дописать/отредактировать. `contextId` — id первого товара, `contextType: PRODUCT`. `track.chatStarted(storeId, "cart")` для аналитики.
+- **Restoration:** `.dockerignore` был восстановлен (`git restore`) — чужая правка сессии 32 с мусором («И» вместо 6 правильных строк).
+
+### ✅ [WEB-CHAT-LIST-CRASH-001] Фикс чёрного экрана `/chats` после отправки сообщения
 
 ### ✅ [WEB-CHAT-LIST-CRASH-001] Фикс чёрного экрана `/chats` после отправки сообщения
 - **Важность:** 🔴 Блокер — чат полностью не работал в web-buyer после Sprint 31
