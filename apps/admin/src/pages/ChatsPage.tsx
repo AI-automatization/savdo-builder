@@ -137,7 +137,7 @@ export default function ChatsPage() {
                   Чатов не найдено
                 </td></tr>
               ) : threads.map((t, i) => {
-                const sc = STATUS_COLORS[t.status] ?? STATUS_COLORS.resolved
+                const sc = STATUS_COLORS[t.status] ?? STATUS_COLORS.CLOSED
                 const isSelected = selectedId === t.id
                 return (
                   <tr
