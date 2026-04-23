@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -10,6 +11,10 @@ import { TELEGRAM_CHAT_ID_KEY } from '../../telegram/telegram-webhook.controller
 import { QUEUE_OTP } from '../../../queues/queues.module';
 import { OTP_JOB_SEND_TELEGRAM, type OtpSendTelegramJobData } from '../../../queues/otp.jobs';
 
+const OTP_VERIFY_ATTEMPTS_KEY = (phone: string) => `otp:attempts:${phone}`;
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_BLOCK_TTL_SECONDS = 15 * 60; // 15 minutes
+
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
@@ -20,9 +25,10 @@ export class OtpService {
     @InjectQueue(QUEUE_OTP) private readonly otpQueue: Queue,
   ) {}
 
+  // SEC-001: crypto.randomInt — cryptographically secure 6-digit code
+  // SEC-004: 6 digits (100000–999999) instead of 4
   generateCode(): string {
-    // 4-digit code
-    return String(Math.floor(1000 + Math.random() * 9000));
+    return String(randomInt(100000, 1000000));
   }
 
   async hashCode(code: string): Promise<string> {
@@ -33,12 +39,36 @@ export class OtpService {
     return bcrypt.compare(code, hash);
   }
 
+  // SEC-002: Brute-force protection — track failed attempts per phone
+  async checkVerifyAttempts(phone: string): Promise<void> {
+    const key = OTP_VERIFY_ATTEMPTS_KEY(phone);
+    const attempts = await this.redis.get(key);
+    if (attempts && Number(attempts) >= OTP_MAX_ATTEMPTS) {
+      throw new DomainException(
+        ErrorCode.OTP_SEND_LIMIT,
+        'Слишком много неверных попыток. Подождите 15 минут.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  async recordFailedAttempt(phone: string): Promise<void> {
+    const key = OTP_VERIFY_ATTEMPTS_KEY(phone);
+    const current = await this.redis.get(key);
+    const next = current ? Number(current) + 1 : 1;
+    await this.redis.set(key, String(next), OTP_BLOCK_TTL_SECONDS);
+  }
+
+  async clearVerifyAttempts(phone: string): Promise<void> {
+    await this.redis.del(OTP_VERIFY_ATTEMPTS_KEY(phone));
+  }
+
   async sendOtp(phone: string, code: string): Promise<void> {
     const devMode = this.config.get<boolean>('features.devOtpEnabled');
 
     if (devMode) {
-      this.logger.warn(`[DEV OTP] Phone: ${phone} | Code: ${code}`);
-      // Still try to send via Telegram if the phone is linked
+      // SEC-003: never log the actual code — only confirm delivery attempt
+      this.logger.warn(`[DEV OTP] Sending code to phone=${phone}`);
       const chatId = await this.redis.get(TELEGRAM_CHAT_ID_KEY(phone));
       if (chatId) {
         const jobData: OtpSendTelegramJobData = { chatId, phone, code };
@@ -57,12 +87,8 @@ export class OtpService {
       );
     }
 
-    // Queue OTP delivery — worker retries on Telegram failure (up to 5 attempts)
     const jobData: OtpSendTelegramJobData = { chatId, phone, code };
-    await this.otpQueue.add(OTP_JOB_SEND_TELEGRAM, jobData, {
-      priority: 1, // highest priority
-    });
-
-    this.logger.log(`OTP queued for phone=${phone} chatId=${chatId}`);
+    await this.otpQueue.add(OTP_JOB_SEND_TELEGRAM, jobData, { priority: 1 });
+    this.logger.log(`OTP queued for phone=${phone}`);
   }
 }

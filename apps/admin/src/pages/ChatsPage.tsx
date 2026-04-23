@@ -3,6 +3,19 @@ import { MessageSquare, RefreshCw, Trash2, X } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
+function toast(msg: string) {
+  const el = document.createElement('div')
+  el.textContent = msg
+  Object.assign(el.style, {
+    position: 'fixed', bottom: '24px', right: '24px', zIndex: '9999',
+    background: 'rgba(30,30,40,0.95)', color: '#fff', padding: '10px 18px',
+    borderRadius: '10px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.12)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+  })
+  document.body.appendChild(el)
+  setTimeout(() => el.remove(), 2500)
+}
+
 interface ThreadRow {
   id: string
   status: string
@@ -68,8 +81,9 @@ export default function ChatsPage() {
     try {
       await api.delete(`/api/v1/admin/chat/threads/${id}`)
       if (selectedId === id) { setSelectedId(null); setDetail(null) }
+      toast('✅ Диалог удалён')
       refetch()
-    } catch { /* noop */ }
+    } catch { toast('❌ Не удалось удалить') }
     finally { setDeletingId(null) }
   }
 
@@ -130,9 +144,9 @@ export default function ChatsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+                <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
               ) : !threads.length ? (
-                <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
+                <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
                   <MessageSquare size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
                   Чатов не найдено
                 </td></tr>

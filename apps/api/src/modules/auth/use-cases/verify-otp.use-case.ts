@@ -22,19 +22,25 @@ export class VerifyOtpUseCase {
     purpose: string,
     meta?: { deviceType?: string; deviceName?: string; ipAddress?: string; userAgent?: string },
   ) {
+    // SEC-002: check brute-force block before any DB lookup
+    await this.otpService.checkVerifyAttempts(phone);
+
     const otpRequest = await this.authRepo.findActiveOtpRequest(phone, purpose);
 
     if (!otpRequest) {
+      await this.otpService.recordFailedAttempt(phone);
       throw new DomainException(ErrorCode.OTP_NOT_FOUND, 'OTP not found or expired', HttpStatus.NOT_FOUND);
     }
 
     const isValid = await this.otpService.verifyCode(code, otpRequest.codeHash);
     if (!isValid) {
+      await this.otpService.recordFailedAttempt(phone);
       throw new DomainException(ErrorCode.OTP_INVALID, 'Invalid OTP code', HttpStatus.BAD_REQUEST);
     }
 
-    // Consume OTP (INV-I02: OTP cannot be reused)
+    // Consume OTP + clear failed attempts counter on success
     await this.authRepo.consumeOtpRequest(otpRequest.id);
+    await this.otpService.clearVerifyAttempts(phone);
 
     // Get or create user — всегда создаём BUYER.
     // Seller создаётся отдельно через POST /seller/apply (onboarding flow).

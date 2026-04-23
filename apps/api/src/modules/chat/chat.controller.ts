@@ -132,9 +132,10 @@ export class ChatController {
   async adminListThreads(
     @Query('page') page = 1,
     @Query('limit') limit = 30,
-    @Query('status') status?: string,
+    @Query('status') status?: 'OPEN' | 'CLOSED',
   ) {
-    const where = status ? { status } : {};
+    const allowedStatuses = ['OPEN', 'CLOSED'];
+    const where = status && allowedStatuses.includes(status) ? { status } : {};
     const [threads, total] = await Promise.all([
       this.prisma.chatThread.findMany({
         where,

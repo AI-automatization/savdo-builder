@@ -177,14 +177,19 @@ export default function BuyerChatPage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
-          {activeThread.status === 'OPEN' && (
+          {/* Input / closed notice */}
+          {activeThread.status === 'OPEN' ? (
             <div className="flex gap-2 pt-2">
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMsg()}
-                placeholder="Сообщение..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (text.trim()) sendMsg();
+                  }
+                }}
+                placeholder="Сообщение... (Enter ↵)"
                 style={{
                   flex: 1,
                   background: 'rgba(255,255,255,0.07)',
@@ -199,6 +204,7 @@ export default function BuyerChatPage() {
               <button
                 onClick={sendMsg}
                 disabled={!text.trim() || sending}
+                aria-label="Отправить сообщение"
                 style={{
                   padding: '10px 16px',
                   borderRadius: 12,
@@ -207,11 +213,16 @@ export default function BuyerChatPage() {
                   color: '#fff',
                   fontSize: 18,
                   cursor: text.trim() ? 'pointer' : 'default',
-                  opacity: text.trim() ? 1 : 0.4,
+                  opacity: text.trim() && !sending ? 1 : 0.4,
+                  minWidth: 46,
                 }}
               >
-                ➤
+                {sending ? '⏳' : '➤'}
               </button>
+            </div>
+          ) : (
+            <div className="pt-2 text-center text-[12px]" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              Диалог закрыт продавцом — новые сообщения недоступны
             </div>
           )}
         </div>

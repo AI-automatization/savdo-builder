@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
+import { MediaVisibility } from '@prisma/client';
 import { RequestUploadDto } from './dto/request-upload.dto';
 import { RequestUploadUseCase } from './use-cases/request-upload.use-case';
 import { ConfirmUploadUseCase } from './use-cases/confirm-upload.use-case';
@@ -93,6 +94,11 @@ export class MediaController {
     const mediaFile = await this.mediaRepo.findById(id);
 
     if (!mediaFile) {
+      throw new NotFoundException('Media file not found');
+    }
+
+    // SEC-005: only serve public files via unauthenticated proxy
+    if (mediaFile.visibility !== MediaVisibility.PUBLIC) {
       throw new NotFoundException('Media file not found');
     }
 

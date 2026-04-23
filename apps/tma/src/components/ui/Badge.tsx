@@ -11,9 +11,9 @@ const colors: Record<string, { bg: string; text: string }> = {
 };
 
 const labels: Record<string, string> = {
-  PENDING:         'Ожидает',
+  PENDING:         'Обрабатывается',
   CONFIRMED:       'Подтверждён',
-  SHIPPED:         'Отправлен',
+  SHIPPED:         'В пути',
   DELIVERED:       'Доставлен',
   CANCELLED:       'Отменён',
   ACTIVE:          'Активен',
