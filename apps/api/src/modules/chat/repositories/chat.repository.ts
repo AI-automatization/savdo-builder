@@ -75,7 +75,7 @@ export class ChatRepository {
         threadType: data.threadType,
         productId: data.productId ?? null,
         orderId: data.orderId ?? null,
-        status: 'active',
+        status: 'OPEN',
       },
     });
   }
@@ -143,7 +143,7 @@ export class ChatRepository {
   async resolveThread(id: string): Promise<ChatThread> {
     return this.prisma.chatThread.update({
       where: { id },
-      data: { status: 'resolved' },
+      data: { status: 'CLOSED' },
     });
   }
 }

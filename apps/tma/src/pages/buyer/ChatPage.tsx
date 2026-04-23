@@ -116,8 +116,8 @@ export default function BuyerChatPage() {
             <h2 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
               {threadLabel(activeThread)}
             </h2>
-            <span className="text-[11px]" style={{ color: activeThread.status === 'open' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-              {activeThread.status === 'open' ? 'Открыт' : 'Закрыт'}
+            <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+              {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
             </span>
           </div>
 
@@ -145,7 +145,7 @@ export default function BuyerChatPage() {
             <div ref={bottomRef} />
           </div>
 
-          {activeThread.status === 'open' && (
+          {activeThread.status === 'OPEN' && (
             <div className="flex gap-2 pt-2">
               <input
                 value={text}
@@ -219,8 +219,8 @@ export default function BuyerChatPage() {
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {threadLabel(t)}
               </p>
-              <p className="text-[11px]" style={{ color: t.status === 'open' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                {t.status === 'open' ? 'Открыт' : 'Закрыт'}
+              <p className="text-[11px]" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
               </p>
             </div>
             {t.lastMessageAt && (

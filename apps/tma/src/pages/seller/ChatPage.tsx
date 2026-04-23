@@ -109,8 +109,8 @@ export default function SellerChatPage() {
     setResolving(true);
     try {
       await api(`/chat/threads/${activeThread.id}/resolve`, { method: 'PATCH' });
-      setActiveThread((t) => t ? { ...t, status: 'resolved' } : t);
-      setThreads((prev) => prev.map((t) => t.id === activeThread.id ? { ...t, status: 'resolved' } : t));
+      setActiveThread((t) => t ? { ...t, status: 'CLOSED' } : t);
+      setThreads((prev) => prev.map((t) => t.id === activeThread.id ? { ...t, status: 'CLOSED' } : t));
       tg?.HapticFeedback.notificationOccurred('success');
       showToast('✅ Диалог закрыт');
     } catch {
@@ -136,11 +136,11 @@ export default function SellerChatPage() {
               <h2 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {threadLabel(activeThread)}
               </h2>
-              <span className="text-[11px]" style={{ color: activeThread.status === 'open' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                {activeThread.status === 'open' ? 'Открыт' : 'Закрыт'}
+              <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
               </span>
             </div>
-            {activeThread.status === 'open' && (
+            {activeThread.status === 'OPEN' && (
               <button
                 onClick={resolveThread}
                 disabled={resolving}
@@ -181,7 +181,7 @@ export default function SellerChatPage() {
             <div ref={bottomRef} />
           </div>
 
-          {activeThread.status === 'open' && (
+          {activeThread.status === 'OPEN' && (
             <div className="flex gap-2 pt-2">
               <input
                 value={text}
@@ -263,8 +263,8 @@ export default function SellerChatPage() {
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {threadLabel(t)}
               </p>
-              <p className="text-[11px]" style={{ color: t.status === 'open' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                {t.status === 'open' ? 'Открыт' : 'Закрыт'}
+              <p className="text-[11px]" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
               </p>
             </div>
             {t.lastMessageAt && (

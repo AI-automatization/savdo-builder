@@ -50,7 +50,7 @@ export class ResolveThreadUseCase {
       );
     }
 
-    if (thread.status === 'resolved') {
+    if (thread.status === 'CLOSED') {
       // Already resolved — idempotent return
       return thread;
     }
