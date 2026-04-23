@@ -29,8 +29,6 @@ const TITLE_EXAMPLES_BY_SLUG: Record<string, string> = {
   'furniture':     'Например: Офисное кресло с сеткой',
   'beds':          'Например: Кровать двуспальная 160×200',
   'books':         'Например: Мастер и Маргарита, Булгаков',
-  'cars':          'Например: Chevrolet Cobalt 2018, 1.5L',
-  'auto':          'Например: Автомобиль/запчасть',
   'bicycles':      'Например: Велосипед Trek Marlin 7',
   'outdoor':       'Например: Палатка 3-местная',
   'toys':          'Например: LEGO Classic 11019',
@@ -43,10 +41,18 @@ const DESCRIPTION_EXAMPLES_BY_SLUG: Record<string, string> = {
   'electronics': 'Характеристики, комплектация, гарантия...',
   'phones':      'Объём памяти, цвет, состояние, комплектация, гарантия...',
   'laptops':     'Процессор, ОЗУ, диск, экран, состояние...',
-  'cars':        'Год, пробег, двигатель, КПП, состояние, история...',
   'furniture':   'Материал, размеры, цвет, сборка...',
   'books':       'Автор, жанр, год, язык, состояние...',
 };
+
+// Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
+// до тех пор, пока Полат не уберёт их из seed'а на бэке
+// (API-CATEGORY-SEED-CLEANUP-001).
+const HIDDEN_CATEGORY_SLUGS = new Set(['cars', 'auto', 'automobiles']);
+const HIDDEN_CATEGORY_NAME_RE = /авто/i;
+function isHiddenCategory(cat: { slug: string; name: string }): boolean {
+  return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.name);
+}
 
 function titlePlaceholder(categoryName?: string | null, slug?: string | null): string {
   if (slug && TITLE_EXAMPLES_BY_SLUG[slug]) return TITLE_EXAMPLES_BY_SLUG[slug];
@@ -129,7 +135,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const [mediaId, setMediaId] = useState<string | null>(null);
   const { data: categories = [] } = useStoreCategories();
-  const { data: globalCategories = [] } = useGlobalCategories();
+  const { data: globalCategoriesRaw = [] } = useGlobalCategories();
+  const globalCategories = useMemo(
+    () => globalCategoriesRaw.filter((c) => !isHiddenCategory(c)),
+    [globalCategoriesRaw],
+  );
   const [storeCategoryId, setStoreCategoryId] = useState<string | null>(null);
   const initialCategoryIdRef = useRef<string | null>(null);
 
@@ -306,7 +316,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               <p className="mt-1.5 text-[11px]" style={{ color: "rgba(255,255,255,0.38)" }}>
                 {pickedCategory
                   ? 'Товар покажется в этой категории и попадёт под её фильтры.'
-                  : 'Выберите что продаёте: одежда, обувь, электроника, авто, мебель и т.д.'}
+                  : 'Выберите что продаёте: одежда, обувь, электроника, мебель, книги и т.д.'}
               </p>
             </div>
           )}
