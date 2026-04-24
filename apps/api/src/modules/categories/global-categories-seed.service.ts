@@ -26,7 +26,7 @@ const CATEGORIES: SeedCategory[] = [
   { slug: 'electronics',  nameRu: 'Электроника',         nameUz: 'Elektronika',        parentSlug: null, level: 0, sortOrder: 10 },
   { slug: 'appliances',   nameRu: 'Бытовая техника',     nameUz: 'Maishiy texnika',    parentSlug: null, level: 0, sortOrder: 20 },
   { slug: 'clothing',     nameRu: 'Одежда',              nameUz: 'Kiyimlar',           parentSlug: null, level: 0, sortOrder: 30 },
-  { slug: 'automotive',   nameRu: 'Автомобили',          nameUz: 'Avtomobillar',       parentSlug: null, level: 0, sortOrder: 40 },
+  // automotive removed — platform is not for vehicle sales
   { slug: 'furniture',    nameRu: 'Мебель',              nameUz: 'Mebel',              parentSlug: null, level: 0, sortOrder: 50 },
   { slug: 'books',        nameRu: 'Книги',               nameUz: 'Kitoblar',           parentSlug: null, level: 0, sortOrder: 60 },
   { slug: 'outdoor',      nameRu: 'На открытом воздухе', nameUz: 'Ochiq havoda',       parentSlug: null, level: 0, sortOrder: 70 },
@@ -54,10 +54,7 @@ const CATEGORIES: SeedCategory[] = [
   { slug: 'shoes',               nameRu: 'Обувь',             nameUz: 'Poyabzal',           parentSlug: 'clothing', level: 1, sortOrder: 40 },
   { slug: 'fashion_accessories', nameRu: 'Модные аксессуары', nameUz: 'Moda aksessuarlari', parentSlug: 'clothing', level: 1, sortOrder: 50 },
 
-  // ── Level 1 — Automotive ─────────────────────────────────────────────────────
-  { slug: 'cars',        nameRu: 'Автомобили (новые)', nameUz: 'Avtomobillar (yangi)',        parentSlug: 'automotive', level: 1, sortOrder: 10 },
-  { slug: 'cars_used',   nameRu: 'Автомобили (б/у)',   nameUz: 'Avtomobillar (ishlatilgan)', parentSlug: 'automotive', level: 1, sortOrder: 20 },
-  { slug: 'motorcycles', nameRu: 'Мотоциклы',          nameUz: 'Mototsikllar',               parentSlug: 'automotive', level: 1, sortOrder: 30 },
+  // automotive level-1 removed
 
   // ── Level 1 — Furniture ───────────────────────────────────────────────────────
   { slug: 'sofa', nameRu: 'Диваны',  nameUz: 'Divanlar',   parentSlug: 'furniture', level: 1, sortOrder: 10 },
@@ -187,30 +184,7 @@ const CATEGORY_FILTERS: SeedFilter[] = [
   { categorySlug: 'fashion_accessories', key: 'color', nameRu: 'Цвет',  nameUz: 'Rang',  fieldType: 'SELECT', options: COLORS_RU, sortOrder: 20 },
   { categorySlug: 'fashion_accessories', key: 'type',  nameRu: 'Тип',   nameUz: 'Turi',  fieldType: 'SELECT', options: ['Сумка','Ремень','Часы','Кошелёк','Шарф','Шляпа','Очки','Ювелирные украшения','Другой'], sortOrder: 30 },
 
-  // ── Автомобили (новые) ───────────────────────────────────────────────────────
-  { categorySlug: 'cars', key: 'brand',       nameRu: 'Марка',     nameUz: 'Marka',         fieldType: 'SELECT', options: ['Chevrolet','Hyundai','Kia','Toyota','Lexus','Mercedes','BMW','Audi','Другой'], sortOrder: 10 },
-  { categorySlug: 'cars', key: 'model',       nameRu: 'Модель',    nameUz: 'Model',         fieldType: 'TEXT', sortOrder: 20 },
-  { categorySlug: 'cars', key: 'year',        nameRu: 'Год',       nameUz: 'Yil',           fieldType: 'NUMBER', sortOrder: 30 },
-  { categorySlug: 'cars', key: 'color',       nameRu: 'Цвет',      nameUz: 'Rang',          fieldType: 'SELECT', options: COLORS_RU, sortOrder: 40 },
-  { categorySlug: 'cars', key: 'engine',      nameRu: 'Двигатель', nameUz: 'Dvigatel',      fieldType: 'SELECT', options: ['1.0','1.2','1.4','1.5','1.6','1.8','2.0','2.5','3.0','3.5'], unit: 'л', sortOrder: 50 },
-  { categorySlug: 'cars', key: 'transmission',nameRu: 'КПП',       nameUz: 'Uzatmalar qutisi',fieldType: 'SELECT', options: ['Автомат','Механика','Вариатор','Робот'], sortOrder: 60 },
-
-  // ── Автомобили (б/у) ─────────────────────────────────────────────────────────
-  { categorySlug: 'cars_used', key: 'brand',        nameRu: 'Марка',     nameUz: 'Marka',         fieldType: 'SELECT', options: ['Chevrolet','Hyundai','Kia','Toyota','Lexus','Mercedes','BMW','Audi','Другой'], sortOrder: 10 },
-  { categorySlug: 'cars_used', key: 'model',        nameRu: 'Модель',    nameUz: 'Model',         fieldType: 'TEXT', sortOrder: 20 },
-  { categorySlug: 'cars_used', key: 'year',         nameRu: 'Год',       nameUz: 'Yil',           fieldType: 'NUMBER', sortOrder: 30 },
-  { categorySlug: 'cars_used', key: 'mileage',      nameRu: 'Пробег',    nameUz: 'Yurgan masofasi',fieldType: 'NUMBER', unit: 'км', sortOrder: 40 },
-  { categorySlug: 'cars_used', key: 'color',        nameRu: 'Цвет',      nameUz: 'Rang',          fieldType: 'SELECT', options: COLORS_RU, sortOrder: 50 },
-  { categorySlug: 'cars_used', key: 'engine',       nameRu: 'Двигатель', nameUz: 'Dvigatel',      fieldType: 'SELECT', options: ['1.0','1.2','1.4','1.5','1.6','1.8','2.0','2.5','3.0','3.5'], unit: 'л', sortOrder: 60 },
-  { categorySlug: 'cars_used', key: 'transmission', nameRu: 'КПП',       nameUz: 'Uzatmalar qutisi',fieldType: 'SELECT', options: ['Автомат','Механика','Вариатор','Робот'], sortOrder: 70 },
-  { categorySlug: 'cars_used', key: 'condition',    nameRu: 'Состояние', nameUz: 'Holat',         fieldType: 'SELECT', options: ['Отличное','Хорошее','Удовлетворительное','Требует ремонта'], sortOrder: 80 },
-
-  // ── Мотоциклы ────────────────────────────────────────────────────────────────
-  { categorySlug: 'motorcycles', key: 'brand',       nameRu: 'Марка',     nameUz: 'Marka',   fieldType: 'SELECT', options: ['Honda','Yamaha','Suzuki','Kawasaki','Другой'], sortOrder: 10 },
-  { categorySlug: 'motorcycles', key: 'year',        nameRu: 'Год',       nameUz: 'Yil',     fieldType: 'NUMBER', sortOrder: 20 },
-  { categorySlug: 'motorcycles', key: 'engine_cc',   nameRu: 'Объём',     nameUz: 'Hajm',    fieldType: 'NUMBER', unit: 'куб.см', sortOrder: 30 },
-  { categorySlug: 'motorcycles', key: 'mileage',     nameRu: 'Пробег',    nameUz: 'Yurgan masofasi', fieldType: 'NUMBER', unit: 'км', sortOrder: 40 },
-  { categorySlug: 'motorcycles', key: 'color',       nameRu: 'Цвет',      nameUz: 'Rang',    fieldType: 'SELECT', options: COLORS_RU, sortOrder: 50 },
+  // automotive filters removed
 
   // ── Диваны ───────────────────────────────────────────────────────────────────
   { categorySlug: 'sofa', key: 'color',      nameRu: 'Цвет',       nameUz: 'Rang',    fieldType: 'SELECT', options: COLORS_RU, sortOrder: 10 },
@@ -249,8 +223,24 @@ export class GlobalCategoriesSeedService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
+    await this.cleanupRemovedCategories();
     await this.seedCategories();
     await this.seedFilters();
+  }
+
+  async cleanupRemovedCategories(): Promise<void> {
+    const removedSlugs = ['cars', 'cars_used', 'motorcycles', 'automotive'];
+    await this.prisma.categoryFilter.deleteMany({
+      where: { categorySlug: { in: removedSlugs } },
+    });
+    // detach products before deleting categories
+    await this.prisma.product.updateMany({
+      where: { globalCategory: { slug: { in: removedSlugs } } },
+      data: { globalCategoryId: null },
+    });
+    await this.prisma.globalCategory.deleteMany({
+      where: { slug: { in: removedSlugs } },
+    });
   }
 
   async seedCategories(): Promise<number> {

@@ -128,8 +128,10 @@ export class ProductsRepository {
     filters?: {
       globalCategoryId?: string;
       storeCategoryId?: string;
+      attributes?: Record<string, string>;
     },
   ): Promise<Product[]> {
+    const attrEntries = Object.entries(filters?.attributes ?? {}).filter(([, v]) => !!v);
     return this.prisma.product.findMany({
       where: {
         storeId,
@@ -137,6 +139,11 @@ export class ProductsRepository {
         deletedAt: null,
         ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
         ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
+        ...(attrEntries.length > 0 && {
+          AND: attrEntries.map(([name, value]) => ({
+            attributes: { some: { name, value } },
+          })),
+        }),
       },
       include: {
         images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },

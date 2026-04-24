@@ -12,16 +12,18 @@ export interface ChatMessage {
 
 // ── Thread ────────────────────────────────────────────────────────────────────
 
+/** Shape returned by GET /chat/threads (list-my-threads use-case) */
 export interface ChatThread {
   id: string;
-  contextType: ThreadType;
-  contextId: string;
-  buyerId: string;
-  sellerId: string;
+  threadType: string;
   status: 'OPEN' | 'CLOSED';
   lastMessageAt: string | null;
-  unreadCount: number;
-  lastMessage: Pick<ChatMessage, 'id' | 'text' | 'senderRole' | 'createdAt'> | null;
+  lastMessage: string | null;
+  productTitle: string | null;
+  orderNumber: string | null;
+  storeName: string | null;
+  storeSlug: string | null;
+  buyerPhone: string | null;
 }
 
 // ── Requests ──────────────────────────────────────────────────────────────────

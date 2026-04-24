@@ -555,6 +555,7 @@ export class ProductsController {
     @Query('storeId') storeId: string,
     @Query('globalCategoryId') globalCategoryId?: string,
     @Query('storeCategoryId') storeCategoryId?: string,
+    @Query('filters') rawFilters?: Record<string, string>,
   ) {
     if (!storeId) {
       throw new DomainException(
@@ -564,7 +565,8 @@ export class ProductsController {
       );
     }
 
-    const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId });
+    const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
+    const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
     return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
       const { _count, ...rest } = p;
       return {

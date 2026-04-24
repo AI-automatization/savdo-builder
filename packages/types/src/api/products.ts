@@ -58,12 +58,20 @@ export interface ProductListItem {
   variantCount: number;
 }
 
+export interface ProductAttribute {
+  id: string;
+  name: string;
+  value: string;
+  sortOrder: number;
+}
+
 /** Full product detail response */
 export interface Product extends ProductListItem {
   sku: string | null;
   store: StoreRef;
   variants: ProductVariant[];
   optionGroups: OptionGroup[];
+  attributes: ProductAttribute[];
   createdAt: string;
   globalCategory: { id: string; nameRu: string; nameUz: string } | null;
 }

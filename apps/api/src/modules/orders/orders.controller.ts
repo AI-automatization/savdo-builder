@@ -46,7 +46,6 @@ export class OrdersController {
 
   // GET /api/v1/buyer/orders
   @Get('buyer/orders')
-  @Roles('BUYER')
   async getBuyerOrders(
     @CurrentUser() user: JwtPayload,
     @Query() query: ListOrdersDto,
@@ -82,7 +81,6 @@ export class OrdersController {
 
   // GET /api/v1/orders/:id — alias for buyer/orders/:id
   @Get('orders/:id')
-  @Roles('BUYER')
   async getOrderById(
     @CurrentUser() user: JwtPayload,
     @Param('id') orderId: string,
@@ -94,7 +92,6 @@ export class OrdersController {
 
   // GET /api/v1/buyer/orders/:id
   @Get('buyer/orders/:id')
-  @Roles('BUYER')
   async getBuyerOrderDetail(
     @CurrentUser() user: JwtPayload,
     @Param('id') orderId: string,
@@ -106,7 +103,6 @@ export class OrdersController {
 
   // PATCH /api/v1/buyer/orders/:id/status
   @Patch('buyer/orders/:id/status')
-  @Roles('BUYER')
   async updateBuyerOrderStatus(
     @CurrentUser() user: JwtPayload,
     @Param('id') orderId: string,
