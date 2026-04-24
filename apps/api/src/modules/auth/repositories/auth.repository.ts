@@ -93,7 +93,13 @@ export class AuthRepository {
   async findUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, phone: true, isPhoneVerified: true, role: true },
+      select: {
+        id: true,
+        phone: true,
+        isPhoneVerified: true,
+        role: true,
+        buyer: { select: { id: true, avatarUrl: true } },
+      },
     });
   }
 

@@ -24,11 +24,17 @@ export interface RequestOtpResponse {
   expiresAt: string;
 }
 
+export interface BuyerProfile {
+  id: string;
+  avatarUrl: string | null;
+}
+
 export interface AuthUser {
   id: string;
   phone: string;
   role: UserRole;
   isPhoneVerified: boolean;
+  buyer?: BuyerProfile | null;
 }
 
 export interface AuthTokensResponse {

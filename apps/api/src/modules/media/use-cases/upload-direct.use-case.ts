@@ -6,7 +6,7 @@ import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
 // Shared with request-upload.use-case.ts
-const IMAGE_ONLY_PURPOSES = new Set(['product_image', 'store_logo', 'store_banner']);
+const IMAGE_ONLY_PURPOSES = new Set(['product_image', 'store_logo', 'store_banner', 'buyer_avatar']);
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_PURPOSES = new Set([...IMAGE_ONLY_PURPOSES, 'seller_doc']);
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB

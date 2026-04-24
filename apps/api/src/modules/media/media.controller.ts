@@ -13,6 +13,7 @@ import {
   HttpStatus,
   Redirect,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,6 +29,7 @@ import { UploadDirectUseCase, UploadedFile as UploadedFileType } from './use-cas
 import { MediaRepository } from './repositories/media.repository';
 import { TelegramStorageService } from './services/telegram-storage.service';
 import { R2StorageService } from './services/r2-storage.service';
+import { PrismaService } from '../../database/prisma.service';
 
 @Controller('media')
 export class MediaController {
@@ -39,6 +41,7 @@ export class MediaController {
     private readonly mediaRepo: MediaRepository,
     private readonly tgStorage: TelegramStorageService,
     private readonly r2Storage: R2StorageService,
+    private readonly prisma: PrismaService,
   ) {}
 
   // ─── Authenticated endpoints ────────────────────────────────────────────────
@@ -63,6 +66,30 @@ export class MediaController {
     @Body('purpose') purpose: string,
   ) {
     return this.uploadDirect.execute(user.sub, file, purpose);
+  }
+
+  /** Upload buyer avatar — image only, max 10 MB */
+  @Post('buyer/avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadBuyerAvatar(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: UploadedFileType,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    const { url } = await this.uploadDirect.execute(user.sub, file, 'buyer_avatar');
+
+    const buyer = await this.prisma.buyer.upsert({
+      where: { userId: user.sub },
+      create: { userId: user.sub, avatarUrl: url },
+      update: { avatarUrl: url },
+      select: { id: true, avatarUrl: true },
+    });
+
+    return { success: true, data: { avatarUrl: buyer.avatarUrl } };
   }
 
   @Post(':id/confirm')
