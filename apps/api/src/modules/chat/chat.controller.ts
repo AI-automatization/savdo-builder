@@ -158,6 +158,39 @@ export class ChatController {
     });
   }
 
+  // PATCH /api/v1/chat/messages/:id/report
+  @Patch('chat/messages/:id/report')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('BUYER', 'SELLER')
+  async reportMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') messageId: string,
+  ): Promise<void> {
+    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, thread: { select: { buyerId: true, sellerId: true } } },
+    });
+
+    if (!message) {
+      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Message not found', HttpStatus.NOT_FOUND);
+    }
+
+    const { buyerId, sellerId } = message.thread;
+    if (participantId !== buyerId && participantId !== sellerId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (this.prisma.chatMessage as any).update({
+      where: { id: messageId },
+      data: { reportedAt: new Date() },
+    });
+
+    this.logger.warn(`Message ${messageId} reported by participant ${participantId}`);
+  }
+
   // ─── Admin endpoints ────────────────────────────────────────────────────────
 
   // GET /api/v1/admin/chat/threads

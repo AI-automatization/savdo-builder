@@ -724,9 +724,10 @@ model ChatMessage {
   body             String?
   productContextId String?
   orderContextId   String?
-  isDeleted        Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  isDeleted        Boolean   @default(false)
+  reportedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   thread ChatThread @relation(fields: [threadId], references: [id])
 

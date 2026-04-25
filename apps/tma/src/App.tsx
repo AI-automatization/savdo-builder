@@ -112,7 +112,9 @@ export default function App() {
         <Route path="/seller/products/:id/edit" element={<SellerGuard><SellerEditProduct /></SellerGuard>} />
         <Route path="/seller/profile" element={<SellerGuard><SellerProfile /></SellerGuard>} />
         <Route path="/seller/chat" element={<SellerGuard><SellerChat /></SellerGuard>} />
-        <Route path="/buyer/chat" element={<BuyerChat />} />
+        <Route path="/seller/chat/:threadId" element={<SellerGuard><SellerChat /></SellerGuard>} />
+        <Route path="/buyer/chat" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />
+        <Route path="/buyer/chat/:threadId" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

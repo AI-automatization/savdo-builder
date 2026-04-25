@@ -27,6 +27,19 @@ export function connectSocket(): Socket {
   return s;
 }
 
+/**
+ * Joins a socket.io room safely — waits for the connection before emitting.
+ * Fixes the race condition where join-chat-room fires before handshake completes.
+ */
+export function joinRoom(socket: Socket, threadId: string): void {
+  const emit = () => socket.emit('join-chat-room', { threadId });
+  if (socket.connected) {
+    emit();
+  } else {
+    socket.once('connect', emit);
+  }
+}
+
 export function destroySocket(): void {
   if (socket) {
     socket.disconnect();

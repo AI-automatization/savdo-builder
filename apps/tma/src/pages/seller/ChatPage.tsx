@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { connectSocket } from '@/lib/socket';
+import { connectSocket, joinRoom } from '@/lib/socket';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui/Spinner';
@@ -32,35 +32,45 @@ interface ChatMessage {
 }
 
 export default function SellerChatPage() {
+  const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
   const { tg } = useTelegram();
 
+  // ── Thread list ──────────────────────────────────────────────────────────────
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeThread, setActiveThread] = useState<ChatThread | null>(null);
+
+  // ── Conversation ─────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [msgLoading, setMsgLoading] = useState(false);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [showBuyerInfo, setShowBuyerInfo] = useState(false);
+
+  // ── Report ───────────────────────────────────────────────────────────────────
+  const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // ── Back button ──────────────────────────────────────────────────────────────
   useEffect(() => {
     tg?.BackButton.show();
     const goBack = () => {
-      if (activeThread) {
-        setActiveThread(null);
-        setMessages([]);
+      if (threadId) {
         setShowBuyerInfo(false);
+        navigate('/seller/chat', { replace: true });
       } else {
         navigate('/seller');
       }
     };
     tg?.BackButton.onClick(goBack);
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
-  }, [navigate, tg, activeThread]);
+  }, [navigate, tg, threadId]);
 
+  // ── Load thread list ─────────────────────────────────────────────────────────
   useEffect(() => {
     api<ChatThread[]>('/chat/threads')
       .then(setThreads)
@@ -68,50 +78,79 @@ export default function SellerChatPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // ── Load messages + connect socket when threadId changes ─────────────────────
   useEffect(() => {
-    if (!activeThread) return;
+    if (!threadId) return;
 
     setMsgLoading(true);
     setMessages([]);
     setShowBuyerInfo(false);
 
-    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${activeThread.id}/messages`)
+    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`)
       .then((res) => setMessages((res.messages ?? []).slice().reverse()))
-      .catch(() => showToast('❌ Не удалось загрузить сообщения', 'error'))
+      .catch(() => {
+        showToast('❌ Ошибка загрузки сообщений', 'error');
+        navigate('/seller/chat', { replace: true });
+      })
       .finally(() => setMsgLoading(false));
 
     const socket = connectSocket();
-    socket.emit('join-chat-room', { threadId: activeThread.id });
+    joinRoom(socket, threadId);
 
     const onMessage = (msg: ChatMessage) => {
-      if (msg.threadId !== activeThread.id) return;
-      setMessages((prev) => [...prev, msg]);
-      api(`/chat/threads/${activeThread.id}/read`, { method: 'PATCH' }).catch(() => {});
+      if (msg.threadId !== threadId) return;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        let tempIdx = -1;
+        for (let i = prev.length - 1; i >= 0; i--) {
+          if (prev[i].id.startsWith('temp_') && prev[i].text === msg.text && prev[i].senderRole === msg.senderRole) {
+            tempIdx = i;
+            break;
+          }
+        }
+        if (tempIdx >= 0) {
+          const next = [...prev];
+          next[tempIdx] = msg;
+          return next;
+        }
+        return [...prev, msg];
+      });
+      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' }).catch(() => {});
     };
+
     socket.on('chat:message', onMessage);
 
     return () => {
-      socket.emit('leave-chat-room', { threadId: activeThread.id });
+      socket.emit('leave-chat-room', { threadId });
       socket.off('chat:message', onMessage);
     };
-  }, [activeThread]);
+  }, [threadId, navigate]);
 
+  // ── Auto-scroll ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (messages.length === 0) return;
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // ── Send message (optimistic) ────────────────────────────────────────────────
   const sendMsg = async () => {
-    if (!text.trim() || !activeThread || sending) return;
+    if (!text.trim() || !threadId || sending) return;
     const msgText = text.trim();
     setSending(true);
     setText('');
+
+    const tempId = `temp_${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      { id: tempId, threadId, text: msgText, senderRole: 'SELLER', createdAt: new Date().toISOString() },
+    ]);
+
     try {
-      await api(`/chat/threads/${activeThread.id}/messages`, {
+      await api(`/chat/threads/${threadId}/messages`, {
         method: 'POST',
         body: { text: msgText },
       });
     } catch {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setText(msgText);
       tg?.HapticFeedback.notificationOccurred('error');
       showToast('❌ Не удалось отправить', 'error');
@@ -120,13 +159,14 @@ export default function SellerChatPage() {
     }
   };
 
+  // ── Resolve thread ───────────────────────────────────────────────────────────
   const resolveThread = async () => {
-    if (!activeThread || activeThread.status !== 'OPEN') return;
+    const active = threads.find((t) => t.id === threadId);
+    if (!active || active.status !== 'OPEN') return;
     setResolving(true);
     try {
-      await api(`/chat/threads/${activeThread.id}/resolve`, { method: 'PATCH' });
-      setActiveThread((t) => t ? { ...t, status: 'CLOSED' } : t);
-      setThreads((prev) => prev.map((t) => t.id === activeThread.id ? { ...t, status: 'CLOSED' } : t));
+      await api(`/chat/threads/${threadId}/resolve`, { method: 'PATCH' });
+      setThreads((prev) => prev.map((t) => t.id === threadId ? { ...t, status: 'CLOSED' } : t));
       tg?.HapticFeedback.notificationOccurred('success');
       showToast('✅ Диалог закрыт');
     } catch {
@@ -137,6 +177,31 @@ export default function SellerChatPage() {
     }
   };
 
+  // ── Report message ───────────────────────────────────────────────────────────
+  const startLongPress = (msg: ChatMessage) => {
+    longPressTimer.current = setTimeout(() => {
+      tg?.HapticFeedback.impactOccurred('medium');
+      setReportTarget(msg);
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  const submitReport = async () => {
+    if (!reportTarget || reporting) return;
+    setReporting(true);
+    try {
+      await api(`/chat/messages/${reportTarget.id}/report`, { method: 'PATCH' });
+      showToast('✅ Жалоба отправлена');
+    } catch {
+      showToast('❌ Не удалось отправить жалобу', 'error');
+    } finally {
+      setReporting(false);
+      setReportTarget(null);
+    }
+  };
+
   const threadLabel = (t: ChatThread) => {
     if (t.buyerPhone) return t.buyerPhone;
     if (t.productTitle) return `Товар: ${t.productTitle}`;
@@ -144,9 +209,54 @@ export default function SellerChatPage() {
     return 'Покупатель';
   };
 
-  if (activeThread) {
+  const activeThread = threads.find((t) => t.id === threadId) ?? null;
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // CONVERSATION VIEW
+  // ════════════════════════════════════════════════════════════════════════════
+  if (threadId) {
     return (
       <AppShell role="SELLER">
+        {/* Report confirmation dialog */}
+        {reportTarget && (
+          <div
+            className="fixed inset-0 z-50 flex items-end"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+            onClick={() => setReportTarget(null)}
+          >
+            <div
+              className="w-full rounded-t-2xl p-5 flex flex-col gap-4"
+              style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-center" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                Пожаловаться на сообщение?
+              </p>
+              <p className="text-xs text-center px-4 py-2 rounded-xl truncate"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.50)' }}>
+                «{reportTarget.text.slice(0, 80)}{reportTarget.text.length > 80 ? '…' : ''}»
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setReportTarget(null)}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.60)' }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={submitReport}
+                  disabled={reporting}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                  style={{ background: 'rgba(239,68,68,0.20)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}
+                >
+                  {reporting ? '...' : 'Пожаловаться'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div
           className="flex flex-col"
           style={{ height: 'calc(var(--tg-viewport-stable-height, 100dvh) - 7.5rem)' }}
@@ -159,14 +269,16 @@ export default function SellerChatPage() {
                 className="flex flex-col min-w-0 text-left"
               >
                 <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                  {threadLabel(activeThread)}
+                  {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
                 </h2>
-                <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                  {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-                  {activeThread.productTitle && ` · ${activeThread.productTitle}`}
-                </span>
+                {activeThread && (
+                  <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+                    {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                    {activeThread.productTitle && ` · ${activeThread.productTitle}`}
+                  </span>
+                )}
               </button>
-              {activeThread.status === 'OPEN' && (
+              {activeThread?.status === 'OPEN' && (
                 <button
                   onClick={resolveThread}
                   disabled={resolving}
@@ -184,7 +296,7 @@ export default function SellerChatPage() {
             </div>
 
             {/* Buyer info card */}
-            {showBuyerInfo && activeThread.buyerPhone && (
+            {showBuyerInfo && activeThread?.buyerPhone && (
               <div
                 className="mt-2 px-3 py-2 rounded-xl flex items-center justify-between gap-3"
                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
@@ -223,17 +335,24 @@ export default function SellerChatPage() {
             {messages.map((m) => (
               <div
                 key={m.id}
-                className="flex flex-col max-w-[80%]"
+                className="flex flex-col max-w-[80%] select-none"
                 style={{ alignSelf: m.senderRole === 'SELLER' ? 'flex-end' : 'flex-start' }}
+                onTouchStart={() => startLongPress(m)}
+                onTouchEnd={cancelLongPress}
+                onTouchMove={cancelLongPress}
+                onContextMenu={(e) => { e.preventDefault(); setReportTarget(m); }}
               >
                 <div
                   className="px-3 py-2 rounded-xl text-sm"
                   style={{
-                    background: m.senderRole === 'SELLER'
-                      ? 'rgba(124,58,237,0.30)'
-                      : 'rgba(255,255,255,0.08)',
+                    background: m.id.startsWith('temp_')
+                      ? 'rgba(124,58,237,0.20)'
+                      : m.senderRole === 'SELLER'
+                        ? 'rgba(124,58,237,0.30)'
+                        : 'rgba(255,255,255,0.08)',
                     border: `1px solid ${m.senderRole === 'SELLER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
                     color: 'rgba(255,255,255,0.88)',
+                    opacity: m.id.startsWith('temp_') ? 0.7 : 1,
                   }}
                 >
                   {m.text}
@@ -242,7 +361,7 @@ export default function SellerChatPage() {
                   className="text-[10px] mt-0.5"
                   style={{ color: 'rgba(255,255,255,0.25)', textAlign: m.senderRole === 'SELLER' ? 'right' : 'left' }}
                 >
-                  {new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                  {m.id.startsWith('temp_') ? '...' : new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             ))}
@@ -250,7 +369,7 @@ export default function SellerChatPage() {
           </div>
 
           {/* Input / closed notice */}
-          {activeThread.status === 'OPEN' ? (
+          {(activeThread?.status === 'OPEN' || !activeThread) ? (
             <div className="flex gap-2 pt-2 shrink-0">
               <input
                 value={text}
@@ -302,6 +421,9 @@ export default function SellerChatPage() {
     );
   }
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // THREAD LIST VIEW
+  // ════════════════════════════════════════════════════════════════════════════
   return (
     <AppShell role="SELLER">
       <div className="flex flex-col gap-4">
@@ -309,7 +431,7 @@ export default function SellerChatPage() {
           Сообщения
         </h1>
 
-        {loading && [1,2,3].map((i) => <ThreadRowSkeleton key={i} />)}
+        {loading && [1, 2, 3].map((i) => <ThreadRowSkeleton key={i} />)}
 
         {!loading && threads.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16">
@@ -323,12 +445,14 @@ export default function SellerChatPage() {
             key={t.id}
             role="button"
             tabIndex={0}
-            onClick={() => setActiveThread(t)}
+            onClick={() => navigate(`/seller/chat/${t.id}`)}
             className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer active:opacity-70"
             style={glass}
           >
-            <div className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-              style={{ background: 'rgba(167,139,250,0.15)' }}>
+            <div
+              className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+              style={{ background: 'rgba(167,139,250,0.15)' }}
+            >
               💬
               {(t.unreadCount ?? 0) > 0 && (
                 <span
