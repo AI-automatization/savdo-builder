@@ -70,7 +70,7 @@ export default function ReportsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', padding: '4px 12px', borderRadius: 20, background: rows.length > 0 ? 'rgba(239,68,68,0.12)' : 'var(--surface2)', border: `1px solid ${rows.length > 0 ? 'rgba(239,68,68,0.25)' : 'var(--border)'}`, color: rows.length > 0 ? '#f87171' : 'var(--text-muted)', fontWeight: 700 }}>
+          <span style={{ fontSize: 13, padding: '4px 12px', borderRadius: 20, background: rows.length > 0 ? 'rgba(239,68,68,0.12)' : 'var(--surface2)', border: `1px solid ${rows.length > 0 ? 'rgba(239,68,68,0.25)' : 'var(--border)'}`, color: rows.length > 0 ? '#f87171' : 'var(--text-muted)', fontWeight: 700 }}>
             {loading ? '...' : rows.length} жалоб
           </span>
           <button
