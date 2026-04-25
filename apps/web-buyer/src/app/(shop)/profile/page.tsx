@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
 import { useAuth } from "@/lib/auth/context";
-import { useLogout } from "@/hooks/use-auth";
-import { User as UserIcon } from "lucide-react";
+import { useLogout, useUploadAvatar } from "@/hooks/use-auth";
+import { Camera, Loader2, User as UserIcon } from "lucide-react";
 import { glass, glassDim } from "@/lib/styles";
+
+const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB — must match API guard
+const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 
@@ -23,26 +27,99 @@ const IcoProfile = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 function ProfileView() {
   const { user } = useAuth();
   const logoutMutation = useLogout();
+  const uploadAvatar = useUploadAvatar();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirming, setConfirming] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const avatarUrl = user?.buyer?.avatarUrl ?? null;
 
   async function handleLogout() {
     await logoutMutation.mutateAsync();
+  }
+
+  function handlePickAvatar() {
+    setAvatarError(null);
+    fileInputRef.current?.click();
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting same file
+    if (!file) return;
+    if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
+      setAvatarError("Только JPEG, PNG или WebP");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError("Файл больше 10 МБ");
+      return;
+    }
+    try {
+      await uploadAvatar.mutateAsync(file);
+    } catch {
+      setAvatarError("Не удалось загрузить фото");
+    }
   }
 
   return (
     <div className="flex flex-col gap-4 max-w-sm">
       {/* Avatar + phone */}
       <div className="flex items-center gap-4 px-4 py-4 rounded-2xl" style={glass}>
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+        <button
+          type="button"
+          onClick={handlePickAvatar}
+          disabled={uploadAvatar.isPending}
+          className="relative w-14 h-14 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center transition-opacity hover:opacity-90 disabled:opacity-60"
           style={{ background: "rgba(167,139,250,.22)", border: "1px solid rgba(167,139,250,.35)" }}
+          aria-label="Изменить фото профиля"
         >
-          <UserIcon size={20} style={{ color: '#A78BFA' }} />
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt="Фото профиля"
+              width={56}
+              height={56}
+              className="w-full h-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <UserIcon size={20} style={{ color: '#A78BFA' }} />
+          )}
+          <span
+            className="absolute inset-0 flex items-center justify-center"
+            style={{
+              background: uploadAvatar.isPending ? "rgba(0,0,0,0.45)" : "transparent",
+              opacity: uploadAvatar.isPending ? 1 : 0,
+              transition: "opacity 150ms",
+            }}
+          >
+            {uploadAvatar.isPending && <Loader2 size={18} className="animate-spin text-white" />}
+          </span>
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-bold text-white truncate">{user?.phone}</p>
+          <button
+            type="button"
+            onClick={handlePickAvatar}
+            disabled={uploadAvatar.isPending}
+            className="mt-0.5 inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{ color: "#A78BFA" }}
+          >
+            <Camera size={12} />
+            {avatarUrl ? "Изменить фото" : "Добавить фото"}
+          </button>
+          {avatarError && (
+            <p className="text-[11px] mt-1" style={{ color: "rgba(248,113,113,.85)" }}>{avatarError}</p>
+          )}
         </div>
-        <div>
-          <p className="text-base font-bold text-white">{user?.phone}</p>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.40)" }}>Покупатель</p>
-        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_AVATAR_TYPES.join(",")}
+          className="hidden"
+          onChange={handleAvatarChange}
+        />
       </div>
 
       {/* Quick links */}

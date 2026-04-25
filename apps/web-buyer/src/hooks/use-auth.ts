@@ -2,7 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query';
 import type { RequestOtpRequest, VerifyOtpRequest } from 'types';
-import { requestOtp, verifyOtp } from '../lib/api/auth.api';
+import { requestOtp, uploadBuyerAvatar, verifyOtp } from '../lib/api/auth.api';
 import { useAuth } from '../lib/auth/context';
 
 export function useRequestOtp() {
@@ -24,4 +24,14 @@ export function useVerifyOtp() {
 export function useLogout() {
   const { logout } = useAuth();
   return useMutation({ mutationFn: logout });
+}
+
+export function useUploadAvatar() {
+  const { refreshUser } = useAuth();
+  return useMutation({
+    mutationFn: (file: File) => uploadBuyerAvatar(file),
+    onSuccess: async () => {
+      await refreshUser();
+    },
+  });
 }

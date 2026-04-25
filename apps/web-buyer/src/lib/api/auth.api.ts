@@ -32,3 +32,14 @@ export async function getMe(): Promise<AuthUser> {
 export async function logout(): Promise<void> {
   await apiClient.post('/auth/logout');
 }
+
+export async function uploadBuyerAvatar(file: File): Promise<{ avatarUrl: string | null }> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await apiClient.post<{ success: boolean; data: { avatarUrl: string | null } }>(
+    '/media/buyer/avatar',
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return res.data.data;
+}

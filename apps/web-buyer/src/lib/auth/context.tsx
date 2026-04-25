@@ -20,6 +20,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (accessToken: string, refreshToken: string, user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -73,6 +74,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     queryClient.clear();
   }, [queryClient]);
 
+  const refreshUser = useCallback(async () => {
+    if (!getAccessToken()) return;
+    const fresh = await getMe();
+    storeUser(fresh);
+    setUser(fresh);
+  }, []);
+
   useEffect(() => { logoutRef.current = logout; }, [logout]);
 
   // Refresh user from server on mount (validates token + gets fresh data)
@@ -97,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [localLogout]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
