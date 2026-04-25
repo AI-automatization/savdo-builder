@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUnreadCount } from '@/hooks/use-notifications';
+import { useUnreadChatCount } from '@/hooks/use-chat';
 import { useCart } from '@/hooks/use-cart';
+import { useAuth } from '@/lib/auth/context';
 import { IcoShop, IcoCart, IcoChat, IcoOrders, IcoProfile } from '@/components/icons';
 import { glassDim } from '@/lib/styles';
 
@@ -19,7 +21,9 @@ export function BottomNavBar({
   storeSlug?: string;
 }) {
   const [storedSlug, setStoredSlug] = useState(propSlug ?? '');
+  const { isAuthenticated } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
+  const unreadChatCount = useUnreadChatCount(isAuthenticated);
   const { data: cart } = useCart();
   const cartCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
 
@@ -34,7 +38,7 @@ export function BottomNavBar({
   const NAV: { key: NavActive; href: string; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: 'store',   href: storeSlug ? `/${storeSlug}` : '/', label: 'Магазин', icon: <IcoShop /> },
     { key: 'cart',    href: '/cart',    label: 'Корзина', icon: <IcoCart />, badge: cartBadge ?? cartCount },
-    { key: 'chats',   href: '/chats',   label: 'Чаты',    icon: <IcoChat /> },
+    { key: 'chats',   href: '/chats',   label: 'Чаты',    icon: <IcoChat />, badge: unreadChatCount },
     { key: 'orders',  href: '/orders',  label: 'Заказы',  icon: <IcoOrders /> },
     { key: 'profile', href: '/profile', label: 'Профиль', icon: <IcoProfile />, badge: unreadCount },
   ];

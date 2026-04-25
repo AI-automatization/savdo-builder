@@ -5,7 +5,13 @@
 
 ---
 
-# 📋 Снимок состояния (на 25.04.2026, сессия 34)
+# 📋 Снимок состояния (на 26.04.2026, сессия 35)
+
+## ✅ Закрыто Полатом в `0b916a2` (25.04.2026, перед сессией 35)
+
+- `API-CHAT-UNREAD-COUNT-001` 🟡 — `unreadCount: number` теперь в `ChatThread` типе и в ответе `/chat/threads`. Auto-mark-as-read при `GET /chat/threads/:id/messages`. Bonus endpoint `PATCH /api/v1/chat/threads/:id/read` (204) для явной отметки. Миграция `add_chat_thread_read_at` (buyerLastReadAt/sellerLastReadAt в ChatThread). Коммит `6507dc9`.
+- **Auth-история** 🟡 — `JwtStrategy.validate()` теперь делает session DB check: stale tokens отклоняются после logout. `LogoutSessionUseCase` пишет `sessionId` + outcome в Railway-логи для диагностики. Коммит `6507dc9`.
+- (бонусом, не наш домен) `552e027` chat URL routing + optimistic UI + message reporting (миграция `add_chat_message_reported_at`), `5a2c8b1` admin ReportsPage, `eb9cc88` + `8580b7a` TMA fullscreen + chat reliability.
 
 ## ✅ Закрыто Полатом в `18fa355`, `66b8be4` (24.04.2026)
 
@@ -15,6 +21,13 @@
 - `API-STOREFRONT-PRODUCT-FILTERS-001` 🟡 — `/storefront/products?filters[brand]=Samsung` теперь работает
 - `API-CATEGORY-SEED-CLEANUP-001` 🟡 — авто-категории убраны из seed + cleanupRemovedCategories на старте
 - `API-BUYER-AVATAR-001` 🟡 — `POST /api/v1/media/buyer/avatar` (multipart, IMAGE_ONLY, 10MB), `BuyerProfile.avatarUrl` в /auth/me
+
+## ✅ Закрыто Азимом в сессии 35 (26.04.2026)
+
+- `WEB-CHAT-UNREAD-BADGES-001` 🟢 — unread бэйджи в обоих чат-апах. (a) Web-buyer `BottomNavBar`: badge на иконке «Чаты» (общее число непрочитанных, через новый `useUnreadChatCount(enabled=isAuthenticated)`). (b) Web-buyer `/chats` `ThreadItem`: круглый accent-бэйдж с числом непрочитанных + жирность title + подсветка lastMessage. (c) Web-seller `/chat` `ThreadItem`: то же на solid surfaces tokens. (d) В обоих хуках `useMessages` теперь локально zero-аутит `unreadCount` в кэше threads после успешной загрузки сообщений (бэк всё равно auto-marks-as-read, но без этого UI бы тормозил до 30 сек staleTime).
+- `WEB-SELLER-CATEGORY-DROPDOWN-001` 🟡 — заменён native `<select>` (Yandex рендерил как страшный системный popup на пол-экрана) на кастомный `Select` (`apps/web-seller/src/components/select.tsx`): popover под кнопкой, поиск, keyboard navigation (стрелки/Enter/Esc), click-outside, clearable. Применён к «Категория товара» и «Раздел магазина» в `/products/create`. После выбора категории показывается accent-плашка с подтверждением «Товар появится в категории «X»».
+- `WEB-CHAT-EMOJI-PICKER-001` 🟢 — эмодзи picker в обоих чатах (`apps/web-seller/src/components/emoji-picker.tsx` + `apps/web-buyer/src/components/emoji-picker.tsx`). 8 категорий (смайлы/жесты/сердца/животные/еда/деньги/объекты/символы), ~300 эмодзи, без зависимостей. Click-outside, Esc-close, popover остаётся открытым между выборами (можно вставить несколько подряд). Кнопка-смайлик слева от input в обоих чатах.
+- `WEB-SELLER-PROFILE-PAGE-001` 🟢 — добавлена страница `/profile` для seller (`apps/web-seller/src/app/(dashboard)/profile/page.tsx`): аватар-плейсхолдер с буквой, fullName/phone, type pill (бизнес/физ.лицо), telegram-username (если есть), карточка магазина с logo/name/city/status + копирование URL и «Открыть», карточка действий «Настройки» → /settings и «Выйти». User-блок в sidebar (`layout.tsx`) теперь clickable Link → /profile (с подсветкой когда активен), кнопка выхода вынесена в отдельный квадрат справа. Header страницы показывает «Личный кабинет». **Аватар upload disabled с tooltip «Скоро» — нужен `API-SELLER-AVATAR-001` от Полата.**
 
 ## ✅ Закрыто Азимом в сессии 34 (25.04.2026)
 
@@ -29,16 +42,18 @@
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-CHAT-UNREAD-COUNT-001` | 🟡 | После cleanup'а ChatThreadView фронт перестал показывать badge непрочитанных чатов в seller-sidebar (`useUnreadChatCount` → 0). Вернуть `unreadCount: number` в ответе `/chat/threads` (list-my-threads.use-case.ts) **и** в типе `packages/types/src/api/chat.ts#ChatThread`. Логика: COUNT(messages WHERE threadId AND createdAt > thread.lastReadAt[role]). |
-| **Auth-история** | 🟡 | Почему `/auth/logout` 401 при первом выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — JWT/session-id из refresh-token. Сделать тестовый заказ в prod и поймать трейс в Railway logs. |
+| `API-CHAT-DELETE-THREAD-001` | 🟡 | `DELETE /api/v1/chat/threads/:id` — удаление треда. Доступно ТОЛЬКО участнику (buyer или seller). Soft-delete: ставить `deletedAt` (для роли) или жёстко удалять messages+thread cascade. Лучше soft чтобы вторая сторона не теряла историю. Фронт уже подразумевает наличие действия (см. tooltip «Скоро» в UI). Нужно для UX «удалить старый чат» (запрос Азима 26.04.2026). |
+| `API-CHAT-DELETE-MESSAGE-001` | 🟡 | `DELETE /api/v1/chat/threads/:id/messages/:msgId` — удаление сообщения. Только автор сообщения (по `senderRole` сравнить с user.role). Soft-delete (`deletedAt` + `body=null`) предпочтительно — другая сторона видит «Сообщение удалено». Нужно для UX (запрос Азима 26.04.2026). |
+| `API-CHAT-EDIT-MESSAGE-001` | 🟡 | `PATCH /api/v1/chat/threads/:id/messages/:msgId` body `{ text }` — редактирование сообщения. Только автор. Можно ограничить временным окном (15 мин). Поле `editedAt` в схеме. Тип `ChatMessage` в packages/types обновить (+`editedAt: string \| null`, `deletedAt: string \| null`). Нужно для UX (запрос Азима 26.04.2026). |
+| `API-SELLER-AVATAR-001` | 🟡 | `POST /api/v1/media/seller/avatar` (multipart, IMAGE_ONLY, 10MB) → upload в TelegramStorage, апсерт `SellerProfile.avatarUrl`. Поле `avatarUrl: String?` в `SellerProfile` schema + миграция. `SellerProfile` интерфейс в packages/types: добавить `avatarUrl: string \| null`. Возвращать в `GET /seller/profile`. Аналогично `API-BUYER-AVATAR-001` который уже сделан. Нужно для seller `/profile` страницы (запрос Азима 26.04.2026 — личный кабинет). |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| Тест end-to-end в проде после `66b8be4` deploy | 🔴 | (1) Avatar upload на /profile (загрузить картинку, проверить что отображается, проверить /auth/me возвращает avatarUrl). (2) Category filters на витрине магазина — открыть store, нажать «Фильтры», выбрать категорию, выбрать значение фильтра, увидеть отфильтрованный список. (3) Web-seller solid surfaces — визуально оценить новый dashboard look. (4) Chat composer e2e (висит с сессии 33) на dual-role аккаунте. |
+| Тест end-to-end в проде после `0b916a2` deploy | 🔴 | (1) Avatar upload на /profile. (2) Category filters на витрине магазина. (3) Web-seller solid surfaces. (4) **NEW: unread badges** — открыть web-seller `/chat` (sidebar badge на «Чат» + per-thread badges); web-buyer BottomNavBar (badge на иконке «Чаты») и `/chats` (per-thread badges). После клика на тред бэйдж должен сразу обнулиться (без 30-сек задержки). (5) Chat composer e2e на dual-role аккаунте. |
 | `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` | 🟢 | После того как Азим визуально подтвердит что Railway задеплоил `18fa355` и в `/products/create` dropdown категорий нет авто-пунктов — удалить `isHiddenCategory(slug)` regex-фильтр из `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` и `[id]/edit/page.tsx`. **ОПАСНО удалять до проверки** — если cleanup не отработал на проде, продавцы снова увидят авто. |
-| Подтвердить причину `/notifications` ошибки | 🟢 | F12 Network → `/notifications/inbox`. 401 = часть auth-серии, 404/500 = отдельная задача. |
+| Подтвердить причину `/notifications` ошибки | 🟢 | F12 Network → `/notifications/inbox`. 401 = часть auth-серии (теперь должно быть лучше, JwtStrategy session-check уехал в `0b916a2`), 404/500 = отдельная задача. |
 
 ---
 

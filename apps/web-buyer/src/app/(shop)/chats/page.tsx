@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/context";
 import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
 import { MessageSquare, Store } from "lucide-react";
 import { glass, glassDim } from "@/lib/styles";
+import { EmojiPicker } from "@/components/emoji-picker";
 
 const inputStyle = {
   background: "rgba(255,255,255,0.06)",
@@ -50,6 +51,7 @@ const IcoChatGate = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 
 function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
   const { title, subtitle } = getThreadDisplay(thread);
+  const unread = thread.unreadCount ?? 0;
   return (
     <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/5"
       style={active ? { background: "rgba(167,139,250,.10)" } : {}}>
@@ -58,10 +60,10 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
         <MessageSquare size={20} style={{ color: '#A78BFA' }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">
+        <p className="text-sm font-medium text-white truncate" style={unread > 0 ? { fontWeight: 600 } : undefined}>
           {title}
         </p>
-        <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.38)" }}>
+        <p className="text-xs mt-0.5 truncate" style={{ color: unread > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.38)" }}>
           {thread.lastMessage ?? subtitle ?? "Нет сообщений"}
         </p>
       </div>
@@ -69,6 +71,12 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
         {thread.lastMessageAt && (
           <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.28)" }}>
             {timeLabel(thread.lastMessageAt)}
+          </span>
+        )}
+        {unread > 0 && (
+          <span className="min-w-[18px] h-[18px] px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold"
+            style={{ background: "#A78BFA", color: "#0d0d1f" }}>
+            {unread > 9 ? "9+" : unread}
           </span>
         )}
       </div>
@@ -155,7 +163,8 @@ function ChatView({ thread }: { thread: ChatThread }) {
 
       {/* Input */}
       {thread.status === "OPEN" && (
-        <div className="flex items-center gap-2.5 px-4 py-3 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <EmojiPicker onPick={(emoji) => setText((prev) => prev + emoji)} />
           <input
             type="text"
             value={text}
@@ -167,7 +176,8 @@ function ChatView({ thread }: { thread: ChatThread }) {
           />
           <button onClick={handleSend} disabled={!text.trim() || sendMutation.isPending}
             className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}>
+            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
+            aria-label="Отправить">
             <IcoSend />
           </button>
         </div>

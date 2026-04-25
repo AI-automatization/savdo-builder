@@ -1,5 +1,54 @@
 # Done — Азим + Полат
 
+## 2026-04-26 — Сессия 35 (Азим) — 3 фичи по запросу: категории dropdown, эмодзи, личный кабинет
+
+### ✅ [WEB-SELLER-CATEGORY-DROPDOWN-001] Кастомный Select для категорий товара
+- **Важность:** 🟡 Visual bug — Yandex Browser рендерил native `<select>` как страшный системный popup на пол-экрана (см. `c:/Users/marti/Desktop/photo_2026-04-26_01-14-08.jpg`). После клика на категорию ничего визуально не происходило (только тихо менялся placeholder).
+- **Дата:** 26.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/components/select.tsx` — **новый**: `<Select>` компонент. Popover под кнопкой (`absolute mt-1.5`), стиль из solid-surfaces tokens, `boxShadow: 0 16px 40px rgba(0,0,0,.55)`. Поиск (опционален через `searchable` prop, авто-focus при открытии), keyboard navigation (ArrowDown/Up/Enter/Esc), click-outside через window mousedown listener, scrollIntoView для подсвеченной опции, clearable X-кнопка (опц), aria-haspopup/expanded/listbox. Опции `{value, label, hint?}`
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — заменены оба `<select>` на `<Select>`. «Категория товара» через RHF `setValue` (вместо `register`); скрытое поле `<input type="hidden" {...register('globalCategoryId')} />` сохраняет интеграцию с RHF. «Раздел магазина» — через локальный state `storeCategoryId`. Поиск активен у глобальных категорий и (если магазинных >6) у разделов.
+- **Что сделано (UX):** При выборе категории (а) popover закрывается, (б) под селектом появляется accent-плашка с галочкой и подтверждением «Товар появится в категории «X» и попадёт под её фильтры», (в) placeholder в Title и Description обновляется под пример из выбранной категории (это уже было). Можно очистить выбор крестиком в селекте. Поиск помогает найти нужную категорию из десятков.
+- **Не трогалось:** `products/[id]/edit/page.tsx` — там тоже native select, такой же баг. По запросу Азима — только `/products/create`. Если попросит — повторю там же.
+
+### ✅ [WEB-CHAT-EMOJI-PICKER-001] Эмодзи picker в чатах buyer и seller
+- **Важность:** 🟢 UX — Азим попросил возможность вставлять эмодзи в чат
+- **Дата:** 26.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/components/emoji-picker.tsx` — **новый** (solid-surfaces вариант)
+  - `apps/web-buyer/src/components/emoji-picker.tsx` — **новый** (glass вариант с backdrop-blur и accent purple)
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — кнопка-смайлик слева от input в `ChatWindow`, `setText((prev) => prev + emoji)` на pick. Disabled-обёртка когда `thread.status === 'CLOSED'`
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — то же в `ChatView`
+- **Что сделано:** 8 категорий (смайлы/жесты/сердца/животные/еда/деньги/объекты/символы), ~300 эмодзи. Без зависимостей (свой массив). Click-outside закрывает popover, Esc тоже. Между выборами popover остаётся открытым — можно вставить несколько подряд. Tabs показывают icon-эмодзи каждой категории, активная подсвечена accent.
+- **Что не сделано (требует Полата):** удаление сообщения, редактирование сообщения, удаление треда — записаны как `API-CHAT-DELETE-THREAD-001`, `API-CHAT-DELETE-MESSAGE-001`, `API-CHAT-EDIT-MESSAGE-001` в tasks.md. Без endpoint'ов делать UI с заглушками = плохой UX (правило `feedback_dont_remove_without_confirm` — placeholder без wire-up).
+
+### ✅ [WEB-SELLER-PROFILE-PAGE-001] Личный кабинет seller: страница /profile + clickable sidebar
+- **Важность:** 🟢 UX — Азим попросил отдельный личный кабинет (нижний-левый блок sidebar раньше был не-кликабельный — кликаешь, ничего не происходит, см. `c:/Users/marti/Desktop/photo_2026-04-26_01-17-27.jpg`)
+- **Дата:** 26.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx` — **новая** страница. Структура: (1) заголовок-карточка с аватаром-плейсхолдером (буква от fullName/phone в accent-кружке), displayName, phone, role pill «Продавец», sellerType pill (Бизнес/Физ.лицо), telegram username pill (если есть, ссылка на t.me/@). Camera-кнопка на аватаре `disabled` с tooltip «Скоро: загрузка аватара» — нужен `API-SELLER-AVATAR-001`. (2) Карточка магазина с logoUrl (или Store-иконка), name, city, status pill (DRAFT/SUBMITTED/APPROVED/REJECTED/SUSPENDED/PUBLISHED → русские). Footer с URL `https://savdo.uz/{slug}`, кнопки «Копировать» и «Открыть» (target=_blank). (3) Действия: Link → /settings («Магазин, доставка, профиль, уведомления»), Logout с danger-стилем
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — User-блок снизу sidebar теперь Link на `/profile`. Подсвечен accent-border когда `pathname` = /profile. Аватар + текст (телефон + «Личный кабинет» — раньше было «Продавец»). Logout-кнопка вынесена в отдельный квадрат справа (как hover-tile). Header страницы возвращает «Личный кабинет» когда pathname.startsWith('/profile')
+- **Что сделано (UX):** Клик на user-блок → /profile. На странице видно аватар, контакты, статус магазина, прямой URL с одним кликом копировать или открыть. Logout доступен и из sidebar (как раньше), и со страницы профиля.
+- **Что не сделано (требует Полата):** аватар upload — задача `API-SELLER-AVATAR-001` (схема + миграция + endpoint + поле в `SellerProfile` типе).
+
+---
+
+## 2026-04-26 — Сессия 35 (Азим) — Unread badges в чатах после Полатовых `unreadCount`
+
+### ✅ [WEB-CHAT-UNREAD-BADGES-001] Unread бэйджи: web-buyer + web-seller
+- **Важность:** 🟢 UX-полировка — Полат вернул `unreadCount: number` в `ChatThread` тип и в ответ `/chat/threads` (коммит `6507dc9`). Раньше бэйджи в seller-sidebar всегда показывали 0 (см. WEB-CHAT-THREAD-VIEW-CLEANUP-001), а в web-buyer их вообще не было. Полат также сделал auto-mark-as-read при `GET /chat/threads/:id/messages`.
+- **Дата:** 26.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-chat.ts` — добавлен `useUnreadChatCount(enabled: boolean): number` (тот же `chatKeys.threads` запрос, но с `enabled` параметром чтобы не дёргать API для гостей в BottomNavBar). В `useMessages` после успешного fetch локально zero-аутит `unreadCount` для открытого треда через `queryClient.setQueryData` (бэк уже пометил, но надо отразить в UI без ожидания staleTime)
+  - `apps/web-seller/src/hooks/use-chat.ts` — то же `setQueryData` обнуление в `useMessages`. `useUnreadChatCount()` уже был — без изменений (зарелизено Полатом в коммите `6507dc9`: `t.unreadCount ?? 0` сумма). Тип `ChatThread` импортирован из 'types'
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — импорт `useUnreadChatCount` + `useAuth`, бэйдж на иконке «Чаты» (только для авторизованных юзеров)
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — `ThreadItem` теперь показывает unread badge (accent кружок min-w 18px с числом / "9+"), при unread > 0 title жирный, lastMessage подсветлен (textPrimary вместо textDim)
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — то же, через solid-surfaces tokens (`colors.accent` бэйдж на `colors.bg` фоне). Запасной "закрыт" pill теперь показывается только если unread === 0 (чтобы не дублировать с бэйджем)
+- **Что сделано:** В обоих апах теперь видно сколько непрочитанных сообщений per-thread + общее число у entry-point (BottomNavBar для buyer, sidebar для seller — последнее уже было готово до этой сессии). После открытия треда бэйдж обнуляется мгновенно через локальный `setQueryData`, без ожидания 30-сек staleTime. Бэк (Полат, `6507dc9`) auto-marks-as-read через `GET /messages`, так что cache stays in sync.
+- **Что протестировать (Азим, в проде после Railway deploy):** (1) Открыть web-seller `/chat` → ответ `/chat/threads` в Network должен содержать `unreadCount: <число>`, бэйдж на пункте «Чат» в sidebar и на каждом треде. (2) Кликнуть тред → бэйдж этого треда обнуляется сразу, общий — уменьшается. (3) Web-buyer `/chats` — то же. (4) BottomNavBar — бэйдж на «Чаты» работает.
+
+---
+
 ## 2026-04-24 — Полат — 6 backend задач за день (`18fa355` + `66b8be4`)
 
 ### ✅ [API-BUYER-ORDERS-ROLE-GUARD-001] Снят `@Roles('BUYER')` с buyer/orders endpoints

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { SendMessageRequest, CreateThreadRequest } from 'types';
+import type { ChatThread, SendMessageRequest, CreateThreadRequest } from 'types';
 import { getThreads, getMessages, sendMessage, createThread } from '../lib/api/chat.api';
 import { getSocket } from '../lib/socket';
 
@@ -19,13 +19,37 @@ export function useThreads() {
   });
 }
 
+export function useUnreadChatCount(enabled: boolean): number {
+  const { data: threads } = useQuery({
+    queryKey: chatKeys.threads,
+    queryFn: getThreads,
+    staleTime: 30 * 1000,
+    enabled,
+  });
+  if (!threads) return 0;
+  return threads.reduce((sum, t) => sum + (t.unreadCount ?? 0), 0);
+}
+
 export function useMessages(threadId: string | null) {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const query = useQuery({
     queryKey: chatKeys.messages(threadId ?? ''),
     queryFn: () => getMessages(threadId!),
     enabled: !!threadId,
     staleTime: 30 * 1000,
   });
+
+  // Backend auto-marks the thread as read on /messages fetch — mirror locally so
+  // the bottom-nav badge updates without waiting for the threads-list staleTime.
+  const isSuccess = query.isSuccess;
+  useEffect(() => {
+    if (!isSuccess || !threadId) return;
+    queryClient.setQueryData<ChatThread[] | undefined>(chatKeys.threads, (old) =>
+      old?.map((t) => (t.id === threadId ? { ...t, unreadCount: 0 } : t)),
+    );
+  }, [isSuccess, threadId, queryClient]);
+
+  return query;
 }
 
 export function useChatSocket(threadId: string | null) {

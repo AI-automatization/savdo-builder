@@ -136,24 +136,38 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
         </div>
       </div>
 
-      {/* User */}
-      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: `1px solid ${colors.divider}` }}>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-          style={{ background: colors.accentMuted, color: colors.accent }}
+      {/* User — clickable opens /profile */}
+      <div
+        className="flex items-center gap-2 px-2 py-2"
+        style={{ borderTop: `1px solid ${colors.divider}` }}
+      >
+        <Link
+          href="/profile"
+          className="flex-1 flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors min-w-0"
+          style={
+            pathname === '/profile' || pathname.startsWith('/profile')
+              ? { background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }
+              : { border: '1px solid transparent' }
+          }
         >
-          А
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium truncate" style={{ color: colors.textPrimary }}>{userPhone ?? '—'}</p>
-          <p className="text-[10px] truncate" style={{ color: colors.textDim }}>Продавец</p>
-        </div>
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+            style={{ background: colors.accentMuted, color: colors.accent }}
+          >
+            А
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate" style={{ color: colors.textPrimary }}>{userPhone ?? '—'}</p>
+            <p className="text-[10px] truncate" style={{ color: colors.textDim }}>Личный кабинет</p>
+          </div>
+        </Link>
         <button
           onClick={onLogout}
           disabled={logoutPending}
           title="Выйти"
           style={{ color: colors.textDim }}
-          className="disabled:opacity-40 hover:opacity-80 transition-opacity"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-40 hover:opacity-80 hover:bg-white/[0.03] transition-opacity"
+          aria-label="Выйти"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -276,7 +290,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </svg>
             </button>
             <h2 className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
-              {NAV.find(n => pathname === n.href || (n.href !== "/dashboard" && pathname.startsWith(n.href)))?.label ?? "Дашборд"}
+              {NAV.find(n => pathname === n.href || (n.href !== "/dashboard" && pathname.startsWith(n.href)))?.label
+                ?? (pathname.startsWith("/profile") ? "Личный кабинет" : "Дашборд")}
             </h2>
           </div>
           <div className="flex items-center gap-3">

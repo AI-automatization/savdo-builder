@@ -7,6 +7,7 @@ import { getThreadDisplay } from '@/lib/api/chat.api';
 import { MessageSquare, User as UserIcon } from 'lucide-react';
 import { useThreads, useMessages, useSendMessage, useResolveThread, useChatSocket } from '@/hooks/use-chat';
 import { card, cardMuted, colors, inputStyle } from '@/lib/styles';
+import { EmojiPicker } from '@/components/emoji-picker';
 
 const glass = card;
 const glassDim = cardMuted;
@@ -26,6 +27,7 @@ function timeLabel(iso: string): string {
 
 function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
   const { title, subtitle } = getThreadDisplay(thread);
+  const unread = thread.unreadCount ?? 0;
   return (
     <button
       onClick={onClick}
@@ -39,10 +41,10 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
         <UserIcon size={16} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">
+        <p className="text-sm font-medium text-white truncate" style={unread > 0 ? { fontWeight: 600 } : undefined}>
           {title}
         </p>
-        <p className="text-xs truncate" style={{ color: colors.textDim }}>
+        <p className="text-xs truncate" style={{ color: unread > 0 ? colors.textPrimary : colors.textDim }}>
           {thread.lastMessage ?? subtitle ?? 'Нет сообщений'}
         </p>
       </div>
@@ -52,7 +54,13 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
             {timeLabel(thread.lastMessageAt)}
           </span>
         )}
-        {thread.status === 'CLOSED' && (
+        {unread > 0 && (
+          <span className="min-w-[18px] h-[18px] px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold"
+            style={{ background: colors.accent, color: colors.bg }}>
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+        {unread === 0 && thread.status === 'CLOSED' && (
           <span className="text-[10px]" style={{ color: colors.success }}>закрыт</span>
         )}
       </div>
@@ -152,7 +160,10 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
       </div>
 
       {/* Input */}
-      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: `1px solid ${colors.divider}` }}>
+      <div className="flex items-center gap-2 px-3 py-3" style={{ borderTop: `1px solid ${colors.divider}` }}>
+        <div style={{ opacity: thread.status === 'CLOSED' ? 0.4 : 1, pointerEvents: thread.status === 'CLOSED' ? 'none' : 'auto' }}>
+          <EmojiPicker onPick={(emoji) => setText((prev) => prev + emoji)} />
+        </div>
         <input
           type="text"
           value={text}
@@ -168,6 +179,7 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
           disabled={!text.trim() || sendMutation.isPending || thread.status === 'CLOSED'}
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
           style={{ background: colors.accent }}
+          aria-label="Отправить"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />

@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { Check } from 'lucide-react';
 import { useCreateProduct } from '../../../../hooks/use-products';
 import { useStoreCategories, useGlobalCategories } from '../../../../hooks/use-seller';
 import { track } from '../../../../lib/analytics';
 import { ImageUploader } from '../../../../components/image-uploader';
+import { Select } from '../../../../components/select';
 
 // Example titles keyed by global-category slug. Unknown slugs fall back to
 // a neutral "товар категории: {name}" hint — so new categories auto-work
@@ -116,6 +118,7 @@ export default function CreateProductPage() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateProductForm>({
     defaultValues: { isVisible: true, basePrice: 0, globalCategoryId: '' },
@@ -235,23 +238,34 @@ export default function CreateProductPage() {
           {globalCategories.length > 0 && (
             <div>
               <Label>Категория товара</Label>
-              <select
-                className={inputFocusClass}
-                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
-                {...register('globalCategoryId')}
-              >
-                <option value="" style={{ background: colors.surface, color: colors.textPrimary }}>— Выберите категорию —</option>
-                {globalCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id} style={{ background: colors.surface, color: colors.textPrimary }}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-[11px]" style={{ color: colors.textDim }}>
-                {pickedCategory
-                  ? 'Покупателю товар появится в этой категории и попадёт под её фильтры.'
-                  : 'Можно выбрать любую — одежда, обувь, электроника, мебель, книги и т.д. От выбора зависит, где товар увидят покупатели.'}
-              </p>
+              <input type="hidden" {...register('globalCategoryId')} />
+              <Select
+                value={watchedCategoryId ?? ''}
+                onChange={(v) => setValue('globalCategoryId', v, { shouldValidate: true, shouldDirty: true })}
+                options={globalCategories.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="— Выберите категорию —"
+                searchPlaceholder="Поиск категории…"
+                clearable
+                ariaLabel="Категория товара"
+              />
+              {pickedCategory ? (
+                <div
+                  className="mt-2 flex items-center gap-2 px-3 py-2 rounded-md"
+                  style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }}
+                >
+                  <Check size={14} style={{ color: colors.accent, flexShrink: 0 }} />
+                  <span className="text-xs flex-1" style={{ color: colors.textPrimary }}>
+                    Товар появится у покупателей в категории{' '}
+                    <strong style={{ color: colors.accent }}>«{pickedCategory.name}»</strong>{' '}
+                    и попадёт под её фильтры.
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-1.5 text-[11px]" style={{ color: colors.textDim }}>
+                  Можно выбрать любую — одежда, обувь, электроника, мебель, книги и т.д. От выбора
+                  зависит, где товар увидят покупатели.
+                </p>
+              )}
             </div>
           )}
 
@@ -270,19 +284,16 @@ export default function CreateProductPage() {
           {categories.length > 0 && (
             <div>
               <Label>Раздел магазина</Label>
-              <select
+              <Select
                 value={storeCategoryId ?? ''}
-                onChange={(e) => setStoreCategoryId(e.target.value || null)}
-                className={inputFocusClass}
-                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
-              >
-                <option value="" style={{ background: colors.surface, color: colors.textPrimary }}>— Без раздела —</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id} style={{ background: colors.surface, color: colors.textPrimary }}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setStoreCategoryId(v || null)}
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="— Без раздела —"
+                searchPlaceholder="Поиск раздела…"
+                clearable
+                searchable={categories.length > 6}
+                ariaLabel="Раздел магазина"
+              />
             </div>
           )}
 
