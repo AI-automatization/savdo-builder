@@ -4,15 +4,17 @@
  * Public endpoints only (no auth required).
  */
 
-import type { ProductListItem } from 'types';
-import type { StorefrontStore } from './storefront.api';
+import type { GlobalCategory, ProductListItem, StorefrontStore } from 'types';
+import type { StorefrontCategoryFilter } from './storefront.api';
 
 const BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1`;
 
-async function sfetch<T>(path: string, params?: Record<string, string>): Promise<T> {
+async function sfetch<T>(path: string, search?: URLSearchParams | Record<string, string>): Promise<T> {
   const url = new URL(`${BASE}${path}`);
-  if (params) {
-    Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, v));
+  if (search instanceof URLSearchParams) {
+    search.forEach((v, k) => url.searchParams.append(k, v));
+  } else if (search) {
+    Object.entries(search).forEach(([k, v]) => v && url.searchParams.set(k, v));
   }
   const res = await fetch(url.toString(), {
     next: { revalidate: process.env.NODE_ENV === 'development' ? 0 : 30 },
@@ -30,10 +32,26 @@ export async function serverGetStoreBySlug(slug: string): Promise<StorefrontStor
 
 export async function serverGetProducts(params: {
   storeId: string;
+  globalCategoryId?: string;
   storeCategoryId?: string;
+  attributeFilters?: Record<string, string>;
 }): Promise<ProductListItem[]> {
-  return sfetch<ProductListItem[]>('/storefront/products', {
-    storeId: params.storeId,
-    ...(params.storeCategoryId ? { storeCategoryId: params.storeCategoryId } : {}),
-  });
+  const search = new URLSearchParams();
+  search.set('storeId', params.storeId);
+  if (params.globalCategoryId) search.set('globalCategoryId', params.globalCategoryId);
+  if (params.storeCategoryId) search.set('storeCategoryId', params.storeCategoryId);
+  if (params.attributeFilters) {
+    for (const [k, v] of Object.entries(params.attributeFilters)) {
+      if (v) search.append(`filters[${k}]`, v);
+    }
+  }
+  return sfetch<ProductListItem[]>('/storefront/products', search);
+}
+
+export async function serverGetGlobalCategories(): Promise<GlobalCategory[]> {
+  return sfetch<GlobalCategory[]>('/storefront/categories');
+}
+
+export async function serverGetCategoryFilters(slug: string): Promise<StorefrontCategoryFilter[]> {
+  return sfetch<StorefrontCategoryFilter[]>(`/storefront/categories/${slug}/filters`);
 }

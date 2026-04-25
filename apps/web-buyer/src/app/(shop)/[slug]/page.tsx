@@ -3,8 +3,14 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import ProductsWithSearch from "@/components/store/ProductsWithSearch";
+import CategoryAttributeFilters from "@/components/store/CategoryAttributeFilters";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
-import { serverGetStoreBySlug, serverGetProducts } from "@/lib/api/storefront-server";
+import {
+  serverGetStoreBySlug,
+  serverGetProducts,
+  serverGetGlobalCategories,
+  serverGetCategoryFilters,
+} from "@/lib/api/storefront-server";
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
 import { glass, glassDim } from "@/lib/styles";
@@ -63,10 +69,21 @@ export default async function StorePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ categoryId?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { slug }       = await params;
-  const { categoryId } = await searchParams;
+  const { slug } = await params;
+  const sp = await searchParams;
+
+  const categoryId = typeof sp.categoryId === "string" ? sp.categoryId : undefined;
+  const gcat = typeof sp.gcat === "string" ? sp.gcat : null;
+
+  // Pull all `?f.<key>=<value>` pairs into a flat attribute filter map.
+  const activeAttributes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    if (k.startsWith("f.") && typeof v === "string" && v) {
+      activeAttributes[k.slice(2)] = v;
+    }
+  }
 
   let store;
   try {
@@ -77,10 +94,36 @@ export default async function StorePage({
     throw err;
   }
 
+  // Global categories for the filter UI; only fetch attribute metadata if a category is picked.
+  // Both endpoints have a 30s revalidate cache so multiple visits share the result.
+  const [globalCategories, attributeFilters] = await Promise.all([
+    serverGetGlobalCategories().catch(() => []),
+    gcat ? serverGetCategoryFilters(gcat).catch(() => []) : Promise.resolve([]),
+  ]);
+
+  const globalCategoryId = gcat
+    ? globalCategories.find((c) => c.slug === gcat)?.id
+    : undefined;
+
   const products = await serverGetProducts({
     storeId: store.id,
     storeCategoryId: categoryId,
+    globalCategoryId,
+    attributeFilters: Object.keys(activeAttributes).length > 0 ? activeAttributes : undefined,
   });
+
+  // Preserve global category + attribute filter state across storeCategory chip clicks.
+  const persistentParams = new URLSearchParams();
+  if (gcat) persistentParams.set("gcat", gcat);
+  for (const [k, v] of Object.entries(activeAttributes)) {
+    persistentParams.append(`f.${k}`, v);
+  }
+  const buildStoreCategoryHref = (catId: string | null) => {
+    const next = new URLSearchParams(persistentParams);
+    if (catId) next.set("categoryId", catId);
+    const qs = next.toString();
+    return qs ? `/${slug}?${qs}` : `/${slug}`;
+  };
 
   return (
     <div className="relative min-h-screen">
@@ -165,7 +208,7 @@ export default async function StorePage({
           >
             {/* "All" pill */}
             <Link
-              href={`/${slug}`}
+              href={buildStoreCategoryHref(null)}
               className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all"
               style={
                 !categoryId
@@ -183,7 +226,7 @@ export default async function StorePage({
                 return (
                   <Link
                     key={cat.id}
-                    href={`/${slug}?categoryId=${cat.id}`}
+                    href={buildStoreCategoryHref(cat.id)}
                     className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all"
                     style={
                       isActive
@@ -197,6 +240,14 @@ export default async function StorePage({
               })}
           </div>
         )}
+
+        {/* ── Cross-store category + attribute filters (Sprint 31) ── */}
+        <CategoryAttributeFilters
+          globalCategories={globalCategories}
+          activeGlobalSlug={gcat}
+          attributeFilters={attributeFilters}
+          activeAttributes={activeAttributes}
+        />
 
         {/* ── Product grid (with search when >8 items) ── */}
         <ProductsWithSearch products={products} storeSlug={slug} />
