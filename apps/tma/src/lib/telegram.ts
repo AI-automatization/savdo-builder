@@ -33,8 +33,13 @@ export interface TgWebApp {
   colorScheme: 'light' | 'dark';
   themeParams: TgThemeParams;
   isExpanded: boolean;
+  isFullscreen?: boolean;
   viewportHeight: number;
   viewportStableHeight: number;
+  requestFullscreen?: () => void;
+  exitFullscreen?: () => void;
+  onEvent?: (event: string, callback: () => void) => void;
+  offEvent?: (event: string, callback: () => void) => void;
   BackButton: {
     isVisible: boolean;
     show: () => void;

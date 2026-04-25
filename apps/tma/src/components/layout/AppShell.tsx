@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BottomNav } from './BottomNav';
 import { BackButton } from './BackButton';
+import { FullscreenButton } from './FullscreenButton';
 import { ToastContainer } from '@/components/ui/Toast';
 import { gradientBg, COLORS } from '@/lib/styles';
 
@@ -36,6 +37,7 @@ export function AppShell({ children, role }: Props) {
 
       <ToastContainer />
       <BackButton />
+      <FullscreenButton />
       <div className="relative z-10 flex-1 px-4 pt-4 pb-20">
         {children}
       </div>
