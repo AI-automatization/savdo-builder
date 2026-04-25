@@ -11,49 +11,40 @@ import {
   useDeleteOptionValue,
 } from '../hooks/use-product-options';
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
+import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+const glass = card;
 
-const glass = {
-  background:           'rgba(255,255,255,0.07)',
-  backdropFilter:       'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
-  border:               '1px solid rgba(255,255,255,0.11)',
-} as const;
-
-const fieldStyle = {
-  background:   'rgba(255,255,255,0.06)',
-  border:       '1px solid rgba(255,255,255,0.13)',
-  color:        '#fff',
-  borderRadius: '0.625rem',
-  outline:      'none',
+const fieldStyle: React.CSSProperties = {
+  ...inputBase,
+  borderRadius: '0.5rem',
   width:        '100%',
   padding:      '0.45rem 0.7rem',
   fontSize:     '0.8125rem',
-} as const;
+};
 
-const confirmBtn = {
+const confirmBtn: React.CSSProperties = {
   flexShrink: 0,
   width: 26,
   height: 26,
-  borderRadius: '0.5rem',
+  borderRadius: '0.375rem',
   fontSize: '0.75rem',
   fontWeight: 600,
-  background: 'rgba(167,139,250,.18)',
-  border: '1px solid rgba(167,139,250,.30)',
-  color: '#A78BFA',
+  background: colors.accentMuted,
+  border: `1px solid ${colors.accentBorder}`,
+  color: colors.accent,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-} as const;
+};
 
-const cancelBtn = {
+const cancelBtn: React.CSSProperties = {
   ...confirmBtn,
-  background: 'rgba(255,255,255,.06)',
-  border: '1px solid rgba(255,255,255,.12)',
-  color: 'rgba(255,255,255,0.45)',
-} as const;
+  background: colors.surfaceMuted,
+  border: `1px solid ${colors.border}`,
+  color: colors.textMuted,
+};
 
 // ── Code generation (transliterate + slugify) ─────────────────────────────────
 
@@ -161,13 +152,13 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
   return (
     <div
       className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-0.5 rounded-full text-xs"
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.82)' }}
+      style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textPrimary }}
     >
       <span>{value.value}</span>
       <button
         type="button"
         className="transition-opacity opacity-40 hover:opacity-80"
-        style={{ color: '#A78BFA' }}
+        style={{ color: colors.accent }}
         onClick={() => setEditing(true)}
         title="Редактировать"
       >
@@ -176,7 +167,7 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
       <button
         type="button"
         className="transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
-        style={{ color: '#f87171' }}
+        style={{ color: colors.danger }}
         disabled={remove.isPending}
         onClick={handleDelete}
         title="Удалить"
@@ -228,7 +219,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
   return (
     <div
       className="rounded-xl p-3 flex flex-col gap-2"
-      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)' }}
+      style={{ background: colors.surfaceSunken, border: `1px solid ${colors.divider}` }}
     >
       <div className="flex items-center gap-2">
         {editingName ? (
@@ -245,7 +236,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
             <button
               type="button"
               className="text-xs transition-opacity opacity-40 hover:opacity-80"
-              style={{ color: '#A78BFA' }}
+              style={{ color: colors.accent }}
               onClick={() => setEditingName(true)}
               title="Переименовать"
             >
@@ -254,7 +245,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
             <button
               type="button"
               className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
-              style={{ color: '#f87171' }}
+              style={{ color: colors.danger }}
               disabled={removeGroup.isPending}
               onClick={handleRemove}
               title="Удалить группу"
@@ -284,7 +275,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
           <button
             type="button"
             className="text-xs font-semibold transition-opacity hover:opacity-80"
-            style={{ color: '#A78BFA' }}
+            style={{ color: colors.accent }}
             onClick={() => setAddingValue(true)}
           >
             + значение
@@ -318,18 +309,18 @@ export function ProductOptionGroupsSection({ productId, optionGroups }: Props) {
   return (
     <div className="rounded-2xl p-5 flex flex-col gap-3 mt-4" style={glass}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.28)' }}>
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
           Опции товара
         </p>
         {optionGroups.length > 0 && (
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <span className="text-xs" style={{ color: colors.textDim }}>
             {optionGroups.length} гр.
           </span>
         )}
       </div>
 
       {optionGroups.length === 0 && !adding && (
-        <p className="text-xs py-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <p className="text-xs py-1" style={{ color: colors.textDim }}>
           Добавьте группы опций (например «Размер», «Цвет»), чтобы товар продавался в нескольких вариантах.
         </p>
       )}
@@ -350,7 +341,7 @@ export function ProductOptionGroupsSection({ productId, optionGroups }: Props) {
         <button
           type="button"
           className="text-xs font-semibold transition-opacity hover:opacity-80 text-left mt-1"
-          style={{ color: '#A78BFA' }}
+          style={{ color: colors.accent }}
           onClick={() => setAdding(true)}
         >
           + Добавить группу опций

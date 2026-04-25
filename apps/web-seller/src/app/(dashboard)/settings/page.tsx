@@ -7,6 +7,7 @@ import { X, Check, Trash2 } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
 import type { Store, StoreCategory } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
+import { card, colors, inputStyle as inputStyleBase } from '@/lib/styles';
 
 // Backend returns deliverySettings nested in Store response (not yet in shared types)
 type StoreWithDelivery = Store & {
@@ -16,29 +17,21 @@ type StoreWithDelivery = Store & {
   } | null;
 };
 
-const glass = {
-  background: 'rgba(255,255,255,0.08)',
-  backdropFilter: 'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
-  border: '1px solid rgba(255,255,255,0.13)',
-} as const;
-
 const inputBase =
-  'h-10 px-3.5 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 w-full';
+  'h-10 px-3.5 rounded-md text-sm focus:outline-none focus:ring-2 w-full';
 
 const inputStyle = {
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  '--tw-ring-color': 'rgba(167,139,250,0.50)',
+  ...inputStyleBase,
+  '--tw-ring-color': colors.accentBorder,
 } as React.CSSProperties;
 
-const errorStyle = { color: 'rgba(248,113,113,.85)' } as const;
+const errorStyle = { color: colors.danger } as const;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl overflow-hidden" style={glass}>
-      <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <p className="text-sm font-semibold text-white">{title}</p>
+    <div className="rounded-lg overflow-hidden" style={card}>
+      <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
+        <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>{title}</p>
       </div>
       <div className="px-5 py-4 flex flex-col gap-4">{children}</div>
     </div>
@@ -56,7 +49,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.38)' }}>
+      <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
         {label}
       </label>
       {children}
@@ -68,7 +61,7 @@ function Field({
 function SavedBadge({ show }: { show: boolean }) {
   if (!show) return null;
   return (
-    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: 'rgba(52,211,153,0.15)', color: 'rgba(52,211,153,.90)' }}>
+    <span className="text-xs font-semibold px-2.5 py-1 rounded-md" style={{ background: 'rgba(52,211,153,0.15)', color: colors.success, border: '1px solid rgba(52,211,153,0.30)' }}>
       Сохранено
     </span>
   );
@@ -149,46 +142,46 @@ function StoreCategoriesSection() {
 
   const rowInputStyle: React.CSSProperties = {
     flex: 1,
-    background: 'transparent',
-    border: '1px solid rgba(167,139,250,0.50)',
-    borderRadius: 8,
+    background: colors.surfaceSunken,
+    border: `1px solid ${colors.accentBorder}`,
+    borderRadius: 6,
     padding: '4px 8px',
     fontSize: 13,
-    color: '#fff',
+    color: colors.textPrimary,
     outline: 'none',
   };
 
   const confirmBtn: React.CSSProperties = {
     fontSize: 12,
     padding: '3px 8px',
-    borderRadius: 7,
-    color: '#34d399',
+    borderRadius: 6,
+    color: colors.success,
     background: 'rgba(52,211,153,0.12)',
-    border: '1px solid rgba(52,211,153,0.20)',
+    border: '1px solid rgba(52,211,153,0.25)',
     cursor: 'pointer',
   };
 
   const cancelBtn: React.CSSProperties = {
     fontSize: 12,
     padding: '3px 8px',
-    borderRadius: 7,
-    color: 'rgba(255,255,255,0.40)',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 6,
+    color: colors.textMuted,
+    background: colors.surfaceMuted,
+    border: `1px solid ${colors.border}`,
     cursor: 'pointer',
   };
 
-  const rowBorder = { borderBottom: '1px solid rgba(255,255,255,0.06)' };
+  const rowBorder = { borderBottom: `1px solid ${colors.divider}` };
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl overflow-hidden" style={glass}>
-        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="h-3.5 w-44 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+      <div className="rounded-lg overflow-hidden" style={card}>
+        <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
+          <div className="h-3.5 w-44 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
         </div>
         <div className="px-5 py-4 flex flex-col gap-2">
           {[140, 100, 160].map((w, i) => (
-            <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.06)', width: w }} />
+            <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: colors.surfaceSunken, width: w }} />
           ))}
         </div>
       </div>
@@ -198,7 +191,7 @@ function StoreCategoriesSection() {
   return (
     <Section title="Категории магазина">
       {categories.length === 0 && !adding && (
-        <p className="text-xs py-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <p className="text-xs py-1" style={{ color: colors.textDim }}>
           Категории помогают покупателям ориентироваться в вашем магазине.
         </p>
       )}
@@ -229,9 +222,9 @@ function StoreCategoriesSection() {
           ) : (
             <>
               <span
-                className="flex-1 text-sm text-white transition-colors"
+                className="flex-1 text-sm transition-colors"
                 onClick={() => !update.isPending && startEdit(cat)}
-                style={{ cursor: update.isPending ? 'default' : 'pointer', opacity: update.isPending ? 0.5 : 1 }}
+                style={{ cursor: update.isPending ? 'default' : 'pointer', opacity: update.isPending ? 0.5 : 1, color: colors.textPrimary }}
               >
                 {cat.name}
               </span>
@@ -239,8 +232,8 @@ function StoreCategoriesSection() {
                 type="button"
                 onClick={() => handleDelete(cat.id)}
                 disabled={!!deletingId}
-                className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
-                style={{ color: '#f87171' }}
+                className="text-xs transition-opacity opacity-50 hover:opacity-90 disabled:opacity-20"
+                style={{ color: colors.danger }}
                 aria-label="Удалить"
               >
                 <Trash2 size={14} />
@@ -282,7 +275,7 @@ function StoreCategoriesSection() {
       )}
 
       {deleteError && (
-        <p className="text-xs mt-1" style={{ color: 'rgba(248,113,113,.80)' }}>{deleteError}</p>
+        <p className="text-xs mt-1" style={{ color: colors.danger }}>{deleteError}</p>
       )}
 
       {!adding && (
@@ -290,7 +283,7 @@ function StoreCategoriesSection() {
           type="button"
           onClick={startAdd}
           className="mt-1 text-xs font-semibold flex items-center gap-1.5 transition-opacity hover:opacity-80"
-          style={{ color: '#A78BFA' }}
+          style={{ color: colors.accent }}
         >
           <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Добавить категорию
         </button>
@@ -345,15 +338,15 @@ function DeliverySettingsSection() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl overflow-hidden" style={glass}>
-        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="h-3.5 w-32 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+      <div className="rounded-lg overflow-hidden" style={card}>
+        <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
+          <div className="h-3.5 w-32 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
         </div>
         <div className="px-5 py-4 flex flex-col gap-4">
           {[100, 80].map((w, i) => (
             <div key={i} className="flex flex-col gap-1.5">
-              <div className="h-2.5 rounded-full animate-pulse" style={{ width: w, background: 'rgba(255,255,255,0.08)' }} />
-              <div className="h-10 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <div className="h-2.5 rounded-full animate-pulse" style={{ width: w, background: colors.surfaceElevated }} />
+              <div className="h-10 rounded-md animate-pulse" style={{ background: colors.surfaceElevated }} />
             </div>
           ))}
         </div>
@@ -371,7 +364,7 @@ function DeliverySettingsSection() {
             style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
           >
             {Object.entries(FEE_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value} style={{ background: '#1a1a2e' }}>{label}</option>
+              <option key={value} value={value} style={{ background: colors.surface, color: colors.textPrimary }}>{label}</option>
             ))}
           </select>
         </Field>
@@ -392,7 +385,7 @@ function DeliverySettingsSection() {
         )}
 
         {feeType === 'manual' && (
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+          <p className="text-xs" style={{ color: colors.textMuted }}>
             Сумма доставки обсуждается с покупателем индивидуально.
           </p>
         )}
@@ -401,8 +394,8 @@ function DeliverySettingsSection() {
           <button
             type="submit"
             disabled={!isDirty || updateStore.isPending}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 16px rgba(167,139,250,.30)' }}
+            className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+            style={{ background: colors.accent, color: colors.bg }}
           >
             {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -464,15 +457,15 @@ function StoreSettingsSection() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl overflow-hidden" style={glass}>
-        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="h-3.5 w-36 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+      <div className="rounded-lg overflow-hidden" style={card}>
+        <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
+          <div className="h-3.5 w-36 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
         </div>
         <div className="px-5 py-4 flex flex-col gap-4">
           {[80, 120, 60].map((w, i) => (
             <div key={i} className="flex flex-col gap-1.5">
-              <div className="h-2.5 rounded-full animate-pulse" style={{ width: w, background: 'rgba(255,255,255,0.08)' }} />
-              <div className="h-10 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <div className="h-2.5 rounded-full animate-pulse" style={{ width: w, background: colors.surfaceElevated }} />
+              <div className="h-10 rounded-md animate-pulse" style={{ background: colors.surfaceElevated }} />
             </div>
           ))}
         </div>
@@ -519,7 +512,7 @@ function StoreSettingsSection() {
           <textarea
             {...register('description', { maxLength: { value: 2000, message: 'Максимум 2000 символов' } })}
             rows={3}
-            className="px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 resize-none w-full"
+            className="px-3.5 py-2.5 rounded-md text-sm focus:outline-none focus:ring-2 resize-none w-full"
             style={inputStyle}
             placeholder="Расскажите о вашем магазине..."
           />
@@ -558,8 +551,8 @@ function StoreSettingsSection() {
           <button
             type="submit"
             disabled={!isDirty || updateStore.isPending}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 16px rgba(167,139,250,.30)' }}
+            className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+            style={{ background: colors.accent, color: colors.bg }}
           >
             {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -611,15 +604,15 @@ function ProfileSettingsSection() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl overflow-hidden" style={glass}>
-        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="h-3.5 w-28 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+      <div className="rounded-lg overflow-hidden" style={card}>
+        <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
+          <div className="h-3.5 w-28 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
         </div>
         <div className="px-5 py-4 flex flex-col gap-4">
           {[100, 80].map((w, i) => (
             <div key={i} className="flex flex-col gap-1.5">
-              <div className="h-2.5 rounded-full animate-pulse" style={{ width: w, background: 'rgba(255,255,255,0.08)' }} />
-              <div className="h-10 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <div className="h-2.5 rounded-full animate-pulse" style={{ width: w, background: colors.surfaceElevated }} />
+              <div className="h-10 rounded-md animate-pulse" style={{ background: colors.surfaceElevated }} />
             </div>
           ))}
         </div>
@@ -656,8 +649,8 @@ function ProfileSettingsSection() {
             className={inputBase}
             style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
           >
-            <option value="ru" style={{ background: '#1a1a2e' }}>Русский</option>
-            <option value="uz" style={{ background: '#1a1a2e' }}>O&apos;zbekcha</option>
+            <option value="ru" style={{ background: colors.surface, color: colors.textPrimary }}>Русский</option>
+            <option value="uz" style={{ background: colors.surface, color: colors.textPrimary }}>O&apos;zbekcha</option>
           </select>
         </Field>
 
@@ -665,8 +658,8 @@ function ProfileSettingsSection() {
           <button
             type="submit"
             disabled={!isDirty || updateProfile.isPending}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 16px rgba(167,139,250,.30)' }}
+            className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+            style={{ background: colors.accent, color: colors.bg }}
           >
             {updateProfile.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -694,8 +687,8 @@ function ToggleRow({ label, description, checked, disabled, onChange }: ToggleRo
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white">{label}</p>
-        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{description}</p>
+        <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>{label}</p>
+        <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>{description}</p>
       </div>
       <button
         type="button"
@@ -703,12 +696,12 @@ function ToggleRow({ label, description, checked, disabled, onChange }: ToggleRo
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className="relative flex-shrink-0 w-10 h-5.5 rounded-full transition-colors disabled:opacity-40"
+        className="relative flex-shrink-0 rounded-full transition-colors disabled:opacity-40"
         style={{
           width: 40,
           height: 22,
-          background: checked ? 'rgba(167,139,250,0.80)' : 'rgba(255,255,255,0.14)',
-          border: '1px solid rgba(255,255,255,0.10)',
+          background: checked ? colors.accent : colors.surfaceElevated,
+          border: `1px solid ${colors.border}`,
         }}
       >
         <span
@@ -716,10 +709,9 @@ function ToggleRow({ label, description, checked, disabled, onChange }: ToggleRo
           style={{
             width: 16,
             height: 16,
-            background: '#fff',
+            background: checked ? colors.bg : colors.textMuted,
             left: 2,
             transform: checked ? 'translateX(18px)' : 'translateX(0)',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
           }}
         />
       </button>
@@ -740,18 +732,18 @@ function NotifPreferencesSection() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl overflow-hidden" style={glass}>
-        <div className="px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="h-3.5 w-40 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
+      <div className="rounded-lg overflow-hidden" style={card}>
+        <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
+          <div className="h-3.5 w-40 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
         </div>
         <div className="px-5 py-4 flex flex-col gap-4">
           {[1, 2].map((i) => (
             <div key={i} className="flex items-center justify-between">
               <div className="flex flex-col gap-1.5">
-                <div className="h-3.5 w-36 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
-                <div className="h-2.5 w-52 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
+                <div className="h-3.5 w-36 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
+                <div className="h-2.5 w-52 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
               </div>
-              <div className="w-10 h-[22px] rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <div className="w-10 h-[22px] rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
             </div>
           ))}
         </div>
@@ -776,7 +768,7 @@ function NotifPreferencesSection() {
         onChange={(v) => toggle('webPushEnabled', v)}
       />
       {saved && (
-        <p className="text-xs" style={{ color: 'rgba(52,211,153,.85)' }}>Сохранено</p>
+        <p className="text-xs" style={{ color: colors.success }}>Сохранено</p>
       )}
       {update.isError && (
         <p className="text-xs" style={errorStyle}>Ошибка сохранения</p>
@@ -790,7 +782,7 @@ function NotifPreferencesSection() {
 export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-5 max-w-xl">
-      <h1 className="text-xl font-bold text-white">Настройки</h1>
+      <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
       <StoreSettingsSection />
       <DeliverySettingsSection />
       <StoreCategoriesSection />

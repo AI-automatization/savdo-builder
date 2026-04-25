@@ -9,49 +9,40 @@ import {
   useDeleteVariant,
 } from '../hooks/use-products';
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
+import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+const glass = card;
 
-const glass = {
-  background:           'rgba(255,255,255,0.07)',
-  backdropFilter:       'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
-  border:               '1px solid rgba(255,255,255,0.11)',
-} as const;
-
-const fieldStyle = {
-  background:   'rgba(255,255,255,0.06)',
-  border:       '1px solid rgba(255,255,255,0.13)',
-  color:        '#fff',
-  borderRadius: '0.625rem',
-  outline:      'none',
+const fieldStyle: React.CSSProperties = {
+  ...inputBase,
+  borderRadius: '0.5rem',
   width:        '100%',
   padding:      '0.5rem 0.75rem',
   fontSize:     '0.8125rem',
-} as const;
+};
 
-const confirmBtn = {
+const confirmBtn: React.CSSProperties = {
   flexShrink: 0,
   width: 28,
   height: 28,
-  borderRadius: '0.5rem',
+  borderRadius: '0.375rem',
   fontSize: '0.75rem',
   fontWeight: 600,
-  background: 'rgba(167,139,250,.18)',
-  border: '1px solid rgba(167,139,250,.30)',
-  color: '#A78BFA',
+  background: colors.accentMuted,
+  border: `1px solid ${colors.accentBorder}`,
+  color: colors.accent,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-} as const;
+};
 
-const cancelBtn = {
+const cancelBtn: React.CSSProperties = {
   ...confirmBtn,
-  background: 'rgba(255,255,255,.06)',
-  border: '1px solid rgba(255,255,255,.12)',
-  color: 'rgba(255,255,255,0.45)',
-} as const;
+  background: colors.surfaceMuted,
+  border: `1px solid ${colors.border}`,
+  color: colors.textMuted,
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -158,7 +149,7 @@ function InlineVariantForm({
   return (
     <div
       className="rounded-xl p-4 flex flex-col gap-3 mt-1"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
+      style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
       onKeyDown={handleKeyDown}
     >
       {/* Option selectors (only when adding and product has option groups) */}
@@ -168,7 +159,7 @@ function InlineVariantForm({
             const hasValues = g.values.length > 0;
             return (
               <div key={g.id}>
-                <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                <label className="block text-xs mb-1" style={{ color: colors.textDim }}>
                   {g.name}
                 </label>
                 {hasValues ? (
@@ -198,7 +189,7 @@ function InlineVariantForm({
       {/* Row 1: title + sku */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Название</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Название</label>
           <input
             style={fieldStyle}
             placeholder="Красный / XL"
@@ -207,7 +198,7 @@ function InlineVariantForm({
           />
         </div>
         <div>
-          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Артикул (SKU)</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Артикул (SKU)</label>
           <input
             style={fieldStyle}
             placeholder="SKU-VAR-001"
@@ -220,7 +211,7 @@ function InlineVariantForm({
       {/* Row 2: price + stock */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Цена (сум, пусто = базовая)</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Цена (сум, пусто = базовая)</label>
           <input
             type="number"
             min={0}
@@ -231,7 +222,7 @@ function InlineVariantForm({
           />
         </div>
         <div>
-          <label className="block text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Остаток</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Остаток</label>
           <input
             type="number"
             min={0}
@@ -254,7 +245,7 @@ function InlineVariantForm({
           />
           <div
             className="relative w-9 h-5 rounded-full transition-all peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white"
-            style={{ background: f.isActive ? 'linear-gradient(135deg,#7C3AED,#A78BFA)' : 'rgba(255,255,255,0.15)' }}
+            style={{ background: f.isActive ? colors.accent : colors.surfaceElevated, border: `1px solid ${f.isActive ? colors.accentBorder : colors.border}` }}
           />
           Активен
         </label>
@@ -367,22 +358,22 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
   return (
     <div className="rounded-2xl p-5 flex flex-col gap-4 mt-4" style={glass}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.28)' }}>
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
           Варианты товара
         </p>
         {variants.length > 0 && (
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <span className="text-xs" style={{ color: colors.textDim }}>
             {variants.length} шт.
           </span>
         )}
       </div>
 
       {isLoading && (
-        <p className="text-xs py-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Загрузка...</p>
+        <p className="text-xs py-2" style={{ color: colors.textDim }}>Загрузка...</p>
       )}
 
       {!isLoading && variants.length === 0 && !adding && (
-        <p className="text-xs py-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <p className="text-xs py-1" style={{ color: colors.textDim }}>
           Нет вариантов. Добавьте, если товар продаётся в разных размерах, цветах и т.д.
         </p>
       )}
@@ -394,12 +385,12 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
           <div key={v.id}>
             <div
               className="flex items-center gap-3 py-2"
-              style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+              style={{ borderTop: `1px solid ${colors.divider}` }}
             >
               {/* Active dot */}
               <span
                 className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
-                style={{ background: v.isActive ? '#34d399' : 'rgba(255,255,255,0.20)' }}
+                style={{ background: v.isActive ? colors.success : colors.surfaceElevated }}
               />
 
               {/* Name + stock */}
@@ -408,11 +399,11 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                   {variantLabel(v)}
                 </p>
                 {subLabel && v.titleOverride && (
-                  <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.50)' }}>
+                  <p className="text-xs mt-0.5 truncate" style={{ color: colors.textMuted }}>
                     {subLabel}
                   </p>
                 )}
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
                   {formatPrice(v.priceOverride)} · склад: {v.stockQuantity}
                 </p>
               </div>
@@ -423,7 +414,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                   <button
                     type="button"
                     className="text-xs transition-opacity opacity-40 hover:opacity-80"
-                    style={{ color: '#A78BFA' }}
+                    style={{ color: colors.accent }}
                     onClick={() => { setAdding(false); setEditingId(v.id); }}
                   >
                     <Pencil size={14} />
@@ -431,7 +422,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                   <button
                     type="button"
                     className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
-                    style={{ color: '#f87171' }}
+                    style={{ color: colors.danger }}
                     disabled={deletingId === v.id}
                     onClick={() => handleDelete(v.id)}
                   >
@@ -472,7 +463,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
         <button
           type="button"
           className="text-xs font-semibold transition-opacity hover:opacity-80 text-left mt-1 disabled:opacity-40"
-          style={{ color: '#A78BFA' }}
+          style={{ color: colors.accent }}
           disabled={!canAdd}
           onClick={() => { setEditingId(null); setAdding(true); }}
           title={!canAdd ? 'Сначала добавьте значения в группы опций' : undefined}

@@ -24,43 +24,36 @@ function toSlug(name: string) {
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 
-const glass = {
-  background:           "rgba(255,255,255,0.07)",
-  backdropFilter:       "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
-  border:               "1px solid rgba(255,255,255,0.11)",
-} as const;
+import { card, colors, inputStyle as inputBase } from '@/lib/styles';
+const glass = card;
 
-const inputStyle = {
-  background:   "rgba(255,255,255,0.06)",
-  border:       "1px solid rgba(255,255,255,0.13)",
-  color:        "#fff",
-  borderRadius: "0.75rem",
-  outline:      "none",
+const inputStyle: React.CSSProperties = {
+  ...inputBase,
+  borderRadius: "0.5rem",
   width:        "100%",
   padding:      "0.625rem 0.875rem",
   fontSize:     "0.875rem",
-} as const;
+};
 
 function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <span className="block text-xs font-semibold mb-1.5" style={{ color: "rgba(255,255,255,0.55)" }}>
-      {children}{required && <span style={{ color: "#f87171" }}> *</span>}
+    <span className="block text-xs font-semibold mb-1.5" style={{ color: colors.textMuted }}>
+      {children}{required && <span style={{ color: colors.danger }}> *</span>}
     </span>
   );
 }
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-xs" style={{ color: "#f87171" }}>{message}</p>;
+  return <p className="mt-1 text-xs" style={{ color: colors.danger }}>{message}</p>;
 }
 
 function ErrorBanner({ message }: { message?: string }) {
   if (!message) return null;
   return (
     <div
-      className="px-4 py-3 rounded-xl text-sm"
-      style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5" }}
+      className="px-4 py-3 rounded-md text-sm"
+      style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: colors.danger }}
     >
       {message}
     </div>
@@ -88,12 +81,12 @@ function ProgressBar({ step }: { step: number }) {
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all"
               style={{
                 background: done
-                  ? "linear-gradient(135deg, #7C3AED, #A78BFA)"
+                  ? colors.accent
                   : active
-                    ? "rgba(167,139,250,.20)"
-                    : "rgba(255,255,255,0.08)",
-                border: active ? "1px solid rgba(167,139,250,.60)" : "1px solid transparent",
-                color: done ? "#fff" : active ? "#A78BFA" : "rgba(255,255,255,0.25)",
+                    ? colors.accentMuted
+                    : colors.surfaceMuted,
+                border: active ? `1px solid ${colors.accentBorder}` : `1px solid ${colors.border}`,
+                color: done ? colors.bg : active ? colors.accent : colors.textDim,
               }}
             >
               {done ? (
@@ -104,14 +97,14 @@ function ProgressBar({ step }: { step: number }) {
             </div>
             <span
               className="text-xs font-medium hidden sm:block"
-              style={{ color: active ? "#A78BFA" : "rgba(255,255,255,0.25)" }}
+              style={{ color: active ? colors.accent : colors.textDim }}
             >
               {s.label}
             </span>
             {i < STEPS.length - 1 && (
               <div
                 className="flex-1 h-px mx-1"
-                style={{ background: done ? "rgba(167,139,250,.50)" : "rgba(255,255,255,0.08)" }}
+                style={{ background: done ? colors.accent : colors.surfaceElevated }}
               />
             )}
           </div>
@@ -138,7 +131,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
         <h1 className="text-xl font-bold text-white mb-1">Создайте магазин</h1>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.40)" }}>
+        <p className="text-sm" style={{ color: colors.textMuted }}>
           Придумайте название — покупатели увидят его первым
         </p>
       </div>
@@ -161,16 +154,16 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
 
       <div>
         <Label>Адрес магазина</Label>
-        <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.13)" }}>
+        <div className="flex items-center rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
           <span
             className="px-3 py-[0.625rem] text-sm flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.35)", borderRight: "1px solid rgba(255,255,255,0.10)" }}
+            style={{ background: colors.surfaceMuted, color: colors.textDim, borderRight: `1px solid ${colors.border}` }}
           >
             savdo.uz/
           </span>
           <input
             className="flex-1 px-3 py-[0.625rem] text-sm focus:outline-none"
-            style={{ background: "rgba(255,255,255,0.06)", color: "#fff" }}
+            style={{ background: colors.surfaceSunken, color: colors.textPrimary }}
             placeholder="texno-shop"
             {...register('slug', {
               required: 'Укажите адрес',
@@ -182,7 +175,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
         </div>
         <FieldError message={errors.slug?.message} />
         {name && !errors.slug && (
-          <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.30)" }}>
+          <p className="mt-1 text-xs" style={{ color: colors.textDim }}>
             savdo.uz/{watch('slug')}
           </p>
         )}
@@ -191,7 +184,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
       <button
         type="submit"
         className="w-full py-3 rounded-xl text-sm font-semibold text-white"
-        style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
+        style={{ background: colors.accent, color: colors.bg }}
       >
         Далее →
       </button>
@@ -224,23 +217,23 @@ function Step2({
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
         <h1 className="text-xl font-bold text-white mb-1">Контакты</h1>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.40)" }}>
+        <p className="text-sm" style={{ color: colors.textMuted }}>
           Покупатели свяжутся с вами через Telegram
         </p>
       </div>
 
       <div>
         <Label required>Telegram username</Label>
-        <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.13)" }}>
+        <div className="flex items-center rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
           <span
             className="px-3 py-[0.625rem] text-sm flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.35)", borderRight: "1px solid rgba(255,255,255,0.10)" }}
+            style={{ background: colors.surfaceMuted, color: colors.textDim, borderRight: `1px solid ${colors.border}` }}
           >
             @
           </span>
           <input
             className="flex-1 px-3 py-[0.625rem] text-sm focus:outline-none"
-            style={{ background: "rgba(255,255,255,0.06)", color: "#fff" }}
+            style={{ background: colors.surfaceSunken, color: colors.textPrimary }}
             placeholder="texnoshop"
             {...register('telegramUsername', {
               required: 'Введите Telegram username',
@@ -269,7 +262,7 @@ function Step2({
           })}
         />
         <FieldError message={errors.telegramContactLink?.message} />
-        <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+        <p className="mt-1 text-xs" style={{ color: colors.textDim }}>
           Ссылка на ваш канал, группу или личный чат
         </p>
       </div>
@@ -295,7 +288,7 @@ function Step2({
           type="button"
           onClick={onBack}
           className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.70)" }}
+          style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
         >
           ← Назад
         </button>
@@ -303,7 +296,7 @@ function Step2({
           type="submit"
           disabled={isLoading}
           className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
+          style={{ background: colors.accent, color: colors.bg }}
         >
           {isLoading ? 'Создание...' : 'Далее →'}
         </button>
@@ -338,7 +331,7 @@ function Step3({
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
         <h1 className="text-xl font-bold text-white mb-1">Первый товар</h1>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.40)" }}>
+        <p className="text-sm" style={{ color: colors.textMuted }}>
           Добавьте хотя бы один товар, чтобы магазин выглядел живым
         </p>
       </div>
@@ -378,7 +371,7 @@ function Step3({
           type="button"
           onClick={onBack}
           className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.70)" }}
+          style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
         >
           ← Назад
         </button>
@@ -386,7 +379,7 @@ function Step3({
           type="submit"
           disabled={isLoading}
           className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
+          style={{ background: colors.accent, color: colors.bg }}
         >
           {isLoading ? 'Сохранение...' : 'Далее →'}
         </button>
@@ -396,7 +389,7 @@ function Step3({
         type="button"
         onClick={onSkip}
         className="text-xs text-center transition-opacity hover:opacity-80"
-        style={{ color: "rgba(255,255,255,0.28)" }}
+        style={{ color: colors.textDim }}
       >
         Пропустить, добавлю позже
       </button>
@@ -424,12 +417,12 @@ function Step4({
       <div className="text-center">
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 8px 24px rgba(167,139,250,.40)" }}
+          style={{ background: colors.accent, color: colors.bg }}
         >
           <Rocket size={28} color="#fff" />
         </div>
         <h1 className="text-xl font-bold text-white mb-1">Почти готово!</h1>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.40)" }}>
+        <p className="text-sm" style={{ color: colors.textMuted }}>
           Отправьте магазин <span style={{ color: "#A78BFA" }}>{storeName}</span> на проверку — после одобрения он станет доступен покупателям
         </p>
       </div>
@@ -444,7 +437,7 @@ function Step4({
           <div key={label} className="flex items-center gap-3">
             <div
               className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: done ? "rgba(52,211,153,.20)" : "rgba(255,255,255,0.06)", border: done ? "1px solid rgba(52,211,153,.40)" : "1px solid rgba(255,255,255,0.10)" }}
+              style={{ background: done ? "rgba(52,211,153,.20)" : colors.surfaceMuted, border: done ? "1px solid rgba(52,211,153,.40)" : `1px solid ${colors.border}` }}
             >
               {done && (
                 <svg viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth={2.5} className="w-3 h-3">
@@ -452,7 +445,7 @@ function Step4({
                 </svg>
               )}
             </div>
-            <span className="text-sm" style={{ color: done ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.35)" }}>
+            <span className="text-sm" style={{ color: done ? colors.textPrimary : colors.textDim }}>
               {label}
             </span>
           </div>
@@ -466,14 +459,14 @@ function Step4({
           onClick={onSubmit}
           disabled={isLoading}
           className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
+          style={{ background: colors.accent, color: colors.bg }}
         >
           {isLoading ? 'Отправка...' : 'Отправить на проверку'}
         </button>
         <button
           onClick={onSkip}
           className="text-xs text-center transition-opacity hover:opacity-80"
-          style={{ color: "rgba(255,255,255,0.28)" }}
+          style={{ color: colors.textDim }}
         >
           Сделаю позже, перейти в дашборд
         </button>
@@ -590,7 +583,7 @@ export default function OnboardingPage() {
       <div className="flex items-center gap-2.5 mb-6">
         <div
           className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
+          style={{ background: colors.accent }}
         >
           <ShoppingCart size={16} color="#fff" />
         </div>

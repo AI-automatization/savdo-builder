@@ -68,14 +68,7 @@ function descriptionPlaceholder(slug?: string | null): string {
   return 'Подробное описание товара...';
 }
 
-// ── Glass tokens ──────────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.07)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.11)",
-} as const;
+import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 
 // ── Form types ────────────────────────────────────────────────────────────────
 
@@ -92,7 +85,7 @@ interface CreateProductForm {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span className="block text-xs font-semibold mb-1.5" style={{ color: "rgba(255,255,255,0.55)" }}>
+    <span className="block text-xs font-semibold mb-1.5" style={{ color: colors.textMuted }}>
       {children}
     </span>
   );
@@ -100,7 +93,7 @@ function Label({ children }: { children: React.ReactNode }) {
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-xs" style={{ color: "#f87171" }}>{message}</p>;
+  return <p className="mt-1 text-xs" style={{ color: colors.danger }}>{message}</p>;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -151,16 +144,13 @@ export default function CreateProductPage() {
     router.push('/products');
   }
 
-  const inputStyle = {
-    background:   "rgba(255,255,255,0.06)",
-    border:       "1px solid rgba(255,255,255,0.13)",
-    color:        "#fff",
-    borderRadius: "0.75rem",
-    outline:      "none",
+  const inputStyle: React.CSSProperties = {
+    ...inputBase,
+    borderRadius: "0.5rem",
     width:        "100%",
     padding:      "0.625rem 0.875rem",
     fontSize:     "0.875rem",
-  } as const;
+  };
 
   const inputFocusClass = "focus:ring-0 focus:outline-none";
 
@@ -170,23 +160,23 @@ export default function CreateProductPage() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => router.back()}
-          className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80"
-          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)" }}
+          className="w-8 h-8 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+          style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
           aria-label="Назад"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-white">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: colors.textPrimary }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
         </button>
         <div>
-          <h1 className="text-xl font-bold text-white">Новый товар</h1>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Заполните основную информацию</p>
+          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Новый товар</h1>
+          <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>Заполните основную информацию</p>
         </div>
       </div>
 
       {/* Form card */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="rounded-2xl p-6 flex flex-col gap-5" style={glass}>
+        <div className="rounded-lg p-6 flex flex-col gap-5" style={card}>
 
           {/* Photo + main fields row */}
           <div className="flex items-start gap-4">
@@ -200,7 +190,7 @@ export default function CreateProductPage() {
             <div className="flex-1 flex flex-col gap-4">
               {/* Title */}
               <div>
-                <Label>Название <span style={{ color: "#f87171" }}>*</span></Label>
+                <Label>Название <span style={{ color: colors.danger }}>*</span></Label>
                 <input
                   className={inputFocusClass}
                   style={inputStyle}
@@ -213,7 +203,7 @@ export default function CreateProductPage() {
               {/* Price + SKU row */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Цена (сум) <span style={{ color: "#f87171" }}>*</span></Label>
+                  <Label>Цена (сум) <span style={{ color: colors.danger }}>*</span></Label>
                   <input
                     type="number"
                     min={1}
@@ -250,14 +240,14 @@ export default function CreateProductPage() {
                 style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
                 {...register('globalCategoryId')}
               >
-                <option value="" style={{ background: '#1a1d2e' }}>— Выберите категорию —</option>
+                <option value="" style={{ background: colors.surface, color: colors.textPrimary }}>— Выберите категорию —</option>
                 {globalCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
+                  <option key={cat.id} value={cat.id} style={{ background: colors.surface, color: colors.textPrimary }}>
                     {cat.name}
                   </option>
                 ))}
               </select>
-              <p className="mt-1.5 text-[11px]" style={{ color: "rgba(255,255,255,0.38)" }}>
+              <p className="mt-1.5 text-[11px]" style={{ color: colors.textDim }}>
                 {pickedCategory
                   ? 'Покупателю товар появится в этой категории и попадёт под её фильтры.'
                   : 'Можно выбрать любую — одежда, обувь, электроника, мебель, книги и т.д. От выбора зависит, где товар увидят покупатели.'}
@@ -286,9 +276,9 @@ export default function CreateProductPage() {
                 className={inputFocusClass}
                 style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
               >
-                <option value="" style={{ background: '#1a1d2e' }}>— Без раздела —</option>
+                <option value="" style={{ background: colors.surface, color: colors.textPrimary }}>— Без раздела —</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
+                  <option key={cat.id} value={cat.id} style={{ background: colors.surface, color: colors.textPrimary }}>
                     {cat.name}
                   </option>
                 ))}
@@ -299,21 +289,24 @@ export default function CreateProductPage() {
           {/* Visible toggle */}
           <div className="flex items-center justify-between py-1">
             <div>
-              <p className="text-sm font-medium text-white">Показывать в магазине</p>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>Показывать в магазине</p>
+              <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
                 Покупатели смогут видеть товар
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" {...register('isVisible')} />
               <div
-                className="w-11 h-6 rounded-full transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-5 after:w-5 after:transition-all after:bg-white"
+                className="w-11 h-6 rounded-full transition-colors peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-5 after:w-5 after:transition-transform"
                 style={{
-                  background: "rgba(255,255,255,0.15)",
+                  background: colors.surfaceElevated,
+                  border: `1px solid ${colors.border}`,
                 }}
               >
                 <style>{`
-                  input:checked + div { background: linear-gradient(135deg, #7C3AED, #A78BFA); }
+                  .peer:checked + div { background: ${colors.accent}; border-color: ${colors.accentBorder}; }
+                  .peer + div::after { background: ${colors.textMuted}; }
+                  .peer:checked + div::after { background: ${colors.bg}; }
                 `}</style>
               </div>
             </label>
@@ -323,8 +316,8 @@ export default function CreateProductPage() {
         {/* Error banner */}
         {create.isError && (
           <div
-            className="mt-4 px-4 py-3 rounded-xl text-sm"
-            style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5" }}
+            className="mt-4 px-4 py-3 rounded-md text-sm"
+            style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.25)', color: colors.danger }}
           >
             Не удалось создать товар. Попробуйте ещё раз.
           </div>
@@ -335,16 +328,16 @@ export default function CreateProductPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.70)" }}
+            className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-colors hover:opacity-80"
+            style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
           >
             Отмена
           </button>
           <button
             type="submit"
             disabled={isSubmitting || create.isPending}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
+            className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+            style={{ background: colors.accent, color: colors.bg }}
           >
             {create.isPending ? 'Создание...' : 'Создать товар'}
           </button>

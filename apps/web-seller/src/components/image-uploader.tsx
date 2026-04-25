@@ -6,6 +6,7 @@ import axios from 'axios';
 import { uploadDirect } from '../lib/api/media.api';
 import type { MediaPurpose } from '../lib/api/media.api';
 import { AlertTriangle, Camera, X } from 'lucide-react';
+import { colors } from '@/lib/styles';
 
 function describeUploadError(err: unknown): string {
   if (axios.isAxiosError(err)) {
@@ -130,9 +131,9 @@ export function ImageUploader({
         style={{ ...base, background: 'rgba(248,113,113,.08)', border: '2px dashed rgba(248,113,113,.50)', gap: 8, padding: 16 }}
         onClick={() => { setError(null); inputRef.current?.click(); }}
       >
-        <AlertTriangle size={28} style={{ color: 'rgba(248,113,113,.85)' }} />
-        <span style={{ fontSize: 11, color: 'rgba(248,113,113,.85)', textAlign: 'center', lineHeight: 1.4 }}>{error}</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(248,113,113,.85)', background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.25)', borderRadius: 8, padding: '4px 10px' }}>
+        <AlertTriangle size={28} style={{ color: colors.danger }} />
+        <span style={{ fontSize: 11, color: colors.danger, textAlign: 'center', lineHeight: 1.4 }}>{error}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: colors.danger, background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.25)', borderRadius: 6, padding: '4px 10px' }}>
           Попробовать снова
         </span>
         <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
@@ -142,12 +143,12 @@ export function ImageUploader({
 
   if (progress !== null) {
     return (
-      <div style={{ ...base, background: 'rgba(255,255,255,.06)', border: '2px dashed rgba(167,139,250,.40)', gap: 10 }}>
+      <div style={{ ...base, background: colors.surfaceSunken, border: `2px dashed ${colors.accentBorder}`, gap: 10 }}>
         <style>{`@keyframes sp{to{transform:rotate(360deg)}}`}</style>
-        <div style={{ width: 32, height: 32, border: '3px solid rgba(167,139,250,.20)', borderTopColor: '#A78BFA', borderRadius: '50%', animation: 'sp .8s linear infinite' }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#A78BFA' }}>{progress}%</span>
-        <div style={{ width: '80%', height: 4, background: 'rgba(167,139,250,.2)', borderRadius: 2 }}>
-          <div style={{ width: `${progress}%`, height: '100%', background: '#A78BFA', borderRadius: 2, transition: 'width .1s' }} />
+        <div style={{ width: 32, height: 32, border: `3px solid ${colors.accentMuted}`, borderTopColor: colors.accent, borderRadius: '50%', animation: 'sp .8s linear infinite' }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: colors.accent }}>{progress}%</span>
+        <div style={{ width: '80%', height: 4, background: colors.accentMuted, borderRadius: 2 }}>
+          <div style={{ width: `${progress}%`, height: '100%', background: colors.accent, borderRadius: 2, transition: 'width .1s' }} />
         </div>
       </div>
     );
@@ -155,13 +156,13 @@ export function ImageUploader({
 
   if (displayUrl) {
     return (
-      <div style={{ ...base, border: '2px solid rgba(167,139,250,.25)', background: '#1a1d2e' }} onClick={() => inputRef.current?.click()}>
+      <div style={{ ...base, border: `2px solid ${colors.accentBorder}`, background: colors.surface }} onClick={() => inputRef.current?.click()}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={displayUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         <button
           type="button"
           onClick={handleRemove}
-          style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: 'rgba(0,0,0,.65)', border: '1px solid rgba(255,255,255,.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'rgba(255,255,255,.85)', cursor: 'pointer' }}
+          style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: 'rgba(0,0,0,.65)', border: `1px solid ${colors.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: colors.textPrimary, cursor: 'pointer' }}
         >
           <X size={14} />
         </button>
@@ -172,11 +173,11 @@ export function ImageUploader({
 
   return (
     <div
-      style={{ ...base, background: 'rgba(255,255,255,.06)', border: '2px dashed rgba(255,255,255,.18)', gap: 8 }}
+      style={{ ...base, background: colors.surfaceSunken, border: `2px dashed ${colors.border}`, gap: 8 }}
       onClick={() => inputRef.current?.click()}
     >
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(167,139,250,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={20} style={{ color: '#A78BFA' }} /></div>
-      <span style={{ fontSize: 12, color: 'rgba(255,255,255,.38)', fontWeight: 500, textAlign: 'center', lineHeight: 1.4 }}>Добавить<br />фото</span>
+      <div style={{ width: 40, height: 40, borderRadius: 8, background: colors.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={20} style={{ color: colors.accent }} /></div>
+      <span style={{ fontSize: 12, color: colors.textDim, fontWeight: 500, textAlign: 'center', lineHeight: 1.4 }}>Добавить<br />фото</span>
       <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
     </div>
   );

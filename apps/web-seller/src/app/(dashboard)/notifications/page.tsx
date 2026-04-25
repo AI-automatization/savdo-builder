@@ -5,15 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useNotifications, useReadAll } from '../../../hooks/use-notifications';
 import type { NotificationItem } from '../../../lib/api/notifications.api';
 import { ShoppingCart, CheckCircle, AlertTriangle, Package, Bell } from 'lucide-react';
-
-// ── Glass token ───────────────────────────────────────────────────────────────
-
-const glass = {
-  background: 'rgba(255,255,255,0.07)',
-  backdropFilter: 'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
-  border: '1px solid rgba(255,255,255,0.11)',
-} as const;
+import { card, cardMuted, colors } from '@/lib/styles';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -29,10 +21,10 @@ function relativeTime(iso: string): string {
 
 function NotifIcon({ title }: { title: string }) {
   const t = title.toLowerCase();
-  if (t.includes('з��каз') || t.includes('order')) return <ShoppingCart size={18} style={{ color: '#A78BFA' }} />;
-  if (t.includes('одобр') || t.includes('approved')) return <CheckCircle size={18} style={{ color: '#22C55E' }} />;
-  if (t.includes('откло') || t.includes('reject')) return <AlertTriangle size={18} style={{ color: '#F59E0B' }} />;
-  return <Package size={18} style={{ color: '#A78BFA' }} />;
+  if (t.includes('заказ') || t.includes('order')) return <ShoppingCart size={18} style={{ color: colors.accent }} />;
+  if (t.includes('одобр') || t.includes('approved')) return <CheckCircle size={18} style={{ color: colors.success }} />;
+  if (t.includes('откло') || t.includes('reject')) return <AlertTriangle size={18} style={{ color: colors.warning }} />;
+  return <Package size={18} style={{ color: colors.accent }} />;
 }
 
 const ORDER_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -52,15 +44,23 @@ function NotifRow({ item }: { item: NotificationItem }) {
   return (
     <div
       onClick={handleClick}
-      className="flex items-start gap-4 px-5 py-4 rounded-2xl transition-opacity hover:opacity-80 cursor-pointer"
-      style={item.isRead ? { ...glass, opacity: 0.7 } : { ...glass, background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.20)' }}
+      className="flex items-start gap-4 px-5 py-4 rounded-lg transition-colors cursor-pointer"
+      style={
+        item.isRead
+          ? cardMuted
+          : { background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }
+      }
+      onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = item.isRead ? colors.surfaceMuted : colors.accentMuted;
+      }}
     >
       <span className="flex-shrink-0 mt-0.5"><NotifIcon title={item.title} /></span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white">{item.title}</p>
-        <p className="text-xs mt-0.5 text-white/50 leading-relaxed">{item.body}</p>
+        <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>{item.title}</p>
+        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: colors.textMuted }}>{item.body}</p>
       </div>
-      <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: 'rgba(255,255,255,0.30)' }}>
+      <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: colors.textDim }}>
         {relativeTime(item.createdAt)}
       </span>
     </div>
@@ -73,11 +73,11 @@ function Skeleton() {
   return (
     <div className="flex flex-col gap-3">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-4 px-5 py-4 rounded-2xl animate-pulse" style={glass}>
-          <div className="w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        <div key={i} className="flex items-start gap-4 px-5 py-4 rounded-lg animate-pulse" style={card}>
+          <div className="w-7 h-7 rounded-md flex-shrink-0" style={{ background: colors.surfaceElevated }} />
           <div className="flex-1 flex flex-col gap-2">
-            <div className="h-3.5 w-40 rounded" style={{ background: 'rgba(255,255,255,0.08)' }} />
-            <div className="h-3 w-full rounded" style={{ background: 'rgba(255,255,255,0.05)' }} />
+            <div className="h-3.5 w-40 rounded" style={{ background: colors.surfaceElevated }} />
+            <div className="h-3 w-full rounded" style={{ background: colors.surfaceMuted }} />
           </div>
         </div>
       ))}
@@ -107,16 +107,16 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Уведомления</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Уведомления</h1>
+          <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
             Последние {items.length} уведомлений
           </p>
         </div>
         <button
           onClick={() => readAll.mutate()}
           disabled={readAll.isPending}
-          className="text-xs px-3 py-1.5 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-40"
-          style={{ background: 'rgba(167,139,250,0.15)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)' }}
+          className="text-xs px-3 py-1.5 rounded-md transition-opacity hover:opacity-80 disabled:opacity-40"
+          style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
         >
           Прочитать все
         </button>
@@ -128,11 +128,11 @@ export default function NotificationsPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className="text-xs px-4 py-1.5 rounded-xl transition-all"
+            className="text-xs px-4 py-1.5 rounded-md transition-colors"
             style={
               tab === t
-                ? { background: 'rgba(167,139,250,0.20)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.30)' }
-                : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid transparent' }
+                ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
+                : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
             }
           >
             {t === 'all' ? 'Все' : 'Непрочитанные'}
@@ -145,18 +145,18 @@ export default function NotificationsPage() {
         <Skeleton />
       ) : isError ? (
         <div
-          className="rounded-2xl px-5 py-4 text-sm"
-          style={{ background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.20)', color: 'rgba(248,113,113,0.85)' }}
+          className="rounded-lg px-5 py-4 text-sm"
+          style={{ background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.25)', color: colors.danger }}
         >
           Не удалось загрузить уведомления. Попробуйте обновить страницу.
         </div>
       ) : filtered.length === 0 ? (
         <div
-          className="rounded-2xl px-5 py-10 text-center"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="rounded-lg px-5 py-10 text-center"
+          style={cardMuted}
         >
-          <Bell size={28} style={{ color: 'rgba(255,255,255,0.4)', margin: '0 auto 8px' }} />
-          <p className="text-sm font-medium text-white/60">Уведомлений пока нет</p>
+          <Bell size={28} style={{ color: colors.textDim, margin: '0 auto 8px' }} />
+          <p className="text-sm font-medium" style={{ color: colors.textMuted }}>Уведомлений пока нет</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

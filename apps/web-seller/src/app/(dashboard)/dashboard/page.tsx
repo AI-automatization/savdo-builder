@@ -8,32 +8,17 @@ import { useSellerSummary } from '../../../hooks/use-analytics';
 import { OrderStatus, StoreStatus } from 'types';
 import { track } from '../../../lib/analytics';
 import { Package, Eye, Link2, Clock, Plus, ClipboardList, BarChart3 } from 'lucide-react';
-
-// ── Glass tokens ──────────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.08)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.13)",
-} as const;
-
-const glassDim = {
-  background:           "rgba(255,255,255,0.04)",
-  backdropFilter:       "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border:               "1px solid rgba(255,255,255,0.08)",
-} as const;
+import { card, cardMuted, colors } from '@/lib/styles';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  [OrderStatus.PENDING]:    "rgba(251,191,36,.80)",
-  [OrderStatus.CONFIRMED]:  "rgba(96,165,250,.80)",
-  [OrderStatus.PROCESSING]: "rgba(167,139,250,.90)",
-  [OrderStatus.SHIPPED]:    "rgba(167,139,250,.90)",
-  [OrderStatus.DELIVERED]:  "rgba(52,211,153,.80)",
-  [OrderStatus.CANCELLED]:  "rgba(239,68,68,.80)",
+  [OrderStatus.PENDING]:    colors.warning,
+  [OrderStatus.CONFIRMED]:  "#60A5FA",
+  [OrderStatus.PROCESSING]: colors.accent,
+  [OrderStatus.SHIPPED]:    colors.accent,
+  [OrderStatus.DELIVERED]:  colors.success,
+  [OrderStatus.CANCELLED]:  colors.danger,
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -70,8 +55,8 @@ function fmt(n: unknown) {
 function Skeleton({ className }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded-lg ${className}`}
-      style={{ background: "rgba(255,255,255,0.10)" }}
+      className={`animate-pulse rounded-md ${className}`}
+      style={{ background: colors.surfaceElevated }}
     />
   );
 }
@@ -102,17 +87,17 @@ export default function DashboardPage() {
 
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Добро пожаловать</h1>
-        <div className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.42)" }}>
+        <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Добро пожаловать</h1>
+        <div className="text-sm mt-1" style={{ color: colors.textMuted }}>
           {storeLoading ? (
             <Skeleton className="h-4 w-40 inline-block" />
           ) : store ? (
-            <>Магазин: <span style={{ color: "#A78BFA" }}>{store.name}</span>
-            {' '}<span className="text-xs" style={{ color: "rgba(255,255,255,0.30)" }}>
+            <>Магазин: <span style={{ color: colors.accent }}>{store.name}</span>
+            {' '}<span className="text-xs" style={{ color: colors.textDim }}>
               · {STORE_STATUS_LABELS[store.status] ?? store.status}
             </span></>
           ) : (
-            <span style={{ color: "#f87171" }}>Магазин не найден</span>
+            <span style={{ color: colors.danger }}>Магазин не найден</span>
           )}
         </div>
       </div>
@@ -120,15 +105,15 @@ export default function DashboardPage() {
       {/* Metrics grid */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Orders today (pending) */}
-        <div className="rounded-2xl p-4" style={glass}>
+        <div className="rounded-lg p-4" style={card}>
           <div className="flex items-start justify-between mb-3">
-            <Package size={24} style={{ color: '#A78BFA' }} />
+            <Package size={22} style={{ color: colors.accent }} />
             {ordersLoading ? (
               <Skeleton className="h-5 w-8" />
             ) : pendingCount > 0 ? (
               <span
                 className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(251,191,36,.15)", color: "#fbbf24" }}
+                style={{ background: "rgba(251,191,36,.15)", color: colors.warning }}
               >
                 +{pendingCount}
               </span>
@@ -137,36 +122,39 @@ export default function DashboardPage() {
           {ordersLoading ? (
             <Skeleton className="h-6 w-12 mb-1" />
           ) : (
-            <p className="text-lg font-bold text-white leading-none">{ordersData?.meta.total ?? 0}</p>
+            <p className="text-lg font-bold leading-none" style={{ color: colors.textPrimary }}>{ordersData?.meta.total ?? 0}</p>
           )}
-          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Всего заказов</p>
+          <p className="text-xs mt-1" style={{ color: colors.textDim }}>Всего заказов</p>
         </div>
 
         {/* Views */}
-        <div className="rounded-2xl p-4" style={glass}>
+        <div className="rounded-lg p-4" style={card}>
           <div className="flex items-start justify-between mb-3">
-            <Eye size={24} style={{ color: '#A78BFA' }} />
+            <Eye size={22} style={{ color: colors.accent }} />
           </div>
           {summaryLoading ? (
             <Skeleton className="h-6 w-16 mb-1" />
           ) : (
-            <p className="text-lg font-bold text-white leading-none">
+            <p className="text-lg font-bold leading-none" style={{ color: colors.textPrimary }}>
               {(summary?.views ?? 0).toLocaleString('ru-RU')}
             </p>
           )}
-          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Просмотров за 30 дней</p>
+          <p className="text-xs mt-1" style={{ color: colors.textDim }}>Просмотров за 30 дней</p>
         </div>
 
         {/* Store slug — copy link */}
-        <div
-          className="rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-80 active:scale-[0.98]"
-          style={glass}
+        <button
+          type="button"
+          className="rounded-lg p-4 text-left cursor-pointer transition-colors active:scale-[0.99]"
+          style={{ ...card, color: colors.textPrimary }}
           onClick={handleCopyLink}
+          onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = colors.surface; }}
         >
           <div className="flex items-start justify-between mb-3">
-            <Link2 size={24} style={{ color: '#A78BFA' }} />
+            <Link2 size={22} style={{ color: colors.accent }} />
             {copied && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(52,211,153,.15)", color: "#34d399" }}>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(52,211,153,.15)", color: colors.success }}>
                 Скопировано
               </span>
             )}
@@ -174,38 +162,38 @@ export default function DashboardPage() {
           {storeLoading ? (
             <Skeleton className="h-6 w-20 mb-1" />
           ) : store ? (
-            <p className="text-sm font-bold text-white leading-none truncate">/{store.slug}</p>
+            <p className="text-sm font-bold leading-none truncate" style={{ color: colors.textPrimary }}>/{store.slug}</p>
           ) : (
-            <p className="text-sm font-bold leading-none" style={{ color: "rgba(255,255,255,0.30)" }}>—</p>
+            <p className="text-sm font-bold leading-none" style={{ color: colors.textDim }}>—</p>
           )}
-          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Нажми чтобы скопировать</p>
-        </div>
+          <p className="text-xs mt-1" style={{ color: colors.textDim }}>Нажми чтобы скопировать</p>
+        </button>
 
         {/* Pending orders */}
-        <div className="rounded-2xl p-4" style={glass}>
+        <div className="rounded-lg p-4" style={card}>
           <div className="flex items-start justify-between mb-3">
-            <Clock size={24} style={{ color: '#A78BFA' }} />
+            <Clock size={22} style={{ color: colors.accent }} />
           </div>
           {ordersLoading ? (
             <Skeleton className="h-6 w-8 mb-1" />
           ) : (
-            <p className="text-lg font-bold text-white leading-none">{pendingCount}</p>
+            <p className="text-lg font-bold leading-none" style={{ color: colors.textPrimary }}>{pendingCount}</p>
           )}
-          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>Ожидают обработки</p>
+          <p className="text-xs mt-1" style={{ color: colors.textDim }}>Ожидают обработки</p>
         </div>
       </div>
 
       {/* Recent orders */}
-      <div className="rounded-2xl overflow-hidden" style={glass}>
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <p className="text-sm font-semibold text-white">Последние заказы</p>
-          <Link href="/orders" className="text-xs font-medium" style={{ color: "#A78BFA" }}>Все заказы →</Link>
+      <div className="rounded-lg overflow-hidden" style={card}>
+        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
+          <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Последние заказы</p>
+          <Link href="/orders" className="text-xs font-medium" style={{ color: colors.accent }}>Все заказы →</Link>
         </div>
 
         {ordersLoading ? (
           <div className="flex flex-col gap-0">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+              <div key={i} className="flex items-center gap-4 px-5 py-3" style={{ borderBottom: `1px solid ${colors.divider}` }}>
                 <Skeleton className="h-4 w-12" />
                 <Skeleton className="h-4 flex-1" />
                 <Skeleton className="h-4 w-24" />
@@ -214,27 +202,34 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : orders.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>
+          <div className="px-5 py-8 text-center text-sm" style={{ color: colors.textDim }}>
             Заказов пока нет
           </div>
         ) : (
           <div>
             {orders.map((o) => (
-              <Link key={o.id} href={`/orders/${o.id}`} className="flex items-center gap-4 px-5 py-3 transition-opacity hover:opacity-75" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                <span className="text-xs font-mono shrink-0" style={{ color: "rgba(255,255,255,0.30)" }}>
+              <Link
+                key={o.id}
+                href={`/orders/${o.id}`}
+                className="flex items-center gap-4 px-5 py-3 transition-colors"
+                style={{ borderBottom: `1px solid ${colors.divider}` }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span className="text-xs font-mono shrink-0" style={{ color: colors.textDim }}>
                   #{o.id.slice(-4).toUpperCase()}
                 </span>
-                <span className="flex-1 text-sm text-white truncate">
+                <span className="flex-1 text-sm truncate" style={{ color: colors.textPrimary }}>
                   {o.deliveryAddress?.city ?? (o as unknown as { city?: string | null }).city ?? '—'}
                 </span>
-                <span className="text-sm font-medium shrink-0" style={{ color: "#A78BFA" }}>
+                <span className="text-sm font-medium shrink-0" style={{ color: colors.accent }}>
                   {fmt(o.totalAmount)}
                 </span>
                 <span
                   className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full shrink-0"
                   style={{
-                    background: (STATUS_COLORS[o.status] ?? "rgba(255,255,255,.15)") + "22",
-                    color: STATUS_COLORS[o.status] ?? "rgba(255,255,255,.60)",
+                    background: (STATUS_COLORS[o.status] ?? colors.textDim) + "22",
+                    color: STATUS_COLORS[o.status] ?? colors.textMuted,
                   }}
                 >
                   {STATUS_LABELS[o.status] ?? o.status}
@@ -257,10 +252,12 @@ export default function DashboardPage() {
             <Link
               key={a.label}
               href={a.href}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white transition-all hover:opacity-80"
-              style={glassDim}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors"
+              style={{ ...cardMuted, color: colors.textPrimary }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = colors.surfaceMuted; }}
             >
-              <Icon size={20} style={{ color: '#A78BFA' }} />
+              <Icon size={18} style={{ color: colors.accent }} />
               {a.label}
             </Link>
           );

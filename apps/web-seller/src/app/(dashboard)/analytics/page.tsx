@@ -3,15 +3,7 @@
 import { useSellerSummary } from '@/hooks/use-analytics';
 import { Star } from 'lucide-react';
 import { useSellerProduct } from '@/hooks/use-products';
-
-// ── Glass token ────────────────────────────────────────────────────────────────
-
-const glass = {
-  background: 'rgba(255,255,255,0.08)',
-  backdropFilter: 'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
-  border: '1px solid rgba(255,255,255,0.13)',
-} as const;
+import { card, cardMuted, colors } from '@/lib/styles';
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
 
@@ -31,22 +23,22 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-3" style={glass}>
+    <div className="rounded-lg p-5 flex flex-col gap-3" style={card}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
           {label}
         </span>
-        <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: color + '22', color }}>
+        <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: color + '22', color }}>
           {icon}
         </span>
       </div>
       {loading ? (
-        <div className="h-8 w-24 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        <div className="h-8 w-24 rounded-md animate-pulse" style={{ background: colors.surfaceElevated }} />
       ) : (
-        <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
+        <p className="text-3xl font-bold tracking-tight" style={{ color: colors.textPrimary }}>{value}</p>
       )}
       {sub && !loading && (
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{sub}</p>
+        <p className="text-xs" style={{ color: colors.textDim }}>{sub}</p>
       )}
     </div>
   );
@@ -69,14 +61,14 @@ function TopProductCard({
   const title = product?.title ?? (productId ? `#${productId.slice(-6).toUpperCase()}` : null);
 
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-3" style={glass}>
+    <div className="rounded-lg p-5 flex flex-col gap-3" style={card}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
           Топ товар
         </span>
         <span
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
-          style={{ background: 'rgba(251,191,36,0.15)', color: 'rgba(251,191,36,0.85)' }}
+          className="w-8 h-8 rounded-md flex items-center justify-center text-sm"
+          style={{ background: 'rgba(251,191,36,0.15)', color: colors.warning }}
         >
           <Star size={16} />
         </span>
@@ -84,18 +76,18 @@ function TopProductCard({
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
-          <div className="h-6 w-40 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
-          <div className="h-3.5 w-24 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
+          <div className="h-6 w-40 rounded-md animate-pulse" style={{ background: colors.surfaceElevated }} />
+          <div className="h-3.5 w-24 rounded-md animate-pulse" style={{ background: colors.surfaceMuted }} />
         </div>
       ) : title ? (
         <>
-          <p className="text-xl font-bold text-white leading-snug">{title}</p>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <p className="text-xl font-bold leading-snug" style={{ color: colors.textPrimary }}>{title}</p>
+          <p className="text-xs" style={{ color: colors.textDim }}>
             {views.toLocaleString('ru-RU')} просмотров за 30 дней
           </p>
         </>
       ) : (
-        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <p className="text-sm" style={{ color: colors.textDim }}>
           Недостаточно данных
         </p>
       )}
@@ -112,16 +104,16 @@ export default function AnalyticsPage() {
     <div className="flex flex-col gap-6 max-w-3xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-white">Аналитика</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
+        <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Аналитика</h1>
+        <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
           Последние 30 дней
         </p>
       </div>
 
       {isError && (
         <div
-          className="rounded-2xl px-5 py-4 text-sm"
-          style={{ background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.20)', color: 'rgba(248,113,113,0.85)' }}
+          className="rounded-lg px-5 py-4 text-sm"
+          style={{ background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.25)', color: colors.danger }}
         >
           Не удалось загрузить аналитику. Попробуйте обновить страницу.
         </div>
@@ -133,7 +125,7 @@ export default function AnalyticsPage() {
           label="Просмотры"
           value={data ? data.views.toLocaleString('ru-RU') : '—'}
           sub="товаров и магазина"
-          color="rgba(167,139,250,0.85)"
+          color={colors.accent}
           loading={isLoading}
           icon={
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
@@ -147,7 +139,7 @@ export default function AnalyticsPage() {
           label="Конверсия"
           value={data ? `${data.conversionRate}%` : '—'}
           sub="просмотр → заказ"
-          color="rgba(52,211,153,0.85)"
+          color={colors.success}
           loading={isLoading}
           icon={
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
@@ -167,11 +159,11 @@ export default function AnalyticsPage() {
       {/* Empty state hint */}
       {!isLoading && !isError && data?.views === 0 && (
         <div
-          className="rounded-2xl px-5 py-6 text-center"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="rounded-lg px-5 py-6 text-center"
+          style={cardMuted}
         >
-          <p className="text-sm font-medium text-white/60">Пока нет данных</p>
-          <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.28)' }}>
+          <p className="text-sm font-medium" style={{ color: colors.textMuted }}>Пока нет данных</p>
+          <p className="text-xs mt-1" style={{ color: colors.textDim }}>
             Поделитесь ссылкой на магазин — статистика появится после первых просмотров
           </p>
         </div>

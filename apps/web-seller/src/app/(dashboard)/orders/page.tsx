@@ -7,21 +7,15 @@ import { X, Package } from 'lucide-react';
 import type { OrderListItem } from 'types';
 import { useSellerOrders, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
-
-const glass = {
-  background: 'rgba(255,255,255,0.08)',
-  backdropFilter: 'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
-  border: '1px solid rgba(255,255,255,0.13)',
-} as const;
+import { card, colors, inputStyle } from '@/lib/styles';
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }> = {
-  [OrderStatus.PENDING]:    { label: 'Ожидает',      color: 'rgba(251,191,36,.85)' },
-  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён',  color: 'rgba(96,165,250,.85)' },
-  [OrderStatus.PROCESSING]: { label: 'Обработка',    color: 'rgba(167,139,250,.90)' },
-  [OrderStatus.SHIPPED]:    { label: 'В пути',        color: 'rgba(129,140,248,.85)' },
-  [OrderStatus.DELIVERED]:  { label: 'Доставлен',    color: 'rgba(52,211,153,.85)' },
-  [OrderStatus.CANCELLED]:  { label: 'Отменён',      color: 'rgba(248,113,113,.85)' },
+  [OrderStatus.PENDING]:    { label: 'Ожидает',      color: colors.warning },
+  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён',  color: '#60A5FA' },
+  [OrderStatus.PROCESSING]: { label: 'Обработка',    color: colors.accent },
+  [OrderStatus.SHIPPED]:    { label: 'В пути',        color: '#818CF8' },
+  [OrderStatus.DELIVERED]:  { label: 'Доставлен',    color: colors.success },
+  [OrderStatus.CANCELLED]:  { label: 'Отменён',      color: colors.danger },
 };
 
 // Seller-allowed forward transitions per state
@@ -86,23 +80,22 @@ function CancelModal({
   const [reason, setReason] = useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4" style={glass}>
-        <h2 className="text-lg font-bold text-white">Отменить заказ #{shortId(order.id)}</h2>
-        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.65)' }}>
+      <div className="w-full max-w-md rounded-lg p-6 flex flex-col gap-4 shadow-2xl" style={card}>
+        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>Отменить заказ #{shortId(order.id)}</h2>
+        <p className="text-sm" style={{ color: colors.textMuted }}>
           {(() => { const a = getAddr(order); return `${a.city ?? '—'}, ${a.street ?? '—'}`; })()}
         </p>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Причина отмены <span style={{ color: 'rgba(248,113,113,.85)' }}>*</span>
+          <label className="text-xs font-medium" style={{ color: colors.textMuted }}>
+            Причина отмены <span style={{ color: colors.danger }}>*</span>
           </label>
           <textarea
-            className="w-full rounded-xl px-3.5 py-2.5 text-sm text-white resize-none focus:outline-none focus:ring-2"
+            className="w-full rounded-lg px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2"
             style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.13)',
+              ...inputStyle,
               minHeight: 80,
-              '--tw-ring-color': 'rgba(167,139,250,0.50)',
+              '--tw-ring-color': colors.accentBorder,
             } as React.CSSProperties}
             placeholder="Нет в наличии, покупатель не отвечает..."
             value={reason}
@@ -113,16 +106,16 @@ function CancelModal({
         <div className="flex gap-2.5 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm font-medium"
-            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.65)' }}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
           >
             Назад
           </button>
           <button
             onClick={() => reason.trim() && onConfirm(reason.trim())}
             disabled={!reason.trim() || loading}
-            className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
-            style={{ background: 'rgba(248,113,113,0.22)', color: 'rgba(248,113,113,.95)' }}
+            className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-opacity"
+            style={{ background: 'rgba(248,113,113,0.22)', color: colors.danger, border: `1px solid rgba(248,113,113,0.35)` }}
           >
             {loading ? 'Отмена...' : 'Отменить заказ'}
           </button>
@@ -152,45 +145,47 @@ function OrderRow({
 
   return (
     <div
-      className="flex flex-col gap-3 px-5 py-4 sm:grid sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center sm:gap-x-4"
-      style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      className="flex flex-col gap-3 px-5 py-4 sm:grid sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center sm:gap-x-4 transition-colors"
+      style={{ borderBottom: `1px solid ${colors.divider}` }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
     >
       {/* ID */}
-      <Link href={`/orders/${order.id}`} className="hidden sm:block text-xs font-mono transition-opacity hover:opacity-70" style={{ color: 'rgba(255,255,255,0.30)' }}>
+      <Link href={`/orders/${order.id}`} className="hidden sm:block text-xs font-mono transition-opacity hover:opacity-70" style={{ color: colors.textDim }}>
         #{shortId(order.id)}
       </Link>
 
       {/* Preview + address */}
       <div className="flex items-start justify-between gap-2 min-w-0">
-        <Link href={`/orders/${order.id}`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+        <Link href={`/orders/${order.id}`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-90 transition-opacity">
           {/* Thumbnail */}
           <div
-            className="shrink-0 w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+            className="shrink-0 w-11 h-11 rounded-md overflow-hidden flex items-center justify-center"
+            style={{ background: colors.surfaceSunken, border: `1px solid ${colors.border}` }}
           >
             {order.preview?.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={order.preview.imageUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <Package size={18} strokeWidth={1.6} style={{ color: 'rgba(255,255,255,0.28)' }} />
+              <Package size={18} strokeWidth={1.6} style={{ color: colors.textDim }} />
             )}
           </div>
           {/* Text */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
+              <p className="text-sm font-medium truncate" style={{ color: colors.textPrimary }}>
                 {order.preview?.title ?? 'Без товаров'}
               </p>
               {order.preview && order.preview.itemCount > 1 && (
                 <span
                   className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(167,139,250,0.18)', color: 'rgba(167,139,250,0.95)' }}
+                  style={{ background: colors.accentMuted, color: colors.accent }}
                 >
                   +{order.preview.itemCount - 1}
                 </span>
               )}
             </div>
-            <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>
+            <p className="text-xs mt-0.5 truncate" style={{ color: colors.textDim }}>
               {(() => { const a = getAddr(order); return `${a.city ?? '—'} · ${a.street ?? '—'}`; })()} · #{shortId(order.id)}
             </p>
           </div>
@@ -205,7 +200,7 @@ function OrderRow({
       </div>
 
       {/* Amount */}
-      <span className="text-sm font-medium" style={{ color: '#A78BFA' }}>
+      <span className="text-sm font-medium" style={{ color: colors.accent }}>
         {fmt(order.totalAmount)}
       </span>
 
@@ -223,8 +218,8 @@ function OrderRow({
           <button
             onClick={() => onAction(order, next.status)}
             disabled={isLoading}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 transition-opacity"
-            style={{ background: 'rgba(167,139,250,0.18)', color: 'rgba(167,139,250,.95)' }}
+            className="px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+            style={{ background: colors.accent, color: colors.bg }}
           >
             {isLoading ? '...' : next.label}
           </button>
@@ -233,8 +228,8 @@ function OrderRow({
           <button
             onClick={() => onCancel(order)}
             disabled={isLoading}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 transition-opacity"
-            style={{ background: 'rgba(248,113,113,0.12)', color: 'rgba(248,113,113,.80)' }}
+            className="px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+            style={{ background: 'rgba(248,113,113,0.12)', color: colors.danger, border: `1px solid rgba(248,113,113,0.25)` }}
           >
             Отмена
           </button>
@@ -248,9 +243,9 @@ function OrderRow({
 
 function SkeletonRow() {
   return (
-    <div className="flex flex-col gap-2 px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-      <div className="h-3.5 w-32 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.10)' }} />
-      <div className="h-3 w-48 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+    <div className="flex flex-col gap-2 px-5 py-4" style={{ borderBottom: `1px solid ${colors.divider}` }}>
+      <div className="h-3.5 w-32 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
+      <div className="h-3 w-48 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
     </div>
   );
 }
@@ -331,8 +326,8 @@ export default function OrdersPage() {
     <div className="flex flex-col gap-5 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-white">Заказы</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
+        <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Заказы</h1>
+        <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
           {isLoading
             ? 'Загрузка...'
             : q
@@ -349,11 +344,11 @@ export default function OrdersPage() {
             <button
               key={tab.key}
               onClick={() => handleFilterChange(tab.key)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              className="px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors"
               style={
                 active
-                  ? { background: 'rgba(167,139,250,0.25)', color: 'rgba(167,139,250,1)', border: '1px solid rgba(167,139,250,0.35)' }
-                  : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }
+                  ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
+                  : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
               }
             >
               {tab.label}
@@ -363,12 +358,12 @@ export default function OrdersPage() {
         {activeFilter === 'ALL' && (
           <button
             onClick={() => setHideCompleted((v) => !v)}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ml-auto"
+            className="px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors ml-auto"
             title="Скрыть заказы в статусах Доставлен и Отменён"
             style={
               hideCompleted
-                ? { background: 'rgba(52,211,153,0.18)', color: 'rgba(52,211,153,0.95)', border: '1px solid rgba(52,211,153,0.30)' }
-                : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }
+                ? { background: 'rgba(52,211,153,0.18)', color: colors.success, border: '1px solid rgba(52,211,153,0.30)' }
+                : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
             }
           >
             {hideCompleted ? '✓ ' : ''}Скрыть завершённые
@@ -383,11 +378,10 @@ export default function OrdersPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Поиск по № заказа, городу, адресу, товару"
-          className="w-full h-10 pl-10 pr-10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2"
+          className="w-full h-10 pl-10 pr-10 rounded-md text-sm focus:outline-none focus:ring-2"
           style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            '--tw-ring-color': 'rgba(167,139,250,0.50)',
+            ...inputStyle,
+            '--tw-ring-color': colors.accentBorder,
           } as React.CSSProperties}
         />
         <svg
@@ -396,7 +390,7 @@ export default function OrdersPage() {
           stroke="currentColor"
           strokeWidth={1.8}
           className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: 'rgba(255,255,255,0.30)' }}
+          style={{ color: colors.textDim }}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3m1.8-5.7a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
         </svg>
@@ -404,7 +398,7 @@ export default function OrdersPage() {
           <button
             onClick={() => setSearchQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium transition-opacity hover:opacity-70"
-            style={{ color: 'rgba(255,255,255,0.40)' }}
+            style={{ color: colors.textMuted }}
             aria-label="Очистить"
           >
             <X size={14} />
@@ -413,11 +407,11 @@ export default function OrdersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={glass}>
+      <div className="rounded-lg overflow-hidden" style={card}>
         {/* Header row — desktop */}
         <div
           className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
-          style={{ color: 'rgba(255,255,255,0.28)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ color: colors.textDim, background: colors.surfaceMuted, borderBottom: `1px solid ${colors.divider}` }}
         >
           <span>#</span>
           <span>Заказ</span>
@@ -435,14 +429,14 @@ export default function OrdersPage() {
         )}
 
         {isError && (
-          <div className="px-5 py-8 text-center text-sm" style={{ color: 'rgba(248,113,113,.80)' }}>
+          <div className="px-5 py-8 text-center text-sm" style={{ color: colors.danger }}>
             Не удалось загрузить заказы. Попробуйте обновить страницу.
           </div>
         )}
 
         {!isLoading && !isError && orders.length === 0 && (
           <div className="px-5 py-10 text-center">
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <p className="text-sm" style={{ color: colors.textDim }}>
               {q
                 ? `Ничего не найдено по запросу «${searchQuery}». Попробуйте загрузить больше заказов.`
                 : activeFilter === 'ALL'
@@ -468,8 +462,8 @@ export default function OrdersPage() {
         <button
           onClick={() => setPage((p) => p + 1)}
           disabled={isLoadingMore}
-          className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-50"
-          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
+          className="w-full py-3 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+          style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
         >
           {isLoadingMore ? 'Загрузка...' : 'Загрузить ещё'}
         </button>

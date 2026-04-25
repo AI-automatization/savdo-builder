@@ -9,6 +9,7 @@ import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
 import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';
+import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 
 // Keep these in sync with create/page.tsx. When this list grows, extract to
 // lib/product-examples.ts and import in both pages.
@@ -69,14 +70,7 @@ function descriptionPlaceholder(slug?: string | null): string {
   return 'Подробное описание товара...';
 }
 
-// ── Glass tokens ──────────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.07)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border:               "1px solid rgba(255,255,255,0.11)",
-} as const;
+const glass = card;
 
 // ── Form types ────────────────────────────────────────────────────────────────
 
@@ -93,7 +87,7 @@ interface EditProductForm {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span className="block text-xs font-semibold mb-1.5" style={{ color: "rgba(255,255,255,0.55)" }}>
+    <span className="block text-xs font-semibold mb-1.5" style={{ color: colors.textMuted }}>
       {children}
     </span>
   );
@@ -101,12 +95,12 @@ function Label({ children }: { children: React.ReactNode }) {
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-xs" style={{ color: "#f87171" }}>{message}</p>;
+  return <p className="mt-1 text-xs" style={{ color: colors.danger }}>{message}</p>;
 }
 
 function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={`animate-pulse rounded-xl ${className}`} style={{ background: "rgba(255,255,255,0.10)" }} />
+    <div className={`animate-pulse rounded-md ${className}`} style={{ background: colors.surfaceElevated }} />
   );
 }
 
@@ -197,16 +191,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     router.push('/products');
   }
 
-  const inputStyle = {
-    background:   "rgba(255,255,255,0.06)",
-    border:       "1px solid rgba(255,255,255,0.13)",
-    color:        "#fff",
-    borderRadius: "0.75rem",
-    outline:      "none",
+  const inputStyle: React.CSSProperties = {
+    ...inputBase,
+    borderRadius: "0.5rem",
     width:        "100%",
     padding:      "0.625rem 0.875rem",
     fontSize:     "0.875rem",
-  } as const;
+  };
 
   const focusCls = "focus:ring-0 focus:outline-none";
 
@@ -259,7 +250,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         <button
           onClick={() => router.back()}
           className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80"
-          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)" }}
+          style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
           aria-label="Назад"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-white">
@@ -268,7 +259,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         </button>
         <div>
           <h1 className="text-xl font-bold text-white">Редактировать товар</h1>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
             {STATUS_LABELS[product.status] ?? product.status}
           </p>
         </div>
@@ -278,7 +269,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       {isHiddenByAdmin && (
         <div
           className="mb-4 px-4 py-3 rounded-xl text-sm"
-          style={{ background: "rgba(251,191,36,.10)", border: "1px solid rgba(251,191,36,.25)", color: "#fcd34d" }}
+          style={{ background: "rgba(251,191,36,.10)", border: "1px solid rgba(251,191,36,.25)", color: colors.warning }}
         >
           Этот товар скрыт администратором. Обратитесь в поддержку для разъяснений.
         </div>
@@ -317,7 +308,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   </option>
                 ))}
               </select>
-              <p className="mt-1.5 text-[11px]" style={{ color: "rgba(255,255,255,0.38)" }}>
+              <p className="mt-1.5 text-[11px]" style={{ color: colors.textDim }}>
                 {pickedCategory
                   ? 'Товар покажется в этой категории и попадёт под её фильтры.'
                   : 'Выберите что продаёте: одежда, обувь, электроника, мебель, книги и т.д.'}
@@ -401,7 +392,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <div className="flex items-center justify-between py-1">
             <div>
               <p className="text-sm font-medium text-white">Показывать в магазине</p>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
                 Покупатели смогут видеть товар
               </p>
             </div>
@@ -409,9 +400,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               <input type="checkbox" className="sr-only peer" disabled={isHiddenByAdmin} {...register('isVisible')} />
               <div
                 className="w-11 h-6 rounded-full transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-5 after:w-5 after:transition-all after:bg-white"
-                style={{ background: "rgba(255,255,255,0.15)" }}
+                style={{ background: colors.surfaceElevated, border: `1px solid ${colors.border}` }}
               >
-                <style>{`input:checked + div { background: linear-gradient(135deg, #7C3AED, #A78BFA); }`}</style>
+                <style>{`input:checked + div { background: ${colors.accent}; border-color: ${colors.accentBorder}; }`}</style>
               </div>
             </label>
           </div>
@@ -421,7 +412,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         {update.isError && (
           <div
             className="mt-4 px-4 py-3 rounded-xl text-sm"
-            style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5" }}
+            style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: colors.danger }}
           >
             Не удалось сохранить изменения. Попробуйте ещё раз.
           </div>
@@ -433,7 +424,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             type="button"
             onClick={() => router.back()}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.70)" }}
+            style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
           >
             Отмена
           </button>
@@ -441,7 +432,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             type="submit"
             disabled={!isDirty && storeCategoryId === initialCategoryIdRef.current && mediaId === null || isSubmitting || update.isPending}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
+            style={{ background: colors.accent, color: colors.bg }}
           >
             {update.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -461,7 +452,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       {/* Status & danger actions */}
       {!isHiddenByAdmin && (
         <div className="mt-4 rounded-2xl p-5 flex flex-col gap-3" style={glass}>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.28)" }}>
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
             Статус товара
           </p>
 
@@ -471,7 +462,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 onClick={() => handleStatusChange(ProductStatus.ACTIVE)}
                 disabled={updateStatus.isPending}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
-                style={{ background: "rgba(52,211,153,.15)", border: "1px solid rgba(52,211,153,.25)", color: "#34d399" }}
+                style={{ background: "rgba(52,211,153,.15)", border: "1px solid rgba(52,211,153,.25)", color: colors.success }}
               >
                 Сделать активным
               </button>
@@ -481,7 +472,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 onClick={() => handleStatusChange(ProductStatus.DRAFT)}
                 disabled={updateStatus.isPending}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
-                style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.12)", color: "rgba(255,255,255,0.60)" }}
+                style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
               >
                 В черновик
               </button>
@@ -491,14 +482,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 onClick={() => handleStatusChange(ProductStatus.ARCHIVED)}
                 disabled={updateStatus.isPending}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
-                style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.12)", color: "rgba(255,255,255,0.40)" }}
+                style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textDim }}
               >
                 В архив
               </button>
             )}
           </div>
 
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "0.75rem" }}>
+          <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: "0.75rem" }}>
             <button
               onClick={handleDelete}
               disabled={remove.isPending}

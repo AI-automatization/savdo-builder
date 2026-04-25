@@ -13,22 +13,7 @@ import { useUnreadChatCount } from "../../hooks/use-chat";
 import { useSellerOrders } from "../../hooks/use-orders";
 import { OrderStatus } from "types";
 import { ShoppingCart } from "lucide-react";
-
-// ── Glass tokens ──────────────────────────────────────────────────────────────
-
-const glass = {
-  background:           "rgba(255,255,255,0.07)",
-  backdropFilter:       "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
-  borderRight:          "1px solid rgba(255,255,255,0.10)",
-} as const;
-
-const glassTop = {
-  background:           "rgba(255,255,255,0.05)",
-  backdropFilter:       "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  borderBottom:         "1px solid rgba(255,255,255,0.09)",
-} as const;
+import { colors, shell, shellTop } from "@/lib/styles";
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 
@@ -82,7 +67,7 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
   return (
     <>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
         <Link href="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -90,9 +75,9 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
           >
             <ShoppingCart size={16} color="#fff" />
           </div>
-          <span className="text-base font-bold" style={{ color: "#A78BFA" }}>Savdo</span>
+          <span className="text-base font-bold" style={{ color: colors.accent }}>Savdo</span>
         </Link>
-        <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: "rgba(167,139,250,.18)", color: "#A78BFA" }}>Beta</span>
+        <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: colors.accentMuted, color: colors.accent }}>Beta</span>
       </div>
 
       {/* Nav */}
@@ -106,22 +91,22 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
               style={
                 active
-                  ? { background: "rgba(167,139,250,.20)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.30)" }
-                  : { color: "rgba(255,255,255,0.50)", border: "1px solid transparent" }
+                  ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
+                  : { color: colors.textMuted, border: "1px solid transparent" }
               }
             >
-              <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
+              <span style={{ opacity: active ? 1 : 0.75 }}>{icon}</span>
               <span className="flex-1">{label}</span>
               {badge > 0 && (
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                   style={
                     isChat
-                      ? { background: "rgba(167,139,250,.18)", color: "#A78BFA", minWidth: 18, textAlign: "center" }
-                      : { background: "rgba(251,191,36,.18)", color: "#fbbf24", minWidth: 18, textAlign: "center" }
+                      ? { background: colors.accentMuted, color: colors.accent, minWidth: 18, textAlign: "center" }
+                      : { background: "rgba(251,191,36,.18)", color: colors.warning, minWidth: 18, textAlign: "center" }
                   }
                 >
                   {badge > 99 ? "99+" : badge}
@@ -133,16 +118,16 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
       </nav>
 
       {/* Store link shortcut */}
-      <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <div className="px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Ваш магазин</p>
+      <div className="px-3 py-4" style={{ borderTop: `1px solid ${colors.divider}` }}>
+        <div className="px-3 py-2.5 rounded-lg" style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}>
+          <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: colors.textDim }}>Ваш магазин</p>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-white/60 truncate">
+            <span className="text-xs truncate" style={{ color: colors.textMuted }}>
               {store ? `savdo.uz/${store.slug}` : 'savdo.uz/...'}
             </span>
             <button
               className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0 transition-opacity hover:opacity-80"
-              style={{ background: "rgba(167,139,250,.20)", color: "#A78BFA" }}
+              style={{ background: colors.accentMuted, color: colors.accent }}
               onClick={onCopyLink}
             >
               Копировать
@@ -152,23 +137,23 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
       </div>
 
       {/* User */}
-      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: `1px solid ${colors.divider}` }}>
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-          style={{ background: "rgba(167,139,250,.25)", color: "#A78BFA" }}
+          style={{ background: colors.accentMuted, color: colors.accent }}
         >
           А
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-white truncate">{userPhone ?? '—'}</p>
-          <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.30)" }}>Продавец</p>
+          <p className="text-xs font-medium truncate" style={{ color: colors.textPrimary }}>{userPhone ?? '—'}</p>
+          <p className="text-[10px] truncate" style={{ color: colors.textDim }}>Продавец</p>
         </div>
         <button
           onClick={onLogout}
           disabled={logoutPending}
           title="Выйти"
-          style={{ color: "rgba(255,255,255,0.28)" }}
-          className="disabled:opacity-40"
+          style={{ color: colors.textDim }}
+          className="disabled:opacity-40 hover:opacity-80 transition-opacity"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -239,18 +224,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-
-      {/* ── Ambient orbs ── */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
-        <div className="absolute rounded-full" style={{ width: 600, height: 600, top: -200, right: -150, background: "radial-gradient(circle, rgba(167,139,250,.15) 0%, transparent 70%)", filter: "blur(60px)" }} />
-        <div className="absolute rounded-full" style={{ width: 400, height: 400, bottom: -100, left: -100,  background: "radial-gradient(circle, rgba(34,197,94,.10)  0%, transparent 70%)", filter: "blur(48px)" }} />
-      </div>
+    <div className="flex h-screen overflow-hidden" style={{ background: colors.bg }}>
 
       {/* ── Sidebar — desktop ── */}
       <aside
         className="hidden md:flex relative w-60 flex-shrink-0 flex-col h-full"
-        style={{ ...glass, zIndex: 10 }}
+        style={{ ...shell, zIndex: 10 }}
       >
         <SidebarContent {...sidebarProps} />
       </aside>
@@ -259,7 +238,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {mobileOpen && (
         <div
           className="md:hidden fixed inset-0"
-          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", zIndex: 40 }}
+          style={{ background: "rgba(0,0,0,0.65)", zIndex: 40 }}
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -268,7 +247,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside
         className="md:hidden fixed top-0 left-0 h-full w-64 flex flex-col transition-transform duration-300"
         style={{
-          ...glass,
+          ...shell,
           zIndex: 50,
           transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
         }}
@@ -282,13 +261,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Top header */}
         <header
           className="flex items-center justify-between px-4 md:px-6 h-14 flex-shrink-0"
-          style={glassTop}
+          style={shellTop}
         >
           <div className="flex items-center gap-3">
             {/* Hamburger — mobile only */}
             <button
-              className="md:hidden flex items-center justify-center w-8 h-8 rounded-xl transition-opacity hover:opacity-80"
-              style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.60)" }}
+              className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:opacity-80"
+              style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
               onClick={() => setMobileOpen(true)}
               aria-label="Открыть меню"
             >
@@ -296,7 +275,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
             </button>
-            <h2 className="text-sm font-semibold text-white">
+            <h2 className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
               {NAV.find(n => pathname === n.href || (n.href !== "/dashboard" && pathname.startsWith(n.href)))?.label ?? "Дашборд"}
             </h2>
           </div>
@@ -304,43 +283,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Notifications bell */}
             <button
               onClick={() => router.push('/notifications')}
-              className="relative"
-              style={{ color: "rgba(255,255,255,0.45)" }}
+              className="relative transition-opacity hover:opacity-80"
+              style={{ color: colors.textMuted }}
               aria-label="Уведомления"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
               {unreadCount > 0 && (
-                <>
-                  <style>{`
-                    @keyframes savdo-ping {
-                      75%, 100% { transform: scale(2); opacity: 0; }
-                    }
-                  `}</style>
-                  <span
-                    className="absolute -top-1 -right-1.5 flex items-center justify-center"
-                    style={{ minWidth: 16, height: 16, padding: '0 3px', borderRadius: 8, border: '2px solid transparent', background: 'transparent' }}
-                  >
-                    <span
-                      className="absolute inset-0 rounded-full"
-                      style={{ background: 'rgba(167,139,250,.45)', animation: 'savdo-ping 1.4s cubic-bezier(0,0,.2,1) infinite', borderRadius: 8 }}
-                    />
-                    <span
-                      className="relative flex items-center justify-center rounded-full text-white font-bold"
-                      style={{ minWidth: 14, height: 14, padding: '0 3px', fontSize: 9, background: '#A78BFA', borderRadius: 7 }}
-                    >
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  </span>
-                </>
+                <span
+                  className="absolute -top-1 -right-1.5 flex items-center justify-center rounded-full font-bold"
+                  style={{ minWidth: 14, height: 14, padding: '0 3px', fontSize: 9, background: colors.accent, color: colors.bg, borderRadius: 7 }}
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
               )}
             </button>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6" style={{ background: colors.bg }}>
           {children}
         </main>
       </div>
@@ -351,17 +314,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {toasts.map((t) => (
             <div
               key={t.id}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white shadow-xl"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium shadow-xl"
               style={{
-                background: 'rgba(167,139,250,0.20)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                border: '1px solid rgba(167,139,250,0.35)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+                background: colors.surfaceElevated,
+                color: colors.textPrimary,
+                border: `1px solid ${colors.accentBorder}`,
+                boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
                 animation: 'fadeSlideIn 0.25s ease',
               }}
             >
-              <ShoppingCart size={16} style={{ color: '#A78BFA' }} />
+              <ShoppingCart size={16} style={{ color: colors.accent }} />
               {t.text}
             </div>
           ))}

@@ -6,13 +6,7 @@ import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products'
 import { Check, Link2, Send, Layers } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
-
-const glass = {
-  background: "rgba(255,255,255,0.08)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.13)",
-} as const;
+import { card, colors, inputStyle } from '@/lib/styles';
 
 const STATUS_LABELS: Record<string, string> = {
   [ProductStatus.ACTIVE]:         "Активен",
@@ -22,10 +16,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  [ProductStatus.ACTIVE]:         { bg: "rgba(52,211,153,.15)",   color: "#34d399" },
-  [ProductStatus.DRAFT]:          { bg: "rgba(251,191,36,.13)",   color: "#fbbf24" },
-  [ProductStatus.ARCHIVED]:       { bg: "rgba(255,255,255,.08)",  color: "rgba(255,255,255,0.40)" },
-  [ProductStatus.HIDDEN_BY_ADMIN]:{ bg: "rgba(248,113,113,.13)",  color: "#f87171" },
+  [ProductStatus.ACTIVE]:         { bg: "rgba(52,211,153,.15)",   color: colors.success },
+  [ProductStatus.DRAFT]:          { bg: "rgba(251,191,36,.13)",   color: colors.warning },
+  [ProductStatus.ARCHIVED]:       { bg: colors.surfaceElevated,   color: colors.textDim },
+  [ProductStatus.HIDDEN_BY_ADMIN]:{ bg: "rgba(248,113,113,.13)",  color: colors.danger },
 };
 
 const STATUS_FILTERS: { key: ProductStatus | 'ALL'; label: string }[] = [
@@ -44,7 +38,7 @@ function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={`animate-pulse rounded ${className}`}
-      style={{ background: "rgba(255,255,255,0.10)" }}
+      style={{ background: colors.surfaceElevated }}
     />
   );
 }
@@ -93,15 +87,15 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white">Товары</h1>
-          <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
+          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Товары</h1>
+          <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
             {isLoading ? "Загрузка..." : `${products?.length ?? 0} товаров`}
           </p>
         </div>
         <Link
           href="/products/create"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shrink-0"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 16px rgba(167,139,250,.35)" }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shrink-0 transition-opacity hover:opacity-90"
+          style={{ background: colors.accent, color: colors.bg }}
         >
           + Добавить
         </Link>
@@ -113,7 +107,7 @@ export default function ProductsPage() {
           <svg
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
             className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "rgba(255,255,255,0.30)" }}
+            style={{ color: colors.textDim }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
@@ -121,11 +115,10 @@ export default function ProductsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по названию..."
-            className="w-full h-9 pl-9 pr-3 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2"
+            className="w-full h-9 pl-9 pr-3 rounded-lg text-sm focus:outline-none focus:ring-2"
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.11)",
-              '--tw-ring-color': 'rgba(167,139,250,0.45)',
+              ...inputStyle,
+              '--tw-ring-color': colors.accentBorder,
             } as React.CSSProperties}
           />
         </div>
@@ -136,11 +129,11 @@ export default function ProductsPage() {
               <button
                 key={f.key}
                 onClick={() => setStatusFilter(f.key)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all h-9"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors h-9"
                 style={
                   active
-                    ? { background: "rgba(167,139,250,0.25)", color: "rgba(167,139,250,1)", border: "1px solid rgba(167,139,250,0.35)" }
-                    : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.10)" }
+                    ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
+                    : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
                 }
               >
                 {f.label}
@@ -151,10 +144,10 @@ export default function ProductsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={glass}>
+      <div className="rounded-lg overflow-hidden" style={card}>
         <div
           className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
-          style={{ color: "rgba(255,255,255,0.28)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ color: colors.textDim, borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}
         >
           <span>Товар</span>
           <span>Цена</span>
@@ -166,7 +159,7 @@ export default function ProductsPage() {
         {isLoading ? (
           <>
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-5 w-16 rounded-full" />
@@ -176,34 +169,35 @@ export default function ProductsPage() {
             ))}
           </>
         ) : filtered.length === 0 ? (
-          <div className="px-5 py-12 text-center text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>
+          <div className="px-5 py-12 text-center text-sm" style={{ color: colors.textDim }}>
             {products?.length === 0
-              ? <><span>Товаров пока нет. </span><Link href="/products/create" style={{ color: "#A78BFA" }}>Добавить первый →</Link></>
+              ? <><span>Товаров пока нет. </span><Link href="/products/create" style={{ color: colors.accent }}>Добавить первый →</Link></>
               : "Ничего не найдено"}
           </div>
         ) : (
           filtered.map((p) => {
-            const sc = STATUS_COLORS[p.status] ?? { bg: "rgba(255,255,255,.08)", color: "rgba(255,255,255,0.45)" };
+            const sc = STATUS_COLORS[p.status] ?? { bg: colors.surfaceElevated, color: colors.textMuted };
             const isToggleable = p.status === ProductStatus.ACTIVE || p.status === ProductStatus.DRAFT;
             const isUpdating = isStatusPending && statusVars?.id === p.id;
             const nextStatus = p.status === ProductStatus.ACTIVE ? ProductStatus.DRAFT : ProductStatus.ACTIVE;
-            const toggleTitle = p.status === ProductStatus.ACTIVE ? "Перевести в черновик" : "Активировать";
 
             return (
               <div
                 key={p.id}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5 transition-colors"
+                style={{ borderBottom: `1px solid ${colors.divider}` }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm font-medium text-white truncate">{p.title}</span>
+                  <span className="text-sm font-medium truncate" style={{ color: colors.textPrimary }}>{p.title}</span>
                   {p.variantCount > 0 && (
                     <span
                       className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
                       style={{
-                        background: "rgba(167,139,250,0.15)",
-                        color: "#C4B5FD",
-                        border: "1px solid rgba(167,139,250,0.25)",
+                        background: colors.accentMuted,
+                        color: colors.accent,
+                        border: `1px solid ${colors.accentBorder}`,
                       }}
                       title={`${p.variantCount} активных вариантов`}
                     >
@@ -212,7 +206,7 @@ export default function ProductsPage() {
                     </span>
                   )}
                 </div>
-                <span className="text-sm font-medium" style={{ color: "#A78BFA" }}>
+                <span className="text-sm font-medium" style={{ color: colors.accent }}>
                   {fmt(p.basePrice)}
                 </span>
                 <span
@@ -227,8 +221,8 @@ export default function ProductsPage() {
                   <button
                     disabled={isUpdating}
                     onClick={() => updateStatus({ id: p.id, status: nextStatus })}
-                    className="text-xs font-medium transition-opacity disabled:opacity-40"
-                    style={{ color: p.status === ProductStatus.ACTIVE ? "rgba(248,113,113,0.80)" : "rgba(52,211,153,0.80)" }}
+                    className="text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{ color: p.status === ProductStatus.ACTIVE ? colors.danger : colors.success }}
                   >
                     {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? "Скрыть" : "Опубликовать"}
                   </button>
@@ -241,7 +235,7 @@ export default function ProductsPage() {
                     onClick={() => copyProductLink(p.id)}
                     title="Скопировать веб-ссылку"
                     className="text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ color: copiedId === p.id ? "rgba(52,211,153,0.90)" : "rgba(255,255,255,0.30)" }}
+                    style={{ color: copiedId === p.id ? colors.success : colors.textDim }}
                   >
                     {copiedId === p.id ? <Check size={14} /> : <Link2 size={14} />}
                   </button>
@@ -249,14 +243,14 @@ export default function ProductsPage() {
                     onClick={() => copyTelegramLink(p.id)}
                     title="Скопировать Telegram-ссылку (открывает TMA)"
                     className="text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ color: tgCopiedId === p.id ? "rgba(52,211,153,0.90)" : "rgba(42,171,238,0.70)" }}
+                    style={{ color: tgCopiedId === p.id ? colors.success : "#60A5FA" }}
                   >
                     {tgCopiedId === p.id ? <Check size={14} /> : <Send size={14} />}
                   </button>
                   <Link
                     href={`/products/${p.id}/edit`}
                     className="text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ color: "rgba(167,139,250,0.70)" }}
+                    style={{ color: colors.accent }}
                   >
                     Изменить
                   </Link>
