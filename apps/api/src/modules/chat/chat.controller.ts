@@ -286,6 +286,57 @@ export class ChatController {
     return { success: true };
   }
 
+  // GET /api/v1/admin/chat/reports
+  @Get('admin/chat/reports')
+  @Roles('ADMIN')
+  async adminGetReports() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const messages = await (this.prisma.chatMessage as any).findMany({
+      where: { reportedAt: { not: null } },
+      orderBy: { reportedAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        body: true,
+        reportedAt: true,
+        createdAt: true,
+        thread: {
+          select: {
+            id: true,
+            status: true,
+            buyer: { select: { user: { select: { phone: true } } } },
+            seller: { select: { store: { select: { name: true } } } },
+          },
+        },
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (messages as any[]).map((m) => ({
+      id: m.id,
+      body: m.body ?? '',
+      reportedAt: m.reportedAt,
+      createdAt: m.createdAt,
+      threadId: m.thread.id,
+      threadStatus: m.thread.status,
+      buyerPhone: m.thread.buyer?.user?.phone ?? null,
+      storeName: m.thread.seller?.store?.name ?? null,
+    }));
+  }
+
+  // DELETE /api/v1/admin/chat/messages/:id/report  (dismiss report)
+  @Delete('admin/chat/messages/:id/report')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('ADMIN')
+  async adminDismissReport(@Param('id') messageId: string): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (this.prisma.chatMessage as any).update({
+      where: { id: messageId },
+      data: { reportedAt: null },
+    });
+    this.logger.log(`Report dismissed for message ${messageId}`);
+  }
+
   // ─── Private helpers ─────────────────────────────────────────────────────────
 
   /**

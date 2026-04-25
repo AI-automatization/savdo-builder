@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UserCog, Store, ShoppingCart,
   Shield, ScrollText, LogOut, Package, Database, Megaphone,
-  ChevronRight, Search, Sun, Moon, BarChart2, Activity, MessageSquare, Tags,
+  ChevronRight, Search, Sun, Moon, BarChart2, Activity, MessageSquare, Tags, Flag,
 } from 'lucide-react'
 
 const NAV_DATA = [
@@ -31,6 +31,7 @@ const NAV_DATA = [
       { to: '/database',   icon: Database,        label: 'База данных' },
       { to: '/broadcast',  icon: Megaphone,       label: 'Рассылка' },
       { to: '/chats',      icon: MessageSquare,   label: 'Чаты' },
+      { to: '/reports',    icon: Flag,            label: 'Жалобы' },
     ],
   },
 ]

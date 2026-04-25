@@ -20,6 +20,7 @@ import ChatsPage from './pages/ChatsPage'
 import AnalyticsDashboardPage from './pages/AnalyticsDashboardPage'
 import AnalyticsEventsPage from './pages/AnalyticsEventsPage'
 import CategoriesPage from './pages/CategoriesPage'
+import ReportsPage from './pages/ReportsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hasAccess  = !!auth.getAccess()
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="analytics" element={<AnalyticsDashboardPage />} />
           <Route path="analytics/events" element={<AnalyticsEventsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
