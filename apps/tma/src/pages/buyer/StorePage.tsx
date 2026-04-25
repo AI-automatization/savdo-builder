@@ -34,7 +34,8 @@ interface GlobalCategory {
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  const gridCols = viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +113,7 @@ export default function StorePage() {
 
   if (loading) return (
     <AppShell role="BUYER">
-      <div className="grid grid-cols-2 gap-3 pt-2">
+      <div className={`grid ${gridCols} gap-3 pt-2`}>
         {[1,2,3,4,5,6].map((i) => <ProductCardSkeleton key={i} />)}
       </div>
     </AppShell>
@@ -195,7 +196,7 @@ export default function StorePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={`grid ${gridCols} gap-3`}>
           {filtered.map((p) => (
             <div
               key={p.id}

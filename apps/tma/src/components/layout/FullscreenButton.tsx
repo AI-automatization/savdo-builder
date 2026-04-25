@@ -53,7 +53,7 @@ export function FullscreenButton() {
     <button
       onClick={toggle}
       title={isFullscreen ? 'Свернуть' : 'На весь экран'}
-      className="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-lg transition-all"
+      className="fixed bottom-[5.25rem] right-3 z-50 w-8 h-8 flex items-center justify-center rounded-lg transition-all"
       style={{
         background: 'rgba(255,255,255,0.08)',
         border: '1px solid rgba(255,255,255,0.15)',

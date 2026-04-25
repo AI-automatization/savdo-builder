@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { getSocket } from '@/lib/socket';
+import { connectSocket } from '@/lib/socket';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui/Spinner';
@@ -20,6 +20,7 @@ interface ChatThread {
   storeName: string | null;
   storeSlug: string | null;
   buyerPhone: string | null;
+  unreadCount?: number;
 }
 
 interface ChatMessage {
@@ -48,6 +49,7 @@ export default function BuyerChatPage() {
     const goBack = () => {
       if (activeThread) {
         setActiveThread(null);
+        setMessages([]);
       } else {
         navigate('/buyer');
       }
@@ -65,16 +67,24 @@ export default function BuyerChatPage() {
 
   useEffect(() => {
     if (!activeThread) return;
+
     setMsgLoading(true);
+    setMessages([]);
+
     api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${activeThread.id}/messages`)
       .then((res) => setMessages((res.messages ?? []).slice().reverse()))
-      .catch(() => {})
+      .catch(() => showToast('❌ Не удалось загрузить сообщения', 'error'))
       .finally(() => setMsgLoading(false));
 
-    const socket = getSocket();
+    // Подключаем сокет с актуальным токеном и присоединяемся к комнате
+    const socket = connectSocket();
     socket.emit('join-chat-room', { threadId: activeThread.id });
+
     const onMessage = (msg: ChatMessage) => {
+      if (msg.threadId !== activeThread.id) return;
       setMessages((prev) => [...prev, msg]);
+      // Помечаем тред прочитанным при получении нового сообщения
+      api(`/chat/threads/${activeThread.id}/read`, { method: 'PATCH' }).catch(() => {});
     };
     socket.on('chat:message', onMessage);
 
@@ -85,19 +95,22 @@ export default function BuyerChatPage() {
   }, [activeThread]);
 
   useEffect(() => {
+    if (messages.length === 0) return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const sendMsg = async () => {
-    if (!text.trim() || !activeThread) return;
+    if (!text.trim() || !activeThread || sending) return;
+    const msgText = text.trim();
     setSending(true);
+    setText(''); // очищаем сразу для лучшего UX
     try {
       await api(`/chat/threads/${activeThread.id}/messages`, {
         method: 'POST',
-        body: { text: text.trim() },
+        body: { text: msgText },
       });
-      setText('');
     } catch {
+      setText(msgText); // возвращаем текст если ошибка
       tg?.HapticFeedback.notificationOccurred('error');
       showToast('❌ Не удалось отправить', 'error');
     } finally {
@@ -115,9 +128,12 @@ export default function BuyerChatPage() {
   if (activeThread) {
     return (
       <AppShell role="BUYER">
-        <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+        <div
+          className="flex flex-col"
+          style={{ height: 'calc(var(--tg-viewport-stable-height, 100dvh) - 7.5rem)' }}
+        >
           {/* Header */}
-          <div className="pb-2 mb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="pb-2 mb-2 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col min-w-0">
                 <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
@@ -144,42 +160,48 @@ export default function BuyerChatPage() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto flex flex-col gap-2 pb-2">
-            {msgLoading
-              ? <div className="flex justify-center py-8"><Spinner size={24} /></div>
-              : messages.map((m) => (
+          <div className="flex-1 overflow-y-auto flex flex-col gap-2 pb-2 min-h-0">
+            {msgLoading && (
+              <div className="flex justify-center py-8"><Spinner size={24} /></div>
+            )}
+            {!msgLoading && messages.length === 0 && (
+              <div className="flex flex-col items-center gap-2 py-12">
+                <span style={{ fontSize: 36 }}>💬</span>
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Сообщений пока нет</p>
+              </div>
+            )}
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className="flex flex-col max-w-[80%]"
+                style={{ alignSelf: m.senderRole === 'BUYER' ? 'flex-end' : 'flex-start' }}
+              >
                 <div
-                  key={m.id}
-                  className="flex flex-col max-w-[80%]"
-                  style={{ alignSelf: m.senderRole === 'BUYER' ? 'flex-end' : 'flex-start' }}
+                  className="px-3 py-2 rounded-xl text-sm"
+                  style={{
+                    background: m.senderRole === 'BUYER'
+                      ? 'rgba(124,58,237,0.30)'
+                      : 'rgba(255,255,255,0.08)',
+                    border: `1px solid ${m.senderRole === 'BUYER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
+                    color: 'rgba(255,255,255,0.88)',
+                  }}
                 >
-                  <div
-                    className="px-3 py-2 rounded-xl text-sm"
-                    style={{
-                      background: m.senderRole === 'BUYER'
-                        ? 'rgba(124,58,237,0.30)'
-                        : 'rgba(255,255,255,0.08)',
-                      border: `1px solid ${m.senderRole === 'BUYER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
-                      color: 'rgba(255,255,255,0.88)',
-                    }}
-                  >
-                    {m.text}
-                  </div>
-                  <span
-                    className="text-[10px] mt-0.5"
-                    style={{ color: 'rgba(255,255,255,0.25)', textAlign: m.senderRole === 'BUYER' ? 'right' : 'left' }}
-                  >
-                    {new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  {m.text}
                 </div>
-              ))
-            }
+                <span
+                  className="text-[10px] mt-0.5"
+                  style={{ color: 'rgba(255,255,255,0.25)', textAlign: m.senderRole === 'BUYER' ? 'right' : 'left' }}
+                >
+                  {new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))}
             <div ref={bottomRef} />
           </div>
 
           {/* Input / closed notice */}
           {activeThread.status === 'OPEN' ? (
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-2 shrink-0">
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -212,7 +234,7 @@ export default function BuyerChatPage() {
                   border: '1px solid rgba(124,58,237,0.50)',
                   color: '#fff',
                   fontSize: 18,
-                  cursor: text.trim() ? 'pointer' : 'default',
+                  cursor: text.trim() && !sending ? 'pointer' : 'default',
                   opacity: text.trim() && !sending ? 1 : 0.4,
                   minWidth: 46,
                 }}
@@ -221,7 +243,7 @@ export default function BuyerChatPage() {
               </button>
             </div>
           ) : (
-            <div className="pt-2 text-center text-[12px]" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            <div className="pt-2 text-center text-[12px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
               Диалог закрыт продавцом — новые сообщения недоступны
             </div>
           )}
@@ -255,9 +277,17 @@ export default function BuyerChatPage() {
             className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer active:opacity-70"
             style={glass}
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+            <div className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
               style={{ background: 'rgba(167,139,250,0.15)' }}>
               💬
+              {(t.unreadCount ?? 0) > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: '#A855F7', color: '#fff' }}
+                >
+                  {t.unreadCount! > 9 ? '9+' : t.unreadCount}
+                </span>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>

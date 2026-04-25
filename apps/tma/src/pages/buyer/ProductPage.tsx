@@ -42,7 +42,7 @@ interface Product {
 export default function ProductPage() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
   const navigate = useNavigate();
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -212,7 +212,7 @@ export default function ProductPage() {
     <AppShell role="BUYER">
       <div className="flex flex-col gap-4 pb-24">
         {/* Gallery */}
-        <div className="rounded-2xl overflow-hidden" style={{ ...glass, aspectRatio: '1' }}>
+        <div className="rounded-2xl overflow-hidden" style={{ ...glass, aspectRatio: viewportWidth >= 560 ? '4/3' : '1' }}>
           {images.length ? (
             <img
               src={images[activeImage]}
@@ -230,7 +230,7 @@ export default function ProductPage() {
               <button
                 key={idx}
                 onClick={() => setActiveImage(idx)}
-                className="shrink-0 w-14 h-14 rounded-lg overflow-hidden"
+                className={`shrink-0 ${viewportWidth >= 560 ? 'w-20 h-20' : 'w-14 h-14'} rounded-lg overflow-hidden`}
                 style={{
                   border: idx === activeImage ? '2px solid #A855F7' : '1px solid rgba(255,255,255,0.10)',
                 }}

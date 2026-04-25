@@ -15,6 +15,18 @@ export function getSocket(): Socket {
   return socket;
 }
 
+/**
+ * Соединяет сокет с актуальным токеном. Безопасно вызывать повторно —
+ * если уже подключён, просто возвращает текущий инстанс.
+ */
+export function connectSocket(): Socket {
+  const s = getSocket();
+  // Обновляем токен перед подключением (актуально после ре-авторизации)
+  (s as Socket & { auth: Record<string, unknown> }).auth = { token: getToken() };
+  if (!s.connected) s.connect();
+  return s;
+}
+
 export function destroySocket(): void {
   if (socket) {
     socket.disconnect();

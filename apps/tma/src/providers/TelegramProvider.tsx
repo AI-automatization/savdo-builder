@@ -7,6 +7,7 @@ interface TelegramCtx {
   startParam: string | null;
   ready: boolean;
   isTelegram: boolean;
+  viewportWidth: number;
 }
 
 const Ctx = createContext<TelegramCtx>({
@@ -15,31 +16,57 @@ const Ctx = createContext<TelegramCtx>({
   startParam: null,
   ready: false,
   isTelegram: false,
+  viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 390,
 });
 
 export const useTelegram = () => useContext(Ctx);
 
 export function TelegramProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<TelegramCtx>({
-    tg: null, user: null, startParam: null, ready: false, isTelegram: false,
+    tg: null,
+    user: null,
+    startParam: null,
+    ready: false,
+    isTelegram: false,
+    viewportWidth: window.innerWidth,
   });
 
+  // Инициализация Telegram SDK
   useEffect(() => {
     const tg = getTgWebApp();
     if (!tg || !isTelegramEnv()) {
-      setValue({ tg: null, user: null, startParam: null, ready: true, isTelegram: false });
+      setValue((v) => ({ ...v, tg: null, user: null, startParam: null, ready: true, isTelegram: false }));
       return;
     }
     tg.ready();
     tg.expand();
 
-    setValue({
+    setValue((v) => ({
+      ...v,
       tg,
       user: tg.initDataUnsafe.user ?? null,
       startParam: tg.initDataUnsafe.start_param ?? null,
       ready: true,
       isTelegram: true,
-    });
+    }));
+  }, []);
+
+  // Отслеживание изменений viewport (fullscreen, expand, resize)
+  useEffect(() => {
+    const update = () => setValue((v) => ({ ...v, viewportWidth: window.innerWidth }));
+
+    const tg = getTgWebApp();
+    if (tg?.onEvent) {
+      tg.onEvent('viewport_changed', update);
+      tg.onEvent('fullscreen_changed', update);
+    }
+
+    window.addEventListener('resize', update);
+    return () => {
+      tg?.offEvent?.('viewport_changed', update);
+      tg?.offEvent?.('fullscreen_changed', update);
+      window.removeEventListener('resize', update);
+    };
   }, []);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
