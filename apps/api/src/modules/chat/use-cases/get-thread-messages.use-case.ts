@@ -65,6 +65,12 @@ export class GetThreadMessagesUseCase {
       );
     }
 
+    // Mark thread as read (fire-and-forget — не блокирует ответ)
+    const role = thread.buyerId === input.readerUserId ? 'buyer' : 'seller';
+    void this.chatRepo.markAsRead(input.threadId, role).catch((err: unknown) => {
+      this.logger.warn(`markAsRead failed: ${err instanceof Error ? err.message : String(err)}`);
+    });
+
     const limit = input.limit ?? 50;
     const raw = await this.chatRepo.findMessages(input.threadId, {
       limit: limit + 1,

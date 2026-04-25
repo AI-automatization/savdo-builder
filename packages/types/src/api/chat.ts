@@ -24,6 +24,7 @@ export interface ChatThread {
   storeName: string | null;
   storeSlug: string | null;
   buyerPhone: string | null;
+  unreadCount: number;
 }
 
 // ── Requests ──────────────────────────────────────────────────────────────────

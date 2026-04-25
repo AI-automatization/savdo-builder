@@ -168,4 +168,35 @@ export class ChatRepository {
       data: { status: 'CLOSED' },
     });
   }
+
+  async markAsRead(threadId: string, role: 'buyer' | 'seller'): Promise<void> {
+    const field = role === 'buyer' ? 'buyerLastReadAt' : 'sellerLastReadAt';
+    await this.prisma.chatThread.update({
+      where: { id: threadId },
+      data: { [field]: new Date() },
+    });
+  }
+
+  async getUnreadCounts(
+    threads: Array<{ id: string; buyerLastReadAt: Date | null; sellerLastReadAt: Date | null }>,
+    role: 'buyer' | 'seller',
+  ): Promise<Map<string, number>> {
+    if (threads.length === 0) return new Map();
+
+    const results = await Promise.all(
+      threads.map(async (t) => {
+        const cutoff = role === 'buyer' ? t.buyerLastReadAt : t.sellerLastReadAt;
+        const count = await this.prisma.chatMessage.count({
+          where: {
+            threadId: t.id,
+            isDeleted: false,
+            createdAt: { gt: cutoff ?? new Date(0) },
+          },
+        });
+        return { id: t.id, count };
+      }),
+    );
+
+    return new Map(results.map(({ id, count }) => [id, count]));
+  }
 }

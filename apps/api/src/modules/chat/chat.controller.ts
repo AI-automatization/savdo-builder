@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpStatus,
   Logger,
   Param,
@@ -121,6 +122,39 @@ export class ChatController {
     return this.resolveThreadUseCase.execute({
       threadId,
       sellerUserId: sellerId,
+    });
+  }
+
+  // PATCH /api/v1/chat/threads/:id/read
+  @Patch('chat/threads/:id/read')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('BUYER', 'SELLER')
+  async markThreadAsRead(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') threadId: string,
+  ): Promise<void> {
+    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+
+    const thread = await this.prisma.chatThread.findUnique({
+      where: { id: threadId },
+      select: { buyerId: true, sellerId: true },
+    });
+
+    if (!thread) {
+      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
+    }
+
+    const isBuyer = thread.buyerId === participantId;
+    const isSeller = thread.sellerId === participantId;
+
+    if (!isBuyer && !isSeller) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
+    }
+
+    const field = isBuyer ? 'buyerLastReadAt' : 'sellerLastReadAt';
+    await this.prisma.chatThread.update({
+      where: { id: threadId },
+      data: { [field]: new Date() },
     });
   }
 

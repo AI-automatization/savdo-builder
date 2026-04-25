@@ -695,10 +695,12 @@ model ChatThread {
   buyerId       String?
   sellerId      String
   status        String     @default("active")
-  lastMessageId String?
-  lastMessageAt DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  lastMessageId    String?
+  lastMessageAt    DateTime?
+  buyerLastReadAt  DateTime?
+  sellerLastReadAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   product  Product?      @relation(fields: [productId], references: [id])
   order    Order?        @relation(fields: [orderId], references: [id])

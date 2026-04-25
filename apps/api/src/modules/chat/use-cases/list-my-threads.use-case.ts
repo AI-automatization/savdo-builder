@@ -21,12 +21,13 @@ export interface ThreadListItem {
   storeName: string | null;
   storeSlug: string | null;
   buyerPhone: string | null;
+  unreadCount: number;
 }
 
 type BuyerThread = Awaited<ReturnType<ChatRepository['findThreadsByBuyer']>>[number];
 type SellerThread = Awaited<ReturnType<ChatRepository['findThreadsBySeller']>>[number];
 
-function mapBuyerThread(t: BuyerThread): ThreadListItem {
+function mapBuyerThread(t: BuyerThread, unreadCount: number): ThreadListItem {
   return {
     id: t.id,
     threadType: t.threadType,
@@ -38,10 +39,11 @@ function mapBuyerThread(t: BuyerThread): ThreadListItem {
     storeName: t.seller?.store?.name ?? null,
     storeSlug: t.seller?.store?.slug ?? null,
     buyerPhone: null,
+    unreadCount,
   };
 }
 
-function mapSellerThread(t: SellerThread): ThreadListItem {
+function mapSellerThread(t: SellerThread, unreadCount: number): ThreadListItem {
   return {
     id: t.id,
     threadType: t.threadType,
@@ -53,6 +55,7 @@ function mapSellerThread(t: SellerThread): ThreadListItem {
     storeName: null,
     storeSlug: null,
     buyerPhone: t.buyer?.user?.phone ?? null,
+    unreadCount,
   };
 }
 
@@ -85,7 +88,8 @@ export class ListMyThreadsUseCase {
         );
       }
       const threads = await this.chatRepo.findThreadsByBuyer(input.buyerId);
-      return threads.map(mapBuyerThread);
+      const unreadMap = await this.chatRepo.getUnreadCounts(threads, 'buyer');
+      return threads.map((t) => mapBuyerThread(t, unreadMap.get(t.id) ?? 0));
     }
 
     if (input.role === 'SELLER') {
@@ -97,7 +101,8 @@ export class ListMyThreadsUseCase {
         );
       }
       const threads = await this.chatRepo.findThreadsBySeller(input.sellerId);
-      return threads.map(mapSellerThread);
+      const unreadMap = await this.chatRepo.getUnreadCounts(threads, 'seller');
+      return threads.map((t) => mapSellerThread(t, unreadMap.get(t.id) ?? 0));
     }
 
     // ADMIN or dual-role: merge buyer + seller threads, deduplicate, sort
@@ -106,10 +111,15 @@ export class ListMyThreadsUseCase {
       input.sellerId ? this.chatRepo.findThreadsBySeller(input.sellerId) : Promise.resolve([]),
     ]);
 
+    const [buyerUnreadMap, sellerUnreadMap] = await Promise.all([
+      this.chatRepo.getUnreadCounts(buyerThreads, 'buyer'),
+      this.chatRepo.getUnreadCounts(sellerThreads, 'seller'),
+    ]);
+
     const seen = new Set<string>();
     const merged: ThreadListItem[] = [
-      ...buyerThreads.map(mapBuyerThread),
-      ...sellerThreads.map(mapSellerThread),
+      ...buyerThreads.map((t) => mapBuyerThread(t, buyerUnreadMap.get(t.id) ?? 0)),
+      ...sellerThreads.map((t) => mapSellerThread(t, sellerUnreadMap.get(t.id) ?? 0)),
     ].filter((t) => {
       if (seen.has(t.id)) return false;
       seen.add(t.id);
