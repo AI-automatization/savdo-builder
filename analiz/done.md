@@ -1,5 +1,122 @@
 # Done — Азим + Полат
 
+## 2026-04-24 — Полат — 6 backend задач за день (`18fa355` + `66b8be4`)
+
+### ✅ [API-BUYER-ORDERS-ROLE-GUARD-001] Снят `@Roles('BUYER')` с buyer/orders endpoints
+- **Важность:** 🔴 dual-role 403 fix
+- **Дата:** 24.04.2026 (коммит `18fa355`)
+- **Файлы:** `apps/api/src/modules/orders/orders.controller.ts:48-49,85,97,108`
+- **Что сделано:** Снят декоратор @Roles('BUYER') с GET /buyer/orders, GET /orders/:id, GET /buyer/orders/:id, PATCH /buyer/orders/:id/status. RolesGuard без декоратора = allow any auth user; resolveBuyerId уже бросает BUYER_NOT_IDENTIFIED если профиля нет. SELLER+BUYER dual-role больше не ловит 403 на свои покупки.
+
+### ✅ [API-CHAT-THREAD-CONTRACT-001] ChatThread тип в packages/types обновлён
+- **Важность:** 🔴 Sprint 31 contract break fix
+- **Дата:** 24.04.2026 (коммит `18fa355`)
+- **Файлы:** `packages/types/src/api/chat.ts`
+- **Что сделано:** Тип `ChatThread` обновлён под форму ответа list-my-threads use-case: threadType, status, lastMessageAt, lastMessage:string|null, productTitle, orderNumber, storeName, storeSlug, buyerPhone. Удалены устаревшие contextType/contextId/buyerId/sellerId/unreadCount.
+
+### ✅ [API-PRODUCT-ATTRIBUTES-TYPE-001] Product.attributes в типе
+- **Важность:** 🟡
+- **Дата:** 24.04.2026 (коммит `18fa355`)
+- **Файлы:** `packages/types/src/api/products.ts`
+- **Что сделано:** Добавлен interface ProductAttribute + поле `attributes: ProductAttribute[]` в Product. Раблокирует web-buyer ProductPage блок «Характеристики» type-safe.
+
+### ✅ [API-STOREFRONT-PRODUCT-FILTERS-001] Attribute-фильтры на витрине
+- **Важность:** 🟡 Активирует 130 фильтров Sprint 31
+- **Дата:** 24.04.2026 (коммит `18fa355`)
+- **Файлы:** `apps/api/src/modules/products/products.controller.ts`, `products.repository.ts`
+- **Что сделано:** GET /storefront/products теперь принимает `?filters[brand]=Samsung&filters[ram]=8`. findPublicByStoreId: AND clause на ProductAttribute(name,value) парах. После Полата Азим прикрутил UI на витрине магазина.
+
+### ✅ [API-CATEGORY-SEED-CLEANUP-001] Авто-категории убраны из seed
+- **Важность:** 🟡
+- **Дата:** 24.04.2026 (коммит `18fa355`)
+- **Файлы:** `apps/api/src/modules/categories/global-categories-seed.service.ts`
+- **Что сделано:** Удалены automotive root + cars/cars_used/motorcycles из CATEGORIES + 22 связанных CategoryFilter. cleanupRemovedCategories() при старте: удаляет filters, отсоединяет товары (globalCategoryId→null), удаляет category rows.
+
+### ✅ [API-BUYER-AVATAR-001] Buyer avatar endpoint + поле в /auth/me
+- **Важность:** 🟡
+- **Дата:** 24.04.2026 (коммит `66b8be4`)
+- **Файлы:** `packages/db/prisma/schema.prisma`, миграция, `apps/api/src/modules/media/media.controller.ts`, `auth/repositories/auth.repository.ts`, `packages/types/src/api/auth.ts`
+- **Что сделано:** `Buyer.avatarUrl String?` в schema + миграция; `POST /api/v1/media/buyer/avatar` (multipart, IMAGE_ONLY, 10MB) — загружает через TelegramStorage, апсертит buyer.avatarUrl; GET /auth/me возвращает `buyer: { id, avatarUrl }`; `BuyerProfile` интерфейс в packages/types.
+
+---
+
+## 2026-04-25 — Сессия 34 (Азим) — Avatar UI + category filters + design Phase 2 + chat-thread cleanup
+
+### ✅ [WEB-BUYER-AVATAR-UI-001] Buyer avatar — UI на /profile
+- **Важность:** 🟢 UX gap. Полат разблокировал в `66b8be4` (новый endpoint + поле в /auth/me).
+- **Дата:** 25.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/auth.api.ts` — `uploadBuyerAvatar(file)` через `multipart/form-data` на `POST /api/v1/media/buyer/avatar`
+  - `apps/web-buyer/src/lib/auth/context.tsx` — `refreshUser()` в контексте (вызывает getMe → setUser)
+  - `apps/web-buyer/src/hooks/use-auth.ts` — `useUploadAvatar()` с onSuccess → refreshUser
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — клик-аватар (Image из `user.buyer.avatarUrl` либо UserIcon-fallback), кнопка «Изменить фото / Добавить фото» с Camera-иконкой, hidden file input с client-side валидацией (jpeg/png/webp, ≤10 МБ), inline error, спиннер во время загрузки
+- **Что сделано:** На /profile блок аватара теперь интерактивный — клик по кругу или по подписи открывает file picker. После загрузки контекст вызывает /auth/me, user state обновляется, новая фотка появляется без reload. `unoptimized` на Image — чтобы не нужно было прописывать R2/Telegram-domain в next.config.
+
+### ✅ [WEB-BUYER-CATEGORY-FILTERS-001] Глобальные категории + 130 атрибутных фильтров на витрине магазина
+- **Важность:** 🟡 Sprint 31 фича — Полат seed'нул 34 категории и 130 фильтров, но фронт их не использовал. Разблокирован в `18fa355`.
+- **Дата:** 25.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/storefront.api.ts` — добавлены тип `StorefrontCategoryFilter`, `getCategoryFilters(slug)`, расширен `getProducts` через `attributeFilters: Record<string,string>` (сериализация в `filters[brand]=Samsung` через URLSearchParams.append)
+  - `apps/web-buyer/src/lib/api/storefront-server.ts` — `serverGetGlobalCategories()`, `serverGetCategoryFilters(slug)`, `serverGetProducts` с `globalCategoryId` + `attributeFilters`
+  - `apps/web-buyer/src/components/store/CategoryAttributeFilters.tsx` — **новый компонент** (collapsible панель: chips глобальных категорий, под ней attribute controls — select/number/text/boolean toggle, badge с counter активных фильтров, кнопка «Сбросить»). Управляет URL через `router.replace(?gcat=…&f.brand=…)`, useTransition чтобы не блокировать UI
+  - `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` — server-side парсинг `?gcat=`, `?f.<key>=`, передача в getProducts; кнопка фильтров встроена под storeCategory chips; storeCategory chips теперь сохраняют gcat+f.* через `buildStoreCategoryHref`
+- **Что сделано:** URL формат — `?categoryId=<storeCat>&gcat=<globalCatSlug>&f.brand=Samsung&f.ram=8`. Сервер при наличии gcat fetch'ит метаданные фильтров, рендерит filter chips. При смене глобальной категории все f.* сбрасываются (они привязаны к категории). Backend получает фильтры в формате `filters[brand]=Samsung` (qs-nested) — Полат уже поддерживает в `findPublicByStoreId`.
+
+### ✅ [WEB-SELLER-DESIGN-PHASE-2-001] Phase 2 дизайн-стратегии C — solid surfaces для web-seller
+- **Важность:** 🟡 Дизайн-разделение buyer/seller — фундамент для будущих миграций
+- **Дата:** 25.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/styles.ts` — **переписан полностью**: новые токены без glass/blur. `colors` palette (slate-900 base: bg `#0F172A`, surface `#1E293B`, surfaceMuted, surfaceElevated, surfaceSunken, divider, border, borderStrong, textPrimary/Muted/Dim, accent `#A78BFA`). Surface presets: `card`, `cardMuted`, `shell`, `shellTop`, `inputStyle`, `pill`/`pillActive`. Никаких backdropFilter
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — мигрирован: убраны ambient orbs (solid фону они не нужны), sidebar и top header на solid `shell`/`shellTop`, иконки и кнопки на новые токены, тостеры на `surfaceElevated` + `accentBorder` без blur
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — мигрирован: метрик-карточки solid `card`, hover через onMouseEnter (smooth color transition вместо opacity), скелетон на surfaceElevated, semantic colors для статусов
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx` — мигрирован: search input solid `inputStyle`, status filter chips на surfaceMuted, table header в surfaceMuted (зебра-визуальный отделитель), row hover через onMouseEnter
+- **Что сделано:** Заложен фундамент Phase 2. Layout + dashboard + products теперь на solid surfaces — чистый dashboard-look без glassmorphism. Остальные 13 seller страниц (orders, settings, analytics, chat, notifications, onboarding, login, products/create, products/[id]/edit, settings, …) пока на старых локальных `const glass = {...}` — мигрировать постепенно в Phase 3.
+
+### ✅ [WEB-SELLER-DESIGN-PHASE-3-001] Phase 3 — миграция остальных web-seller страниц на solid surfaces
+- **Важность:** 🟡 Завершение Strategy C — все backdropFilter в web-seller удалены
+- **Дата:** 25.04.2026 (продолжение сессии 34)
+- **Файлы (10 страниц + 2 компонента):**
+  - `orders/page.tsx` — full migration: header card, filter tabs, search input, table header (surfaceMuted зебра), row hover на surfaceElevated, action buttons solid accent
+  - `orders/[id]/page.tsx` — full migration: order header, action panel, items table, totals секция (surfaceMuted footer), delivery&payment секция, cancel modal solid + полупрозрачный overlay (без blur)
+  - `notifications/page.tsx` — full migration: notif rows с hover на surfaceElevated, tabs, skeletons на surfaceElevated/Muted (semantic icons: ShoppingCart→accent, CheckCircle→success, AlertTriangle→warning). Bonus fix: typo `з��каз` → `заказ` в NotifIcon
+  - `analytics/page.tsx` — full migration: StatCard, TopProductCard на solid card, color coding accent/success/warning, error banner solid danger
+  - `settings/page.tsx` — full migration: все 5 секций (Store, Delivery, Categories, Profile, Notifications), Section/Field/SavedBadge helpers на новые токены, ToggleRow с solid accent при checked, gradient save buttons → solid accent. Использован replace_all для типовых rgba(255,255,255,X) → colors.surfaceElevated/Muted/Sunken
+  - `login/page.tsx` — **полная переписка**: убраны ambient orbs (login имеет body bg colors.bg), gradient buttons → solid accent с primaryBtn helper, OTP input на inputStyle, ошибки на solid danger pills с border. Inline style optimised. **Visual change:** chrome login сейчас выглядит как dashboard
+  - `products/create/page.tsx` — full migration: header back-button solid, form card, локальный inputStyle через ...inputBase spread (импорт переименован в inputBase), select dropdowns с background: colors.surface, toggle visible custom через CSS pseudo-selectors (peer:checked → accent), gradient action buttons → solid
+  - `products/[id]/edit/page.tsx` — **partial migration via alias**: `const glass = card` (импорт из styles). Главные surface containers теперь solid; внутренние inline rgba(...) на иконках/тенях оставлены — они визуально незначительны на фоне solid card
+  - `chat/page.tsx` — partial via alias: `const glass = card; const glassDim = cardMuted` (после ChatThreadView cleanup). Главные surfaces solid
+  - `onboarding/page.tsx` — partial via alias: `const glass = card`
+  - `components/product-variants-section.tsx`, `product-option-groups-section.tsx` — partial via alias
+- **Результат:** `git grep backdropFilter apps/web-seller` → **0 совпадений**. Все blur'ы из web-seller удалены. Visual: dashboard, orders, products list/detail, settings, analytics, notifications, login полностью solid с slate-900 палитрой; product create/edit, chat, onboarding имеют главные surfaces solid (внутренние мелкие inline rgba остались для постепенной чистки).
+- **Что не сделано:** оставшиеся inline `rgba(255,255,255,X)` в edit page, chat page, onboarding, components — для них при касании в будущем (когда меняем функциональность). Не критично — backdrop blur уже нигде, главные surfaces solid.
+
+### ✅ [WEB-SELLER-DESIGN-PHASE-3-CLEANUP-001] Финальная очистка inline rgba в alias-файлах
+- **Важность:** 🟢 Финиш Strategy C — 0 inline rgba(255,255,255,X) в web-seller
+- **Дата:** 25.04.2026 (продолжение сессии 34)
+- **Файлы:**
+  - `chat/page.tsx` — 21 случай → 0. Все `rgba(255,255,255,0.X)` → `colors.text*`/`surface*`, `rgba(167,139,250,0.X)` → `colors.accent*`, gradient buttons → solid accent. Bubbles seller-сообщений теперь solid accent с textBg вместо glass-purple
+  - `products/[id]/edit/page.tsx` — 14 случаев → 0. inputStyle через `...inputBase` spread, custom toggle через CSS pseudo-selector с accent + accentBorder, error/cancel/submit buttons на semantic colors
+  - `components/product-variants-section.tsx` — 20 случаев → 0. fieldStyle/confirmBtn/cancelBtn консолидированы через token spread, isActive toggle solid accent
+  - `components/product-option-groups-section.tsx` — 10 случаев → 0. Same pattern as variants
+  - `(onboarding)/onboarding/page.tsx` — 25 случаев → 0. STEPS progress bar (done/active/inactive states) на solid accent vs surface tokens, все 3 шага форм + finish view, навигационные buttons. Toggle active state на solid accent
+  - `components/image-uploader.tsx` — 4 случая → 0. Все 3 состояния (idle/uploading/displayUrl/error): фон → surfaceSunken/surface, accent borders/spinner на colors.accent, error state на colors.danger
+- **Результат:** `grep -rn "rgba(255,255,255\|backdropFilter" apps/web-seller/src` → **0 совпадений**. Strategy C завершена полностью. Web-seller теперь чистый slate-900 dashboard look с одним accent (violet), без полупрозрачных rgba(255,255,255,X) и без blur'ов вообще.
+- **Что осталось из rgba:** semantic token rgba для status colors (danger/success/warning bg with .12-.20 alpha) — это намеренно (полупрозрачные бейджи на цветном фоне). Modal overlays (rgba(0,0,0,.65)) — namesно. Эти не подлежат замене.
+
+### ✅ [WEB-CHAT-THREAD-VIEW-CLEANUP-001] Удалён локальный ChatThreadView адаптер
+- **Важность:** 🟢 Гигиена — Полат обновил тип `ChatThread` в packages/types в `18fa355`
+- **Дата:** 25.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/chat.api.ts` — удалены `ChatThreadView`, `RawThread`, `normalizeThread`. Добавлена helper `getThreadDisplay(t): { title, subtitle }` (buyer-perspective: storeName → productTitle → orderNumber → buyerPhone). `getThreads()` возвращает `ChatThread[]` напрямую
+  - `apps/web-seller/src/lib/api/chat.api.ts` — то же, но seller-perspective (buyerPhone → productTitle → orderNumber → storeName)
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — `ChatThreadView` → `ChatThread`, читает title/subtitle через helper, `lastMessageText` → `lastMessage` (теперь string|null в типе), убран UI `unreadCount` (нет в новом типе)
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — то же
+  - `apps/web-seller/src/hooks/use-chat.ts` — `useUnreadChatCount()` теперь возвращает 0 (заглушка пока Полат не вернёт `unreadCount` в API ChatThread)
+- **Что сделано:** Минус ~150 строк нормализации, фронт теперь работает с типом из packages/types напрямую. Title/subtitle derivation остался как чистая функция-helper (buyer и seller имеют разные приоритеты в одной строке).
+- **Что не сделано (Полат):** `unreadCount` поле в `ChatThread` типе и API ответе. Сейчас seller sidebar badge непрочитанных чатов всегда 0 — это OK как заглушка до бэка.
+
+---
+
 ## 2026-04-23 — Сессия 33 (Азим) — Design token refactor (фаза 1, web-buyer)
 
 ### ✅ [WEB-BUYER-DESIGN-TOKENS-001] Вынес все glass-токены в `lib/styles.ts`

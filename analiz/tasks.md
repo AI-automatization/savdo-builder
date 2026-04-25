@@ -5,53 +5,40 @@
 
 ---
 
-# 📋 Снимок состояния (на 23.04.2026, сессия 33)
+# 📋 Снимок состояния (на 25.04.2026, сессия 34)
 
-## ✅ Закрыто Полатом в коммитах `907f39f`, `fb79db2` (сессия 33)
+## ✅ Закрыто Полатом в `18fa355`, `66b8be4` (24.04.2026)
 
-- `API-CHAT-ROLE-GUARD-001` → `@Roles('BUYER')` снят с `POST /chat/threads` (chat.controller.ts:63-64); + `ensureBuyerProfile` в verify-otp для существующих users
-- **Chat real-time fix** — TMA слушал `chat:new_message`, gateway шлёт `chat:message` → привели к одному event (web-buyer/web-seller у нас уже слушали правильно)
-- **Chat status unification** — `active/resolved` → `OPEN/CLOSED` во всех слоях (API + TMA + admin)
-- **Chat UI** — имена тредов (название магазина / телефон), превью последнего сообщения, запрет отправки в CLOSED треды
-- **Admin chats** — кнопка удаления + DELETE endpoint; fix STATUS_COLORS crash; bundle 900→300KB
-- **Sprint 31 Categories** — 34 категории + 130 фильтров в БД, автосид через OnModuleInit; `GET /api/v1/storefront/categories/:slug/filters` (публичный); `POST /api/v1/admin/categories/seed` (ADMIN); `Product` API теперь включает `globalCategory { nameRu, nameUz }`
-- **Security** — OTP через `crypto.randomInt`, брутфорс-защита (5 попыток → блок 15 мин через Redis), `/proxy/:id` только для PUBLIC, удалены дубли `/auth/otp/send|verify`
-- **DB/Redis audit** — OTP graceful degrade при Redis down, try/catch на `JSON.parse(options)`
+- `API-BUYER-ORDERS-ROLE-GUARD-001` 🔴 — снят `@Roles('BUYER')` с buyer/orders endpoints
+- `API-CHAT-THREAD-CONTRACT-001` 🔴 — `ChatThread` тип в packages/types обновлён (threadType/storeName/storeSlug/productTitle/orderNumber/buyerPhone, lastMessage: string|null)
+- `API-PRODUCT-ATTRIBUTES-TYPE-001` 🟡 — `Product.attributes: ProductAttribute[]` в типе
+- `API-STOREFRONT-PRODUCT-FILTERS-001` 🟡 — `/storefront/products?filters[brand]=Samsung` теперь работает
+- `API-CATEGORY-SEED-CLEANUP-001` 🟡 — авто-категории убраны из seed + cleanupRemovedCategories на старте
+- `API-BUYER-AVATAR-001` 🟡 — `POST /api/v1/media/buyer/avatar` (multipart, IMAGE_ONLY, 10MB), `BuyerProfile.avatarUrl` в /auth/me
+
+## ✅ Закрыто Азимом в сессии 34 (25.04.2026)
+
+- `WEB-BUYER-AVATAR-UI-001` 🟢 — клик-аватар на /profile, file picker с валидацией, refreshUser после загрузки
+- `WEB-BUYER-CATEGORY-FILTERS-001` 🟡 — глобальные категории + 130 атрибут-фильтров на витрине магазина (`/[slug]?gcat=…&f.brand=…`)
+- `WEB-SELLER-DESIGN-PHASE-2-001` 🟡 — solid surfaces tokens + миграция layout/dashboard/products
+- `WEB-SELLER-DESIGN-PHASE-3-001` 🟡 — миграция остальных 10 страниц + 2 компонентов: orders list/detail, settings, analytics, notifications, login (full); products/create (full), products/edit + chat + onboarding + variants/option-groups (via alias). `grep backdropFilter` → 0 совпадений в web-seller
+- `WEB-SELLER-DESIGN-PHASE-3-CLEANUP-001` 🟢 — финальная очистка alias-файлов: chat/edit/variants/option-groups/onboarding/image-uploader. **Все inline rgba(255,255,255,X) удалены из web-seller — `grep -rn` показывает 0 совпадений**
+- `WEB-CHAT-THREAD-VIEW-CLEANUP-001` 🟢 — удалены локальные адаптеры, фронт работает с ChatThread из packages/types напрямую
 
 ## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-CHAT-THREAD-CONTRACT-001` | 🔴 | **Sprint 31 сломал контракт чата.** `list-my-threads.use-case.ts` возвращает `{id, threadType, status, lastMessage: string, storeName, storeSlug, productTitle, orderNumber, buyerPhone}`, но тип `packages/types/src/api/chat.ts#ChatThread` всё ещё описывает старое `{id, contextType, contextId, buyerId, sellerId, unreadCount, lastMessage: {text}}`. Фронт падал с `Cannot read properties of undefined (reading 'slice')` на странице чатов. Обновить тип в packages/types (+ `unreadCount`, которого сейчас нет в API ответе). Web-buyer и web-seller переведены на локальный `ChatThreadView` через адаптер — после правки типа можно упростить. |
-| `API-CATEGORY-SEED-CLEANUP-001` | 🟡 | **Авто нам не нужно.** В `apps/api/src/modules/categories/global-categories-seed.service.ts`: строка 29 — корневая `automotive` «Автомобили», строки 58-60 — дети `cars` / `cars_used` / `motorcycles`, строки 190-206+ — 14 связанных CategoryFilter (brand, model, year, mileage, color, engine, transmission, condition) для `cars` и `cars_used`. Убрать всё это из массивов + добавить cleanup-код для существующих записей в БД (seed по сути upsert, поэтому удаление в seed не удалит уже посеянные записи — нужна миграция или условный `deleteMany` на старте). До этого web-seller скрывает через `isHiddenCategory` (slug/name regex) — после фикса seed'а фронт-фильтр можно удалить. |
-| `API-BUYER-ORDERS-ROLE-GUARD-001` | 🔴 | Те же грабли что были с чатом: `orders.controller.ts:48-49,85,97,108` декорированы `@Roles('BUYER')`. SELLER-пользователь с Buyer-профилем (dual-role) ловит 403 на `GET /buyer/orders` и не может посмотреть свои покупки. Минимальный фикс — снять `@Roles('BUYER')` с buyer-эндпоинтов (там есть `resolveBuyerId` по аналогии с чатом). Проверить заодно `/cart`, `/checkout` — те же `@Roles('BUYER')`? |
-| `API-BUYER-AVATAR-001` | 🟡 | Нет поля `Buyer.avatarUrl` + endpoint загрузки + поле в `auth/me`. После — Azim прикрутит UI. |
-| `API-PRODUCT-ATTRIBUTES-TYPE-001` | 🟡 | `findPublicById` (products.repository.ts:120) уже делает `include: attributes`, но в `packages/types/src/api/products.ts:62-69` поле `attributes: ProductAttribute[]` отсутствует. Добавить в тип `Product` (и в `ProductAttribute` с полями `id, name, value, sortOrder`). Фронт пока читает через локальный cast (см. web-buyer ProductPage, блок «Характеристики»). |
-| `API-STOREFRONT-PRODUCT-FILTERS-001` | 🟡 | `GET /storefront/products?storeId=X` принимает только `globalCategoryId` / `storeCategoryId`. Для использования 130 фильтров Sprint 31 нужно принимать attribute-фильтры (напр. `?filters[brand]=Samsung&filters[ram]=8`). Без этого новый endpoint `/storefront/categories/:slug/filters` — просто метаданные без применения. |
+| `API-CHAT-UNREAD-COUNT-001` | 🟡 | После cleanup'а ChatThreadView фронт перестал показывать badge непрочитанных чатов в seller-sidebar (`useUnreadChatCount` → 0). Вернуть `unreadCount: number` в ответе `/chat/threads` (list-my-threads.use-case.ts) **и** в типе `packages/types/src/api/chat.ts#ChatThread`. Логика: COUNT(messages WHERE threadId AND createdAt > thread.lastReadAt[role]). |
 | **Auth-история** | 🟡 | Почему `/auth/logout` 401 при первом выходе? И серия 401 на `/auth/me`, `/seller/store`, `/seller/summary`, `/chat/threads`, `/notifications/inbox` — JWT/session-id из refresh-token. Сделать тестовый заказ в prod и поймать трейс в Railway logs. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| Тест chat composer end-to-end | 🔴 | Разблокирован Полатом в `907f39f`. После Railway-билда — протестировать e2e на dual-role аккаунте. |
-| `WEB-BUYER-CATEGORY-FILTERS-001` | 🟡 | Блокирован `API-STOREFRONT-PRODUCT-FILTERS-001`. Endpoint `/storefront/categories/:slug/filters` отдаёт метаданные, но `/storefront/products` их не принимает → чистая витрина без применения. Ждём бэка. |
-| `WEB-BUYER-AVATAR-UI-001` | 🟢 | Когда Полат закроет `API-BUYER-AVATAR-001` — на `/profile` повесить `<Image>` + `<input type=file>`, инвалидировать `['auth','me']`. |
+| Тест end-to-end в проде после `66b8be4` deploy | 🔴 | (1) Avatar upload на /profile (загрузить картинку, проверить что отображается, проверить /auth/me возвращает avatarUrl). (2) Category filters на витрине магазина — открыть store, нажать «Фильтры», выбрать категорию, выбрать значение фильтра, увидеть отфильтрованный список. (3) Web-seller solid surfaces — визуально оценить новый dashboard look. (4) Chat composer e2e (висит с сессии 33) на dual-role аккаунте. |
+| `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` | 🟢 | После того как Азим визуально подтвердит что Railway задеплоил `18fa355` и в `/products/create` dropdown категорий нет авто-пунктов — удалить `isHiddenCategory(slug)` regex-фильтр из `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` и `[id]/edit/page.tsx`. **ОПАСНО удалять до проверки** — если cleanup не отработал на проде, продавцы снова увидят авто. |
 | Подтвердить причину `/notifications` ошибки | 🟢 | F12 Network → `/notifications/inbox`. 401 = часть auth-серии, 404/500 = отдельная задача. |
-
----
-
-## 🟡 [API-BUYER-AVATAR-001] Buyer profile avatar — нет схемы / endpoint / поля в `auth/me`
-- **Домен:** `apps/api`, `packages/db`, `packages/types`
-- **Кто взял:** Полат
-- **Важность:** 🟡 UX gap. Азим (19.04.2026) репортнул что в `web-buyer /profile` нельзя поставить своё фото, висит дефолтная иконка `<UserIcon>`. Фронт реализовать не может — нет ни поля, ни endpoint.
-- **Что нужно:**
-  1. **Schema (`packages/db/prisma/schema.prisma:166-182`):** добавить `avatarUrl String?` в `model Buyer`. Migration `add_buyer_avatar_url`.
-  2. **Upload endpoint:** `POST /buyer/me/avatar` — multipart (`multipart/form-data`, поле `file`), валидация: image/jpeg|png|webp, ≤2 MB. Грузит в R2 (тот же бакет что и product media), записывает публичный URL в `Buyer.avatarUrl`. Возвращает обновлённый `BuyerProfile`.
-  3. **Delete endpoint (опц.):** `DELETE /buyer/me/avatar` — обнуляет поле, удаляет из R2.
-  4. **`GET /auth/me`:** поле `avatarUrl` в `User.buyer` ответе.
-  5. **`packages/types`:** добавить `avatarUrl?: string | null` в `BuyerProfile` (см. `packages/types/src/api/auth.ts` где определён `User`).
-- **Когда готово — Азим (web-buyer):** на `/profile` рядом с `<UserIcon>` рендерит круглую `<Image>` с `avatarUrl`, под ней кнопка «Изменить фото» — открывает `<input type="file" accept="image/*">`, шлёт в новый endpoint, инвалидирует `['auth','me']`.
 
 ---
 
