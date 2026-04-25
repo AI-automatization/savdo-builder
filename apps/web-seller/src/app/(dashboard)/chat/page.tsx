@@ -2,14 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { UserRole } from 'types';
-import type { ChatThreadView } from '@/lib/api/chat.api';
+import type { ChatThread } from 'types';
+import { getThreadDisplay } from '@/lib/api/chat.api';
 import { MessageSquare, User as UserIcon } from 'lucide-react';
 import { useThreads, useMessages, useSendMessage, useResolveThread, useChatSocket } from '@/hooks/use-chat';
+import { card, cardMuted, colors, inputStyle } from '@/lib/styles';
 
-// ── Glass tokens ───────────────────────────────────────────────────────────
-
-const glass    = { background: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.13)" } as const;
-const glassDim = { background: "rgba(255,255,255,0.04)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.08)" } as const;
+const glass = card;
+const glassDim = cardMuted;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -24,43 +24,36 @@ function timeLabel(iso: string): string {
 
 // ── Thread List ────────────────────────────────────────────────────────────
 
-function ThreadItem({ thread, active, onClick }: { thread: ChatThreadView; active: boolean; onClick: () => void }) {
+function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
+  const { title, subtitle } = getThreadDisplay(thread);
   return (
     <button
       onClick={onClick}
       className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5"
-      style={active ? { background: 'rgba(167,139,250,.10)' } : {}}
+      style={active ? { background: colors.accentMuted } : {}}
     >
       <div
         className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: 'rgba(167,139,250,.25)', color: '#A78BFA' }}
+        style={{ background: colors.accentMuted, color: colors.accent }}
       >
         <UserIcon size={16} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">
-          {thread.title}
+          {title}
         </p>
-        <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>
-          {thread.lastMessageText ?? thread.subtitle ?? 'Нет сообщений'}
+        <p className="text-xs truncate" style={{ color: colors.textDim }}>
+          {thread.lastMessage ?? subtitle ?? 'Нет сообщений'}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         {thread.lastMessageAt && (
-          <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
+          <span className="text-[10px]" style={{ color: colors.textDim }}>
             {timeLabel(thread.lastMessageAt)}
           </span>
         )}
-        {thread.unreadCount > 0 && (
-          <span
-            className="flex items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: '#A78BFA', color: '#0d0d1f', width: 18, height: 18 }}
-          >
-            {thread.unreadCount}
-          </span>
-        )}
         {thread.status === 'CLOSED' && (
-          <span className="text-[10px]" style={{ color: 'rgba(52,211,153,.70)' }}>закрыт</span>
+          <span className="text-[10px]" style={{ color: colors.success }}>закрыт</span>
         )}
       </div>
     </button>
@@ -69,13 +62,14 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThreadView; activ
 
 // ── Chat Window ────────────────────────────────────────────────────────────
 
-function ChatWindow({ thread }: { thread: ChatThreadView }) {
+function ChatWindow({ thread }: { thread: ChatThread }) {
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
   const resolveMutation = useResolveThread();
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { title, subtitle } = getThreadDisplay(thread);
 
   const messages = data?.messages ?? [];
 
@@ -93,15 +87,15 @@ function ChatWindow({ thread }: { thread: ChatThreadView }) {
   return (
     <div className="flex-1 rounded-2xl flex flex-col overflow-hidden" style={glass}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(167,139,250,.25)', color: '#A78BFA' }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: colors.accentMuted, color: colors.accent }}>
             <UserIcon size={15} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white truncate">{thread.title}</p>
-            <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {thread.subtitle ?? (thread.threadType === 'ORDER' ? 'Заказ' : 'Товар')}
+            <p className="text-sm font-semibold text-white truncate">{title}</p>
+            <p className="text-[11px] truncate" style={{ color: colors.textDim }}>
+              {subtitle ?? (thread.threadType === 'ORDER' ? 'Заказ' : 'Товар')}
             </p>
           </div>
         </div>
@@ -110,7 +104,7 @@ function ChatWindow({ thread }: { thread: ChatThreadView }) {
             onClick={() => resolveMutation.mutate(thread.id)}
             disabled={resolveMutation.isPending}
             className="px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-40 transition-opacity"
-            style={{ background: 'rgba(52,211,153,0.13)', color: 'rgba(52,211,153,.85)' }}
+            style={{ background: 'rgba(52,211,153,0.13)', color: colors.success, border: '1px solid rgba(52,211,153,0.25)' }}
           >
             {resolveMutation.isPending ? '...' : 'Закрыть чат'}
           </button>
@@ -123,14 +117,14 @@ function ChatWindow({ thread }: { thread: ChatThreadView }) {
           <>
             {[1, 2, 3].map((i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                <div className="h-9 w-48 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                <div className="h-9 w-48 rounded-2xl animate-pulse" style={{ background: colors.surfaceElevated }} />
               </div>
             ))}
           </>
         )}
 
         {!isLoading && messages.length === 0 && (
-          <p className="text-center text-sm py-8" style={{ color: 'rgba(255,255,255,0.28)' }}>
+          <p className="text-center text-sm py-8" style={{ color: colors.textDim }}>
             Нет сообщений
           </p>
         )}
@@ -142,12 +136,12 @@ function ChatWindow({ thread }: { thread: ChatThreadView }) {
               <div
                 className="max-w-[70%] px-3.5 py-2.5 rounded-2xl text-sm text-white"
                 style={isSeller
-                  ? { background: 'rgba(167,139,250,.28)', borderBottomRightRadius: 4 }
+                  ? { background: colors.accent, color: colors.bg, borderBottomRightRadius: 4 }
                   : { ...glassDim, borderBottomLeftRadius: 4 }
                 }
               >
                 <p>{m.text}</p>
-                <p className="text-[10px] mt-1 text-right" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-[10px] mt-1 text-right" style={{ color: colors.textDim }}>
                   {timeLabel(m.createdAt)}
                 </p>
               </div>
@@ -158,7 +152,7 @@ function ChatWindow({ thread }: { thread: ChatThreadView }) {
       </div>
 
       {/* Input */}
-      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: `1px solid ${colors.divider}` }}>
         <input
           type="text"
           value={text}
@@ -167,13 +161,13 @@ function ChatWindow({ thread }: { thread: ChatThreadView }) {
           placeholder={thread.status === 'CLOSED' ? 'Чат закрыт' : 'Написать сообщение...'}
           disabled={thread.status === 'CLOSED'}
           className="flex-1 h-10 px-4 rounded-xl text-sm text-white placeholder-white/25 outline-none disabled:opacity-40"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.11)' }}
+          style={inputStyle}
         />
         <button
           onClick={handleSend}
           disabled={!text.trim() || sendMutation.isPending || thread.status === 'CLOSED'}
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
-          style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+          style={{ background: colors.accent }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
@@ -190,16 +184,16 @@ function EmptyState({ noThreads }: { noThreads: boolean }) {
   return (
     <div className="flex-1 rounded-2xl flex items-center justify-center p-8" style={glassDim}>
       <div className="text-center max-w-sm">
-        <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 10px' }} />
+        <MessageSquare size={32} style={{ color: colors.textDim, margin: '0 auto 10px' }} />
         {noThreads ? (
           <>
-            <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>Здесь появятся диалоги с покупателями</p>
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            <p className="text-sm font-medium" style={{ color: colors.textMuted }}>Здесь появятся диалоги с покупателями</p>
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: colors.textDim }}>
               Продавец не может начать чат первым. Покупатель напишет вам со страницы товара или заказа — диалог сразу появится в списке слева.
             </p>
           </>
         ) : (
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>Выберите чат</p>
+          <p className="text-sm" style={{ color: colors.textDim }}>Выберите чат</p>
         )}
       </div>
     </div>
@@ -227,18 +221,18 @@ export default function ChatPage() {
 
       {/* Thread list */}
       <div className="w-72 flex-shrink-0 rounded-2xl overflow-hidden flex flex-col" style={glass}>
-        <div className="px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
           <p className="text-sm font-semibold text-white">Чаты</p>
         </div>
-        <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: colors.divider }}>
           {isLoading && (
             <>
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-9 h-9 rounded-full animate-pulse flex-shrink-0" style={{ background: 'rgba(255,255,255,0.10)' }} />
+                  <div className="w-9 h-9 rounded-full animate-pulse flex-shrink-0" style={{ background: colors.surfaceElevated }} />
                   <div className="flex-1 flex flex-col gap-1.5">
-                    <div className="h-3 w-28 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.10)' }} />
-                    <div className="h-2.5 w-36 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.07)' }} />
+                    <div className="h-3 w-28 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
+                    <div className="h-2.5 w-36 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
                   </div>
                 </div>
               ))}
@@ -246,17 +240,17 @@ export default function ChatPage() {
           )}
 
           {isError && (
-            <p className="px-4 py-6 text-xs text-center" style={{ color: 'rgba(248,113,113,.70)' }}>
+            <p className="px-4 py-6 text-xs text-center" style={{ color: colors.danger }}>
               Не удалось загрузить чаты
             </p>
           )}
 
           {!isLoading && !isError && threads?.length === 0 && (
             <div className="px-4 py-8 text-center flex flex-col items-center gap-3">
-              <MessageSquare size={28} style={{ color: 'rgba(255,255,255,0.3)' }} />
+              <MessageSquare size={28} style={{ color: colors.textDim }} />
               <div>
-                <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.60)' }}>Чатов пока нет</p>
-                <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-sm font-medium" style={{ color: colors.textMuted }}>Чатов пока нет</p>
+                <p className="text-xs mt-1.5 leading-relaxed" style={{ color: colors.textDim }}>
                   Покупатели первыми пишут вам<br />со страницы товара или заказа
                 </p>
               </div>

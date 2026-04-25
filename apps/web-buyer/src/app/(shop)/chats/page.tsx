@@ -5,7 +5,8 @@ import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
 import { UserRole } from "types";
-import type { ChatThreadView } from "@/lib/api/chat.api";
+import type { ChatThread } from "types";
+import { getThreadDisplay } from "@/lib/api/chat.api";
 import { useAuth } from "@/lib/auth/context";
 import { useThreads, useMessages, useSendMessage, useChatSocket } from "@/hooks/use-chat";
 import { MessageSquare, Store } from "lucide-react";
@@ -47,7 +48,8 @@ const IcoChatGate = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 
 // ── Thread Item ────────────────────────────────────────────────────────────
 
-function ThreadItem({ thread, active, onClick }: { thread: ChatThreadView; active: boolean; onClick: () => void }) {
+function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
+  const { title, subtitle } = getThreadDisplay(thread);
   return (
     <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/5"
       style={active ? { background: "rgba(167,139,250,.10)" } : {}}>
@@ -57,22 +59,16 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThreadView; activ
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">
-          {thread.title}
+          {title}
         </p>
         <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.38)" }}>
-          {thread.lastMessageText ?? thread.subtitle ?? "Нет сообщений"}
+          {thread.lastMessage ?? subtitle ?? "Нет сообщений"}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         {thread.lastMessageAt && (
           <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.28)" }}>
             {timeLabel(thread.lastMessageAt)}
-          </span>
-        )}
-        {thread.unreadCount > 0 && (
-          <span className="flex items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: "#A78BFA", color: "#0d0d1f", width: 18, height: 18 }}>
-            {thread.unreadCount}
           </span>
         )}
       </div>
@@ -82,13 +78,14 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThreadView; activ
 
 // ── Chat View ──────────────────────────────────────────────────────────────
 
-function ChatView({ thread }: { thread: ChatThreadView }) {
+function ChatView({ thread }: { thread: ChatThread }) {
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const messages = data?.messages ?? [];
+  const { title, subtitle } = getThreadDisplay(thread);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,9 +106,9 @@ function ChatView({ thread }: { thread: ChatThreadView }) {
           <IcoBack />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white truncate">{thread.title}</p>
+          <p className="text-sm font-semibold text-white truncate">{title}</p>
           <p className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
-            {thread.subtitle ? `${thread.subtitle} · ` : ""}
+            {subtitle ? `${subtitle} · ` : ""}
             {thread.status === "OPEN" ? "Открыт" : "Закрыт"}
           </p>
         </div>

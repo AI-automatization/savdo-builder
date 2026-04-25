@@ -20,8 +20,9 @@ export function useThreads() {
 }
 
 export function useUnreadChatCount(): number {
-  const { data: threads = [] } = useThreads();
-  return threads.reduce((sum, t) => sum + (t.unreadCount ?? 0), 0);
+  // Backend ChatThread does not currently expose unreadCount — see API task in tasks.md.
+  // Returning 0 keeps the sidebar badge hidden until the field is added.
+  return 0;
 }
 
 export function useMessages(threadId: string | null) {
