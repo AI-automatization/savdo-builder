@@ -31,13 +31,39 @@ export class BroadcastUseCase {
   ) {}
 
   async execute(input: BroadcastInput): Promise<BroadcastResult> {
+    // Include sellers who linked via bot (telegramChatId) OR via TMA auth (user.telegramId).
+    // Both fields hold the same numeric Telegram user ID — it equals the private chat ID
+    // that the bot needs to message the user. Previously, only bot-linked sellers were
+    // reachable; TMA-only sellers were silently skipped.
     const sellers = await this.prisma.seller.findMany({
-      where: { telegramChatId: { not: null } },
-      select: { id: true, telegramChatId: true },
+      where: {
+        OR: [
+          { telegramChatId: { not: null } },
+          { user: { telegramId: { not: null } } },
+        ],
+      },
+      select: {
+        id: true,
+        telegramChatId: true,
+        user: { select: { telegramId: true } },
+      },
     });
 
+    // Build deduplicated list of chat IDs
+    const chatIds: string[] = [];
+    const seen = new Set<string>();
+    for (const s of sellers) {
+      const raw = s.telegramChatId ?? s.user.telegramId;
+      if (!raw) continue;
+      const chatId = raw.toString();
+      if (!seen.has(chatId)) {
+        seen.add(chatId);
+        chatIds.push(chatId);
+      }
+    }
+
     if (input.previewMode) {
-      return { queued: sellers.length, previewMode: true };
+      return { queued: chatIds.length, previewMode: true };
     }
 
     const log = await this.prisma.broadcastLog.create({
@@ -47,20 +73,16 @@ export class BroadcastUseCase {
       },
     });
 
-    const jobs = sellers.map((s, i) => ({
+    const jobs = chatIds.map((chatId, i) => ({
       name: TELEGRAM_JOB_BROADCAST,
-      data: {
-        chatId: s.telegramChatId!.toString(),
-        message: input.message,
-        broadcastLogId: log.id,
-      },
+      data: { chatId, message: input.message, broadcastLogId: log.id },
       opts: { delay: i * BROADCAST_DELAY_MS },
     }));
 
     await this.queue.addBulk(jobs);
 
-    this.logger.log(`Broadcast queued: ${sellers.length} messages, logId=${log.id}`);
-    return { queued: sellers.length, previewMode: false, broadcastLogId: log.id };
+    this.logger.log(`Broadcast queued: ${chatIds.length} messages, logId=${log.id}`);
+    return { queued: chatIds.length, previewMode: false, broadcastLogId: log.id };
   }
 
   async getHistory() {

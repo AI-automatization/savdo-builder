@@ -25,7 +25,7 @@ interface GlobalCategory {
 
 export default function StoresPage() {
   const navigate = useNavigate();
-  const { user, tg } = useTelegram();
+  const { user, tg, viewportWidth } = useTelegram();
 
   // ── Tab ────────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState<'stores' | 'products'>('stores');
@@ -304,7 +304,11 @@ export default function StoresPage() {
             )}
 
             {!productsLoading && products.length > 0 && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${
+                viewportWidth >= 960 ? 'grid-cols-5' :
+                viewportWidth >= 768 ? 'grid-cols-4' :
+                viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2'
+              }`}>
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} />
                 ))}

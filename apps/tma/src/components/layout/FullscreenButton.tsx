@@ -41,12 +41,16 @@ export function FullscreenButton() {
 
   const toggle = () => {
     if (!tg) return;
-    tg.HapticFeedback.selectionChanged();
-    if (isFullscreen) {
+    // Read live value — tg.isFullscreen is the source of truth; React state may lag
+    // if the 'fullscreen_changed' event didn't fire (older Telegram Desktop versions).
+    const currently = tg.isFullscreen ?? isFullscreen;
+    try { tg.HapticFeedback.selectionChanged(); } catch { /* no-op on desktop */ }
+    if (currently) {
       tg.exitFullscreen?.();
     } else {
       tg.requestFullscreen?.();
     }
+    setIsFullscreen(!currently);
   };
 
   return (
