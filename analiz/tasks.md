@@ -54,7 +54,9 @@
 
 ## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
 
-_(пусто — все 4 задачи сессии 35 закрыты в `0b2de22`. См. секцию «Закрыто Полатом» выше.)_
+| ID | Важность | Кратко |
+|----|----------|--------|
+| `API-GLOBAL-CATEGORY-CONTRACT-001` | 🟡 | `GET /storefront/categories` теперь возвращает `{id, parentId, nameRu, nameUz, slug, isActive, sortOrder, createdAt}` (видимо после `fb79db2` или Sprint 31). Тип `GlobalCategory` в `packages/types/src/api/stores.ts` всё ещё описывает старую форму `{id, name, slug, iconUrl, sortOrder}`. **Эффект:** web-seller `/products/create` dropdown категорий показывался пустым (`c.name = undefined` → Select rendered empty rows). Web-buyer storefront не сломался потому что у них свой локальный тип в `storefront.api.ts`. **Фронт-фикс уже сделан** в `apps/web-seller/src/lib/api/seller.api.ts` — локальный адаптер `nameRu → name`. После апдейта типа: убрать адаптер, использовать `nameRu`/`nameUz` напрямую (мультиязычность). Также `parentId` подразумевает дерево — фронт сейчас показывает плоский список из 30 leaf-категорий, может имеет смысл иерархия. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 

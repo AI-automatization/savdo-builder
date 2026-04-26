@@ -85,9 +85,28 @@ export async function unpublishStore(): Promise<Store> {
 
 // ── Categories ─────────────────────────────────────────────────────────────────
 
+// Backend returns categories shaped { id, nameRu, nameUz, slug, sortOrder, ... }
+// but `packages/types#GlobalCategory` still describes `name: string`. Until Полат
+// updates the shared type, adapt locally so the seller form selector renders
+// labels (Select was showing empty rows because c.name was undefined).
+type ApiGlobalCategory = {
+  id: string;
+  nameRu: string;
+  nameUz: string;
+  slug: string;
+  iconUrl?: string | null;
+  sortOrder: number;
+};
+
 export async function getGlobalCategories(): Promise<GlobalCategory[]> {
-  const res = await apiClient.get<GlobalCategory[]>('/storefront/categories');
-  return res.data;
+  const res = await apiClient.get<ApiGlobalCategory[]>('/storefront/categories');
+  return res.data.map((c) => ({
+    id: c.id,
+    name: c.nameRu,
+    slug: c.slug,
+    iconUrl: c.iconUrl ?? null,
+    sortOrder: c.sortOrder,
+  }));
 }
 
 export async function getStoreCategories(): Promise<StoreCategory[]> {
