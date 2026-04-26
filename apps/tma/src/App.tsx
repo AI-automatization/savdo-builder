@@ -67,8 +67,10 @@ const SellerProducts = lazy(() => import('@/pages/seller/ProductsPage'));
 const SellerAddProduct = lazy(() => import('@/pages/seller/AddProductPage'));
 const SellerEditProduct = lazy(() => import('@/pages/seller/EditProductPage'));
 const SellerProfile = lazy(() => import('@/pages/seller/ProfilePage'));
+const SellerSettings = lazy(() => import('@/pages/seller/SettingsPage'));
 const SellerChat = lazy(() => import('@/pages/seller/ChatPage'));
 const BuyerProfile = lazy(() => import('@/pages/buyer/ProfilePage'));
+const BuyerSettings = lazy(() => import('@/pages/buyer/SettingsPage'));
 const BuyerChat = lazy(() => import('@/pages/buyer/ChatPage'));
 
 function SellerGuard({ children }: { children: React.ReactNode }) {
@@ -104,6 +106,7 @@ export default function App() {
         <Route path="/buyer/checkout" element={<BuyerGuard><BuyerCheckout /></BuyerGuard>} />
         <Route path="/buyer/orders" element={<BuyerGuard><BuyerOrders /></BuyerGuard>} />
         <Route path="/buyer/profile" element={<BuyerProfile />} />
+        <Route path="/buyer/settings" element={<BuyerSettings />} />
         <Route path="/seller" element={<SellerGuard><SellerDashboard /></SellerGuard>} />
         <Route path="/seller/orders" element={<SellerGuard><SellerOrders /></SellerGuard>} />
         <Route path="/seller/store" element={<SellerGuard><SellerStore /></SellerGuard>} />
@@ -111,6 +114,7 @@ export default function App() {
         <Route path="/seller/products/add" element={<SellerGuard><SellerAddProduct /></SellerGuard>} />
         <Route path="/seller/products/:id/edit" element={<SellerGuard><SellerEditProduct /></SellerGuard>} />
         <Route path="/seller/profile" element={<SellerGuard><SellerProfile /></SellerGuard>} />
+        <Route path="/seller/settings" element={<SellerGuard><SellerSettings /></SellerGuard>} />
         <Route path="/seller/chat" element={<SellerGuard><SellerChat /></SellerGuard>} />
         <Route path="/seller/chat/:threadId" element={<SellerGuard><SellerChat /></SellerGuard>} />
         <Route path="/buyer/chat" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />

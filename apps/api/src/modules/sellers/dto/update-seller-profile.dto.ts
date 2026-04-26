@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsBoolean, MinLength, MaxLength, Matches } from 'class-validator';
 
 export class UpdateSellerProfileDto {
   @IsOptional()
@@ -19,4 +19,8 @@ export class UpdateSellerProfileDto {
   @IsOptional()
   @IsIn(['ru', 'uz'])
   languageCode?: 'ru' | 'uz';
+
+  @IsOptional()
+  @IsBoolean()
+  telegramNotificationsActive?: boolean;
 }

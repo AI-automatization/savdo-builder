@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
 
-const rootPaths = ['/', '/buyer', '/seller'];
+const rootPaths = ['/', '/buyer', '/seller', '/buyer/settings', '/seller/settings'];
 
 export function BackButton() {
   const { tg } = useTelegram();

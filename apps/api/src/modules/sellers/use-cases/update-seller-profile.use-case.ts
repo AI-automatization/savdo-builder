@@ -18,6 +18,7 @@ export class UpdateSellerProfileUseCase {
     sellerType?: string;
     telegramUsername?: string;
     languageCode?: string;
+    telegramNotificationsActive?: boolean;
   }) {
     const seller = await this.sellersRepo.findByUserId(userId);
     if (!seller) {

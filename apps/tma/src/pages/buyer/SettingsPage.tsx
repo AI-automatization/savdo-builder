@@ -1,0 +1,169 @@
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/providers/AuthProvider';
+import { useTelegram } from '@/providers/TelegramProvider';
+import { applyAsSeller } from '@/lib/auth';
+import { AppShell } from '@/components/layout/AppShell';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { showToast } from '@/components/ui/Toast';
+import { useState } from 'react';
+
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+
+export default function BuyerSettingsPage() {
+  const { user, authenticated, logout, reauth } = useAuth();
+  const { tg, user: tgUser } = useTelegram();
+  const navigate = useNavigate();
+  const [applying, setApplying] = useState(false);
+
+  const handleLogout = () => {
+    tg?.HapticFeedback.notificationOccurred('warning');
+    logout();
+    navigate('/', { replace: true });
+  };
+
+  const handleBecomeSeller = async () => {
+    setApplying(true);
+    try {
+      await applyAsSeller();
+      await reauth();
+      tg?.HapticFeedback.notificationOccurred('success');
+      navigate('/seller', { replace: true });
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Ошибка');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  return (
+    <AppShell role="BUYER">
+      <div className="flex flex-col gap-4">
+
+        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Настройки</h1>
+
+        {/* ── Аккаунт ── */}
+        <GlassCard className="p-4 flex flex-col gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            Аккаунт
+          </p>
+
+          <div className="flex items-center gap-3">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0"
+              style={{
+                background: authenticated
+                  ? 'linear-gradient(135deg, #059669, #34d399)'
+                  : 'rgba(255,255,255,0.10)',
+              }}
+            >
+              {tgUser?.first_name?.[0]?.toUpperCase() ?? '👤'}
+            </div>
+            <div className="flex-1 min-w-0">
+              {authenticated && tgUser ? (
+                <>
+                  <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.90)' }}>
+                    {tgUser.first_name} {tgUser.last_name ?? ''}
+                  </p>
+                  {tgUser.username && (
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>@{tgUser.username}</p>
+                  )}
+                  {user?.phone && (
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{user.phone}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Гость</p>
+              )}
+            </div>
+            {authenticated && (
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
+              >
+                Покупатель
+              </span>
+            )}
+          </div>
+        </GlassCard>
+
+        {/* ── Продавец ── */}
+        {authenticated && user?.role === 'BUYER' && (
+          <GlassCard className="p-4 flex items-center gap-3">
+            <span style={{ fontSize: 26 }}>🏪</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                Хочешь продавать?
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                {applying ? 'Создаём аккаунт...' : 'Открой свой магазин'}
+              </p>
+            </div>
+            <button
+              onClick={handleBecomeSeller}
+              disabled={applying}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl shrink-0"
+              style={{
+                background: applying ? 'rgba(168,85,247,0.06)' : 'rgba(168,85,247,0.18)',
+                color: applying ? 'rgba(168,85,247,0.35)' : '#A855F7',
+                border: '1px solid rgba(168,85,247,0.25)',
+                cursor: applying ? 'wait' : 'pointer',
+              }}
+            >
+              {applying ? '...' : 'Открыть'}
+            </button>
+          </GlassCard>
+        )}
+
+        {/* ── Приложение ── */}
+        <GlassCard className="p-4 flex flex-col gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            Приложение
+          </p>
+
+          <button
+            onClick={() => tg?.openTelegramLink(`https://t.me/${BOT_USERNAME}`)}
+            className="flex items-center justify-between py-2.5 text-sm"
+            style={{ color: 'rgba(255,255,255,0.65)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <span className="flex items-center gap-3">
+              <span>🤖</span> Telegram-бот
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.20)', fontSize: 12 }}>@{BOT_USERNAME} →</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/buyer/orders')}
+            className="flex items-center gap-3 py-2.5 text-sm"
+            style={{ color: 'rgba(255,255,255,0.65)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <span>📦</span> Мои заказы
+          </button>
+
+          <button
+            onClick={() => navigate('/buyer')}
+            className="flex items-center gap-3 py-2.5 text-sm"
+            style={{ color: 'rgba(255,255,255,0.65)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <span>🏪</span> Каталог магазинов
+          </button>
+
+          {authenticated && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 py-2.5 text-sm"
+              style={{ color: 'rgba(248,113,113,0.80)' }}
+            >
+              <span>🚪</span> Выйти из аккаунта
+            </button>
+          )}
+        </GlassCard>
+
+        <p className="text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.15)' }}>
+          Savdo · v1.0
+        </p>
+
+      </div>
+    </AppShell>
+  );
+}
