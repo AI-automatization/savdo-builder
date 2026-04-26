@@ -1,6 +1,17 @@
 # Done — Азим + Полат
 
-## 2026-04-26 — Сессия 36 (Азим) — 3 фичи: seller avatar + chat edit/delete + product displayType
+## 2026-04-26 — Сессия 36 (Азим) — 3 фичи + 1 hotfix контракт-брейка
+
+### ✅ [WEB-SELLER-CATEGORY-CONTRACT-FIX-001] Hotfix: dropdown категорий показывался пустым
+- **Важность:** 🔴 — критический баг продакшена. Продавцы не могли выбрать глобальную категорию при создании товара (Select показывал пустые строки).
+- **Дата:** 26.04.2026 (диагностика по жалобе Азима после деплоя `787f04d`)
+- **Корень:** Бэк (видимо после `fb79db2` Sprint 31) поменял ответ `GET /storefront/categories` — раньше `{name}`, теперь `{nameRu, nameUz, parentId, isActive, ...}` (мультиязычность). Тип `GlobalCategory` в `packages/types/src/api/stores.ts` остался старый (`name: string`). Web-seller `useGlobalCategories` → `getGlobalCategories` → `Select.options.map(c => ({label: c.name}))` → label = undefined → Select показал 30 пустых строк.
+- **Web-buyer не сломался** потому что у них свой локальный тип в `apps/web-buyer/src/lib/api/storefront.api.ts` (`nameRu`/`nameUz` напрямую) — адаптировались раньше Sprint 31 (записано в `WEB-014` в CLAUDE.md как «pending Полатр adding it to packages/types»).
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/seller.api.ts` — `getGlobalCategories` теперь делает локальный mapping `nameRu → name` через тип `ApiGlobalCategory`. После того как Полат обновит тип в `packages/types` — убрать адаптер.
+  - `analiz/tasks.md` — добавлена `API-GLOBAL-CATEGORY-CONTRACT-001` 🟡 для Полата (обновить тип в packages/types, поддержать `nameRu`/`nameUz` мультиязычность, может имеет смысл иерархия по `parentId` — сейчас 30 leaf-категорий показываются плоско).
+- **Диагностика без браузера:** прямой `curl https://savdo-api-production.up.railway.app/api/v1/storefront/categories | python -c "..."` → увидел `keys: ['id', 'parentId', 'nameRu', 'nameUz', 'slug', 'isActive', 'sortOrder', 'createdAt']`, 30 категорий, `parentId` есть у всех. Сразу стало ясно что у поля `name` нет, фронт ожидал старую форму.
+- **Запушено:** `92b69cf` (после `git pull --rebase` из-за параллельных пушей Полата). Railway пересобрал web-seller.
 
 ### ✅ [WEB-PRODUCT-DISPLAYTYPE-001] Selector типа отображения товара + рендер витрины
 - **Важность:** 🟡 — продавцы получают визуальный контроль над презентацией товара. Полат добавил `Product.displayType: 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2'` в типы и DTO в `65c6795`. Теперь wire-up на фронте.
