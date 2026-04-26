@@ -111,3 +111,16 @@ export async function updateStoreCategory(
 export async function deleteStoreCategory(id: string): Promise<void> {
   await apiClient.delete(`/seller/categories/${id}`);
 }
+
+// ── Avatar ─────────────────────────────────────────────────────────────────────
+
+export async function uploadSellerAvatar(file: File): Promise<{ avatarUrl: string | null }> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await apiClient.post<{ success: boolean; data: { avatarUrl: string | null } }>(
+    '/media/seller/avatar',
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return res.data.data;
+}

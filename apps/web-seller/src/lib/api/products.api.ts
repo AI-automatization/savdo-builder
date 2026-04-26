@@ -1,4 +1,4 @@
-import type { ProductListItem, Product, ProductVariant, ProductStatus } from 'types';
+import type { ProductListItem, Product, ProductVariant, ProductStatus, ProductDisplayType } from 'types';
 import { apiClient } from './client';
 
 // ── Products ───────────────────────────────────────────────────────────────────
@@ -27,6 +27,7 @@ export async function createProduct(data: {
   isVisible?: boolean;
   sku?: string;
   mediaId?: string;
+  displayType?: ProductDisplayType;
 }): Promise<ProductListItem> {
   const res = await apiClient.post<ProductListItem>('/seller/products', data);
   return res.data;
@@ -43,6 +44,7 @@ export async function updateProduct(
     globalCategoryId?: string;
     storeCategoryId?: string;
     mediaId?: string;
+    displayType?: ProductDisplayType;
   },
 ): Promise<ProductListItem> {
   const res = await apiClient.patch<ProductListItem>(`/seller/products/${id}`, data);

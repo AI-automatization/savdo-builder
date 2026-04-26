@@ -7,8 +7,10 @@ import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeletePr
 import { useStoreCategories, useGlobalCategories } from '../../../../../hooks/use-seller';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { ProductStatus } from 'types';
+import type { ProductDisplayType } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
 import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';
+import { DisplayTypeSelector } from '../../../../../components/display-type-selector';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 
 // Keep these in sync with create/page.tsx. When this list grows, extract to
@@ -81,6 +83,7 @@ interface EditProductForm {
   sku:              string;
   isVisible:        boolean;
   globalCategoryId: string;
+  displayType:      ProductDisplayType;
 }
 
 // ── Field components ──────────────────────────────────────────────────────────
@@ -126,10 +129,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<EditProductForm>({
-    defaultValues: { isVisible: true, basePrice: 0, globalCategoryId: '' },
+    defaultValues: { isVisible: true, basePrice: 0, globalCategoryId: '', displayType: 'SINGLE' },
   });
+
+  const displayType = watch('displayType');
 
   const [mediaId, setMediaId] = useState<string | null>(null);
   const { data: categories = [] } = useStoreCategories();
@@ -159,6 +165,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         sku:              product.sku ?? '',
         isVisible:        product.isVisible,
         globalCategoryId: product.globalCategoryId ?? '',
+        displayType:      product.displayType ?? 'SINGLE',
       });
       setStoreCategoryId(product.storeCategoryId ?? null);
       initialCategoryIdRef.current = product.storeCategoryId ?? null;
@@ -176,6 +183,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       mediaId:          mediaId ?? undefined,
       storeCategoryId:  storeCategoryId ?? undefined,
       globalCategoryId: values.globalCategoryId || undefined,
+      displayType:      values.displayType,
     });
     router.push('/products');
   }
@@ -290,6 +298,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 previewUrl={product?.mediaUrls?.[0] ?? null}
               />
             </div>
+          </div>
+
+          {/* Display type */}
+          <div>
+            <Label>Как показывать товар на витрине</Label>
+            <DisplayTypeSelector
+              value={displayType}
+              onChange={(v) => setValue('displayType', v, { shouldDirty: true })}
+            />
           </div>
 
           {/* Global category */}

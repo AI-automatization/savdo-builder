@@ -43,3 +43,16 @@ export async function resolveThread(threadId: string): Promise<{ id: string; sta
   const res = await apiClient.patch(`/chat/threads/${threadId}/resolve`);
   return res.data;
 }
+
+export async function deleteThread(threadId: string): Promise<void> {
+  await apiClient.delete(`/chat/threads/${threadId}`);
+}
+
+export async function deleteMessage(threadId: string, msgId: string): Promise<void> {
+  await apiClient.delete(`/chat/threads/${threadId}/messages/${msgId}`);
+}
+
+export async function editMessage(threadId: string, msgId: string, text: string): Promise<ChatMessage> {
+  const res = await apiClient.patch<ChatMessage>(`/chat/threads/${threadId}/messages/${msgId}`, { text });
+  return res.data;
+}

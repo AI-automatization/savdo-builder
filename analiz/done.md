@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-04-26 — Сессия 36 (Азим) — 3 фичи: seller avatar + chat edit/delete + product displayType
+
+### ✅ [WEB-PRODUCT-DISPLAYTYPE-001] Selector типа отображения товара + рендер витрины
+- **Важность:** 🟡 — продавцы получают визуальный контроль над презентацией товара. Полат добавил `Product.displayType: 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2'` в типы и DTO в `65c6795`. Теперь wire-up на фронте.
+- **Дата:** 26.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/components/display-type-selector.tsx` — **новый**: 3 кнопки SINGLE/SLIDER/COLLAGE_2X2 в `grid-cols-3 gap-2`. Каждая = маленькое svg-превью (квадрат / квадрат+точки / 2×2 grid) + label. Активная — accent-фон + accent-border. Снизу hint-текст актуального варианта (раскрывает что это, для каких товаров подходит). Solid-surface tokens из `lib/styles`.
+  - `apps/web-seller/src/lib/api/products.api.ts` — `createProduct()` + `updateProduct()` теперь принимают `displayType?: ProductDisplayType` (импорт типа из `'types'`).
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — `CreateProductForm` расширен `displayType: ProductDisplayType`, default `'SINGLE'`. `watch('displayType')` для контролируемого селектора. `<DisplayTypeSelector value={displayType} onChange={(v) => setValue('displayType', v, { shouldDirty: true })}>` вставлен между фото-блоком и Global category. В onSubmit передаётся `displayType: values.displayType`.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — то же. В `useEffect(reset)` подгружается `displayType: product.displayType ?? 'SINGLE'`. Если бэк-fetch не вернёт displayType (legacy товары) — fallback на SINGLE.
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — рендер картинок с учётом `product.displayType ?? 'SINGLE'`. `mediaUrls` теперь читается как массив (с fallback на старый `images[0].url` для совместимости с какими-то response shapes). **SINGLE** — одна картинка через `<Image fill object-cover>` (как раньше). **SLIDER** (`mediaUrls.length > 1`) — первая картинка + decorative dots внизу карточки (макс 5 точек, первая — 10px wide accent, остальные 5px white-55%, с тенью `boxShadow: '0 0 4px rgba(0,0,0,0.35)'`). Сигнализирует «можно посмотреть больше фото» — настоящий swipe на карточке не делаем (это мини-плитка). **COLLAGE_2X2** (`mediaUrls.length >= 2`) — `<CollageGrid urls={mediaUrls} alt={...}>`: всегда 4 ячейки в `grid-cols-2 grid-rows-2 gap-px`, недостающие фото = пустая ячейка с `<ShoppingBag size={14}>` иконкой accent-color на 35% opacity. zIndex on the badges fixed (variants badge zIndex:1, dots zIndex:2, out-of-stock overlay zIndex:3 — overlay перекрывает всё корректно).
+- **Что НЕ сделано:** detail-страница товара (`/[slug]/products/[id]`) уже имеет полноценный слайдер с swipe + thumbnail row + точки — работает универсально для всех `mediaUrls.length > 1`. `displayType` там не применяется (можно было бы для COLLAGE показать grid вместо слайдера, но это требует дизайн-обсуждения — оставил как есть).
+
+### ✅ [WEB-SELLER-AVATAR-WIRE-001] Wire-up загрузки аватара продавца
+
+### ✅ [WEB-SELLER-AVATAR-WIRE-001] Wire-up загрузки аватара продавца
+- **Важность:** 🟡 — UX completion: страница `/profile` сессии 35 имела disabled camera-кнопку с tooltip «Скоро» — теперь работает после того как Полат закрыл `API-SELLER-AVATAR-001` в `0b2de22`.
+- **Дата:** 26.04.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/seller.api.ts` — добавлена `uploadSellerAvatar(file: File)`: multipart POST `/media/seller/avatar`, возвращает `{ avatarUrl: string | null }`. Соответствует контракту `MediaController.uploadSellerAvatar` (Полат).
+  - `apps/web-seller/src/hooks/use-seller.ts` — добавлен хук `useUploadSellerAvatar()`. После успеха обновляет `['seller', 'profile']` query data inline через `setQueryData` (мерджит `avatarUrl` в существующий `SellerProfile`), без рефетча.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx` — снят `disabled` с camera-кнопки, добавлены `useRef<HTMLInputElement>` + hidden `<input type="file">` + `useState<string|null>` для avatarError. Аватар-кнопка стала `<button>` (вся область кликабельна), при `profile.avatarUrl` рендерит `<Image src={avatarUrl} unoptimized>`, иначе букву. Loader2 спиннер во время `mutation.isPending` (overlay поверх). Валидация: только `image/jpeg|png|webp`, ≤10 МБ — иначе локальная ошибка под телефоном. Camera-кнопка теперь активная: title «Изменить фото» / «Добавить фото».
+- **Что сделано (UX):** Клик по аватару ИЛИ по camera-иконке открывает file-picker. После успеха — `<Image>` обновляется мгновенно (без рефетча), иначе — красный текст «Не удалось загрузить фото». Скопировано из buyer-аватара (тот же pattern, та же mime-валидация, тот же `e.target.value = ''` чтобы можно было выбрать тот же файл повторно).
+
+### ✅ [WEB-CHAT-EDIT-DELETE-001] Wire-up удаления треда + edit/delete сообщений в обоих чат-апах
+- **Важность:** 🟢 — UX completion: в сессии 35 я записал 3 задачи Полату (`API-CHAT-DELETE-THREAD-001`, `API-CHAT-DELETE-MESSAGE-001`, `API-CHAT-EDIT-MESSAGE-001`) и не делал UI-заглушек по правилу `feedback_dont_remove_without_confirm`. Полат закрыл всё в `0b2de22` — теперь wire-up.
+- **Дата:** 26.04.2026
+- **Endpoints (Полат):**
+  - `DELETE /chat/threads/:id` (204) — soft-delete per role (`buyerDeletedAt`/`sellerDeletedAt`)
+  - `DELETE /chat/threads/:tid/messages/:mid` (204) — soft (`isDeleted=true`, `body=null`, `deletedAt`), только автор
+  - `PATCH /chat/threads/:tid/messages/:mid` body `{ text }` — окно 15 мин с `createdAt`, только автор. Возвращает `{ id, threadId, text, senderRole, editedAt, createdAt }`
+- **Тип `ChatMessage` обновился (`packages/types/src/api/chat.ts`):** добавлены `editedAt: string | null` и `isDeleted: boolean` (Полат).
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/chat.api.ts` + `apps/web-buyer/src/lib/api/chat.api.ts` — добавлены `deleteThread(id)`, `deleteMessage(tid, mid)`, `editMessage(tid, mid, text)`. Возвращает `Promise<ChatMessage>` для editMessage.
+  - `apps/web-seller/src/hooks/use-chat.ts` + `apps/web-buyer/src/hooks/use-chat.ts` — новые хуки: `useDeleteThread()` (после успеха удаляет тред из `chatKeys.threads` cache + `removeQueries` для `chatKeys.messages(id)`), `useDeleteMessage(threadId)` (optimistic update — мерджит `isDeleted: true, text: ''` в нужное сообщение в `chatKeys.messages` cache, плюс invalidate threads чтобы обновить lastMessage), `useEditMessage(threadId)` (мерджит `text + editedAt` в кэш сообщений после ответа бэка, invalidate threads).
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — `ChatWindow` получил `onDeleted` callback, расширен state (`editingId`, `editingText`, `openMenuId`, `confirmDeleteThread`, `confirmDeleteMsg`). Outer div стал `relative` для overlay-modals. Header: добавлена trash-кнопка `Удалить чат` рядом с `Закрыть чат`. Confirm modals (overlay) для thread + message. Render сообщения переписан: на собственных (isSeller) появляется `MoreVertical`-кнопка справа от bubble (opacity 0 → group-hover/focus = 100), popover-меню «Редактировать» (только если `Date.now() - createdAt < 15 мин`) + «Удалить». Edit-mode заменяет bubble на textarea (`minWidth: 180`) + Save/Cancel кнопки. `m.isDeleted` → серая italic-плашка «Сообщение удалено». `m.editedAt` → префикс «изменено · » перед timestamp. Page → передаёт `onDeleted={() => setActiveId(null)}` чтобы переключить на EmptyState после удаления активного треда.
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — `ChatView` получил `onBack` (был лишний placeholder-onClick) + `onDeleted`. Те же state/handlers, та же структура header/modals/render. Стиль адаптирован под buyer glass tokens (фиолетовый gradient на собственных bubbles, white текст). ChatsView → передаёт оба callback'а.
+- **Что сделано (UX):**
+  - **Удалить чат:** trash-кнопка в шапке → confirm overlay «Чат исчезнет из вашего списка. {Покупатель|Продавец} продолжит видеть историю.» → mutate → активный тред исчезает из левого списка, контент-область переключается на EmptyState
+  - **Редактировать сообщение:** hover на своё сообщение → ⋯ → Pencil/«Редактировать» (только если ≤ 15 мин) → bubble превращается в textarea с автофокусом → Save (PATCH) → cache обновляется → bubble снова текст с «изменено · …»
+  - **Удалить сообщение:** ⋯ → Trash/«Удалить» → confirm overlay → mutate → bubble стал серой italic «Сообщение удалено», без timestamp/menu
+  - **Edit window expired:** через 15 мин «Редактировать» исчезает из меню (на бэке тот же лимит — 422 «Edit window expired (15 minutes)»)
+- **Не сделано:** UI на toast'ах для ошибок mutation — нет toast-системы в обоих apps. Edit-mode при ошибке остаётся открытым; delete-mutation `try/catch` без UI feedback. Можно добавить позже когда будет общий toast-провайдер.
+
 ## 2026-04-26 — Сессия 35 (Азим) — 3 фичи по запросу: категории dropdown, эмодзи, личный кабинет
 
 ### ✅ [WEB-SELLER-CATEGORY-DROPDOWN-001] Кастомный Select для категорий товара

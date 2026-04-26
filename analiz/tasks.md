@@ -5,7 +5,15 @@
 
 ---
 
-# 📋 Снимок состояния (на 26.04.2026, сессия 35)
+# 📋 Снимок состояния (на 26.04.2026, сессия 36)
+
+## ✅ Закрыто Полатом в `0b2de22` + `65c6795` (26.04.2026, между сессиями 35 и 36)
+
+- `API-CHAT-DELETE-THREAD-001` 🟡 — `DELETE /chat/threads/:id` готов, soft per-role (`buyerDeletedAt`/`sellerDeletedAt`). Коммит `0b2de22`.
+- `API-CHAT-DELETE-MESSAGE-001` 🟡 — `DELETE /chat/threads/:tid/messages/:mid` готов, soft (`isDeleted=true`, `body=null`, `deletedAt`). Только автор. Коммит `0b2de22`.
+- `API-CHAT-EDIT-MESSAGE-001` 🟡 — `PATCH /chat/threads/:tid/messages/:mid` body `{ text }`, окно 15 мин, только автор. `ChatMessage.editedAt: string | null`, `isDeleted: boolean` теперь в типе. Коммит `0b2de22`.
+- `API-SELLER-AVATAR-001` 🟡 — `POST /api/v1/media/seller/avatar` (multipart, file). `SellerProfile.avatarUrl: string | null` в типе. Коммит `0b2de22`.
+- (бонусом, за пределами наших задач) `65c6795` — `Product.displayType: 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2'` (миграция `add_product_display_type`), TG media group posts, storefront products feed.
 
 ## ✅ Закрыто Полатом в `0b916a2` (25.04.2026, перед сессией 35)
 
@@ -21,6 +29,12 @@
 - `API-STOREFRONT-PRODUCT-FILTERS-001` 🟡 — `/storefront/products?filters[brand]=Samsung` теперь работает
 - `API-CATEGORY-SEED-CLEANUP-001` 🟡 — авто-категории убраны из seed + cleanupRemovedCategories на старте
 - `API-BUYER-AVATAR-001` 🟡 — `POST /api/v1/media/buyer/avatar` (multipart, IMAGE_ONLY, 10MB), `BuyerProfile.avatarUrl` в /auth/me
+
+## ✅ Закрыто Азимом в сессии 36 (26.04.2026)
+
+- `WEB-SELLER-AVATAR-WIRE-001` 🟡 — wire-up seller avatar upload на `/profile`. Снят `disabled` с camera-кнопки, добавлен hidden file input + валидация (jpeg/png/webp, 10 МБ). Новые: `uploadSellerAvatar` в `seller.api.ts`, `useUploadSellerAvatar` в `use-seller.ts` (после успеха обновляет `['seller', 'profile']` cache, чтобы `<Image>` показал новый аватар без рефетча). Если `profile.avatarUrl` есть — рендерится `<Image>`, иначе — буква имени. Loader2 спиннер во время upload. Ошибки (тип/размер/network) показываются маленьким красным текстом под телефоном.
+- `WEB-CHAT-EDIT-DELETE-001` 🟢 — wire-up edit/delete сообщений и удаление треда в обоих чат-апах. (a) Новые API-функции `deleteThread`, `deleteMessage`, `editMessage` в `chat.api.ts` обоих apps. (b) Новые хуки `useDeleteThread`, `useDeleteMessage(threadId)`, `useEditMessage(threadId)` с optimistic cache updates. (c) Кнопка trash в шапке треда → confirm modal (overlay) → mutate → `setActiveId(null)` если активный тред удалён. (d) Иконка `MoreVertical` справа от собственного сообщения (показывается на hover/focus), popover-меню с «Редактировать» (только если ≤ 15 мин с createdAt) и «Удалить» (confirm modal). (e) Edit-mode: bubble превращается в textarea + Save/Cancel; PATCH возвращает обновлённое сообщение, кэш мерджит `text` + `editedAt`. (f) Render `m.isDeleted` — серая italic-плашка «Сообщение удалено» без timestamp/edit. (g) Render `m.editedAt` — префикс «изменено · » перед timestamp. (h) `EDIT_WINDOW_MS = 15 * 60 * 1000` константа на фронте — окно edit-кнопки совпадает с бэк-проверкой.
+- `WEB-PRODUCT-DISPLAYTYPE-001` 🟡 — selector + buyer storefront рендер. (a) Новый компонент `apps/web-seller/src/components/display-type-selector.tsx` — 3 кнопки (SINGLE / SLIDER / COLLAGE_2X2) с мини-превью (квадрат / квадрат+точки / 2×2 grid) + hint-текстом снизу. (b) `products.api.ts` (web-seller) `createProduct` + `updateProduct` теперь принимают `displayType?: ProductDisplayType`. (c) `/products/create/page.tsx` — `CreateProductForm` расширен `displayType`, default `'SINGLE'`, селектор вставлен между фото-блоком и категорией, передаётся в mutateAsync. (d) `/products/[id]/edit/page.tsx` — то же; в `useEffect(reset)` подгружается `product.displayType ?? 'SINGLE'`. (e) Web-buyer `components/store/ProductCard.tsx` — рендер картинок с учётом `product.displayType`. SINGLE = одна картинка (как раньше). SLIDER (если `mediaUrls.length > 1`) = первая картинка + decorative dots внизу карточки (макс 5 точек). COLLAGE_2X2 (если `mediaUrls.length >= 2`) = `<CollageGrid>` 2×2: всегда 4 ячейки, недостающие фото = пустая ячейка с маленьким `<ShoppingBag>` иконкой.
 
 ## ✅ Закрыто Азимом в сессии 35 (26.04.2026)
 
@@ -40,18 +54,13 @@
 
 ## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
 
-| ID | Важность | Кратко |
-|----|----------|--------|
-| `API-CHAT-DELETE-THREAD-001` | 🟡 | `DELETE /api/v1/chat/threads/:id` — удаление треда. Доступно ТОЛЬКО участнику (buyer или seller). Soft-delete: ставить `deletedAt` (для роли) или жёстко удалять messages+thread cascade. Лучше soft чтобы вторая сторона не теряла историю. Фронт уже подразумевает наличие действия (см. tooltip «Скоро» в UI). Нужно для UX «удалить старый чат» (запрос Азима 26.04.2026). |
-| `API-CHAT-DELETE-MESSAGE-001` | 🟡 | `DELETE /api/v1/chat/threads/:id/messages/:msgId` — удаление сообщения. Только автор сообщения (по `senderRole` сравнить с user.role). Soft-delete (`deletedAt` + `body=null`) предпочтительно — другая сторона видит «Сообщение удалено». Нужно для UX (запрос Азима 26.04.2026). |
-| `API-CHAT-EDIT-MESSAGE-001` | 🟡 | `PATCH /api/v1/chat/threads/:id/messages/:msgId` body `{ text }` — редактирование сообщения. Только автор. Можно ограничить временным окном (15 мин). Поле `editedAt` в схеме. Тип `ChatMessage` в packages/types обновить (+`editedAt: string \| null`, `deletedAt: string \| null`). Нужно для UX (запрос Азима 26.04.2026). |
-| `API-SELLER-AVATAR-001` | 🟡 | `POST /api/v1/media/seller/avatar` (multipart, IMAGE_ONLY, 10MB) → upload в TelegramStorage, апсерт `SellerProfile.avatarUrl`. Поле `avatarUrl: String?` в `SellerProfile` schema + миграция. `SellerProfile` интерфейс в packages/types: добавить `avatarUrl: string \| null`. Возвращать в `GET /seller/profile`. Аналогично `API-BUYER-AVATAR-001` который уже сделан. Нужно для seller `/profile` страницы (запрос Азима 26.04.2026 — личный кабинет). |
+_(пусто — все 4 задачи сессии 35 закрыты в `0b2de22`. См. секцию «Закрыто Полатом» выше.)_
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| Тест end-to-end в проде после `0b916a2` deploy | 🔴 | (1) Avatar upload на /profile. (2) Category filters на витрине магазина. (3) Web-seller solid surfaces. (4) **NEW: unread badges** — открыть web-seller `/chat` (sidebar badge на «Чат» + per-thread badges); web-buyer BottomNavBar (badge на иконке «Чаты») и `/chats` (per-thread badges). После клика на тред бэйдж должен сразу обнулиться (без 30-сек задержки). (5) Chat composer e2e на dual-role аккаунте. |
+| Тест end-to-end в проде после `65c6795` deploy + после моих фронт-изменений сессии 36 | 🔴 | **Сессия 36 фронт (3 фичи):** (1) Seller `/profile` → загрузить аватар → проверить что `<Image>` показывается + перезагрузка страницы возвращает аватар. (2) Чат seller — trash в шапке → confirm → тред исчез из списка. (3) Чат seller — ⋯ на своём → «Редактировать» → Save → «изменено · …» появилось. (4) Чат seller — ⋯ → «Удалить» → italic «Сообщение удалено». (5) Через 15 мин — «Редактировать» должна исчезнуть. (6) Те же 4 проверки в web-buyer `/chats`. (7) Edit от seller → buyer видит «изменено» через 30 сек staleTime / socket invalidate. (8) **DisplayType:** `/products/create` → выбрать SLIDER → создать товар с 3+ фото → открыть витрину магазина в web-buyer → карточка показывает точки внизу. (9) Создать товар с COLLAGE_2X2 + 4 фото → витрина → 2×2 grid. (10) Edit существующего → переключить displayType → витрина обновилась. **Прежние:** Avatar upload (buyer), category filters, solid surfaces, unread badges, chat composer dual-role. |
 | `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` | 🟢 | После того как Азим визуально подтвердит что Railway задеплоил `18fa355` и в `/products/create` dropdown категорий нет авто-пунктов — удалить `isHiddenCategory(slug)` regex-фильтр из `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` и `[id]/edit/page.tsx`. **ОПАСНО удалять до проверки** — если cleanup не отработал на проде, продавцы снова увидят авто. |
 | Подтвердить причину `/notifications` ошибки | 🟢 | F12 Network → `/notifications/inbox`. 401 = часть auth-серии (теперь должно быть лучше, JwtStrategy session-check уехал в `0b916a2`), 404/500 = отдельная задача. |
 

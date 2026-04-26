@@ -4,10 +4,21 @@ import { useState, useRef, useEffect } from 'react';
 import { UserRole } from 'types';
 import type { ChatThread } from 'types';
 import { getThreadDisplay } from '@/lib/api/chat.api';
-import { MessageSquare, User as UserIcon } from 'lucide-react';
-import { useThreads, useMessages, useSendMessage, useResolveThread, useChatSocket } from '@/hooks/use-chat';
+import { MessageSquare, MoreVertical, Pencil, Trash2, User as UserIcon } from 'lucide-react';
+import {
+  useThreads,
+  useMessages,
+  useSendMessage,
+  useResolveThread,
+  useChatSocket,
+  useDeleteThread,
+  useDeleteMessage,
+  useEditMessage,
+} from '@/hooks/use-chat';
 import { card, cardMuted, colors, inputStyle } from '@/lib/styles';
 import { EmojiPicker } from '@/components/emoji-picker';
+
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 const glass = card;
 const glassDim = cardMuted;
@@ -70,13 +81,22 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 
 // ── Chat Window ────────────────────────────────────────────────────────────
 
-function ChatWindow({ thread }: { thread: ChatThread }) {
+function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () => void }) {
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
   const resolveMutation = useResolveThread();
+  const deleteThreadMutation = useDeleteThread();
+  const deleteMessageMutation = useDeleteMessage(thread.id);
+  const editMessageMutation = useEditMessage(thread.id);
   const [text, setText] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [confirmDeleteThread, setConfirmDeleteThread] = useState(false);
+  const [confirmDeleteMsg, setConfirmDeleteMsg] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { title, subtitle } = getThreadDisplay(thread);
 
   const messages = data?.messages ?? [];
@@ -85,6 +105,18 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
+  // Close action menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    function onClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [openMenuId]);
+
   async function handleSend() {
     const trimmed = text.trim();
     if (!trimmed || sendMutation.isPending) return;
@@ -92,10 +124,47 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
     await sendMutation.mutateAsync({ text: trimmed });
   }
 
+  function startEdit(msgId: string, currentText: string) {
+    setEditingId(msgId);
+    setEditingText(currentText);
+    setOpenMenuId(null);
+  }
+
+  async function saveEdit() {
+    const trimmed = editingText.trim();
+    if (!editingId || !trimmed) return;
+    try {
+      await editMessageMutation.mutateAsync({ msgId: editingId, text: trimmed });
+      setEditingId(null);
+      setEditingText('');
+    } catch {
+      /* swallow — UI stays in edit mode so user can retry */
+    }
+  }
+
+  async function handleDeleteThread() {
+    try {
+      await deleteThreadMutation.mutateAsync(thread.id);
+      setConfirmDeleteThread(false);
+      onDeleted();
+    } catch {
+      setConfirmDeleteThread(false);
+    }
+  }
+
+  async function handleDeleteMessage(msgId: string) {
+    try {
+      await deleteMessageMutation.mutateAsync(msgId);
+      setConfirmDeleteMsg(null);
+    } catch {
+      setConfirmDeleteMsg(null);
+    }
+  }
+
   return (
-    <div className="flex-1 rounded-2xl flex flex-col overflow-hidden" style={glass}>
+    <div className="relative flex-1 rounded-2xl flex flex-col overflow-hidden" style={glass}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
+      <div className="flex items-center justify-between px-5 py-3.5 gap-3" style={{ borderBottom: `1px solid ${colors.divider}` }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: colors.accentMuted, color: colors.accent }}>
             <UserIcon size={15} />
@@ -107,17 +176,86 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
             </p>
           </div>
         </div>
-        {thread.status === 'OPEN' && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {thread.status === 'OPEN' && (
+            <button
+              onClick={() => resolveMutation.mutate(thread.id)}
+              disabled={resolveMutation.isPending}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-40 transition-opacity"
+              style={{ background: 'rgba(52,211,153,0.13)', color: colors.success, border: '1px solid rgba(52,211,153,0.25)' }}
+            >
+              {resolveMutation.isPending ? '...' : 'Закрыть чат'}
+            </button>
+          )}
           <button
-            onClick={() => resolveMutation.mutate(thread.id)}
-            disabled={resolveMutation.isPending}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-40 transition-opacity"
-            style={{ background: 'rgba(52,211,153,0.13)', color: colors.success, border: '1px solid rgba(52,211,153,0.25)' }}
+            onClick={() => setConfirmDeleteThread(true)}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(248,113,113,0.10)', color: colors.danger, border: '1px solid rgba(248,113,113,0.18)' }}
+            aria-label="Удалить чат"
+            title="Удалить чат"
           >
-            {resolveMutation.isPending ? '...' : 'Закрыть чат'}
+            <Trash2 size={14} />
           </button>
-        )}
+        </div>
       </div>
+
+      {/* Confirm delete message modal */}
+      {confirmDeleteMsg && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
+            <p className="text-sm font-semibold text-white">Удалить сообщение?</p>
+            <p className="text-xs" style={{ color: colors.textMuted }}>
+              Покупатель увидит «Сообщение удалено» вместо текста.
+            </p>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => setConfirmDeleteMsg(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                style={{ background: colors.surfaceMuted, color: colors.textPrimary }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => handleDeleteMessage(confirmDeleteMsg)}
+                disabled={deleteMessageMutation.isPending}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                style={{ background: 'rgba(248,113,113,0.18)', color: colors.danger }}
+              >
+                {deleteMessageMutation.isPending ? '...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete thread modal */}
+      {confirmDeleteThread && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
+            <p className="text-sm font-semibold text-white">Удалить этот чат?</p>
+            <p className="text-xs" style={{ color: colors.textMuted }}>
+              Чат исчезнет из вашего списка. Покупатель продолжит видеть историю.
+            </p>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => setConfirmDeleteThread(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                style={{ background: colors.surfaceMuted, color: colors.textPrimary }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDeleteThread}
+                disabled={deleteThreadMutation.isPending}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                style={{ background: 'rgba(248,113,113,0.18)', color: colors.danger }}
+              >
+                {deleteThreadMutation.isPending ? '...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
@@ -139,19 +277,109 @@ function ChatWindow({ thread }: { thread: ChatThread }) {
 
         {messages.map((m) => {
           const isSeller = m.senderRole === UserRole.SELLER;
+          const isEditing = editingId === m.id;
+          const ageMs = Date.now() - new Date(m.createdAt).getTime();
+          const canEdit = isSeller && !m.isDeleted && ageMs < EDIT_WINDOW_MS;
+          const canDelete = isSeller && !m.isDeleted;
+          const showMenu = openMenuId === m.id;
+
           return (
-            <div key={m.id} className={`flex ${isSeller ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className="max-w-[70%] px-3.5 py-2.5 rounded-2xl text-sm text-white"
-                style={isSeller
-                  ? { background: colors.accent, color: colors.bg, borderBottomRightRadius: 4 }
-                  : { ...glassDim, borderBottomLeftRadius: 4 }
-                }
-              >
-                <p>{m.text}</p>
-                <p className="text-[10px] mt-1 text-right" style={{ color: colors.textDim }}>
-                  {timeLabel(m.createdAt)}
-                </p>
+            <div key={m.id} className={`flex ${isSeller ? 'justify-end' : 'justify-start'} group`}>
+              <div className={`relative max-w-[70%] flex items-end gap-1 ${isSeller ? 'flex-row-reverse' : ''}`}>
+                <div
+                  className="px-3.5 py-2.5 rounded-2xl text-sm text-white"
+                  style={
+                    m.isDeleted
+                      ? { background: colors.surfaceMuted, color: colors.textDim, fontStyle: 'italic', borderBottomRightRadius: isSeller ? 4 : 16, borderBottomLeftRadius: isSeller ? 16 : 4 }
+                      : isSeller
+                        ? { background: colors.accent, color: colors.bg, borderBottomRightRadius: 4 }
+                        : { ...glassDim, borderBottomLeftRadius: 4 }
+                  }
+                >
+                  {m.isDeleted ? (
+                    <p>Сообщение удалено</p>
+                  ) : isEditing ? (
+                    <div className="flex flex-col gap-2 min-w-[180px]">
+                      <textarea
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        rows={2}
+                        autoFocus
+                        className="w-full rounded-lg p-2 text-sm outline-none resize-none"
+                        style={{ background: 'rgba(0,0,0,0.20)', color: colors.bg, border: `1px solid ${colors.bg}` }}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingId(null); setEditingText(''); }}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold"
+                          style={{ background: 'rgba(0,0,0,0.18)', color: colors.bg }}
+                        >
+                          Отмена
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveEdit}
+                          disabled={!editingText.trim() || editMessageMutation.isPending}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold disabled:opacity-50"
+                          style={{ background: colors.bg, color: colors.accent }}
+                        >
+                          {editMessageMutation.isPending ? '...' : 'Сохранить'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{m.text}</p>
+                  )}
+                  {!m.isDeleted && !isEditing && (
+                    <p className="text-[10px] mt-1 text-right" style={{ color: isSeller ? 'rgba(0,0,0,0.45)' : colors.textDim }}>
+                      {m.editedAt && <span className="mr-1">изменено · </span>}
+                      {timeLabel(m.createdAt)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Action menu trigger — only on own non-deleted, non-editing messages */}
+                {(canEdit || canDelete) && !isEditing && (
+                  <div className="relative" ref={showMenu ? menuRef : undefined}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenuId(showMenu ? null : m.id)}
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-full flex items-center justify-center transition-opacity"
+                      style={{ background: colors.surfaceMuted, color: colors.textMuted }}
+                      aria-label="Действия с сообщением"
+                    >
+                      <MoreVertical size={13} />
+                    </button>
+                    {showMenu && (
+                      <div
+                        className={`absolute z-10 top-full mt-1 ${isSeller ? 'right-0' : 'left-0'} rounded-xl overflow-hidden min-w-[140px]`}
+                        style={{ ...glass, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}
+                      >
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => startEdit(m.id, m.text)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-white/5"
+                            style={{ color: colors.textPrimary }}
+                          >
+                            <Pencil size={12} /> Редактировать
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => { setConfirmDeleteMsg(m.id); setOpenMenuId(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-white/5"
+                            style={{ color: colors.danger }}
+                          >
+                            <Trash2 size={12} /> Удалить
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -281,7 +509,11 @@ export default function ChatPage() {
       </div>
 
       {/* Chat window or empty */}
-      {activeThread ? <ChatWindow thread={activeThread} /> : <EmptyState noThreads={!threads || threads.length === 0} />}
+      {activeThread ? (
+        <ChatWindow thread={activeThread} onDeleted={() => setActiveId(null)} />
+      ) : (
+        <EmptyState noThreads={!threads || threads.length === 0} />
+      )}
     </div>
   );
 }

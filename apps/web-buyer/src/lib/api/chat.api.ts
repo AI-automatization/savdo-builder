@@ -1,4 +1,4 @@
-import type { ChatThread, MessagesResponse, SendMessageRequest, CreateThreadRequest } from 'types';
+import type { ChatMessage, ChatThread, MessagesResponse, SendMessageRequest, CreateThreadRequest } from 'types';
 import { apiClient } from './client';
 
 /**
@@ -40,4 +40,17 @@ export async function getMessages(
 
 export async function sendMessage(threadId: string, data: SendMessageRequest): Promise<void> {
   await apiClient.post(`/chat/threads/${threadId}/messages`, data);
+}
+
+export async function deleteThread(threadId: string): Promise<void> {
+  await apiClient.delete(`/chat/threads/${threadId}`);
+}
+
+export async function deleteMessage(threadId: string, msgId: string): Promise<void> {
+  await apiClient.delete(`/chat/threads/${threadId}/messages/${msgId}`);
+}
+
+export async function editMessage(threadId: string, msgId: string, text: string): Promise<ChatMessage> {
+  const res = await apiClient.patch<ChatMessage>(`/chat/threads/${threadId}/messages/${msgId}`, { text });
+  return res.data;
 }

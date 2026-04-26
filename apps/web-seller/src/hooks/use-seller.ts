@@ -16,7 +16,9 @@ import {
   createStoreCategory,
   updateStoreCategory,
   deleteStoreCategory,
+  uploadSellerAvatar,
 } from '../lib/api/seller.api';
+import type { SellerProfile } from 'types';
 
 // ── Profile ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,18 @@ export function useUpdateSellerProfile() {
   return useMutation({
     mutationFn: (data: UpdateSellerProfileRequest) => updateSellerProfile(data),
     onSuccess: (profile) => queryClient.setQueryData(['seller', 'profile'], profile),
+  });
+}
+
+export function useUploadSellerAvatar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadSellerAvatar(file),
+    onSuccess: ({ avatarUrl }) => {
+      queryClient.setQueryData<SellerProfile | undefined>(['seller', 'profile'], (old) =>
+        old ? { ...old, avatarUrl } : old,
+      );
+    },
   });
 }
 

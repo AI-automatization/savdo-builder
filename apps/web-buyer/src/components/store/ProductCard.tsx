@@ -9,12 +9,18 @@ type Props = {
   storeSlug: string;
 };
 
+const MAX_DOTS = 5;
+
 export default function ProductCard({ product, storeSlug }: Props) {
-  const imageUrl =
-    (product as unknown as { images?: Array<{ url: string }> }).images?.[0]?.url
-    ?? product.mediaUrls?.[0]
-    ?? null;
+  const mediaUrls =
+    (product as unknown as { images?: Array<{ url: string }> }).images?.map((i) => i.url)
+    ?? product.mediaUrls
+    ?? [];
   const isUnavailable = product.status !== ProductStatus.ACTIVE || !product.isVisible;
+  const displayType = product.displayType ?? 'SINGLE';
+
+  const useCollage = displayType === 'COLLAGE_2X2' && mediaUrls.length >= 2;
+  const showSliderDots = displayType === 'SLIDER' && mediaUrls.length > 1;
 
   return (
     <Link href={`/${storeSlug}/products/${product.id}`} className="block">
@@ -32,16 +38,39 @@ export default function ProductCard({ product, storeSlug }: Props) {
           className="aspect-square relative flex items-center justify-center text-5xl select-none"
           style={{ background: "rgba(255,255,255,0.05)" }}
         >
-          {imageUrl ? (
+          {mediaUrls.length === 0 ? (
+            <ShoppingBag size={20} style={{ color: '#A78BFA' }} />
+          ) : useCollage ? (
+            <CollageGrid urls={mediaUrls} alt={product.title} />
+          ) : (
             <Image
-              src={imageUrl}
+              src={mediaUrls[0]}
               alt={product.title}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 50vw, 200px"
             />
-          ) : (
-            <ShoppingBag size={20} style={{ color: '#A78BFA' }} />
+          )}
+
+          {/* Slider dots — decorative; signals "swipe in detail view" */}
+          {showSliderDots && (
+            <div
+              className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1"
+              style={{ zIndex: 2 }}
+            >
+              {Array.from({ length: Math.min(mediaUrls.length, MAX_DOTS) }).map((_, i) => (
+                <span
+                  key={i}
+                  className="rounded-full"
+                  style={{
+                    width: i === 0 ? 10 : 5,
+                    height: 5,
+                    background: i === 0 ? "#A78BFA" : "rgba(255,255,255,0.55)",
+                    boxShadow: "0 0 4px rgba(0,0,0,0.35)",
+                  }}
+                />
+              ))}
+            </div>
           )}
 
           {/* Variants badge */}
@@ -66,7 +95,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
           {isUnavailable && (
             <div
               className="absolute inset-0 flex items-center justify-center"
-              style={{ background: "rgba(13,15,30,0.65)", zIndex: 1 }}
+              style={{ background: "rgba(13,15,30,0.65)", zIndex: 3 }}
             >
               <span
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -89,5 +118,34 @@ export default function ProductCard({ product, storeSlug }: Props) {
         </div>
       </div>
     </Link>
+  );
+}
+
+// ── Collage 2×2 ────────────────────────────────────────────────────────────
+
+function CollageGrid({ urls, alt }: { urls: string[]; alt: string }) {
+  // Always render 4 cells; pad with empty placeholders when there are fewer photos.
+  const cells = [0, 1, 2, 3].map((i) => urls[i] ?? null);
+
+  return (
+    <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
+      {cells.map((url, i) => (
+        <div key={i} className="relative overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+          {url ? (
+            <Image
+              src={url}
+              alt={`${alt} — фото ${i + 1}`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 25vw, 100px"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <ShoppingBag size={14} style={{ color: 'rgba(167,139,250,0.35)' }} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

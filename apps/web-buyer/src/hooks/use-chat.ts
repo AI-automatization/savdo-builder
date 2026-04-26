@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ChatThread, SendMessageRequest, CreateThreadRequest } from 'types';
-import { getThreads, getMessages, sendMessage, createThread } from '../lib/api/chat.api';
+import type { ChatThread, MessagesResponse, SendMessageRequest, CreateThreadRequest } from 'types';
+import { getThreads, getMessages, sendMessage, createThread, deleteThread, deleteMessage, editMessage } from '../lib/api/chat.api';
 import { getSocket } from '../lib/socket';
 
 export const chatKeys = {
@@ -92,6 +92,54 @@ export function useSendMessage(threadId: string) {
     mutationFn: (data: SendMessageRequest) => sendMessage(threadId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.messages(threadId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.threads });
+    },
+  });
+}
+
+export function useDeleteThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: string) => deleteThread(threadId),
+    onSuccess: (_, threadId) => {
+      queryClient.setQueryData<ChatThread[] | undefined>(chatKeys.threads, (old) =>
+        old?.filter((t) => t.id !== threadId),
+      );
+      queryClient.removeQueries({ queryKey: chatKeys.messages(threadId) });
+    },
+  });
+}
+
+export function useDeleteMessage(threadId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (msgId: string) => deleteMessage(threadId, msgId),
+    onSuccess: (_, msgId) => {
+      queryClient.setQueryData<MessagesResponse | undefined>(chatKeys.messages(threadId), (old) =>
+        old
+          ? { ...old, messages: old.messages.map((m) => (m.id === msgId ? { ...m, isDeleted: true, text: '' } : m)) }
+          : old,
+      );
+      queryClient.invalidateQueries({ queryKey: chatKeys.threads });
+    },
+  });
+}
+
+export function useEditMessage(threadId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ msgId, text }: { msgId: string; text: string }) => editMessage(threadId, msgId, text),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<MessagesResponse | undefined>(chatKeys.messages(threadId), (old) =>
+        old
+          ? {
+              ...old,
+              messages: old.messages.map((m) =>
+                m.id === updated.id ? { ...m, text: updated.text, editedAt: updated.editedAt } : m,
+              ),
+            }
+          : old,
+      );
       queryClient.invalidateQueries({ queryKey: chatKeys.threads });
     },
   });

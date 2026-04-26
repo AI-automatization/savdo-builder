@@ -1,13 +1,17 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Camera, Copy, ExternalLink, LogOut, MessageCircle, Settings, Store as StoreIcon } from 'lucide-react';
+import { Camera, Copy, ExternalLink, Loader2, LogOut, MessageCircle, Settings, Store as StoreIcon } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
-import { useStore, useSellerProfile } from '@/hooks/use-seller';
+import { useStore, useSellerProfile, useUploadSellerAvatar } from '@/hooks/use-seller';
 import { useLogout } from '@/hooks/use-auth';
 import { card, cardMuted, colors } from '@/lib/styles';
+
+const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const STATUS_LABEL: Record<string, { text: string; color: string }> = {
   DRAFT:     { text: 'Черновик',     color: colors.textDim },
@@ -34,9 +38,13 @@ export default function ProfilePage() {
   const { data: store } = useStore({ enabled: user?.role === 'SELLER' });
   const { data: profile } = useSellerProfile();
   const logoutMutation = useLogout();
+  const uploadAvatar = useUploadSellerAvatar();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const displayName = profile?.fullName?.trim() || user?.phone || 'Продавец';
   const letter = avatarLetter(profile?.fullName || user?.phone);
+  const avatarUrl = profile?.avatarUrl ?? null;
   const statusInfo = store?.status ? STATUS_LABEL[store.status] ?? { text: store.status, color: colors.textDim } : null;
   const storeUrl = store ? `https://savdo.uz/${store.slug}` : null;
 
@@ -54,6 +62,30 @@ export default function ProfilePage() {
     router.push('/login');
   }
 
+  function handlePickAvatar() {
+    setAvatarError(null);
+    fileInputRef.current?.click();
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
+      setAvatarError('Только JPEG, PNG или WebP');
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError('Файл больше 10 МБ');
+      return;
+    }
+    try {
+      await uploadAvatar.mutateAsync(file);
+    } catch {
+      setAvatarError('Не удалось загрузить фото');
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
 
@@ -62,28 +94,55 @@ export default function ProfilePage() {
         <div className="flex items-start gap-4">
           {/* Avatar */}
           <div className="relative flex-shrink-0">
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold"
-              style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
-            >
-              {letter}
-            </div>
             <button
               type="button"
-              disabled
-              title="Скоро: загрузка аватара"
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ background: colors.surfaceElevated, color: colors.textMuted, border: `1px solid ${colors.border}` }}
-              aria-label="Изменить фото"
+              onClick={handlePickAvatar}
+              disabled={uploadAvatar.isPending}
+              className="relative w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold overflow-hidden transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+              aria-label={avatarUrl ? 'Изменить фото' : 'Добавить фото'}
+            >
+              {avatarUrl ? (
+                <Image src={avatarUrl} alt="Аватар" width={80} height={80} unoptimized className="object-cover w-full h-full" />
+              ) : (
+                <span>{letter}</span>
+              )}
+              {uploadAvatar.isPending && (
+                <span
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{ background: 'rgba(0,0,0,0.45)' }}
+                >
+                  <Loader2 size={20} className="animate-spin text-white" />
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handlePickAvatar}
+              disabled={uploadAvatar.isPending}
+              title={avatarUrl ? 'Изменить фото' : 'Добавить фото'}
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center disabled:opacity-60 transition-opacity hover:opacity-80"
+              style={{ background: colors.surfaceElevated, color: colors.accent, border: `1px solid ${colors.border}` }}
+              aria-label={avatarUrl ? 'Изменить фото' : 'Добавить фото'}
             >
               <Camera size={13} />
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_AVATAR_TYPES.join(',')}
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
 
           {/* Identity */}
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold truncate" style={{ color: colors.textPrimary }}>{displayName}</h1>
             <p className="text-sm mt-0.5" style={{ color: colors.textMuted }}>{user?.phone ?? '—'}</p>
+            {avatarError && (
+              <p className="text-[11px] mt-1" style={{ color: colors.danger }}>{avatarError}</p>
+            )}
 
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <span

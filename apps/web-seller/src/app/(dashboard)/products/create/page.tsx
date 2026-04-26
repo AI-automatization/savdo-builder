@@ -9,6 +9,8 @@ import { useStoreCategories, useGlobalCategories } from '../../../../hooks/use-s
 import { track } from '../../../../lib/analytics';
 import { ImageUploader } from '../../../../components/image-uploader';
 import { Select } from '../../../../components/select';
+import { DisplayTypeSelector } from '../../../../components/display-type-selector';
+import type { ProductDisplayType } from 'types';
 
 // Example titles keyed by global-category slug. Unknown slugs fall back to
 // a neutral "товар категории: {name}" hint — so new categories auto-work
@@ -81,6 +83,7 @@ interface CreateProductForm {
   sku:              string;
   isVisible:        boolean;
   globalCategoryId: string;
+  displayType:      ProductDisplayType;
 }
 
 // ── Field components ──────────────────────────────────────────────────────────
@@ -121,8 +124,10 @@ export default function CreateProductPage() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateProductForm>({
-    defaultValues: { isVisible: true, basePrice: 0, globalCategoryId: '' },
+    defaultValues: { isVisible: true, basePrice: 0, globalCategoryId: '', displayType: 'SINGLE' },
   });
+
+  const displayType = watch('displayType');
 
   const watchedCategoryId = watch('globalCategoryId');
   const pickedCategory = useMemo(
@@ -142,6 +147,7 @@ export default function CreateProductPage() {
       mediaId:          mediaId ?? undefined,
       storeCategoryId:  storeCategoryId ?? undefined,
       globalCategoryId: values.globalCategoryId || undefined,
+      displayType:      values.displayType,
     });
     track.productCreated(product.storeId, product.id);
     router.push('/products');
@@ -232,6 +238,15 @@ export default function CreateProductPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Display type — how product photos render on storefront card */}
+          <div>
+            <Label>Как показывать товар на витрине</Label>
+            <DisplayTypeSelector
+              value={displayType}
+              onChange={(v) => setValue('displayType', v, { shouldDirty: true })}
+            />
           </div>
 
           {/* Global category — drives placeholders + future filter UX */}
