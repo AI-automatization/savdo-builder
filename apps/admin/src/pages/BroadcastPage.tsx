@@ -71,8 +71,17 @@ function wrapSelection(
   }, 0);
 }
 
+type Audience = 'all' | 'sellers' | 'buyers'
+
+const AUDIENCE_OPTIONS: { value: Audience; label: string; desc: string }[] = [
+  { value: 'all',     label: 'Все',        desc: 'Продавцы и покупатели' },
+  { value: 'sellers', label: 'Продавцы',   desc: 'Только продавцы' },
+  { value: 'buyers',  label: 'Покупатели', desc: 'Только покупатели' },
+]
+
 export default function BroadcastPage() {
   const [message, setMessage] = useState('')
+  const [audience, setAudience] = useState<Audience>('all')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [sending, setSending] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -91,6 +100,7 @@ export default function BroadcastPage() {
     try {
       const res = await api.post<{ queued: number }>('/api/v1/admin/broadcast', {
         message,
+        audience,
         preview_mode: true,
       })
       setPreviewCount(res.queued)
@@ -104,7 +114,7 @@ export default function BroadcastPage() {
     setSending(true)
     setSendError(null)
     try {
-      const res = await api.post<{ queued: number }>('/api/v1/admin/broadcast', { message })
+      const res = await api.post<{ queued: number }>('/api/v1/admin/broadcast', { message, audience })
       setResult(res)
       setConfirm(false)
       setMessage('')
@@ -125,7 +135,7 @@ export default function BroadcastPage() {
             Рассылка
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            Telegram-рассылка всем продавцам с привязанным аккаунтом
+            Telegram-рассылка пользователям с привязанным аккаунтом
           </p>
         </div>
         <button
@@ -202,11 +212,36 @@ export default function BroadcastPage() {
             </div>
           )}
 
+          {/* Audience selector */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Получатели
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {AUDIENCE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setAudience(opt.value)}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${audience === opt.value ? 'var(--primary)' : 'var(--border)'}`,
+                    background: audience === opt.value ? 'rgba(129,140,248,0.12)' : 'var(--surface2)',
+                    color: audience === opt.value ? '#818CF8' : 'var(--text-muted)',
+                    transition: 'all 0.15s',
+                  }}
+                  title={opt.desc}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={handlePreview}
             disabled={!message.trim() || sending}
             style={{
-              marginTop: 16, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              marginTop: 12, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '11px 0', borderRadius: 10, border: 'none',
               background: !message.trim() ? 'var(--surface2)' : 'var(--primary)',
               color: !message.trim() ? 'var(--text-dim)' : '#fff',
@@ -235,7 +270,12 @@ export default function BroadcastPage() {
             </div>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
               Сообщение будет отправлено{' '}
-              <strong style={{ color: 'var(--text)' }}>{previewCount} получателям</strong> в Telegram.
+              <strong style={{ color: 'var(--text)' }}>{previewCount} получателям</strong> в Telegram
+              {' '}(
+              <span style={{ color: '#818CF8' }}>
+                {AUDIENCE_OPTIONS.find(o => o.value === audience)?.label ?? audience}
+              </span>
+              ).
             </p>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>
               Это действие нельзя отменить.

@@ -241,8 +241,27 @@ export default function BuyerChatPage() {
         >
           {/* Header */}
           <div className="pb-2 mb-2 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/buyer/chat', { replace: true })}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'rgba(255,255,255,0.70)',
+                  fontSize: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                ‹
+              </button>
+              <div className="flex flex-col min-w-0 flex-1">
                 <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                   {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
                 </h2>

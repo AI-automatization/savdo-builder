@@ -358,6 +358,7 @@ export class AdminController {
       message: dto.message,
       previewMode: dto.preview_mode ?? false,
       adminUserId: user.sub,
+      audience: dto.audience,
     });
   }
 

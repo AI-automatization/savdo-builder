@@ -9,10 +9,13 @@ export const TELEGRAM_JOB_BROADCAST = 'broadcast-message';
 // Telegram rate limit: 30 messages/sec → 1 message per ~34ms
 const BROADCAST_DELAY_MS = 34;
 
+export type BroadcastAudience = 'all' | 'sellers' | 'buyers';
+
 export interface BroadcastInput {
   message: string;
   previewMode?: boolean;
   adminUserId: string;
+  audience?: BroadcastAudience;
 }
 
 export interface BroadcastResult {
@@ -31,35 +34,38 @@ export class BroadcastUseCase {
   ) {}
 
   async execute(input: BroadcastInput): Promise<BroadcastResult> {
-    // Include sellers who linked via bot (telegramChatId) OR via TMA auth (user.telegramId).
-    // Both fields hold the same numeric Telegram user ID — it equals the private chat ID
-    // that the bot needs to message the user. Previously, only bot-linked sellers were
-    // reachable; TMA-only sellers were silently skipped.
-    const sellers = await this.prisma.seller.findMany({
-      where: {
-        OR: [
-          { telegramChatId: { not: null } },
-          { user: { telegramId: { not: null } } },
-        ],
-      },
-      select: {
-        id: true,
-        telegramChatId: true,
-        user: { select: { telegramId: true } },
-      },
-    });
-
-    // Build deduplicated list of chat IDs
+    const audience = input.audience ?? 'all';
     const chatIds: string[] = [];
     const seen = new Set<string>();
-    for (const s of sellers) {
-      const raw = s.telegramChatId ?? s.user.telegramId;
-      if (!raw) continue;
-      const chatId = raw.toString();
-      if (!seen.has(chatId)) {
-        seen.add(chatId);
-        chatIds.push(chatId);
-      }
+
+    const add = (raw: bigint | null | undefined) => {
+      if (!raw) return;
+      const id = raw.toString();
+      if (!seen.has(id)) { seen.add(id); chatIds.push(id); }
+    };
+
+    if (audience === 'sellers' || audience === 'all') {
+      const sellers = await this.prisma.seller.findMany({
+        where: {
+          OR: [
+            { telegramChatId: { not: null } },
+            { user: { telegramId: { not: null } } },
+          ],
+        },
+        select: {
+          telegramChatId: true,
+          user: { select: { telegramId: true } },
+        },
+      });
+      for (const s of sellers) add(s.telegramChatId ?? s.user.telegramId);
+    }
+
+    if (audience === 'buyers' || audience === 'all') {
+      const buyers = await this.prisma.buyer.findMany({
+        where: { user: { telegramId: { not: null } } },
+        select: { user: { select: { telegramId: true } } },
+      });
+      for (const b of buyers) add(b.user.telegramId);
     }
 
     if (input.previewMode) {
