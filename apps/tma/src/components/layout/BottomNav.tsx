@@ -61,7 +61,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
               }
             }}
             className="flex flex-col items-center gap-0.5 flex-1 py-1"
-            style={{ minWidth: 0 }}
+            style={{ minWidth: 0, position: 'relative' }}
           >
             <span
               style={{
@@ -84,7 +84,9 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
                 style={{
                   position: 'absolute',
                   bottom: 0,
-                  width: 20,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 24,
                   height: 2,
                   borderRadius: 1,
                   background: 'linear-gradient(90deg, #A855F7, #22D3EE)',

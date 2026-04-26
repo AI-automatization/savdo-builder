@@ -131,6 +131,8 @@ export default function StorePage() {
     );
   }
 
+  const filtered = activeCat ? products.filter((p) => p.globalCategoryId === activeCat) : products;
+
   return (
     <AppShell role="BUYER">
       <div className="flex flex-col gap-4">
@@ -150,7 +152,6 @@ export default function StorePage() {
           )}
         </div>
 
-        {/* GlobalCategory filter chips */}
         {globalCategories.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
             <button
@@ -181,18 +182,16 @@ export default function StorePage() {
           </div>
         )}
 
-        {(() => {
-          const filtered = activeCat ? products.filter((p) => p.globalCategoryId === activeCat) : products;
-          return (
-            <>
         <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
           Товары ({filtered.length}{activeCat && products.length !== filtered.length ? `/${products.length}` : ''})
         </h2>
 
-        {!filtered.length && (
+        {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Товаров пока нет</p>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+              {activeCat ? 'Нет товаров в этой категории' : 'Товаров пока нет'}
+            </p>
           </div>
         )}
 
@@ -206,13 +205,13 @@ export default function StorePage() {
               className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
               style={glass}
             >
-              <div className="w-full aspect-square rounded-xl flex items-center justify-center text-3xl"
+              <div className="w-full aspect-square rounded-xl flex items-center justify-center text-3xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.04)' }}>
                 {p.images?.[0]?.url
-                  ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover rounded-xl" />
+                  ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover" />
                   : '📦'}
               </div>
-              <p className="text-xs font-semibold leading-tight" style={{ color: 'rgba(255,255,255,0.88)' }}>
+              <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
                 {p.title}
               </p>
               <div className="flex items-center justify-between mt-auto">
@@ -221,8 +220,8 @@ export default function StorePage() {
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                  style={{ background: 'rgba(167,139,250,0.25)', border: '1px solid rgba(167,139,250,0.35)' }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold"
+                  style={{ background: 'rgba(167,139,250,0.25)', border: '1px solid rgba(167,139,250,0.35)', color: '#A855F7' }}
                 >
                   +
                 </button>
@@ -230,9 +229,6 @@ export default function StorePage() {
             </div>
           ))}
         </div>
-            </>
-          );
-        })()}
       </div>
     </AppShell>
   );

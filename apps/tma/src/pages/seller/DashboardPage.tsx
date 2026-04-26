@@ -58,7 +58,9 @@ export default function DashboardPage() {
     }).finally(() => setLoading(false));
   }, [authVersion]);
 
-  const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
+  const pendingCount = orderCount != null
+    ? orders.filter((o) => o.status === 'PENDING').length
+    : 0;
 
   return (
     <AppShell role="SELLER">
@@ -87,13 +89,34 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'Товары',  value: productCount ?? '—', icon: '📦' },
-              { label: 'Заказы',  value: orderCount   ?? '—', icon: '🛒' },
-              { label: 'Новые',   value: pendingCount,         icon: '🔔' },
+              { label: 'Товары', value: productCount ?? '—', icon: '📦', path: '/seller/products', urgent: false },
+              { label: 'Заказы', value: orderCount   ?? '—', icon: '🛒', path: '/seller/orders',   urgent: false },
+              { label: 'Новые',  value: pendingCount,         icon: '🔔', path: '/seller/orders',   urgent: pendingCount > 0 },
             ].map((s) => (
-              <GlassCard key={s.label} className="flex flex-col items-center gap-1 py-3 px-2">
-                <Sticker emoji={s.icon} size={28} />
-                <span className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{s.value}</span>
+              <GlassCard
+                key={s.label}
+                className="flex flex-col items-center gap-1 py-3 px-2"
+                onClick={() => navigate(s.path)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                  <Sticker emoji={s.icon} size={28} />
+                  {s.urgent && (
+                    <span style={{
+                      position: 'absolute', top: -2, right: -2,
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: '#EF4444',
+                      boxShadow: '0 0 0 2px rgba(239,68,68,0.30)',
+                      animation: 'pulse 1.5s infinite',
+                    }} />
+                  )}
+                </div>
+                <span
+                  className="text-lg font-bold"
+                  style={{ color: s.urgent ? '#EF4444' : 'rgba(255,255,255,0.90)' }}
+                >
+                  {s.value}
+                </span>
                 <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
               </GlassCard>
             ))}

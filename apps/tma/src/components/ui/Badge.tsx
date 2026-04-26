@@ -1,7 +1,8 @@
 const colors: Record<string, { bg: string; text: string }> = {
   PENDING:          { bg: 'rgba(234,179,8,0.15)',   text: '#EAB308' },
   CONFIRMED:        { bg: 'rgba(59,130,246,0.15)',  text: '#3B82F6' },
-  SHIPPED:          { bg: 'rgba(168,85,247,0.15)',  text: '#A855F7' },
+  PROCESSING:       { bg: 'rgba(59,130,246,0.15)',  text: '#3B82F6' },
+  SHIPPED:          { bg: 'rgba(249,115,22,0.15)',  text: '#F97316' },
   DELIVERED:        { bg: 'rgba(34,197,94,0.15)',   text: '#22C55E' },
   CANCELLED:        { bg: 'rgba(239,68,68,0.15)',   text: '#EF4444' },
   ACTIVE:           { bg: 'rgba(34,197,94,0.15)',   text: '#22C55E' },
@@ -13,6 +14,7 @@ const colors: Record<string, { bg: string; text: string }> = {
 const labels: Record<string, string> = {
   PENDING:         'Обрабатывается',
   CONFIRMED:       'Подтверждён',
+  PROCESSING:      'В обработке',
   SHIPPED:         'В пути',
   DELIVERED:       'Доставлен',
   CANCELLED:       'Отменён',

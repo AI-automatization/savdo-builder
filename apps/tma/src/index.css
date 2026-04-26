@@ -69,6 +69,12 @@ body {
   animation: cyan-ping 1.8s ease-out infinite;
 }
 
+/* ── Urgent pulse (pending orders red dot) ───────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.4); }
+}
+
 /* ── Scrollbar (minimal, themed) ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
