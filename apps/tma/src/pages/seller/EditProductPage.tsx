@@ -55,6 +55,8 @@ interface ProductAttr {
   sortOrder: number;
 }
 
+type ProductDisplayType = 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2';
+
 interface Product {
   id: string;
   title: string;
@@ -63,6 +65,7 @@ interface Product {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   storeCategoryId?: string | null;
   globalCategoryId?: string | null;
+  displayType?: ProductDisplayType;
   variants?: Variant[];
   images?: ProductImage[];
   optionGroups?: OptionGroup[];
@@ -106,6 +109,8 @@ export default function EditProductPage() {
   const [showStoreCatModal, setShowStoreCatModal] = useState(false);
   const [showGlobalCatModal, setShowGlobalCatModal] = useState(false);
 
+  const [displayType, setDisplayType] = useState<ProductDisplayType>('SLIDER');
+
   const [saving, setSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -130,6 +135,7 @@ export default function EditProductPage() {
       setPrice(String(p.basePrice));
       setStoreCategoryId(p.storeCategoryId ?? '');
       setGlobalCategoryId(p.globalCategoryId ?? '');
+      setDisplayType(p.displayType ?? 'SLIDER');
       if (p.variants) {
         const initial: Record<string, string> = {};
         for (const v of p.variants) initial[v.id] = v.stockQuantity === 0 ? '' : String(v.stockQuantity);
@@ -248,6 +254,7 @@ export default function EditProductPage() {
           basePrice: Number(price),
           storeCategoryId: storeCategoryId || null,
           globalCategoryId: globalCategoryId || null,
+          displayType,
         },
       });
       tg?.HapticFeedback.notificationOccurred('success');
@@ -803,6 +810,57 @@ export default function EditProductPage() {
                 onChange={handleAddPhoto}
               />
             </GlassCard>
+
+            {/* Вид карточки */}
+            {(product.images?.length ?? 0) > 0 && (
+              <GlassCard className="p-4 flex flex-col gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Вид карточки
+                </p>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'SLIDER' as ProductDisplayType, label: 'Слайдер', icon: '🖼' },
+                    { value: 'SINGLE' as ProductDisplayType, label: 'Одно фото', icon: '🔲' },
+                    { value: 'COLLAGE_2X2' as ProductDisplayType, label: 'Коллаж', icon: '⊞' },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={async () => {
+                        if (displayType === opt.value || !product) return;
+                        setDisplayType(opt.value);
+                        try {
+                          await api(`/seller/products/${product.id}`, { method: 'PATCH', body: { displayType: opt.value } });
+                        } catch {
+                          setDisplayType(displayType);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '8px 4px',
+                        borderRadius: 12,
+                        border: displayType === opt.value
+                          ? '1.5px solid #A855F7'
+                          : '1.5px solid rgba(255,255,255,0.10)',
+                        background: displayType === opt.value
+                          ? 'rgba(168,85,247,0.15)'
+                          : 'rgba(255,255,255,0.04)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>{opt.icon}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: displayType === opt.value ? '#A855F7' : 'rgba(255,255,255,0.55)' }}>
+                        {opt.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </GlassCard>
+            )}
 
             {/* Остаток по вариантам */}
             {product.variants && product.variants.length > 0 && (

@@ -61,6 +61,12 @@ enum ProductStatus {
   HIDDEN_BY_ADMIN
 }
 
+enum ProductDisplayType {
+  SLIDER
+  SINGLE
+  COLLAGE_2X2
+}
+
 enum PaymentMethod {
   COD
   MANUAL_TRANSFER
@@ -394,8 +400,9 @@ model Product {
   oldPrice           Decimal?      @db.Decimal(12, 2)
   salePrice          Decimal?      @db.Decimal(12, 2)
   currencyCode       String        @default("UZS")
-  status             ProductStatus @default(DRAFT)
-  hasVariants        Boolean       @default(false)
+  status             ProductStatus      @default(DRAFT)
+  displayType        ProductDisplayType @default(SLIDER)
+  hasVariants        Boolean            @default(false)
   totalStock         Int           @default(0)
   isVisible          Boolean       @default(true)
   isFeatured         Boolean       @default(false)

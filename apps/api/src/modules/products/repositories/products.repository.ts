@@ -12,6 +12,7 @@ export interface CreateProductData {
   storeCategoryId?: string;
   isVisible?: boolean;
   sku?: string;
+  displayType?: import('@prisma/client').ProductDisplayType;
 }
 
 export interface UpdateProductData {
@@ -26,6 +27,7 @@ export interface UpdateProductData {
   isFeatured?: boolean;
   oldPrice?: number;
   salePrice?: number;
+  displayType?: import('@prisma/client').ProductDisplayType;
 }
 
 @Injectable()
@@ -172,6 +174,7 @@ export class ProductsRepository {
         isVisible: data.isVisible ?? true,
         sku: data.sku,
         status: 'DRAFT',
+        ...(data.displayType !== undefined && { displayType: data.displayType }),
       },
       include: {
         images: true,
@@ -194,6 +197,7 @@ export class ProductsRepository {
         ...(data.isFeatured !== undefined && { isFeatured: data.isFeatured }),
         ...(data.oldPrice !== undefined && { oldPrice: data.oldPrice }),
         ...(data.salePrice !== undefined && { salePrice: data.salePrice }),
+        ...(data.displayType !== undefined && { displayType: data.displayType }),
       },
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
@@ -218,5 +222,52 @@ export class ProductsRepository {
         images: { orderBy: { sortOrder: 'asc' } },
       },
     });
+  }
+
+  async findAllPublic(filters?: {
+    q?: string;
+    globalCategoryId?: string;
+    sort?: 'new' | 'price_asc' | 'price_desc';
+    page?: number;
+    limit?: number;
+  }): Promise<{ products: Product[]; total: number }> {
+    const page  = filters?.page  ?? 1;
+    const limit = Math.min(filters?.limit ?? 20, 50);
+    const skip  = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {
+      status: 'ACTIVE',
+      deletedAt: null,
+      store: { status: 'APPROVED', isPublic: true },
+      ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
+      ...(filters?.q?.trim() && {
+        OR: [
+          { title: { contains: filters.q.trim(), mode: 'insensitive' } },
+          { description: { contains: filters.q.trim(), mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    const orderBy =
+      filters?.sort === 'price_asc'  ? { basePrice: 'asc' as const } :
+      filters?.sort === 'price_desc' ? { basePrice: 'desc' as const } :
+                                       { createdAt: 'desc' as const };
+
+    const [products, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        include: {
+          images: { where: { isPrimary: true }, take: 1, include: { media: true } },
+          store: { select: { id: true, name: true, slug: true } },
+          _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
+        },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { products, total };
   }
 }

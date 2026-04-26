@@ -98,6 +98,7 @@ export class ProductsController {
       storeCategoryId: dto.storeCategoryId,
       isVisible: dto.isVisible,
       sku: dto.sku,
+      displayType: dto.displayType,
     });
   }
 
@@ -139,6 +140,7 @@ export class ProductsController {
       storeCategoryId: dto.storeCategoryId,
       isVisible: dto.isVisible,
       sku: dto.sku,
+      displayType: dto.displayType,
     });
   }
 
@@ -552,19 +554,37 @@ export class ProductsController {
 
   @Get('storefront/products')
   async listStorefrontProducts(
-    @Query('storeId') storeId: string,
+    @Query('storeId') storeId?: string,
     @Query('globalCategoryId') globalCategoryId?: string,
     @Query('storeCategoryId') storeCategoryId?: string,
     @Query('filters') rawFilters?: Record<string, string>,
+    @Query('q') q?: string,
+    @Query('sort') sort?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
+    // Platform-wide feed (no storeId)
     if (!storeId) {
-      throw new DomainException(
-        ErrorCode.VALIDATION_ERROR,
-        'storeId query parameter is required',
-        HttpStatus.BAD_REQUEST,
-      );
+      const validSort = (['new', 'price_asc', 'price_desc'] as const).find((s) => s === sort) ?? 'new';
+      const { products, total } = await this.productsRepo.findAllPublic({
+        q,
+        globalCategoryId,
+        sort: validSort,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
+      });
+      const data = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
+        const { _count, ...rest } = p;
+        return {
+          ...rest,
+          images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
+          variantCount: _count?.variants ?? 0,
+        };
+      });
+      return { data, meta: { total, page: page ? parseInt(page, 10) : 1 } };
     }
 
+    // Store-specific feed (existing behavior)
     const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
     const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
     return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {

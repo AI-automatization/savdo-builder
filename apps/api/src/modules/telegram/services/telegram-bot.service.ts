@@ -247,6 +247,28 @@ export class TelegramBotService implements OnApplicationBootstrap {
     }
   }
 
+  async sendMediaGroupToChannel(
+    channelId: string,
+    fileIds: string[],
+    caption: string,
+    parseMode?: 'HTML' | 'Markdown',
+  ): Promise<void> {
+    if (!this.botToken || fileIds.length < 2) return;
+    const media = fileIds.slice(0, 10).map((fileId, i) => ({
+      type: 'document',
+      media: fileId,
+      ...(i === 0 ? { caption, ...(parseMode ? { parse_mode: parseMode } : {}) } : {}),
+    }));
+    try {
+      await axios.post(`${this.apiBase}/sendMediaGroup`, { chat_id: channelId, media });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`sendMediaGroupToChannel failed for ${channelId}: ${msg}`);
+      // Fallback to single photo
+      await this.sendPhotoToChannel(channelId, fileIds[0], caption, undefined, parseMode);
+    }
+  }
+
   /** Send a document (by Telegram file_id) to a channel with a caption.
    *  file_id must be from sendDocument upload — cannot be used with sendPhoto. */
   async sendPhotoToChannel(

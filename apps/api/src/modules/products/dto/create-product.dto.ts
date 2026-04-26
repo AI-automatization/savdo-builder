@@ -7,7 +7,9 @@ import {
   Min,
   IsBoolean,
   IsUUID,
+  IsEnum,
 } from 'class-validator';
+import { ProductDisplayType } from '@prisma/client';
 
 export class CreateProductDto {
   @IsString()
@@ -44,4 +46,8 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(100)
   sku?: string;
+
+  @IsOptional()
+  @IsEnum(ProductDisplayType)
+  displayType?: ProductDisplayType;
 }

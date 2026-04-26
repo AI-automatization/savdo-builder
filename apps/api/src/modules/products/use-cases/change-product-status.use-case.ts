@@ -85,16 +85,24 @@ export class ChangeProductStatusUseCase {
       [{ text: '💬 Написать продавцу', url: store.telegramContactLink || deepLink }],
     ] as Array<Array<{ text: string; url: string }>>;
 
-    // Ищем главное фото товара
-    const primaryImage = await this.prisma.productImage.findFirst({
-      where: { productId: product.id, isPrimary: true },
+    // Загружаем все фото товара (сортировка по sortOrder)
+    const allImages = await this.prisma.productImage.findMany({
+      where: { productId: product.id },
       include: { media: true },
+      orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
     });
 
-    const media = (primaryImage as unknown as { media?: { objectKey?: string; bucket?: string } } | null)?.media;
-    if (media?.bucket === 'telegram' && media.objectKey?.startsWith('tg:')) {
-      const fileId = media.objectKey.replace('tg:', '');
-      await this.telegramBot.sendPhotoToChannel(store.telegramChannelId, fileId, text, buttons, 'HTML');
+    type ImageWithMedia = { media?: { objectKey?: string; bucket?: string } };
+    const tgFileIds = (allImages as unknown as ImageWithMedia[])
+      .filter((img) => img.media?.bucket === 'telegram' && img.media.objectKey?.startsWith('tg:'))
+      .map((img) => img.media!.objectKey!.replace('tg:', ''));
+
+    if (tgFileIds.length >= 2) {
+      // Media group — слайды; кнопки отдельным сообщением (Telegram API ограничение)
+      await this.telegramBot.sendMediaGroupToChannel(store.telegramChannelId, tgFileIds, text, 'HTML');
+      await this.telegramBot.sendToChannel(store.telegramChannelId, '👆 ' + product.title, buttons);
+    } else if (tgFileIds.length === 1) {
+      await this.telegramBot.sendPhotoToChannel(store.telegramChannelId, tgFileIds[0], text, buttons, 'HTML');
     } else {
       await this.telegramBot.sendToChannel(store.telegramChannelId, text, buttons, 'HTML');
     }

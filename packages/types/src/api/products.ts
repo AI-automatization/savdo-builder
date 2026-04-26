@@ -1,6 +1,8 @@
 import { ProductStatus } from '../enums';
 import { StoreRef } from './stores';
 
+export type ProductDisplayType = 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2';
+
 // ── Option Groups / Values ────────────────────────────────────────────────────
 
 export interface OptionValue {
@@ -56,6 +58,7 @@ export interface ProductListItem {
   storeCategoryId: string | null;
   mediaUrls: string[];
   variantCount: number;
+  displayType: ProductDisplayType;
 }
 
 export interface ProductAttribute {

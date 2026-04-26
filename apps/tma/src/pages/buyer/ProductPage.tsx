@@ -25,6 +25,8 @@ interface ProductAttribute {
   value: string;
 }
 
+type ProductDisplayType = 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2';
+
 interface Product {
   id: string;
   storeId: string;
@@ -32,6 +34,7 @@ interface Product {
   description: string | null;
   basePrice: number;
   mediaUrls: string[];
+  displayType?: ProductDisplayType;
   variants?: VariantMin[];
   optionGroups?: OptionGroupMin[];
   attributes?: ProductAttribute[];
@@ -207,37 +210,76 @@ export default function ProductPage() {
   }
 
   const images = product.mediaUrls ?? [];
+  const displayType = product.displayType ?? 'SLIDER';
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || images.length <= 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 40) {
+      setActiveImage((prev) =>
+        dx < 0
+          ? Math.min(prev + 1, images.length - 1)
+          : Math.max(prev - 1, 0),
+      );
+    }
+    touchStartX.current = null;
+  };
 
   return (
     <AppShell role="BUYER">
       <div className="flex flex-col gap-4 pb-24">
         {/* Gallery */}
-        <div className="rounded-2xl overflow-hidden" style={{ ...glass, aspectRatio: viewportWidth >= 560 ? '4/3' : '1' }}>
-          {images.length ? (
-            <img
-              src={images[activeImage]}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center" style={{ fontSize: 48 }}>📦</div>
-          )}
-        </div>
-
-        {images.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto -mx-1 px-1">
-            {images.map((url, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveImage(idx)}
-                className={`shrink-0 ${viewportWidth >= 560 ? 'w-20 h-20' : 'w-14 h-14'} rounded-lg overflow-hidden`}
-                style={{
-                  border: idx === activeImage ? '2px solid #A855F7' : '1px solid rgba(255,255,255,0.10)',
-                }}
-              >
-                <img src={url} alt="" className="w-full h-full object-cover" />
-              </button>
+        {displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
+          <div
+            className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
+            style={{ aspectRatio: '1' }}
+            onClick={() => setActiveImage(0)}
+          >
+            {images.slice(0, 4).map((url, idx) => (
+              <div key={idx} className="relative overflow-hidden bg-white/5">
+                <img src={url} alt="" className="w-full h-full object-cover" style={{ aspectRatio: '1' }} />
+              </div>
             ))}
+          </div>
+        ) : (
+          <div
+            className="rounded-2xl overflow-hidden relative"
+            style={{ ...glass, aspectRatio: viewportWidth >= 560 ? '4/3' : '1' }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {images.length ? (
+              <img
+                src={images[activeImage]}
+                alt={product.title}
+                className="w-full h-full object-cover"
+                style={{ userSelect: 'none' }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center" style={{ fontSize: 48 }}>📦</div>
+            )}
+
+            {/* Dot indicators */}
+            {displayType !== 'SINGLE' && images.length > 1 && (
+              <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+                {images.map((_, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      width: idx === activeImage ? 16 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      background: idx === activeImage ? '#A855F7' : 'rgba(255,255,255,0.40)',
+                      transition: 'width 0.2s ease, background 0.2s ease',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
