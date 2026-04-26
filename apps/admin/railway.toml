@@ -1,7 +1,10 @@
 [build]
-dockerfilePath = "apps/admin/Dockerfile"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["**"]
 
 [deploy]
-startCommand = "nginx -g 'daemon off;'"
 healthcheckPath = "/"
-healthcheckTimeout = 60
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

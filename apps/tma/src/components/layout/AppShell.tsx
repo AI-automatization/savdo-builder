@@ -2,8 +2,10 @@ import type { ReactNode } from 'react';
 import { BottomNav } from './BottomNav';
 import { BackButton } from './BackButton';
 import { FullscreenButton } from './FullscreenButton';
+import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
 import { ToastContainer } from '@/components/ui/Toast';
 import { gradientBg, COLORS } from '@/lib/styles';
+import { useTelegram } from '@/providers/TelegramProvider';
 
 interface Props {
   children: ReactNode;
@@ -11,23 +13,23 @@ interface Props {
 }
 
 export function AppShell({ children, role }: Props) {
+  const { viewportWidth } = useTelegram();
+  const isDesktop = (viewportWidth ?? 0) >= 768;
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: gradientBg }}>
-      {/* Ambient depth layers — Cyber Orchid + Arctic Cyan */}
+      {/* Ambient depth layers */}
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-        {/* Top-right: Cyber Orchid */}
         <div className="absolute rounded-full" style={{
           width: 480, height: 480, top: -180, right: -120,
           background: `radial-gradient(circle, ${COLORS.orchidGlow} 0%, transparent 68%)`,
           filter: 'blur(72px)',
         }} />
-        {/* Bottom-left: Arctic Cyan */}
         <div className="absolute rounded-full" style={{
           width: 320, height: 320, bottom: -100, left: -80,
           background: `radial-gradient(circle, ${COLORS.cyanDim} 0%, transparent 70%)`,
           filter: 'blur(56px)',
         }} />
-        {/* Center subtle: navy depth */}
         <div className="absolute rounded-full" style={{
           width: 260, height: 260, top: '40%', left: '50%', transform: 'translateX(-50%)',
           background: 'radial-gradient(circle, rgba(13,17,32,0.60) 0%, transparent 70%)',
@@ -37,13 +39,33 @@ export function AppShell({ children, role }: Props) {
 
       <ToastContainer />
       <BackButton />
-      <div className="relative z-10 flex-1 px-4 pt-4 pb-20">
-        <FullscreenButton />
-        <div className="w-full max-w-3xl mx-auto">
-          {children}
-        </div>
-      </div>
-      <BottomNav role={role} />
+
+      {isDesktop ? (
+        /* ── Desktop: sidebar + content ── */
+        <>
+          <Sidebar role={role} />
+          <div
+            className="relative z-10 flex-1 px-6 pt-5 pb-6"
+            style={{ marginLeft: SIDEBAR_WIDTH }}
+          >
+            <FullscreenButton />
+            <div className="w-full max-w-4xl mx-auto">
+              {children}
+            </div>
+          </div>
+        </>
+      ) : (
+        /* ── Mobile: content + bottom nav ── */
+        <>
+          <div className="relative z-10 flex-1 px-4 pt-4 pb-20">
+            <FullscreenButton />
+            <div className="w-full max-w-3xl mx-auto">
+              {children}
+            </div>
+          </div>
+          <BottomNav role={role} />
+        </>
+      )}
     </div>
   );
 }
