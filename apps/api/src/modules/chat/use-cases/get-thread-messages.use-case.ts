@@ -17,6 +17,8 @@ export interface MappedChatMessage {
   text: string;
   senderRole: 'BUYER' | 'SELLER';
   createdAt: string;
+  editedAt: string | null;
+  isDeleted: boolean;
 }
 
 export interface GetThreadMessagesOutput {
@@ -83,8 +85,10 @@ export class GetThreadMessagesUseCase {
     const messages: MappedChatMessage[] = slice.map((m) => ({
       id: m.id,
       threadId: m.threadId,
-      text: m.body ?? '',
+      text: m.isDeleted ? '' : (m.body ?? ''),
       senderRole: m.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+      editedAt: (m as any).editedAt ? new Date((m as any).editedAt).toISOString() : null,
+      isDeleted: m.isDeleted,
       createdAt: m.createdAt.toISOString(),
     }));
 

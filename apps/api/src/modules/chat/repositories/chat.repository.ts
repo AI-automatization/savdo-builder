@@ -55,7 +55,7 @@ export class ChatRepository {
 
   async findThreadsByBuyer(buyerId: string) {
     return this.prisma.chatThread.findMany({
-      where: { buyerId },
+      where: { buyerId, buyerDeletedAt: null } as any,
       orderBy: { lastMessageAt: 'desc' },
       include: {
         seller: { include: { store: { select: { id: true, name: true, slug: true } } } },
@@ -73,7 +73,7 @@ export class ChatRepository {
 
   async findThreadsBySeller(sellerId: string) {
     return this.prisma.chatThread.findMany({
-      where: { sellerId },
+      where: { sellerId, sellerDeletedAt: null } as any,
       orderBy: { lastMessageAt: 'desc' },
       include: {
         buyer: { include: { user: { select: { phone: true } } } },

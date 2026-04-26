@@ -92,6 +92,30 @@ export class MediaController {
     return { success: true, data: { avatarUrl: buyer.avatarUrl } };
   }
 
+  /** Upload seller avatar — image only, max 10 MB */
+  @Post('seller/avatar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadSellerAvatar(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: UploadedFileType,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    const { url } = await this.uploadDirect.execute(user.sub, file, 'seller_avatar');
+
+    const seller = await this.prisma.seller.update({
+      where: { userId: user.sub },
+      data: { avatarUrl: url },
+      select: { id: true, avatarUrl: true },
+    });
+
+    return { success: true, data: { avatarUrl: seller.avatarUrl } };
+  }
+
   @Post(':id/confirm')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)

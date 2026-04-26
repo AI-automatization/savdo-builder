@@ -74,6 +74,7 @@ export interface SellerProfile {
   telegramUsername: string | null;
   languageCode: 'ru' | 'uz';
   isBlocked: boolean;
+  avatarUrl: string | null;
   createdAt: string;
 }
 

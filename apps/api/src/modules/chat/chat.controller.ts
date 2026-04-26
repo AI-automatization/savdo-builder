@@ -11,6 +11,7 @@ import {
   Post,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -156,6 +157,123 @@ export class ChatController {
       where: { id: threadId },
       data: { [field]: new Date() },
     });
+  }
+
+  // DELETE /api/v1/chat/threads/:id  (soft-delete per participant)
+  @Delete('chat/threads/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('BUYER', 'SELLER')
+  async deleteThread(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') threadId: string,
+  ): Promise<void> {
+    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+
+    const thread = await this.prisma.chatThread.findUnique({
+      where: { id: threadId },
+      select: { buyerId: true, sellerId: true },
+    });
+
+    if (!thread) {
+      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
+    }
+
+    const isBuyer = thread.buyerId === participantId;
+    const isSeller = thread.sellerId === participantId;
+
+    if (!isBuyer && !isSeller) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
+    }
+
+    const field = isBuyer ? 'buyerDeletedAt' : 'sellerDeletedAt';
+    await (this.prisma.chatThread as any).update({
+      where: { id: threadId },
+      data: { [field]: new Date() },
+    });
+  }
+
+  // DELETE /api/v1/chat/threads/:threadId/messages/:msgId  (soft-delete, author only)
+  @Delete('chat/threads/:threadId/messages/:msgId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('BUYER', 'SELLER')
+  async deleteMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param('threadId') threadId: string,
+    @Param('msgId') msgId: string,
+  ): Promise<void> {
+    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: msgId },
+      select: { id: true, threadId: true, senderUserId: true, isDeleted: true },
+    });
+
+    if (!message || message.threadId !== threadId) {
+      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Message not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (message.isDeleted) return;
+
+    if (message.senderUserId !== participantId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can delete this message', HttpStatus.FORBIDDEN);
+    }
+
+    await (this.prisma.chatMessage as any).update({
+      where: { id: msgId },
+      data: { isDeleted: true, body: null, deletedAt: new Date() },
+    });
+  }
+
+  // PATCH /api/v1/chat/threads/:threadId/messages/:msgId  (edit, author only, 15 min window)
+  @Patch('chat/threads/:threadId/messages/:msgId')
+  @Roles('BUYER', 'SELLER')
+  async editMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param('threadId') threadId: string,
+    @Param('msgId') msgId: string,
+    @Body('text') text: string,
+  ) {
+    if (!text?.trim()) {
+      throw new BadRequestException('text is required');
+    }
+
+    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: msgId },
+      select: { id: true, threadId: true, senderUserId: true, isDeleted: true, createdAt: true },
+    });
+
+    if (!message || message.threadId !== threadId) {
+      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Message not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (message.isDeleted) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Cannot edit a deleted message', HttpStatus.FORBIDDEN);
+    }
+
+    if (message.senderUserId !== participantId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can edit this message', HttpStatus.FORBIDDEN);
+    }
+
+    const ageMs = Date.now() - message.createdAt.getTime();
+    if (ageMs > 15 * 60 * 1000) {
+      throw new BadRequestException('Edit window expired (15 minutes)');
+    }
+
+    const updated = await (this.prisma.chatMessage as any).update({
+      where: { id: msgId },
+      data: { body: text.trim(), editedAt: new Date() },
+    });
+
+    return {
+      id: updated.id,
+      threadId: updated.threadId,
+      text: updated.body ?? '',
+      senderRole: user.role,
+      editedAt: updated.editedAt,
+      createdAt: updated.createdAt,
+    };
   }
 
   // PATCH /api/v1/chat/messages/:id/report

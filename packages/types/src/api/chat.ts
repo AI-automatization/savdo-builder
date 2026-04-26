@@ -8,6 +8,8 @@ export interface ChatMessage {
   text: string;
   senderRole: UserRole;
   createdAt: string;
+  editedAt: string | null;
+  isDeleted: boolean;
 }
 
 // ── Thread ────────────────────────────────────────────────────────────────────

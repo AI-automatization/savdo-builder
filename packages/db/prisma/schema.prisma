@@ -219,6 +219,7 @@ model Seller {
   verificationStatus          SellerVerificationStatus @default(UNVERIFIED)
   isBlocked                   Boolean                  @default(false)
   blockedReason               String?
+  avatarUrl                   String?
   createdAt                   DateTime                 @default(now())
   updatedAt                   DateTime                 @updatedAt
 
@@ -699,6 +700,8 @@ model ChatThread {
   lastMessageAt    DateTime?
   buyerLastReadAt  DateTime?
   sellerLastReadAt DateTime?
+  buyerDeletedAt   DateTime?
+  sellerDeletedAt  DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -725,6 +728,8 @@ model ChatMessage {
   productContextId String?
   orderContextId   String?
   isDeleted        Boolean   @default(false)
+  editedAt         DateTime?
+  deletedAt        DateTime?
   reportedAt       DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
