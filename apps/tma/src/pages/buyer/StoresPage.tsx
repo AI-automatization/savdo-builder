@@ -109,7 +109,7 @@ export default function StoresPage() {
           >
             <Sticker emoji="🛒" size={26} />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold" style={{ color: '#A855F7' }}>Savdo</h1>
             {user && (
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
@@ -117,6 +117,13 @@ export default function StoresPage() {
               </p>
             )}
           </div>
+          <button
+            onClick={() => navigate('/buyer/settings')}
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.50)', fontSize: 16 }}
+          >
+            ⚙️
+          </button>
         </div>
 
         {/* Tab switcher */}

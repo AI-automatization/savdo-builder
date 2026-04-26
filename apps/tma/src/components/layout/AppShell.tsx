@@ -37,8 +37,8 @@ export function AppShell({ children, role }: Props) {
 
       <ToastContainer />
       <BackButton />
-      <FullscreenButton />
       <div className="relative z-10 flex-1 px-4 pt-4 pb-20">
+        <FullscreenButton />
         <div className="w-full max-w-3xl mx-auto">
           {children}
         </div>

@@ -1,39 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { applyAsSeller } from '@/lib/auth';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { showToast } from '@/components/ui/Toast';
-import { useState } from 'react';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
 
 export default function BuyerSettingsPage() {
-  const { user, authenticated, logout, reauth } = useAuth();
+  const { user, authenticated, logout } = useAuth();
   const { tg, user: tgUser } = useTelegram();
   const navigate = useNavigate();
-  const [applying, setApplying] = useState(false);
 
   const handleLogout = () => {
     tg?.HapticFeedback.notificationOccurred('warning');
     logout();
     navigate('/', { replace: true });
-  };
-
-  const handleBecomeSeller = async () => {
-    setApplying(true);
-    try {
-      await applyAsSeller();
-      await reauth();
-      tg?.HapticFeedback.notificationOccurred('success');
-      navigate('/seller', { replace: true });
-    } catch {
-      tg?.HapticFeedback.notificationOccurred('error');
-      showToast('❌ Ошибка');
-    } finally {
-      setApplying(false);
-    }
   };
 
   return (
@@ -86,34 +67,6 @@ export default function BuyerSettingsPage() {
             )}
           </div>
         </GlassCard>
-
-        {/* ── Продавец ── */}
-        {authenticated && user?.role === 'BUYER' && (
-          <GlassCard className="p-4 flex items-center gap-3">
-            <span style={{ fontSize: 26 }}>🏪</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                Хочешь продавать?
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                {applying ? 'Создаём аккаунт...' : 'Открой свой магазин'}
-              </p>
-            </div>
-            <button
-              onClick={handleBecomeSeller}
-              disabled={applying}
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl shrink-0"
-              style={{
-                background: applying ? 'rgba(168,85,247,0.06)' : 'rgba(168,85,247,0.18)',
-                color: applying ? 'rgba(168,85,247,0.35)' : '#A855F7',
-                border: '1px solid rgba(168,85,247,0.25)',
-                cursor: applying ? 'wait' : 'pointer',
-              }}
-            >
-              {applying ? '...' : 'Открыть'}
-            </button>
-          </GlassCard>
-        )}
 
         {/* ── Приложение ── */}
         <GlassCard className="p-4 flex flex-col gap-2">

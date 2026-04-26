@@ -66,6 +66,25 @@ function shortDate(iso: string): string {
   return `${date} ${time}`;
 }
 
+type StatusFilter = 'all' | 'pending' | 'active' | 'delivered' | 'cancelled';
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all',       label: 'Все' },
+  { value: 'pending',   label: 'Новые' },
+  { value: 'active',    label: 'В работе' },
+  { value: 'delivered', label: 'Доставлены' },
+  { value: 'cancelled', label: 'Отменены' },
+];
+
+function matchesFilter(status: string, filter: StatusFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'pending')   return status === 'PENDING';
+  if (filter === 'active')    return status === 'CONFIRMED' || status === 'PROCESSING' || status === 'SHIPPED';
+  if (filter === 'delivered') return status === 'DELIVERED';
+  if (filter === 'cancelled') return status === 'CANCELLED';
+  return true;
+}
+
 export default function SellerOrdersPage() {
   const { tg } = useTelegram();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -73,7 +92,7 @@ export default function SellerOrdersPage() {
   const [error, setError] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -139,21 +158,43 @@ export default function SellerOrdersPage() {
   return (
     <AppShell role="SELLER">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
-          {orders.length > 0 && (
-            <button
-              onClick={() => setHideCompleted((v) => !v)}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all"
-              style={
-                hideCompleted
-                  ? { background: 'rgba(52,211,153,0.18)', color: 'rgba(52,211,153,0.95)', border: '1px solid rgba(52,211,153,0.30)' }
-                  : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.10)' }
-              }
-            >
-              {hideCompleted ? '✓ ' : ''}Скрыть завершённые
-            </button>
-          )}
+        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
+
+        {/* Status filter tabs */}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+          {STATUS_FILTERS.map((f) => {
+            const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
+            const active = statusFilter === f.value;
+            return (
+              <button
+                key={f.value}
+                onClick={() => setStatusFilter(f.value)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all"
+                style={{
+                  background: active ? 'rgba(168,85,247,0.22)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${active ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
+                  color: active ? '#A855F7' : 'rgba(255,255,255,0.45)',
+                }}
+              >
+                {f.label}
+                {count > 0 && (
+                  <span
+                    className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                    style={{
+                      background: active ? 'rgba(168,85,247,0.30)' : 'rgba(255,255,255,0.08)',
+                      color: active ? '#A855F7' : 'rgba(255,255,255,0.35)',
+                      minWidth: 18,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {loading && [1,2,3].map((i) => <OrderRowSkeleton key={i} />)}
@@ -182,8 +223,14 @@ export default function SellerOrdersPage() {
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
           </div>
         )}
+        {!loading && !error && orders.length > 0 && orders.filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-10">
+            <span style={{ fontSize: 36 }}>🔍</span>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Нет заказов в этой категории</p>
+          </div>
+        )}
 
-        {(hideCompleted ? orders.filter((o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED') : orders).map((o) => {
+        {orders.filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
           const next = NEXT_STATUS[o.status];
           const isUpdating = updating === o.id;
           return (

@@ -10,19 +10,18 @@ interface NavItem {
 }
 
 const buyerTabs: NavItem[] = [
-  { path: '/buyer',         label: 'Магазины', icon: '🏪', exact: true },
-  { path: '/buyer/cart',    label: 'Корзина',  icon: '🛒' },
-  { path: '/buyer/orders',  label: 'Заказы',   icon: '📦' },
-  { path: '/buyer/chat',    label: 'Чат',      icon: '💬' },
-  { path: '/buyer/settings', label: 'Настройки', icon: '⚙️' },
+  { path: '/buyer',        label: 'Магазины', icon: '🏪', exact: true },
+  { path: '/buyer/cart',   label: 'Корзина',  icon: '🛒' },
+  { path: '/buyer/orders', label: 'Заказы',   icon: '📦' },
+  { path: '/buyer/chat',   label: 'Чат',      icon: '💬' },
 ];
 
 const sellerTabs: NavItem[] = [
-  { path: '/seller',           label: 'Дашборд',  icon: '📊', exact: true },
-  { path: '/seller/products',  label: 'Товары',   icon: '📦' },
-  { path: '/seller/orders',    label: 'Заказы',   icon: '📋' },
-  { path: '/seller/chat',      label: 'Чат',      icon: '💬' },
-  { path: '/seller/settings',  label: 'Настройки',icon: '⚙️' },
+  { path: '/seller',          label: 'Дашборд', icon: '📊', exact: true },
+  { path: '/seller/store',    label: 'Магазин', icon: '🏪' },
+  { path: '/seller/products', label: 'Товары',  icon: '📦' },
+  { path: '/seller/orders',   label: 'Заказы',  icon: '📋' },
+  { path: '/seller/chat',     label: 'Чат',     icon: '💬' },
 ];
 
 function isActive(tab: NavItem, pathname: string): boolean {

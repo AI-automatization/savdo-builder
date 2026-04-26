@@ -350,11 +350,16 @@ export default function SellerStorePage() {
         {/* Categories inline section */}
         <GlassCard className="p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Категории
-            </p>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Направление магазина
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                Помогает покупателям найти вас в поиске
+              </p>
+            </div>
             <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
               style={{
                 background: categories.length >= 20 ? 'rgba(239,68,68,0.12)' : 'rgba(167,139,250,0.10)',
                 color: categories.length >= 20 ? 'rgba(239,68,68,0.70)' : 'rgba(167,139,250,0.60)',
@@ -407,7 +412,7 @@ export default function SellerStorePage() {
                 value={catInput}
                 onChange={(e) => setCatInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addCategory()}
-                placeholder="Новая категория"
+                placeholder="Например: Одежда, Электроника..."
                 maxLength={100}
                 className="flex-1 px-3 py-2 rounded-xl text-sm text-white placeholder-white/25 outline-none"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -434,7 +439,7 @@ export default function SellerStorePage() {
 
           {categories.length === 0 && (
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-              Добавьте категории чтобы организовать товары
+              Укажите направления — покупатели найдут вас по поиску в каталоге
             </p>
           )}
         </GlassCard>

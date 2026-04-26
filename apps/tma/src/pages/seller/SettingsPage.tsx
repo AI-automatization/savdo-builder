@@ -265,13 +265,6 @@ export default function SellerSettingsPage() {
           >
             <span>👤</span> Профиль
           </button>
-          <button
-            onClick={() => navigate('/buyer')}
-            className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'rgba(52,211,153,0.85)' }}
-          >
-            <span>🛍</span> Режим покупателя
-          </button>
         </GlassCard>
 
         <p className="text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.15)' }}>
