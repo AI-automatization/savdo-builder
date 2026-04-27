@@ -74,3 +74,7 @@ web-build
 
 # Windows bash crash dumps
 *.stackdump
+
+# Railway config — managed per-branch, do not commit to main
+# TMA: apps/tma/railway.toml  |  Admin: admin branch root railway.toml
+railway.toml
