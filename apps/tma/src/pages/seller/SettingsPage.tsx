@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { useAuth } from '@/providers/AuthProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
@@ -56,7 +57,14 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
 
 export default function SellerSettingsPage() {
   const { tg } = useTelegram();
+  const { logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    tg?.HapticFeedback.notificationOccurred('warning');
+    logout();
+    navigate('/', { replace: true });
+  };
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [fullName, setFullName] = useState('');
@@ -264,6 +272,13 @@ export default function SellerSettingsPage() {
             style={{ color: 'rgba(255,255,255,0.65)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
           >
             <span>👤</span> Профиль
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 py-2.5 text-sm"
+            style={{ color: 'rgba(248,113,113,0.80)' }}
+          >
+            <span>🚪</span> Выйти из аккаунта
           </button>
         </GlassCard>
 

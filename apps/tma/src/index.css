@@ -75,6 +75,51 @@ body {
   50%       { opacity: 0.6; transform: scale(1.4); }
 }
 
+/* ── Interactive card hover lift (desktop only) ──────────────────────────── */
+@media (hover: hover) {
+  .glass-card-interactive {
+    transition: transform 0.17s ease, box-shadow 0.17s ease !important;
+  }
+  .glass-card-interactive:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.16) !important;
+    border-color: rgba(255,255,255,0.17) !important;
+  }
+  .glass-card-interactive:active {
+    transform: translateY(0) scale(0.985) !important;
+  }
+}
+
+/* ── Fade-in for new list items ───────────────────────────────────────────── */
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fade-slide-in 0.22s ease-out; }
+
+/* ── Back button bar ──────────────────────────────────────────────────────── */
+.in-app-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.09);
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  backdrop-filter: blur(8px);
+}
+@media (hover: hover) {
+  .in-app-back:hover {
+    background: rgba(255,255,255,0.11);
+    color: rgba(255,255,255,0.88);
+  }
+}
+
 /* ── Scrollbar (minimal, themed) ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
