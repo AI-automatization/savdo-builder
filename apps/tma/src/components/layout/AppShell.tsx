@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { BottomNav } from './BottomNav';
 import { BackButton } from './BackButton';
 import { FullscreenButton } from './FullscreenButton';
+import { InAppBackBar } from './InAppBackBar';
 import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
 import { ToastContainer } from '@/components/ui/Toast';
 import { gradientBg, COLORS } from '@/lib/styles';
@@ -50,6 +51,7 @@ export function AppShell({ children, role }: Props) {
           >
             <FullscreenButton />
             <div className="w-full max-w-4xl mx-auto">
+              <InAppBackBar />
               {children}
             </div>
           </div>
@@ -60,6 +62,7 @@ export function AppShell({ children, role }: Props) {
           <div className="relative z-10 flex-1 px-4 pt-4 pb-20">
             <FullscreenButton />
             <div className="w-full max-w-3xl mx-auto">
+              <InAppBackBar />
               {children}
             </div>
           </div>
