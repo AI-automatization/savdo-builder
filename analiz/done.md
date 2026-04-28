@@ -1,6 +1,62 @@
 # Done — Азим + Полат
 
-## 2026-04-29 — Сессия 37 (Азим) — превентивный фикс WS JWT auth
+## 2026-04-29 — Сессия 38 (Азим) — Pre-MVP audit + security hardening
+
+> **Контекст:** Полат сказал "проектни уже MVP чкарш кере", попросил полный аудит платформы перед запуском. Я разобрал его список (audit OTP, рендеринг, безопасность nmap/OWASP, постраничный inventory, реверс конкурентов) и сделал то что в моём домене (`apps/web-buyer` + `apps/web-seller`). Активные атаки/сетевой пентест (nmap, OWASP scan) — не делал, это инфра-домен Полата и требует deployed URL + Burp/ZAP.
+
+### ✅ [MVP-AUDIT-001] Статический аудит web-buyer + web-seller — security/render/OTP/inventory
+- **Важность:** 🔴 — pre-launch verification.
+- **Дата:** 29.04.2026
+- **Что проверено:**
+  1. **Security:** XSS-сink'и (`dangerouslySetInnerHTML`/`eval`/`innerHTML`/`document.write`) — **0** в моём домене. Единственное использование `dangerouslySetInnerHTML` — `apps/admin/src/pages/BroadcastPage.tsx:41` (домен Полата, flag в tasks). Все `target="_blank"` (7 ссылок) имеют `rel="noopener noreferrer"`. Token storage — localStorage (известный XSS-риск, но без других sink'ов = принимаемый для MVP). Refresh-interceptor паттерн правильный (`_retry`, dedupe via promise, skip auth-endpoints). AuthContext localLogout закрывает loop.
+  2. **Rendering:** **0** `window.location.*` в моём домене (есть в admin + tma — flag для Полата). **0** `<a href>` для внутренней навигации. SSR где нужно: `[slug]/page.tsx` (storefront) — full RSC + `generateMetadata` с OG tags; `[slug]/products/[id]/layout.tsx` — RSC layout с `generateMetadata` (Telegram preview product-ссылок работает). Прочие 9/10 buyer pages + 12/14 seller pages — `'use client'`, что OK для auth-walled / transactional. `<img>` 0 в buyer; 2 в seller (image-uploader blob preview — eslint-disabled OK; orders/page.tsx:168 — micro).
+  3. **OTP-флоу:** request→verify→login правильный pipe. Phone validation — buyer OtpGate без `+998` префикса (юзер сам вводит), seller login добавляет автоматически — UX-инконсистенция, не баг. Backend (после `f3666db`) ждёт **6-значный OTP** — оба фронта позволяли submit с 4 (баг, фикснул).
+  4. **Inventory:** **0** `TODO|FIXME|MOCK|stub|@ts-ignore|"Скоро"|"В разработке"|disabled={true}` в моём домене. Это значит фичи не полу-сделаны, нет visible incomplete UI. По factual readiness — **MVP по фронту готов** (модулу e2e-теста после deploy).
+- **MVP-блокер не моего домена:** `INFRA-RAILWAY-WATCH-PATTERNS-001` — `savdo-builder-by`/`-sl` Watch Patterns в Railway dashboard указывают на `apps/tma/**`, поэтому пуши в web-buyer/web-seller игнорируются. Сессии 35–36 + сегодняшние security/OTP-фиксы НЕ в проде. Без фикса dashboard'а Полатом — MVP не релизится.
+
+### ✅ [WEB-SECURITY-HEADERS-001] Глобальные security-заголовки на HTML-ответах
+- **Важность:** 🔴 — clickjacking protection отсутствовал на login странице seller'а и **на всём web-buyer** (middleware не существовал).
+- **Дата:** 29.04.2026
+- **Корень:** Полат добавил `helmet` на API в `7cdb4c6` — это headers на API responses (JSON). HTML-страницы Next.js без своих headers оставались без `X-Frame-Options`/`X-Content-Type-Options`/`Referrer-Policy`. В seller `middleware.ts:20-22` `PUBLIC_PATHS = ['/login', '/onboarding']` пропускались БЕЗ headers — login можно было встроить в `<iframe>` и фишить OTP. В buyer вообще не было middleware.
+- **Файлы:**
+  - `apps/web-buyer/next.config.ts` — добавлен `async headers()` возвращающий 5 заголовков для `source: "/:path*"`: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()`, `Strict-Transport-Security: max-age=31536000; includeSubDomains`. Применяется ко всем HTML-ответам.
+  - `apps/web-seller/next.config.ts` — то же. `middleware.ts` оставлен как есть (он также ставит X-Frame/X-Content-Type для protected branch — дубль безвреден, value тот же; middleware можно упростить позже когда будет auth-redirect через cookie).
+- **Известный gap (не блокер MVP):** CSP не добавлен (требует точного списка allowed sources: API_URL, R2 buckets, Telegram media, Google Fonts, etc — большая работа, риск ломки в проде). HSTS preload не добавлен (требует submission в Chrome HSTS list). Эти задачи на post-MVP.
+
+### ✅ [WEB-OTP-LENGTH-001] OTP-формы: code length 4 → 6
+- **Важность:** 🟡 — после `f3666db` (admin) бэк отдаёт 6-значный OTP, а web-buyer + web-seller форма позволяла submit с 4 цифрами. Юзер увидел бы "Неверный код" на 4-значном вводе.
+- **Дата:** 29.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx` — input: `inputMode="numeric"`, `placeholder="000000"` (было `"0000"`), `onChange` теперь чистит non-digits через `.replace(/\D/g, '')`. Кнопка disable: `code.length < 6` (было `< 4`).
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — `handleVerify()` ранний return при `length < 6` (было `< 4`). Кнопка disable + active-style: `length >= 6` (было `>= 4`).
+
+---
+
+## 2026-04-29 — Сессия 37 (Азим) — превентивный аудит контрактов + 3 фронт-фикса + WS JWT auth
+
+### ✅ [AUDIT-CONTRACT-DRIFT-001] Превентивный аудит контрактов фронт ↔ бэк
+- **Важность:** 🟡 — system-уровневая профилактика. Метод: запустил 2 параллельных агента (curl на storefront + чтение mapper-ов на protected). Найдено 14 расхождений, из них 2 уже в проде ломали UX, 1 в коде но silent для seller, 11 — landmines. Записал в `tasks.md` для Полата.
+- **Дата:** 29.04.2026
+- **Зачем:** паттерн контракт-брейков повторился дважды (ChatThread Sprint 31, GlobalCategory fb79db2). Хочется не дожидаться третьего инцидента.
+- **Файлы:** `analiz/logs.md` (полный список), `analiz/tasks.md` (11 новых ID Полату).
+- **Покрытие:** ~30 endpoints — auth, storefront (stores/products/categories/filters), chat, orders, cart, notifications, media, seller profile/store, products.
+
+### ✅ [WEB-NOTIFICATIONS-INBOX-PARSE-001] Фикс пустого inbox в обоих апах
+- **Важность:** 🔴 — продавцы и покупатели видели пустой `/notifications` хотя бэк возвращал записи. Это и есть корень открытой задачи `/notifications диагностика` из очереди Азима.
+- **Дата:** 29.04.2026
+- **Корень:** Бэк возвращает `{notifications, total, unreadCount, page, limit}` (см. `apps/api/src/modules/notifications/use-cases/get-inbox.use-case.ts:36`). Локальный тип `InboxResponse` на фронте объявлял `{data, meta}` → `data.data` всегда `undefined` → React Query клал `undefined` в кэш → useNotifications() возвращал пустой массив.
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/notifications.api.ts` — `InboxResponse` обновлён под реальную форму, `getInbox()` читает `data.notifications ?? []`.
+  - `apps/web-seller/src/lib/api/notifications.api.ts` — то же.
+- **Полату записано:** `API-NOTIFICATIONS-INBOX-CONTRACT-001` 🔴 — желательно вынести `InboxResponse` в `packages/types/src/api/notifications.ts` (новый файл), сейчас тип задублирован в обоих апах + не экспортирован `unreadCount` (полезное поле для badge).
+
+### ✅ [WEB-CATEGORY-FILTERS-CASE-001] Фикс «фильтры всегда text input» на витрине магазина
+- **Важность:** 🔴 — все category-фильтры в buyer storefront рендерились через fallback (text input), select-dropdown и boolean-toggle никогда не показывались.
+- **Дата:** 29.04.2026
+- **Корень:** `GET /storefront/categories/:slug/filters` шлёт `fieldType` как Prisma uppercase enum (`"SELECT"`, `"NUMBER"`, `"TEXT"`, `"BOOLEAN"`). Локальный тип в `apps/web-buyer/src/lib/api/storefront.api.ts:11` объявлен lowercase. `CategoryAttributeFilters.tsx:185,228,257` сравнивает `filter.fieldType === "select"` — никогда не true.
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/storefront.api.ts` — `getCategoryFilters` нормализует `fieldType.toLowerCase()` на лету. Comment объясняет почему. Type literal расширен `string` чтобы позволить uppercase в transit.
+- **Полату записано:** `API-CATEGORY-FILTERS-CASE-001` 🔴 — добавить `@Transform(value => value.toLowerCase())` в DTO или экспортить enum в lowercase.
 
 ### ✅ [WEB-SOCKET-AUTH-CONTRACT-001] Динамический токен в handshake socket.io
 - **Важность:** 🟡 — превентивный фикс контракт-брейка от Полата (`7cdb4c6` security: WS JWT auth). Без него чат и order-уведомления отвалились бы через ~30 мин после первого подключения.

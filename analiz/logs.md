@@ -10,6 +10,27 @@
 
 ---
 
+## 2026-04-29 [AUDIT-CONTRACT-DRIFT-001] Превентивный аудит контрактов фронт ↔ бэк выявил 14 расхождений; 3 пофикшено сейчас фронтом
+
+- **Статус:** 🟡 (3 фронт-фикса сделано, 11 задач Полату записано в `tasks.md`)
+- **Контекст:** Паттерн «Полат меняет форму response → тип в `packages/types` остаётся → web-seller ломается → web-buyer выживает потому что у него локальные типы» уже повторился дважды (Sprint 31: ChatThread, fb79db2: GlobalCategory). Запустил систематический аудит всех endpoints против `packages/types` + локальных типов — пока не напоролись на следующую жертву.
+- **Метод:** 2 параллельных агента — один прогнал `curl` по public storefront-endpoints, второй сравнил типы с backend mappers/repositories для protected endpoints. Покрыл ~30 endpoints.
+- **🔴 Реально сломанное в проде (фронт-фикс уже применён 29.04):**
+  1. `GET /notifications/inbox` — бэк возвращает `{notifications, total, unreadCount, page, limit}`, фронт читал `data.data` → undefined → пустой inbox у продавцов и покупателей. Это и есть корень открытой задачи `/notifications диагностика`. **Фикс:** `getInbox()` в обоих `apps/web-{buyer,seller}/src/lib/api/notifications.api.ts` теперь читает `data.notifications`.
+  2. `GET /storefront/categories/:slug/filters` — `fieldType` сериализуется как Prisma uppercase enum (`"SELECT"`/`"NUMBER"`/`"BOOLEAN"`/`"TEXT"`), фронт-renderer `CategoryAttributeFilters.tsx:185,228,257` сравнивал с lowercase. Все три ветки **никогда не были true** — все фильтры рендерились как text input, select-dropdown'ы и boolean-toggle'ы не показывались. **Фикс:** `getCategoryFilters()` в `storefront.api.ts` нормализует `fieldType.toLowerCase()` на лету.
+- **🔴 Бэк-сторона (Полат):**
+  3. `GET /seller/products` и `/:id` — controller спред raw Prisma, `mediaUrls` не маппится → пустые thumbnail на seller edit/list. Storefront маппит правильно — поэтому buyer всё видит. ID `API-SELLER-PRODUCT-MEDIA-URLS-001`.
+- **🟡 Silent UX bugs / latent landmines (записаны в `tasks.md` Полату):**
+  - `API-SELLER-STORE-LOGO-URL-001` — `/seller/store` без resolved `logoUrl/coverUrl`, продавец грузит лого, превью пусто.
+  - `API-STORE-CONTRACT-001` — то же на storefront `/storefront/stores/:slug`.
+  - `API-CHAT-MESSAGE-CONTRACT-001` — `POST /chat/.../messages` шлёт raw Prisma `{body, ...}` вместо `{text, isDeleted, senderRole}` — useEditMessage может схватить пустой text после клика «Сохранить».
+  - `API-PRODUCT-CONTRACT-002` — basePrice/oldPrice/salePrice как **строка** (Prisma Decimal serialization). Фронт в большинстве мест уже знает (`Number()`/`toNum()`), но product detail `[slug]/products/[id]` mergid с variant priceOverride без обёртки — конкатенация в худшем случае.
+  - `API-SELLER-ORDERS-LIST-MAPPER-001` — те же поля что чинились в DETAIL-CONTRACT-001 теперь повторяются в list.
+- **🟢 Type-only fixes (записаны для гигиены):** `API-PRODUCT-CONTRACT-003` (envelope inconsistency), `API-ORDER-CONTRACT-001`, `API-BUYER-ORDERS-LIST-MAPPER-001`, `TYPES-VARIANT-REF-CONTRACT-001`, `API-CART-EMPTY-CONTRACT-001`.
+- **Итог:** 3 файла фронт-фикса (в моём домене), 11 задач в очереди Полата. Аудит вернёт ROI как только Полат починит хоть один — остальные находятся в одном файле, легко batch'ить.
+
+---
+
 ## 2026-04-29 [WEB-SOCKET-AUTH-CONTRACT-001] WebSocket gateways теперь требуют JWT в `handshake.auth.token` — превентивный фикс stale-token
 
 - **Статус:** ✅ Исправлено превентивно (фронт-патч в обоих web-апах). 🔴 **Не задеплоено** — упирается в `INFRA-RAILWAY-WATCH-PATTERNS-001`.
