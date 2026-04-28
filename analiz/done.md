@@ -1,5 +1,47 @@
 # Done — Азим + Полат
 
+## 2026-04-29 (вечер) — Сессия 39 (Азим) — Buyer revamp: glass→light, mobile-only→responsive
+
+> **Контекст:** Азим попросил перевести buyer как seller (solid surfaces). Обсудили варианты, выбрали A2-light (инверсия от seller — белый/cream фон, violet акцент). Дополнительно — растянуть на весь экран (раньше mobile-only по `max-w-md`). Делалось в одной волне: pilot storefront + 2 баг-фикса до этого, потом полная миграция остальных 8 страниц.
+
+### ✅ [BUYER-REVAMP-FOUNDATION-001] Light tokens + globals + (shop) layout 🟡
+- **Дата:** 29.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/styles.ts` — новая палитра `colors` (bg #FAFAF7, surface #FFFFFF, accent #7C3AED), pre-set surfaces (`card`, `cardMuted`, `pill`, `pillActive`, `ctaPrimary`, `ctaSoft`, `inputStyle`). Старые `glass`/`glassDim`/`glassDark` оставлены как deprecated alias на light surfaces для нерефакторнутых страниц (потом убрать).
+  - `apps/web-buyer/src/app/globals.css` — `:root --background: #FAFAF7`, `color-scheme: light` (forced), убран `prefers-color-scheme: dark` override, добавлена утилита `.scrollbar-none`.
+  - `apps/web-buyer/src/app/(shop)/layout.tsx` — заменён фиолетовый gradient на light bg + textPrimary.
+- **Запушено в `54a5f8a`.**
+
+### ✅ [BUYER-REVAMP-PILOT-001] Pilot storefront /[slug] — full responsive light 🟡
+- **Дата:** 29.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` — новый layout: cover hero (h-40 sm:h-56 md:h-72), overlap-card с лого+имя+TG CTA, sticky-bar с категориями, 2-column grid `lg:grid-cols-[260px_1fr]` (sidebar фильтров + grid товаров).
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — solid white card, hover lift, large violet price + «сум».
+  - `apps/web-buyer/src/components/store/ProductsWithSearch.tsx` — responsive grid `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6`.
+  - `apps/web-buyer/src/components/store/CategoryAttributeFilters.tsx` — light pills, light select dropdown.
+  - `apps/web-buyer/src/components/layout/Header.tsx` — переписан под light + responsive nav-icons на md+.
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `md:hidden`, light surface, safe-area-inset-bottom.
+- **Запушено в `54a5f8a`.**
+
+### ✅ [BUYER-REVAMP-FULL-001] Полная миграция остальных 8 страниц + 2 компонентов 🟡
+- **Дата:** 29.04.2026 (вечер, без присутствия Азима)
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — home: light hero, slug input, 2-col quick links на sm+.
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — product detail: 2-column на lg+ (gallery + sticky info), single-column на mobile, inline desktop CTA (sticky на mobile).
+  - `apps/web-buyer/src/app/(minimal)/cart/page.tsx` — light cart rows, max-w-3xl, sticky CTA в углу на md+.
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — light form sections, max-w-2xl, OTP 6-digit + numeric-only.
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — split-view на md+ (320px list + chat-pane), violet bubbles для buyer, white-with-border для seller, action menu всегда видна (opacity-60).
+  - `apps/web-buyer/src/app/(shop)/orders/page.tsx` — table-style cards, max-w-4xl, status pills с solid color/bg.
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` — light progress steps, store card, delivery section.
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — light avatar+phone card, link rows с chevrons.
+  - `apps/web-buyer/src/app/(shop)/notifications/page.tsx` — light read/unread (accentMuted bg для unread).
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx` — переписан под light + 6-digit input.
+  - `apps/web-buyer/src/components/home/RecentStores.tsx` — light tile cards с hover lift.
+- **Visual contract:** все surfaces = #FFFFFF + 1px rgba(15,17,21,.10) border. Text: textPrimary/textMuted/textDim. Accent (price/CTA/active): solid violet. Status colors: solid 600-shades. Bottom nav скрыт на md+. Sticky CTAs на md+ перебрасываются в bottom-right corner.
+- **Запушено в `0d826a4`.**
+
+---
+
 ## 2026-04-29 — Сессия 38 (Азим) — Pre-MVP audit + security hardening
 
 > **Контекст:** Полат сказал "проектни уже MVP чкарш кере", попросил полный аудит платформы перед запуском. Я разобрал его список (audit OTP, рендеринг, безопасность nmap/OWASP, постраничный inventory, реверс конкурентов) и сделал то что в моём домене (`apps/web-buyer` + `apps/web-seller`). Активные атаки/сетевой пентест (nmap, OWASP scan) — не делал, это инфра-домен Полата и требует deployed URL + Burp/ZAP.
