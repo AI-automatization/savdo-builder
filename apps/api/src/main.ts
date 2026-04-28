@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './socket/redis-io.adapter';
 
@@ -20,6 +21,8 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  app.use(helmet());
 
   const isProd = process.env.NODE_ENV === 'production';
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) ?? [];

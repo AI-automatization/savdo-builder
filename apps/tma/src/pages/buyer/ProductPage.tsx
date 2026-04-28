@@ -54,6 +54,7 @@ export default function ProductPage() {
   const [selection, setSelection] = useState<OptionSelection>({});
   const [contacting, setContacting] = useState(false);
   const trackedRef = useRef<string | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const activeVariants = product?.variants?.filter((v) => v.isActive !== false) ?? [];
   const optionGroups   = product?.optionGroups ?? [];
@@ -123,13 +124,12 @@ export default function ProductPage() {
 
   const canAddToCart = !!product && !requiresVariantSelection && !isOutOfStock;
 
-  const addToCart = () => {
+  const addToCart = useCallback(() => {
     if (!product || !canAddToCart) return;
     tg?.HapticFeedback.impactOccurred('light');
 
     let cart = getCart();
 
-    // If cart has items from a different store — clear it first (INV-C01)
     if (!isSameStore(cart, product.storeId)) {
       cart = [];
     }
@@ -159,7 +159,7 @@ export default function ProductPage() {
     showToast('✅ Добавлено в корзину');
     track.addToCart(product.storeId, product.id, variantId ?? null, 1);
     navigate('/buyer/cart');
-  };
+  }, [product, canAddToCart, selectedVariant?.id, unitPrice, slug, tg, navigate]);
 
   useEffect(() => {
     if (!tg || !product) return;
@@ -186,8 +186,7 @@ export default function ProductPage() {
         tg.MainButton.hide();
       };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tg, product, selectedVariant?.id, unitPrice, requiresVariantSelection, isOutOfStock, canAddToCart]);
+  }, [tg, product, addToCart, selectedVariant?.id, unitPrice, requiresVariantSelection, isOutOfStock, canAddToCart]);
 
   if (loading) {
     return (
@@ -211,7 +210,6 @@ export default function ProductPage() {
 
   const images = product.mediaUrls ?? [];
   const displayType = product.displayType ?? 'SLIDER';
-  const touchStartX = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
