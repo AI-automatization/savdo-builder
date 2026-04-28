@@ -17,20 +17,11 @@ import {
   useDeleteMessage,
   useEditMessage,
 } from "@/hooks/use-chat";
-import { MessageSquare, MoreVertical, Pencil, Store, Trash2 } from "lucide-react";
-import { glass, glassDim } from "@/lib/styles";
+import { ArrowLeft, MessageSquare, MoreVertical, Pencil, Send, Store, Trash2 } from "lucide-react";
+import { colors } from "@/lib/styles";
 import { EmojiPicker } from "@/components/emoji-picker";
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
-
-const inputStyle = {
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.13)",
-  color: "#fff",
-  outline: "none",
-} as const;
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 function timeLabel(iso: string): string {
   const date = new Date(iso);
@@ -41,51 +32,40 @@ function timeLabel(iso: string): string {
   return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-
-// ── Icons ──────────────────────────────────────────────────────────────────
-
-const IcoShop    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>;
-const IcoCart    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>;
-const IcoChat    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>;
-const IcoOrders  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/></svg>;
-const IcoProfile = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>;
-const IcoBack    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>;
-const IcoSend    = () => <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>;
-
-
-// ── Icons (used in OtpGate) ───────────────────────────────────────────────
-
-const IcoChatGate = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-[22px] h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>;
-
-// ── Thread Item ────────────────────────────────────────────────────────────
-
 function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
   const { title, subtitle } = getThreadDisplay(thread);
   const unread = thread.unreadCount ?? 0;
   return (
-    <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/5"
-      style={active ? { background: "rgba(167,139,250,.10)" } : {}}>
-      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-        style={{ background: "rgba(167,139,250,.22)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.30)" }}>
-        <MessageSquare size={20} style={{ color: '#A78BFA' }} />
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-black/5"
+      style={active ? { background: colors.accentMuted } : {}}
+    >
+      <div
+        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+      >
+        <MessageSquare size={18} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate" style={unread > 0 ? { fontWeight: 600 } : undefined}>
+        <p className="text-sm font-medium truncate" style={{ color: colors.textPrimary, fontWeight: unread > 0 ? 600 : 500 }}>
           {title}
         </p>
-        <p className="text-xs mt-0.5 truncate" style={{ color: unread > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.38)" }}>
+        <p className="text-xs mt-0.5 truncate" style={{ color: unread > 0 ? colors.textPrimary : colors.textMuted }}>
           {thread.lastMessage ?? subtitle ?? "Нет сообщений"}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         {thread.lastMessageAt && (
-          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.28)" }}>
+          <span className="text-[10px]" style={{ color: colors.textDim }}>
             {timeLabel(thread.lastMessageAt)}
           </span>
         )}
         {unread > 0 && (
-          <span className="min-w-[18px] h-[18px] px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: "#A78BFA", color: "#0d0d1f" }}>
+          <span
+            className="min-w-[18px] h-[18px] px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
+          >
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -93,8 +73,6 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
     </button>
   );
 }
-
-// ── Chat View ──────────────────────────────────────────────────────────────
 
 function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: () => void; onDeleted: () => void }) {
   const { data, isLoading } = useMessages(thread.id);
@@ -176,13 +154,18 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
   return (
     <div className="relative flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-        <button onClick={onBack} className="w-8 h-8 flex items-center justify-center rounded-xl text-white/60 md:hidden" style={glassDim} aria-label="Назад">
-          <IcoBack />
+      <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surface }}>
+        <button
+          onClick={onBack}
+          className="w-8 h-8 flex items-center justify-center rounded-xl md:hidden transition-colors hover:bg-black/5"
+          style={{ background: colors.surfaceMuted, color: colors.textPrimary, border: `1px solid ${colors.border}` }}
+          aria-label="Назад"
+        >
+          <ArrowLeft size={16} />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white truncate">{title}</p>
-          <p className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-sm font-semibold truncate" style={{ color: colors.textPrimary }}>{title}</p>
+          <p className="text-[11px] truncate" style={{ color: colors.textMuted }}>
             {subtitle ? `${subtitle} · ` : ""}
             {thread.status === "OPEN" ? "Открыт" : "Закрыт"}
           </p>
@@ -190,7 +173,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
         <button
           onClick={() => setConfirmDeleteThread(true)}
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-opacity hover:opacity-80 flex-shrink-0"
-          style={{ background: "rgba(248,113,113,0.10)", color: "rgba(248,113,113,.85)", border: "1px solid rgba(248,113,113,0.18)" }}
+          style={{ background: 'rgba(220,38,38,0.08)', color: colors.danger, border: `1px solid rgba(220,38,38,0.25)` }}
           aria-label="Удалить чат"
           title="Удалить чат"
         >
@@ -200,17 +183,20 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
 
       {/* Confirm delete message modal */}
       {confirmDeleteMsg && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
-            <p className="text-sm font-semibold text-white">Удалить сообщение?</p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,0.45)" }}>
+          <div
+            className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3"
+            style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}
+          >
+            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Удалить сообщение?</p>
+            <p className="text-xs" style={{ color: colors.textMuted }}>
               Продавец увидит «Сообщение удалено» вместо текста.
             </p>
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setConfirmDeleteMsg(null)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.80)" }}
+                style={{ background: colors.surfaceMuted, color: colors.textPrimary, border: `1px solid ${colors.border}` }}
               >
                 Отмена
               </button>
@@ -218,7 +204,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 onClick={() => handleDeleteMessage(confirmDeleteMsg)}
                 disabled={deleteMessageMutation.isPending}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                style={{ background: "rgba(248,113,113,0.18)", color: "rgba(248,113,113,.90)" }}
+                style={{ background: colors.danger, color: '#FFFFFF' }}
               >
                 {deleteMessageMutation.isPending ? "..." : "Удалить"}
               </button>
@@ -229,17 +215,20 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
 
       {/* Confirm delete thread modal */}
       {confirmDeleteThread && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
-            <p className="text-sm font-semibold text-white">Удалить этот чат?</p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,0.45)" }}>
+          <div
+            className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3"
+            style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}
+          >
+            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Удалить этот чат?</p>
+            <p className="text-xs" style={{ color: colors.textMuted }}>
               Чат исчезнет из вашего списка. Продавец продолжит видеть историю.
             </p>
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setConfirmDeleteThread(false)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.80)" }}
+                style={{ background: colors.surfaceMuted, color: colors.textPrimary, border: `1px solid ${colors.border}` }}
               >
                 Отмена
               </button>
@@ -247,7 +236,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 onClick={handleDeleteThread}
                 disabled={deleteThreadMutation.isPending}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                style={{ background: "rgba(248,113,113,0.18)", color: "rgba(248,113,113,.90)" }}
+                style={{ background: colors.danger, color: '#FFFFFF' }}
               >
                 {deleteThreadMutation.isPending ? "..." : "Удалить"}
               </button>
@@ -257,19 +246,19 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2.5">
+      <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2.5" style={{ background: colors.bg }}>
         {isLoading && (
           <div className="flex flex-col gap-2.5">
             {[1, 2].map((i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}>
-                <div className="h-9 w-48 rounded-2xl animate-pulse" style={{ background: "rgba(255,255,255,0.08)" }} />
+                <div className="h-9 w-48 rounded-2xl animate-pulse" style={{ background: colors.surfaceMuted }} />
               </div>
             ))}
           </div>
         )}
 
         {!isLoading && messages.length === 0 && (
-          <p className="text-center text-sm py-8" style={{ color: "rgba(255,255,255,0.28)" }}>Нет сообщений</p>
+          <p className="text-center text-sm py-8" style={{ color: colors.textDim }}>Нет сообщений</p>
         )}
 
         {messages.map((m) => {
@@ -283,18 +272,40 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           return (
             <div key={m.id} className={`flex ${isBuyer ? "justify-end" : "justify-start"} group`}>
               {!isBuyer && (
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 mr-2 self-end"
-                  style={{ background: "rgba(167,139,250,.22)", color: "#A78BFA" }}><Store size={18} /></div>
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 self-end"
+                  style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+                >
+                  <Store size={14} />
+                </div>
               )}
               <div className={`relative max-w-[75%] flex items-end gap-1 ${isBuyer ? "flex-row-reverse" : ""}`}>
-                <div className="px-3.5 py-2.5 rounded-2xl text-sm text-white"
+                <div
+                  className="px-3.5 py-2.5 rounded-2xl text-sm"
                   style={
                     m.isDeleted
-                      ? { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.42)", fontStyle: "italic", border: "1px solid rgba(255,255,255,0.07)", borderBottomRightRadius: isBuyer ? 4 : 16, borderBottomLeftRadius: isBuyer ? 16 : 4 }
+                      ? {
+                          background: colors.surfaceMuted,
+                          color: colors.textDim,
+                          fontStyle: "italic",
+                          border: `1px solid ${colors.border}`,
+                          borderBottomRightRadius: isBuyer ? 4 : 16,
+                          borderBottomLeftRadius: isBuyer ? 16 : 4,
+                        }
                       : isBuyer
-                        ? { background: "linear-gradient(135deg, rgba(124,58,237,.55), rgba(167,139,250,.40))", borderBottomRightRadius: 4 }
-                        : { ...glassDim, borderBottomLeftRadius: 4 }
-                  }>
+                        ? {
+                            background: colors.accent,
+                            color: colors.accentTextOnBg,
+                            borderBottomRightRadius: 4,
+                          }
+                        : {
+                            background: colors.surface,
+                            color: colors.textPrimary,
+                            border: `1px solid ${colors.border}`,
+                            borderBottomLeftRadius: 4,
+                          }
+                  }
+                >
                   {m.isDeleted ? (
                     <p>Сообщение удалено</p>
                   ) : isEditing ? (
@@ -304,15 +315,19 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                         onChange={(e) => setEditingText(e.target.value)}
                         rows={2}
                         autoFocus
-                        className="w-full rounded-lg p-2 text-sm text-white outline-none resize-none"
-                        style={{ background: "rgba(0,0,0,0.30)", border: "1px solid rgba(255,255,255,0.18)" }}
+                        className="w-full rounded-lg p-2 text-sm outline-none resize-none"
+                        style={{
+                          background: 'rgba(255,255,255,0.95)',
+                          border: `1px solid rgba(255,255,255,0.5)`,
+                          color: colors.textPrimary,
+                        }}
                       />
                       <div className="flex gap-2 justify-end">
                         <button
                           type="button"
                           onClick={() => { setEditingId(null); setEditingText(""); }}
                           className="px-2.5 py-1 rounded-md text-[11px] font-semibold"
-                          style={{ background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.85)" }}
+                          style={{ background: 'rgba(255,255,255,0.18)', color: colors.accentTextOnBg }}
                         >
                           Отмена
                         </button>
@@ -321,7 +336,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                           onClick={saveEdit}
                           disabled={!editingText.trim() || editMessageMutation.isPending}
                           className="px-2.5 py-1 rounded-md text-[11px] font-semibold disabled:opacity-50"
-                          style={{ background: "white", color: "#7C3AED" }}
+                          style={{ background: '#FFFFFF', color: colors.accent }}
                         >
                           {editMessageMutation.isPending ? "..." : "Сохранить"}
                         </button>
@@ -331,7 +346,10 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                     <p style={{ whiteSpace: "pre-wrap" }}>{m.text}</p>
                   )}
                   {!m.isDeleted && !isEditing && (
-                    <p className="text-[10px] mt-0.5 text-right" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    <p
+                      className="text-[10px] mt-0.5 text-right"
+                      style={{ color: isBuyer ? 'rgba(255,255,255,0.70)' : colors.textDim }}
+                    >
                       {m.editedAt && <span className="mr-1">изменено · </span>}
                       {timeLabel(m.createdAt)}
                     </p>
@@ -344,7 +362,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                       type="button"
                       onClick={() => setOpenMenuId(showMenu ? null : m.id)}
                       className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-60 hover:opacity-100 focus:opacity-100 active:opacity-100"
-                      style={{ background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.80)" }}
+                      style={{ background: colors.surface, color: colors.textPrimary, border: `1px solid ${colors.border}` }}
                       aria-label="Действия с сообщением"
                     >
                       <MoreVertical size={13} />
@@ -352,13 +370,14 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                     {showMenu && (
                       <div
                         className={`absolute z-10 top-full mt-1 ${isBuyer ? "right-0" : "left-0"} rounded-xl overflow-hidden min-w-[140px]`}
-                        style={{ ...glass, boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
+                        style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
                       >
                         {canEdit && (
                           <button
                             type="button"
                             onClick={() => startEdit(m.id, m.text)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-white/5 text-white"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-black/5"
+                            style={{ color: colors.textPrimary }}
                           >
                             <Pencil size={12} /> Редактировать
                           </button>
@@ -367,8 +386,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                           <button
                             type="button"
                             onClick={() => { setConfirmDeleteMsg(m.id); setOpenMenuId(null); }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-white/5"
-                            style={{ color: "rgba(248,113,113,.85)" }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-black/5"
+                            style={{ color: colors.danger }}
                           >
                             <Trash2 size={12} /> Удалить
                           </button>
@@ -386,7 +405,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
 
       {/* Input */}
       {thread.status === "OPEN" && (
-        <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${colors.divider}`, background: colors.surface }}>
           <EmojiPicker onPick={(emoji) => setText((prev) => prev + emoji)} />
           <input
             type="text"
@@ -394,27 +413,36 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Написать сообщение..."
-            className="flex-1 h-10 px-3.5 rounded-xl text-sm text-white placeholder-white/25 outline-none"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.11)" }}
+            className="flex-1 h-10 px-3.5 rounded-xl text-sm outline-none focus:ring-2"
+            style={{
+              background: colors.surfaceMuted,
+              border: `1px solid ${colors.border}`,
+              color: colors.textPrimary,
+              ['--tw-ring-color' as string]: colors.accentBorder,
+            }}
           />
-          <button onClick={handleSend} disabled={!text.trim() || sendMutation.isPending}
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
-            aria-label="Отправить">
-            <IcoSend />
+          <button
+            onClick={handleSend}
+            disabled={!text.trim() || sendMutation.isPending}
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity hover:opacity-90"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
+            aria-label="Отправить"
+          >
+            <Send size={16} />
           </button>
         </div>
       )}
       {thread.status === "CLOSED" && (
-        <div className="px-4 py-3 text-center text-xs flex-shrink-0" style={{ color: "rgba(255,255,255,0.35)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div
+          className="px-4 py-3 text-center text-xs flex-shrink-0"
+          style={{ color: colors.textDim, borderTop: `1px solid ${colors.divider}`, background: colors.surface }}
+        >
           Чат закрыт продавцом
         </div>
       )}
     </div>
   );
 }
-
-// ── Authenticated Chats ────────────────────────────────────────────────────
 
 function ChatsView() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -426,109 +454,94 @@ function ChatsView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads]);
 
-  // Mobile: show list or chat
-  const showList = !activeId || !activeThread;
-
   return (
-    <>
-      {/* Desktop: side-by-side / Mobile: single view */}
-      <div className="flex gap-0 h-[calc(100vh-11rem)] rounded-2xl overflow-hidden" style={glass}>
-
-        {/* Thread list */}
-        <div className={`${activeThread ? "hidden md:flex" : "flex"} flex-col w-full md:w-72 md:border-r flex-shrink-0`}
-          style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-          <div className="px-4 py-3.5 flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-            <p className="text-sm font-semibold text-white">Чаты с продавцами</p>
-          </div>
-          <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-            {isLoading && (
-              <div className="flex flex-col">
-                {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3.5">
-                    <div className="w-10 h-10 rounded-full animate-pulse flex-shrink-0" style={{ background: "rgba(255,255,255,0.10)" }} />
-                    <div className="flex-1 flex flex-col gap-2">
-                      <div className="h-3 w-28 rounded-full animate-pulse" style={{ background: "rgba(255,255,255,0.10)" }} />
-                      <div className="h-2.5 w-36 rounded-full animate-pulse" style={{ background: "rgba(255,255,255,0.07)" }} />
-                    </div>
+    <div
+      className="flex h-[calc(100vh-9rem)] md:h-[calc(100vh-7rem)] rounded-2xl overflow-hidden"
+      style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+    >
+      {/* Thread list */}
+      <div
+        className={`${activeThread ? "hidden md:flex" : "flex"} flex-col w-full md:w-80 flex-shrink-0`}
+        style={{ borderRight: `1px solid ${colors.divider}` }}
+      >
+        <div className="px-4 py-3.5 flex-shrink-0" style={{ borderBottom: `1px solid ${colors.divider}` }}>
+          <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Чаты с продавцами</p>
+        </div>
+        <div className="flex-1 overflow-y-auto" style={{ background: colors.surface }}>
+          {isLoading && (
+            <div className="flex flex-col">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="w-10 h-10 rounded-full animate-pulse flex-shrink-0" style={{ background: colors.surfaceMuted }} />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="h-3 w-28 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
+                    <div className="h-2.5 w-36 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
                   </div>
-                ))}
-              </div>
-            )}
-            {isError && <p className="px-4 py-6 text-xs text-center" style={{ color: "rgba(248,113,113,.70)" }}>Ошибка загрузки</p>}
-            {!isLoading && !isError && threads?.length === 0 && (
-              <div className="px-4 py-10 text-center flex flex-col items-center gap-3">
-                <MessageSquare size={28} style={{ color: 'rgba(255,255,255,0.3)' }} />
-                <div>
-                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.60)" }}>Чатов пока нет</p>
-                  <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>
-                    Откройте магазин или заказ и нажмите<br />кнопку чата — напишите продавцу
-                  </p>
                 </div>
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold mt-1"
-                  style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", color: "white" }}
-                >
-                  <Store size={14} /> Перейти к магазинам
-                </Link>
+              ))}
+            </div>
+          )}
+          {isError && <p className="px-4 py-6 text-xs text-center" style={{ color: colors.danger }}>Ошибка загрузки</p>}
+          {!isLoading && !isError && threads?.length === 0 && (
+            <div className="px-4 py-10 text-center flex flex-col items-center gap-3">
+              <MessageSquare size={28} style={{ color: colors.textDim }} />
+              <div>
+                <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>Чатов пока нет</p>
+                <p className="text-xs mt-1.5 leading-relaxed" style={{ color: colors.textMuted }}>
+                  Откройте магазин или заказ и нажмите кнопку чата
+                </p>
               </div>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold mt-1 transition-opacity hover:opacity-90"
+                style={{ background: colors.accent, color: colors.accentTextOnBg }}
+              >
+                <Store size={14} /> Перейти к магазинам
+              </Link>
+            </div>
+          )}
+          {threads?.map((thread) => (
+            <ThreadItem key={thread.id} thread={thread} active={thread.id === activeId} onClick={() => setActiveId(thread.id)} />
+          ))}
+        </div>
+      </div>
+
+      {/* Chat view */}
+      {activeThread ? (
+        <div className="flex-1 flex flex-col min-w-0">
+          <ChatView thread={activeThread} onBack={() => setActiveId(null)} onDeleted={() => setActiveId(null)} />
+        </div>
+      ) : (
+        <div className="hidden md:flex flex-1 items-center justify-center p-8" style={{ background: colors.surfaceMuted }}>
+          <div className="text-center max-w-sm">
+            <MessageSquare size={32} style={{ color: colors.textDim, margin: '0 auto 10px' }} />
+            {threads && threads.length === 0 ? (
+              <>
+                <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>Здесь появятся ваши диалоги</p>
+                <p className="text-xs mt-2 leading-relaxed" style={{ color: colors.textMuted }}>
+                  Зайдите в любой магазин, откройте товар и нажмите фиолетовую кнопку чата.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm" style={{ color: colors.textMuted }}>Выберите чат</p>
             )}
-            {threads?.map((thread) => (
-              <ThreadItem key={thread.id} thread={thread} active={thread.id === activeId} onClick={() => setActiveId(thread.id)} />
-            ))}
           </div>
         </div>
-
-        {/* Chat view */}
-        {activeThread ? (
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Mobile back button */}
-            <div className="md:hidden flex items-center gap-2 px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <button onClick={() => setActiveId(null)} className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#A78BFA" }}>
-                <IcoBack /> Все чаты
-              </button>
-            </div>
-            <ChatView thread={activeThread} onBack={() => setActiveId(null)} onDeleted={() => setActiveId(null)} />
-          </div>
-        ) : (
-          <div className="hidden md:flex flex-1 items-center justify-center p-8">
-            <div className="text-center max-w-sm">
-              <MessageSquare size={32} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 10px' }} />
-              {threads && threads.length === 0 ? (
-                <>
-                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>Здесь появятся ваши диалоги</p>
-                  <p className="text-xs mt-2 leading-relaxed" style={{ color: "rgba(255,255,255,0.30)" }}>
-                    Зайдите в любой магазин, откройте товар и нажмите фиолетовую кнопку чата — отправьте первое сообщение продавцу.
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.30)" }}>Выберите чат</p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </>
+      )}
+    </div>
   );
 }
-
-// ── Page ───────────────────────────────────────────────────────────────────
 
 export default function ChatsPage() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%)" }}>
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
-        <div className="absolute rounded-full" style={{ width: 360, height: 360, top: -100, right: -80, background: "radial-gradient(circle, rgba(167,139,250,.20) 0%, transparent 70%)", filter: "blur(32px)" }} />
-        <div className="absolute rounded-full" style={{ width: 300, height: 300, bottom: 140, left: -80, background: "radial-gradient(circle, rgba(34,197,94,.13) 0%, transparent 70%)", filter: "blur(28px)" }} />
-      </div>
-
-      <div className="relative max-w-2xl mx-auto px-4 pt-6 pb-28" style={{ zIndex: 1 }}>
-        <h1 className="text-xl font-bold text-white mb-5">Чаты</h1>
+    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textPrimary }}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-28 md:pb-12">
+        <h1 className="text-xl sm:text-2xl font-bold mb-5" style={{ color: colors.textPrimary }}>Чаты</h1>
         {isAuthenticated ? <ChatsView /> : (
           <OtpGate
-            icon={<IcoChatGate />}
+            icon={<MessageSquare size={22} />}
             title="Войдите для доступа к чатам"
           />
         )}
