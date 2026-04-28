@@ -1,9 +1,14 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "apps/tma/Dockerfile"
-watchPatterns = ["apps/tma/**"]
+dockerfilePath = "apps/web-buyer/Dockerfile"
+watchPatterns = ["apps/web-buyer/**", "packages/types/**", "packages/ui/**"]
+
+[build.args]
+NEXT_PUBLIC_API_URL = "https://savdo-api-production.up.railway.app"
+NEXT_PUBLIC_BUYER_URL = "https://savdo-builder-by-production.up.railway.app"
 
 [deploy]
+startCommand = "node apps/web-buyer/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
