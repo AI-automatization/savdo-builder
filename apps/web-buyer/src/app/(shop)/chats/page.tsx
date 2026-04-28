@@ -343,8 +343,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                     <button
                       type="button"
                       onClick={() => setOpenMenuId(showMenu ? null : m.id)}
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-full flex items-center justify-center transition-opacity"
-                      style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)" }}
+                      className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-60 hover:opacity-100 focus:opacity-100 active:opacity-100"
+                      style={{ background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.80)" }}
                       aria-label="Действия с сообщением"
                     >
                       <MoreVertical size={13} />
