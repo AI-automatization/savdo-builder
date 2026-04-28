@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { ProductListItem } from "types";
 import { ProductStatus } from "types";
 import { ShoppingBag, Layers } from "lucide-react";
+import { colors } from "@/lib/styles";
 
 type Props = {
   product: ProductListItem;
@@ -23,23 +24,21 @@ export default function ProductCard({ product, storeSlug }: Props) {
   const showSliderDots = displayType === 'SLIDER' && mediaUrls.length > 1;
 
   return (
-    <Link href={`/${storeSlug}/products/${product.id}`} className="block">
+    <Link href={`/${storeSlug}/products/${product.id}`} className="block group">
       <div
-        className="rounded-2xl overflow-hidden transition-transform active:scale-[0.97] h-full flex flex-col"
+        className="rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-active:scale-[0.98]"
         style={{
-          background:           "rgba(255,255,255,0.08)",
-          backdropFilter:       "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          border:               "1px solid rgba(255,255,255,0.14)",
+          background: colors.surface,
+          border: `1px solid ${colors.border}`,
         }}
       >
         {/* Image area */}
         <div
-          className="aspect-square relative flex items-center justify-center text-5xl select-none"
-          style={{ background: "rgba(255,255,255,0.05)" }}
+          className="aspect-square relative flex items-center justify-center select-none overflow-hidden"
+          style={{ background: colors.surfaceMuted }}
         >
           {mediaUrls.length === 0 ? (
-            <ShoppingBag size={20} style={{ color: '#A78BFA' }} />
+            <ShoppingBag size={32} style={{ color: colors.textDim }} />
           ) : useCollage ? (
             <CollageGrid urls={mediaUrls} alt={product.title} />
           ) : (
@@ -48,11 +47,11 @@ export default function ProductCard({ product, storeSlug }: Props) {
               alt={product.title}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 50vw, 200px"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
             />
           )}
 
-          {/* Slider dots — decorative; signals "swipe in detail view" */}
+          {/* Slider dots — decorative */}
           {showSliderDots && (
             <div
               className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1"
@@ -65,8 +64,8 @@ export default function ProductCard({ product, storeSlug }: Props) {
                   style={{
                     width: i === 0 ? 10 : 5,
                     height: 5,
-                    background: i === 0 ? "#A78BFA" : "rgba(255,255,255,0.55)",
-                    boxShadow: "0 0 4px rgba(0,0,0,0.35)",
+                    background: i === 0 ? colors.accent : 'rgba(255,255,255,0.85)',
+                    boxShadow: '0 0 4px rgba(0,0,0,0.20)',
                   }}
                 />
               ))}
@@ -78,11 +77,9 @@ export default function ProductCard({ product, storeSlug }: Props) {
             <div
               className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
               style={{
-                background: "rgba(167,139,250,0.22)",
-                color: "#C4B5FD",
-                border: "1px solid rgba(167,139,250,0.35)",
-                backdropFilter: "blur(6px)",
-                WebkitBackdropFilter: "blur(6px)",
+                background: colors.surface,
+                color: colors.accent,
+                border: `1px solid ${colors.accentBorder}`,
                 zIndex: 1,
               }}
             >
@@ -95,11 +92,11 @@ export default function ProductCard({ product, storeSlug }: Props) {
           {isUnavailable && (
             <div
               className="absolute inset-0 flex items-center justify-center"
-              style={{ background: "rgba(13,15,30,0.65)", zIndex: 3 }}
+              style={{ background: 'rgba(255,255,255,0.78)', zIndex: 3 }}
             >
               <span
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.15)" }}
+                style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
               >
                 Нет в наличии
               </span>
@@ -109,11 +106,14 @@ export default function ProductCard({ product, storeSlug }: Props) {
 
         {/* Info */}
         <div className="p-3 flex flex-col gap-1.5 flex-1">
-          <p className="text-sm font-medium text-white leading-snug line-clamp-2">{product.title}</p>
+          <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: colors.textPrimary }}>
+            {product.title}
+          </p>
           <div className="mt-auto">
-            <span className="text-sm font-bold" style={{ color: "#A78BFA" }}>
-              {Number(product.basePrice).toLocaleString("ru-RU")} сум
+            <span className="text-base font-bold" style={{ color: colors.accent }}>
+              {Number(product.basePrice).toLocaleString("ru-RU")}
             </span>
+            <span className="text-xs ml-1" style={{ color: colors.textMuted }}>сум</span>
           </div>
         </div>
       </div>
@@ -124,24 +124,23 @@ export default function ProductCard({ product, storeSlug }: Props) {
 // ── Collage 2×2 ────────────────────────────────────────────────────────────
 
 function CollageGrid({ urls, alt }: { urls: string[]; alt: string }) {
-  // Always render 4 cells; pad with empty placeholders when there are fewer photos.
   const cells = [0, 1, 2, 3].map((i) => urls[i] ?? null);
 
   return (
     <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
       {cells.map((url, i) => (
-        <div key={i} className="relative overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+        <div key={i} className="relative overflow-hidden" style={{ background: colors.surfaceSunken }}>
           {url ? (
             <Image
               src={url}
               alt={`${alt} — фото ${i + 1}`}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 25vw, 100px"
+              sizes="(max-width: 768px) 25vw, 110px"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              <ShoppingBag size={14} style={{ color: 'rgba(167,139,250,0.35)' }} />
+              <ShoppingBag size={14} style={{ color: colors.textDim }} />
             </div>
           )}
         </div>
