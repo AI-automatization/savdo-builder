@@ -10,6 +10,53 @@
 
 ---
 
+## 2026-04-29 [WEB-SOCKET-AUTH-CONTRACT-001] WebSocket gateways теперь требуют JWT в `handshake.auth.token` — превентивный фикс stale-token
+
+- **Статус:** ✅ Исправлено превентивно (фронт-патч в обоих web-апах). 🔴 **Не задеплоено** — упирается в `INFRA-RAILWAY-WATCH-PATTERNS-001`.
+- **Домен:** apps/web-buyer + apps/web-seller (Азим)
+- **Что случилось:** Полат в `7cdb4c6` (28.04.2026) добавил `OnGatewayConnection` в `chat.gateway.ts` и `orders.gateway.ts`:
+  - `handleConnection` отвергает соединение без `client.handshake.auth?.token` (моментальный `disconnect(true)`).
+  - `join-seller-room` требует `payload.role === 'SELLER'`.
+  - `join-buyer-room` требует `payload.sub === data.buyerId`.
+  - `JwtModule.register({})` добавлен в `SocketModule`.
+- **Анализ существующего фронта (до фикса):**
+  - В `apps/web-{buyer,seller}/src/lib/socket.ts` `auth: { token: getAccessToken() }` уже передавался — то есть **первый** handshake проходил.
+  - Но `getSocket()` — singleton, `auth` объект мерж-фриз на момент создания. После refresh-токена (axios interceptor `client.ts:47` дёргает `/auth/refresh` на 401 и обновляет access в localStorage) — `socket.auth.token` остаётся **старым**. На любой reconnect (network blip, 30 минут idle, Railway preheat) бэк сделает `verifyToken` старого JWT → invalid → drop. Бесконечный reconnect-loop.
+  - Симптомы (если бы прод задеплоил): чат «работает первые 30 минут», потом «сообщения не приходят» без явной ошибки в UI. Аналогично seller-toaster уведомлений о новых заказах.
+  - В TMA та же проблема была решена раньше через `connectSocket()` (`apps/tma/src/lib/socket.ts`) — обновление `socket.auth` перед каждым connect.
+- **Воспроизведение (теоретическое, не делаю — прод ещё на старой версии):** залогиниться, не трогать вкладку 35+ минут (access TTL ≈ 30 мин), переслать сообщение → должно отвалиться.
+- **Фикс (сделан):** в обоих `apps/web-{buyer,seller}/src/lib/socket.ts` заменили `auth: { token: getAccessToken() }` на функциональную форму `auth: (cb) => cb({ token: getAccessToken() ?? '' })`. Socket.io-client v4.0+ вызывает callback **на каждый handshake** (initial + reconnect), что гарантирует свежий токен из localStorage. Это лучше TMA-варианта `connectSocket()` — не нужно менять hooks (4 точки подключения), всё через один io-options.
+- **Поведение для legacy-комбо (старый прод-бэк + новый фронт):** старый бэк просто игнорирует `auth.token` в handshake — соединение открывается так же как раньше. Backwards-compatible.
+- **Не сделано:** в `apps/tma/src/lib/socket.ts` остался ручной `connectSocket()`-паттерн — это домен Полата (mobile-*/tma), не трогаю. Можно унифицировать позже одним PR через packages/ui или общий hook.
+- **Связанные задачи:**
+  - `INFRA-RAILWAY-WATCH-PATTERNS-001` — пока buyer/seller не задеплоятся, фикс лежит мёртвым грузом в `origin/main`.
+  - Когда деплой пройдёт → smoke-test: 35 минут idle → отправить сообщение в чате → должно работать.
+
+---
+
+## 2026-04-27 [INFRA-RAILWAY-WATCH-PATTERNS-001] Все web-сервисы (buyer/seller/admin) в Railway имеют сломанные Watch Patterns + Dockerfile Path → пуши в `apps/web-*` игнорируются
+
+- **Статус:** 🔴 Активный — sl/by ждут фикса в dashboard. Admin уже починил Полат (`0fe2a92`).
+- **Домен:** Infra (Полат)
+- **Что случилось:** В Railway Settings UI у сервисов `savdo-builder-by` и `savdo-builder-sl` стоят значения, которые **перебивают** локальный `apps/web-{buyer,seller}/railway.toml`:
+  - Dockerfile Path = `apps/tma/Dockerfile` (вместо `apps/web-buyer/Dockerfile` / `apps/web-seller/Dockerfile`)
+  - Watch Patterns = `apps/tma/**` (вместо `apps/web-{buyer,seller}/**`, `packages/types/**`, `packages/ui/**`)
+- **Симптом (видно в Railway dashboard):**
+  - 26.04.2026 ~21:00 после пуша сессии 36 — каждый deploy `savdo-builder-by` помечается **«Skipped — No changes to watched files»**, потому что watch смотрит только на `apps/tma/**`.
+  - У `savdo-builder-sl` один deploy 17 часов назад со статусом **Failed** (требует ручной проверки Build Logs — может быть TS-ошибка от контракт-брейков Полата по `displayType`/`nameRu`).
+  - Результат: **в проде вчерашняя версия** — фичи сессии 36 (avatar wire-up, chat edit/delete, displayType, hotfix категорий) **не задеплоены**, хотя в `origin/main` всё лежит.
+- **Воспроизведение:** Зайти на https://savdo-builder-sl-production.up.railway.app/products/create — dropdown категорий пустой (старая версия без `nameRu` адаптера). Hash в Railway dashboard у buyer = `2df7e295` (старый, до сессии 36).
+- **Корень бага:** Прошлые рукописные правки в Railway UI (когда-то кто-то выставил Watch=`apps/tma/**` для всех монорепо-сервисов). UI имеет приоритет над `railway.toml` в файлах, поэтому новые правки в файлах ничего не дают.
+- **Связанный коммит-фикс (для admin):** `0fe2a92` — Полат пофиксил admin сервис, изменив пути в `apps/admin/Dockerfile` под `Root Directory = apps/admin/`. Сообщение коммита упоминает `ACTION NEEDED in Railway dashboard: savdo-builder_ADMIN → Settings → Root Directory → set to: apps/admin/`.
+- **Что нужно сделать (Полат, infra):**
+  1. **savdo-builder-sl → Settings → Build** → Dockerfile Path = `apps/web-seller/Dockerfile`, Watch Patterns = `apps/web-seller/**, packages/types/**, packages/ui/**`
+  2. **savdo-builder-by → Settings → Build** → Dockerfile Path = `apps/web-buyer/Dockerfile`, Watch Patterns = `apps/web-buyer/**, packages/types/**, packages/ui/**`
+  3. Сначала посмотреть Build Logs **failed deploy `savdo-builder-sl`** (17 часов назад) — если упал на TS-ошибке, нужно сначала пофиксить код, потом править watch.
+  4. Re-deploy руками после фикса.
+- **Открыто:** 27.04.2026, при e2e-проверке прода Азимом (видны Skipped/Failed в Activity).
+
+---
+
 ## 2026-04-23 [WEB-CHAT-LIST-CRASH-001] `Cannot read properties of undefined (reading 'slice')` на /chats — чёрный экран после отправки сообщения
 
 - **Статус:** ✅ Frontend защищён адаптером (23.04.2026, Азим, web-buyer + web-seller). 🔴 Корень — `API-CHAT-THREAD-CONTRACT-001` у Полата.

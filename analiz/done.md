@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-04-29 — Сессия 37 (Азим) — превентивный фикс WS JWT auth
+
+### ✅ [WEB-SOCKET-AUTH-CONTRACT-001] Динамический токен в handshake socket.io
+- **Важность:** 🟡 — превентивный фикс контракт-брейка от Полата (`7cdb4c6` security: WS JWT auth). Без него чат и order-уведомления отвалились бы через ~30 мин после первого подключения.
+- **Дата:** 29.04.2026
+- **Корень:** В `7cdb4c6` бэк начал валидировать JWT на каждом `handleConnection`. Наш socket-singleton в обоих web-апах хранил токен на момент создания (`auth: { token: getAccessToken() }`). После refresh access-токена (axios interceptor `client.ts`) на любой reconnect — старый JWT, бэк дроп, infinite reconnect-loop.
+- **Файлы:**
+  - `apps/web-buyer/src/lib/socket.ts` — `auth` теперь callback-функция: `(cb) => cb({ token: getAccessToken() ?? '' })`. Socket.io-client v4.8.3 вызывает её на каждый handshake (initial + reconnect), всегда свежее значение из localStorage.
+  - `apps/web-seller/src/lib/socket.ts` — то же.
+- **Почему callback-форма а не tma-style `connectSocket()`:** TMA пофиксили через ручной helper, который сбрасывает `socket.auth` перед `socket.connect()`. Это требует менять 4 точки подключения (`useBuyerSocket`, `useSellerSocket`, оба `useChatSocket`). Callback-форма — один io-options, ноль изменений в hooks, и плюс автоматически работает на ре-handshake после network blip (а не только на explicit connect).
+- **Backwards-compat:** старый бэк (текущий прод, до Railway-фикса) игнорирует `auth.token` в handshake — фронт-фикс не ломает.
+- **Не задеплоено:** упирается в `INFRA-RAILWAY-WATCH-PATTERNS-001` — `savdo-builder-by`/`-sl` не подхватывают пуши пока Полат не правит Settings → Build в Railway dashboard. Когда деплой пройдёт — smoke-test: 35 мин idle → сообщение в чате → должно работать.
+- **Также:** TMA-апа (`apps/tma/src/lib/socket.ts`) использует свой `connectSocket()`-паттерн — не трогаю, домен Полата. Унификация — когда-нибудь общим PR.
+
+---
+
 ## 2026-04-26 — Сессия 36 (Азим) — 3 фичи + 1 hotfix контракт-брейка
 
 ### ✅ [WEB-SELLER-CATEGORY-CONTRACT-FIX-001] Hotfix: dropdown категорий показывался пустым
