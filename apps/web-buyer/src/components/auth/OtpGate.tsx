@@ -83,9 +83,10 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
             <>
               <input
                 type="text"
+                inputMode="numeric"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="0000"
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
                 maxLength={6}
                 className="h-11 px-4 rounded-xl text-sm text-center tracking-widest w-full focus:outline-none focus:ring-2"
                 style={{ ...inputStyle, '--tw-ring-color': 'rgba(167,139,250,0.50)' } as React.CSSProperties}
@@ -94,7 +95,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
               />
               <button
                 onClick={handleVerify}
-                disabled={code.length < 4 || verifyOtp.isPending}
+                disabled={code.length < 6 || verifyOtp.isPending}
                 className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
                 style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
               >
