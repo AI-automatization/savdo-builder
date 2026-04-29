@@ -1,7 +1,10 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket } from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket, OnGatewayConnection } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Order } from '@prisma/client';
+import { JwtPayload } from '../common/decorators/current-user.decorator';
 
 @WebSocketGateway({
   cors: {
@@ -9,18 +12,60 @@ import { Order } from '@prisma/client';
     credentials: true,
   },
 })
-export class OrdersGateway {
+export class OrdersGateway implements OnGatewayConnection {
   @WebSocketServer()
   private readonly server: Server;
 
   private readonly logger = new Logger(OrdersGateway.name);
+
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {}
+
+  handleConnection(client: Socket): void {
+    const token = client.handshake.auth?.token as string | undefined;
+    if (!token) {
+      this.logger.warn(`WS rejected: no token — client ${client.id}`);
+      client.disconnect(true);
+      return;
+    }
+    const payload = this.verifyToken(token);
+    if (!payload) {
+      this.logger.warn(`WS rejected: invalid token — client ${client.id}`);
+      client.disconnect(true);
+      return;
+    }
+    client.data.user = payload;
+    this.logger.debug(`WS connected: userId=${payload.sub} role=${payload.role}`);
+  }
 
   @SubscribeMessage('join-seller-room')
   handleJoinSellerRoom(
     @MessageBody() data: { storeId: string },
     @ConnectedSocket() client: Socket,
   ): void {
+    const user = client.data.user as JwtPayload | undefined;
+    if (user?.role !== 'SELLER') {
+      client.disconnect(true);
+      return;
+    }
     const room = `seller:${data.storeId}`;
+    client.join(room);
+    this.logger.debug(`Client ${client.id} joined room ${room}`);
+  }
+
+  @SubscribeMessage('join-buyer-room')
+  handleJoinBuyerRoom(
+    @MessageBody() data: { buyerId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const user = client.data.user as JwtPayload | undefined;
+    if (!user || user.sub !== data.buyerId) {
+      client.disconnect(true);
+      return;
+    }
+    const room = `buyer:${data.buyerId}`;
     client.join(room);
     this.logger.debug(`Client ${client.id} joined room ${room}`);
   }
@@ -29,16 +74,6 @@ export class OrdersGateway {
     const payload = this.buildPayload(order);
     this.server.to(`seller:${order.storeId}`).emit('order:new', payload);
     this.logger.log(`Emitted order:new to seller:${order.storeId} — orderId=${order.id}`);
-  }
-
-  @SubscribeMessage('join-buyer-room')
-  handleJoinBuyerRoom(
-    @MessageBody() data: { buyerId: string },
-    @ConnectedSocket() client: Socket,
-  ): void {
-    const room = `buyer:${data.buyerId}`;
-    client.join(room);
-    this.logger.debug(`Client ${client.id} joined room ${room}`);
   }
 
   emitOrderStatusChanged(order: Order, oldStatus: string): void {
@@ -64,5 +99,15 @@ export class OrdersGateway {
       deliveryFee: Number(order.deliveryFeeAmount),
       createdAt: order.placedAt.toISOString(),
     };
+  }
+
+  private verifyToken(token: string): JwtPayload | null {
+    try {
+      return this.jwtService.verify<JwtPayload>(token, {
+        secret: this.config.get<string>('jwt.accessSecret'),
+      });
+    } catch {
+      return null;
+    }
   }
 }

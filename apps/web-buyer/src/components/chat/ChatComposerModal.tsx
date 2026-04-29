@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MessageSquare, X } from "lucide-react";
 import { ThreadType } from "types";
 import { useCreateThread } from "@/hooks/use-chat";
+import { useAuth } from "@/lib/auth/context";
+import { OtpGate } from "@/components/auth/OtpGate";
 import { glass } from "@/lib/styles";
 
 type Props = {
@@ -16,6 +19,7 @@ type Props = {
 
 export default function ChatComposerModal({ contextType, contextId, title, initialText, onClose }: Props) {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const create = useCreateThread();
   const [text, setText] = useState(initialText ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -41,52 +45,101 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl p-5 flex flex-col gap-4"
+        className="w-full max-w-md rounded-2xl p-5 flex flex-col gap-4 relative"
         style={glass}
         onClick={(e) => e.stopPropagation()}
       >
-        <div>
-          <h2 className="text-base font-bold text-white">Написать продавцу</h2>
-          <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{title}</p>
-        </div>
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+          style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.65)" }}
+          aria-label="Закрыть"
+        >
+          <X size={16} />
+        </button>
 
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Здравствуйте! Есть вопрос..."
-          maxLength={2000}
-          autoFocus
-          className="w-full rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none"
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.13)",
-            minHeight: 100,
-          }}
-        />
-
-        {error && (
-          <p className="text-xs" style={{ color: "rgba(248,113,113,.85)" }}>{error}</p>
+        {!isAuthenticated ? (
+          <OtpGate
+            icon={<MessageSquare size={22} style={{ color: "#A78BFA" }} />}
+            title="Войдите чтобы написать"
+            subtitle={`Подтвердите номер телефона — после этого сможете написать продавцу про «${title}»`}
+          />
+        ) : (
+          <ComposerBody
+            title={title}
+            text={text}
+            setText={setText}
+            error={error}
+            isPending={create.isPending}
+            onCancel={onClose}
+            onSend={handleSend}
+          />
         )}
-
-        <div className="flex gap-2.5 justify-end">
-          <button
-            onClick={onClose}
-            disabled={create.isPending}
-            className="px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
-            style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)" }}
-          >
-            Отмена
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={!text.trim() || create.isPending}
-            className="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
-          >
-            {create.isPending ? "Отправка..." : "Отправить"}
-          </button>
-        </div>
       </div>
     </div>
+  );
+}
+
+function ComposerBody({
+  title,
+  text,
+  setText,
+  error,
+  isPending,
+  onCancel,
+  onSend,
+}: {
+  title: string;
+  text: string;
+  setText: (v: string) => void;
+  error: string | null;
+  isPending: boolean;
+  onCancel: () => void;
+  onSend: () => void;
+}) {
+  return (
+    <>
+      <div>
+        <h2 className="text-base font-bold text-white">Написать продавцу</h2>
+        <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{title}</p>
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Здравствуйте! Есть вопрос..."
+        maxLength={2000}
+        autoFocus
+        className="w-full rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none"
+        style={{
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.13)",
+          minHeight: 100,
+        }}
+      />
+
+      {error && (
+        <p className="text-xs" style={{ color: "rgba(248,113,113,.85)" }}>{error}</p>
+      )}
+
+      <div className="flex gap-2.5 justify-end">
+        <button
+          onClick={onCancel}
+          disabled={isPending}
+          className="px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+          style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)" }}
+        >
+          Отмена
+        </button>
+        <button
+          onClick={onSend}
+          disabled={!text.trim() || isPending}
+          className="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
+          style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)" }}
+        >
+          {isPending ? "Отправка..." : "Отправить"}
+        </button>
+      </div>
+    </>
   );
 }
