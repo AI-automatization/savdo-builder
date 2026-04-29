@@ -1,20 +1,7 @@
+import type { NotificationItem, InboxResponse } from 'types';
 import { apiClient } from './client';
 
-export interface NotificationItem {
-  id: string;
-  title: string;
-  body: string;
-  isRead: boolean;
-  createdAt: string;
-}
-
-export interface InboxResponse {
-  notifications: NotificationItem[];
-  total: number;
-  unreadCount: number;
-  page: number;
-  limit: number;
-}
+export type { NotificationItem, InboxResponse };
 
 export interface UnreadCountResponse {
   count: number;

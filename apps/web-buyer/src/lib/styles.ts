@@ -34,6 +34,8 @@ export const colors = {
   accentMuted:     'rgba(124,58,237,0.10)',
   accentBorder:    'rgba(124,58,237,0.32)',
   accentTextOnBg:  '#FFFFFF',                  // white text on violet button
+  // Brand wordmark — single shared violet between buyer & seller for "Savdo" logo / hero
+  brand:           '#7C3AED',                  // identical token in seller styles.ts
   // Semantic (light-readable)
   success:         '#16A34A',                  // green-600
   warning:         '#D97706',                  // amber-600

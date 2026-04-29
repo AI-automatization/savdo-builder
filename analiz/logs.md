@@ -10,6 +10,30 @@
 
 ---
 
+## 2026-04-29 [INFRA-DEPLOY-BRANCHES-001] Root cause Railway-skip: каждый сервис теперь деплоится со своей ветки, не с main
+
+- **Статус:** ✅ Исправлено для buyer (29.04.2026 вечер). 🟡 Web-seller — без изменений, на main для seller новой работы нет, ветка `origin/web-seller` свежая.
+- **Контекст / откуда узнали:** Полат сообщил Азиму: «в main для деплоя больше пуш не делаем; у каждой платформы свои бренчи; в корень один раз случайно попал railway.toml, в гите его удалили, но Railway сам его в память сохранил». Подтвердилось коммитом `d81104127` (27.04.2026) — Полат `gitignore`нул root `railway.toml` на main и описал стратегию: «admin branch: root railway.toml → apps/admin/Dockerfile; main branch: railway.toml untracked». Затем `c03ee97` сделал то же для web-buyer ветки, `f8a0675` — для web-seller.
+- **Симптом, который мы чинили:** Buyer revamp (35ad606..488932c, 11 коммитов) пушился в main и на проде не появлялся. Я делал empty-commit'ы для force-trigger — бесполезно, потому что Railway service `savdo-builder-by` подключён к ветке `web-buyer`, не к `main`. Watch Patterns на корневом railway.toml (которые я подозревал виновником) были некорректные именно потому что Railway держал кэш старого TMA-варианта, который случайно попал в репо до изоляции.
+- **Стратегия (сейчас):**
+  - `main` — общая разработка, без deploy. Корневой `railway.toml` в `.gitignore`.
+  - `origin/admin` → savdo-admin (Полат, своё `apps/admin/Dockerfile`)
+  - `origin/api` → savdo-api
+  - `origin/tma` → savdo-tma
+  - `origin/web-buyer` → savdo-builder-by (свой root railway.toml: `apps/web-buyer/Dockerfile`, watchPatterns `apps/web-buyer/**, packages/types/**, packages/ui/**`)
+  - `origin/web-seller` → savdo-builder-sl (тот же паттерн для seller)
+- **Workflow деплоя web-buyer:** `git checkout web-buyer && git merge main && git push origin web-buyer`. Конфликтов нет — main не трогает root `railway.toml` (gitignore), ветка хранит свой.
+- **Что сделано 29.04 вечер:**
+  1. `web-buyer` ветка отставала от main на 11 коммитов. Сделан merge `cbfe064` (Merge main into web-buyer).
+  2. Корневой `railway.toml` ветки сохранён нетронутым.
+  3. Push прошёл `f184d0c..cbfe064  web-buyer -> web-buyer`. Railway должен задеплоить savdo-builder-by автоматически.
+  4. Локальный артефакт `railway.toml` (TMA-вариант, болтавшийся как untracked на main) удалён.
+  5. Memory: новый `feedback_deploy_branches.md` чтобы не забыть workflow.
+- **E2E проверка (после деплоя ~3-5 мин):** https://savdo-builder-by-production.up.railway.app — должен быть светлый `#FAFAF7`, нижний нав скрыт на md+. ✅ **Подтверждено Азимом 29.04.2026 поздно вечер: «всё работает».**
+- **Старая `INFRA-RAILWAY-WATCH-PATTERNS-001`** запись ниже теперь объяснена: проблема не в watch patterns локального файла, а в том что я смотрел на main, а сервис подключён к web-buyer.
+
+---
+
 ## 2026-04-29 [AUDIT-CONTRACT-DRIFT-001] Превентивный аудит контрактов фронт ↔ бэк выявил 14 расхождений; 3 пофикшено сейчас фронтом
 
 - **Статус:** 🟡 (3 фронт-фикса сделано, 11 задач Полату записано в `tasks.md`)
