@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
@@ -141,7 +140,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
         {/* Заголовок */}
         <div className="flex items-center gap-3">
@@ -300,6 +299,6 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-    </AppShell>
+    
   );
 }

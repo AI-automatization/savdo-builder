@@ -120,6 +120,26 @@ body {
   }
 }
 
+/* ── Page enter animation (used in App.tsx PageOutlet) ───────────────────── */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-enter 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  will-change: opacity, transform;
+}
+
+/* ── Bottom nav haptic press feedback ────────────────────────────────────── */
+.nav-btn {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  -webkit-user-select: none; user-select: none;
+}
+.nav-btn:active { transform: scale(0.88); opacity: 0.7; }
+
+/* ── Touch active state for interactive cards ────────────────────────────── */
+.touch-active:active { transform: scale(0.97); opacity: 0.85; transition: transform 0.1s, opacity 0.1s; }
+
 /* ── Scrollbar (minimal, themed) ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }

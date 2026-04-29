@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { applyAsSeller } from '@/lib/auth';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
@@ -46,7 +45,7 @@ export default function BuyerProfilePage() {
   };
 
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Профиль</h1>
 
@@ -172,6 +171,6 @@ export default function BuyerProfilePage() {
           Savdo · Покупатель
         </p>
       </div>
-    </AppShell>
+    
   );
 }

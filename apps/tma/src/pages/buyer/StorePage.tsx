@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { getCart, saveCart } from '@/lib/cart';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
@@ -115,29 +114,29 @@ export default function StorePage() {
   };
 
   if (loading) return (
-    <AppShell role="BUYER">
+    
       <div className={`grid ${gridCols} gap-3 pt-2`}>
         {[1,2,3,4,5,6].map((i) => <ProductCardSkeleton key={i} />)}
       </div>
-    </AppShell>
+    
   );
 
   if (error || !store) {
     return (
-      <AppShell role="BUYER">
+      
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
           <button onClick={() => navigate('/buyer')} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
         </div>
-      </AppShell>
+      
     );
   }
 
   const filtered = activeCat ? products.filter((p) => p.globalCategoryId === activeCat) : products;
 
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4">
         <div className="p-4" style={{ ...glass }}>
           <div className="flex items-center gap-3 mb-2">
@@ -233,6 +232,6 @@ export default function StorePage() {
           ))}
         </div>
       </div>
-    </AppShell>
+    
   );
 }

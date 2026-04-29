@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
@@ -194,7 +193,7 @@ export default function BuyerChatPage() {
   // ════════════════════════════════════════════════════════════════════════════
   if (threadId) {
     return (
-      <AppShell role="BUYER">
+      
         {/* Report confirmation dialog */}
         {reportTarget && (
           <div
@@ -383,7 +382,7 @@ export default function BuyerChatPage() {
             </div>
           )}
         </div>
-      </AppShell>
+      
     );
   }
 
@@ -391,7 +390,7 @@ export default function BuyerChatPage() {
   // THREAD LIST VIEW
   // ════════════════════════════════════════════════════════════════════════════
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
           Сообщения
@@ -445,6 +444,6 @@ export default function BuyerChatPage() {
           </div>
         ))}
       </div>
-    </AppShell>
+    
   );
 }

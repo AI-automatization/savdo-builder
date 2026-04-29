@@ -2,6 +2,17 @@ const BASE = import.meta.env.VITE_API_URL ?? '';
 
 const TOKEN_KEY = 'savdo_tma_token';
 
+// ── GET response cache (30 s TTL, module-level — persists across navigations) ──
+interface CacheEntry { data: unknown; expiresAt: number }
+const _cache = new Map<string, CacheEntry>();
+const CACHE_TTL = 30_000;
+
+export function bustCache(prefix: string) {
+  for (const key of _cache.keys()) {
+    if (key.startsWith(prefix)) _cache.delete(key);
+  }
+}
+
 let _token: string | null = (() => {
   try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
 })();
@@ -32,6 +43,16 @@ export class ApiError extends Error {
 }
 
 export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
+  const method = opts.method ?? 'GET';
+  const isGet = method === 'GET';
+
+  // Cache hit
+  if (isGet && !opts.headers) {
+    const cacheKey = `${_token ?? ''}:${path}`;
+    const cached = _cache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) return cached.data as T;
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...opts.headers,
@@ -39,7 +60,7 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
 
   const res = await fetch(`${BASE}/api/v1${path}`, {
-    method: opts.method ?? 'GET',
+    method,
     headers,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
@@ -56,7 +77,15 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   // 204 No Content — нет тела, возвращаем undefined
   if (res.status === 204) return undefined as unknown as T;
 
-  return res.json() as Promise<T>;
+  const data = await res.json() as T;
+
+  // Cache successful GET responses
+  if (isGet && !opts.headers) {
+    const cacheKey = `${_token ?? ''}:${path}`;
+    _cache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL });
+  }
+
+  return data;
 }
 
 export async function apiUpload<T = unknown>(

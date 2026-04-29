@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { showToast } from '@/components/ui/Toast';
@@ -134,14 +133,14 @@ export default function SellerSettingsPage() {
 
   if (loading) {
     return (
-      <AppShell role="SELLER">
+      
         <div className="flex justify-center py-20"><Spinner /></div>
-      </AppShell>
+      
     );
   }
 
   return (
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
 
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Настройки</h1>
@@ -287,6 +286,6 @@ export default function SellerSettingsPage() {
         </p>
 
       </div>
-    </AppShell>
+    
   );
 }
