@@ -90,6 +90,14 @@ export class AuthRepository {
     });
   }
 
+  async findStoreIdByUserId(userId: string): Promise<string | null> {
+    const result = await this.prisma.store.findFirst({
+      where: { seller: { userId }, deletedAt: null },
+      select: { id: true },
+    });
+    return result?.id ?? null;
+  }
+
   async findUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },

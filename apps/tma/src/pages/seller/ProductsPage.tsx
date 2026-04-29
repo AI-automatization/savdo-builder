@@ -46,11 +46,11 @@ export default function SellerProductsPage() {
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
-      api<Product[]>('/seller/products?limit=50'),
+      api<{ products: Product[]; total: number }>('/seller/products?limit=50'),
       api<StoreCategory[]>('/seller/categories'),
     ])
-      .then(([prods, cats]) => {
-        setProducts(prods ?? []);
+      .then(([res, cats]) => {
+        setProducts(res?.products ?? []);
         setCategories(cats ?? []);
       })
       .catch(() => setError('Не удалось загрузить товары'))

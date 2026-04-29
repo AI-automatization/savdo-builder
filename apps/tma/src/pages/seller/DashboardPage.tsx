@@ -55,15 +55,14 @@ export default function DashboardPage() {
     // Promise.allSettled — не падает если один из запросов вернул ошибку
     Promise.allSettled([
       api<PagedResponse<Order>>('/seller/orders?limit=5'),
-      api<unknown[]>('/seller/products'),
+      api<{ products: unknown[]; total: number }>('/seller/products?limit=1'),
     ]).then(([ordersResult, productsResult]) => {
       if (ordersResult.status === 'fulfilled') {
         setOrders(ordersResult.value.data ?? []);
         setOrderCount(ordersResult.value.meta?.total ?? 0);
       }
       if (productsResult.status === 'fulfilled') {
-        const val = productsResult.value;
-        setProductCount(Array.isArray(val) ? val.length : 0);
+        setProductCount(productsResult.value.total ?? 0);
       }
     }).finally(() => setLoading(false));
   }, [authVersion]);

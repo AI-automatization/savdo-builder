@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, CheckCircle, XCircle, Clock, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
@@ -32,27 +32,27 @@ const FILTER_LABEL: Record<string, string> = {
 
 export default function SellersPage() {
   const navigate = useNavigate()
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('ALL')
   const [page, setPage] = useState(1)
   const LIMIT = 20
 
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput); setPage(1) }, 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
   const query = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
   if (filter !== 'ALL') query.set('verificationStatus', filter)
+  if (search) query.set('search', search)
   const { data, loading, error, refetch } = useFetch<SellersResponse>(
-    `/api/v1/admin/sellers?${query}`, [page, filter],
+    `/api/v1/admin/sellers?${query}`, [page, filter, search],
   )
 
   const sellers = data?.sellers ?? []
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / LIMIT)
-
-  const filtered = search
-    ? sellers.filter(s =>
-        s.fullName.toLowerCase().includes(search.toLowerCase()) ||
-        s.user.phone.includes(search)
-      )
-    : sellers
 
   return (
     <div className="p-8 min-h-screen">
@@ -83,8 +83,8 @@ export default function SellersPage() {
         <div className="relative flex-1 min-w-[220px] max-w-xs">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
           <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
             placeholder="Имя или телефон..."
             className="pl-8"
           />
@@ -123,9 +123,9 @@ export default function SellersPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</td></tr>
-            ) : filtered.length === 0 ? (
+            ) : sellers.length === 0 ? (
               <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Ничего не найдено</td></tr>
-            ) : filtered.map((s, i) => {
+            ) : sellers.map((s, i) => {
               const vstatus = s.isBlocked
                 ? { variant: 'danger' as const, icon: XCircle, label: 'Заблокирован' }
                 : VSTATUS[s.verificationStatus] ?? VSTATUS.PENDING
@@ -136,7 +136,7 @@ export default function SellersPage() {
                   key={s.id}
                   onClick={() => navigate(`/sellers/${s.id}`)}
                   className="cursor-pointer transition-colors"
-                  style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none' }}
+                  style={{ borderBottom: i < sellers.length - 1 ? '1px solid var(--border)' : 'none' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}
                 >

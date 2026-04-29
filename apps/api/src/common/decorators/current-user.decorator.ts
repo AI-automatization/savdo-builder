@@ -4,6 +4,7 @@ export interface JwtPayload {
   sub: string;       // userId
   role: string;      // UserRole
   sessionId: string;
+  storeId?: string;  // populated for SELLER role (optional — absent if store not yet created)
 }
 
 export const CurrentUser = createParamDecorator(

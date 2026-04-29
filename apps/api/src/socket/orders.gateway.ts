@@ -50,6 +50,12 @@ export class OrdersGateway implements OnGatewayConnection {
       client.disconnect(true);
       return;
     }
+    // Verify storeId from JWT matches requested room (prevents joining another seller's room)
+    if (user.storeId && user.storeId !== data.storeId) {
+      this.logger.warn(`WS blocked: seller ${user.sub} tried to join wrong room seller:${data.storeId}`);
+      client.disconnect(true);
+      return;
+    }
     const room = `seller:${data.storeId}`;
     client.join(room);
     this.logger.debug(`Client ${client.id} joined room ${room}`);

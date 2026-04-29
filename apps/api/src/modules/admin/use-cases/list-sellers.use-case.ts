@@ -9,6 +9,7 @@ export class ListSellersUseCase {
   async execute(dto: ListSellersDto) {
     return this.adminRepo.findSellers({
       verificationStatus: dto.verificationStatus,
+      search: dto.search,
       page: dto.page,
       limit: dto.limit,
     });
