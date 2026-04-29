@@ -57,8 +57,8 @@ const HIDDEN_CATEGORY_SLUGS = new Set([
   'auto', 'automobiles',
 ]);
 const HIDDEN_CATEGORY_NAME_RE = /(авто|мотоц|avtomo|mototsik)/i;
-function isHiddenCategory(cat: { slug: string; name: string }): boolean {
-  return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.name);
+function isHiddenCategory(cat: { slug: string; nameRu: string }): boolean {
+  return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.nameRu);
 }
 
 function titlePlaceholder(categoryName?: string | null, slug?: string | null): string {
@@ -152,7 +152,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     () => globalCategories.find((c) => c.id === watchedCategoryId) ?? null,
     [globalCategories, watchedCategoryId],
   );
-  const titleHint       = titlePlaceholder(pickedCategory?.name, pickedCategory?.slug);
+  const titleHint       = titlePlaceholder(pickedCategory?.nameRu, pickedCategory?.slug);
   const descriptionHint = descriptionPlaceholder(pickedCategory?.slug);
 
   // Populate form once product loads
@@ -321,7 +321,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 <option value="" style={{ background: '#1a1d2e' }}>— Выберите категорию —</option>
                 {globalCategories.map((cat) => (
                   <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
-                    {cat.name}
+                    {cat.nameRu}
                   </option>
                 ))}
               </select>

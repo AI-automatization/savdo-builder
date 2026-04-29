@@ -155,7 +155,7 @@ export default function SellerOrdersPage() {
   };
 
   return (
-    
+    <>
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
 
@@ -394,6 +394,6 @@ export default function SellerOrdersPage() {
           )}
         </BottomSheet>
       )}
-    
+    </>
   );
 }
