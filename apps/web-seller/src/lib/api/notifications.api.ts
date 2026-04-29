@@ -9,8 +9,11 @@ export interface NotificationItem {
 }
 
 export interface InboxResponse {
-  data: NotificationItem[];
-  meta: { page: number; limit: number; total: number };
+  notifications: NotificationItem[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  limit: number;
 }
 
 export interface UnreadCountResponse {
@@ -21,7 +24,7 @@ export async function getInbox(): Promise<NotificationItem[]> {
   const { data } = await apiClient.get<InboxResponse>('/notifications/inbox', {
     params: { limit: 20 },
   });
-  return data.data;
+  return data.notifications ?? [];
 }
 
 export async function getUnreadCount(): Promise<number> {

@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
@@ -55,15 +54,14 @@ export default function DashboardPage() {
     // Promise.allSettled — не падает если один из запросов вернул ошибку
     Promise.allSettled([
       api<PagedResponse<Order>>('/seller/orders?limit=5'),
-      api<unknown[]>('/seller/products'),
+      api<{ products: unknown[]; total: number }>('/seller/products?limit=1'),
     ]).then(([ordersResult, productsResult]) => {
       if (ordersResult.status === 'fulfilled') {
         setOrders(ordersResult.value.data ?? []);
         setOrderCount(ordersResult.value.meta?.total ?? 0);
       }
       if (productsResult.status === 'fulfilled') {
-        const val = productsResult.value;
-        setProductCount(Array.isArray(val) ? val.length : 0);
+        setProductCount(productsResult.value.total ?? 0);
       }
     }).finally(() => setLoading(false));
   }, [authVersion]);
@@ -142,7 +140,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
         {/* Заголовок */}
         <div className="flex items-center gap-3">
@@ -301,6 +299,6 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-    </AppShell>
+    
   );
 }

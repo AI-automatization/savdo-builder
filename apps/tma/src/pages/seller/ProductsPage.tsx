@@ -1,10 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -46,11 +45,11 @@ export default function SellerProductsPage() {
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
-      api<Product[]>('/seller/products?limit=50'),
+      api<{ products: Product[]; total: number }>('/seller/products?limit=50'),
       api<StoreCategory[]>('/seller/categories'),
     ])
-      .then(([prods, cats]) => {
-        setProducts(prods ?? []);
+      .then(([res, cats]) => {
+        setProducts(res?.products ?? []);
         setCategories(cats ?? []);
       })
       .catch(() => setError('Не удалось загрузить товары'))
@@ -127,7 +126,7 @@ export default function SellerProductsPage() {
     : products;
 
   return (
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
@@ -308,6 +307,6 @@ export default function SellerProductsPage() {
           );
         })}
       </div>
-    </AppShell>
+    
   );
 }

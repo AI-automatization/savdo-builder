@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronDown, Filter as FilterIcon, X } from "lucide-react";
 import type { GlobalCategory } from "types";
 import type { StorefrontCategoryFilter } from "@/lib/api/storefront.api";
-import { glass, glassDim } from "@/lib/styles";
+import { colors } from "@/lib/styles";
 
 type Props = {
   /** All global categories (Sprint 31). User picks one to enable attribute filters. */
@@ -77,8 +77,8 @@ export default function CategoryAttributeFilters({
           className="flex-shrink-0 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors"
           style={
             open || activeCount > 0
-              ? { background: "rgba(167,139,250,.22)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.40)" }
-              : { ...glassDim, color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.10)" }
+              ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
+              : { background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }
           }
         >
           <FilterIcon size={14} />
@@ -86,7 +86,7 @@ export default function CategoryAttributeFilters({
           {activeCount > 0 && (
             <span
               className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
-              style={{ background: "#A78BFA", color: "#1a0533" }}
+              style={{ background: colors.accent, color: colors.accentTextOnBg }}
             >
               {activeCount}
             </span>
@@ -99,7 +99,7 @@ export default function CategoryAttributeFilters({
             onClick={handleClearAll}
             disabled={isPending}
             className="text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
-            style={{ color: "rgba(255,255,255,0.40)" }}
+            style={{ color: colors.textMuted }}
           >
             Сбросить
           </button>
@@ -107,10 +107,13 @@ export default function CategoryAttributeFilters({
       </div>
 
       {open && (
-        <div className="mt-3 p-4 rounded-2xl flex flex-col gap-4" style={glass}>
+        <div
+          className="mt-3 p-4 rounded-2xl flex flex-col gap-4"
+          style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+        >
           {/* Global category select */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: "rgba(255,255,255,0.40)" }}>
+            <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: colors.textDim }}>
               Категория
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -120,8 +123,8 @@ export default function CategoryAttributeFilters({
                 className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                 style={
                   !activeGlobalSlug
-                    ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.45)" }
-                    : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.10)" }
+                    ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
+                    : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
                 }
               >
                 Все
@@ -136,8 +139,8 @@ export default function CategoryAttributeFilters({
                     className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                     style={
                       isActive
-                        ? { background: "rgba(167,139,250,.28)", color: "#A78BFA", border: "1px solid rgba(167,139,250,.45)" }
-                        : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.10)" }
+                        ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
+                        : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
                     }
                   >
                     {cat.name}
@@ -149,7 +152,7 @@ export default function CategoryAttributeFilters({
 
           {/* Attribute filters — only shown when a category is picked */}
           {activeGlobalSlug && attributeFilters.length === 0 && (
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <p className="text-xs" style={{ color: colors.textDim }}>
               У этой категории нет дополнительных фильтров
             </p>
           )}
@@ -185,38 +188,38 @@ function AttributeControl({
   if (filter.fieldType === "select" && filter.options && filter.options.length > 0) {
     return (
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.40)" }}>
+        <span className="text-[11px] uppercase tracking-wider" style={{ color: colors.textDim }}>
           {label}
         </span>
         <div className="relative">
           <select
             value={value}
             onChange={(e) => onChange(e.target.value || null)}
-            className="w-full appearance-none px-3 pr-9 py-2 rounded-xl text-sm text-white outline-none"
-            style={{ ...glassDim, border: "1px solid rgba(255,255,255,0.10)" }}
+            className="w-full appearance-none px-3 pr-9 py-2 rounded-xl text-sm outline-none"
+            style={{
+              background: colors.surfaceMuted,
+              border: `1px solid ${colors.border}`,
+              color: colors.textPrimary,
+            }}
           >
-            <option value="" style={{ background: "#1a0533" }}>
-              Любой
-            </option>
+            <option value="">Любой</option>
             {filter.options.map((opt) => (
-              <option key={opt} value={opt} style={{ background: "#1a0533" }}>
-                {opt}
-              </option>
+              <option key={opt} value={opt}>{opt}</option>
             ))}
           </select>
           <ChevronDown
             size={14}
             className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
-            style={{ color: "rgba(255,255,255,0.40)" }}
+            style={{ color: colors.textDim }}
           />
           {value && (
             <button
               type="button"
               onClick={() => onChange(null)}
-              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-white/10"
+              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full transition-colors hover:bg-black/5"
               aria-label="Очистить"
             >
-              <X size={12} style={{ color: "rgba(255,255,255,0.55)" }} />
+              <X size={12} style={{ color: colors.textMuted }} />
             </button>
           )}
         </div>
@@ -224,22 +227,19 @@ function AttributeControl({
     );
   }
 
-  // boolean → toggle pill
   if (filter.fieldType === "boolean") {
     const isActive = value === "true";
     return (
       <label className="flex items-center justify-between gap-3">
-        <span className="text-sm text-white">{label}</span>
+        <span className="text-sm" style={{ color: colors.textPrimary }}>{label}</span>
         <button
           type="button"
           onClick={() => onChange(isActive ? null : "true")}
           className="relative w-10 h-6 rounded-full transition-colors"
-          style={{
-            background: isActive ? "rgba(167,139,250,.45)" : "rgba(255,255,255,0.10)",
-          }}
+          style={{ background: isActive ? colors.accent : colors.borderStrong }}
         >
           <span
-            className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+            className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm"
             style={{ transform: isActive ? "translateX(18px)" : "translateX(2px)" }}
           />
         </button>
@@ -247,10 +247,9 @@ function AttributeControl({
     );
   }
 
-  // number / text → free input
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[11px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.40)" }}>
+      <span className="text-[11px] uppercase tracking-wider" style={{ color: colors.textDim }}>
         {label}
       </span>
       <input
@@ -258,8 +257,12 @@ function AttributeControl({
         value={value}
         onChange={(e) => onChange(e.target.value || null)}
         placeholder="Любое"
-        className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder:text-white/30 outline-none"
-        style={{ ...glassDim, border: "1px solid rgba(255,255,255,0.10)" }}
+        className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+        style={{
+          background: colors.surfaceMuted,
+          border: `1px solid ${colors.border}`,
+          color: colors.textPrimary,
+        }}
       />
     </label>
   );

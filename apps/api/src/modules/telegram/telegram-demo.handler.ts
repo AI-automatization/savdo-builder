@@ -549,26 +549,57 @@ export class TelegramDemoHandler {
     const store = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!store?.telegramChannelId) return;
 
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        images: {
+          include: { media: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
     if (!product) return;
 
     const price = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;
-    const text = `🛍 <b>${product.title}</b>\n\n${product.description ? `📝 ${product.description}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${store.name}`;
+    const caption = `🛍 <b>${product.title}</b>\n\n${product.description ? `📝 ${product.description}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${store.name}`;
 
-    // Deep link: открывает TMA сразу на магазине → startapp=store_{slug}
     const tmaUrl = process.env.TMA_URL ?? '';
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
     const deepLink = botUsername && store.slug
       ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
       : tmaUrl;
 
-    // Для каналов используем inline_keyboard с url кнопками (deep link → TMA)
-    await this.bot.sendToChannel(store.telegramChannelId, text, [
+    const buttons: Array<Array<{ text: string; url: string }>> = [
       [{ text: '🛒 Открыть магазин', url: deepLink }],
       [{ text: '💬 Написать продавцу', url: store.telegramContactLink ?? deepLink }],
-    ]);
+    ];
 
-    this.logger.log(`Posted product ${productId} to channel ${store.telegramChannelId}`);
+    const imageUrls = product.images
+      .map((img) => this.resolveMediaUrl(img.media as { id: string; objectKey?: string | null; bucket?: string | null }))
+      .filter(Boolean) as string[];
+
+    if (imageUrls.length >= 2) {
+      // Media group: Telegram не поддерживает кнопки в sendMediaGroup,
+      // поэтому шлём кнопки отдельным сообщением следом
+      await this.bot.sendMediaGroupToChannel(store.telegramChannelId, imageUrls, caption, 'HTML');
+      await this.bot.sendToChannel(store.telegramChannelId, '👆 Подробнее:', buttons);
+    } else if (imageUrls.length === 1) {
+      await this.bot.sendPhotoToChannel(store.telegramChannelId, imageUrls[0], caption, buttons, 'HTML');
+    } else {
+      await this.bot.sendToChannel(store.telegramChannelId, caption, buttons);
+    }
+
+    this.logger.log(`Posted product ${productId} to channel ${store.telegramChannelId} (images: ${imageUrls.length})`);
+  }
+
+  private resolveMediaUrl(media: { id: string; objectKey?: string | null; bucket?: string | null }): string {
+    if (!media?.objectKey) return '';
+    if (media.bucket === 'telegram') {
+      const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+      return `${appUrl}/api/v1/media/proxy/${media.id}`;
+    }
+    const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
+    return r2Base ? `${r2Base}/${media.objectKey}` : '';
   }
 
   // ─────────────────────────────────────────────────────────────────────────

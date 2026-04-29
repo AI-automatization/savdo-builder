@@ -270,9 +270,10 @@ export class ChatController {
       id: updated.id,
       threadId: updated.threadId,
       text: updated.body ?? '',
-      senderRole: user.role,
-      editedAt: updated.editedAt,
-      createdAt: updated.createdAt,
+      senderRole: user.role === 'SELLER' ? 'SELLER' : 'BUYER',
+      editedAt: updated.editedAt ? new Date(updated.editedAt).toISOString() : null,
+      isDeleted: false,
+      createdAt: new Date(updated.createdAt).toISOString(),
     };
   }
 

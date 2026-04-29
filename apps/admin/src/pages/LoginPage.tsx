@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   const [step, setStep] = useState<1 | 2>(1)
   const [phone, setPhone] = useState('+998')
-  const [otp, setOtp] = useState(['', '', '', ''])
+  const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [timer, setTimer] = useState(0)
@@ -61,7 +61,7 @@ export default function LoginPage() {
   const handleOtpInput = (i: number, val: string) => {
     const digits = val.replace(/\D/g, '')
     if (!digits && val !== '') return
-    if (digits.length === 4) {
+    if (digits.length === 6) {
       const arr = digits.split('')
       setOtp(arr)
       setTimeout(() => verify(arr.join('')), 50)
@@ -70,7 +70,7 @@ export default function LoginPage() {
     const next = [...otp]
     next[i] = digits[0] ?? ''
     setOtp(next)
-    if (digits[0] && i < 3) inputRefs.current[i + 1]?.focus()
+    if (digits[0] && i < 5) inputRefs.current[i + 1]?.focus()
     if (next.every(d => d)) setTimeout(() => verify(next.join('')), 50)
   }
 
@@ -89,7 +89,7 @@ export default function LoginPage() {
       const data: any = await api.post('/api/v1/auth/verify-otp', { phone, code, purpose: 'login' })
       if (data.user?.role !== 'ADMIN') {
         setError('Доступ запрещён. Этот кабинет только для администраторов Savdo.')
-        setOtp(['', '', '', ''])
+        setOtp(['', '', '', '', '', ''])
         setLoading(false)
         return
       }
@@ -101,14 +101,14 @@ export default function LoginPage() {
       } else {
         setError('Неверный или просроченный код.')
       }
-      setOtp(['', '', '', ''])
+      setOtp(['', '', '', '', '', ''])
       setTimeout(() => inputRefs.current[0]?.focus(), 50)
     } finally {
       setLoading(false)
     }
   }
 
-  const reset = () => { setStep(1); setOtp(['', '', '', '']); setError('') }
+  const reset = () => { setStep(1); setOtp(['', '', '', '', '', '']); setError('') }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-5 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -205,7 +205,7 @@ export default function LoginPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>Введите 4-значный код из Telegram</p>
+            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>Введите 6-значный код из Telegram</p>
 
             {/* OTP inputs */}
             <div className="flex gap-2 justify-center">

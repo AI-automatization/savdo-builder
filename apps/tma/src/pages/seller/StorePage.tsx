@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -191,12 +190,12 @@ export default function SellerStorePage() {
   };
 
   if (loading) {
-    return <AppShell role="SELLER"><div className="flex justify-center py-10"><Spinner size={32} /></div></AppShell>;
+    return <div className="flex justify-center py-10"><Spinner size={32} /></div>;
   }
 
   if (fetchError) {
     return (
-      <AppShell role="SELLER">
+      
         <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
           <span style={{ fontSize: 36 }}>⚠️</span>
           <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 14 }}>{fetchError}</p>
@@ -207,13 +206,13 @@ export default function SellerStorePage() {
             Попробовать снова
           </button>
         </div>
-      </AppShell>
+      
     );
   }
 
   if (!store) {
     return (
-      <AppShell role="SELLER">
+      
         <div className="flex flex-col gap-4">
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
           <div
@@ -259,12 +258,12 @@ export default function SellerStorePage() {
             </div>
           </div>
         </div>
-      </AppShell>
+      
     );
   }
 
   return (
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
 
@@ -444,6 +443,6 @@ export default function SellerStorePage() {
           )}
         </GlassCard>
       </div>
-    </AppShell>
+    
   );
 }

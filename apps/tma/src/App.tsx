@@ -1,7 +1,8 @@
-import { Component, lazy, Suspense } from 'react';
+import { Component, lazy, Suspense, useEffect } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { LoadingScreen } from '@/components/layout/LoadingScreen';
+import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/providers/AuthProvider';
 
 // ── Error Boundary ─────────────────────────────────────────────────────────────
@@ -18,7 +19,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
 
   componentDidCatch(_err: unknown, info: ErrorInfo) {
     console.error('[TMA ErrorBoundary]', _err, info.componentStack);
-    // Restore Telegram BackButton if it was hidden by the crashed component
     try { window.Telegram?.WebApp?.BackButton?.hide(); } catch { /* noop */ }
   }
 
@@ -53,37 +53,38 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
   }
 }
 
-const HomePage = lazy(() => import('@/pages/HomePage'));
-const BuyerStores = lazy(() => import('@/pages/buyer/StoresPage'));
-const BuyerStore = lazy(() => import('@/pages/buyer/StorePage'));
-const BuyerProduct = lazy(() => import('@/pages/buyer/ProductPage'));
-const BuyerCart = lazy(() => import('@/pages/buyer/CartPage'));
-const BuyerCheckout = lazy(() => import('@/pages/buyer/CheckoutPage'));
-const BuyerOrders = lazy(() => import('@/pages/buyer/OrdersPage'));
+// ── Lazy pages ─────────────────────────────────────────────────────────────────
+
+const HomePage        = lazy(() => import('@/pages/HomePage'));
+const BuyerStores     = lazy(() => import('@/pages/buyer/StoresPage'));
+const BuyerStore      = lazy(() => import('@/pages/buyer/StorePage'));
+const BuyerProduct    = lazy(() => import('@/pages/buyer/ProductPage'));
+const BuyerCart       = lazy(() => import('@/pages/buyer/CartPage'));
+const BuyerCheckout   = lazy(() => import('@/pages/buyer/CheckoutPage'));
+const BuyerOrders     = lazy(() => import('@/pages/buyer/OrdersPage'));
+const BuyerProfile    = lazy(() => import('@/pages/buyer/ProfilePage'));
+const BuyerSettings   = lazy(() => import('@/pages/buyer/SettingsPage'));
+const BuyerChat       = lazy(() => import('@/pages/buyer/ChatPage'));
 const SellerDashboard = lazy(() => import('@/pages/seller/DashboardPage'));
-const SellerOrders = lazy(() => import('@/pages/seller/OrdersPage'));
-const SellerStore = lazy(() => import('@/pages/seller/StorePage'));
-const SellerProducts = lazy(() => import('@/pages/seller/ProductsPage'));
-const SellerAddProduct = lazy(() => import('@/pages/seller/AddProductPage'));
-const SellerEditProduct = lazy(() => import('@/pages/seller/EditProductPage'));
-const SellerProfile = lazy(() => import('@/pages/seller/ProfilePage'));
-const SellerSettings = lazy(() => import('@/pages/seller/SettingsPage'));
-const SellerChat = lazy(() => import('@/pages/seller/ChatPage'));
-const BuyerProfile = lazy(() => import('@/pages/buyer/ProfilePage'));
-const BuyerSettings = lazy(() => import('@/pages/buyer/SettingsPage'));
-const BuyerChat = lazy(() => import('@/pages/buyer/ChatPage'));
+const SellerOrders    = lazy(() => import('@/pages/seller/OrdersPage'));
+const SellerStore     = lazy(() => import('@/pages/seller/StorePage'));
+const SellerProducts  = lazy(() => import('@/pages/seller/ProductsPage'));
+const SellerAddProduct   = lazy(() => import('@/pages/seller/AddProductPage'));
+const SellerEditProduct  = lazy(() => import('@/pages/seller/EditProductPage'));
+const SellerProfile   = lazy(() => import('@/pages/seller/ProfilePage'));
+const SellerSettings  = lazy(() => import('@/pages/seller/SettingsPage'));
+const SellerChat      = lazy(() => import('@/pages/seller/ChatPage'));
+
+// ── Guards ────────────────────────────────────────────────────────────────────
 
 function SellerGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/" replace />;
-  // ADMIN имеет доступ ко всем секциям включая seller
   if (user.role !== 'SELLER' && user.role !== 'ADMIN') return <Navigate to="/buyer" replace />;
   return <>{children}</>;
 }
 
-// Защищает транзакционные buyer-маршруты (корзина, checkout, заказы).
-// Просмотр магазинов и товаров остаётся открытым для всех.
 function BuyerGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
@@ -93,35 +94,81 @@ function BuyerGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ── Persistent layout wrappers ────────────────────────────────────────────────
+
+function BuyerLayout() {
+  return (
+    <AppShell role="BUYER">
+      <PageOutlet />
+    </AppShell>
+  );
+}
+
+function SellerLayout() {
+  return (
+    <SellerGuard>
+      <AppShell role="SELLER">
+        <PageOutlet />
+      </AppShell>
+    </SellerGuard>
+  );
+}
+
+// Scroll to top on route change + fade-in animation
+function PageOutlet() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname]);
+
+  return (
+    <div key={location.pathname} className="page-enter">
+      <Suspense fallback={<LoadingScreen />}>
+        <Outlet />
+      </Suspense>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+
 export default function App() {
   return (
     <ErrorBoundary>
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/buyer" element={<BuyerStores />} />
-        <Route path="/buyer/store/:slug" element={<BuyerStore />} />
-        <Route path="/buyer/store/:slug/product/:id" element={<BuyerProduct />} />
-        <Route path="/buyer/cart" element={<BuyerGuard><BuyerCart /></BuyerGuard>} />
-        <Route path="/buyer/checkout" element={<BuyerGuard><BuyerCheckout /></BuyerGuard>} />
-        <Route path="/buyer/orders" element={<BuyerGuard><BuyerOrders /></BuyerGuard>} />
-        <Route path="/buyer/profile" element={<BuyerProfile />} />
-        <Route path="/buyer/settings" element={<BuyerSettings />} />
-        <Route path="/seller" element={<SellerGuard><SellerDashboard /></SellerGuard>} />
-        <Route path="/seller/orders" element={<SellerGuard><SellerOrders /></SellerGuard>} />
-        <Route path="/seller/store" element={<SellerGuard><SellerStore /></SellerGuard>} />
-        <Route path="/seller/products" element={<SellerGuard><SellerProducts /></SellerGuard>} />
-        <Route path="/seller/products/add" element={<SellerGuard><SellerAddProduct /></SellerGuard>} />
-        <Route path="/seller/products/:id/edit" element={<SellerGuard><SellerEditProduct /></SellerGuard>} />
-        <Route path="/seller/profile" element={<SellerGuard><SellerProfile /></SellerGuard>} />
-        <Route path="/seller/settings" element={<SellerGuard><SellerSettings /></SellerGuard>} />
-        <Route path="/seller/chat" element={<SellerGuard><SellerChat /></SellerGuard>} />
-        <Route path="/seller/chat/:threadId" element={<SellerGuard><SellerChat /></SellerGuard>} />
-        <Route path="/buyer/chat" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />
-        <Route path="/buyer/chat/:threadId" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />
+      <Routes>
+        <Route path="/" element={<Suspense fallback={<LoadingScreen />}><HomePage /></Suspense>} />
+
+        {/* Buyer section — AppShell mounts once, persists across all buyer routes */}
+        <Route path="/buyer" element={<BuyerLayout />}>
+          <Route index element={<BuyerStores />} />
+          <Route path="store/:slug" element={<BuyerStore />} />
+          <Route path="store/:slug/product/:id" element={<BuyerProduct />} />
+          <Route path="cart" element={<BuyerGuard><BuyerCart /></BuyerGuard>} />
+          <Route path="checkout" element={<BuyerGuard><BuyerCheckout /></BuyerGuard>} />
+          <Route path="orders" element={<BuyerGuard><BuyerOrders /></BuyerGuard>} />
+          <Route path="profile" element={<BuyerProfile />} />
+          <Route path="settings" element={<BuyerSettings />} />
+          <Route path="chat" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />
+          <Route path="chat/:threadId" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />
+        </Route>
+
+        {/* Seller section — AppShell mounts once, persists across all seller routes */}
+        <Route path="/seller" element={<SellerLayout />}>
+          <Route index element={<SellerDashboard />} />
+          <Route path="orders" element={<SellerOrders />} />
+          <Route path="store" element={<SellerStore />} />
+          <Route path="products" element={<SellerProducts />} />
+          <Route path="products/add" element={<SellerAddProduct />} />
+          <Route path="products/:id/edit" element={<SellerEditProduct />} />
+          <Route path="profile" element={<SellerProfile />} />
+          <Route path="settings" element={<SellerSettings />} />
+          <Route path="chat" element={<SellerChat />} />
+          <Route path="chat/:threadId" element={<SellerChat />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      </Routes>
     </ErrorBoundary>
   );
 }

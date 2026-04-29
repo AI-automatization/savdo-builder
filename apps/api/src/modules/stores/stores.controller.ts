@@ -12,6 +12,7 @@ import { PublishStoreUseCase } from './use-cases/publish-store.use-case';
 import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
 import { StoresRepository } from './repositories/stores.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
+import { PrismaService } from '../../database/prisma.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 
@@ -27,6 +28,7 @@ export class StoresController {
     private readonly unpublishStore: UnpublishStoreUseCase,
     private readonly storesRepo: StoresRepository,
     private readonly sellersRepo: SellersRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -37,7 +39,9 @@ export class StoresController {
     const store = await this.storesRepo.findBySellerId(seller.id);
     if (!store) throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
 
-    return store;
+    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
+    const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
+    return { ...store, logoUrl, coverUrl };
   }
 
   @Post()
@@ -80,5 +84,32 @@ export class StoresController {
   @HttpCode(HttpStatus.OK)
   async unpublishHandler(@CurrentUser() user: JwtPayload) {
     return this.unpublishStore.execute(user.sub);
+  }
+
+  private async resolveStoreImageUrls(
+    logoMediaId: string | null | undefined,
+    coverMediaId: string | null | undefined,
+  ): Promise<{ logoUrl: string | null; coverUrl: string | null }> {
+    const ids = [logoMediaId, coverMediaId].filter(Boolean) as string[];
+    if (!ids.length) return { logoUrl: null, coverUrl: null };
+
+    const files = await this.prisma.mediaFile.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, bucket: true, objectKey: true },
+    });
+    const map = new Map(files.map((f) => [f.id, f]));
+
+    const resolve = (id: string | null | undefined): string | null => {
+      if (!id) return null;
+      const m = map.get(id);
+      if (!m?.objectKey) return null;
+      if (m.bucket === 'telegram') {
+        return `${(process.env.APP_URL ?? '').replace(/\/$/, '')}/api/v1/media/proxy/${m.id}`;
+      }
+      const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
+      return r2Base ? `${r2Base}/${m.objectKey}` : null;
+    };
+
+    return { logoUrl: resolve(logoMediaId), coverUrl: resolve(coverMediaId) };
   }
 }

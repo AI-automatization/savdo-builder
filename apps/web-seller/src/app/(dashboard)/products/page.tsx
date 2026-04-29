@@ -46,7 +46,8 @@ function Skeleton({ className }: { className?: string }) {
 const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
 
 export default function ProductsPage() {
-  const { data: products, isLoading } = useSellerProducts();
+  const { data: productsData, isLoading } = useSellerProducts();
+  const products = productsData?.products;
   const { mutate: updateStatus, isPending: isStatusPending, variables: statusVars } = useUpdateProductStatus();
   const { data: store } = useStore();
   const [copiedId, setCopiedId] = useState<string | null>(null);

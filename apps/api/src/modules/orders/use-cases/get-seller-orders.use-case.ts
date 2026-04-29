@@ -42,7 +42,7 @@ export class GetSellerOrdersUseCase {
     });
 
     const data = result.orders.map((o: any) => {
-      const { buyer, items, _count, city, region, addressLine1, addressLine2, ...rest } = o;
+      const { buyer, items, _count, city, region, addressLine1, addressLine2, subtotalAmount, discountAmount, deliveryFeeAmount, totalAmount, ...rest } = o;
 
       const deliveryAddress = city
         ? { street: addressLine1 ?? '', city, region: region ?? undefined }
@@ -59,6 +59,10 @@ export class GetSellerOrdersUseCase {
 
       return {
         ...rest,
+        subtotalAmount: Number(subtotalAmount),
+        discountAmount: Number(discountAmount),
+        deliveryFee: Number(deliveryFeeAmount),
+        totalAmount: Number(totalAmount),
         city,
         region,
         addressLine1,

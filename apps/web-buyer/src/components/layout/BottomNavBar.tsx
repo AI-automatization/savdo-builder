@@ -7,7 +7,7 @@ import { useUnreadChatCount } from '@/hooks/use-chat';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/lib/auth/context';
 import { IcoShop, IcoCart, IcoChat, IcoOrders, IcoProfile } from '@/components/icons';
-import { glassDim } from '@/lib/styles';
+import { colors } from '@/lib/styles';
 
 export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile';
 
@@ -44,12 +44,16 @@ export function BottomNavBar({
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0" style={{ zIndex: 50 }}>
+    <div className="fixed bottom-0 left-0 right-0 md:hidden" style={{ zIndex: 50 }}>
       <div
-        className="max-w-md mx-auto"
-        style={{ ...glassDim, borderRadius: '20px 20px 0 0', borderBottom: 'none' }}
+        className="mx-auto"
+        style={{
+          background: colors.surface,
+          borderTop: `1px solid ${colors.divider}`,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
       >
-        <nav className="flex items-center justify-around px-2 py-2">
+        <nav className="flex items-center justify-around px-2 py-2 max-w-md mx-auto">
           {NAV.map(({ key, href, label, icon, badge }) => {
             const isActive = key === active;
             return (
@@ -59,17 +63,17 @@ export function BottomNavBar({
                 className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl"
               >
                 <div className="relative">
-                  <span style={{ color: isActive ? '#A78BFA' : 'rgba(255,255,255,0.32)' }}>{icon}</span>
+                  <span style={{ color: isActive ? colors.accent : colors.textDim }}>{icon}</span>
                   {badge != null && badge > 0 && (
                     <span
-                      className="absolute -top-1 -right-1.5 w-[17px] h-[17px] flex items-center justify-center rounded-full text-[10px] font-bold"
-                      style={{ background: '#A78BFA', color: '#0d0d1f' }}
+                      className="absolute -top-1 -right-1.5 min-w-[17px] h-[17px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold"
+                      style={{ background: colors.accent, color: colors.accentTextOnBg }}
                     >
-                      {badge}
+                      {badge > 9 ? '9+' : badge}
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] font-medium" style={{ color: isActive ? '#A78BFA' : 'rgba(255,255,255,0.28)' }}>
+                <span className="text-[10px] font-medium" style={{ color: isActive ? colors.accent : colors.textMuted }}>
                   {label}
                 </span>
               </Link>
