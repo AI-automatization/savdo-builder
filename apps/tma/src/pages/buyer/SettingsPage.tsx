@@ -1,7 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
@@ -18,7 +17,7 @@ export default function BuyerSettingsPage() {
   };
 
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4">
 
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Настройки</h1>
@@ -117,6 +116,6 @@ export default function BuyerSettingsPage() {
         </p>
 
       </div>
-    </AppShell>
+    
   );
 }

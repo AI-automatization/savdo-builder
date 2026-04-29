@@ -255,7 +255,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
   ): Promise<void> {
     if (!this.botToken || fileIds.length < 2) return;
     const media = fileIds.slice(0, 10).map((fileId, i) => ({
-      type: 'document',
+      type: 'photo',
       media: fileId,
       ...(i === 0 ? { caption, ...(parseMode ? { parse_mode: parseMode } : {}) } : {}),
     }));

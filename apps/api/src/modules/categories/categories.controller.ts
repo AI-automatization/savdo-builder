@@ -105,7 +105,7 @@ export class CategoriesController {
       key: f.key,
       nameRu: f.nameRu,
       nameUz: f.nameUz,
-      fieldType: f.fieldType,
+      fieldType: f.fieldType.toLowerCase(),
       options: f.options ? (() => { try { return JSON.parse(f.options!) as string[]; } catch { return null; } })() : null,
       unit: f.unit,
       sortOrder: f.sortOrder,

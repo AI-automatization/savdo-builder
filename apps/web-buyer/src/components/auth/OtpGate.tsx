@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRequestOtp, useVerifyOtp } from '@/hooks/use-auth';
-import { glass, inputStyle } from '@/lib/styles';
+import { colors } from '@/lib/styles';
 
 type OtpStep = 'phone' | 'code';
 
@@ -46,19 +46,22 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
         <div className="text-center">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
-            style={{ background: 'rgba(167,139,250,.20)', border: '1px solid rgba(167,139,250,.35)' }}
+            style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}`, color: colors.accent }}
           >
             {icon}
           </div>
-          <h2 className="text-lg font-bold text-white">{title}</h2>
-          <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>{title}</h2>
+          <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
             {step === 'phone'
               ? (subtitle ?? 'Введите номер телефона для входа')
               : `Код отправлен в Telegram на ${phone}`}
           </p>
         </div>
 
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={glass}>
+        <div
+          className="rounded-2xl p-4 flex flex-col gap-3"
+          style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+        >
           {step === 'phone' ? (
             <>
               <input
@@ -67,14 +70,19 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+998 90 000 00 00"
                 className="h-11 px-4 rounded-xl text-sm w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, '--tw-ring-color': 'rgba(167,139,250,0.50)' } as React.CSSProperties}
+                style={{
+                  background: colors.surfaceMuted,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textPrimary,
+                  ['--tw-ring-color' as string]: colors.accentBorder,
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               />
               <button
                 onClick={handleSend}
                 disabled={!phone.trim() || requestOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+                className="h-11 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+                style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
                 {requestOtp.isPending ? 'Отправка...' : 'Получить код'}
               </button>
@@ -83,33 +91,39 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
             <>
               <input
                 type="text"
+                inputMode="numeric"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="0000"
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
                 maxLength={6}
                 className="h-11 px-4 rounded-xl text-sm text-center tracking-widest w-full focus:outline-none focus:ring-2"
-                style={{ ...inputStyle, '--tw-ring-color': 'rgba(167,139,250,0.50)' } as React.CSSProperties}
+                style={{
+                  background: colors.surfaceMuted,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textPrimary,
+                  ['--tw-ring-color' as string]: colors.accentBorder,
+                }}
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
               />
               <button
                 onClick={handleVerify}
-                disabled={code.length < 4 || verifyOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+                disabled={code.length < 6 || verifyOtp.isPending}
+                className="h-11 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+                style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
                 {verifyOtp.isPending ? 'Проверка...' : 'Войти'}
               </button>
               <button
                 onClick={() => { setStep('phone'); setCode(''); setError(''); }}
                 className="text-xs text-center"
-                style={{ color: 'rgba(255,255,255,0.40)' }}
+                style={{ color: colors.textDim }}
               >
                 Изменить номер
               </button>
             </>
           )}
-          {error && <p className="text-xs text-center" style={{ color: 'rgba(248,113,113,.85)' }}>{error}</p>}
+          {error && <p className="text-xs text-center" style={{ color: colors.danger }}>{error}</p>}
         </div>
       </div>
     </div>

@@ -49,10 +49,13 @@ export interface StorefrontStore {
 
 export interface GlobalCategory {
   id: string;
-  name: string;
+  parentId: string | null;
+  nameRu: string;
+  nameUz: string;
   slug: string;
-  iconUrl: string | null;
+  isActive: boolean;
   sortOrder: number;
+  createdAt: string;
 }
 
 // ── Store Category ────────────────────────────────────────────────────────────

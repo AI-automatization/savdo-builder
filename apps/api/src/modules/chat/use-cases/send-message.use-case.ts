@@ -1,10 +1,10 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChatMessage } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
 import { ChatGateway } from '../../../socket/chat.gateway';
+import { MappedChatMessage } from './get-thread-messages.use-case';
 
 export interface SendMessageInput {
   threadId: string;
@@ -22,7 +22,7 @@ export class SendMessageUseCase {
     private readonly chatGateway: ChatGateway,
   ) {}
 
-  async execute(input: SendMessageInput): Promise<ChatMessage> {
+  async execute(input: SendMessageInput): Promise<MappedChatMessage> {
     const chatEnabled = this.config.get<boolean>('features.chatEnabled');
 
     if (!chatEnabled) {
@@ -80,6 +80,14 @@ export class SendMessageUseCase {
       this.chatGateway.emitChatNewMessage(storeId, { threadId: input.threadId });
     }
 
-    return message;
+    return {
+      id: message.id,
+      threadId: message.threadId,
+      text: message.isDeleted ? '' : ((message as any).body ?? ''),
+      senderRole,
+      editedAt: (message as any).editedAt ? new Date((message as any).editedAt).toISOString() : null,
+      isDeleted: message.isDeleted,
+      createdAt: message.createdAt.toISOString(),
+    };
   }
 }

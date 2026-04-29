@@ -7,8 +7,8 @@ export async function getSellerProducts(params?: {
   status?: ProductStatus;
   globalCategoryId?: string;
   storeCategoryId?: string;
-}): Promise<ProductListItem[]> {
-  const res = await apiClient.get<ProductListItem[]>('/seller/products', { params });
+}): Promise<{ products: ProductListItem[]; total: number }> {
+  const res = await apiClient.get<{ products: ProductListItem[]; total: number }>('/seller/products', { params });
   return res.data;
 }
 

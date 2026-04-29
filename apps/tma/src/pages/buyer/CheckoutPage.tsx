@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { glass } from '@/lib/styles';
@@ -76,18 +75,18 @@ export default function CheckoutPage() {
 
   if (!items.length) {
     return (
-      <AppShell role="BUYER">
+      
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 48 }}>🛒</span>
           <p style={{ color: 'rgba(255,255,255,0.40)' }}>Корзина пуста</p>
           <Button variant="ghost" onClick={() => navigate('/buyer')}>К магазинам</Button>
         </div>
-      </AppShell>
+      
     );
   }
 
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Оформление заказа</h1>
 
@@ -144,6 +143,6 @@ export default function CheckoutPage() {
           {submitting ? 'Оформляем...' : `Подтвердить — ${total.toLocaleString('ru')} сум`}
         </Button>
       </div>
-    </AppShell>
+    
   );
 }

@@ -114,10 +114,15 @@ export class TelegramAuthUseCase {
       expiresAt,
     });
 
+    const storeId = resolvedUser.role === 'SELLER'
+      ? await this.authRepo.findStoreIdByUserId(resolvedUser.id)
+      : undefined;
+
     const accessToken = this.tokenService.generateAccessToken({
       sub: resolvedUser.id,
       role: resolvedUser.role,
       sessionId: session.id,
+      ...(storeId && { storeId }),
     });
 
     return {
