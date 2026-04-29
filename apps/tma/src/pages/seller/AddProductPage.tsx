@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, apiUpload, ApiError } from '@/lib/api';
 import { CategoryModal } from '@/components/ui/CategoryModal';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImageCropper } from '@/components/ui/ImageCropper';
@@ -276,7 +275,7 @@ export default function AddProductPage() {
           onCancel={() => { setCropSrc(''); }}
         />
       )}
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
           Новый товар
@@ -655,7 +654,7 @@ export default function AddProductPage() {
           При публикации товар автоматически появится в привязанном Telegram-канале
         </p>
       </div>
-    </AppShell>
+    
     </>
   );
 }

@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { api, apiUpload, getToken, ApiError } from '@/lib/api';
 import { CategoryModal } from '@/components/ui/CategoryModal';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
@@ -398,7 +397,7 @@ export default function EditProductPage() {
           onCancel={() => setCropSrc('')}
         />
       )}
-    <AppShell role="SELLER">
+    
       {/* Toast */}
       {toast && (
         <div
@@ -971,7 +970,7 @@ export default function EditProductPage() {
           </>
         )}
       </div>
-    </AppShell>
+    
     </>
   );
 }

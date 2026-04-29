@@ -73,13 +73,31 @@ export class ProductsController {
     @Query('status') status?: ProductStatus,
     @Query('globalCategoryId') globalCategoryId?: string,
     @Query('storeCategoryId') storeCategoryId?: string,
+    @Query('limit') limit?: string,
   ) {
     const storeId = await this.resolveStoreId(user.sub);
-    const products = await this.productsRepo.findByStoreId(storeId, { status, globalCategoryId, storeCategoryId });
-    return (products as unknown as Array<Record<string, unknown> & { _count?: { variants?: number } }>).map((p) => {
-      const { _count, ...rest } = p;
-      return { ...rest, variantCount: _count?.variants ?? 0 };
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    const [products, total] = await Promise.all([
+      this.productsRepo.findByStoreId(storeId, {
+        status,
+        globalCategoryId,
+        storeCategoryId,
+        limit: parsedLimit,
+      }),
+      this.productsRepo.countByStoreId(storeId),
+    ]);
+    const mapped = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
+      const { _count, images, basePrice, oldPrice, salePrice, ...rest } = p;
+      return {
+        ...rest,
+        basePrice: Number(basePrice),
+        oldPrice: this.toPrice(oldPrice),
+        salePrice: this.toPrice(salePrice),
+        variantCount: _count?.variants ?? 0,
+        mediaUrls: (images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      };
     });
+    return { products: mapped, total };
   }
 
   @Post('seller/products')
@@ -119,8 +137,15 @@ export class ProductsController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
     }
 
-    const p = product as unknown as Record<string, unknown> & { variants?: unknown[] };
-    return { ...p, variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)) };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    return {
+      ...p,
+      basePrice: Number(p.basePrice),
+      oldPrice: this.toPrice(p.oldPrice),
+      salePrice: this.toPrice(p.salePrice),
+      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
+    };
   }
 
   @Patch('seller/products/:id')
@@ -484,7 +509,13 @@ export class ProductsController {
   @Get('storefront/stores')
   async listStorefrontStores() {
     const stores = await this.storesRepo.findAllPublished();
-    return { data: stores };
+    const resolved = await Promise.all(
+      stores.map(async (s) => {
+        const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
+        return { ...s, logoUrl, coverUrl };
+      }),
+    );
+    return { data: resolved };
   }
 
   @Get('storefront/stores/:slug')
@@ -493,7 +524,9 @@ export class ProductsController {
     if (!store) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
-    return store;
+    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
+    const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
+    return { ...store, logoUrl, coverUrl };
   }
 
   @Get('stores/:slug')
@@ -502,7 +535,9 @@ export class ProductsController {
     if (!store) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
-    return store;
+    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
+    const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
+    return { ...store, logoUrl, coverUrl };
   }
 
   @Get('stores/:slug/products')
@@ -517,9 +552,12 @@ export class ProductsController {
     }
     const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
     return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, ...rest } = p;
+      const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
       return {
         ...rest,
+        basePrice: Number(basePrice),
+        oldPrice: this.toPrice(oldPrice),
+        salePrice: this.toPrice(salePrice),
         images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
         variantCount: _count?.variants ?? 0,
       };
@@ -542,9 +580,12 @@ export class ProductsController {
     if (product.storeId !== store.id) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[] };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
     return {
       ...p,
+      basePrice: Number(p.basePrice),
+      oldPrice: this.toPrice(p.oldPrice),
+      salePrice: this.toPrice(p.salePrice),
       mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
@@ -574,9 +615,12 @@ export class ProductsController {
         limit: limit ? parseInt(limit, 10) : 20,
       });
       const data = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
-        const { _count, ...rest } = p;
+        const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
         return {
           ...rest,
+          basePrice: Number(basePrice),
+          oldPrice: this.toPrice(oldPrice),
+          salePrice: this.toPrice(salePrice),
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
           variantCount: _count?.variants ?? 0,
         };
@@ -588,9 +632,12 @@ export class ProductsController {
     const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
     const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
     return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, ...rest } = p;
+      const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
       return {
         ...rest,
+        basePrice: Number(basePrice),
+        oldPrice: this.toPrice(oldPrice),
+        salePrice: this.toPrice(salePrice),
         images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
         variantCount: _count?.variants ?? 0,
       };
@@ -605,9 +652,12 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[] };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
     return {
       ...p,
+      basePrice: Number(p.basePrice),
+      oldPrice: this.toPrice(p.oldPrice),
+      salePrice: this.toPrice(p.salePrice),
       mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
@@ -615,12 +665,23 @@ export class ProductsController {
 
   // ─── Private helpers ──────────────────────────────────────────────────────
 
+  private toPrice(val: unknown): number | null {
+    if (val === null || val === undefined) return null;
+    return Number(val);
+  }
+
   private normalizeVariant(variant: unknown): unknown {
     const v = variant as Record<string, unknown>;
     const junctions = (v['optionValues'] ?? []) as Array<{ optionValueId: string }>;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { optionValues: _drop, ...rest } = v;
-    return { ...rest, optionValueIds: junctions.map((j) => j.optionValueId) };
+    const { optionValues: _drop, priceOverride, oldPriceOverride, salePriceOverride, ...rest } = v;
+    return {
+      ...rest,
+      priceOverride: this.toPrice(priceOverride),
+      oldPriceOverride: this.toPrice(oldPriceOverride),
+      salePriceOverride: this.toPrice(salePriceOverride),
+      optionValueIds: junctions.map((j) => j.optionValueId),
+    };
   }
 
   private resolveImageUrl(media: unknown): string {
@@ -632,6 +693,29 @@ export class ProductsController {
     }
     const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
     return r2Base ? `${r2Base}/${m.objectKey}` : '';
+  }
+
+  private async resolveStoreImageUrls(
+    logoMediaId: string | null | undefined,
+    coverMediaId: string | null | undefined,
+  ): Promise<{ logoUrl: string | null; coverUrl: string | null }> {
+    const ids = [logoMediaId, coverMediaId].filter(Boolean) as string[];
+    if (!ids.length) return { logoUrl: null, coverUrl: null };
+
+    const files = await this.prisma.mediaFile.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, bucket: true, objectKey: true },
+    });
+    const map = new Map(files.map((f) => [f.id, f]));
+
+    const resolve = (id: string | null | undefined): string | null => {
+      if (!id) return null;
+      const m = map.get(id);
+      if (!m) return null;
+      return this.resolveImageUrl(m) || null;
+    };
+
+    return { logoUrl: resolve(logoMediaId), coverUrl: resolve(coverMediaId) };
   }
 
   private async ensureProductOwnership(productId: string, storeId: string): Promise<void> {

@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 
@@ -50,7 +49,7 @@ export default function SellerProfilePage() {
   };
 
   return (
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Профиль</h1>
 
@@ -164,6 +163,6 @@ export default function SellerProfilePage() {
           Savdo · Продавец
         </p>
       </div>
-    </AppShell>
+    
   );
 }

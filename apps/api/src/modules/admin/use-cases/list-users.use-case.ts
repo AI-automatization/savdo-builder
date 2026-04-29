@@ -10,6 +10,7 @@ export class ListUsersUseCase {
     return this.adminRepo.findUsers({
       role: dto.role,
       status: dto.status,
+      search: dto.search,
       page: dto.page,
       limit: dto.limit,
     });

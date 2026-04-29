@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Phone, Search, ChevronLeft, ChevronRight, MessageCircle, UserCheck, X } from 'lucide-react'
+import { Users, Phone, Search, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
@@ -37,22 +37,19 @@ export default function UsersPage() {
   const params = new URLSearchParams({ page: String(page), limit: '30' })
   if (role)   params.set('role', role)
   if (status) params.set('status', status)
+  if (search) params.set('search', search)
 
   const { data, loading } = useFetch<{ users: UserRow[]; total: number }>(
     `/api/v1/admin/users?${params}`,
-    [page, role, status],
+    [page, role, status, search],
   )
 
   const users = data?.users ?? []
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / 30)
 
-  const filtered = search
-    ? users.filter(u => u.phone.includes(search))
-    : users
-
-  const handleSearch = () => setSearch(searchInput.trim())
-  const handleClearSearch = () => { setSearch(''); setSearchInput('') }
+  const handleSearch = () => { setSearch(searchInput.trim()); setPage(1) }
+  const handleClearSearch = () => { setSearch(''); setSearchInput(''); setPage(1) }
 
   return (
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
@@ -144,19 +141,19 @@ export default function UsersPage() {
                 <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</td>
               </tr>
             )}
-            {!loading && filtered.length === 0 && (
+            {!loading && users.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Пользователи не найдены</td>
               </tr>
             )}
-            {filtered.map((user, i) => {
+            {users.map((user, i) => {
               const roleCfg   = ROLE_CFG[user.role]   ?? ROLE_CFG.BUYER
               const statusCfg = STATUS_CFG[user.status] ?? STATUS_CFG.ACTIVE
               return (
                 <tr
                   key={user.id}
                   style={{
-                    borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
+                    borderBottom: i < users.length - 1 ? '1px solid var(--border)' : 'none',
                     cursor: 'pointer',
                     transition: 'background 0.1s',
                   }}

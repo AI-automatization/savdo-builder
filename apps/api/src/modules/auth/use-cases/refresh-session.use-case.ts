@@ -54,10 +54,15 @@ export class RefreshSessionUseCase {
       data: { refreshTokenHash: newHash, expiresAt: newExpiresAt, lastSeenAt: new Date() },
     });
 
+    const storeId = user.role === 'SELLER'
+      ? await this.authRepo.findStoreIdByUserId(user.id)
+      : undefined;
+
     const accessToken = this.tokenService.generateAccessToken({
       sub: user.id,
       role: user.role,
       sessionId: session.id,
+      ...(storeId && { storeId }),
     });
 
     return { accessToken, refreshToken: newRefreshToken };

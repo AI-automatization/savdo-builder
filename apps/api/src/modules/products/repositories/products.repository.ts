@@ -68,6 +68,7 @@ export class ProductsRepository {
       status?: ProductStatus;
       globalCategoryId?: string;
       storeCategoryId?: string;
+      limit?: number;
     },
   ): Promise<Product[]> {
     return this.prisma.product.findMany({
@@ -83,6 +84,7 @@ export class ProductsRepository {
         _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
+      ...(filters?.limit !== undefined && { take: filters.limit }),
     }) as unknown as Promise<Product[]>;
   }
 
