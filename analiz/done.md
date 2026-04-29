@@ -1,6 +1,131 @@
 # Done — Азим + Полат
 
-## 2026-04-26 — Сессия 36 (Азим) — 3 фичи: seller avatar + chat edit/delete + product displayType
+## 2026-04-29 (вечер) — Сессия 39 (Азим) — Buyer revamp: glass→light, mobile-only→responsive
+
+> **Контекст:** Азим попросил перевести buyer как seller (solid surfaces). Обсудили варианты, выбрали A2-light (инверсия от seller — белый/cream фон, violet акцент). Дополнительно — растянуть на весь экран (раньше mobile-only по `max-w-md`). Делалось в одной волне: pilot storefront + 2 баг-фикса до этого, потом полная миграция остальных 8 страниц.
+
+### ✅ [BUYER-REVAMP-FOUNDATION-001] Light tokens + globals + (shop) layout 🟡
+- **Дата:** 29.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/styles.ts` — новая палитра `colors` (bg #FAFAF7, surface #FFFFFF, accent #7C3AED), pre-set surfaces (`card`, `cardMuted`, `pill`, `pillActive`, `ctaPrimary`, `ctaSoft`, `inputStyle`). Старые `glass`/`glassDim`/`glassDark` оставлены как deprecated alias на light surfaces для нерефакторнутых страниц (потом убрать).
+  - `apps/web-buyer/src/app/globals.css` — `:root --background: #FAFAF7`, `color-scheme: light` (forced), убран `prefers-color-scheme: dark` override, добавлена утилита `.scrollbar-none`.
+  - `apps/web-buyer/src/app/(shop)/layout.tsx` — заменён фиолетовый gradient на light bg + textPrimary.
+- **Запушено в `54a5f8a`.**
+
+### ✅ [BUYER-REVAMP-PILOT-001] Pilot storefront /[slug] — full responsive light 🟡
+- **Дата:** 29.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` — новый layout: cover hero (h-40 sm:h-56 md:h-72), overlap-card с лого+имя+TG CTA, sticky-bar с категориями, 2-column grid `lg:grid-cols-[260px_1fr]` (sidebar фильтров + grid товаров).
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — solid white card, hover lift, large violet price + «сум».
+  - `apps/web-buyer/src/components/store/ProductsWithSearch.tsx` — responsive grid `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6`.
+  - `apps/web-buyer/src/components/store/CategoryAttributeFilters.tsx` — light pills, light select dropdown.
+  - `apps/web-buyer/src/components/layout/Header.tsx` — переписан под light + responsive nav-icons на md+.
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `md:hidden`, light surface, safe-area-inset-bottom.
+- **Запушено в `54a5f8a`.**
+
+### ✅ [BUYER-REVAMP-FULL-001] Полная миграция остальных 8 страниц + 2 компонентов 🟡
+- **Дата:** 29.04.2026 (вечер, без присутствия Азима)
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — home: light hero, slug input, 2-col quick links на sm+.
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — product detail: 2-column на lg+ (gallery + sticky info), single-column на mobile, inline desktop CTA (sticky на mobile).
+  - `apps/web-buyer/src/app/(minimal)/cart/page.tsx` — light cart rows, max-w-3xl, sticky CTA в углу на md+.
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — light form sections, max-w-2xl, OTP 6-digit + numeric-only.
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — split-view на md+ (320px list + chat-pane), violet bubbles для buyer, white-with-border для seller, action menu всегда видна (opacity-60).
+  - `apps/web-buyer/src/app/(shop)/orders/page.tsx` — table-style cards, max-w-4xl, status pills с solid color/bg.
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` — light progress steps, store card, delivery section.
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — light avatar+phone card, link rows с chevrons.
+  - `apps/web-buyer/src/app/(shop)/notifications/page.tsx` — light read/unread (accentMuted bg для unread).
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx` — переписан под light + 6-digit input.
+  - `apps/web-buyer/src/components/home/RecentStores.tsx` — light tile cards с hover lift.
+- **Visual contract:** все surfaces = #FFFFFF + 1px rgba(15,17,21,.10) border. Text: textPrimary/textMuted/textDim. Accent (price/CTA/active): solid violet. Status colors: solid 600-shades. Bottom nav скрыт на md+. Sticky CTAs на md+ перебрасываются в bottom-right corner.
+- **Запушено в `0d826a4`.**
+
+---
+
+## 2026-04-29 — Сессия 38 (Азим) — Pre-MVP audit + security hardening
+
+> **Контекст:** Полат сказал "проектни уже MVP чкарш кере", попросил полный аудит платформы перед запуском. Я разобрал его список (audit OTP, рендеринг, безопасность nmap/OWASP, постраничный inventory, реверс конкурентов) и сделал то что в моём домене (`apps/web-buyer` + `apps/web-seller`). Активные атаки/сетевой пентест (nmap, OWASP scan) — не делал, это инфра-домен Полата и требует deployed URL + Burp/ZAP.
+
+### ✅ [MVP-AUDIT-001] Статический аудит web-buyer + web-seller — security/render/OTP/inventory
+- **Важность:** 🔴 — pre-launch verification.
+- **Дата:** 29.04.2026
+- **Что проверено:**
+  1. **Security:** XSS-сink'и (`dangerouslySetInnerHTML`/`eval`/`innerHTML`/`document.write`) — **0** в моём домене. Единственное использование `dangerouslySetInnerHTML` — `apps/admin/src/pages/BroadcastPage.tsx:41` (домен Полата, flag в tasks). Все `target="_blank"` (7 ссылок) имеют `rel="noopener noreferrer"`. Token storage — localStorage (известный XSS-риск, но без других sink'ов = принимаемый для MVP). Refresh-interceptor паттерн правильный (`_retry`, dedupe via promise, skip auth-endpoints). AuthContext localLogout закрывает loop.
+  2. **Rendering:** **0** `window.location.*` в моём домене (есть в admin + tma — flag для Полата). **0** `<a href>` для внутренней навигации. SSR где нужно: `[slug]/page.tsx` (storefront) — full RSC + `generateMetadata` с OG tags; `[slug]/products/[id]/layout.tsx` — RSC layout с `generateMetadata` (Telegram preview product-ссылок работает). Прочие 9/10 buyer pages + 12/14 seller pages — `'use client'`, что OK для auth-walled / transactional. `<img>` 0 в buyer; 2 в seller (image-uploader blob preview — eslint-disabled OK; orders/page.tsx:168 — micro).
+  3. **OTP-флоу:** request→verify→login правильный pipe. Phone validation — buyer OtpGate без `+998` префикса (юзер сам вводит), seller login добавляет автоматически — UX-инконсистенция, не баг. Backend (после `f3666db`) ждёт **6-значный OTP** — оба фронта позволяли submit с 4 (баг, фикснул).
+  4. **Inventory:** **0** `TODO|FIXME|MOCK|stub|@ts-ignore|"Скоро"|"В разработке"|disabled={true}` в моём домене. Это значит фичи не полу-сделаны, нет visible incomplete UI. По factual readiness — **MVP по фронту готов** (модулу e2e-теста после deploy).
+- **MVP-блокер не моего домена:** `INFRA-RAILWAY-WATCH-PATTERNS-001` — `savdo-builder-by`/`-sl` Watch Patterns в Railway dashboard указывают на `apps/tma/**`, поэтому пуши в web-buyer/web-seller игнорируются. Сессии 35–36 + сегодняшние security/OTP-фиксы НЕ в проде. Без фикса dashboard'а Полатом — MVP не релизится.
+
+### ✅ [WEB-SECURITY-HEADERS-001] Глобальные security-заголовки на HTML-ответах
+- **Важность:** 🔴 — clickjacking protection отсутствовал на login странице seller'а и **на всём web-buyer** (middleware не существовал).
+- **Дата:** 29.04.2026
+- **Корень:** Полат добавил `helmet` на API в `7cdb4c6` — это headers на API responses (JSON). HTML-страницы Next.js без своих headers оставались без `X-Frame-Options`/`X-Content-Type-Options`/`Referrer-Policy`. В seller `middleware.ts:20-22` `PUBLIC_PATHS = ['/login', '/onboarding']` пропускались БЕЗ headers — login можно было встроить в `<iframe>` и фишить OTP. В buyer вообще не было middleware.
+- **Файлы:**
+  - `apps/web-buyer/next.config.ts` — добавлен `async headers()` возвращающий 5 заголовков для `source: "/:path*"`: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()`, `Strict-Transport-Security: max-age=31536000; includeSubDomains`. Применяется ко всем HTML-ответам.
+  - `apps/web-seller/next.config.ts` — то же. `middleware.ts` оставлен как есть (он также ставит X-Frame/X-Content-Type для protected branch — дубль безвреден, value тот же; middleware можно упростить позже когда будет auth-redirect через cookie).
+- **Известный gap (не блокер MVP):** CSP не добавлен (требует точного списка allowed sources: API_URL, R2 buckets, Telegram media, Google Fonts, etc — большая работа, риск ломки в проде). HSTS preload не добавлен (требует submission в Chrome HSTS list). Эти задачи на post-MVP.
+
+### ✅ [WEB-OTP-LENGTH-001] OTP-формы: code length 4 → 6
+- **Важность:** 🟡 — после `f3666db` (admin) бэк отдаёт 6-значный OTP, а web-buyer + web-seller форма позволяла submit с 4 цифрами. Юзер увидел бы "Неверный код" на 4-значном вводе.
+- **Дата:** 29.04.2026
+- **Файлы:**
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx` — input: `inputMode="numeric"`, `placeholder="000000"` (было `"0000"`), `onChange` теперь чистит non-digits через `.replace(/\D/g, '')`. Кнопка disable: `code.length < 6` (было `< 4`).
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — `handleVerify()` ранний return при `length < 6` (было `< 4`). Кнопка disable + active-style: `length >= 6` (было `>= 4`).
+
+---
+
+## 2026-04-29 — Сессия 37 (Азим) — превентивный аудит контрактов + 3 фронт-фикса + WS JWT auth
+
+### ✅ [AUDIT-CONTRACT-DRIFT-001] Превентивный аудит контрактов фронт ↔ бэк
+- **Важность:** 🟡 — system-уровневая профилактика. Метод: запустил 2 параллельных агента (curl на storefront + чтение mapper-ов на protected). Найдено 14 расхождений, из них 2 уже в проде ломали UX, 1 в коде но silent для seller, 11 — landmines. Записал в `tasks.md` для Полата.
+- **Дата:** 29.04.2026
+- **Зачем:** паттерн контракт-брейков повторился дважды (ChatThread Sprint 31, GlobalCategory fb79db2). Хочется не дожидаться третьего инцидента.
+- **Файлы:** `analiz/logs.md` (полный список), `analiz/tasks.md` (11 новых ID Полату).
+- **Покрытие:** ~30 endpoints — auth, storefront (stores/products/categories/filters), chat, orders, cart, notifications, media, seller profile/store, products.
+
+### ✅ [WEB-NOTIFICATIONS-INBOX-PARSE-001] Фикс пустого inbox в обоих апах
+- **Важность:** 🔴 — продавцы и покупатели видели пустой `/notifications` хотя бэк возвращал записи. Это и есть корень открытой задачи `/notifications диагностика` из очереди Азима.
+- **Дата:** 29.04.2026
+- **Корень:** Бэк возвращает `{notifications, total, unreadCount, page, limit}` (см. `apps/api/src/modules/notifications/use-cases/get-inbox.use-case.ts:36`). Локальный тип `InboxResponse` на фронте объявлял `{data, meta}` → `data.data` всегда `undefined` → React Query клал `undefined` в кэш → useNotifications() возвращал пустой массив.
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/notifications.api.ts` — `InboxResponse` обновлён под реальную форму, `getInbox()` читает `data.notifications ?? []`.
+  - `apps/web-seller/src/lib/api/notifications.api.ts` — то же.
+- **Полату записано:** `API-NOTIFICATIONS-INBOX-CONTRACT-001` 🔴 — желательно вынести `InboxResponse` в `packages/types/src/api/notifications.ts` (новый файл), сейчас тип задублирован в обоих апах + не экспортирован `unreadCount` (полезное поле для badge).
+
+### ✅ [WEB-CATEGORY-FILTERS-CASE-001] Фикс «фильтры всегда text input» на витрине магазина
+- **Важность:** 🔴 — все category-фильтры в buyer storefront рендерились через fallback (text input), select-dropdown и boolean-toggle никогда не показывались.
+- **Дата:** 29.04.2026
+- **Корень:** `GET /storefront/categories/:slug/filters` шлёт `fieldType` как Prisma uppercase enum (`"SELECT"`, `"NUMBER"`, `"TEXT"`, `"BOOLEAN"`). Локальный тип в `apps/web-buyer/src/lib/api/storefront.api.ts:11` объявлен lowercase. `CategoryAttributeFilters.tsx:185,228,257` сравнивает `filter.fieldType === "select"` — никогда не true.
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/storefront.api.ts` — `getCategoryFilters` нормализует `fieldType.toLowerCase()` на лету. Comment объясняет почему. Type literal расширен `string` чтобы позволить uppercase в transit.
+- **Полату записано:** `API-CATEGORY-FILTERS-CASE-001` 🔴 — добавить `@Transform(value => value.toLowerCase())` в DTO или экспортить enum в lowercase.
+
+### ✅ [WEB-SOCKET-AUTH-CONTRACT-001] Динамический токен в handshake socket.io
+- **Важность:** 🟡 — превентивный фикс контракт-брейка от Полата (`7cdb4c6` security: WS JWT auth). Без него чат и order-уведомления отвалились бы через ~30 мин после первого подключения.
+- **Дата:** 29.04.2026
+- **Корень:** В `7cdb4c6` бэк начал валидировать JWT на каждом `handleConnection`. Наш socket-singleton в обоих web-апах хранил токен на момент создания (`auth: { token: getAccessToken() }`). После refresh access-токена (axios interceptor `client.ts`) на любой reconnect — старый JWT, бэк дроп, infinite reconnect-loop.
+- **Файлы:**
+  - `apps/web-buyer/src/lib/socket.ts` — `auth` теперь callback-функция: `(cb) => cb({ token: getAccessToken() ?? '' })`. Socket.io-client v4.8.3 вызывает её на каждый handshake (initial + reconnect), всегда свежее значение из localStorage.
+  - `apps/web-seller/src/lib/socket.ts` — то же.
+- **Почему callback-форма а не tma-style `connectSocket()`:** TMA пофиксили через ручной helper, который сбрасывает `socket.auth` перед `socket.connect()`. Это требует менять 4 точки подключения (`useBuyerSocket`, `useSellerSocket`, оба `useChatSocket`). Callback-форма — один io-options, ноль изменений в hooks, и плюс автоматически работает на ре-handshake после network blip (а не только на explicit connect).
+- **Backwards-compat:** старый бэк (текущий прод, до Railway-фикса) игнорирует `auth.token` в handshake — фронт-фикс не ломает.
+- **Не задеплоено:** упирается в `INFRA-RAILWAY-WATCH-PATTERNS-001` — `savdo-builder-by`/`-sl` не подхватывают пуши пока Полат не правит Settings → Build в Railway dashboard. Когда деплой пройдёт — smoke-test: 35 мин idle → сообщение в чате → должно работать.
+- **Также:** TMA-апа (`apps/tma/src/lib/socket.ts`) использует свой `connectSocket()`-паттерн — не трогаю, домен Полата. Унификация — когда-нибудь общим PR.
+
+---
+
+## 2026-04-26 — Сессия 36 (Азим) — 3 фичи + 1 hotfix контракт-брейка
+
+### ✅ [WEB-SELLER-CATEGORY-CONTRACT-FIX-001] Hotfix: dropdown категорий показывался пустым
+- **Важность:** 🔴 — критический баг продакшена. Продавцы не могли выбрать глобальную категорию при создании товара (Select показывал пустые строки).
+- **Дата:** 26.04.2026 (диагностика по жалобе Азима после деплоя `787f04d`)
+- **Корень:** Бэк (видимо после `fb79db2` Sprint 31) поменял ответ `GET /storefront/categories` — раньше `{name}`, теперь `{nameRu, nameUz, parentId, isActive, ...}` (мультиязычность). Тип `GlobalCategory` в `packages/types/src/api/stores.ts` остался старый (`name: string`). Web-seller `useGlobalCategories` → `getGlobalCategories` → `Select.options.map(c => ({label: c.name}))` → label = undefined → Select показал 30 пустых строк.
+- **Web-buyer не сломался** потому что у них свой локальный тип в `apps/web-buyer/src/lib/api/storefront.api.ts` (`nameRu`/`nameUz` напрямую) — адаптировались раньше Sprint 31 (записано в `WEB-014` в CLAUDE.md как «pending Полатр adding it to packages/types»).
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/seller.api.ts` — `getGlobalCategories` теперь делает локальный mapping `nameRu → name` через тип `ApiGlobalCategory`. После того как Полат обновит тип в `packages/types` — убрать адаптер.
+  - `analiz/tasks.md` — добавлена `API-GLOBAL-CATEGORY-CONTRACT-001` 🟡 для Полата (обновить тип в packages/types, поддержать `nameRu`/`nameUz` мультиязычность, может имеет смысл иерархия по `parentId` — сейчас 30 leaf-категорий показываются плоско).
+- **Диагностика без браузера:** прямой `curl https://savdo-api-production.up.railway.app/api/v1/storefront/categories | python -c "..."` → увидел `keys: ['id', 'parentId', 'nameRu', 'nameUz', 'slug', 'isActive', 'sortOrder', 'createdAt']`, 30 категорий, `parentId` есть у всех. Сразу стало ясно что у поля `name` нет, фронт ожидал старую форму.
+- **Запушено:** `92b69cf` (после `git pull --rebase` из-за параллельных пушей Полата). Railway пересобрал web-seller.
 
 ### ✅ [WEB-PRODUCT-DISPLAYTYPE-001] Selector типа отображения товара + рендер витрины
 - **Важность:** 🟡 — продавцы получают визуальный контроль над презентацией товара. Полат добавил `Product.displayType: 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2'` в типы и DTO в `65c6795`. Теперь wire-up на фронте.

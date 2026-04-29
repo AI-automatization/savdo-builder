@@ -345,8 +345,8 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                     <button
                       type="button"
                       onClick={() => setOpenMenuId(showMenu ? null : m.id)}
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-full flex items-center justify-center transition-opacity"
-                      style={{ background: colors.surfaceMuted, color: colors.textMuted }}
+                      className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-60 hover:opacity-100 focus:opacity-100 active:opacity-100"
+                      style={{ background: colors.surfaceMuted, color: colors.textPrimary }}
                       aria-label="Действия с сообщением"
                     >
                       <MoreVertical size={13} />

@@ -88,7 +88,6 @@ export default function DashboardPage() {
   const sellers   = useFetch<SellersResponse>('/api/v1/admin/sellers?limit=1', [])
   const stores    = useFetch<StoresResponse>('/api/v1/admin/stores?limit=1', [])
   const queue     = useFetch<QueueResponse>('/api/v1/admin/moderation/queue?limit=1', [])
-  const orders    = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=1', [])
   const recent    = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=8', [])
   const analytics = useFetch<AnalyticsSummary>('/api/v1/admin/analytics/summary', [])
 
@@ -100,15 +99,15 @@ export default function DashboardPage() {
     sellers: sellers.data?.total ?? 0,
     stores:  stores.data?.total  ?? 0,
     queue:   queue.data?.total   ?? 0,
-    orders:  orders.data?.total  ?? 0,
+    orders:  recent.data?.total  ?? 0,
   }
   const statLoading = {
     sellers: sellers.loading, stores: stores.loading,
-    queue:   queue.loading,   orders: orders.loading,
+    queue:   queue.loading,   orders: recent.loading,
   }
   const statError = {
     sellers: sellers.error, stores: stores.error,
-    queue:   queue.error,   orders: orders.error,
+    queue:   queue.error,   orders: recent.error,
   }
 
   return (

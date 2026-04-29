@@ -69,6 +69,7 @@ export class AdminRepository {
   async findUsers(filters: {
     role?: string;
     status?: string;
+    search?: string;
     page?: number;
     limit?: number;
   }) {
@@ -79,6 +80,9 @@ export class AdminRepository {
     const where = {
       ...(filters.role ? { role: filters.role as any } : {}),
       ...(filters.status ? { status: filters.status as any } : {}),
+      ...(filters.search?.trim()
+        ? { phone: { contains: filters.search.trim() } }
+        : {}),
     };
 
     const [users, total] = await this.prisma.$transaction([
@@ -127,6 +131,7 @@ export class AdminRepository {
 
   async findSellers(filters: {
     verificationStatus?: string;
+    search?: string;
     page?: number;
     limit?: number;
   }) {
@@ -134,9 +139,17 @@ export class AdminRepository {
     const limit = Math.min(filters.limit ?? 20, 100);
     const skip = (page - 1) * limit;
 
-    const where = {
+    const where: Record<string, unknown> = {
       ...(filters.verificationStatus
         ? { verificationStatus: filters.verificationStatus as any }
+        : {}),
+      ...(filters.search?.trim()
+        ? {
+            OR: [
+              { fullName: { contains: filters.search.trim(), mode: 'insensitive' } },
+              { user: { phone: { contains: filters.search.trim() } } },
+            ],
+          }
         : {}),
     };
 

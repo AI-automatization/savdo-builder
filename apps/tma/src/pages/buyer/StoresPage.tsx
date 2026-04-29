@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { Sticker } from '@/components/ui/Sticker';
@@ -98,7 +97,7 @@ export default function StoresPage() {
   };
 
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4">
 
         {/* Header */}
@@ -325,6 +324,6 @@ export default function StoresPage() {
         )}
 
       </div>
-    </AppShell>
+    
   );
 }

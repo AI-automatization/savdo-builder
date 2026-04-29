@@ -41,7 +41,7 @@ export default function LoginPage() {
   }
 
   function handleVerify() {
-    if (otp.trim().length < 4) return;
+    if (otp.trim().length < 6) return;
     const fullPhone = `+998${phone.replace(/\s/g, "")}`;
     verifyOtp.mutate(
       { phone: fullPhone, code: otp, purpose: "login" },
@@ -165,9 +165,9 @@ export default function LoginPage() {
 
               <button
                 onClick={handleVerify}
-                disabled={verifyOtp.isPending || otp.length < 4}
+                disabled={verifyOtp.isPending || otp.length < 6}
                 className="w-full h-11 rounded-md text-sm font-semibold transition-opacity active:scale-[0.98] hover:opacity-90"
-                style={primaryBtn(otp.length >= 4 && !verifyOtp.isPending)}
+                style={primaryBtn(otp.length >= 6 && !verifyOtp.isPending)}
               >
                 {verifyOtp.isPending ? "Проверка..." : "Войти"}
               </button>

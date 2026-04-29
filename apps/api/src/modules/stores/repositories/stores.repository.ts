@@ -45,6 +45,8 @@ export class StoresRepository {
         status: true,
         city: true,
         telegramContactLink: true,
+        logoMediaId: true,
+        coverMediaId: true,
       },
       orderBy: { publishedAt: 'desc' },
       take: 50,

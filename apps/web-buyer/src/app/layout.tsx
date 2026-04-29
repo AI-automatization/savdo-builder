@@ -1,3 +1,4 @@
+// build: light revamp 2026-04-29
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";

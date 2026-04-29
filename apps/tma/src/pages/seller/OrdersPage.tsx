@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -156,7 +155,7 @@ export default function SellerOrdersPage() {
   };
 
   return (
-    <AppShell role="SELLER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
 
@@ -395,6 +394,6 @@ export default function SellerOrdersPage() {
           )}
         </BottomSheet>
       )}
-    </AppShell>
+    
   );
 }

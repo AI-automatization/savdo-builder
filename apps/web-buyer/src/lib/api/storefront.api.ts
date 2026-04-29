@@ -50,5 +50,7 @@ export async function getProduct(id: string): Promise<Product> {
 
 export async function getCategoryFilters(slug: string): Promise<StorefrontCategoryFilter[]> {
   const res = await apiClient.get<StorefrontCategoryFilter[]>(`/storefront/categories/${slug}/filters`);
-  return res.data;
+  // Backend serializes fieldType as Prisma enum (uppercase: SELECT/NUMBER/TEXT/BOOLEAN).
+  // Frontend renderer compares against lowercase literals — normalize here.
+  return res.data.map((f) => ({ ...f, fieldType: typeof f.fieldType === 'string' ? f.fieldType.toLowerCase() : f.fieldType }));
 }

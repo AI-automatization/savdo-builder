@@ -9,7 +9,7 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(BASE_URL, {
       autoConnect: false,
-      auth: { token: getAccessToken() },
+      auth: (cb) => cb({ token: getAccessToken() ?? '' }),
     });
   }
   return socket;

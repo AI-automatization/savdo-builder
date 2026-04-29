@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { showToast } from '@/components/ui/Toast';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { glass } from '@/lib/styles';
@@ -54,6 +53,7 @@ export default function ProductPage() {
   const [selection, setSelection] = useState<OptionSelection>({});
   const [contacting, setContacting] = useState(false);
   const trackedRef = useRef<string | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const activeVariants = product?.variants?.filter((v) => v.isActive !== false) ?? [];
   const optionGroups   = product?.optionGroups ?? [];
@@ -123,13 +123,12 @@ export default function ProductPage() {
 
   const canAddToCart = !!product && !requiresVariantSelection && !isOutOfStock;
 
-  const addToCart = () => {
+  const addToCart = useCallback(() => {
     if (!product || !canAddToCart) return;
     tg?.HapticFeedback.impactOccurred('light');
 
     let cart = getCart();
 
-    // If cart has items from a different store — clear it first (INV-C01)
     if (!isSameStore(cart, product.storeId)) {
       cart = [];
     }
@@ -159,7 +158,7 @@ export default function ProductPage() {
     showToast('✅ Добавлено в корзину');
     track.addToCart(product.storeId, product.id, variantId ?? null, 1);
     navigate('/buyer/cart');
-  };
+  }, [product, canAddToCart, selectedVariant?.id, unitPrice, slug, tg, navigate]);
 
   useEffect(() => {
     if (!tg || !product) return;
@@ -186,32 +185,30 @@ export default function ProductPage() {
         tg.MainButton.hide();
       };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tg, product, selectedVariant?.id, unitPrice, requiresVariantSelection, isOutOfStock, canAddToCart]);
+  }, [tg, product, addToCart, selectedVariant?.id, unitPrice, requiresVariantSelection, isOutOfStock, canAddToCart]);
 
   if (loading) {
     return (
-      <AppShell role="BUYER">
+      
         <div className="flex justify-center py-10"><Spinner size={32} /></div>
-      </AppShell>
+      
     );
   }
 
   if (error || !product) {
     return (
-      <AppShell role="BUYER">
+      
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Товар не найден</p>
           <button onClick={() => navigate(-1)} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
         </div>
-      </AppShell>
+      
     );
   }
 
   const images = product.mediaUrls ?? [];
   const displayType = product.displayType ?? 'SLIDER';
-  const touchStartX = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -230,7 +227,7 @@ export default function ProductPage() {
   };
 
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4 pb-24">
         {/* Gallery */}
         {displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
@@ -445,6 +442,6 @@ export default function ProductPage() {
           💬 {contacting ? 'Открываем чат...' : 'Задать вопрос продавцу'}
         </button>
       </div>
-    </AppShell>
+    
   );
 }

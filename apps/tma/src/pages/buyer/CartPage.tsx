@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { AppShell } from '@/components/layout/AppShell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { type CartItem, getCart, saveCart } from '@/lib/cart';
@@ -69,7 +68,7 @@ export default function CartPage() {
   }, [tg, items, total, navigate]);
 
   return (
-    <AppShell role="BUYER">
+    
       <div className="flex flex-col gap-4">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Корзина</h1>
 
@@ -149,6 +148,6 @@ export default function CartPage() {
           </Button>
         )}
       </div>
-    </AppShell>
+    
   );
 }
