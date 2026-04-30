@@ -85,11 +85,11 @@
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-BUYER-ORDERS-LIST-MAPPER-001` | 🟢 | `GET /buyer/orders` (`orders.controller.ts:69-79`) возвращает минимальный shape `{id, orderNumber, status, totalAmount, currencyCode, createdAt}` — без `storeId`/`deliveryFee`/`preview`/`buyer` которые тип `OrderListItem` объявляет required/optional. Сейчас buyer order list не падает, но любая попытка добавить thumbnail или фильтр по storeId сломается. |
+| ~~`API-BUYER-ORDERS-LIST-MAPPER-001`~~ | ✅ | Полный OrderListItem shape: storeId, deliveryFee, preview (items take:1), customerPhone/FullName. `db72038` |
 | ~~`API-PRODUCT-CONTRACT-003`~~ | ✅ | Унифицирован — оба режима возвращают `{data,meta}`, web-buyer потребители обновлены. `6290737` |
-| `API-ORDER-CONTRACT-001` | 🟢 | `Order` mapper возвращает `orderNumber` (не в типе). `paymentStatus` объявлен non-null, шлётся `?? null`. Type-only fixes. |
-| `TYPES-VARIANT-REF-CONTRACT-001` | 🟢 | `VariantRef` в `products.ts:40-43` объявляет `{titleOverride, stockQuantity}`, бэк cart.mapper.ts:67-69 шлёт `{id, sku, title}`. Тип активно лжёт. Обновить тип к реальной форме. |
-| `API-CART-EMPTY-CONTRACT-001` | 🟢 | `mapEmptyCart()` шлёт `{id: null, ...}`, тип требует `id: string`. Альтернатива — фронт принимает `Cart \| null`. |
+| ~~`API-ORDER-CONTRACT-001`~~ | ✅ | `orderNumber` добавлен в `OrderListItem` type. `paymentStatus: PaymentStatus | null`. `db72038` |
+| ~~`TYPES-VARIANT-REF-CONTRACT-001`~~ | ✅ | `VariantRef` → `{id, sku, title}`. Web-buyer cart/checkout: `titleOverride` → `title`. `db72038` |
+| ~~`API-CART-EMPTY-CONTRACT-001`~~ | ✅ | `Cart.id/storeId: string | null`. Web-buyer: `cart!.storeId ?? ''`. `db72038` |
 | ~~`ADMIN-BROADCAST-XSS-CHECK-001`~~ | ✅ | Проверено: html — preview из user-input через pipeline HTML-escaping. Фикс: regex `(.*?)` → `[^"]*` в href capture — предотвращает attribute injection. Самостоятельный XSS невозможен. `6290737` |
 | ~~`INFRA-FULL-RELOAD-NAV-001`~~ | ✅ | TMA: AppShell лифтнут в nested routes → persistent layout (141c0a5). Admin: `window.location.href='/login'` → `CustomEvent auth:logout` + `AuthLogoutListener` в App.tsx. `6290737` |
 | `WEB-CSP-HEADER-002` | 🟢 | Сессия 38 добавила базовый набор security-headers, но **CSP не включён** (требует точного списка allowed sources: API_URL, R2, Telegram media, Google Fonts, …). На post-MVP — без CSP защита от XSS-инъекции в случае компрометации фронта неполная. |
@@ -100,7 +100,7 @@
 |----|----------|--------|
 | Тест end-to-end в проде (Railway пофикшен 28-29.04, фичи сессии 36+37 раскатываются) | 🟡 | **Сессия 36 фронт (3 фичи):** (1) Seller `/profile` → загрузить аватар. (2) Чат seller — trash в шапке. (3) Чат seller — ⋯ → Редактировать → «изменено · …». (4) Чат seller — ⋯ → Удалить → «Сообщение удалено». (5) Через 15 мин «Редактировать» исчезает. (6) Те же 4 проверки в web-buyer `/chats`. (7) Edit от seller → buyer видит «изменено». (8) **DisplayType:** SLIDER → точки. COLLAGE_2X2 → 2×2 grid. **Сессия 37 (новое):** (9) Чат — отправить, подождать 35 мин (срок refresh), отправить ещё → должно работать (WS auth dynamic token). (10) `/notifications` (seller) — список отображается с записями (был пустой из-за contract-mismatch). (11) Витрина магазина с категорий-фильтром → выбрать SELECT-фильтр (например бренд) → dropdown с опциями появился (раньше показывался text input). |
 | `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` | 🟢 | После того как Азим визуально подтвердит что Railway задеплоил `18fa355` и в `/products/create` dropdown категорий нет авто-пунктов — удалить `isHiddenCategory(slug)` regex-фильтр из `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` и `[id]/edit/page.tsx`. **ОПАСНО удалять до проверки** — если cleanup не отработал на проде, продавцы снова увидят авто. |
-| `WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001` | 🟢 | После `e9a8649` бэк отдаёт `fieldType` lowercase. Локальный `.toLowerCase()` в `apps/web-buyer/src/lib/api/storefront.api.ts` `getCategoryFilters` теперь idempotent дублёр — можно убрать. Низкий приоритет: текущий код безопасен. |
+| ~~`WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001`~~ | ✅ | Удалён defensive `.toLowerCase()` в `storefront.api.ts`. |
 
 ---
 
