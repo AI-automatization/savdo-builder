@@ -78,7 +78,7 @@ export default function LoginPage() {
           >
             <ShoppingCart size={28} color={colors.bg} />
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Savdo</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.brand }}>Savdo</h1>
           <p className="text-sm mt-1" style={{ color: colors.textMuted }}>Панель продавца</p>
         </div>
 

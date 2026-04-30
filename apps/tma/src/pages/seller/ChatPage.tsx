@@ -215,7 +215,7 @@ export default function SellerChatPage() {
   // ════════════════════════════════════════════════════════════════════════════
   if (threadId) {
     return (
-      
+      <>
         {/* Report confirmation dialog */}
         {reportTarget && (
           <div
@@ -435,7 +435,7 @@ export default function SellerChatPage() {
             </div>
           )}
         </div>
-      
+      </>
     );
   }
 
