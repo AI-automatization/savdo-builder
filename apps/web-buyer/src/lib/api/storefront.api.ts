@@ -39,8 +39,8 @@ export async function getProducts(params: {
       if (v) search.append(`filters[${k}]`, v);
     }
   }
-  const res = await apiClient.get<ProductListItem[]>(`/storefront/products?${search.toString()}`);
-  return res.data;
+  const res = await apiClient.get<{ data: ProductListItem[]; meta: { total: number; page: number } }>(`/storefront/products?${search.toString()}`);
+  return res.data.data;
 }
 
 export async function getProduct(id: string): Promise<Product> {

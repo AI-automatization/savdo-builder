@@ -64,14 +64,14 @@ async function request<T>(path: string, options?: RequestInit, retry = true): Pr
       }, false)
     } catch {
       auth.clear()
-      window.location.href = '/login'
+      window.dispatchEvent(new CustomEvent('auth:logout'))
       throw new Error('Session expired')
     }
   }
 
   if (res.status === 401) {
     auth.clear()
-    window.location.href = '/login'
+    window.dispatchEvent(new CustomEvent('auth:logout'))
     throw new Error('Unauthorized')
   }
 

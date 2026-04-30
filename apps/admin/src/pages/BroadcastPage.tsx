@@ -26,7 +26,7 @@ function TelegramPreview({ text }: { text: string }) {
     .replace(/>/g, '&gt;')
     .replace(/&lt;b&gt;(.*?)&lt;\/b&gt;/gs, '<b>$1</b>')
     .replace(/&lt;i&gt;(.*?)&lt;\/i&gt;/gs, '<i>$1</i>')
-    .replace(/&lt;a href="(.*?)"&gt;(.*?)&lt;\/a&gt;/gs, (_, href: string, label: string) => {
+    .replace(/&lt;a href="([^"]*)"&gt;(.*?)&lt;\/a&gt;/gs, (_, href: string, label: string) => {
       const safe = /^https?:\/\//i.test(href) || /^tg:\/\//i.test(href) ? href : '#';
       return `<a href="${safe}" style="color:#5BC8F5">${label}</a>`;
     })

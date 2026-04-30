@@ -45,7 +45,8 @@ export async function serverGetProducts(params: {
       if (v) search.append(`filters[${k}]`, v);
     }
   }
-  return sfetch<ProductListItem[]>('/storefront/products', search);
+  const res = await sfetch<{ data: ProductListItem[]; meta: { total: number; page: number } }>('/storefront/products', search);
+  return res.data;
 }
 
 export async function serverGetGlobalCategories(): Promise<GlobalCategory[]> {
