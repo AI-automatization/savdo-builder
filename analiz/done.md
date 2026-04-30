@@ -1,5 +1,56 @@
 # Done — Азим + Полат
 
+## 2026-05-01 (сессия 44, Азим) — Chat message order fix + Web-seller `/products` responsive layout
+
+### ✅ [WEB-CHAT-ORDER-001] Сообщения в чате — старые сверху, новые снизу 🔴
+
+- **Важность:** 🔴 (UX-баг, сразу заметен)
+- **Дата:** 01.05.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/chat/page.tsx`, `apps/web-buyer/src/app/(shop)/chats/page.tsx`
+- **Симптом:** Азим скинул скрин seller-чата — собственное сообщение «фывфы 00:25» вверху, входящее «ПРивет 23 апр.» внизу. Telegram-привычка обратная. Тот же баг латентно был и в buyer (тот же код-паттерн).
+- **Корень:** `GET /chat/threads/:id/messages` возвращает массив отсортированный DESC (newest first — стандарт для cursor-based pagination через `before:`). Фронт делает `data?.messages ?? []` и шлёт в `messages.map(...)` без сортировки → новые сверху.
+- **Что сделано:** В обоих чатах заменил `const messages = data?.messages ?? [];` на `useMemo` который копирует массив и сортирует ASC по `createdAt` (`[...raw].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))`). `useMemo` импорт добавлен. `useEffect([messages.length])` для scroll-to-bottom продолжает работать корректно — после переворота снизу окажется последнее сообщение, которое и хочется видеть.
+- **Почему фронт-сорт, а не правка бэка:** Бэк = домен Полата. DESC + cursor `before:` — корректный API-паттерн для подгрузки старых при скролле вверх. Фронт сам решает порядок отображения. Ноль риска для контракта.
+- **Проверка:** `pnpm exec tsc --noEmit` оба апа → EXIT 0.
+
+### ✅ [WEB-SELLER-PRODUCTS-RESPONSIVE-001] Адаптивный список товаров seller 🟡
+
+- **Важность:** 🟡
+- **Дата:** 01.05.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+- **Контекст:** Полат через Азима скинул задачу — «там типо список магазинов был / или товаров / если мы уже зашли в аккаунт … тему добавить и более адаптивно сделать». Аудит web-buyer / web-seller dashboard list-страниц показал единственного нарушителя: `/products` использовал `grid-cols-[1fr_auto_auto_auto_auto]` без `sm:`-префикса. На 360px (iPhone SE / большинство Android) 5 колонок съезжают, текст обрезается, кнопки наезжают друг на друга. Прямое нарушение `apps/web-seller/CLAUDE.md` («Fully responsive + touch-friendly»). web-seller `/orders` уже использует правильный паттерн (`flex flex-col` mobile + `sm:grid` desktop) — взял оттуда.
+- **Что сделано:**
+  - **Mobile (< sm):** карточка из двух строк. Верх: 48px thumbnail (первая `mediaUrls`, fallback — иконка `Package`) + название + variantCount badge + status badge справа + цена ниже. Низ: actions row (Скрыть/Опубликовать → кнопки copy web/TG как иконки 16px → CTA «Изменить» как accent-pill справа).
+  - **Desktop (≥ sm):** 6-колоночный grid `[auto_1fr_auto_auto_auto_auto]` (добавлен thumbnail-столбец слева, остальные 5 как раньше). Header row `hidden sm:grid`. Skeleton загрузки тоже адаптивный (на mobile — 2 строки flex column, на desktop — 6-колоночный grid).
+  - Иконка `Package` импортирована из `lucide-react` для empty thumbnail-плейсхолдера.
+  - `<img>` (не `next/image`) — следую существующему паттерну `apps/web-seller/src/app/(dashboard)/orders/page.tsx`, потому что `next.config.ts` web-seller не имеет `images.remotePatterns` для R2-доменов, а добавлять — отдельная задача за рамками responsive-фикса.
+- **Не тронуто:** счётчик «N товаров» в header показывает `products?.length` вместо `productsData?.total` (это страничный counter, не общий) — оставил как есть, не моя задача.
+- **Проверка:** `pnpm exec tsc --noEmit` в `apps/web-seller` → EXIT 0.
+- **Чем НЕ закрыта тема Полата:** «тема добавить» осталась open — без скрина/URL непонятно что именно «тема»; адаптивность сделал по самому очевидному кандидату. Если Полат имел в виду web-buyer logged-in home / `/orders` или TMA — те страницы уже responsive.
+- **Socket conflict cross-role (тема 2 от Полата):** не трогал — бэк-`gateway` имеет guard'ы (`role === 'SELLER'` для `join-seller-room`, `sub === buyerId` для `join-buyer-room`), фронт уже использует динамический токен после `WEB-SOCKET-AUTH-CONTRACT-001`. Без шагов воспроизведения и явного симптома (401 / disconnect-loop / двойные сообщения / события не туда) лезть в socket-клиенты — гадание; домен gateway-кода вообще Полат.
+
+---
+
+## 2026-04-30 (вечер, сессия 42, Азим) — Post-pull sync + buyer prod brand-violet smoke-check
+
+### ✅ [SESSION-42-SYNC] Подтверждение продакшен-deploy buyer без коммитов 🟢
+
+- **Дата:** 30.04.2026 (короткая сессия, ~30 мин)
+- **Файлы:** только чтение и memory; без изменений в коде
+- **Что произошло за время паузы:**
+  - `git fetch && git pull --ff-only origin/main`: `822aa30 → 5c66d72` (10 коммитов от Полата за 2-3 часа).
+  - Полат закрыл свою очередь на 7 контракт-задач (`API-PRODUCT-CONTRACT-003`, `ADMIN-BROADCAST-XSS-CHECK-001`, `INFRA-FULL-RELOAD-NAV-001`, `API-BUYER-ORDERS-LIST-MAPPER-001`, `API-ORDER-CONTRACT-001`, `TYPES-VARIANT-REF-CONTRACT-001`, `API-CART-EMPTY-CONTRACT-001`) + TMA polish (gradient titles, lottie-react remove, layout fix). Force-push web-buyer (`9df5ca8`) и web-seller (`5ee845a`) — Railway автодеплои уже стартовали.
+  - В коммите `b081b5e` Полат **сам закрыл** мою задачу `WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001` — удалил defensive `.toLowerCase()` в `apps/web-buyer/src/lib/api/storefront.api.ts` (бэк теперь сериализует lowercase). Один файл, минус 2 строки.
+- **Подтверждение прод-деплоя buyer (без локального запуска):**
+  - DOM evaluate на https://savdo-builder-by-production.up.railway.app: header `<a>` «Savdo» и hero `<span>` «Savdo» оба с `color: rgb(124, 58, 237)` = `#7C3AED`. Brand violet token доехал до прода.
+  - `<title>` корректный «Savdo — магазины в Telegram». 0 errors в первой партии console (до того как Playwright-сессия закрылась).
+- **Что НЕ сделано:**
+  - Settings 2-col, sidebar wordmark seller, chat edit/delete error UI требуют логина — Азим проведёт ручную проверку.
+  - `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` всё ещё открыта — ждёт ручной визуальной проверки `/products/create` от Азима.
+- **Очередь Азима:** 1 ручная E2E проверка прода (4 области) + 1 cleanup задача после неё.
+
+---
+
 ## 2026-04-30 (полудень, сессия 41, Азим) — Brand violet token + seller chat error UI + settings 2-col + mobile push toggle
 
 ### ✅ [WEB-BRAND-WORDMARK-UNIFY-001] Единый violet `#7C3AED` для логотипа Savdo на обоих фронтах 🟢

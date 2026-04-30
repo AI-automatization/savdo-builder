@@ -140,9 +140,14 @@ export default function StorePage() {
       <div className="flex flex-col gap-4">
         <div className="p-4" style={{ ...glass }}>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-              style={{ background: 'rgba(167,139,250,0.20)', border: '1px solid rgba(167,139,250,0.25)' }}>
-              🏪
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-bold uppercase"
+              style={{
+                background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
+                border: '1px solid rgba(168,85,247,0.28)',
+                color: '#A855F7',
+                fontSize: 20,
+              }}>
+              {store.name.charAt(0)}
             </div>
             <div>
               <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>{store.name}</h1>
@@ -184,9 +189,9 @@ export default function StorePage() {
           </div>
         )}
 
-        <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <div className="section-label">
           Товары ({filtered.length}{activeCat && products.length !== filtered.length ? `/${products.length}` : ''})
-        </h2>
+        </div>
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">

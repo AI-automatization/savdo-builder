@@ -5,6 +5,87 @@
 
 ---
 
+# 🆕 Очередь от Полата (через Азима, 30.04.2026 поздно вечер)
+
+> Полат скинул 4 скрина (`photo_2026-05-01_00-47-*.jpg`) + пачку сообщений про уведомления и фото. Распределение по доменам ниже. Скрины лежат на десктопе Азима.
+
+## 🔴 [TMA-CHAT-ERROR-STATE-001] TMA seller chat list — ошибка показывается одновременно с данными
+- **Домен:** `apps/tma/src/pages/seller/ChatPage.tsx`
+- **Кто берёт:** Полат (TMA = его домен)
+- **Симптом (скрин 1):** Сверху красная плашка «❌ Ошибка загрузки сообщений», под ней 2 thread'а реально загружены и кликабельны. То есть данные пришли, но error-state не сбрасывается. `ChatPage.tsx:91` показывает toast при ошибке, но плашка живёт пока компонент не размонтирован — нужен conditional `{isError && !data?.threads.length}` или авто-сброс при успешном refetch.
+- **Файлы:** `apps/tma/src/pages/seller/ChatPage.tsx` (строка 91 рядом). Тот же баг в `apps/tma/src/pages/buyer/ChatPage.tsx:84`.
+
+## 🔴 [TMA-MEDIA-LOAD-001] TMA buyer — фото товаров не грузятся, серый плейсхолдер
+- **Домен:** `apps/tma/` (фронт TMA) + проверка ответа `apps/api` `GET /storefront/products`
+- **Кто берёт:** Полат
+- **Контекст:** Полат: «вот и проблема с загрузкой фото / нужно датабазу фоток нужно реализовать через Cloudflare». R2 в бэке уже подключен (`apps/api/src/modules/media/services/r2-storage.service.ts` + `request-upload.use-case.ts` presign). То есть инфра есть. Скорее всего проблема в одном из:
+  - TMA `<img src>` получает пустой URL (бэк не сериализует `mediaUrls` для buyer storefront feed?)
+  - URL правильный но R2 bucket приватный и не отдаёт публично — нужны public URL'ы или CDN
+  - CORS заголовки R2 не пускают TMA-домен
+- **Симптом (скрин 2):** Все карточки товаров на TMA buyer Home показывают системную иконку «горы и солнце» вместо фото. ДИЕР, тест, Белая футболка, Наушники — везде.
+- **Что проверить Полату:** (a) `curl /storefront/products?storeId=...` вернул `mediaUrls: [...]`? (b) URLы в `mediaUrls` открываются по прямой ссылке? (c) TMA шлёт правильный Origin → R2 пускает?
+
+## 🟡 [TMA-BUYER-ORDERS-FILTERS-001] TMA buyer — добавить фильтры заказов по статусу
+- **Домен:** `apps/tma/src/pages/buyer/OrdersPage.tsx` (или аналог)
+- **Кто берёт:** Полат
+- **Контекст (скрин 3):** Сейчас на TMA `/orders` сплошной список, без фильтров. Полат хочет: «отменённые / избранные / понравившиеся / доставленные / в ожидании».
+- **Что нужно:** Tab-фильтры по `OrderStatus` — PENDING/CONFIRMED/SHIPPED + DELIVERED + CANCELLED. В web-buyer `apps/web-buyer/src/app/(shop)/orders/page.tsx` уже есть готовый паттерн (`FILTER_TABS`), можно подсмотреть.
+- **«Избранное / понравившиеся»:** см. `WISHLIST-001` ниже — это отдельная фича, не статус заказа.
+
+## 🟡 [TMA-BUYER-CHAT-DOUBLE-BACK-001] TMA buyer — две кнопки «Назад» в chat thread
+- **Домен:** `apps/tma/src/pages/buyer/ChatPage.tsx` (или MessagesView внутри)
+- **Кто берёт:** Полат
+- **Симптом (скрин 4 с красной маркировкой Полата):** В chat thread сверху одновременно: пилл-кнопка `‹ Назад` (текстовая) и иконочная кнопка `‹` ниже. Обе ведут к thread list. Оставить ОДНУ — судя по design-системе остальной TMA, иконочную (компактнее).
+- **Что сделать:** В chat thread view убрать одну back-кнопку. Также проверить нет ли такого же дубля в seller/ChatPage.
+
+---
+
+## 🔴 [API-NOTIFICATIONS-ORDER-001] Telegram-бот — уведомления о статусах заказа
+- **Домен:** `apps/api/src/modules/telegram` + `apps/api/src/modules/notifications` (если нет — создать)
+- **Кто берёт:** Полат
+- **Контекст:** Полат: «должна быть система уведомлений / типо путеводитель в самом телеграм боте через уведомление / типо ваш заказ оформлен / ваш заказ обработан / ваш заказ получен / типо того / и типо у вас заказали».
+- **Сценарии (минимум):**
+  1. **Buyer:** при `OrderStatus` PENDING → CONFIRMED → SHIPPED → DELIVERED → CANCELLED — в Telegram-бот покупателя приходит сообщение "Ваш заказ #ORD-... [статус]". Триггер — domain event при `state machine transition` (см. `docs/V1.1/02_state_machines.md`).
+  2. **Seller:** при создании заказа в его магазине — в Telegram-бот продавца "У вас новый заказ #ORD-... на NN сум".
+- **Технически:** уже есть `telegram-demo.handler.ts` и OTP через бот. Расширить — bot-message-sender service, link `chat_id` к `BuyerProfile`/`SellerProfile`, listener на order status events.
+- **Связано:** `INV-O01..O04` (state machine), `04_buyer_identity.md` (как идентифицировать buyer's chat_id).
+
+## 🔴 [API-NOTIFICATIONS-CHAT-001] Telegram-бот — уведомления о новом сообщении в чате
+- **Домен:** `apps/api/src/modules/telegram` + `apps/api/src/modules/chat`
+- **Кто берёт:** Полат
+- **Контекст:** Полат: «вам написал клиент имя клиента на счет "имя товара" : "сообщение покупателя" / и похожая логика должна быть и у самого покупателя».
+- **Сценарии:**
+  1. **Seller** получает в Telegram-бот: `«{buyerName} → {productTitle}: {messagePreview}»` когда buyer отправил сообщение.
+  2. **Buyer** получает в Telegram-бот: `«{storeName} → {productTitle}: {messagePreview}»` когда seller ответил.
+- **Технически:** listener на `chat.message.created` event → если получатель offline (нет активной socket-сессии) → отправить через бот. Если online — пропустить. Это требует tracking activity.
+
+---
+
+## 🟡 [WISHLIST-CONTRACT-001] Wishlist — endpoints + тип (БЛОКЕР для UI)
+- **Домен:** `apps/api` + `packages/types` + `packages/db` (миграция)
+- **Кто берёт:** Полат
+- **Контекст:** Полат через Азима упомянул «избранное заказов / понравившиеся заказы» — но «избранное заказов» бессмысленно (это статус, а не пользовательский флаг), скорее всего имелось в виду **wishlist товаров** (favorite products). Сейчас этого нет нигде — ни в коде, ни в типах. В docs упоминается только в `docs/V1.1/04_mvp_scope_decisions.md`.
+- **Что нужно:**
+  1. Миграция: таблица `BuyerWishlistItem (buyerId, productId, createdAt)` с unique `(buyerId, productId)`.
+  2. Endpoints: `GET /buyer/wishlist`, `POST /buyer/wishlist {productId}`, `DELETE /buyer/wishlist/:productId`.
+  3. Тип `WishlistItem` в `packages/types`.
+  4. Индекс в `Product`-feed: `inWishlist?: boolean` для текущего buyer (чтобы UI знал какое сердечко закрашивать).
+- **Зависимые UI-задачи (Азим, после bекенда):**
+  - `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` в web-buyer + значок «сердечко» на ProductCard.
+  - `TMA-BUYER-WISHLIST-001` 🟡 — то же для TMA (Полат сделает сам — это его app).
+
+---
+
+# ✅ Закрыто Азимом в сессии 44 (01.05.2026, прямо сейчас, перед отбоем Азима)
+
+- `WEB-CHAT-ORDER-001` 🔴 — сообщения в обоих чат-апах теперь ASC по `createdAt` через `useMemo`. Бэк отдаёт DESC под cursor pagination, фронт перевернул для display.
+- `WEB-SELLER-PRODUCTS-RESPONSIVE-001` 🟡 — `/products` теперь полностью responsive: на mobile flex-column карточка с thumbnail + actions row, на desktop grid 6 колонок. Skeleton тоже адаптивный. (Реакция на тему 1 Полата «список + адаптивно».)
+- `WEB-BUYER-ORDERS-CANCELLED-FILTER-001` 🟢 — добавлен таб «Отменённые» в FILTER_TABS web-buyer `/orders` (был пропущен, хотя `CANCELLED` уже есть в STATUS_CONFIG).
+
+> Все три не закоммичены — ждут согласия Азима на push (через service-ветки `web-seller` и `web-buyer`, не через main).
+
+---
+
 # 📋 Снимок состояния (на 29.04.2026, сессия 38)
 
 ## ✅ Закрыто Азимом в сессии 38 (29.04.2026) — Pre-MVP audit + security hardening
@@ -81,7 +162,14 @@
 - (бонус, `2a6477c`) TMA: JSX fragment wrapper в buyer/ChatPage, seller/ChatPage, seller/OrdersPage — после удаления AppShell early-returns ломали build (TS1005). Также Полат сам докрутил GlobalCategory `name → nameRu` в `web-seller/products/[id]/edit/page.tsx`, `create/page.tsx`, `seller.api.ts` — параллельно с моей локальной адаптацией; мои локальные правки оказались идентичны и были откатаны через `git restore` перед `git pull`.
 - (бонус, `141c0a5`) TMA persistent layout: nested routes + outlet, BottomNav и AppShell больше не remount при навигации; навигация instant. Не наш домен (TMA).
 
-## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
+## ✅ Закрыто в текущей сессии (30.04.2026)
+
+- `TMA-STICKER-CRASH-001` 🔴 — **React error #130** в TMA на StoresPage + DashboardPage. Root cause: `lottie-react` CJS/ESM interop в Vite prod bundle → `Lottie` = module object вместо компонента. Нотоэмоджи CDN: 404 на `1f3ea`. Fix: убран `lottie-react`, `Sticker` → статичный emoji `<span>`. `1004e33`
+- `TMA-PRODUCT-CARD-ROUTE-001` 🔴 — `ProductCard` навигировал на `/buyer/product/:id` (несуществующий маршрут). Fix: `/buyer/store/:slug/product/:id`. `1004e33`
+
+---
+
+## 🚧 Открыто — Полат (TMA / `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
