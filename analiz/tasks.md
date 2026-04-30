@@ -86,12 +86,12 @@
 | ID | Важность | Кратко |
 |----|----------|--------|
 | `API-BUYER-ORDERS-LIST-MAPPER-001` | 🟢 | `GET /buyer/orders` (`orders.controller.ts:69-79`) возвращает минимальный shape `{id, orderNumber, status, totalAmount, currencyCode, createdAt}` — без `storeId`/`deliveryFee`/`preview`/`buyer` которые тип `OrderListItem` объявляет required/optional. Сейчас buyer order list не падает, но любая попытка добавить thumbnail или фильтр по storeId сломается. |
-| `API-PRODUCT-CONTRACT-003` | 🟢 | `GET /storefront/products` без `storeId` возвращает `{data, meta}` envelope, со `storeId` — голый массив. TMA / будущий platform feed может схватить `arr.map is not a function`. Унифицировать форму. |
+| ~~`API-PRODUCT-CONTRACT-003`~~ | ✅ | Унифицирован — оба режима возвращают `{data,meta}`, web-buyer потребители обновлены. `6290737` |
 | `API-ORDER-CONTRACT-001` | 🟢 | `Order` mapper возвращает `orderNumber` (не в типе). `paymentStatus` объявлен non-null, шлётся `?? null`. Type-only fixes. |
 | `TYPES-VARIANT-REF-CONTRACT-001` | 🟢 | `VariantRef` в `products.ts:40-43` объявляет `{titleOverride, stockQuantity}`, бэк cart.mapper.ts:67-69 шлёт `{id, sku, title}`. Тип активно лжёт. Обновить тип к реальной форме. |
 | `API-CART-EMPTY-CONTRACT-001` | 🟢 | `mapEmptyCart()` шлёт `{id: null, ...}`, тип требует `id: string`. Альтернатива — фронт принимает `Cart \| null`. |
-| `ADMIN-BROADCAST-XSS-CHECK-001` | 🟡 | `apps/admin/src/pages/BroadcastPage.tsx:41` использует `dangerouslySetInnerHTML={{ __html: html \|\| '...' }}`. Проверить откуда `html` приходит. Если он формируется из user-input (rich-text editor) без sanitization → XSS в админке. Если это server-формируемый HTML или константа — OK. Найдено в pre-MVP audit (сессия 38, Азим). |
-| `INFRA-FULL-RELOAD-NAV-001` | 🟢 | Полат жаловался на «перезагружает полный сайт при переходе между страницами». В моём домене (web-buyer/web-seller) **0** `window.location.*` — навигация SPA-стиль через next/link и router. Подозреваемые места: `apps/admin/src/lib/api.ts:67,74` — `window.location.href = '/login'` при 401; `apps/tma/src/App.tsx:45` — `window.location.replace('/')` в Error Boundary; `apps/tma/src/pages/buyer/StoresPage.tsx:241` — `window.location.reload()` на retry. Если Полат имел в виду эти места — заменить на `useRouter()`/SDK helpers. Если речь о другом — нужен пример URL/действия. |
+| ~~`ADMIN-BROADCAST-XSS-CHECK-001`~~ | ✅ | Проверено: html — preview из user-input через pipeline HTML-escaping. Фикс: regex `(.*?)` → `[^"]*` в href capture — предотвращает attribute injection. Самостоятельный XSS невозможен. `6290737` |
+| ~~`INFRA-FULL-RELOAD-NAV-001`~~ | ✅ | TMA: AppShell лифтнут в nested routes → persistent layout (141c0a5). Admin: `window.location.href='/login'` → `CustomEvent auth:logout` + `AuthLogoutListener` в App.tsx. `6290737` |
 | `WEB-CSP-HEADER-002` | 🟢 | Сессия 38 добавила базовый набор security-headers, но **CSP не включён** (требует точного списка allowed sources: API_URL, R2, Telegram media, Google Fonts, …). На post-MVP — без CSP защита от XSS-инъекции в случае компрометации фронта неполная. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)

@@ -38,8 +38,9 @@ export interface ProductVariant {
 
 /** Compact variant info embedded in cart/order item responses */
 export interface VariantRef {
-  titleOverride: string | null;
-  stockQuantity: number;
+  id: string;
+  sku: string | null;
+  title: string | null;
 }
 
 // ── Product ───────────────────────────────────────────────────────────────────
