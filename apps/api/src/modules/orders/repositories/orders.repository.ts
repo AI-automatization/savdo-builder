@@ -43,6 +43,10 @@ export class OrdersRepository {
         orderBy: { placedAt: 'desc' },
         skip,
         take: limit,
+        include: {
+          items: { take: 1, orderBy: { createdAt: 'asc' }, select: { productTitleSnapshot: true, primaryImageUrlSnapshot: true } },
+          _count: { select: { items: true } },
+        },
       }),
       this.prisma.order.count({ where }),
     ]);

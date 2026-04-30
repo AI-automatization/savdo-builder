@@ -327,7 +327,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-xs mb-1" style={{ color: colors.textDim }}>Оплата</p>
             <p className="text-sm" style={{ color: colors.textPrimary }}>{order.paymentMethod ?? 'Не указан'}</p>
             <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
-              {PAYMENT_STATUS_LABELS[order.paymentStatus] ?? '—'}
+              {order.paymentStatus ? (PAYMENT_STATUS_LABELS[order.paymentStatus] ?? '—') : '—'}
             </p>
           </div>
         </div>
