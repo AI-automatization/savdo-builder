@@ -45,7 +45,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
 
   return (
     <div
-      onClick={() => navigate(`/buyer/product/${product.id}`)}
+      onClick={() => navigate(`/buyer/store/${product.store.slug}/product/${product.id}`)}
       style={{
         borderRadius: 14,
         overflow: 'hidden',
