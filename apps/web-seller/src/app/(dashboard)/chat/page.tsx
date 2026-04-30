@@ -148,7 +148,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
       setConfirmDeleteThread(false);
       onDeleted();
     } catch {
-      setConfirmDeleteThread(false);
+      // keep modal open so error message is visible
     }
   }
 
@@ -157,8 +157,15 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
       await deleteMessageMutation.mutateAsync(msgId);
       setConfirmDeleteMsg(null);
     } catch {
-      setConfirmDeleteMsg(null);
+      // keep modal open so error message is visible
     }
+  }
+
+  function errorText(err: unknown, fallback: string): string {
+    if (!err) return fallback;
+    type ApiError = { response?: { data?: { message?: string; code?: string } }; message?: string };
+    const e = err as ApiError;
+    return e?.response?.data?.message ?? e?.message ?? fallback;
   }
 
   return (
@@ -207,6 +214,11 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
             <p className="text-xs" style={{ color: colors.textMuted }}>
               Покупатель увидит «Сообщение удалено» вместо текста.
             </p>
+            {deleteMessageMutation.isError && (
+              <p className="text-xs" style={{ color: colors.danger }}>
+                {errorText(deleteMessageMutation.error, 'Не удалось удалить сообщение')}
+              </p>
+            )}
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setConfirmDeleteMsg(null)}
@@ -236,6 +248,11 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
             <p className="text-xs" style={{ color: colors.textMuted }}>
               Чат исчезнет из вашего списка. Покупатель продолжит видеть историю.
             </p>
+            {deleteThreadMutation.isError && (
+              <p className="text-xs" style={{ color: colors.danger }}>
+                {errorText(deleteThreadMutation.error, 'Не удалось удалить чат')}
+              </p>
+            )}
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setConfirmDeleteThread(false)}
@@ -327,6 +344,11 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                           {editMessageMutation.isPending ? '...' : 'Сохранить'}
                         </button>
                       </div>
+                      {editingId === m.id && editMessageMutation.isError && (
+                        <p className="text-[10px] mt-0.5" style={{ color: colors.bg, opacity: 0.85 }}>
+                          {errorText(editMessageMutation.error, 'Не удалось сохранить')}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p style={{ whiteSpace: 'pre-wrap' }}>{m.text}</p>

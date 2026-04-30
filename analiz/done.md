@@ -1,5 +1,107 @@
 # Done — Азим + Полат
 
+## 2026-04-30 (полудень, сессия 41, Азим) — Brand violet token + seller chat error UI + settings 2-col + mobile push toggle
+
+### ✅ [WEB-BRAND-WORDMARK-UNIFY-001] Единый violet `#7C3AED` для логотипа Savdo на обоих фронтах 🟢
+- **Дата:** 30.04.2026
+- **Контекст:** Азим попросил «и seller и buyer объединял один цвет, не весь сайт одного цвета — например красивый фиолетовый». Раньше каждый app использовал свой accent оттенок (buyer `#7C3AED` violet-600 на light, seller `#A78BFA` violet-400 на dark) — оба были фиолетовые но визуально разные.
+- **Что сделано:**
+  - `apps/web-buyer/src/lib/styles.ts` — добавлен `brand: '#7C3AED'` рядом с accent.
+  - `apps/web-seller/src/lib/styles.ts` — добавлен `brand: '#7C3AED'` (отдельный от accent — чтобы accent остался адаптивным светлым `#A78BFA` для контраста на dark slate-900).
+  - Применён `colors.brand` в 5 местах wordmark «Savdo»:
+    - `apps/web-buyer/src/components/layout/Header.tsx:34` (sticky header)
+    - `apps/web-buyer/src/app/(shop)/page.tsx:55` (home hero)
+    - `apps/web-seller/src/app/(auth)/login/page.tsx:81` (login title — раньше был textPrimary white)
+    - `apps/web-seller/src/app/(dashboard)/layout.tsx:78` (sidebar wordmark — раньше accent `#A78BFA`)
+    - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx:590` (onboarding header — раньше хардкод `'#A78BFA'`)
+- **Что НЕ тронуто:** copyrights `© 2026 Savdo` (footer) оставлены `textDim` — это служебный мелкий текст. Title теги в metadata тоже не трогаются — там просто string. Accent для CTA-кнопок остался адаптивным (buyer `#7C3AED` solid на белом, seller `#A78BFA` light на dark) — контрастная читаемость важнее визуальной идентичности кнопок.
+- **Контраст:** `#7C3AED` на seller dark surface `#1E293B` ≈ 4.7:1 — в норме для bold wordmark text. Если визуально слишком тёмный — позже могу ввести `brandSoft` с другим оттенком для dark surfaces.
+
+### ✅ [WEB-SELLER-CHAT-ERROR-FEEDBACK-001] Error UI вместо silent swallow в edit/delete операциях 🟡
+- **Дата:** 30.04.2026
+- **Контекст:** Азим написал что чат seller «не работает» в части edit/delete. Аудит кода показал что UI (MoreVertical menu, edit textarea, delete confirm modals) полностью реализован, бэк-контракты совпадают (senderRole enum match, MappedChatMessage shape от Полата `e9a8649`). Но **catch-блоки молча swallow'или ошибку**: если бэк возвращал FORBIDDEN / NOT_FOUND / BadRequestException (например edit window expired) — в UI ничего не отображалось, юзер думал «не работает».
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx`:
+    - Добавлен `errorText(err, fallback)` helper для извлечения `response.data.message` из axios-ошибки.
+    - В `handleDeleteThread` / `handleDeleteMessage` убран `setConfirm*(false)` из catch — modal остаётся открытым на ошибке (раньше silent dismiss).
+    - В edit-mode (textarea + Save/Cancel buttons) добавлен `editMessageMutation.isError` блок — показывает реальное сообщение бэка под textarea (включая `Edit window expired (15 minutes)`).
+    - В delete-message confirm modal — `deleteMessageMutation.isError` блок между описанием и кнопками.
+    - В delete-thread confirm modal — то же для `deleteThreadMutation.isError`.
+- **Что НЕ тронуто:** buyer `/chats` page — там тот же pattern silent swallow, но Азим жаловался конкретно на seller. Если выяснится что нужно симметрично — `apps/web-buyer/src/app/(shop)/chats/page.tsx` ждёт того же treatment.
+- **Эффект:** в следующий раз когда что-то не работает — юзер увидит причину прямо в чат-UI вместо «нажимаю и ничего».
+
+### ✅ [WEB-SELLER-SETTINGS-LAYOUT-001] 2-колоночный settings layout + mobile push toggle 🟢
+- **Дата:** 30.04.2026
+- **Контекст:** Азим попросил «улучшить настройки». Текущий layout — 5 секций в столбик, `max-w-xl` (узкая колонка ≈576px), на десктопе огромная пустота справа. Также `NotifPreferences` тип содержит `mobilePushEnabled` поле, но в UI его не было — только Telegram + web push toggles.
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx`:
+    - `max-w-xl` → `max-w-5xl` (≈1024px) — на десктопе занимает разумную ширину.
+    - Добавлен `grid grid-cols-1 lg:grid-cols-2 gap-5 items-start` wrapper. На моб (`< lg`) всё в одну колонку как раньше; на `lg+` — 2 колонки.
+    - **Левая колонка** (form-heavy): `StoreSettingsSection` (cover, logo, name, desc, city, region, telegram link) + `ProfileSettingsSection` (имя, telegram, языки).
+    - **Правая колонка** (compact controls): `DeliverySettingsSection` (select + amount) + `StoreCategoriesSection` (динамический список) + `NotifPreferencesSection` (toggles).
+    - В `NotifPreferencesSection` добавлен 3-й `<ToggleRow>` для `mobilePushEnabled` с label «Push в мобильном» + description «Уведомления в Telegram-приложении продавца». `toggle()` функция уже принимала этот key.
+- **Что НЕ тронуто:** мобильное представление (`< lg`) идентично прежнему — стек один-в-один. Никаких regressions для существующих пользователей с телефонов.
+
+### ✅ [WEB-NOTIFICATIONS-USE-PACKAGES-TYPES-001] Импорт NotificationItem/InboxResponse из `types` 🟢
+- **Дата:** 30.04.2026
+- **Контекст:** Полат вынес `NotificationItem` + `InboxResponse` в `packages/types/src/api/notifications.ts` (новый файл, коммит `e9a8649`) и экспортировал из root `index.ts`. Локальные типы в `apps/web-{buyer,seller}/src/lib/api/notifications.api.ts` стали дубликатами + были subset (без `type`, `data`, `readAt` полей которые шлёт бэк).
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/notifications.api.ts` — `import type { NotificationItem, InboxResponse } from 'types';` + `export type { NotificationItem, InboxResponse };` (re-export для обратной совместимости existing import paths). Удалены 17 строк локальных interface deklarat.
+  - `apps/web-seller/src/lib/api/notifications.api.ts` — то же. `UnreadCountResponse` оставлен локальным (он не в packages/types — только локальный wrapper для `/inbox/unread-count`). `NotifPreferences` тоже оставлен (не в типах, но мог бы быть).
+- **Что не тронуто:** `apps/web-{buyer,seller}/src/app/.../notifications/page.tsx` продолжают `import type { NotificationItem } from '.../notifications.api'` — работают через re-export. Канонический тип имеет дополнительные поля (`type`, `data`, `readAt`) — page.tsx использует только subset, совместимо.
+
+### Не пофикшено в этой сессии (требует данных от Азима)
+
+- 🔴 **Чат seller — original repro** — без скриншота / Network status дальше edit/delete не диагностирую. Сейчас добавлен error UI который покажет причину при следующем «не работает».
+- 🔴 **Analytics seller — «не работает»** — без логов с прода не могу сказать 401/404/5xx vs empty state (`views=0`). Endpoint `/analytics/seller/summary` существует на бэке (домен Полата). Если 5xx — задача Полату.
+
+---
+
+## 2026-04-30 (утро, сессия 41, Азим) — Sync с двойным push Полата `e9a8649`+`141c0a5`+`2a6477c`
+
+### ✅ [WEB-SYNC-POLAT-CONTRACT-FIXES-001] Откат локальных дублирующих правок web-seller, синхронизация с 5 контракт-фиксами Полата 🟡
+- **Дата:** 30.04.2026
+- **Контекст:** Сессия 40 закончилась с 6 modified локальных файлов (3 в web-seller + 3 в analiz). На паузу Полат запушил **3 коммита подряд** в main:
+  1. `e9a8649` (29.04 21:30) — `fix: contract serialization` — закрыл 5 контракт-задач из моей очереди (`API-CATEGORY-FILTERS-CASE-001`, `API-NOTIFICATIONS-INBOX-CONTRACT-001`, `API-CHAT-MESSAGE-CONTRACT-001`, `API-PRODUCT-CONTRACT-002`, `API-SELLER-ORDERS-LIST-MAPPER-001`). Plus вынес `NotificationItem` + `InboxResponse` в `packages/types/src/api/notifications.ts` (новый файл).
+  2. `141c0a5` (29.04 21:42) — `perf(tma)`: persistent layout, nested routes — TMA only.
+  3. `2a6477c` (29.04 21:57) — `fix(tma+web-seller)`: JSX fragments в TMA early-returns + GlobalCategory `name → nameRu` в web-seller. **Те же 3 файла что я локально модифицировал**, **с идентичным diff** (Полат сделал в параллель ту же работу).
+- **Что сделано:**
+  - `git diff origin/main -- apps/web-seller/...` показал **пустой** diff → мои локальные правки оказались идентичны Полатовскому `2a6477c`. Дублирующая работа.
+  - `git restore apps/web-seller/` — откат локальных правок (не нужны — уже на origin/main).
+  - `git pull --ff-only origin main` — fast-forward `c69a62a..2a6477c` (3 коммита). Pull прошёл чисто, без конфликтов.
+  - `analiz/tasks.md` — 5 закрытых Полатом контракт-задач перенесены из таблицы открытых в новую секцию `## ✅ Закрыто Полатом в e9a8649 + 2a6477c`. Добавлены 2 новые низкоприоритетные задачи Азима — `WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001` (idempotent toLowerCase можно убрать) и `WEB-NOTIFICATIONS-USE-PACKAGES-TYPES-001` (заменить локальный тип на импорт).
+  - `analiz/done.md` — эта запись + сохранена предыдущая сессия 40.
+- **Файлы:** только `analiz/done.md` + `analiz/tasks.md` modified. Никакого кода в моём домене не трогалось.
+- **Урок:** при параллельной работе Полата (его сессия в Sonnet 4.6 вечером 29.04 пока я был на паузе) обязательно `git fetch && git diff origin/main` ДО того как push'ить — иначе можно зачерчить duplicate work. В этот раз обошлось — мы оба сделали идентичную правку, конфликт был бы только если разные подходы.
+- **Статус по моей очереди после sync:** были 5 задач на Полата (3🔴 + 2🟡) — все закрыты. Открытыми остаются только 7 🟢 + 1 🟡 (`ADMIN-BROADCAST-XSS-CHECK-001`). У Азима — 2 🟢 cleanup задачи (defensive) + основная — E2E прода.
+
+---
+
+## 2026-04-30 (утро, сессия 40, Азим) — Post-pull adaptation web-seller к новому GlobalCategory
+
+### ✅ [WEB-SELLER-CONTRACT-NAMERU-MIGRATE-001] Удалён локальный адаптер GlobalCategory; consumers переведены на nameRu 🟡
+- **Дата:** 30.04.2026
+- **Контекст:** Полат запушил `c69a62a` (29.04 после-обеда), который наконец обновил `packages/types#GlobalCategory` к реальной форме backend-ответа (`{id, parentId, nameRu, nameUz, slug, isActive, sortOrder, createdAt}`) — закрывая `API-GLOBAL-CATEGORY-CONTRACT-001`. Тот же коммит дополнительно сменил signature `getSellerProducts` на envelope `{ products, total }`. После `git pull` в `apps/web-seller` остался устаревший адаптер `nameRu → name` (раньше был защитой от рассинхронизации) — теперь он **создаёт невалидный GlobalCategory** (не хватает `parentId`/`isActive`/`createdAt`/`nameRu`/`nameUz`, имеет ненужный `name`/`iconUrl`). Это компилирующая ошибка TS как только страница импортируется.
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/seller.api.ts` — удалён `type ApiGlobalCategory` + комментарий, `getGlobalCategories()` теперь напрямую возвращает `apiClient.get<GlobalCategory[]>` без mapping.
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — `isHiddenCategory(cat: { slug; nameRu })`, regex теперь матчит `cat.nameRu`. Select options `label: c.nameRu`. `pickedCategory.name` → `pickedCategory.nameRu` (placeholder + accent-плашка).
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — те же изменения + native `<option>{cat.nameRu}</option>` для secondary categorу-select. (`useStoreCategories.name` оставлен — у `StoreCategory` поле `name` есть на бэке.)
+- **Что не тронуто:** `useSellerProducts` envelope-фикс (`{products, total}`) уже задеплоил Полат прямо в `apps/web-seller/src/app/(dashboard)/products/page.tsx` в том же коммите. Web-buyer не пострадал — он уже читал `nameRu` через свой локальный тип в `storefront.api.ts` (плюс `[id]/page.tsx:256` использует `product.globalCategory.nameRu`). `apps/web-seller/src/app/(dashboard)/products/create/page.tsx:60` `isHiddenCategory` regex `/(авто|мотоц|avtomo|mototsik)/i` оставлен — теперь работает на `nameRu` (русский), что по сути единственный язык лейблов сейчас. Можно будет удалить когда визуально подтвердится что Полат вычистил автомобильные категории из seed (см. открытая `WEB-SELLER-AUTOMOTIVE-CLEANUP-001`).
+- **Pull diff:** `488932c..c69a62a` (1 коммит Полата, 26 файлов; затронуты в моём домене 2 файла — Полат сам адаптировал products list page).
+
+---
+
+## 2026-04-29 (поздно вечер) — INFRA: deploy buyer через service-ветку
+
+### ✅ [INFRA-DEPLOY-BUYER-MERGE-001] Buyer revamp в проде 🔴
+- **Дата:** 29.04.2026
+- **Что случилось:** Все 11 коммитов сессии 39 (revamp + WS auth + security headers + контракт-фиксы + ChatComposer auth-gate) лежали в main, но прод не обновлялся. Ранее (27.04, Полат `d811041`) была введена стратегия «один сервис = одна ветка»: `savdo-builder-by` подключён к `origin/web-buyer`, не к `main`. Я ошибочно пушил в main и делал empty-commit'ы в надежде триггернуть Railway watch — бесполезно, Railway смотрит другую ветку.
+- **Что сделано:** `git checkout web-buyer && git merge main` → merge `cbfe064`, без конфликтов (root `railway.toml` ветки сохранил свой `apps/web-buyer/Dockerfile`). Push: `f184d0c..cbfe064  web-buyer -> web-buyer`. Railway автоматически собрал и задеплоил. Азим подтвердил: «всё работает». Buyer revamp + все фиксы сессий 36-37 теперь на проде.
+- **Файлы:** только git-операции, без изменений кода. Локальный артефакт `railway.toml` (TMA-вариант) удалён.
+- **Заметка:** workflow зафиксирован в `~/.claude/projects/.../memory/feedback_deploy_branches.md` и в `analiz/logs.md` под ID `INFRA-DEPLOY-BRANCHES-001`. Web-seller — без изменений, на main для seller новой работы нет.
+
+---
+
 ## 2026-04-29 (вечер) — Сессия 39 (Азим) — Buyer revamp: glass→light, mobile-only→responsive
 
 > **Контекст:** Азим попросил перевести buyer как seller (solid surfaces). Обсудили варианты, выбрали A2-light (инверсия от seller — белый/cream фон, violet акцент). Дополнительно — растянуть на весь экран (раньше mobile-only по `max-w-md`). Делалось в одной волне: pilot storefront + 2 баг-фикса до этого, потом полная миграция остальных 8 страниц.

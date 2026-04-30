@@ -31,7 +31,7 @@ export default function Header() {
         <Link
           href={slug ? `/${slug}` : "/"}
           className="text-lg font-bold flex-shrink-0"
-          style={{ color: colors.accent }}
+          style={{ color: colors.brand }}
         >
           Savdo
         </Link>
