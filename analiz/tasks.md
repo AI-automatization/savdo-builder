@@ -81,17 +81,24 @@
 - (бонус, `2a6477c`) TMA: JSX fragment wrapper в buyer/ChatPage, seller/ChatPage, seller/OrdersPage — после удаления AppShell early-returns ломали build (TS1005). Также Полат сам докрутил GlobalCategory `name → nameRu` в `web-seller/products/[id]/edit/page.tsx`, `create/page.tsx`, `seller.api.ts` — параллельно с моей локальной адаптацией; мои локальные правки оказались идентичны и были откатаны через `git restore` перед `git pull`.
 - (бонус, `141c0a5`) TMA persistent layout: nested routes + outlet, BottomNav и AppShell больше не remount при навигации; навигация instant. Не наш домен (TMA).
 
-## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
+## ✅ Закрыто в текущей сессии (30.04.2026)
+
+- `TMA-STICKER-CRASH-001` 🔴 — **React error #130** в TMA на StoresPage + DashboardPage. Root cause: `lottie-react` CJS/ESM interop в Vite prod bundle → `Lottie` = module object вместо компонента. Нотоэмоджи CDN: 404 на `1f3ea`. Fix: убран `lottie-react`, `Sticker` → статичный emoji `<span>`. `1004e33`
+- `TMA-PRODUCT-CARD-ROUTE-001` 🔴 — `ProductCard` навигировал на `/buyer/product/:id` (несуществующий маршрут). Fix: `/buyer/store/:slug/product/:id`. `1004e33`
+
+---
+
+## 🚧 Открыто — Полат (TMA / `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|
-| `API-BUYER-ORDERS-LIST-MAPPER-001` | 🟢 | `GET /buyer/orders` (`orders.controller.ts:69-79`) возвращает минимальный shape `{id, orderNumber, status, totalAmount, currencyCode, createdAt}` — без `storeId`/`deliveryFee`/`preview`/`buyer` которые тип `OrderListItem` объявляет required/optional. Сейчас buyer order list не падает, но любая попытка добавить thumbnail или фильтр по storeId сломается. |
-| `API-PRODUCT-CONTRACT-003` | 🟢 | `GET /storefront/products` без `storeId` возвращает `{data, meta}` envelope, со `storeId` — голый массив. TMA / будущий platform feed может схватить `arr.map is not a function`. Унифицировать форму. |
-| `API-ORDER-CONTRACT-001` | 🟢 | `Order` mapper возвращает `orderNumber` (не в типе). `paymentStatus` объявлен non-null, шлётся `?? null`. Type-only fixes. |
-| `TYPES-VARIANT-REF-CONTRACT-001` | 🟢 | `VariantRef` в `products.ts:40-43` объявляет `{titleOverride, stockQuantity}`, бэк cart.mapper.ts:67-69 шлёт `{id, sku, title}`. Тип активно лжёт. Обновить тип к реальной форме. |
-| `API-CART-EMPTY-CONTRACT-001` | 🟢 | `mapEmptyCart()` шлёт `{id: null, ...}`, тип требует `id: string`. Альтернатива — фронт принимает `Cart \| null`. |
-| `ADMIN-BROADCAST-XSS-CHECK-001` | 🟡 | `apps/admin/src/pages/BroadcastPage.tsx:41` использует `dangerouslySetInnerHTML={{ __html: html \|\| '...' }}`. Проверить откуда `html` приходит. Если он формируется из user-input (rich-text editor) без sanitization → XSS в админке. Если это server-формируемый HTML или константа — OK. Найдено в pre-MVP audit (сессия 38, Азим). |
-| `INFRA-FULL-RELOAD-NAV-001` | 🟢 | Полат жаловался на «перезагружает полный сайт при переходе между страницами». В моём домене (web-buyer/web-seller) **0** `window.location.*` — навигация SPA-стиль через next/link и router. Подозреваемые места: `apps/admin/src/lib/api.ts:67,74` — `window.location.href = '/login'` при 401; `apps/tma/src/App.tsx:45` — `window.location.replace('/')` в Error Boundary; `apps/tma/src/pages/buyer/StoresPage.tsx:241` — `window.location.reload()` на retry. Если Полат имел в виду эти места — заменить на `useRouter()`/SDK helpers. Если речь о другом — нужен пример URL/действия. |
+| ~~`API-BUYER-ORDERS-LIST-MAPPER-001`~~ | ✅ | Полный OrderListItem shape: storeId, deliveryFee, preview (items take:1), customerPhone/FullName. `db72038` |
+| ~~`API-PRODUCT-CONTRACT-003`~~ | ✅ | Унифицирован — оба режима возвращают `{data,meta}`, web-buyer потребители обновлены. `6290737` |
+| ~~`API-ORDER-CONTRACT-001`~~ | ✅ | `orderNumber` добавлен в `OrderListItem` type. `paymentStatus: PaymentStatus | null`. `db72038` |
+| ~~`TYPES-VARIANT-REF-CONTRACT-001`~~ | ✅ | `VariantRef` → `{id, sku, title}`. Web-buyer cart/checkout: `titleOverride` → `title`. `db72038` |
+| ~~`API-CART-EMPTY-CONTRACT-001`~~ | ✅ | `Cart.id/storeId: string | null`. Web-buyer: `cart!.storeId ?? ''`. `db72038` |
+| ~~`ADMIN-BROADCAST-XSS-CHECK-001`~~ | ✅ | Проверено: html — preview из user-input через pipeline HTML-escaping. Фикс: regex `(.*?)` → `[^"]*` в href capture — предотвращает attribute injection. Самостоятельный XSS невозможен. `6290737` |
+| ~~`INFRA-FULL-RELOAD-NAV-001`~~ | ✅ | TMA: AppShell лифтнут в nested routes → persistent layout (141c0a5). Admin: `window.location.href='/login'` → `CustomEvent auth:logout` + `AuthLogoutListener` в App.tsx. `6290737` |
 | `WEB-CSP-HEADER-002` | 🟢 | Сессия 38 добавила базовый набор security-headers, но **CSP не включён** (требует точного списка allowed sources: API_URL, R2, Telegram media, Google Fonts, …). На post-MVP — без CSP защита от XSS-инъекции в случае компрометации фронта неполная. |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
@@ -100,7 +107,7 @@
 |----|----------|--------|
 | Тест end-to-end в проде (Railway пофикшен 28-29.04, фичи сессии 36+37 раскатываются) | 🟡 | **Сессия 36 фронт (3 фичи):** (1) Seller `/profile` → загрузить аватар. (2) Чат seller — trash в шапке. (3) Чат seller — ⋯ → Редактировать → «изменено · …». (4) Чат seller — ⋯ → Удалить → «Сообщение удалено». (5) Через 15 мин «Редактировать» исчезает. (6) Те же 4 проверки в web-buyer `/chats`. (7) Edit от seller → buyer видит «изменено». (8) **DisplayType:** SLIDER → точки. COLLAGE_2X2 → 2×2 grid. **Сессия 37 (новое):** (9) Чат — отправить, подождать 35 мин (срок refresh), отправить ещё → должно работать (WS auth dynamic token). (10) `/notifications` (seller) — список отображается с записями (был пустой из-за contract-mismatch). (11) Витрина магазина с категорий-фильтром → выбрать SELECT-фильтр (например бренд) → dropdown с опциями появился (раньше показывался text input). |
 | `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` | 🟢 | После того как Азим визуально подтвердит что Railway задеплоил `18fa355` и в `/products/create` dropdown категорий нет авто-пунктов — удалить `isHiddenCategory(slug)` regex-фильтр из `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` и `[id]/edit/page.tsx`. **ОПАСНО удалять до проверки** — если cleanup не отработал на проде, продавцы снова увидят авто. |
-| `WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001` | 🟢 | После `e9a8649` бэк отдаёт `fieldType` lowercase. Локальный `.toLowerCase()` в `apps/web-buyer/src/lib/api/storefront.api.ts` `getCategoryFilters` теперь idempotent дублёр — можно убрать. Низкий приоритет: текущий код безопасен. |
+| ~~`WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001`~~ | ✅ | Удалён defensive `.toLowerCase()` в `storefront.api.ts`. |
 
 ---
 
