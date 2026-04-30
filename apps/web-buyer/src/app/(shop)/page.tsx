@@ -52,7 +52,7 @@ export default function HomePage() {
           >
             <ShoppingCart size={36} style={{ color: "#FFFFFF" }} />
           </div>
-          <span className="text-2xl font-bold tracking-tight" style={{ color: colors.accent }}>
+          <span className="text-2xl font-bold tracking-tight" style={{ color: colors.brand }}>
             Savdo
           </span>
         </div>
