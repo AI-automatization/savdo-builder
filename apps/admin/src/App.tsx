@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { auth } from './lib/api'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
@@ -28,9 +29,20 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return (hasAccess || hasRefresh) ? <>{children}</> : <Navigate to="/login" replace />
 }
 
+function AuthLogoutListener() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    const handler = () => navigate('/login', { replace: true })
+    window.addEventListener('auth:logout', handler)
+    return () => window.removeEventListener('auth:logout', handler)
+  }, [navigate])
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <AuthLogoutListener />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
