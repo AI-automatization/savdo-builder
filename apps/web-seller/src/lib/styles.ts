@@ -29,6 +29,9 @@ export const colors = {
   accent:          '#A78BFA',  // violet-400 — keep as the one bridge to buyer
   accentMuted:     'rgba(167,139,250,0.14)',
   accentBorder:    'rgba(167,139,250,0.40)',
+  // Brand wordmark — single shared violet with buyer for "Savdo" logo. Identical
+  // hex in both apps so the brand identity is unified across light & dark themes.
+  brand:           '#7C3AED',  // identical token in buyer styles.ts
   // Semantic
   success:         '#34D399',  // emerald-400
   warning:         '#FBBF24',  // amber-400

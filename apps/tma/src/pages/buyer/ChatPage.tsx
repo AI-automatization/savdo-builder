@@ -193,7 +193,7 @@ export default function BuyerChatPage() {
   // ════════════════════════════════════════════════════════════════════════════
   if (threadId) {
     return (
-      
+      <>
         {/* Report confirmation dialog */}
         {reportTarget && (
           <div
@@ -382,7 +382,7 @@ export default function BuyerChatPage() {
             </div>
           )}
         </div>
-      
+      </>
     );
   }
 

@@ -57,8 +57,8 @@ const HIDDEN_CATEGORY_SLUGS = new Set([
   'auto', 'automobiles',
 ]);
 const HIDDEN_CATEGORY_NAME_RE = /(авто|мотоц|avtomo|mototsik)/i;
-function isHiddenCategory(cat: { slug: string; name: string }): boolean {
-  return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.name);
+function isHiddenCategory(cat: { slug: string; nameRu: string }): boolean {
+  return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.nameRu);
 }
 
 function titlePlaceholder(categoryName?: string | null, slug?: string | null): string {
@@ -134,7 +134,7 @@ export default function CreateProductPage() {
     () => globalCategories.find((c) => c.id === watchedCategoryId) ?? null,
     [globalCategories, watchedCategoryId],
   );
-  const titleHint       = titlePlaceholder(pickedCategory?.name, pickedCategory?.slug);
+  const titleHint       = titlePlaceholder(pickedCategory?.nameRu, pickedCategory?.slug);
   const descriptionHint = descriptionPlaceholder(pickedCategory?.slug);
 
   async function onSubmit(values: CreateProductForm) {
@@ -257,7 +257,7 @@ export default function CreateProductPage() {
               <Select
                 value={watchedCategoryId ?? ''}
                 onChange={(v) => setValue('globalCategoryId', v, { shouldValidate: true, shouldDirty: true })}
-                options={globalCategories.map((c) => ({ value: c.id, label: c.name }))}
+                options={globalCategories.map((c) => ({ value: c.id, label: c.nameRu }))}
                 placeholder="— Выберите категорию —"
                 searchPlaceholder="Поиск категории…"
                 clearable
@@ -271,7 +271,7 @@ export default function CreateProductPage() {
                   <Check size={14} style={{ color: colors.accent, flexShrink: 0 }} />
                   <span className="text-xs flex-1" style={{ color: colors.textPrimary }}>
                     Товар появится у покупателей в категории{' '}
-                    <strong style={{ color: colors.accent }}>«{pickedCategory.name}»</strong>{' '}
+                    <strong style={{ color: colors.accent }}>«{pickedCategory.nameRu}»</strong>{' '}
                     и попадёт под её фильтры.
                   </span>
                 </div>

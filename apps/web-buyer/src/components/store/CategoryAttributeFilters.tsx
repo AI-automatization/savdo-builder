@@ -143,7 +143,7 @@ export default function CategoryAttributeFilters({
                         : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
                     }
                   >
-                    {cat.name}
+                    {cat.nameRu}
                   </button>
                 );
               })}

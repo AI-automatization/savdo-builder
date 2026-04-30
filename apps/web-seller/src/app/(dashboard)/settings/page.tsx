@@ -767,6 +767,13 @@ function NotifPreferencesSection() {
         disabled={update.isPending}
         onChange={(v) => toggle('webPushEnabled', v)}
       />
+      <ToggleRow
+        label="Push в мобильном"
+        description="Уведомления в Telegram-приложении продавца"
+        checked={prefs?.mobilePushEnabled ?? false}
+        disabled={update.isPending}
+        onChange={(v) => toggle('mobilePushEnabled', v)}
+      />
       {saved && (
         <p className="text-xs" style={{ color: colors.success }}>Сохранено</p>
       )}
@@ -781,13 +788,19 @@ function NotifPreferencesSection() {
 
 export default function SettingsPage() {
   return (
-    <div className="flex flex-col gap-5 max-w-xl">
+    <div className="flex flex-col gap-5 max-w-5xl">
       <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
-      <StoreSettingsSection />
-      <DeliverySettingsSection />
-      <StoreCategoriesSection />
-      <ProfileSettingsSection />
-      <NotifPreferencesSection />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <div className="flex flex-col gap-5 min-w-0">
+          <StoreSettingsSection />
+          <ProfileSettingsSection />
+        </div>
+        <div className="flex flex-col gap-5 min-w-0">
+          <DeliverySettingsSection />
+          <StoreCategoriesSection />
+          <NotifPreferencesSection />
+        </div>
+      </div>
     </div>
   );
 }

@@ -628,10 +628,10 @@ export class ProductsController {
       return { data, meta: { total, page: page ? parseInt(page, 10) : 1 } };
     }
 
-    // Store-specific feed (existing behavior)
+    // Store-specific feed
     const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
     const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
+    const data = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
       const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
       return {
         ...rest,
@@ -642,6 +642,7 @@ export class ProductsController {
         variantCount: _count?.variants ?? 0,
       };
     });
+    return { data, meta: { total: data.length, page: 1 } };
   }
 
   @Get('storefront/products/:id')
