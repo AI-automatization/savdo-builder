@@ -69,11 +69,18 @@ export class OrdersController {
     return {
       data: orders.map((o: any) => ({
         id: o.id,
-        orderNumber: o.orderNumber ?? null,
+        orderNumber: o.orderNumber,
+        storeId: o.storeId,
         status: o.status,
         totalAmount: Number(String(o.totalAmount)),
+        deliveryFee: Number(String(o.deliveryFeeAmount ?? 0)),
         currencyCode: o.currencyCode ?? 'UZS',
         createdAt: (o.placedAt ?? o.createdAt ?? new Date()).toISOString(),
+        customerPhone: o.customerPhone ?? undefined,
+        customerFullName: o.customerFullName ?? undefined,
+        preview: o.items?.[0]
+          ? { title: o.items[0].productTitleSnapshot, imageUrl: o.items[0].primaryImageUrlSnapshot ?? null, itemCount: o._count?.items ?? 1 }
+          : null,
       })),
       meta: { total, page, limit, totalPages },
     };

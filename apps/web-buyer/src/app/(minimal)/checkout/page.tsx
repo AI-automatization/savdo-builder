@@ -417,7 +417,7 @@ export default function CheckoutPage() {
               ) : (
                 cartItems.map((it) => {
                   const label = (it as unknown as { product?: { title?: string } }).product?.title ?? "Товар";
-                  const variantLabel = it.variant?.titleOverride ?? null;
+                  const variantLabel = it.variant?.title ?? null;
                   const unit = cartItemUnitPrice(it);
                   const lineTotal = unit * (it.quantity || 0);
                   return (

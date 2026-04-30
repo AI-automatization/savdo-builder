@@ -16,8 +16,8 @@ export interface CartItem {
 // ── Cart ──────────────────────────────────────────────────────────────────────
 
 export interface Cart {
-  id: string;
-  storeId: string;
+  id: string | null;
+  storeId: string | null;
   items: CartItem[];
   totalAmount: number;
   currencyCode: string;

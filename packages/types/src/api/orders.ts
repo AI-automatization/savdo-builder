@@ -21,6 +21,7 @@ export interface OrderItem {
 /** Order in list response */
 export interface OrderListItem {
   id: string;
+  orderNumber: string;
   storeId: string;
   status: OrderStatus;
   totalAmount: number;
@@ -52,7 +53,7 @@ export interface Order extends OrderListItem {
   store: Pick<StoreRef, 'name' | 'telegramContactLink'>;
   items: OrderItem[];
   paymentMethod: PaymentMethod | null;
-  paymentStatus: PaymentStatus;
+  paymentStatus: PaymentStatus | null;
   deliveryType: DeliveryType;
   updatedAt: string;
 }

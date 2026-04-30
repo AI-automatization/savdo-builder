@@ -85,9 +85,9 @@ function CartItemRow({ item, storeId, pendingId }: { item: CartItem; storeId: st
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-snug truncate" style={{ color: colors.textPrimary }}>{item.product.title}</p>
-        {item.variant?.titleOverride && (
+        {item.variant?.title && (
           <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
-            {item.variant.titleOverride}
+            {item.variant.title}
           </p>
         )}
         <span className="text-sm font-semibold" style={{ color: colors.accent }}>
@@ -216,7 +216,7 @@ export default function CartPage() {
           <>
             <div className="flex flex-col gap-3">
               {items.map((item) => (
-                <CartItemRow key={item.id} item={item} storeId={cart!.storeId} pendingId={null} />
+                <CartItemRow key={item.id} item={item} storeId={cart!.storeId ?? ''} pendingId={null} />
               ))}
             </div>
 
