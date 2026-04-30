@@ -78,9 +78,9 @@ export default function DashboardPage() {
 
   const ordersList = (
     <>
-      <div className="flex items-center justify-between">
-        <div className="section-label">Последние заказы</div>
-        <button onClick={() => navigate('/seller/orders')} className="text-xs" style={{ color: '#A855F7' }}>
+      <div className="flex items-center gap-2">
+        <div className="section-label flex-1 min-w-0">Последние заказы</div>
+        <button onClick={() => navigate('/seller/orders')} className="text-xs shrink-0" style={{ color: '#A855F7' }}>
           Все →
         </button>
       </div>
