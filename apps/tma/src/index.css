@@ -144,3 +144,65 @@ body {
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.25); border-radius: 8px; }
+
+/* ── Gradient text utility ─────────────────────────────────────────────────── */
+.text-gradient {
+  background: linear-gradient(135deg, #A855F7 0%, #22D3EE 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Input focus glow ─────────────────────────────────────────────────────── */
+input:focus {
+  outline: none !important;
+  border-color: rgba(168,85,247,0.55) !important;
+  box-shadow: 0 0 0 3px rgba(168,85,247,0.12) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* ── Section label with trailing divider ─────────────────────────────────── */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.28);
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 1px;
+}
+
+/* ── Primary gradient CTA button ─────────────────────────────────────────── */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 16px;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 20px rgba(168,85,247,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 10px rgba(168,85,247,0.20);
+}
+@media (hover: hover) {
+  .btn-primary:hover {
+    box-shadow: 0 6px 28px rgba(168,85,247,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+  }
+}

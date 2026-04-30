@@ -78,11 +78,9 @@ export default function DashboardPage() {
 
   const ordersList = (
     <>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          Последние заказы
-        </h2>
-        <button onClick={() => navigate('/seller/orders')} className="text-xs" style={{ color: '#A855F7' }}>
+      <div className="flex items-center gap-2">
+        <div className="section-label flex-1 min-w-0">Последние заказы</div>
+        <button onClick={() => navigate('/seller/orders')} className="text-xs shrink-0" style={{ color: '#A855F7' }}>
           Все →
         </button>
       </div>
@@ -151,10 +149,10 @@ export default function DashboardPage() {
             <Sticker emoji="🏪" size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold" style={{ color: '#A855F7' }}>Панель продавца</h1>
+            <h1 className="text-base font-bold text-gradient">Панель продавца</h1>
             {user && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                {user.first_name}
+              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                Привет, {user.first_name} 👋
               </p>
             )}
           </div>
@@ -292,6 +290,20 @@ export default function DashboardPage() {
                 style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.22)' }}
               >
                 <span>➕</span> Добавить
+              </button>
+              <button
+                onClick={() => navigate('/seller/orders')}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
+                style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}
+              >
+                <span>📋</span> Все заказы
+              </button>
+              <button
+                onClick={() => navigate('/seller/store')}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
+                style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.20)' }}
+              >
+                <span>🏪</span> Мой магазин
               </button>
             </div>
 

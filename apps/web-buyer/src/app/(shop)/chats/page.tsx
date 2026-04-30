@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
@@ -89,7 +89,10 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
   const [confirmDeleteMsg, setConfirmDeleteMsg] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const messages = data?.messages ?? [];
+  const messages = useMemo(() => {
+    const raw = data?.messages ?? [];
+    return [...raw].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+  }, [data?.messages]);
   const { title, subtitle } = getThreadDisplay(thread);
 
   useEffect(() => {
