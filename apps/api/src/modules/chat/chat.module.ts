@@ -12,9 +12,10 @@ import { UsersModule } from '../users/users.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { StoresModule } from '../stores/stores.module';
 import { SocketModule } from '../../socket/socket.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [ProductsModule, OrdersModule, UsersModule, SellersModule, StoresModule, SocketModule],
+  imports: [ProductsModule, OrdersModule, UsersModule, SellersModule, StoresModule, SocketModule, TelegramModule],
   controllers: [ChatController],
   providers: [
     ChatRepository,

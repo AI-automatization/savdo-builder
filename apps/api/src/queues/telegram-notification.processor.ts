@@ -9,6 +9,8 @@ import {
   NotifyStoreApprovedData,
   NotifyStoreRejectedData,
   NotifyVerificationApprovedData,
+  NotifyOrderStatusChangedData,
+  NotifyChatMessageData,
 } from '../modules/telegram/services/seller-notification.service';
 import { TELEGRAM_JOB_BROADCAST } from '../modules/admin/use-cases/broadcast.use-case';
 
@@ -16,6 +18,26 @@ export const TELEGRAM_JOB_NEW_ORDER = 'new-order';
 export const TELEGRAM_JOB_STORE_APPROVED = 'store-approved';
 export const TELEGRAM_JOB_STORE_REJECTED = 'store-rejected';
 export const TELEGRAM_JOB_VERIFICATION_APPROVED = 'verification-approved';
+export const TELEGRAM_JOB_ORDER_STATUS_CHANGED = 'order-status-changed';
+export const TELEGRAM_JOB_CHAT_MESSAGE = 'chat-message';
+
+const ORDER_STATUS_LABEL_BUYER: Record<string, string> = {
+  PENDING:    '⏳ ожидает подтверждения',
+  CONFIRMED:  '✅ подтверждён продавцом',
+  PROCESSING: '📦 готовится к отправке',
+  SHIPPED:    '🚚 отправлен',
+  DELIVERED:  '🎉 доставлен',
+  CANCELLED:  '❌ отменён',
+};
+
+const ORDER_STATUS_LABEL_SELLER: Record<string, string> = {
+  PENDING:    '⏳ ожидает подтверждения',
+  CONFIRMED:  '✅ подтверждён',
+  PROCESSING: '📦 в обработке',
+  SHIPPED:    '🚚 отправлен',
+  DELIVERED:  '🎉 доставлен',
+  CANCELLED:  '❌ отменён покупателем',
+};
 
 @Processor(QUEUE_TELEGRAM_NOTIFICATIONS)
 export class TelegramNotificationProcessor extends WorkerHost {
@@ -67,6 +89,38 @@ export class TelegramNotificationProcessor extends WorkerHost {
             `@${d.sellerTelegramUsername}`,
             '✅ Ваш аккаунт продавца верифицирован. Теперь вы можете создать магазин.',
           );
+          break;
+        }
+
+        case TELEGRAM_JOB_ORDER_STATUS_CHANGED: {
+          const d = job.data as NotifyOrderStatusChangedData;
+          const labelMap = d.recipientRole === 'BUYER' ? ORDER_STATUS_LABEL_BUYER : ORDER_STATUS_LABEL_SELLER;
+          const statusText = labelMap[d.newStatus] ?? d.newStatus;
+          const intro = d.recipientRole === 'BUYER'
+            ? `🛒 Ваш заказ #${d.orderNumber}`
+            : `📦 Заказ #${d.orderNumber}`;
+          const text =
+            `${intro} — ${statusText}\n` +
+            `Магазин: ${d.storeName}\n` +
+            `Сумма: ${d.total.toLocaleString('ru')} ${d.currency}`;
+          await this.telegramBot.sendMessage(d.recipientChatId, text);
+          break;
+        }
+
+        case TELEGRAM_JOB_CHAT_MESSAGE: {
+          const d = job.data as NotifyChatMessageData;
+          const contextParts: string[] = [];
+          if (d.productTitle) contextParts.push(`«${d.productTitle}»`);
+          else if (d.orderNumber) contextParts.push(`заказ #${d.orderNumber}`);
+          const subjectLine = d.storeName
+            ? `🏪 ${d.storeName}`
+            : `👤 ${d.senderName}`;
+          const contextLine = contextParts.length ? `📌 ${contextParts.join(' · ')}\n` : '';
+          const text =
+            `${subjectLine}\n` +
+            contextLine +
+            `💬 ${d.messagePreview}`;
+          await this.telegramBot.sendMessage(d.recipientChatId, text);
           break;
         }
 

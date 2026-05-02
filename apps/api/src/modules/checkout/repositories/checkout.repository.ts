@@ -40,6 +40,18 @@ export interface BuyerWithUser {
   lastName: string | null;
   user: {
     phone: string;
+    telegramId: bigint | null;
+  };
+}
+
+export interface StoreWithSeller {
+  id: string;
+  sellerId: string;
+  name: string;
+  seller: {
+    telegramUsername: string;
+    telegramChatId: bigint | null;
+    telegramNotificationsActive: boolean;
   };
 }
 
@@ -56,17 +68,28 @@ export class CheckoutRepository {
         firstName: true,
         lastName: true,
         user: {
-          select: { phone: true },
+          select: { phone: true, telegramId: true },
         },
       },
     }) as Promise<BuyerWithUser | null>;
   }
 
-  async findStoreWithSeller(storeId: string): Promise<{ id: string; sellerId: string } | null> {
+  async findStoreWithSeller(storeId: string): Promise<StoreWithSeller | null> {
     return this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, sellerId: true },
-    });
+      select: {
+        id: true,
+        sellerId: true,
+        name: true,
+        seller: {
+          select: {
+            telegramUsername: true,
+            telegramChatId: true,
+            telegramNotificationsActive: true,
+          },
+        },
+      },
+    }) as Promise<StoreWithSeller | null>;
   }
 
   /**
