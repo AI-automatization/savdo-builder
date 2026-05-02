@@ -1,5 +1,46 @@
 # Done — Азим + Полат
 
+## 2026-05-02 (сессия 45 продолжение 2, Полат) — Wishlist (избранное товаров): backend + TMA UI
+
+### ✅ [WISHLIST-CONTRACT-001] Wishlist — endpoints + тип + миграция (был БЛОКЕР для UI) 🟡
+### ✅ [TMA-BUYER-WISHLIST-001] Wishlist UI в TMA: heart на карточках + страница /buyer/wishlist 🟡
+
+- **Контекст:** Полат через Азима «избранное заказов / понравившиеся заказы» — но «избранное заказов» бессмысленно (это статус), скорее всего имелось в виду wishlist товаров. До этого ничего не было ни в БД, ни в типах.
+- **DB migration `20260502000000_add_buyer_wishlist`:**
+  - Новая таблица `buyer_wishlist_items (id, buyerId, productId, createdAt)`
+  - Unique `(buyerId, productId)` — идемпотентный add через upsert
+  - `ON DELETE CASCADE` от Buyer и Product (нет orphan rows)
+  - Индексы на `buyerId` и `productId`
+  - **⚠️ Action для Полата на Railway api shell:** `pnpm db:migrate:deploy`
+- **Schema (`packages/db/prisma/schema.prisma`):** `BuyerWishlistItem` model + back-refs на `Buyer.wishlist` и `Product.wishlistItems`.
+- **Types (`packages/types`):** новый `WishlistItem` интерфейс в `api/wishlist.ts` (id, productId, createdAt, embedded product preview с `isAvailable` computed-флагом). `ProductListItem.inWishlist?: boolean` — выставляется ТОЛЬКО на storefront feed для авторизованных buyer'ов, иначе undefined.
+- **API (`apps/api/src/modules/wishlist/`):**
+  - Новый модуль: controller, repository, 3 use-case (get/add/remove), DTO, module.
+  - `GET /api/v1/buyer/wishlist` → `WishlistItem[]` (все авторизованные buyer'ы; soft-deleted продукты отфильтрованы)
+  - `POST /api/v1/buyer/wishlist` body `{ productId }` → 201 (idempotent через upsert)
+  - `DELETE /api/v1/buyer/wishlist/:productId` → 204 (silent если нет — REST best practice)
+  - Все эндпоинты под `@UseGuards(JwtAuthGuard)`, `resolveBuyerId` через `usersRepo.findById`.
+- **Storefront feed enrichment:**
+  - `GET /storefront/products` теперь использует `OptionalJwtAuthGuard` → принимает и анонимные, и авторизованные запросы.
+  - Если `user.sub` есть и buyer профиль найден → один батч-запрос `wishlistRepo.findExistingProductIds(buyerId, productIds)`, флаг `inWishlist` ставится на каждый item. O(N) memory.
+  - Анонимные ответы не меняются — поля `inWishlist` нет вовсе.
+- **TMA UI:**
+  - Новый `lib/wishlist.ts` — in-memory + sessionStorage кэш, pub/sub для cross-component sync, optimistic add/remove с откатом при ошибке.
+  - `AuthProvider` после успешной auth (BUYER role) делает `hydrateWishlist()` (non-blocking).
+  - Новый компонент `WishlistButton` (variants `card` и `page`) — heart toggle с haptic-feedback, optimistic UI, glassmorphism.
+  - `ProductCard` (storefront feed) — heart overlay в правом верхнем углу изображения.
+  - `ProductPage` — heart кнопка справа от заголовка (page variant).
+  - Новая страница `/buyer/wishlist` — grid с `isAvailable=false` товарами dimmed + overlay «Недоступен» (если seller архивировал или магазин unpublished).
+  - StoresPage header теперь имеет heart-иконку рядом с шестернёй → переход на `/buyer/wishlist`.
+- **Edge cases:**
+  - Wishlist для soft-deleted продукта: repo фильтр исключает из list, но row остаётся (cron в будущем может чистить).
+  - Двойной добавление: upsert idempotent, без ошибки.
+  - Удаление несуществующего: 204 silent.
+
+### Push: `main` → `api` + `tma` ветки. Коммиты `0f46a63` (backend), `fd8721f` (UI).
+
+---
+
 ## 2026-05-02 (сессия 45 продолжение, Полат) — Telegram bot notifications: order status + chat messages
 
 ### ✅ [API-NOTIFICATIONS-ORDER-001] Уведомления покупателю в TG при смене статуса заказа 🔴
