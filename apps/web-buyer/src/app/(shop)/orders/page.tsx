@@ -27,6 +27,7 @@ const FILTER_TABS: { key: OrderStatus | "ALL"; label: string }[] = [
   { key: OrderStatus.CONFIRMED, label: "Подтвержд." },
   { key: OrderStatus.SHIPPED, label: "В пути" },
   { key: OrderStatus.DELIVERED, label: "Доставлены" },
+  { key: OrderStatus.CANCELLED, label: "Отменённые" },
 ];
 
 const toNum = (v: unknown): number => {

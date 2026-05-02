@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -39,9 +40,20 @@ import { AttachProductImageDto } from './dto/attach-product-image.dto';
 import { PrismaService } from '../../database/prisma.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
+import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { ProductStatus } from '@prisma/client';
+
+/**
+ * Allows storefront feed to be called both anonymously (req.user undefined)
+ * and authenticated (req.user populated for inWishlist enrichment).
+ */
+class OptionalJwtAuthGuard extends AuthGuard('jwt') {
+  handleRequest<TUser>(_err: Error, user: TUser): TUser {
+    return user;
+  }
+}
 
 @Controller()
 export class ProductsController {
@@ -62,6 +74,7 @@ export class ProductsController {
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
     private readonly prisma: PrismaService,
+    private readonly wishlistRepo: WishlistRepository,
   ) {}
 
   // ─── Seller routes ────────────────────────────────────────────────────────
@@ -594,7 +607,9 @@ export class ProductsController {
   // ─── Storefront routes (public) ───────────────────────────────────────────
 
   @Get('storefront/products')
+  @UseGuards(OptionalJwtAuthGuard)
   async listStorefrontProducts(
+    @CurrentUser() user: JwtPayload | undefined,
     @Query('storeId') storeId?: string,
     @Query('globalCategoryId') globalCategoryId?: string,
     @Query('storeCategoryId') storeCategoryId?: string,
@@ -605,16 +620,20 @@ export class ProductsController {
     @Query('limit') limit?: string,
   ) {
     // Platform-wide feed (no storeId)
+    let data: Array<Record<string, unknown> & { id: string; inWishlist?: boolean }>;
+    let total: number;
+    let pageNum: number;
+
     if (!storeId) {
       const validSort = (['new', 'price_asc', 'price_desc'] as const).find((s) => s === sort) ?? 'new';
-      const { products, total } = await this.productsRepo.findAllPublic({
+      const result = await this.productsRepo.findAllPublic({
         q,
         globalCategoryId,
         sort: validSort,
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,
       });
-      const data = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
+      data = (result.products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
         const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
         return {
           ...rest,
@@ -625,24 +644,48 @@ export class ProductsController {
           variantCount: _count?.variants ?? 0,
         };
       });
-      return { data, meta: { total, page: page ? parseInt(page, 10) : 1 } };
+      total = result.total;
+      pageNum = page ? parseInt(page, 10) : 1;
+    } else {
+      // Store-specific feed
+      const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
+      const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
+      data = (products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
+        const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
+        return {
+          ...rest,
+          basePrice: Number(basePrice),
+          oldPrice: this.toPrice(oldPrice),
+          salePrice: this.toPrice(salePrice),
+          images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
+          variantCount: _count?.variants ?? 0,
+        };
+      });
+      total = data.length;
+      pageNum = 1;
     }
 
-    // Store-specific feed
-    const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
-    const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-    const data = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
-      return {
-        ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.toPrice(oldPrice),
-        salePrice: this.toPrice(salePrice),
-        images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
-        variantCount: _count?.variants ?? 0,
-      };
+    // Enrich with inWishlist flag for authenticated buyer
+    if (user?.sub && data.length) {
+      const buyerId = await this.resolveBuyerIdOrNull(user.sub);
+      if (buyerId) {
+        const productIds = data.map((p) => p.id);
+        const wishedIds = await this.wishlistRepo.findExistingProductIds(buyerId, productIds);
+        for (const item of data) {
+          item.inWishlist = wishedIds.has(item.id);
+        }
+      }
+    }
+
+    return { data, meta: { total, page: pageNum } };
+  }
+
+  private async resolveBuyerIdOrNull(userId: string): Promise<string | null> {
+    const buyer = await this.prisma.buyer.findUnique({
+      where: { userId },
+      select: { id: true },
     });
-    return { data, meta: { total: data.length, page: 1 } };
+    return buyer?.id ?? null;
   }
 
   @Get('storefront/products/:id')
@@ -688,12 +731,15 @@ export class ProductsController {
   private resolveImageUrl(media: unknown): string {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
+    const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+    // Telegram-stored files always proxy (file URLs expire ~1h)
     if (m.bucket === 'telegram') {
-      const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
       return `${appUrl}/api/v1/media/proxy/${m.id}`;
     }
+    // R2: prefer direct public URL; fall back to proxy if STORAGE_PUBLIC_URL is missing
     const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
-    return r2Base ? `${r2Base}/${m.objectKey}` : '';
+    if (r2Base) return `${r2Base}/${m.objectKey}`;
+    return m.id && appUrl ? `${appUrl}/api/v1/media/proxy/${m.id}` : '';
   }
 
   private async resolveStoreImageUrls(

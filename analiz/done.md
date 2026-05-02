@@ -1,5 +1,172 @@
 # Done — Азим + Полат
 
+## 2026-05-02 (сессия 45 продолжение 2, Полат) — Wishlist (избранное товаров): backend + TMA UI
+
+### ✅ [WISHLIST-CONTRACT-001] Wishlist — endpoints + тип + миграция (был БЛОКЕР для UI) 🟡
+### ✅ [TMA-BUYER-WISHLIST-001] Wishlist UI в TMA: heart на карточках + страница /buyer/wishlist 🟡
+
+- **Контекст:** Полат через Азима «избранное заказов / понравившиеся заказы» — но «избранное заказов» бессмысленно (это статус), скорее всего имелось в виду wishlist товаров. До этого ничего не было ни в БД, ни в типах.
+- **DB migration `20260502000000_add_buyer_wishlist`:**
+  - Новая таблица `buyer_wishlist_items (id, buyerId, productId, createdAt)`
+  - Unique `(buyerId, productId)` — идемпотентный add через upsert
+  - `ON DELETE CASCADE` от Buyer и Product (нет orphan rows)
+  - Индексы на `buyerId` и `productId`
+  - **⚠️ Action для Полата на Railway api shell:** `pnpm db:migrate:deploy`
+- **Schema (`packages/db/prisma/schema.prisma`):** `BuyerWishlistItem` model + back-refs на `Buyer.wishlist` и `Product.wishlistItems`.
+- **Types (`packages/types`):** новый `WishlistItem` интерфейс в `api/wishlist.ts` (id, productId, createdAt, embedded product preview с `isAvailable` computed-флагом). `ProductListItem.inWishlist?: boolean` — выставляется ТОЛЬКО на storefront feed для авторизованных buyer'ов, иначе undefined.
+- **API (`apps/api/src/modules/wishlist/`):**
+  - Новый модуль: controller, repository, 3 use-case (get/add/remove), DTO, module.
+  - `GET /api/v1/buyer/wishlist` → `WishlistItem[]` (все авторизованные buyer'ы; soft-deleted продукты отфильтрованы)
+  - `POST /api/v1/buyer/wishlist` body `{ productId }` → 201 (idempotent через upsert)
+  - `DELETE /api/v1/buyer/wishlist/:productId` → 204 (silent если нет — REST best practice)
+  - Все эндпоинты под `@UseGuards(JwtAuthGuard)`, `resolveBuyerId` через `usersRepo.findById`.
+- **Storefront feed enrichment:**
+  - `GET /storefront/products` теперь использует `OptionalJwtAuthGuard` → принимает и анонимные, и авторизованные запросы.
+  - Если `user.sub` есть и buyer профиль найден → один батч-запрос `wishlistRepo.findExistingProductIds(buyerId, productIds)`, флаг `inWishlist` ставится на каждый item. O(N) memory.
+  - Анонимные ответы не меняются — поля `inWishlist` нет вовсе.
+- **TMA UI:**
+  - Новый `lib/wishlist.ts` — in-memory + sessionStorage кэш, pub/sub для cross-component sync, optimistic add/remove с откатом при ошибке.
+  - `AuthProvider` после успешной auth (BUYER role) делает `hydrateWishlist()` (non-blocking).
+  - Новый компонент `WishlistButton` (variants `card` и `page`) — heart toggle с haptic-feedback, optimistic UI, glassmorphism.
+  - `ProductCard` (storefront feed) — heart overlay в правом верхнем углу изображения.
+  - `ProductPage` — heart кнопка справа от заголовка (page variant).
+  - Новая страница `/buyer/wishlist` — grid с `isAvailable=false` товарами dimmed + overlay «Недоступен» (если seller архивировал или магазин unpublished).
+  - StoresPage header теперь имеет heart-иконку рядом с шестернёй → переход на `/buyer/wishlist`.
+- **Edge cases:**
+  - Wishlist для soft-deleted продукта: repo фильтр исключает из list, но row остаётся (cron в будущем может чистить).
+  - Двойной добавление: upsert idempotent, без ошибки.
+  - Удаление несуществующего: 204 silent.
+
+### Push: `main` → `api` + `tma` ветки. Коммиты `0f46a63` (backend), `fd8721f` (UI).
+
+---
+
+## 2026-05-02 (сессия 45 продолжение, Полат) — Telegram bot notifications: order status + chat messages
+
+### ✅ [API-NOTIFICATIONS-ORDER-001] Уведомления покупателю в TG при смене статуса заказа 🔴
+### ✅ [API-NOTIFICATIONS-CHAT-001] Уведомления о новых сообщениях в чате через TG-бот 🔴
+
+- **Контекст (Полат через Азима, скрины 30.04 14:32):** «должна быть система уведомления / типо ваш заказ оформлен / ваш заказ обработан / ваш заказ получен» + «вам написал клиент имя клиента на счёт "имя товара": "сообщение покупателя", и похожая логика у самого покупателя».
+- **Что было:** Существовал `SellerNotificationService` с методом `notifyNewOrder` для продавца — но **он нигде не вызывался**. `TelegramNotificationProcessor` обрабатывал new-order/store-approved/store-rejected/verification-approved/broadcast. Уведомлений на смену статуса для покупателя и на чат-сообщения не было совсем.
+- **Архитектура решения:** Поверх существующей BullMQ-очереди (`QUEUE_TELEGRAM_NOTIFICATIONS`):
+  - 2 новых job type: `order-status-changed`, `chat-message`.
+  - Fire-and-forget enqueue, до 3 попыток с exponential backoff. Никогда не блокирует HTTP-запрос.
+  - Templates с emoji per-status: ⏳ PENDING, ✅ CONFIRMED, 📦 PROCESSING, 🚚 SHIPPED, 🎉 DELIVERED, ❌ CANCELLED. Для покупателя и продавца разные wording'и (например CANCELLED → «отменён» для buyer-view, «отменён покупателем» для seller-view).
+- **Что сделано:**
+  - `SellerNotificationService` расширен 2 методами: `notifyOrderStatusChanged({recipientChatId, recipientRole, orderNumber, storeName, oldStatus, newStatus, total, currency})` и `notifyChatMessage({recipientChatId, senderName, productTitle?, orderNumber?, storeName?, messagePreview})`. Оба gate на `features.telegramNotificationsEnabled` + non-empty chatId.
+  - `TelegramNotificationProcessor` — 2 новых case'а с шаблонами на русском.
+  - `confirm-checkout.use-case.ts` + `create-direct-order.use-case.ts` теперь зовут `notifyNewOrder` (был DEFINED but NEVER CALLED — закрыт latent bug).
+  - `update-order-status.use-case.ts`: `notifyOrderStatusChanged` → buyer ВСЕГДА (по `User.telegramId`); → seller только когда buyer отменяет (PENDING→CANCELLED by BUYER role) — по `Seller.telegramChatId`.
+  - `send-message.use-case.ts`: `notifyChatMessage` → ВТОРАЯ сторона треда. BUYER→SELLER через `seller.telegramChatId`, SELLER→BUYER через `user.telegramId`. Preview = первые 80 символов.
+- **Repo extensions (additive, не ломают HTTP-контракты):**
+  - `CheckoutRepo.findStoreWithSeller`: добавлены `name` + `seller.{telegramUsername, telegramChatId, telegramNotificationsActive}`.
+  - `CheckoutRepo.findBuyerWithUser`: `user.telegramId` (для будущих use-case).
+  - `OrdersRepo.findById`: `user.telegramId` + `store.seller.{...}`.
+  - `ChatRepo.findThreadById`: `buyer.user.{phone, telegramId}` + `product.title` + `order.orderNumber`.
+  Type definitions в репо синхронизированы с включениями.
+- **Не сделано в этой сессии (можно добавить потом):**
+  - In-app fallback (если у пользователя есть активный socket — пропускать TG, чтобы не дублировать). Сейчас всегда шлём TG.
+  - HTML-рендер сообщений (parse_mode HTML) для жирного текста и ссылок. Сейчас plain text — гарантированно работает.
+  - Buttons в TG: «Открыть заказ» / «Открыть чат» (deep link в TMA). Можно через inlineKeyboard позже.
+- **Краевые случаи:**
+  - Buyer без `telegramId` (зарегистрировался через web phone+OTP, не открывал TMA) — silent skip, ошибки не происходит.
+  - Seller без `telegramChatId` (старая регистрация до OTP-через-бот) — silent skip уведомлений об отмене. New-order идут по `@username` который у seller обязателен.
+- **Schema migration:** не требуется. Все нужные поля уже есть в `User.telegramId`, `Seller.telegramChatId`, `Seller.telegramUsername`, `Seller.telegramNotificationsActive`.
+
+### Push: `main` → `api` ветка. Коммит `d83af03`.
+
+---
+
+## 2026-05-02 (сессия 45, Полат) — 4 задачи от себя (через Азима): chat error, double back, orders filters, media URLs
+
+### ✅ [TMA-CHAT-ERROR-STATE-001] Toast «Ошибка загрузки сообщений» поверх загруженного thread list 🔴
+- **Файлы:** `apps/tma/src/pages/seller/ChatPage.tsx`, `apps/tma/src/pages/buyer/ChatPage.tsx`
+- **Симптом:** Скрин 1 от Полата — на seller chat list видно красную плашку «❌ Ошибка загрузки сообщений», а под ней 2 загруженных и кликабельных thread'а. Конфликт error/data state.
+- **Корень:** При тапе на thread шёл fetch `/chat/threads/:id/messages`. Если он падал (404, deleted thread, network) — `.catch()` вызывал `showToast('❌ Ошибка загрузки сообщений', 'error')` + `navigate('/seller/chat', { replace: true })`. Глобальный ToastContainer держит уведомление 3-4 сек, успевая отрендериться поверх thread-list куда нас вернул navigate.
+- **Что сделано:** Удалён `showToast` из `.catch()` обоих ChatPage — silent navigate-back. Если thread удалён или нет доступа — пользователь просто возвращается к списку, может пере-тапнуть.
+- **Альтернатива (не выбрана):** держать ошибку inline в conversation view. Дороже по UX (двойной шаг) и нарушает invariant «тред в URL = тред загружен или его нет».
+
+### ✅ [TMA-BUYER-CHAT-DOUBLE-BACK-001] Две кнопки «Назад» в chat thread 🟡
+- **Файл:** `apps/tma/src/components/layout/InAppBackBar.tsx`
+- **Симптом:** Скрин 4 от Полата — в chat thread сверху одновременно: pill `‹ Назад` (от `InAppBackBar`) и icon `‹` ниже (in-page back в header чата). Дубль.
+- **Что сделано:** В `InAppBackBar` добавлен `HIDE_ON_PREFIXES = ['/buyer/chat/', '/seller/chat/']` — pill больше не показывается на роутах thread'ов чата. Остаётся только iconic in-page back (компактнее, ближе к message list — по design-системе TMA).
+- **Затронуты также продавцовский чат**: фикс работает по prefix-матчу пути.
+
+### ✅ [TMA-BUYER-ORDERS-FILTERS-001] Фильтры заказов по статусу в TMA buyer 🟡
+- **Файл:** `apps/tma/src/pages/buyer/OrdersPage.tsx`
+- **Контекст:** Скрин 3 от Полата — на TMA `/orders` сплошной список без фильтров. Полат хотел: отменённые / доставленные / в ожидании.
+- **Паттерн:** `apps/web-buyer/src/app/(shop)/orders/page.tsx:24` — `FILTER_TABS` (ALL/PENDING/CONFIRMED/SHIPPED/DELIVERED/CANCELLED). Перенёс на TMA c небольшой адаптацией: `confirmed` chip покрывает и `CONFIRMED`, и `PROCESSING` (одинаковая UX-семантика для покупателя — «приняли в работу»).
+- **Что сделано:**
+  - Новые типы: `StatusFilter = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'`, массив `STATUS_FILTERS`, helper `matchesFilter(status, filter)`.
+  - Новый header в TMA-стиле (gradient page-icon 📦 + gradient title + count «N заказов») — консистентно с StoresPage/DashboardPage.
+  - Чипы фильтров с per-tab counts (как в seller/OrdersPage), горизонтальный скролл, orchid `rgba(168,85,247,...)` accent.
+  - Empty state «Нет заказов в этой категории» когда фильтр пустой, но заказы есть.
+  - `orders.map` → `orders.filter(matchesFilter).map` сохраняет existing expand-row логику (`expandedId`, lazy detail fetch).
+- **«Избранное / понравившиеся» из задачи:** не статус заказа — отдельная фича `WISHLIST-CONTRACT-001` (открыта).
+
+### ✅ [TMA-MEDIA-LOAD-001] Фото товаров не грузятся, серый плейсхолдер 🔴
+- **Файлы:** `apps/api/src/modules/products/products.controller.ts:resolveImageUrl`, `apps/api/src/modules/stores/stores.controller.ts:resolveStoreImageUrls`, `apps/api/src/modules/cart/cart.mapper.ts:resolveMediaUrl`, `apps/api/src/modules/telegram/telegram-demo.handler.ts:resolveMediaUrl`, `apps/api/src/modules/media/services/r2-storage.service.ts:getPublicUrl`
+- **Симптом:** Скрин 2 от Полата — все ProductCard на TMA buyer Home с пустым `<img>` (системная иконка «горы и солнце»). На всех 6 товарах. R2 в бэке подключен, ключи объектов есть.
+- **Root cause:** Все 4 helper-метода `resolveImageUrl/resolveMediaUrl` для не-telegram бакетов делают `${process.env.STORAGE_PUBLIC_URL}/${objectKey}`. **На Railway api сервисе `STORAGE_PUBLIC_URL` не задан** → возвращает либо пустую строку, либо `undefined/<key>` (cart.mapper). `<img src="">` показывает плейсхолдер браузера.
+- **Что сделано (defensive code):** Все 4 метода теперь fall back на `${APP_URL}/api/v1/media/proxy/<id>` когда `STORAGE_PUBLIC_URL` пуст. `r2Storage.getPublicUrl` теперь логирует чёткий warning «STORAGE_PUBLIC_URL is missing — image URLs will be broken» вместо тихо возвращать `undefined/<key>`. Добавлено strip trailing slash.
+- **⚠️ Action required (Polat / infra):** установить `STORAGE_PUBLIC_URL` на Railway api сервисе. Без этого даже `/media/proxy/:id` redirect (302) сломан — он сам внутри использует `getPublicUrl`. Значение: ваш R2 public URL — либо `https://pub-xxxx.r2.dev` (default Cloudflare R2 public), либо ваш CDN-домен (`cdn.savdo.uz` если настроен).
+- **Не сделано в этой сессии:** R2 CORS-конфиг и проверка private/public visibility бакета — это infra-задача.
+
+### Push: main → tma, api ветки. Коммит `a2e1767`.
+
+---
+
+## 2026-05-01 (сессия 44, Азим) — Chat message order fix + Web-seller `/products` responsive layout
+
+### ✅ [WEB-CHAT-ORDER-001] Сообщения в чате — старые сверху, новые снизу 🔴
+
+- **Важность:** 🔴 (UX-баг, сразу заметен)
+- **Дата:** 01.05.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/chat/page.tsx`, `apps/web-buyer/src/app/(shop)/chats/page.tsx`
+- **Симптом:** Азим скинул скрин seller-чата — собственное сообщение «фывфы 00:25» вверху, входящее «ПРивет 23 апр.» внизу. Telegram-привычка обратная. Тот же баг латентно был и в buyer (тот же код-паттерн).
+- **Корень:** `GET /chat/threads/:id/messages` возвращает массив отсортированный DESC (newest first — стандарт для cursor-based pagination через `before:`). Фронт делает `data?.messages ?? []` и шлёт в `messages.map(...)` без сортировки → новые сверху.
+- **Что сделано:** В обоих чатах заменил `const messages = data?.messages ?? [];` на `useMemo` который копирует массив и сортирует ASC по `createdAt` (`[...raw].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))`). `useMemo` импорт добавлен. `useEffect([messages.length])` для scroll-to-bottom продолжает работать корректно — после переворота снизу окажется последнее сообщение, которое и хочется видеть.
+- **Почему фронт-сорт, а не правка бэка:** Бэк = домен Полата. DESC + cursor `before:` — корректный API-паттерн для подгрузки старых при скролле вверх. Фронт сам решает порядок отображения. Ноль риска для контракта.
+- **Проверка:** `pnpm exec tsc --noEmit` оба апа → EXIT 0.
+
+### ✅ [WEB-SELLER-PRODUCTS-RESPONSIVE-001] Адаптивный список товаров seller 🟡
+
+- **Важность:** 🟡
+- **Дата:** 01.05.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+- **Контекст:** Полат через Азима скинул задачу — «там типо список магазинов был / или товаров / если мы уже зашли в аккаунт … тему добавить и более адаптивно сделать». Аудит web-buyer / web-seller dashboard list-страниц показал единственного нарушителя: `/products` использовал `grid-cols-[1fr_auto_auto_auto_auto]` без `sm:`-префикса. На 360px (iPhone SE / большинство Android) 5 колонок съезжают, текст обрезается, кнопки наезжают друг на друга. Прямое нарушение `apps/web-seller/CLAUDE.md` («Fully responsive + touch-friendly»). web-seller `/orders` уже использует правильный паттерн (`flex flex-col` mobile + `sm:grid` desktop) — взял оттуда.
+- **Что сделано:**
+  - **Mobile (< sm):** карточка из двух строк. Верх: 48px thumbnail (первая `mediaUrls`, fallback — иконка `Package`) + название + variantCount badge + status badge справа + цена ниже. Низ: actions row (Скрыть/Опубликовать → кнопки copy web/TG как иконки 16px → CTA «Изменить» как accent-pill справа).
+  - **Desktop (≥ sm):** 6-колоночный grid `[auto_1fr_auto_auto_auto_auto]` (добавлен thumbnail-столбец слева, остальные 5 как раньше). Header row `hidden sm:grid`. Skeleton загрузки тоже адаптивный (на mobile — 2 строки flex column, на desktop — 6-колоночный grid).
+  - Иконка `Package` импортирована из `lucide-react` для empty thumbnail-плейсхолдера.
+  - `<img>` (не `next/image`) — следую существующему паттерну `apps/web-seller/src/app/(dashboard)/orders/page.tsx`, потому что `next.config.ts` web-seller не имеет `images.remotePatterns` для R2-доменов, а добавлять — отдельная задача за рамками responsive-фикса.
+- **Не тронуто:** счётчик «N товаров» в header показывает `products?.length` вместо `productsData?.total` (это страничный counter, не общий) — оставил как есть, не моя задача.
+- **Проверка:** `pnpm exec tsc --noEmit` в `apps/web-seller` → EXIT 0.
+- **Чем НЕ закрыта тема Полата:** «тема добавить» осталась open — без скрина/URL непонятно что именно «тема»; адаптивность сделал по самому очевидному кандидату. Если Полат имел в виду web-buyer logged-in home / `/orders` или TMA — те страницы уже responsive.
+- **Socket conflict cross-role (тема 2 от Полата):** не трогал — бэк-`gateway` имеет guard'ы (`role === 'SELLER'` для `join-seller-room`, `sub === buyerId` для `join-buyer-room`), фронт уже использует динамический токен после `WEB-SOCKET-AUTH-CONTRACT-001`. Без шагов воспроизведения и явного симптома (401 / disconnect-loop / двойные сообщения / события не туда) лезть в socket-клиенты — гадание; домен gateway-кода вообще Полат.
+
+---
+
+## 2026-04-30 (вечер, сессия 42, Азим) — Post-pull sync + buyer prod brand-violet smoke-check
+
+### ✅ [SESSION-42-SYNC] Подтверждение продакшен-deploy buyer без коммитов 🟢
+
+- **Дата:** 30.04.2026 (короткая сессия, ~30 мин)
+- **Файлы:** только чтение и memory; без изменений в коде
+- **Что произошло за время паузы:**
+  - `git fetch && git pull --ff-only origin/main`: `822aa30 → 5c66d72` (10 коммитов от Полата за 2-3 часа).
+  - Полат закрыл свою очередь на 7 контракт-задач (`API-PRODUCT-CONTRACT-003`, `ADMIN-BROADCAST-XSS-CHECK-001`, `INFRA-FULL-RELOAD-NAV-001`, `API-BUYER-ORDERS-LIST-MAPPER-001`, `API-ORDER-CONTRACT-001`, `TYPES-VARIANT-REF-CONTRACT-001`, `API-CART-EMPTY-CONTRACT-001`) + TMA polish (gradient titles, lottie-react remove, layout fix). Force-push web-buyer (`9df5ca8`) и web-seller (`5ee845a`) — Railway автодеплои уже стартовали.
+  - В коммите `b081b5e` Полат **сам закрыл** мою задачу `WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001` — удалил defensive `.toLowerCase()` в `apps/web-buyer/src/lib/api/storefront.api.ts` (бэк теперь сериализует lowercase). Один файл, минус 2 строки.
+- **Подтверждение прод-деплоя buyer (без локального запуска):**
+  - DOM evaluate на https://savdo-builder-by-production.up.railway.app: header `<a>` «Savdo» и hero `<span>` «Savdo» оба с `color: rgb(124, 58, 237)` = `#7C3AED`. Brand violet token доехал до прода.
+  - `<title>` корректный «Savdo — магазины в Telegram». 0 errors в первой партии console (до того как Playwright-сессия закрылась).
+- **Что НЕ сделано:**
+  - Settings 2-col, sidebar wordmark seller, chat edit/delete error UI требуют логина — Азим проведёт ручную проверку.
+  - `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` всё ещё открыта — ждёт ручной визуальной проверки `/products/create` от Азима.
+- **Очередь Азима:** 1 ручная E2E проверка прода (4 области) + 1 cleanup задача после неё.
+
+---
+
 ## 2026-04-30 (полудень, сессия 41, Азим) — Brand violet token + seller chat error UI + settings 2-col + mobile push toggle
 
 ### ✅ [WEB-BRAND-WORDMARK-UNIFY-001] Единый violet `#7C3AED` для логотипа Savdo на обоих фронтах 🟢

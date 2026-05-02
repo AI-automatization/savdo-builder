@@ -81,7 +81,6 @@ export default function BuyerChatPage() {
     api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`)
       .then((res) => setMessages((res.messages ?? []).slice().reverse()))
       .catch(() => {
-        showToast('❌ Ошибка загрузки сообщений', 'error');
         navigate('/buyer/chat', { replace: true });
       })
       .finally(() => setMsgLoading(false));

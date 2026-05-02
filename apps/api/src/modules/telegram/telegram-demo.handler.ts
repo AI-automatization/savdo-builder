@@ -594,12 +594,13 @@ export class TelegramDemoHandler {
 
   private resolveMediaUrl(media: { id: string; objectKey?: string | null; bucket?: string | null }): string {
     if (!media?.objectKey) return '';
+    const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
     if (media.bucket === 'telegram') {
-      const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
       return `${appUrl}/api/v1/media/proxy/${media.id}`;
     }
     const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
-    return r2Base ? `${r2Base}/${media.objectKey}` : '';
+    if (r2Base) return `${r2Base}/${media.objectKey}`;
+    return media.id && appUrl ? `${appUrl}/api/v1/media/proxy/${media.id}` : '';
   }
 
   // ─────────────────────────────────────────────────────────────────────────

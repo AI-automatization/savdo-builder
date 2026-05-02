@@ -62,6 +62,7 @@ const BuyerProduct    = lazy(() => import('@/pages/buyer/ProductPage'));
 const BuyerCart       = lazy(() => import('@/pages/buyer/CartPage'));
 const BuyerCheckout   = lazy(() => import('@/pages/buyer/CheckoutPage'));
 const BuyerOrders     = lazy(() => import('@/pages/buyer/OrdersPage'));
+const BuyerWishlist   = lazy(() => import('@/pages/buyer/WishlistPage'));
 const BuyerProfile    = lazy(() => import('@/pages/buyer/ProfilePage'));
 const BuyerSettings   = lazy(() => import('@/pages/buyer/SettingsPage'));
 const BuyerChat       = lazy(() => import('@/pages/buyer/ChatPage'));
@@ -147,6 +148,7 @@ export default function App() {
           <Route path="cart" element={<BuyerGuard><BuyerCart /></BuyerGuard>} />
           <Route path="checkout" element={<BuyerGuard><BuyerCheckout /></BuyerGuard>} />
           <Route path="orders" element={<BuyerGuard><BuyerOrders /></BuyerGuard>} />
+          <Route path="wishlist" element={<BuyerGuard><BuyerWishlist /></BuyerGuard>} />
           <Route path="profile" element={<BuyerProfile />} />
           <Route path="settings" element={<BuyerSettings />} />
           <Route path="chat" element={<BuyerGuard><BuyerChat /></BuyerGuard>} />

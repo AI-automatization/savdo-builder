@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { UserRole } from 'types';
 import type { ChatThread } from 'types';
 import { getThreadDisplay } from '@/lib/api/chat.api';
@@ -99,7 +99,10 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
   const menuRef = useRef<HTMLDivElement>(null);
   const { title, subtitle } = getThreadDisplay(thread);
 
-  const messages = data?.messages ?? [];
+  const messages = useMemo(() => {
+    const raw = data?.messages ?? [];
+    return [...raw].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+  }, [data?.messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

@@ -184,8 +184,24 @@ model Buyer {
   carts     Cart[]
   orders    Order[]
   threads   ChatThread[]
+  wishlist  BuyerWishlistItem[]
 
   @@map("buyers")
+}
+
+model BuyerWishlistItem {
+  id        String   @id @default(uuid())
+  buyerId   String
+  productId String
+  createdAt DateTime @default(now())
+
+  buyer   Buyer   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerId, productId])
+  @@index([buyerId])
+  @@index([productId])
+  @@map("buyer_wishlist_items")
 }
 
 model BuyerAddress {
@@ -421,6 +437,7 @@ model Product {
   orderItems     OrderItem[]
   threads        ChatThread[]
   attributes     ProductAttribute[]
+  wishlistItems  BuyerWishlistItem[]
 
   @@index([storeId])
   @@index([globalCategoryId])

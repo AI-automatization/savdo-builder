@@ -83,6 +83,13 @@ export class R2StorageService {
 
   getPublicUrl(objectKey: string): string {
     const publicUrl = this.configService.get<string>('storage.publicUrl');
-    return `${publicUrl}/${objectKey}`;
+    if (!publicUrl) {
+      this.logger.warn(
+        `STORAGE_PUBLIC_URL is missing — image URLs will be broken. ` +
+        `Set it to your R2 public bucket URL (e.g. https://pub-xxxx.r2.dev or your CDN domain).`,
+      );
+      return '';
+    }
+    return `${publicUrl.replace(/\/$/, '')}/${objectKey}`;
   }
 }

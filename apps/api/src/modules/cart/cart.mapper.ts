@@ -1,11 +1,12 @@
 import { CartWithItems } from './repositories/cart.repository';
 
 function resolveMediaUrl(media: any): string | null {
-  if (!media) return null;
-  const appUrl = process.env.APP_URL ?? '';
+  if (!media?.objectKey) return null;
+  const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
   if (media.bucket === 'telegram') return `${appUrl}/api/v1/media/proxy/${media.id}`;
   const storageUrl = process.env.STORAGE_PUBLIC_URL ?? '';
-  return `${storageUrl}/${media.objectKey}`;
+  if (storageUrl) return `${storageUrl}/${media.objectKey}`;
+  return media.id && appUrl ? `${appUrl}/api/v1/media/proxy/${media.id}` : null;
 }
 
 export interface MappedCartItem {
