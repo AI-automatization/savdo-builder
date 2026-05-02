@@ -35,9 +35,11 @@ export default function WishlistPage() {
   }, [authenticated, loading]);
 
   const cols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
 
   return (
     <div className="flex flex-col gap-4">

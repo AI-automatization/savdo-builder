@@ -35,9 +35,11 @@ export default function StorePage() {
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
   const gridCols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);

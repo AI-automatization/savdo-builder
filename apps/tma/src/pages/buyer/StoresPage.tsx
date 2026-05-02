@@ -256,6 +256,10 @@ export default function StoresPage() {
               </div>
             )}
 
+            <div className={`grid gap-3 ${
+              viewportWidth >= 1280 ? 'grid-cols-3' :
+              viewportWidth >= 768  ? 'grid-cols-2' : 'grid-cols-1'
+            }`}>
             {filteredStores.map((store) => (
               <GlassCard
                 key={store.id}
@@ -301,6 +305,7 @@ export default function StoresPage() {
                 </div>
               </GlassCard>
             ))}
+            </div>
           </>
         )}
 
@@ -322,9 +327,11 @@ export default function StoresPage() {
 
             {!productsLoading && products.length > 0 && (
               <div className={`grid gap-3 ${
-                viewportWidth >= 960 ? 'grid-cols-5' :
-                viewportWidth >= 768 ? 'grid-cols-4' :
-                viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2'
+                viewportWidth >= 1536 ? 'grid-cols-7' :
+                viewportWidth >= 1280 ? 'grid-cols-6' :
+                viewportWidth >= 1024 ? 'grid-cols-5' :
+                viewportWidth >= 768  ? 'grid-cols-4' :
+                viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2'
               }`}>
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} />

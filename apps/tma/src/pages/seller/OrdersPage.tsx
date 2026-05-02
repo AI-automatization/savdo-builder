@@ -85,7 +85,8 @@ function matchesFilter(status: string, filter: StatusFilter): boolean {
 }
 
 export default function SellerOrdersPage() {
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  const isWide = (viewportWidth ?? 0) >= 1024;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -229,6 +230,7 @@ export default function SellerOrdersPage() {
           </div>
         )}
 
+        <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
         {orders.filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
           const next = NEXT_STATUS[o.status];
           const isUpdating = updating === o.id;
@@ -305,6 +307,7 @@ export default function SellerOrdersPage() {
             </GlassCard>
           );
         })}
+        </div>
       </div>
 
       {detailId && (

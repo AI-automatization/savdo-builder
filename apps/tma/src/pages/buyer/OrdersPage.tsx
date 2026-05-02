@@ -4,6 +4,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { useTelegram } from '@/providers/TelegramProvider';
 
 interface OrderItem {
   id: string;
@@ -53,6 +54,8 @@ function matchesFilter(status: string, filter: StatusFilter): boolean {
 
 export default function OrdersPage() {
   const { authenticated } = useAuth();
+  const { viewportWidth } = useTelegram();
+  const isWide = (viewportWidth ?? 0) >= 1024;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -206,6 +209,7 @@ export default function OrdersPage() {
           </div>
         )}
 
+        <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
         {orders.filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
           const isExpanded = expandedId === o.id;
           const detail = details[o.id];
@@ -283,6 +287,7 @@ export default function OrdersPage() {
             </GlassCard>
           );
         })}
+        </div>
 
         {hasMore && (
           <button
