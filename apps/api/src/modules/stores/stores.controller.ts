@@ -103,11 +103,13 @@ export class StoresController {
       if (!id) return null;
       const m = map.get(id);
       if (!m?.objectKey) return null;
+      const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
       if (m.bucket === 'telegram') {
-        return `${(process.env.APP_URL ?? '').replace(/\/$/, '')}/api/v1/media/proxy/${m.id}`;
+        return `${appUrl}/api/v1/media/proxy/${m.id}`;
       }
       const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
-      return r2Base ? `${r2Base}/${m.objectKey}` : null;
+      if (r2Base) return `${r2Base}/${m.objectKey}`;
+      return m.id && appUrl ? `${appUrl}/api/v1/media/proxy/${m.id}` : null;
     };
 
     return { logoUrl: resolve(logoMediaId), coverUrl: resolve(coverMediaId) };

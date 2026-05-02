@@ -688,12 +688,15 @@ export class ProductsController {
   private resolveImageUrl(media: unknown): string {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
+    const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+    // Telegram-stored files always proxy (file URLs expire ~1h)
     if (m.bucket === 'telegram') {
-      const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
       return `${appUrl}/api/v1/media/proxy/${m.id}`;
     }
+    // R2: prefer direct public URL; fall back to proxy if STORAGE_PUBLIC_URL is missing
     const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
-    return r2Base ? `${r2Base}/${m.objectKey}` : '';
+    if (r2Base) return `${r2Base}/${m.objectKey}`;
+    return m.id && appUrl ? `${appUrl}/api/v1/media/proxy/${m.id}` : '';
   }
 
   private async resolveStoreImageUrls(
