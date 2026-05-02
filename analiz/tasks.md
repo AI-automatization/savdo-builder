@@ -15,18 +15,9 @@
 
 ---
 
-## 🟡 [WISHLIST-CONTRACT-001] Wishlist — endpoints + тип (БЛОКЕР для UI)
-- **Домен:** `apps/api` + `packages/types` + `packages/db` (миграция)
-- **Кто берёт:** Полат
-- **Контекст:** Полат через Азима упомянул «избранное заказов / понравившиеся заказы» — но «избранное заказов» бессмысленно (это статус, а не пользовательский флаг), скорее всего имелось в виду **wishlist товаров** (favorite products). Сейчас этого нет нигде — ни в коде, ни в типах. В docs упоминается только в `docs/V1.1/04_mvp_scope_decisions.md`.
-- **Что нужно:**
-  1. Миграция: таблица `BuyerWishlistItem (buyerId, productId, createdAt)` с unique `(buyerId, productId)`.
-  2. Endpoints: `GET /buyer/wishlist`, `POST /buyer/wishlist {productId}`, `DELETE /buyer/wishlist/:productId`.
-  3. Тип `WishlistItem` в `packages/types`.
-  4. Индекс в `Product`-feed: `inWishlist?: boolean` для текущего buyer (чтобы UI знал какое сердечко закрашивать).
-- **Зависимые UI-задачи (Азим, после bекенда):**
-  - `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` в web-buyer + значок «сердечко» на ProductCard.
-  - `TMA-BUYER-WISHLIST-001` 🟡 — то же для TMA (Полат сделает сам — это его app).
+> ✅ `WISHLIST-CONTRACT-001` + `TMA-BUYER-WISHLIST-001` закрыты Полатом 02.05.2026, коммиты `0f46a63` (backend) + `fd8721f` (UI). См. `analiz/done.md`.
+
+> ⏳ Открыто для Азима: `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` в web-buyer + heart на ProductCard. Бэкенд готов: `GET/POST /buyer/wishlist`, `DELETE /buyer/wishlist/:productId`, `WishlistItem` тип в `packages/types`, флаг `inWishlist?: boolean` на storefront feed для авторизованных buyer'ов. Подсмотрите паттерн в `apps/tma/src/lib/wishlist.ts` (optimistic toggle с локальным кэшем).
 
 ---
 
@@ -134,7 +125,7 @@
 | ~~`API-CART-EMPTY-CONTRACT-001`~~ | ✅ | `Cart.id/storeId: string | null`. Web-buyer: `cart!.storeId ?? ''`. `db72038` |
 | ~~`ADMIN-BROADCAST-XSS-CHECK-001`~~ | ✅ | Проверено: html — preview из user-input через pipeline HTML-escaping. Фикс: regex `(.*?)` → `[^"]*` в href capture — предотвращает attribute injection. Самостоятельный XSS невозможен. `6290737` |
 | ~~`INFRA-FULL-RELOAD-NAV-001`~~ | ✅ | TMA: AppShell лифтнут в nested routes → persistent layout (141c0a5). Admin: `window.location.href='/login'` → `CustomEvent auth:logout` + `AuthLogoutListener` в App.tsx. `6290737` |
-| `WEB-CSP-HEADER-002` | 🟢 | Сессия 38 добавила базовый набор security-headers, но **CSP не включён** (требует точного списка allowed sources: API_URL, R2, Telegram media, Google Fonts, …). На post-MVP — без CSP защита от XSS-инъекции в случае компрометации фронта неполная. |
+| ~~`WEB-CSP-HEADER-002`~~ | ✅ | CSP-директивы добавлены в оба `next.config.ts`. `script-src 'self' 'unsafe-inline' 'unsafe-eval'` (Next.js требует), но блокирует HTTP, чужие iframe, object/embed, base hijack. `814c35b` |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 

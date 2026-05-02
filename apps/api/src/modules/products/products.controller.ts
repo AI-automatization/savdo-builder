@@ -99,14 +99,16 @@ export class ProductsController {
       }),
       this.productsRepo.countByStoreId(storeId),
     ]);
-    const mapped = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, images, basePrice, oldPrice, salePrice, ...rest } = p;
+    const mapped = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+      const { _count, images, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
         basePrice: Number(basePrice),
         oldPrice: this.toPrice(oldPrice),
         salePrice: this.toPrice(salePrice),
         variantCount: _count?.variants ?? 0,
+        totalStock,
         mediaUrls: (images ?? []).map((img) => this.resolveImageUrl(img.media)),
       };
     });
@@ -564,8 +566,9 @@ export class ProductsController {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
     const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
-    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
+    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+      const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
         basePrice: Number(basePrice),
@@ -573,6 +576,7 @@ export class ProductsController {
         salePrice: this.toPrice(salePrice),
         images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
         variantCount: _count?.variants ?? 0,
+        totalStock,
       };
     });
   }
@@ -633,8 +637,9 @@ export class ProductsController {
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,
       });
-      data = (result.products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
-        const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
+      data = (result.products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
+        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
           basePrice: Number(basePrice),
@@ -642,6 +647,7 @@ export class ProductsController {
           salePrice: this.toPrice(salePrice),
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
           variantCount: _count?.variants ?? 0,
+          totalStock,
         };
       });
       total = result.total;
@@ -650,8 +656,9 @@ export class ProductsController {
       // Store-specific feed
       const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
       const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-      data = (products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-        const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
+      data = (products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
           basePrice: Number(basePrice),
@@ -659,6 +666,7 @@ export class ProductsController {
           salePrice: this.toPrice(salePrice),
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
           variantCount: _count?.variants ?? 0,
+          totalStock,
         };
       });
       total = data.length;

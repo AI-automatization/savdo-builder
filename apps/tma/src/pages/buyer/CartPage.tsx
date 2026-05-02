@@ -68,8 +68,8 @@ export default function CartPage() {
   }, [tg, items, total, navigate]);
 
   return (
-    
-      <div className="flex flex-col gap-4">
+
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Корзина</h1>
 
         {!items.length && (

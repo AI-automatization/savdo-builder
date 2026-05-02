@@ -35,9 +35,11 @@ export default function StorePage() {
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
   const gridCols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,32 +162,34 @@ export default function StorePage() {
         </div>
 
         {globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                border: `1px solid ${activeCat === null ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((c) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={c.id}
-                onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === c.id ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                  border: `1px solid ${activeCat === c.id ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                  color: activeCat === c.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                }}
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.55)',
+                } : undefined}
               >
-                {c.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === c.id ? 'chip-active' : ''}`}
+                  style={activeCat !== c.id ? {
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.55)',
+                  } : undefined}
+                >
+                  {c.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

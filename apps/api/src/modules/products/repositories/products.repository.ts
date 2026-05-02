@@ -81,6 +81,7 @@ export class ProductsRepository {
       },
       include: {
         images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
+        variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
         _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
@@ -151,6 +152,7 @@ export class ProductsRepository {
       },
       include: {
         images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
+        variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
         _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
@@ -261,6 +263,7 @@ export class ProductsRepository {
         include: {
           images: { where: { isPrimary: true }, take: 1, include: { media: true } },
           store: { select: { id: true, name: true, slug: true } },
+          variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
           _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
         },
         orderBy,

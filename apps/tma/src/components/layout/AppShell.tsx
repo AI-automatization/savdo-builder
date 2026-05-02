@@ -42,15 +42,15 @@ export function AppShell({ children, role }: Props) {
       <BackButton />
 
       {isDesktop ? (
-        /* ── Desktop: sidebar + content ── */
+        /* ── Desktop: sidebar + wide content ── */
         <>
           <Sidebar role={role} />
           <div
-            className="relative z-10 flex-1 px-6 pt-5 pb-6"
+            className="relative z-10 flex-1 px-8 pt-6 pb-8"
             style={{ marginLeft: SIDEBAR_WIDTH }}
           >
             <FullscreenButton />
-            <div className="w-full max-w-4xl mx-auto">
+            <div className="w-full max-w-screen-2xl mx-auto">
               <InAppBackBar />
               {children}
             </div>

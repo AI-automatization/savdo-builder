@@ -1,5 +1,78 @@
 # Done — Азим + Полат
 
+## 2026-05-02 (сессия 45 финал, Полат) — Content-Security-Policy на web-buyer + web-seller
+
+### ✅ [WEB-CSP-HEADER-002] CSP headers на обоих веб-апах 🟢
+
+- **Файлы:** `apps/web-buyer/next.config.ts`, `apps/web-seller/next.config.ts`
+- **Контекст:** Сессия 38 добавила базовый набор security-headers (X-Frame-Options/HSTS/Referrer-Policy/Permissions-Policy/X-Content-Type-Options) — но Content-Security-Policy не было. Без CSP в случае компрометации фронта (XSS-инъекция) защита неполная.
+- **Что сделано:** Добавил CSP-директивы в обоих `next.config.ts` рядом с существующими `securityHeaders`.
+- **CSP-стратегия (pragmatic baseline, не nonce-based):**
+  - `default-src 'self'` — базовая запретная политика.
+  - `script-src 'self' 'unsafe-inline' 'unsafe-eval'` — Next.js production требует обе. **Что блокирует:** инъекцию `<script src="https://attacker.example/...">` (только из 'self'), инъекцию `<script src="http://...">` (любого HTTP source).
+  - `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` — Tailwind/inline style props.
+  - `font-src 'self' data: https://fonts.gstatic.com`.
+  - `img-src 'self' data: blob: https:` — широкий, но https-only (R2/Telegram-proxy/любой CDN).
+  - `media-src 'self' https: blob:`.
+  - `connect-src 'self' https: wss:` — API + Socket.IO. Блокирует HTTP exfiltration.
+  - `frame-src` — для web-buyer: `'self' https://t.me https://oauth.telegram.org` (на случай TG login widgets). Для web-seller: только `'self'`.
+  - `frame-ancestors 'none'` — сильнее чем X-Frame-Options DENY (оставлены оба для совместимости со старыми браузерами).
+  - `object-src 'none'` — запрет Flash/Java applet/embed эксплойтов.
+  - `base-uri 'self'` — нет hijack'а через `<base href>`.
+  - `form-action 'self'` — нет submit'а на чужие origins.
+- **Что НЕ сделано (можно усилить позже):**
+  - Strict CSP с per-request nonce'ами (требует middleware изменений в Next 15) — отложено до появления реальной XSS-поверхности.
+  - Whitelist конкретных R2/Telegram media хостов в connect-src/img-src — пока wildcards `https:`, так как хосты варьируются по deploy'ям.
+  - CSP-Report-Only roll-out — задеплоил сразу как enforcing. Easy to revert если браузеры жалуются.
+- **Verify после деплоя:** открыть DevTools → Console на проде. Если есть нарушения — будут логи `Refused to load … because it violates …`. Если нарушений нет — CSP работает прозрачно.
+
+### Push: `main` → `web-buyer` + `web-seller` ветки. Коммит `814c35b`.
+
+> На этом очередь Полата по открытым задачам завершена. Осталось только manual action items: STORAGE_PUBLIC_URL на Railway api, миграция wishlist, ручная проверка TG-уведомлений.
+
+---
+
+## 2026-05-02 (сессия 45 продолжение 2, Полат) — Wishlist (избранное товаров): backend + TMA UI
+
+### ✅ [WISHLIST-CONTRACT-001] Wishlist — endpoints + тип + миграция (был БЛОКЕР для UI) 🟡
+### ✅ [TMA-BUYER-WISHLIST-001] Wishlist UI в TMA: heart на карточках + страница /buyer/wishlist 🟡
+
+- **Контекст:** Полат через Азима «избранное заказов / понравившиеся заказы» — но «избранное заказов» бессмысленно (это статус), скорее всего имелось в виду wishlist товаров. До этого ничего не было ни в БД, ни в типах.
+- **DB migration `20260502000000_add_buyer_wishlist`:**
+  - Новая таблица `buyer_wishlist_items (id, buyerId, productId, createdAt)`
+  - Unique `(buyerId, productId)` — идемпотентный add через upsert
+  - `ON DELETE CASCADE` от Buyer и Product (нет orphan rows)
+  - Индексы на `buyerId` и `productId`
+  - **⚠️ Action для Полата на Railway api shell:** `pnpm db:migrate:deploy`
+- **Schema (`packages/db/prisma/schema.prisma`):** `BuyerWishlistItem` model + back-refs на `Buyer.wishlist` и `Product.wishlistItems`.
+- **Types (`packages/types`):** новый `WishlistItem` интерфейс в `api/wishlist.ts` (id, productId, createdAt, embedded product preview с `isAvailable` computed-флагом). `ProductListItem.inWishlist?: boolean` — выставляется ТОЛЬКО на storefront feed для авторизованных buyer'ов, иначе undefined.
+- **API (`apps/api/src/modules/wishlist/`):**
+  - Новый модуль: controller, repository, 3 use-case (get/add/remove), DTO, module.
+  - `GET /api/v1/buyer/wishlist` → `WishlistItem[]` (все авторизованные buyer'ы; soft-deleted продукты отфильтрованы)
+  - `POST /api/v1/buyer/wishlist` body `{ productId }` → 201 (idempotent через upsert)
+  - `DELETE /api/v1/buyer/wishlist/:productId` → 204 (silent если нет — REST best practice)
+  - Все эндпоинты под `@UseGuards(JwtAuthGuard)`, `resolveBuyerId` через `usersRepo.findById`.
+- **Storefront feed enrichment:**
+  - `GET /storefront/products` теперь использует `OptionalJwtAuthGuard` → принимает и анонимные, и авторизованные запросы.
+  - Если `user.sub` есть и buyer профиль найден → один батч-запрос `wishlistRepo.findExistingProductIds(buyerId, productIds)`, флаг `inWishlist` ставится на каждый item. O(N) memory.
+  - Анонимные ответы не меняются — поля `inWishlist` нет вовсе.
+- **TMA UI:**
+  - Новый `lib/wishlist.ts` — in-memory + sessionStorage кэш, pub/sub для cross-component sync, optimistic add/remove с откатом при ошибке.
+  - `AuthProvider` после успешной auth (BUYER role) делает `hydrateWishlist()` (non-blocking).
+  - Новый компонент `WishlistButton` (variants `card` и `page`) — heart toggle с haptic-feedback, optimistic UI, glassmorphism.
+  - `ProductCard` (storefront feed) — heart overlay в правом верхнем углу изображения.
+  - `ProductPage` — heart кнопка справа от заголовка (page variant).
+  - Новая страница `/buyer/wishlist` — grid с `isAvailable=false` товарами dimmed + overlay «Недоступен» (если seller архивировал или магазин unpublished).
+  - StoresPage header теперь имеет heart-иконку рядом с шестернёй → переход на `/buyer/wishlist`.
+- **Edge cases:**
+  - Wishlist для soft-deleted продукта: repo фильтр исключает из list, но row остаётся (cron в будущем может чистить).
+  - Двойной добавление: upsert idempotent, без ошибки.
+  - Удаление несуществующего: 204 silent.
+
+### Push: `main` → `api` + `tma` ветки. Коммиты `0f46a63` (backend), `fd8721f` (UI).
+
+---
+
 ## 2026-05-02 (сессия 45 продолжение, Полат) — Telegram bot notifications: order status + chat messages
 
 ### ✅ [API-NOTIFICATIONS-ORDER-001] Уведомления покупателю в TG при смене статуса заказа 🔴
