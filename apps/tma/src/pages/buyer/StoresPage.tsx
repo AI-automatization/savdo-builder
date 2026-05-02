@@ -175,34 +175,36 @@ export default function StoresPage() {
 
         {/* Products tab — categories */}
         {tab === 'products' && globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                border: `1px solid ${activeCat === null ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((cat) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={cat.id}
-                onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === cat.id ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                  color: activeCat === cat.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                  border: `1px solid ${activeCat === cat.id ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'rgba(255,255,255,0.07)',
+                  color: 'rgba(255,255,255,0.55)',
+                  border: '1px solid rgba(255,255,255,0.10)',
                   whiteSpace: 'nowrap',
-                }}
+                } : { whiteSpace: 'nowrap' }}
               >
-                {cat.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === cat.id ? 'chip-active' : ''}`}
+                  style={activeCat !== cat.id ? {
+                    background: 'rgba(255,255,255,0.07)',
+                    color: 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    whiteSpace: 'nowrap',
+                  } : { whiteSpace: 'nowrap' }}
+                >
+                  {cat.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -217,12 +219,12 @@ export default function StoresPage() {
               <button
                 key={s.value}
                 onClick={() => setSort(s.value)}
-                className="px-3 py-1 rounded-lg text-xs font-medium"
-                style={{
-                  background: sort === s.value ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.06)',
-                  color: sort === s.value ? '#22D3EE' : 'rgba(255,255,255,0.45)',
-                  border: `1px solid ${sort === s.value ? 'rgba(34,211,238,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                }}
+                className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
+                style={sort !== s.value ? {
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.45)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                } : undefined}
               >
                 {s.label}
               </button>

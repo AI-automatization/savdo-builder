@@ -265,3 +265,45 @@ input:focus {
   font-size: 22px;
   flex-shrink: 0;
 }
+
+/* ── Filter chips: active state with strong glow ─────────────────────────── */
+.chip-active {
+  background: linear-gradient(135deg, rgba(168,85,247,0.32) 0%, rgba(124,58,237,0.42) 100%) !important;
+  border: 1px solid rgba(168,85,247,0.60) !important;
+  color: #D8B4FE !important;
+  box-shadow: 0 0 16px rgba(168,85,247,0.35), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+.chip-active-cyan {
+  background: linear-gradient(135deg, rgba(34,211,238,0.22) 0%, rgba(14,165,233,0.30) 100%) !important;
+  border: 1px solid rgba(34,211,238,0.50) !important;
+  color: #67E8F9 !important;
+  box-shadow: 0 0 14px rgba(34,211,238,0.30), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+
+/* ── Horizontal scroll fade hint ──────────────────────────────────────────
+   Wrap any horizontal scroller in <div class="scroll-fade-x"> to add a
+   subtle gradient on the right edge that signals "there's more, swipe me". */
+.scroll-fade-x {
+  position: relative;
+}
+.scroll-fade-x::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to left, rgba(11,14,20,0.92) 0%, rgba(11,14,20,0) 100%);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 0 12px 12px 0;
+}
+
+/* Smooth scroll-snap for filter rows on touch devices */
+.scroll-snap-x {
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 4px;
+}
+.scroll-snap-x > * {
+  scroll-snap-align: start;
+}

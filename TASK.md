@@ -93,9 +93,12 @@
   - API: POST/DELETE /buyer/wishlist/:productId
   - TMA: кнопка ♡ на карточке товара
 
-- [ ] [FEAT-008] Отзывы и рейтинг магазина
-  - API: POST /orders/:id/review
-  - TMA: форма отзыва после DELIVERED
+- [ ] [FEAT-008] Отзывы и рейтинг магазина / товара
+  - БД: model Review { id, productId, buyerId, orderItemId, rating(1-5), comment?, createdAt }
+  - API: POST /buyer/orders/:orderId/items/:itemId/review (требует DELIVERED), GET /storefront/products/:id/reviews
+  - TMA buyer: форма отзыва на странице деталей доставленного заказа + блок отзывов на ProductPage
+  - TMA seller: уведомление о новом отзыве + карточка отзывов на странице товара
+  - Агрегат: avgRating, reviewCount → отдавать в feed для сортировки
 
 ---
 

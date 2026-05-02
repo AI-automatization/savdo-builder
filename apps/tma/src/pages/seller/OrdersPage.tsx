@@ -84,6 +84,23 @@ function matchesFilter(status: string, filter: StatusFilter): boolean {
   return true;
 }
 
+// Продавцу важнее всего PENDING (новые), затем CONFIRMED/PROCESSING/SHIPPED (в работе),
+// потом DELIVERED, и в самом низу CANCELLED. Внутри группы — свежие первыми.
+const STATUS_PRIORITY: Record<string, number> = {
+  PENDING:    0,
+  CONFIRMED:  1,
+  PROCESSING: 1,
+  SHIPPED:    2,
+  DELIVERED:  3,
+  CANCELLED:  4,
+};
+function compareOrders(a: Order, b: Order): number {
+  const pa = STATUS_PRIORITY[a.status] ?? 5;
+  const pb = STATUS_PRIORITY[b.status] ?? 5;
+  if (pa !== pb) return pa - pb;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 export default function SellerOrdersPage() {
   const { tg, viewportWidth } = useTelegram();
   const isWide = (viewportWidth ?? 0) >= 1024;
@@ -161,40 +178,42 @@ export default function SellerOrdersPage() {
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
 
         {/* Status filter tabs */}
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-          {STATUS_FILTERS.map((f) => {
-            const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
-            const active = statusFilter === f.value;
-            return (
-              <button
-                key={f.value}
-                onClick={() => setStatusFilter(f.value)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all"
-                style={{
-                  background: active ? 'rgba(168,85,247,0.22)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${active ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                  color: active ? '#A855F7' : 'rgba(255,255,255,0.45)',
-                }}
-              >
-                {f.label}
-                {count > 0 && (
-                  <span
-                    className="px-1.5 py-0 rounded-full text-[10px] font-bold"
-                    style={{
-                      background: active ? 'rgba(168,85,247,0.30)' : 'rgba(255,255,255,0.08)',
-                      color: active ? '#A855F7' : 'rgba(255,255,255,0.35)',
-                      minWidth: 18,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="scroll-fade-x">
+          <div className="flex gap-1.5 overflow-x-auto scroll-snap-x pb-0.5" style={{ scrollbarWidth: 'none' }}>
+            {STATUS_FILTERS.map((f) => {
+              const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
+              const active = statusFilter === f.value;
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setStatusFilter(f.value)}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                  style={!active ? {
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    color: 'rgba(255,255,255,0.45)',
+                  } : undefined}
+                >
+                  {f.label}
+                  {count > 0 && (
+                    <span
+                      className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                      style={{
+                        background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
+                        color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                        minWidth: 18,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {loading && [1,2,3].map((i) => <OrderRowSkeleton key={i} />)}
@@ -231,7 +250,7 @@ export default function SellerOrdersPage() {
         )}
 
         <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
-        {orders.filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
+        {[...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
           const next = NEXT_STATUS[o.status];
           const isUpdating = updating === o.id;
           return (

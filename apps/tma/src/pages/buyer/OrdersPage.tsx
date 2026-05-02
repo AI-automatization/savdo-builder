@@ -52,6 +52,23 @@ function matchesFilter(status: string, filter: StatusFilter): boolean {
   return true;
 }
 
+// Важные сверху: PENDING/CONFIRMED/SHIPPED → DELIVERED → CANCELLED.
+// Внутри одной группы — свежие первыми.
+const STATUS_PRIORITY: Record<string, number> = {
+  PENDING:    0,
+  CONFIRMED:  1,
+  PROCESSING: 1,
+  SHIPPED:    2,
+  DELIVERED:  3,
+  CANCELLED:  4,
+};
+function compareOrders(a: Order, b: Order): number {
+  const pa = STATUS_PRIORITY[a.status] ?? 5;
+  const pb = STATUS_PRIORITY[b.status] ?? 5;
+  if (pa !== pb) return pa - pb;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 export default function OrdersPage() {
   const { authenticated } = useAuth();
   const { viewportWidth } = useTelegram();
@@ -131,40 +148,42 @@ export default function OrdersPage() {
 
         {/* Status filter tabs */}
         {authenticated && !loading && orders.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            {STATUS_FILTERS.map((f) => {
-              const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
-              const active = statusFilter === f.value;
-              return (
-                <button
-                  key={f.value}
-                  onClick={() => setStatusFilter(f.value)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all"
-                  style={{
-                    background: active ? 'rgba(168,85,247,0.22)' : 'rgba(255,255,255,0.06)',
-                    border: `1px solid ${active ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                    color: active ? '#A855F7' : 'rgba(255,255,255,0.45)',
-                  }}
-                >
-                  {f.label}
-                  {count > 0 && (
-                    <span
-                      className="px-1.5 py-0 rounded-full text-[10px] font-bold"
-                      style={{
-                        background: active ? 'rgba(168,85,247,0.30)' : 'rgba(255,255,255,0.08)',
-                        color: active ? '#A855F7' : 'rgba(255,255,255,0.35)',
-                        minWidth: 18,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-1.5 overflow-x-auto scroll-snap-x pb-0.5 px-4" style={{ scrollbarWidth: 'none' }}>
+              {STATUS_FILTERS.map((f) => {
+                const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
+                const active = statusFilter === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    onClick={() => setStatusFilter(f.value)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                    style={!active ? {
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      color: 'rgba(255,255,255,0.45)',
+                    } : undefined}
+                  >
+                    {f.label}
+                    {count > 0 && (
+                      <span
+                        className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                        style={{
+                          background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
+                          color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                          minWidth: 18,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -202,7 +221,7 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {authenticated && !loading && !error && orders.length > 0 && orders.filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
+        {authenticated && !loading && !error && orders.length > 0 && [...orders].filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔍</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Нет заказов в этой категории</p>
@@ -210,7 +229,7 @@ export default function OrdersPage() {
         )}
 
         <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
-        {orders.filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
+        {[...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
           const isExpanded = expandedId === o.id;
           const detail = details[o.id];
           const isLoadingDetail = detailLoading === o.id;

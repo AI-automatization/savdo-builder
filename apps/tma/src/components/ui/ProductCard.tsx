@@ -11,6 +11,7 @@ export interface FeedProduct {
   currencyCode: string;
   images: { url: string }[];
   store: { id: string; name: string; slug: string };
+  totalStock?: number;
 }
 
 export function ProductCard({ product }: { product: FeedProduct }) {
@@ -68,6 +69,26 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         <div style={{ position: 'absolute', top: 6, right: 6 }}>
           <WishlistButton productId={product.id} variant="card" />
         </div>
+        {typeof product.totalStock === 'number' && product.totalStock <= 0 && (
+          <div style={{
+            position: 'absolute', left: 6, top: 6,
+            fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+            background: 'rgba(239,68,68,0.92)', color: '#fff',
+            letterSpacing: 0.3,
+          }}>
+            НЕТ В НАЛИЧИИ
+          </div>
+        )}
+        {typeof product.totalStock === 'number' && product.totalStock > 0 && product.totalStock <= 5 && (
+          <div style={{
+            position: 'absolute', left: 6, top: 6,
+            fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+            background: 'rgba(251,191,36,0.92)', color: '#1a1208',
+            letterSpacing: 0.3,
+          }}>
+            ОСТАЛОСЬ {product.totalStock}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
