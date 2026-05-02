@@ -1,5 +1,40 @@
 # DONE — savdo-builder
 
+## Аудит TASK.md vs реальный код (02.05.2026)
+
+При проверке TASK.md выяснилось, что 6 из 7 SEC задач + BUG-003 + FEAT-007 уже реализованы в коде (вероятно в более ранних коммитах, но не отмечены). Записываю по факту.
+
+### ✅ [SEC-001] OTP: Math.random() → crypto.randomInt()
+- **Файл:** `apps/api/src/modules/auth/services/otp.service.ts:31`
+- **Что сделано:** `randomInt(100000, 1000000)` из `crypto`. Комментарий «SEC-001» в коде.
+
+### ✅ [SEC-002] OTP verify: Redis-счётчик попыток (макс 5 → блок 15 мин)
+- **Файлы:** `apps/api/src/modules/auth/services/otp.service.ts:14-78`, `verify-otp.use-case.ts:26`
+- **Что сделано:** `OTP_MAX_ATTEMPTS = 5`, TTL 15min, `checkVerifyAttempts/recordFailedAttempt/clearVerifyAttempts`. Graceful degradation если Redis недоступен.
+
+### ✅ [SEC-003] Убрать OTP код из dev-логов
+- **Файл:** `apps/api/src/modules/auth/services/otp.service.ts:85`
+- **Что сделано:** `Sending code to phone=${phone}` — больше не логируется сам код. Только факт отправки.
+
+### ✅ [SEC-004] OTP: 4 → 6 цифр
+- **Файл:** `apps/api/src/modules/auth/services/otp.service.ts:31`
+- **Что сделано:** `randomInt(100000, 1000000)` — диапазон 6 цифр. (объединено с SEC-001)
+
+### ✅ [SEC-006] Дублирующие auth эндпоинты убраны
+- **Файл:** `apps/api/src/modules/auth/auth.controller.ts`
+- **Что сделано:** В контроллере остались только `/request-otp` и `/verify-otp`. `/otp/send` и `/otp/verify` удалены.
+
+### ✅ [SEC-007] Whitelist для query.status в admin/chat/threads
+- **Файл:** `apps/api/src/modules/chat/chat.controller.ts:323-324`
+- **Что сделано:** `const allowedStatuses = ['OPEN', 'CLOSED']; const where = status && allowedStatuses.includes(status) ? { status } : {};` Невалидный status молча игнорируется.
+
+### ✅ [BUG-003] adminListThreads whitelist
+- Дубль SEC-007. Закрыт тем же изменением.
+
+### ✅ [FEAT-007] Wishlist / Избранное для покупателя
+- **Коммиты:** `0f46a63 feat(api+db+types): wishlist`, `fd8721f feat(tma): wishlist UI`
+- **Что сделано:** БД-модель Wishlist, API POST/DELETE /buyer/wishlist/:productId, TMA — кнопка ♡, страница WishlistPage, авто-hydration в feed.
+
 ## Спринт: Orders UX polish (02.05.2026)
 
 ### ✅ [ORD-UX-1] Подсветка активных фильтров заказов + подсказка свайпа
