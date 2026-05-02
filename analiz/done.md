@@ -1,5 +1,44 @@
 # Done — Азим + Полат
 
+## 2026-05-02 (сессия 45, Полат) — 4 задачи от себя (через Азима): chat error, double back, orders filters, media URLs
+
+### ✅ [TMA-CHAT-ERROR-STATE-001] Toast «Ошибка загрузки сообщений» поверх загруженного thread list 🔴
+- **Файлы:** `apps/tma/src/pages/seller/ChatPage.tsx`, `apps/tma/src/pages/buyer/ChatPage.tsx`
+- **Симптом:** Скрин 1 от Полата — на seller chat list видно красную плашку «❌ Ошибка загрузки сообщений», а под ней 2 загруженных и кликабельных thread'а. Конфликт error/data state.
+- **Корень:** При тапе на thread шёл fetch `/chat/threads/:id/messages`. Если он падал (404, deleted thread, network) — `.catch()` вызывал `showToast('❌ Ошибка загрузки сообщений', 'error')` + `navigate('/seller/chat', { replace: true })`. Глобальный ToastContainer держит уведомление 3-4 сек, успевая отрендериться поверх thread-list куда нас вернул navigate.
+- **Что сделано:** Удалён `showToast` из `.catch()` обоих ChatPage — silent navigate-back. Если thread удалён или нет доступа — пользователь просто возвращается к списку, может пере-тапнуть.
+- **Альтернатива (не выбрана):** держать ошибку inline в conversation view. Дороже по UX (двойной шаг) и нарушает invariant «тред в URL = тред загружен или его нет».
+
+### ✅ [TMA-BUYER-CHAT-DOUBLE-BACK-001] Две кнопки «Назад» в chat thread 🟡
+- **Файл:** `apps/tma/src/components/layout/InAppBackBar.tsx`
+- **Симптом:** Скрин 4 от Полата — в chat thread сверху одновременно: pill `‹ Назад` (от `InAppBackBar`) и icon `‹` ниже (in-page back в header чата). Дубль.
+- **Что сделано:** В `InAppBackBar` добавлен `HIDE_ON_PREFIXES = ['/buyer/chat/', '/seller/chat/']` — pill больше не показывается на роутах thread'ов чата. Остаётся только iconic in-page back (компактнее, ближе к message list — по design-системе TMA).
+- **Затронуты также продавцовский чат**: фикс работает по prefix-матчу пути.
+
+### ✅ [TMA-BUYER-ORDERS-FILTERS-001] Фильтры заказов по статусу в TMA buyer 🟡
+- **Файл:** `apps/tma/src/pages/buyer/OrdersPage.tsx`
+- **Контекст:** Скрин 3 от Полата — на TMA `/orders` сплошной список без фильтров. Полат хотел: отменённые / доставленные / в ожидании.
+- **Паттерн:** `apps/web-buyer/src/app/(shop)/orders/page.tsx:24` — `FILTER_TABS` (ALL/PENDING/CONFIRMED/SHIPPED/DELIVERED/CANCELLED). Перенёс на TMA c небольшой адаптацией: `confirmed` chip покрывает и `CONFIRMED`, и `PROCESSING` (одинаковая UX-семантика для покупателя — «приняли в работу»).
+- **Что сделано:**
+  - Новые типы: `StatusFilter = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'`, массив `STATUS_FILTERS`, helper `matchesFilter(status, filter)`.
+  - Новый header в TMA-стиле (gradient page-icon 📦 + gradient title + count «N заказов») — консистентно с StoresPage/DashboardPage.
+  - Чипы фильтров с per-tab counts (как в seller/OrdersPage), горизонтальный скролл, orchid `rgba(168,85,247,...)` accent.
+  - Empty state «Нет заказов в этой категории» когда фильтр пустой, но заказы есть.
+  - `orders.map` → `orders.filter(matchesFilter).map` сохраняет existing expand-row логику (`expandedId`, lazy detail fetch).
+- **«Избранное / понравившиеся» из задачи:** не статус заказа — отдельная фича `WISHLIST-CONTRACT-001` (открыта).
+
+### ✅ [TMA-MEDIA-LOAD-001] Фото товаров не грузятся, серый плейсхолдер 🔴
+- **Файлы:** `apps/api/src/modules/products/products.controller.ts:resolveImageUrl`, `apps/api/src/modules/stores/stores.controller.ts:resolveStoreImageUrls`, `apps/api/src/modules/cart/cart.mapper.ts:resolveMediaUrl`, `apps/api/src/modules/telegram/telegram-demo.handler.ts:resolveMediaUrl`, `apps/api/src/modules/media/services/r2-storage.service.ts:getPublicUrl`
+- **Симптом:** Скрин 2 от Полата — все ProductCard на TMA buyer Home с пустым `<img>` (системная иконка «горы и солнце»). На всех 6 товарах. R2 в бэке подключен, ключи объектов есть.
+- **Root cause:** Все 4 helper-метода `resolveImageUrl/resolveMediaUrl` для не-telegram бакетов делают `${process.env.STORAGE_PUBLIC_URL}/${objectKey}`. **На Railway api сервисе `STORAGE_PUBLIC_URL` не задан** → возвращает либо пустую строку, либо `undefined/<key>` (cart.mapper). `<img src="">` показывает плейсхолдер браузера.
+- **Что сделано (defensive code):** Все 4 метода теперь fall back на `${APP_URL}/api/v1/media/proxy/<id>` когда `STORAGE_PUBLIC_URL` пуст. `r2Storage.getPublicUrl` теперь логирует чёткий warning «STORAGE_PUBLIC_URL is missing — image URLs will be broken» вместо тихо возвращать `undefined/<key>`. Добавлено strip trailing slash.
+- **⚠️ Action required (Polat / infra):** установить `STORAGE_PUBLIC_URL` на Railway api сервисе. Без этого даже `/media/proxy/:id` redirect (302) сломан — он сам внутри использует `getPublicUrl`. Значение: ваш R2 public URL — либо `https://pub-xxxx.r2.dev` (default Cloudflare R2 public), либо ваш CDN-домен (`cdn.savdo.uz` если настроен).
+- **Не сделано в этой сессии:** R2 CORS-конфиг и проверка private/public visibility бакета — это infra-задача.
+
+### Push: main → tma, api ветки. Коммит `a2e1767`.
+
+---
+
 ## 2026-05-01 (сессия 44, Азим) — Chat message order fix + Web-seller `/products` responsive layout
 
 ### ✅ [WEB-CHAT-ORDER-001] Сообщения в чате — старые сверху, новые снизу 🔴
