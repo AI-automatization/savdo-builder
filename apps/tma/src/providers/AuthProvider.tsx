@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, ty
 import { useTelegram } from './TelegramProvider';
 import { authenticateWithTelegram } from '@/lib/auth';
 import { setUnauthorizedHandler, setToken } from '@/lib/api';
+import { hydrateWishlist } from '@/lib/wishlist';
 
 interface User {
   id: string;
@@ -51,6 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authenticated: true,
         authVersion: prev.authVersion + 1,
       }));
+      // Hydrate wishlist cache for buyers — non-blocking, errors swallowed inside.
+      if (res.user.role === 'BUYER') {
+        void hydrateWishlist();
+      }
     } else {
       setState(prev => ({ ...prev, user: null, loading: false, authenticated: false }));
     }

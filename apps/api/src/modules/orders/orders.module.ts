@@ -9,9 +9,10 @@ import { UsersModule } from '../users/users.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { StoresModule } from '../stores/stores.module';
 import { SocketModule } from '../../socket/socket.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [UsersModule, SellersModule, StoresModule, SocketModule],
+  imports: [UsersModule, SellersModule, StoresModule, SocketModule, TelegramModule],
   controllers: [OrdersController],
   providers: [
     OrdersRepository,

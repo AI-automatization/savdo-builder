@@ -109,13 +109,21 @@ export default function StoresPage() {
             <Sticker emoji="🛒" size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold" style={{ color: '#A855F7' }}>Savdo</h1>
+            <h1 className="text-base font-bold text-gradient">Savdo</h1>
             {user && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                Привет, {user.first_name}!
+              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                Привет, {user.first_name} 👋
               </p>
             )}
           </div>
+          <button
+            onClick={() => navigate('/buyer/wishlist')}
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15 }}
+            aria-label="Избранное"
+          >
+            ❤️
+          </button>
           <button
             onClick={() => navigate('/buyer/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
@@ -225,9 +233,7 @@ export default function StoresPage() {
         {/* ── Stores content ─────────────────────────────────────────────────── */}
         {tab === 'stores' && (
           <>
-            <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Магазины
-            </h2>
+            <div className="section-label">Магазины</div>
 
             {storesLoading && (
               <div className="flex justify-center py-8"><Spinner /></div>
@@ -257,10 +263,15 @@ export default function StoresPage() {
                 onClick={() => navigate(`/buyer/store/${store.slug}`)}
               >
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(168,85,247,0.20)', border: '1px solid rgba(168,85,247,0.25)' }}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold uppercase"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
+                    border: '1px solid rgba(168,85,247,0.28)',
+                    color: '#A855F7',
+                    fontSize: 17,
+                  }}
                 >
-                  <Sticker emoji="🏪" size={26} />
+                  {store.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>

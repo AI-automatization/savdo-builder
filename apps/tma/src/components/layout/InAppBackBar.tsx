@@ -13,12 +13,16 @@ const PRIMARY_PATHS = new Set([
   '/seller/chat',
 ]);
 
+// Routes that have their own in-page back button (would otherwise duplicate)
+const HIDE_ON_PREFIXES = ['/buyer/chat/', '/seller/chat/'];
+
 export function InAppBackBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { tg } = useTelegram();
 
   if (PRIMARY_PATHS.has(location.pathname)) return null;
+  if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
 
   return (
     <div className="mb-3">

@@ -5,6 +5,32 @@
 
 ---
 
+# 🆕 Очередь от Полата (через Азима, 30.04.2026 поздно вечер)
+
+> ✅ 4 TMA задачи закрыты Полатом 02.05.2026, коммит `a2e1767`. См. `analiz/done.md`.
+
+---
+
+> ✅ `API-NOTIFICATIONS-ORDER-001` + `API-NOTIFICATIONS-CHAT-001` закрыты Полатом 02.05.2026, коммит `d83af03`. См. `analiz/done.md`.
+
+---
+
+> ✅ `WISHLIST-CONTRACT-001` + `TMA-BUYER-WISHLIST-001` закрыты Полатом 02.05.2026, коммиты `0f46a63` (backend) + `fd8721f` (UI). См. `analiz/done.md`.
+
+> ⏳ Открыто для Азима: `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` в web-buyer + heart на ProductCard. Бэкенд готов: `GET/POST /buyer/wishlist`, `DELETE /buyer/wishlist/:productId`, `WishlistItem` тип в `packages/types`, флаг `inWishlist?: boolean` на storefront feed для авторизованных buyer'ов. Подсмотрите паттерн в `apps/tma/src/lib/wishlist.ts` (optimistic toggle с локальным кэшем).
+
+---
+
+# ✅ Закрыто Азимом в сессии 44 (01.05.2026, прямо сейчас, перед отбоем Азима)
+
+- `WEB-CHAT-ORDER-001` 🔴 — сообщения в обоих чат-апах теперь ASC по `createdAt` через `useMemo`. Бэк отдаёт DESC под cursor pagination, фронт перевернул для display.
+- `WEB-SELLER-PRODUCTS-RESPONSIVE-001` 🟡 — `/products` теперь полностью responsive: на mobile flex-column карточка с thumbnail + actions row, на desktop grid 6 колонок. Skeleton тоже адаптивный. (Реакция на тему 1 Полата «список + адаптивно».)
+- `WEB-BUYER-ORDERS-CANCELLED-FILTER-001` 🟢 — добавлен таб «Отменённые» в FILTER_TABS web-buyer `/orders` (был пропущен, хотя `CANCELLED` уже есть в STATUS_CONFIG).
+
+> Все три не закоммичены — ждут согласия Азима на push (через service-ветки `web-seller` и `web-buyer`, не через main).
+
+---
+
 # 📋 Снимок состояния (на 29.04.2026, сессия 38)
 
 ## ✅ Закрыто Азимом в сессии 38 (29.04.2026) — Pre-MVP audit + security hardening
@@ -81,7 +107,14 @@
 - (бонус, `2a6477c`) TMA: JSX fragment wrapper в buyer/ChatPage, seller/ChatPage, seller/OrdersPage — после удаления AppShell early-returns ломали build (TS1005). Также Полат сам докрутил GlobalCategory `name → nameRu` в `web-seller/products/[id]/edit/page.tsx`, `create/page.tsx`, `seller.api.ts` — параллельно с моей локальной адаптацией; мои локальные правки оказались идентичны и были откатаны через `git restore` перед `git pull`.
 - (бонус, `141c0a5`) TMA persistent layout: nested routes + outlet, BottomNav и AppShell больше не remount при навигации; навигация instant. Не наш домен (TMA).
 
-## 🚧 Открыто — Полат (бэк, `apps/api` / `packages/db` / `packages/types`)
+## ✅ Закрыто в текущей сессии (30.04.2026)
+
+- `TMA-STICKER-CRASH-001` 🔴 — **React error #130** в TMA на StoresPage + DashboardPage. Root cause: `lottie-react` CJS/ESM interop в Vite prod bundle → `Lottie` = module object вместо компонента. Нотоэмоджи CDN: 404 на `1f3ea`. Fix: убран `lottie-react`, `Sticker` → статичный emoji `<span>`. `1004e33`
+- `TMA-PRODUCT-CARD-ROUTE-001` 🔴 — `ProductCard` навигировал на `/buyer/product/:id` (несуществующий маршрут). Fix: `/buyer/store/:slug/product/:id`. `1004e33`
+
+---
+
+## 🚧 Открыто — Полат (TMA / `apps/api` / `packages/db` / `packages/types`)
 
 | ID | Важность | Кратко |
 |----|----------|--------|

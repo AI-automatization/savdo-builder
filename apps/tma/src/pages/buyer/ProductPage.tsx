@@ -6,6 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { showToast } from '@/components/ui/Toast';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
+import { WishlistButton } from '@/components/ui/WishlistButton';
 import { glass } from '@/lib/styles';
 import {
   findVariantBySelection,
@@ -282,9 +283,12 @@ export default function ProductPage() {
 
         {/* Info */}
         <div className="flex flex-col gap-2">
-          <h1 className="text-lg font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>
-            {product.title}
-          </h1>
+          <div className="flex items-start gap-3">
+            <h1 className="text-lg font-bold flex-1 min-w-0" style={{ color: 'rgba(255,255,255,0.92)' }}>
+              {product.title}
+            </h1>
+            <WishlistButton productId={product.id} variant="page" />
+          </div>
           {product.globalCategory && (
             <span className="self-start text-xs px-2 py-0.5 rounded-full font-medium"
               style={{ background: 'rgba(167,139,250,0.12)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.25)' }}>

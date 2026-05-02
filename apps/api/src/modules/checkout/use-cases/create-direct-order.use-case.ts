@@ -4,6 +4,7 @@ import { ProductsRepository } from '../../products/repositories/products.reposit
 import { VariantsRepository } from '../../products/repositories/variants.repository';
 import { CheckoutRepository } from '../repositories/checkout.repository';
 import { OrdersGateway } from '../../../socket/orders.gateway';
+import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { CreateDirectOrderDto } from '../dto/create-direct-order.dto';
@@ -30,6 +31,7 @@ export class CreateDirectOrderUseCase {
     private readonly variantsRepo: VariantsRepository,
     private readonly checkoutRepo: CheckoutRepository,
     private readonly ordersGateway: OrdersGateway,
+    private readonly tgNotifier: SellerNotificationService,
   ) {}
 
   async execute(input: CreateDirectOrderInput): Promise<Order> {
@@ -156,6 +158,16 @@ export class CreateDirectOrderUseCase {
       `Direct order ${order.orderNumber} created for buyer ${input.buyerId}`,
     );
     this.ordersGateway.emitOrderNew(order);
+
+    // TG notification → seller
+    this.tgNotifier.notifyNewOrder({
+      sellerTelegramUsername: store.seller.telegramUsername,
+      orderNumber: order.orderNumber,
+      storeName: store.name,
+      itemCount: dto.items.length,
+      total: totalAmount,
+      currency: 'UZS',
+    });
 
     return order;
   }

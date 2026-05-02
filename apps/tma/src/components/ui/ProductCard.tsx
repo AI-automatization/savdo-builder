@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCart, saveCart } from '@/lib/cart';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { WishlistButton } from '@/components/ui/WishlistButton';
 
 export interface FeedProduct {
   id: string;
@@ -45,7 +46,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
 
   return (
     <div
-      onClick={() => navigate(`/buyer/product/${product.id}`)}
+      onClick={() => navigate(`/buyer/store/${product.store.slug}/product/${product.id}`)}
       style={{
         borderRadius: 14,
         overflow: 'hidden',
@@ -56,7 +57,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         flexDirection: 'column',
       }}
     >
-      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
         {imageUrl ? (
           <img src={imageUrl} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
@@ -64,6 +65,9 @@ export function ProductCard({ product }: { product: FeedProduct }) {
             📦
           </div>
         )}
+        <div style={{ position: 'absolute', top: 6, right: 6 }}>
+          <WishlistButton productId={product.id} variant="card" />
+        </div>
       </div>
 
       <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>

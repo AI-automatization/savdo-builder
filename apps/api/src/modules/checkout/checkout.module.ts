@@ -9,9 +9,10 @@ import { CartModule } from '../cart/cart.module';
 import { ProductsModule } from '../products/products.module';
 import { UsersModule } from '../users/users.module';
 import { SocketModule } from '../../socket/socket.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [CartModule, ProductsModule, UsersModule, SocketModule],
+  imports: [CartModule, ProductsModule, UsersModule, SocketModule, TelegramModule],
   controllers: [CheckoutController, OrdersCreateController],
   providers: [
     CheckoutRepository,

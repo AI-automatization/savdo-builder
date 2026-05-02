@@ -6,6 +6,7 @@ import { ProductsRepository } from '../../products/repositories/products.reposit
 import { VariantsRepository } from '../../products/repositories/variants.repository';
 import { CheckoutRepository } from '../repositories/checkout.repository';
 import { OrdersGateway } from '../../../socket/orders.gateway';
+import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { DeliveryAddressDto } from '../dto/confirm-checkout.dto';
@@ -37,6 +38,7 @@ export class ConfirmCheckoutUseCase {
     private readonly checkoutRepo: CheckoutRepository,
     private readonly config: ConfigService,
     private readonly ordersGateway: OrdersGateway,
+    private readonly tgNotifier: SellerNotificationService,
   ) {}
 
   async execute(input: ConfirmCheckoutInput): Promise<Order> {
@@ -229,6 +231,16 @@ export class ConfirmCheckoutUseCase {
     this.logger.log(`Order ${order.orderNumber} created for buyer ${input.buyerId}`);
 
     this.ordersGateway.emitOrderNew(order);
+
+    // TG notification → seller (fire-and-forget, never blocks)
+    this.tgNotifier.notifyNewOrder({
+      sellerTelegramUsername: store.seller.telegramUsername,
+      orderNumber: order.orderNumber,
+      storeName: store.name,
+      itemCount: validatedItems.length,
+      total: totalAmount,
+      currency: cart.currencyCode,
+    });
 
     return order;
   }

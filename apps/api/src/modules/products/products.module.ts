@@ -14,9 +14,10 @@ import { AdjustStockUseCase } from './use-cases/adjust-stock.use-case';
 import { StoresModule } from '../stores/stores.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { WishlistModule } from '../wishlist/wishlist.module';
 
 @Module({
-  imports: [StoresModule, SellersModule, TelegramModule],
+  imports: [StoresModule, SellersModule, TelegramModule, WishlistModule],
   controllers: [ProductsController],
   providers: [
     ProductsRepository,
