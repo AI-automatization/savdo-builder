@@ -11,3 +11,4 @@ export * from './api/orders';
 export * from './api/cart';
 export * from './api/chat';
 export * from './api/notifications';
+export * from './api/wishlist';

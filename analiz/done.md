@@ -1,5 +1,41 @@
 # Done — Азим + Полат
 
+## 2026-05-02 (сессия 45 продолжение, Полат) — Telegram bot notifications: order status + chat messages
+
+### ✅ [API-NOTIFICATIONS-ORDER-001] Уведомления покупателю в TG при смене статуса заказа 🔴
+### ✅ [API-NOTIFICATIONS-CHAT-001] Уведомления о новых сообщениях в чате через TG-бот 🔴
+
+- **Контекст (Полат через Азима, скрины 30.04 14:32):** «должна быть система уведомления / типо ваш заказ оформлен / ваш заказ обработан / ваш заказ получен» + «вам написал клиент имя клиента на счёт "имя товара": "сообщение покупателя", и похожая логика у самого покупателя».
+- **Что было:** Существовал `SellerNotificationService` с методом `notifyNewOrder` для продавца — но **он нигде не вызывался**. `TelegramNotificationProcessor` обрабатывал new-order/store-approved/store-rejected/verification-approved/broadcast. Уведомлений на смену статуса для покупателя и на чат-сообщения не было совсем.
+- **Архитектура решения:** Поверх существующей BullMQ-очереди (`QUEUE_TELEGRAM_NOTIFICATIONS`):
+  - 2 новых job type: `order-status-changed`, `chat-message`.
+  - Fire-and-forget enqueue, до 3 попыток с exponential backoff. Никогда не блокирует HTTP-запрос.
+  - Templates с emoji per-status: ⏳ PENDING, ✅ CONFIRMED, 📦 PROCESSING, 🚚 SHIPPED, 🎉 DELIVERED, ❌ CANCELLED. Для покупателя и продавца разные wording'и (например CANCELLED → «отменён» для buyer-view, «отменён покупателем» для seller-view).
+- **Что сделано:**
+  - `SellerNotificationService` расширен 2 методами: `notifyOrderStatusChanged({recipientChatId, recipientRole, orderNumber, storeName, oldStatus, newStatus, total, currency})` и `notifyChatMessage({recipientChatId, senderName, productTitle?, orderNumber?, storeName?, messagePreview})`. Оба gate на `features.telegramNotificationsEnabled` + non-empty chatId.
+  - `TelegramNotificationProcessor` — 2 новых case'а с шаблонами на русском.
+  - `confirm-checkout.use-case.ts` + `create-direct-order.use-case.ts` теперь зовут `notifyNewOrder` (был DEFINED but NEVER CALLED — закрыт latent bug).
+  - `update-order-status.use-case.ts`: `notifyOrderStatusChanged` → buyer ВСЕГДА (по `User.telegramId`); → seller только когда buyer отменяет (PENDING→CANCELLED by BUYER role) — по `Seller.telegramChatId`.
+  - `send-message.use-case.ts`: `notifyChatMessage` → ВТОРАЯ сторона треда. BUYER→SELLER через `seller.telegramChatId`, SELLER→BUYER через `user.telegramId`. Preview = первые 80 символов.
+- **Repo extensions (additive, не ломают HTTP-контракты):**
+  - `CheckoutRepo.findStoreWithSeller`: добавлены `name` + `seller.{telegramUsername, telegramChatId, telegramNotificationsActive}`.
+  - `CheckoutRepo.findBuyerWithUser`: `user.telegramId` (для будущих use-case).
+  - `OrdersRepo.findById`: `user.telegramId` + `store.seller.{...}`.
+  - `ChatRepo.findThreadById`: `buyer.user.{phone, telegramId}` + `product.title` + `order.orderNumber`.
+  Type definitions в репо синхронизированы с включениями.
+- **Не сделано в этой сессии (можно добавить потом):**
+  - In-app fallback (если у пользователя есть активный socket — пропускать TG, чтобы не дублировать). Сейчас всегда шлём TG.
+  - HTML-рендер сообщений (parse_mode HTML) для жирного текста и ссылок. Сейчас plain text — гарантированно работает.
+  - Buttons в TG: «Открыть заказ» / «Открыть чат» (deep link в TMA). Можно через inlineKeyboard позже.
+- **Краевые случаи:**
+  - Buyer без `telegramId` (зарегистрировался через web phone+OTP, не открывал TMA) — silent skip, ошибки не происходит.
+  - Seller без `telegramChatId` (старая регистрация до OTP-через-бот) — silent skip уведомлений об отмене. New-order идут по `@username` который у seller обязателен.
+- **Schema migration:** не требуется. Все нужные поля уже есть в `User.telegramId`, `Seller.telegramChatId`, `Seller.telegramUsername`, `Seller.telegramNotificationsActive`.
+
+### Push: `main` → `api` ветка. Коммит `d83af03`.
+
+---
+
 ## 2026-05-02 (сессия 45, Полат) — 4 задачи от себя (через Азима): chat error, double back, orders filters, media URLs
 
 ### ✅ [TMA-CHAT-ERROR-STATE-001] Toast «Ошибка загрузки сообщений» поверх загруженного thread list 🔴
