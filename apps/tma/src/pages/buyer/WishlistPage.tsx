@@ -5,8 +5,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { WishlistButton } from '@/components/ui/WishlistButton';
-import type { WishlistItem } from 'types';
-import { setLocalFlag } from '@/lib/wishlist';
+import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
 
 export default function WishlistPage() {
   const navigate = useNavigate();
