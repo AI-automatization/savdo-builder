@@ -1,5 +1,37 @@
 # Done — Азим + Полат
 
+## 2026-05-02 (сессия 45 финал, Полат) — Content-Security-Policy на web-buyer + web-seller
+
+### ✅ [WEB-CSP-HEADER-002] CSP headers на обоих веб-апах 🟢
+
+- **Файлы:** `apps/web-buyer/next.config.ts`, `apps/web-seller/next.config.ts`
+- **Контекст:** Сессия 38 добавила базовый набор security-headers (X-Frame-Options/HSTS/Referrer-Policy/Permissions-Policy/X-Content-Type-Options) — но Content-Security-Policy не было. Без CSP в случае компрометации фронта (XSS-инъекция) защита неполная.
+- **Что сделано:** Добавил CSP-директивы в обоих `next.config.ts` рядом с существующими `securityHeaders`.
+- **CSP-стратегия (pragmatic baseline, не nonce-based):**
+  - `default-src 'self'` — базовая запретная политика.
+  - `script-src 'self' 'unsafe-inline' 'unsafe-eval'` — Next.js production требует обе. **Что блокирует:** инъекцию `<script src="https://attacker.example/...">` (только из 'self'), инъекцию `<script src="http://...">` (любого HTTP source).
+  - `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` — Tailwind/inline style props.
+  - `font-src 'self' data: https://fonts.gstatic.com`.
+  - `img-src 'self' data: blob: https:` — широкий, но https-only (R2/Telegram-proxy/любой CDN).
+  - `media-src 'self' https: blob:`.
+  - `connect-src 'self' https: wss:` — API + Socket.IO. Блокирует HTTP exfiltration.
+  - `frame-src` — для web-buyer: `'self' https://t.me https://oauth.telegram.org` (на случай TG login widgets). Для web-seller: только `'self'`.
+  - `frame-ancestors 'none'` — сильнее чем X-Frame-Options DENY (оставлены оба для совместимости со старыми браузерами).
+  - `object-src 'none'` — запрет Flash/Java applet/embed эксплойтов.
+  - `base-uri 'self'` — нет hijack'а через `<base href>`.
+  - `form-action 'self'` — нет submit'а на чужие origins.
+- **Что НЕ сделано (можно усилить позже):**
+  - Strict CSP с per-request nonce'ами (требует middleware изменений в Next 15) — отложено до появления реальной XSS-поверхности.
+  - Whitelist конкретных R2/Telegram media хостов в connect-src/img-src — пока wildcards `https:`, так как хосты варьируются по deploy'ям.
+  - CSP-Report-Only roll-out — задеплоил сразу как enforcing. Easy to revert если браузеры жалуются.
+- **Verify после деплоя:** открыть DevTools → Console на проде. Если есть нарушения — будут логи `Refused to load … because it violates …`. Если нарушений нет — CSP работает прозрачно.
+
+### Push: `main` → `web-buyer` + `web-seller` ветки. Коммит `814c35b`.
+
+> На этом очередь Полата по открытым задачам завершена. Осталось только manual action items: STORAGE_PUBLIC_URL на Railway api, миграция wishlist, ручная проверка TG-уведомлений.
+
+---
+
 ## 2026-05-02 (сессия 45 продолжение 2, Полат) — Wishlist (избранное товаров): backend + TMA UI
 
 ### ✅ [WISHLIST-CONTRACT-001] Wishlist — endpoints + тип + миграция (был БЛОКЕР для UI) 🟡

@@ -125,7 +125,7 @@
 | ~~`API-CART-EMPTY-CONTRACT-001`~~ | ✅ | `Cart.id/storeId: string | null`. Web-buyer: `cart!.storeId ?? ''`. `db72038` |
 | ~~`ADMIN-BROADCAST-XSS-CHECK-001`~~ | ✅ | Проверено: html — preview из user-input через pipeline HTML-escaping. Фикс: regex `(.*?)` → `[^"]*` в href capture — предотвращает attribute injection. Самостоятельный XSS невозможен. `6290737` |
 | ~~`INFRA-FULL-RELOAD-NAV-001`~~ | ✅ | TMA: AppShell лифтнут в nested routes → persistent layout (141c0a5). Admin: `window.location.href='/login'` → `CustomEvent auth:logout` + `AuthLogoutListener` в App.tsx. `6290737` |
-| `WEB-CSP-HEADER-002` | 🟢 | Сессия 38 добавила базовый набор security-headers, но **CSP не включён** (требует точного списка allowed sources: API_URL, R2, Telegram media, Google Fonts, …). На post-MVP — без CSP защита от XSS-инъекции в случае компрометации фронта неполная. |
+| ~~`WEB-CSP-HEADER-002`~~ | ✅ | CSP-директивы добавлены в оба `next.config.ts`. `script-src 'self' 'unsafe-inline' 'unsafe-eval'` (Next.js требует), но блокирует HTTP, чужие iframe, object/embed, base hijack. `814c35b` |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
