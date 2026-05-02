@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products';
-import { Check, Link2, Send, Layers } from 'lucide-react';
+import { Check, Link2, Send, Layers, Package } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
 import { card, colors, inputStyle } from '@/lib/styles';
@@ -146,10 +146,12 @@ export default function ProductsPage() {
 
       {/* Table */}
       <div className="rounded-lg overflow-hidden" style={card}>
+        {/* Header row — desktop only */}
         <div
-          className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
+          className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
           style={{ color: colors.textDim, borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}
         >
+          <span></span>
           <span>Товар</span>
           <span>Цена</span>
           <span>Статус</span>
@@ -160,7 +162,12 @@ export default function ProductsPage() {
         {isLoading ? (
           <>
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
+              <div
+                key={i}
+                className="flex flex-col gap-2 px-4 py-3.5 sm:grid sm:grid-cols-[auto_1fr_auto_auto_auto_auto] sm:gap-x-4 sm:items-center sm:px-5"
+                style={{ borderBottom: `1px solid ${colors.divider}` }}
+              >
+                <Skeleton className="hidden sm:block w-11 h-11 rounded-md" />
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-5 w-16 rounded-full" />
@@ -181,25 +188,114 @@ export default function ProductsPage() {
             const isToggleable = p.status === ProductStatus.ACTIVE || p.status === ProductStatus.DRAFT;
             const isUpdating = isStatusPending && statusVars?.id === p.id;
             const nextStatus = p.status === ProductStatus.ACTIVE ? ProductStatus.DRAFT : ProductStatus.ACTIVE;
+            const thumb = p.mediaUrls?.[0] ?? null;
 
             return (
               <div
                 key={p.id}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-5 py-3.5 transition-colors"
+                className="flex flex-col gap-3 px-4 py-3.5 sm:grid sm:grid-cols-[auto_1fr_auto_auto_auto_auto] sm:gap-x-4 sm:gap-y-0 sm:items-center sm:px-5 transition-colors"
                 style={{ borderBottom: `1px solid ${colors.divider}` }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                {/* Mobile top row: thumb + title/variants + status */}
+                <div className="flex items-start gap-3 sm:hidden">
+                  <div
+                    className="shrink-0 w-12 h-12 rounded-md overflow-hidden flex items-center justify-center"
+                    style={{ background: colors.surfaceSunken, border: `1px solid ${colors.border}` }}
+                  >
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumb} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Package size={18} strokeWidth={1.6} style={{ color: colors.textDim }} />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: colors.textPrimary }}>{p.title}</p>
+                        {p.variantCount > 0 && (
+                          <span
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+                            style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+                            title={`${p.variantCount} активных вариантов`}
+                          >
+                            <Layers size={10} />
+                            {p.variantCount}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                        style={{ background: sc.bg, color: sc.color }}
+                      >
+                        {STATUS_LABELS[p.status] ?? p.status}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold mt-1" style={{ color: colors.accent }}>
+                      {fmt(p.basePrice)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mobile bottom row: actions */}
+                <div className="flex items-center gap-3 sm:hidden">
+                  {isToggleable && (
+                    <button
+                      disabled={isUpdating}
+                      onClick={() => updateStatus({ id: p.id, status: nextStatus })}
+                      className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ color: p.status === ProductStatus.ACTIVE ? colors.danger : colors.success }}
+                    >
+                      {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? "Скрыть" : "Опубликовать"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => copyProductLink(p.id)}
+                    aria-label="Скопировать веб-ссылку"
+                    className="p-1.5 -m-1.5 transition-opacity hover:opacity-80"
+                    style={{ color: copiedId === p.id ? colors.success : colors.textDim }}
+                  >
+                    {copiedId === p.id ? <Check size={16} /> : <Link2 size={16} />}
+                  </button>
+                  <button
+                    onClick={() => copyTelegramLink(p.id)}
+                    aria-label="Скопировать Telegram-ссылку"
+                    className="p-1.5 -m-1.5 transition-opacity hover:opacity-80"
+                    style={{ color: tgCopiedId === p.id ? colors.success : "#60A5FA" }}
+                  >
+                    {tgCopiedId === p.id ? <Check size={16} /> : <Send size={16} />}
+                  </button>
+                  <Link
+                    href={`/products/${p.id}/edit`}
+                    className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-md transition-opacity hover:opacity-90"
+                    style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+                  >
+                    Изменить
+                  </Link>
+                </div>
+
+                {/* Desktop: thumbnail */}
+                <div
+                  className="hidden sm:flex shrink-0 w-11 h-11 rounded-md overflow-hidden items-center justify-center"
+                  style={{ background: colors.surfaceSunken, border: `1px solid ${colors.border}` }}
+                >
+                  {thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Package size={18} strokeWidth={1.6} style={{ color: colors.textDim }} />
+                  )}
+                </div>
+
+                {/* Desktop: title + variants */}
+                <div className="hidden sm:flex items-center gap-2 min-w-0">
                   <span className="text-sm font-medium truncate" style={{ color: colors.textPrimary }}>{p.title}</span>
                   {p.variantCount > 0 && (
                     <span
                       className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
-                      style={{
-                        background: colors.accentMuted,
-                        color: colors.accent,
-                        border: `1px solid ${colors.accentBorder}`,
-                      }}
+                      style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
                       title={`${p.variantCount} активных вариантов`}
                     >
                       <Layers size={10} />
@@ -207,31 +303,36 @@ export default function ProductsPage() {
                     </span>
                   )}
                 </div>
-                <span className="text-sm font-medium" style={{ color: colors.accent }}>
+
+                {/* Desktop: price */}
+                <span className="hidden sm:inline text-sm font-medium" style={{ color: colors.accent }}>
                   {fmt(p.basePrice)}
                 </span>
+
+                {/* Desktop: status */}
                 <span
-                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  className="hidden sm:inline text-[11px] font-semibold px-2 py-0.5 rounded-full"
                   style={{ background: sc.bg, color: sc.color }}
                 >
                   {STATUS_LABELS[p.status] ?? p.status}
                 </span>
 
-                {/* Toggle ACTIVE ↔ DRAFT */}
+                {/* Desktop: toggle */}
                 {isToggleable ? (
                   <button
                     disabled={isUpdating}
                     onClick={() => updateStatus({ id: p.id, status: nextStatus })}
-                    className="text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                    className="hidden sm:inline text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
                     style={{ color: p.status === ProductStatus.ACTIVE ? colors.danger : colors.success }}
                   >
                     {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? "Скрыть" : "Опубликовать"}
                   </button>
                 ) : (
-                  <span />
+                  <span className="hidden sm:inline" />
                 )}
 
-                <div className="flex items-center gap-2.5">
+                {/* Desktop: actions */}
+                <div className="hidden sm:flex items-center gap-2.5">
                   <button
                     onClick={() => copyProductLink(p.id)}
                     title="Скопировать веб-ссылку"
