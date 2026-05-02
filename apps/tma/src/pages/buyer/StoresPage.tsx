@@ -117,6 +117,14 @@ export default function StoresPage() {
             )}
           </div>
           <button
+            onClick={() => navigate('/buyer/wishlist')}
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15 }}
+            aria-label="Избранное"
+          >
+            ❤️
+          </button>
+          <button
             onClick={() => navigate('/buyer/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.50)', fontSize: 16 }}
