@@ -33,7 +33,8 @@ interface ChatMessage {
 export default function SellerChatPage() {
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  const isDesktop = (viewportWidth ?? 0) >= 1024;
 
   // ── Thread list ──────────────────────────────────────────────────────────────
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -439,63 +440,89 @@ export default function SellerChatPage() {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // THREAD LIST VIEW
+  // THREAD LIST VIEW (desktop = list left + placeholder right)
   // ════════════════════════════════════════════════════════════════════════════
-  return (
-    
-      <div className="flex flex-col gap-4">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
-          Сообщения
-        </h1>
+  const threadList = (
+    <div className="flex flex-col gap-2">
+      <h1 className="text-base font-bold mb-2" style={{ color: 'rgba(255,255,255,0.90)' }}>
+        Сообщения
+      </h1>
 
-        {loading && [1, 2, 3].map((i) => <ThreadRowSkeleton key={i} />)}
+      {loading && [1, 2, 3].map((i) => <ThreadRowSkeleton key={i} />)}
 
-        {!loading && threads.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-16">
-            <span style={{ fontSize: 40 }}>💬</span>
-            <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: 14 }}>Диалогов пока нет</p>
-          </div>
-        )}
+      {!loading && threads.length === 0 && (
+        <div className="flex flex-col items-center gap-2 py-16">
+          <span style={{ fontSize: 40 }}>💬</span>
+          <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: 14 }}>Диалогов пока нет</p>
+        </div>
+      )}
 
-        {threads.map((t) => (
+      {threads.map((t) => (
+        <div
+          key={t.id}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate(`/seller/chat/${t.id}`)}
+          className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer active:opacity-70 transition-all"
+          style={glass}
+        >
           <div
-            key={t.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate(`/seller/chat/${t.id}`)}
-            className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer active:opacity-70"
-            style={glass}
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+            style={{ background: 'rgba(167,139,250,0.15)' }}
           >
-            <div
-              className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-              style={{ background: 'rgba(167,139,250,0.15)' }}
-            >
-              💬
-              {(t.unreadCount ?? 0) > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
-                  style={{ background: '#A855F7', color: '#fff' }}
-                >
-                  {t.unreadCount! > 9 ? '9+' : t.unreadCount}
-                </span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                {threadLabel(t)}
-              </p>
-              <p className="text-[11px] truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                {t.lastMessage ?? (t.status === 'OPEN' ? 'Открыт' : 'Закрыт')}
-              </p>
-            </div>
-            {t.lastMessageAt && (
-              <span className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
-                {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
+            💬
+            {(t.unreadCount ?? 0) > 0 && (
+              <span
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
+                style={{ background: '#A855F7', color: '#fff' }}
+              >
+                {t.unreadCount! > 9 ? '9+' : t.unreadCount}
               </span>
             )}
           </div>
-        ))}
-      </div>
-    
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              {threadLabel(t)}
+            </p>
+            <p className="text-[11px] truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
+              {t.lastMessage ?? (t.status === 'OPEN' ? 'Открыт' : 'Закрыт')}
+            </p>
+          </div>
+          {t.lastMessageAt && (
+            <span className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
   );
+
+  if (isDesktop) {
+    return (
+      <div
+        className="grid gap-4"
+        style={{
+          gridTemplateColumns: '380px 1fr',
+          height: 'calc(var(--tg-viewport-stable-height, 100dvh) - 7.5rem)',
+        }}
+      >
+        <div className="overflow-y-auto pr-1">{threadList}</div>
+        <div
+          className="rounded-3xl flex flex-col items-center justify-center gap-3"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px dashed rgba(255,255,255,0.08)',
+          }}
+        >
+          <span style={{ fontSize: 56, opacity: 0.35 }}>💬</span>
+          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            Выберите диалог слева
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <div className="flex flex-col gap-3">{threadList}</div>;
 }
