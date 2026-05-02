@@ -11,24 +11,7 @@
 
 ---
 
-## 🔴 [API-NOTIFICATIONS-ORDER-001] Telegram-бот — уведомления о статусах заказа
-- **Домен:** `apps/api/src/modules/telegram` + `apps/api/src/modules/notifications` (если нет — создать)
-- **Кто берёт:** Полат
-- **Контекст:** Полат: «должна быть система уведомлений / типо путеводитель в самом телеграм боте через уведомление / типо ваш заказ оформлен / ваш заказ обработан / ваш заказ получен / типо того / и типо у вас заказали».
-- **Сценарии (минимум):**
-  1. **Buyer:** при `OrderStatus` PENDING → CONFIRMED → SHIPPED → DELIVERED → CANCELLED — в Telegram-бот покупателя приходит сообщение "Ваш заказ #ORD-... [статус]". Триггер — domain event при `state machine transition` (см. `docs/V1.1/02_state_machines.md`).
-  2. **Seller:** при создании заказа в его магазине — в Telegram-бот продавца "У вас новый заказ #ORD-... на NN сум".
-- **Технически:** уже есть `telegram-demo.handler.ts` и OTP через бот. Расширить — bot-message-sender service, link `chat_id` к `BuyerProfile`/`SellerProfile`, listener на order status events.
-- **Связано:** `INV-O01..O04` (state machine), `04_buyer_identity.md` (как идентифицировать buyer's chat_id).
-
-## 🔴 [API-NOTIFICATIONS-CHAT-001] Telegram-бот — уведомления о новом сообщении в чате
-- **Домен:** `apps/api/src/modules/telegram` + `apps/api/src/modules/chat`
-- **Кто берёт:** Полат
-- **Контекст:** Полат: «вам написал клиент имя клиента на счет "имя товара" : "сообщение покупателя" / и похожая логика должна быть и у самого покупателя».
-- **Сценарии:**
-  1. **Seller** получает в Telegram-бот: `«{buyerName} → {productTitle}: {messagePreview}»` когда buyer отправил сообщение.
-  2. **Buyer** получает в Telegram-бот: `«{storeName} → {productTitle}: {messagePreview}»` когда seller ответил.
-- **Технически:** listener на `chat.message.created` event → если получатель offline (нет активной socket-сессии) → отправить через бот. Если online — пропустить. Это требует tracking activity.
+> ✅ `API-NOTIFICATIONS-ORDER-001` + `API-NOTIFICATIONS-CHAT-001` закрыты Полатом 02.05.2026, коммит `d83af03`. См. `analiz/done.md`.
 
 ---
 
