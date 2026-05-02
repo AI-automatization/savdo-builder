@@ -2,6 +2,7 @@ import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@prisma/client';
 import { OrdersRepository } from '../repositories/orders.repository';
 import { OrdersGateway } from '../../../socket/orders.gateway';
+import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
@@ -40,6 +41,7 @@ export class UpdateOrderStatusUseCase {
   constructor(
     private readonly ordersRepo: OrdersRepository,
     private readonly ordersGateway: OrdersGateway,
+    private readonly tgNotifier: SellerNotificationService,
   ) {}
 
   async execute(input: UpdateOrderStatusInput): Promise<Order> {
@@ -102,6 +104,43 @@ export class UpdateOrderStatusUseCase {
 
     this.ordersGateway.emitOrderStatusChanged(updatedOrder, oldStatus);
     this.ordersGateway.emitOrderStatusChangedToBuyer(updatedOrder, oldStatus);
+
+    // TG notifications: buyer always (own order); seller only if cancelled by buyer
+    const storeName = order.store?.name ?? '';
+    const total = Number(updatedOrder.totalAmount);
+    const currency = updatedOrder.currencyCode ?? 'UZS';
+
+    // → Buyer (User.telegramId)
+    const buyerChatId = order.buyer?.user.telegramId;
+    if (buyerChatId) {
+      this.tgNotifier.notifyOrderStatusChanged({
+        recipientChatId: String(buyerChatId),
+        recipientRole: 'BUYER',
+        orderNumber: order.orderNumber,
+        storeName,
+        oldStatus,
+        newStatus: input.newStatus,
+        total,
+        currency,
+      });
+    }
+
+    // → Seller when buyer cancelled (PENDING__CANCELLED by BUYER)
+    if (input.actorRole === 'BUYER' && input.newStatus === 'CANCELLED') {
+      const sellerChatId = order.store?.seller.telegramChatId;
+      if (sellerChatId) {
+        this.tgNotifier.notifyOrderStatusChanged({
+          recipientChatId: String(sellerChatId),
+          recipientRole: 'SELLER',
+          orderNumber: order.orderNumber,
+          storeName,
+          oldStatus,
+          newStatus: input.newStatus,
+          total,
+          currency,
+        });
+      }
+    }
 
     return updatedOrder;
   }
