@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { prefetch } from '@/lib/api';
 import { getCart, saveCart } from '@/lib/cart';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -49,6 +50,8 @@ export function ProductCard({ product }: { product: FeedProduct }) {
   return (
     <div
       onClick={() => navigate(`/buyer/store/${product.store.slug}/product/${product.id}`)}
+      onPointerEnter={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
+      onTouchStart={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       style={{
         borderRadius: 14,
         overflow: 'hidden',

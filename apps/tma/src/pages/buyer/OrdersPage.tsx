@@ -84,22 +84,25 @@ export default function OrdersPage() {
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const fetchFirst = () => {
+  const fetchFirst = (signal?: AbortSignal) => {
     setError(false);
-    api<PagedResponse>('/buyer/orders?limit=10&page=1')
+    api<PagedResponse>('/buyer/orders?limit=10&page=1', { signal, forceFresh: true })
       .then((res) => {
+        if (signal?.aborted) return;
         setOrders(res.data ?? []);
         setPage(1);
         setHasMore((res.meta?.page ?? 1) < (res.meta?.totalPages ?? 1));
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!signal?.aborted) setError(true); })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
   };
 
   useEffect(() => {
     if (!authenticated) { setLoading(false); return; }
+    const ac = new AbortController();
     setLoading(true);
-    fetchFirst();
+    fetchFirst(ac.signal);
+    return () => ac.abort();
   }, [authenticated]);
 
   const loadMore = () => {
