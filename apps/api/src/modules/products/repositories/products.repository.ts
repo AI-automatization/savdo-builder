@@ -13,6 +13,7 @@ export interface CreateProductData {
   isVisible?: boolean;
   sku?: string;
   displayType?: import('@prisma/client').ProductDisplayType;
+  attributesJson?: Record<string, unknown>;
 }
 
 export interface UpdateProductData {
@@ -179,7 +180,8 @@ export class ProductsRepository {
         sku: data.sku,
         status: 'DRAFT',
         ...(data.displayType !== undefined && { displayType: data.displayType }),
-      },
+        ...(data.attributesJson !== undefined && { attributesJson: data.attributesJson as any }),
+      } as any,
       include: {
         images: true,
       },

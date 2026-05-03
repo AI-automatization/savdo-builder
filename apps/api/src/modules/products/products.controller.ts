@@ -132,6 +132,7 @@ export class ProductsController {
       isVisible: dto.isVisible,
       sku: dto.sku,
       displayType: dto.displayType,
+      attributesJson: dto.attributesJson,
     });
   }
 

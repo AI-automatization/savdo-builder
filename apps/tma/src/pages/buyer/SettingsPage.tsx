@@ -2,6 +2,7 @@
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
 
@@ -65,6 +66,17 @@ export default function BuyerSettingsPage() {
               </span>
             )}
           </div>
+        </GlassCard>
+
+        {/* ── Тема оформления ── */}
+        <GlassCard className="p-4 flex flex-col gap-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+            Тема оформления
+          </p>
+          <ThemeToggle />
+          <p className="text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+            Авто — синхронизация с Telegram. Можно зафиксировать вручную.
+          </p>
         </GlassCard>
 
         {/* ── Приложение ── */}

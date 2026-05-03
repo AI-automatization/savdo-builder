@@ -2,12 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme variables ──────────────────────────────────────────────────────── */
+:root,
+:root[data-theme="dark"] {
+  --tg-bg:             #0B0E14;
+  --tg-bg-gradient:    linear-gradient(160deg, #0B0E14 0%, #0D1120 45%, #0B0F1C 100%);
+  --tg-surface:        rgba(255,255,255,0.055);
+  --tg-surface-hover:  rgba(255,255,255,0.08);
+  --tg-text-primary:   rgba(255,255,255,0.90);
+  --tg-text-secondary: rgba(255,255,255,0.55);
+  --tg-text-muted:     rgba(255,255,255,0.40);
+  --tg-text-dim:       rgba(255,255,255,0.30);
+  --tg-border:         rgba(255,255,255,0.11);
+  --tg-border-soft:    rgba(255,255,255,0.06);
+  --tg-accent:         #A855F7;
+  --tg-accent-dim:     rgba(168,85,247,0.18);
+  --tg-accent-glow:    rgba(168,85,247,0.35);
+  --tg-accent-text:    #F3E8FF;
+  --tg-cyan:           #22D3EE;
+  --tg-cyan-dim:       rgba(34,211,238,0.15);
+  --tg-success:        #34D399;
+  --tg-warning:        #FBBF24;
+  --tg-danger:         #EF4444;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --tg-bg:             #F7F8FB;
+  --tg-bg-gradient:    linear-gradient(160deg, #FFFFFF 0%, #F7F8FB 45%, #EEF1F8 100%);
+  --tg-surface:        rgba(0,0,0,0.04);
+  --tg-surface-hover:  rgba(0,0,0,0.06);
+  --tg-text-primary:   rgba(0,0,0,0.88);
+  --tg-text-secondary: rgba(0,0,0,0.62);
+  --tg-text-muted:     rgba(0,0,0,0.45);
+  --tg-text-dim:       rgba(0,0,0,0.28);
+  --tg-border:         rgba(0,0,0,0.10);
+  --tg-border-soft:    rgba(0,0,0,0.06);
+  --tg-accent:         #7C3AED;
+  --tg-accent-dim:     rgba(124,58,237,0.10);
+  --tg-accent-glow:    rgba(124,58,237,0.25);
+  --tg-accent-text:    #5B21B6;
+  --tg-cyan:           #0891B2;
+  --tg-cyan-dim:       rgba(8,145,178,0.10);
+  --tg-success:        #059669;
+  --tg-warning:        #D97706;
+  --tg-danger:         #DC2626;
+  color-scheme: light;
+}
+
 /* ── Global reset ─────────────────────────────────────────────────────────── */
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: #0B0E14;
+  background: var(--tg-bg);
+  color: var(--tg-text-primary);
   /* SF Pro Rounded on Apple devices, system-ui everywhere else */
   font-family: 'SF Pro Rounded', -apple-system, BlinkMacSystemFont,
                ui-rounded, 'Helvetica Neue', system-ui, sans-serif;
