@@ -84,15 +84,14 @@ export class ChatController {
     @Param('id') threadId: string,
     @Query() query: ListMessagesDto,
   ) {
-    // Participant check is done inside the use case using userId.
-    // The thread stores buyerId (Buyer.id) and sellerId (Seller.id), but
-    // participant verification must be done using the User.id stored as
-    // senderUserId on messages. For thread access, we resolve the profile id.
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    // Read-path: проверяем оба профиля. Юзер мог открыть thread где он seller,
+    // но JWT.role=BUYER (или наоборот) — single-role check давал 403.
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     return this.getThreadMessagesUseCase.execute({
       threadId,
-      readerUserId: participantId,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
       limit: query.limit,
       before: query.before,
     });
@@ -503,8 +502,24 @@ export class ChatController {
   }
 
   /**
-   * Returns a single `participantId` for message access checks.
-   * For ADMIN: prefers buyer profile, falls back to seller.
+   * Возвращает ОБА профиля юзера (buyer + seller). Юзер участвует в треде если
+   * thread.buyerId === buyerProfileId ИЛИ thread.sellerId === sellerProfileId.
+   * Это устраняет 403 когда JWT.role=BUYER, а thread на самом деле seller-thread юзера
+   * (или наоборот) — JWT хранит одну активную роль, а профилей у юзера может быть два.
+   */
+  private async resolveBothProfileIds(
+    userId: string,
+  ): Promise<{ buyerProfileId?: string; sellerProfileId?: string }> {
+    const user = await this.usersRepo.findById(userId);
+    return {
+      buyerProfileId: user?.buyer?.id,
+      sellerProfileId: user?.seller?.id,
+    };
+  }
+
+  /**
+   * Returns a single `participantId` for message access checks (write paths).
+   * Для read-only endpoints используй resolveBothProfileIds.
    */
   private async resolveParticipantId(
     userId: string,

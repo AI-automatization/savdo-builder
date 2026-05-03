@@ -6,7 +6,10 @@ import { ChatRepository } from '../repositories/chat.repository';
 
 export interface GetThreadMessagesInput {
   threadId: string;
-  readerUserId: string;
+  /** Buyer profile id юзера (если есть). Юзер — участник если thread.buyerId === buyerProfileId. */
+  buyerProfileId?: string;
+  /** Seller profile id юзера (если есть). Юзер — участник если thread.sellerId === sellerProfileId. */
+  sellerProfileId?: string;
   limit?: number;
   before?: string;
 }
@@ -59,10 +62,10 @@ export class GetThreadMessagesUseCase {
       );
     }
 
-    const isParticipant =
-      thread.buyerId === input.readerUserId || thread.sellerId === input.readerUserId;
+    const isBuyer = !!input.buyerProfileId && thread.buyerId === input.buyerProfileId;
+    const isSeller = !!input.sellerProfileId && thread.sellerId === input.sellerProfileId;
 
-    if (!isParticipant) {
+    if (!isBuyer && !isSeller) {
       throw new DomainException(
         ErrorCode.NOT_THREAD_PARTICIPANT,
         'You are not a participant of this thread',
@@ -71,7 +74,7 @@ export class GetThreadMessagesUseCase {
     }
 
     // Mark thread as read (fire-and-forget — не блокирует ответ)
-    const role = thread.buyerId === input.readerUserId ? 'buyer' : 'seller';
+    const role = isBuyer ? 'buyer' : 'seller';
     void this.chatRepo.markAsRead(input.threadId, role).catch((err: unknown) => {
       this.logger.warn(`markAsRead failed: ${err instanceof Error ? err.message : String(err)}`);
     });
