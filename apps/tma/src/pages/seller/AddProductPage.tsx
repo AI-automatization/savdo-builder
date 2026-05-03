@@ -20,8 +20,22 @@ interface StoreCategory {
 
 interface GlobalCategory {
   id: string;
+  slug?: string;
   nameRu: string;
   parentId?: string | null;
+  level?: number;
+  isLeaf?: boolean;
+  iconEmoji?: string | null;
+}
+
+interface CategoryFilter {
+  key: string;
+  nameRu: string;
+  nameUz: string;
+  fieldType: 'text' | 'number' | 'select' | 'boolean' | 'color' | 'multi_select';
+  options: string[] | null;
+  unit?: string | null;
+  isRequired?: boolean;
 }
 
 interface AttrRow {
@@ -66,6 +80,8 @@ export default function AddProductPage() {
   const [storeCategoryId, setStoreCategoryId] = useState<string>('');
   const [globalCategories, setGlobalCategories]   = useState<GlobalCategory[]>([]);
   const [globalCategoryId, setGlobalCategoryId]   = useState<string>('');
+  const [categoryFilters, setCategoryFilters] = useState<CategoryFilter[]>([]);
+  const [attrValues, setAttrValues] = useState<Record<string, string | boolean>>({});
   const [attrs, setAttrs] = useState<AttrRow[]>([]);
   const [attrName, setAttrName] = useState('');
   const [attrValue, setAttrValue] = useState('');
@@ -83,8 +99,26 @@ export default function AddProductPage() {
 
   useEffect(() => {
     api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    // Используем дерево с level/isLeaf/iconEmoji для cascade-modal
+    api<GlobalCategory[]>('/storefront/categories/tree').then(setGlobalCategories).catch(() => {
+      // Fallback: если эндпоинта нет (старая api версия) — обычный flat список
+      api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    });
   }, []);
+
+  // При выборе типа товара — загружаем характеристики этой категории
+  useEffect(() => {
+    if (!globalCategoryId) {
+      setCategoryFilters([]);
+      setAttrValues({});
+      return;
+    }
+    const cat = globalCategories.find((c) => c.id === globalCategoryId);
+    if (!cat?.slug) return;
+    api<CategoryFilter[]>(`/storefront/categories/${cat.slug}/filters`)
+      .then(setCategoryFilters)
+      .catch(() => setCategoryFilters([]));
+  }, [globalCategoryId, globalCategories]);
 
   const inputStyle = {
     ...glass,
@@ -97,8 +131,18 @@ export default function AddProductPage() {
     borderRadius: 12,
   } as const;
 
+  // Required-характеристики типа товара должны быть заполнены
+  const missingRequiredFilters = categoryFilters
+    .filter((f) => f.isRequired)
+    .filter((f) => {
+      const v = attrValues[f.key];
+      if (f.fieldType === 'boolean') return false; // boolean всегда есть
+      return v === undefined || v === '' || v === null;
+    });
+
   const isValid = title.trim().length >= 2 && Number(price) > 0 &&
     !!globalCategoryId &&
+    missingRequiredFilters.length === 0 &&
     (!hasSizes || sizes.length > 0);
 
   const addSize = () => {
@@ -171,6 +215,12 @@ export default function AddProductPage() {
     setError('');
     try {
       // 1. Создать товар
+      // Собираем характеристики (только заполненные значения)
+      const filledAttrs: Record<string, string | boolean | number> = {};
+      for (const [k, v] of Object.entries(attrValues)) {
+        if (v === '' || v === null || v === undefined) continue;
+        filledAttrs[k] = v;
+      }
       const product = await api<{ id: string }>('/seller/products', {
         method: 'POST',
         body: {
@@ -179,6 +229,7 @@ export default function AddProductPage() {
           basePrice: Number(price),
           ...(storeCategoryId ? { storeCategoryId } : {}),
           ...(globalCategoryId ? { globalCategoryId } : {}),
+          ...(Object.keys(filledAttrs).length > 0 ? { attributesJson: filledAttrs } : {}),
         },
       });
       const pid = product.id;
@@ -276,7 +327,7 @@ export default function AddProductPage() {
         />
       )}
     
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
           Новый товар
         </h1>
@@ -381,13 +432,68 @@ export default function AddProductPage() {
             selectedId={globalCategoryId || null}
             onSelect={(id) => setGlobalCategoryId(id ?? '')}
             onClose={() => setShowGlobalCatModal(false)}
+            leafOnly
           />
         )}
 
-        {/* Характеристики товара */}
+        {/* Динамические характеристики из CategoryFilter */}
+        {globalCategoryId && categoryFilters.length > 0 && (
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Характеристики этого типа
+            </label>
+            {categoryFilters.map((f) => (
+              <div key={f.key} className="flex flex-col gap-1.5">
+                <label className="text-[11px]" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  {f.nameRu}
+                  {f.unit && <span style={{ color: 'rgba(255,255,255,0.35)' }}> ({f.unit})</span>}
+                  {f.isRequired && <span style={{ color: '#f87171' }}> *</span>}
+                </label>
+                {f.fieldType === 'select' && f.options ? (
+                  <select
+                    value={String(attrValues[f.key] ?? '')}
+                    onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                    style={{ ...inputStyle, padding: '10px 14px', fontSize: 13, appearance: 'none' }}
+                  >
+                    <option value="">— выберите —</option>
+                    {f.options.map((opt) => (
+                      <option key={opt} value={opt}>{opt}{f.unit ? ` ${f.unit}` : ''}</option>
+                    ))}
+                  </select>
+                ) : f.fieldType === 'boolean' ? (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(attrValues[f.key])}
+                      onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.checked }))}
+                    />
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.70)' }}>Да</span>
+                  </label>
+                ) : f.fieldType === 'number' ? (
+                  <input
+                    type="number"
+                    value={String(attrValues[f.key] ?? '')}
+                    onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder={f.unit ? `например 32 ${f.unit}` : ''}
+                    style={{ ...inputStyle, padding: '10px 14px', fontSize: 13 }}
+                  />
+                ) : (
+                  <input
+                    value={String(attrValues[f.key] ?? '')}
+                    onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder=""
+                    style={{ ...inputStyle, padding: '10px 14px', fontSize: 13 }}
+                  />
+                )}
+              </div>
+            ))}
+          </GlassCard>
+        )}
+
+        {/* Дополнительные характеристики (свободная форма) */}
         <GlassCard className="p-4 flex flex-col gap-3">
           <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            Характеристики
+            Доп. характеристики
           </label>
           {attrs.map((a) => (
             <div key={a.id} className="flex items-center gap-2">

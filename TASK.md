@@ -1,35 +1,14 @@
 # TASK — savdo-builder
-> Обновлено: 23.04.2026 | Источник: UI/UX + Security Audit
+> Обновлено: 02.05.2026 | Источник: UI/UX + Security Audit
 
 ---
 
 ## 🔴 Критические — Security (блокируют безопасность)
 
-- [ ] [SEC-001] OTP: заменить Math.random() → crypto.randomInt()
-  - Файл: `apps/api/src/modules/auth/services/otp.service.ts:25`
-  - Проблема: Math.random() не криптостойкий, предсказуем
-
-- [ ] [SEC-002] OTP verify: Redis-счётчик попыток (макс 5 → блок 15 мин)
-  - Файл: `apps/api/src/modules/auth/use-cases/verify-otp.use-case.ts`
-  - Проблема: можно перебрать все 9000 комбинаций без блока
-
-- [ ] [SEC-003] Убрать OTP код из dev-логов
-  - Файл: `apps/api/src/modules/auth/services/otp.service.ts:39`
-  - Проблема: `logger.warn([DEV OTP] Code: ${code})` — утечка кода в логи
-
-- [ ] [SEC-004] OTP: 4 цифры → 6 цифр (1000-9999 → 100000-999999)
-  - Файл: `apps/api/src/modules/auth/services/otp.service.ts:24`
-
 - [ ] [SEC-005] media/proxy: добавить JWT guard для purpose=seller_doc
-  - Файл: `apps/api/src/modules/media/media.controller.ts:89`
-  - Проблема: документы продавцов доступны публично по ID
-
-- [ ] [SEC-006] Удалить дублирующие auth эндпоинты
-  - Файл: `apps/api/src/modules/auth/auth.controller.ts:40-63`
-  - Убрать: `/auth/otp/send` (дубль request-otp) и `/auth/otp/verify` (дубль verify-otp)
-
-- [ ] [SEC-007] Добавить DTO валидацию для query-параметра status в admin/chat/threads
-  - Файл: `apps/api/src/modules/chat/chat.controller.ts:136`
+  - Файл: `apps/api/src/modules/media/media.controller.ts:142` (`@Get('proxy/:id')`)
+  - Проблема: документы продавцов (purpose=seller_doc) доступны публично по ID
+  - Решение: проверять purpose в media-record — если seller_doc → требовать JwtAuthGuard + RolesGuard(ADMIN/SELLER-owner)
 
 ---
 
@@ -89,13 +68,12 @@
   - API: GET /seller/analytics?from=&to=
   - TMA: графики на DashboardPage
 
-- [ ] [FEAT-007] Wishlist / Избранное для покупателя
-  - API: POST/DELETE /buyer/wishlist/:productId
-  - TMA: кнопка ♡ на карточке товара
-
-- [ ] [FEAT-008] Отзывы и рейтинг магазина
-  - API: POST /orders/:id/review
-  - TMA: форма отзыва после DELIVERED
+- [ ] [FEAT-008] Отзывы и рейтинг магазина / товара
+  - БД: model Review { id, productId, buyerId, orderItemId, rating(1-5), comment?, createdAt }
+  - API: POST /buyer/orders/:orderId/items/:itemId/review (требует DELIVERED), GET /storefront/products/:id/reviews
+  - TMA buyer: форма отзыва на странице деталей доставленного заказа + блок отзывов на ProductPage
+  - TMA seller: уведомление о новом отзыве + карточка отзывов на странице товара
+  - Агрегат: avgRating, reviewCount → отдавать в feed для сортировки
 
 ---
 
@@ -106,6 +84,3 @@
 
 - [ ] [BUG-002] messages.slice().reverse() при каждом рендере — нужен useMemo
   - Файл: обa ChatPage
-
-- [ ] [BUG-003] adminListThreads использует status из query без whitelist-валидации
-  - Файл: `apps/api/src/modules/chat/chat.controller.ts:136`

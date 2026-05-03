@@ -4,6 +4,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { useTelegram } from '@/providers/TelegramProvider';
 
 interface OrderItem {
   id: string;
@@ -30,8 +31,48 @@ interface PagedResponse {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all',       label: 'Все' },
+  { value: 'pending',   label: 'Ожидают' },
+  { value: 'confirmed', label: 'Подтвержд.' },
+  { value: 'shipped',   label: 'В пути' },
+  { value: 'delivered', label: 'Доставлены' },
+  { value: 'cancelled', label: 'Отменены' },
+];
+
+function matchesFilter(status: string, filter: StatusFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'pending')   return status === 'PENDING';
+  if (filter === 'confirmed') return status === 'CONFIRMED' || status === 'PROCESSING';
+  if (filter === 'shipped')   return status === 'SHIPPED';
+  if (filter === 'delivered') return status === 'DELIVERED';
+  if (filter === 'cancelled') return status === 'CANCELLED';
+  return true;
+}
+
+// Важные сверху: PENDING/CONFIRMED/SHIPPED → DELIVERED → CANCELLED.
+// Внутри одной группы — свежие первыми.
+const STATUS_PRIORITY: Record<string, number> = {
+  PENDING:    0,
+  CONFIRMED:  1,
+  PROCESSING: 1,
+  SHIPPED:    2,
+  DELIVERED:  3,
+  CANCELLED:  4,
+};
+function compareOrders(a: Order, b: Order): number {
+  const pa = STATUS_PRIORITY[a.status] ?? 5;
+  const pb = STATUS_PRIORITY[b.status] ?? 5;
+  if (pa !== pb) return pa - pb;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 export default function OrdersPage() {
   const { authenticated } = useAuth();
+  const { viewportWidth } = useTelegram();
+  const isWide = (viewportWidth ?? 0) >= 1024;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -41,6 +82,7 @@ export default function OrdersPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, OrderDetail>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const fetchFirst = () => {
     setError(false);
@@ -91,7 +133,59 @@ export default function OrdersPage() {
   return (
     
       <div className="flex flex-col gap-4">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мои заказы</h1>
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="page-icon">📦</div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-bold text-gradient">Мои заказы</h1>
+            {!loading && orders.length > 0 && (
+              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Status filter tabs */}
+        {authenticated && !loading && orders.length > 0 && (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-1.5 overflow-x-auto scroll-snap-x pb-0.5 px-4" style={{ scrollbarWidth: 'none' }}>
+              {STATUS_FILTERS.map((f) => {
+                const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
+                const active = statusFilter === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    onClick={() => setStatusFilter(f.value)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                    style={!active ? {
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      color: 'rgba(255,255,255,0.45)',
+                    } : undefined}
+                  >
+                    {f.label}
+                    {count > 0 && (
+                      <span
+                        className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                        style={{
+                          background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
+                          color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                          minWidth: 18,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {!authenticated && (
           <div className="flex flex-col items-center gap-2 py-10">
@@ -127,7 +221,15 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {orders.map((o) => {
+        {authenticated && !loading && !error && orders.length > 0 && [...orders].filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-10">
+            <span style={{ fontSize: 36 }}>🔍</span>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Нет заказов в этой категории</p>
+          </div>
+        )}
+
+        <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+        {[...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
           const isExpanded = expandedId === o.id;
           const detail = details[o.id];
           const isLoadingDetail = detailLoading === o.id;
@@ -204,6 +306,7 @@ export default function OrdersPage() {
             </GlassCard>
           );
         })}
+        </div>
 
         {hasMore && (
           <button

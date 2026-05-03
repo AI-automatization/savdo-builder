@@ -95,6 +95,45 @@ export class CategoriesController {
     return this.getGlobalCategories.execute();
   }
 
+  /**
+   * Дерево категорий — children группируются по parentId.
+   * Возвращает плоский массив, клиент строит дерево по parentId.
+   * Включает level/isLeaf/iconEmoji для navigation UI.
+   */
+  @Get('storefront/categories/tree')
+  async getCategoriesTree() {
+    const all = await this.prisma.globalCategory.findMany({
+      where: { isActive: true },
+      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { nameRu: 'asc' }],
+      select: {
+        id: true,
+        slug: true,
+        nameRu: true,
+        nameUz: true,
+        parentId: true,
+        level: true,
+        isLeaf: true,
+        iconEmoji: true,
+        sortOrder: true,
+      },
+    });
+    return all;
+  }
+
+  /**
+   * Children заданной категории (для cascade selection в UI).
+   * Если parentId не задан — возвращает root (level=0).
+   */
+  @Get('storefront/categories/:parentId/children')
+  async getCategoryChildren(@Param('parentId') parentId: string) {
+    const items = await this.prisma.globalCategory.findMany({
+      where: parentId === 'root' ? { parentId: null, isActive: true } : { parentId, isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { nameRu: 'asc' }],
+      select: { id: true, slug: true, nameRu: true, nameUz: true, level: true, isLeaf: true, iconEmoji: true },
+    });
+    return items;
+  }
+
   @Get('storefront/categories/:slug/filters')
   async getCategoryFilters(@Param('slug') slug: string) {
     const filters = await this.prisma.categoryFilter.findMany({
@@ -109,6 +148,8 @@ export class CategoriesController {
       options: f.options ? (() => { try { return JSON.parse(f.options!) as string[]; } catch { return null; } })() : null,
       unit: f.unit,
       sortOrder: f.sortOrder,
+      isRequired: (f as any).isRequired ?? false,
+      isFilterable: (f as any).isFilterable ?? true,
     }));
   }
 

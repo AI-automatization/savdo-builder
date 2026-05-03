@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { showToast } from '@/components/ui/Toast';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface SellerProfile {
   id: string;
@@ -140,10 +141,21 @@ export default function SellerSettingsPage() {
   }
 
   return (
-    
-      <div className="flex flex-col gap-4">
+
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
 
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Настройки</h1>
+
+        {/* ── Тема оформления ── */}
+        <GlassCard className="p-4 flex flex-col gap-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+            Тема оформления
+          </p>
+          <ThemeToggle />
+          <p className="text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+            Авто — синхронизация с Telegram. Можно зафиксировать вручную.
+          </p>
+        </GlassCard>
 
         {/* ── Профиль ── */}
         <GlassCard className="p-4 flex flex-col gap-3">

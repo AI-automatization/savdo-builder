@@ -22,6 +22,8 @@ import AnalyticsDashboardPage from './pages/AnalyticsDashboardPage'
 import AnalyticsEventsPage from './pages/AnalyticsEventsPage'
 import CategoriesPage from './pages/CategoriesPage'
 import ReportsPage from './pages/ReportsPage'
+import SystemHealthPage from './pages/SystemHealthPage'
+import FeatureFlagsPage from './pages/FeatureFlagsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hasAccess  = !!auth.getAccess()
@@ -66,6 +68,8 @@ export default function App() {
           <Route path="analytics/events" element={<AnalyticsEventsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="system/health" element={<SystemHealthPage />} />
+          <Route path="system/feature-flags" element={<FeatureFlagsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

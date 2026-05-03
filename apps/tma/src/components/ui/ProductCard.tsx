@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { getCart, saveCart } from '@/lib/cart';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { WishlistButton } from '@/components/ui/WishlistButton';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 export interface FeedProduct {
   id: string;
@@ -10,6 +12,7 @@ export interface FeedProduct {
   currencyCode: string;
   images: { url: string }[];
   store: { id: string; name: string; slug: string };
+  totalStock?: number;
 }
 
 export function ProductCard({ product }: { product: FeedProduct }) {
@@ -56,12 +59,29 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         flexDirection: 'column',
       }}
     >
-      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
-        {imageUrl ? (
-          <img src={imageUrl} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-            📦
+      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
+        <ProductImage src={imageUrl} alt={product.title} emptyVariant="product-empty" />
+        <div style={{ position: 'absolute', top: 6, right: 6 }}>
+          <WishlistButton productId={product.id} variant="card" />
+        </div>
+        {typeof product.totalStock === 'number' && product.totalStock <= 0 && (
+          <div style={{
+            position: 'absolute', left: 6, top: 6,
+            fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+            background: 'rgba(239,68,68,0.92)', color: '#fff',
+            letterSpacing: 0.3,
+          }}>
+            НЕТ В НАЛИЧИИ
+          </div>
+        )}
+        {typeof product.totalStock === 'number' && product.totalStock > 0 && product.totalStock <= 5 && (
+          <div style={{
+            position: 'absolute', left: 6, top: 6,
+            fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+            background: 'rgba(251,191,36,0.92)', color: '#1a1208',
+            letterSpacing: 0.3,
+          }}>
+            ОСТАЛОСЬ {product.totalStock}
           </div>
         )}
       </div>

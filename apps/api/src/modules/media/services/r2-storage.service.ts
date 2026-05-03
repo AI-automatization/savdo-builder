@@ -81,8 +81,38 @@ export class R2StorageService {
     }
   }
 
+  /** Direct server-side upload (multipart from request → S3-compatible storage). */
+  async uploadObject(
+    bucket: string,
+    objectKey: string,
+    body: Buffer,
+    mimeType: string,
+  ): Promise<void> {
+    if (!this.s3Client) throw new Error('R2 Storage is not configured');
+
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: objectKey,
+        Body: body,
+        ContentType: mimeType,
+      }),
+    );
+  }
+
+  getDefaultBucket(): string {
+    return this.configService.get<string>('storage.bucketPublic') ?? 'savdo-public';
+  }
+
   getPublicUrl(objectKey: string): string {
     const publicUrl = this.configService.get<string>('storage.publicUrl');
-    return `${publicUrl}/${objectKey}`;
+    if (!publicUrl) {
+      this.logger.warn(
+        `STORAGE_PUBLIC_URL is missing — image URLs will be broken. ` +
+        `Set it to your R2 public bucket URL (e.g. https://pub-xxxx.r2.dev or your CDN domain).`,
+      );
+      return '';
+    }
+    return `${publicUrl.replace(/\/$/, '')}/${objectKey}`;
   }
 }

@@ -31,6 +31,7 @@ import { SendMessageUseCase } from './use-cases/send-message.use-case';
 import { GetThreadMessagesUseCase } from './use-cases/get-thread-messages.use-case';
 import { ListMyThreadsUseCase } from './use-cases/list-my-threads.use-case';
 import { ResolveThreadUseCase } from './use-cases/resolve-thread.use-case';
+import { ChatGateway } from '../../socket/chat.gateway';
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,6 +47,7 @@ export class ChatController {
     private readonly getThreadMessagesUseCase: GetThreadMessagesUseCase,
     private readonly listMyThreadsUseCase: ListMyThreadsUseCase,
     private readonly resolveThreadUseCase: ResolveThreadUseCase,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   // GET /api/v1/chat/threads
@@ -111,6 +113,8 @@ export class ChatController {
       threadId,
       senderUserId: participantId,
       text: dto.text,
+      parentMessageId: dto.parentMessageId,
+      mediaId: dto.mediaId,
     });
   }
 
@@ -222,6 +226,8 @@ export class ChatController {
       where: { id: msgId },
       data: { isDeleted: true, body: null, deletedAt: new Date() },
     });
+
+    this.chatGateway.emitChatMessageDeleted(threadId, msgId);
   }
 
   // PATCH /api/v1/chat/threads/:threadId/messages/:msgId  (edit, author only, 15 min window)
@@ -265,6 +271,8 @@ export class ChatController {
       where: { id: msgId },
       data: { body: text.trim(), editedAt: new Date() },
     });
+
+    this.chatGateway.emitChatMessageEdited(updated);
 
     return {
       id: updated.id,

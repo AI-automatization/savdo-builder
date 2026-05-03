@@ -25,12 +25,32 @@ async function bootstrap() {
   app.use(helmet());
 
   const isProd = process.env.NODE_ENV === 'production';
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) ?? [];
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? [];
   if (isProd && allowedOrigins.length === 0) {
-    Logger.warn('ALLOWED_ORIGINS is not set in production — CORS will reject all cross-origin requests', 'Bootstrap');
+    Logger.warn('ALLOWED_ORIGINS is not set in production — only Railway/Telegram defaults will pass', 'Bootstrap');
   }
+
+  // Regex для доменов которые меняются между деплоями Railway:
+  // *.up.railway.app, *.railway.app — все наши TMA/admin/web домены
+  // web.telegram.org, t.me — Telegram WebView host
+  const ORIGIN_PATTERNS = [
+    /^https:\/\/[a-z0-9-]+\.up\.railway\.app$/i,
+    /^https:\/\/[a-z0-9-]+\.railway\.app$/i,
+    /^https:\/\/(web\.)?telegram\.org$/i,
+    /^https:\/\/t\.me$/i,
+    /^https:\/\/(.+\.)?savdo\.uz$/i,
+  ];
+
+  const corsOriginCheck = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin) return callback(null, true); // same-origin / curl / mobile apps
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (ORIGIN_PATTERNS.some((re) => re.test(origin))) return callback(null, true);
+    if (!isProd) return callback(null, true);
+    callback(null, false);
+  };
+
   app.enableCors({
-    origin: isProd ? (allowedOrigins.length > 0 ? allowedOrigins : false) : '*',
+    origin: corsOriginCheck,
     credentials: true,
   });
 

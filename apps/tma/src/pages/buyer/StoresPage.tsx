@@ -35,12 +35,23 @@ export default function StoresPage() {
   const [storesError, setStoresError] = useState(false);
   const [storesQuery, setStoresQuery] = useState('');
 
-  useEffect(() => {
+  const loadStores = () => {
+    setStoresLoading(true);
+    setStoresError(false);
     api<{ data: Store[] }>('/storefront/stores')
       .then((res) => setStores(res.data ?? []))
-      .catch(() => setStoresError(true))
+      .catch((err) => {
+        // 401 при анонимном вызове = ОК, считаем что магазинов нет (БД пустая)
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          setStores([]);
+        } else {
+          setStoresError(true);
+        }
+      })
       .finally(() => setStoresLoading(false));
-  }, []);
+  };
+  useEffect(() => { loadStores(); }, []);
 
   const filteredStores = useMemo(() => {
     if (!storesQuery.trim()) return stores;
@@ -109,13 +120,21 @@ export default function StoresPage() {
             <Sticker emoji="🛒" size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold" style={{ color: '#A855F7' }}>Savdo</h1>
+            <h1 className="text-base font-bold text-gradient">Savdo</h1>
             {user && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                Привет, {user.first_name}!
+              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                Привет, {user.first_name} 👋
               </p>
             )}
           </div>
+          <button
+            onClick={() => navigate('/buyer/wishlist')}
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15 }}
+            aria-label="Избранное"
+          >
+            ❤️
+          </button>
           <button
             onClick={() => navigate('/buyer/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
@@ -167,34 +186,36 @@ export default function StoresPage() {
 
         {/* Products tab — categories */}
         {tab === 'products' && globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                border: `1px solid ${activeCat === null ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((cat) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={cat.id}
-                onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === cat.id ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                  color: activeCat === cat.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                  border: `1px solid ${activeCat === cat.id ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'rgba(255,255,255,0.07)',
+                  color: 'rgba(255,255,255,0.55)',
+                  border: '1px solid rgba(255,255,255,0.10)',
                   whiteSpace: 'nowrap',
-                }}
+                } : { whiteSpace: 'nowrap' }}
               >
-                {cat.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === cat.id ? 'chip-active' : ''}`}
+                  style={activeCat !== cat.id ? {
+                    background: 'rgba(255,255,255,0.07)',
+                    color: 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    whiteSpace: 'nowrap',
+                  } : { whiteSpace: 'nowrap' }}
+                >
+                  {cat.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -209,12 +230,12 @@ export default function StoresPage() {
               <button
                 key={s.value}
                 onClick={() => setSort(s.value)}
-                className="px-3 py-1 rounded-lg text-xs font-medium"
-                style={{
-                  background: sort === s.value ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.06)',
-                  color: sort === s.value ? '#22D3EE' : 'rgba(255,255,255,0.45)',
-                  border: `1px solid ${sort === s.value ? 'rgba(34,211,238,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                }}
+                className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
+                style={sort !== s.value ? {
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.45)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                } : undefined}
               >
                 {s.label}
               </button>
@@ -225,9 +246,7 @@ export default function StoresPage() {
         {/* ── Stores content ─────────────────────────────────────────────────── */}
         {tab === 'stores' && (
           <>
-            <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Магазины
-            </h2>
+            <div className="section-label">Магазины</div>
 
             {storesLoading && (
               <div className="flex justify-center py-8"><Spinner /></div>
@@ -237,7 +256,7 @@ export default function StoresPage() {
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
                 <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-                <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+                <button onClick={loadStores} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
               </div>
             )}
 
@@ -250,6 +269,10 @@ export default function StoresPage() {
               </div>
             )}
 
+            <div className={`grid gap-3 ${
+              viewportWidth >= 1280 ? 'grid-cols-3' :
+              viewportWidth >= 768  ? 'grid-cols-2' : 'grid-cols-1'
+            }`}>
             {filteredStores.map((store) => (
               <GlassCard
                 key={store.id}
@@ -257,10 +280,15 @@ export default function StoresPage() {
                 onClick={() => navigate(`/buyer/store/${store.slug}`)}
               >
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(168,85,247,0.20)', border: '1px solid rgba(168,85,247,0.25)' }}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold uppercase"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
+                    border: '1px solid rgba(168,85,247,0.28)',
+                    color: '#A855F7',
+                    fontSize: 17,
+                  }}
                 >
-                  <Sticker emoji="🏪" size={26} />
+                  {store.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
@@ -290,6 +318,7 @@ export default function StoresPage() {
                 </div>
               </GlassCard>
             ))}
+            </div>
           </>
         )}
 
@@ -311,9 +340,11 @@ export default function StoresPage() {
 
             {!productsLoading && products.length > 0 && (
               <div className={`grid gap-3 ${
-                viewportWidth >= 960 ? 'grid-cols-5' :
-                viewportWidth >= 768 ? 'grid-cols-4' :
-                viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2'
+                viewportWidth >= 1536 ? 'grid-cols-7' :
+                viewportWidth >= 1280 ? 'grid-cols-6' :
+                viewportWidth >= 1024 ? 'grid-cols-5' :
+                viewportWidth >= 768  ? 'grid-cols-4' :
+                viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2'
               }`}>
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} />

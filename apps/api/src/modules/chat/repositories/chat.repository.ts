@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { ChatMessage, ChatThread, ThreadType, Seller, Store } from '@prisma/client';
+import { ChatMessage, ChatThread, ThreadType, Seller, Store, Buyer, User } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 
 export type ThreadWithMessages = ChatThread & {
   messages: ChatMessage[];
   seller: Seller & { store: Store | null };
+  buyer: (Buyer & { user: Pick<User, 'phone' | 'telegramId'> }) | null;
+  product: { title: string } | null;
+  order: { orderNumber: string } | null;
 };
 
 export interface CreateThreadData {
@@ -18,7 +21,10 @@ export interface CreateThreadData {
 export interface AddMessageData {
   threadId: string;
   senderUserId: string;
-  body: string;
+  body?: string | null;
+  parentMessageId?: string | null;
+  mediaId?: string | null;
+  messageType?: 'text' | 'image' | 'system';
 }
 
 @Injectable()
@@ -36,8 +42,15 @@ export class ChatRepository {
         seller: {
           include: { store: true },
         },
+        buyer: {
+          include: {
+            user: { select: { phone: true, telegramId: true } },
+          },
+        },
+        product: { select: { title: true } },
+        order: { select: { orderNumber: true } },
       },
-    });
+    }) as Promise<ThreadWithMessages | null>;
   }
 
   async findThreadByContext(
@@ -102,15 +115,26 @@ export class ChatRepository {
     });
   }
 
+  async findMessageById(id: string): Promise<ChatMessage | null> {
+    return this.prisma.chatMessage.findUnique({ where: { id } });
+  }
+
+  async findMessagesByIds(ids: string[]): Promise<ChatMessage[]> {
+    if (!ids.length) return [];
+    return this.prisma.chatMessage.findMany({ where: { id: { in: ids } } });
+  }
+
   async addMessage(data: AddMessageData): Promise<ChatMessage> {
     return this.prisma.$transaction(async (tx) => {
       const message = await tx.chatMessage.create({
         data: {
           threadId: data.threadId,
           senderUserId: data.senderUserId,
-          messageType: 'text',
-          body: data.body,
-        },
+          messageType: data.messageType ?? (data.mediaId ? 'image' : 'text'),
+          body: data.body ?? null,
+          ...(data.parentMessageId ? { parentMessageId: data.parentMessageId } : {}),
+          ...(data.mediaId ? { mediaId: data.mediaId } : {}),
+        } as any,
       });
 
       await tx.chatThread.update({

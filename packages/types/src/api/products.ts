@@ -60,6 +60,12 @@ export interface ProductListItem {
   mediaUrls: string[];
   variantCount: number;
   displayType: ProductDisplayType;
+  /**
+   * True when the current authenticated buyer has this product in their wishlist.
+   * Only set on storefront feed responses for authenticated buyers; undefined
+   * otherwise (anonymous storefront, seller-side responses).
+   */
+  inWishlist?: boolean;
 }
 
 export interface ProductAttribute {

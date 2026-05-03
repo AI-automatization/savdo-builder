@@ -4,12 +4,24 @@ import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
 import { ChatGateway } from '../../../socket/chat.gateway';
+import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { MappedChatMessage } from './get-thread-messages.use-case';
+
+const PREVIEW_MAX_LENGTH = 80;
+
+function makePreview(text: string): string {
+  const trimmed = text.trim().replace(/\s+/g, ' ');
+  return trimmed.length > PREVIEW_MAX_LENGTH
+    ? trimmed.slice(0, PREVIEW_MAX_LENGTH) + '…'
+    : trimmed;
+}
 
 export interface SendMessageInput {
   threadId: string;
   senderUserId: string;
-  text: string;
+  text?: string;
+  parentMessageId?: string;
+  mediaId?: string;
 }
 
 @Injectable()
@@ -20,6 +32,7 @@ export class SendMessageUseCase {
     private readonly chatRepo: ChatRepository,
     private readonly config: ConfigService,
     private readonly chatGateway: ChatGateway,
+    private readonly tgNotifier: SellerNotificationService,
   ) {}
 
   async execute(input: SendMessageInput): Promise<MappedChatMessage> {
@@ -62,22 +75,96 @@ export class SendMessageUseCase {
       );
     }
 
+    if (!input.text?.trim() && !input.mediaId) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Message must contain text or media',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Validate parentMessageId belongs to same thread (if provided)
+    if (input.parentMessageId) {
+      const parent = await this.chatRepo.findMessageById(input.parentMessageId);
+      if (!parent || parent.threadId !== input.threadId) {
+        throw new DomainException(
+          ErrorCode.VALIDATION_ERROR,
+          'Parent message not found in this thread',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
     const message = await this.chatRepo.addMessage({
       threadId: input.threadId,
       senderUserId: input.senderUserId,
-      body: input.text,
+      body: input.text?.trim() || null,
+      parentMessageId: input.parentMessageId ?? null,
+      mediaId: input.mediaId ?? null,
+      messageType: input.mediaId ? 'image' : 'text',
     });
 
     this.logger.log(`Message sent to thread ${input.threadId} by user ${input.senderUserId}`);
 
+    // Build mediaUrl + parentMessage preview for socket payload
+    const mediaUrl = input.mediaId
+      ? `${(process.env.APP_URL ?? '').replace(/\/$/, '')}/api/v1/media/proxy/${input.mediaId}`
+      : null;
+
+    let parentPreview: { id: string; text: string; senderRole: 'BUYER' | 'SELLER' } | null = null;
+    if (input.parentMessageId) {
+      const parent = await this.chatRepo.findMessageById(input.parentMessageId);
+      if (parent) {
+        parentPreview = {
+          id: parent.id,
+          text: parent.body ?? '',
+          senderRole: parent.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+        };
+      }
+    }
+
     const senderRole = message.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER';
-    this.chatGateway.emitChatMessage(message, senderRole);
+    this.chatGateway.emitChatMessage({ ...message, mediaUrl, parentMessage: parentPreview } as any, senderRole);
 
     // Notify seller-room when buyer sends a message
     const storeId = thread.seller.store?.id;
     const isBuyerSending = thread.buyerId !== null && thread.sellerId !== input.senderUserId;
     if (storeId && isBuyerSending) {
       this.chatGateway.emitChatNewMessage(storeId, { threadId: input.threadId });
+    }
+
+    // TG notification → recipient (the other party)
+    const preview = makePreview(input.text ?? (input.mediaId ? '📷 Фото' : ''));
+    const productTitle = thread.product?.title ?? null;
+    const orderNumber = thread.order?.orderNumber ?? null;
+    const storeName = thread.seller.store?.name ?? null;
+
+    if (senderRole === 'BUYER') {
+      // → seller
+      const sellerChatId = thread.seller.telegramChatId;
+      const buyerName = thread.buyer?.user.phone ?? 'Покупатель';
+      if (sellerChatId) {
+        this.tgNotifier.notifyChatMessage({
+          recipientChatId: String(sellerChatId),
+          senderName: buyerName,
+          productTitle,
+          orderNumber,
+          messagePreview: preview,
+        });
+      }
+    } else {
+      // → buyer
+      const buyerChatId = thread.buyer?.user.telegramId;
+      if (buyerChatId) {
+        this.tgNotifier.notifyChatMessage({
+          recipientChatId: String(buyerChatId),
+          senderName: storeName ?? 'Продавец',
+          productTitle,
+          orderNumber,
+          storeName,
+          messagePreview: preview,
+        });
+      }
     }
 
     return {
@@ -88,6 +175,9 @@ export class SendMessageUseCase {
       editedAt: (message as any).editedAt ? new Date((message as any).editedAt).toISOString() : null,
       isDeleted: message.isDeleted,
       createdAt: message.createdAt.toISOString(),
+      mediaUrl,
+      parentMessage: parentPreview,
+      messageType: (message as any).messageType ?? 'text',
     };
   }
 }

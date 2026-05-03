@@ -6,6 +6,7 @@ import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
+import { ImagePlaceholder } from '@/components/ui/ImagePlaceholder';
 import { type CartItem, getCart, saveCart } from '@/lib/cart';
 
 export default function CartPage() {
@@ -68,8 +69,8 @@ export default function CartPage() {
   }, [tg, items, total, navigate]);
 
   return (
-    
-      <div className="flex flex-col gap-4">
+
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Корзина</h1>
 
         {!items.length && (
@@ -82,9 +83,8 @@ export default function CartPage() {
 
         {items.map((item) => (
           <GlassCard key={item.productId} className="flex items-center gap-3 px-4 py-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-              style={{ background: 'rgba(255,255,255,0.05)' }}>
-              📦
+            <div className="w-10 h-10 rounded-xl shrink-0 overflow-hidden">
+              <ImagePlaceholder variant="thumbnail" hideLabel iconSize={18} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.88)' }}>{item.title}</p>

@@ -5,6 +5,7 @@ import { track } from '@/lib/analytics';
 import { getCart, saveCart } from '@/lib/cart';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
@@ -35,9 +36,11 @@ export default function StorePage() {
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
   const gridCols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,9 +143,14 @@ export default function StorePage() {
       <div className="flex flex-col gap-4">
         <div className="p-4" style={{ ...glass }}>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-              style={{ background: 'rgba(167,139,250,0.20)', border: '1px solid rgba(167,139,250,0.25)' }}>
-              🏪
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-bold uppercase"
+              style={{
+                background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
+                border: '1px solid rgba(168,85,247,0.28)',
+                color: '#A855F7',
+                fontSize: 20,
+              }}>
+              {store.name.charAt(0)}
             </div>
             <div>
               <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>{store.name}</h1>
@@ -155,38 +163,40 @@ export default function StorePage() {
         </div>
 
         {globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                border: `1px solid ${activeCat === null ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((c) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={c.id}
-                onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === c.id ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                  border: `1px solid ${activeCat === c.id ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                  color: activeCat === c.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                }}
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.55)',
+                } : undefined}
               >
-                {c.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === c.id ? 'chip-active' : ''}`}
+                  style={activeCat !== c.id ? {
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.55)',
+                  } : undefined}
+                >
+                  {c.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <div className="section-label">
           Товары ({filtered.length}{activeCat && products.length !== filtered.length ? `/${products.length}` : ''})
-        </h2>
+        </div>
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
@@ -207,11 +217,9 @@ export default function StorePage() {
               className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
               style={glass}
             >
-              <div className="w-full aspect-square rounded-xl flex items-center justify-center text-3xl overflow-hidden"
+              <div className="w-full aspect-square rounded-xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.04)' }}>
-                {p.images?.[0]?.url
-                  ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover" />
-                  : '📦'}
+                <ProductImage src={p.images?.[0]?.url} alt={p.title} emptyVariant="product-empty" />
               </div>
               <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
                 {p.title}
