@@ -70,6 +70,8 @@ export interface TgWebApp {
     selectionChanged: () => void;
   };
   openTelegramLink: (url: string) => void;
+  // Открывает внешний URL внутри встроенного браузера Telegram (или OS-браузера на десктопе).
+  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
 }
 
 declare global {

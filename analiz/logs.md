@@ -10,6 +10,84 @@
 
 ---
 
+## 2026-05-03 [BUG-CHAT-LOAD-001] Чат не грузится у новых пользователей — 422 BUYER_NOT_IDENTIFIED
+
+- **Статус:** ✅ Исправлено (не задеплоено пока — pending push в `api` ветку).
+- **Симптом:** в TMA вкладка «Чат» показывает red toast «Не удалось загрузить чаты» у любого пользователя, у которого ещё нет `Buyer` записи в БД.
+- **Корень:** `apps/api/src/modules/chat/chat.controller.ts` метод `resolveParticipant` для роли BUYER звал `resolveBuyerId(userId)`, а тот бросает `DomainException(422 BUYER_NOT_IDENTIFIED)` если `user.buyer === null`. Buyer создаётся ЛЕНИВО (на первой покупке/первом чате), поэтому новый юзер заходит в `/chat` → bff видит 422 и показывает ошибку. Use-case `list-my-threads.use-case` уже умел `if (!buyerId) return []` — но throw в контроллере никогда до use-case не доходил.
+- **Фикс:** `resolveParticipant()` для BUYER теперь делает soft-резолв через `usersRepo.findById(userId)` и возвращает `{ buyerId: user?.buyer?.id }` (может быть undefined). Use-case дальше отдаёт `[]`. Для SELLER — то же самое + сохранён throw `SELLER_BLOCKED` если seller заблокирован.
+- **Не затронут:** `resolveParticipantId` (используется в `getMessages`/`sendMessage`/`markRead`/`deleteThread`/`editMessage` etc.) остаётся жёстким — там profile реально нужен для проверки участника.
+- **Чек:** после деплоя зайти в TMA свежим пользователем → tab «Чат» → должен показать «Диалогов пока нет», без red toast.
+
+---
+
+## 2026-05-03 [DESIGN-AUDIT-TMA-001] Дизайн-аудит TMA: контраст, hit-area, a11y, hierarchy
+
+- **Статус:** 📋 Audit-only (фиксы — отдельным PR, не блокеры).
+- **Метод:** ручной обход всех страниц TMA (buyer + seller) против чек-листа из `memory/reference_uiux_design_basics.md`.
+
+### 🔴 Критические (нарушают UX)
+
+1. **BottomNav inactive label color `rgba(255,255,255,0.28)`** (`apps/tma/src/components/layout/BottomNav.tsx:111`) — это **~2.7:1 контраст** на dark bg, ниже WCAG AA 4.5. Пользователь не видит названий тех вкладок, на которых не находится. Минимум `0.45-0.50`.
+
+2. **Hit-area `<button>`-ов меньше 44pt** (Apple HIG):
+  - `apps/tma/src/pages/buyer/StoresPage.tsx:131-145` — header иконки «❤️ избранное» и «⚙️ настройки» 32×32px.
+  - `apps/tma/src/pages/buyer/StorePage.tsx` Add-to-cart кнопка `+` 32×32.
+  - `apps/tma/src/components/ui/ProductCard.tsx:118-134` — Add-to-cart `+` 26×26 — вообще промах на iOS.
+  - `apps/tma/src/pages/buyer/ChatPage.tsx:347-363` — back-кнопка `‹` 32×32, и `apps/tma/src/pages/seller/ChatPage.tsx` то же.
+  - Reply/Edit cancel ✕ кнопки 24×24 в ChatPage banner — критично мелко.
+  Стандарт: **min 44×44, лучше 48×48**.
+
+3. **Нет `role="button"` + `tabIndex` + `onKeyDown` (Enter/Space)** на интерактивных `<div>`. ChatPage thread row есть, но не везде. ProductCard в `components/ui/ProductCard.tsx:50` — обычный `<div onClick>` без a11y. Screen-reader не понимает что это кликабельно.
+
+### 🟠 Серьёзные
+
+4. **Tertiary text 10-11px на rgba(255,255,255,0.30)** — `text-[11px]` для адресов и meta в OrdersPage, ChatPage и т.п. На iPhone SE (4.7") это ~0.6mm высоты текста с очень слабым контрастом. Минимум 12px и `0.45+` opacity.
+
+5. **`<span>📦</span>` без `aria-hidden="true"`** — все эмодзи-иконки на страницах. Screen-reader будет читать «коробка» вместо названия раздела. Везде, где emoji decorative — обернуть в aria-hidden.
+
+6. **Цвет-only differentiation статусов** ChatPage `t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)'` (`buyer/ChatPage.tsx:741`) — colorblind-юзер видит одинаково. Добавить иконку или текст «Открыт/Закрыт».
+
+7. **Disabled-кнопки полупрозрачны без явного «disabled» атрибута/курсора** в нескольких местах (PATCH submit в ChatPage). Юзер не понимает что нельзя нажать.
+
+### 🟡 Средние (полировка)
+
+8. **Не из Tailwind-шкалы:** `text-[10px]`, `text-[11px]` встречаются часто. Нужно либо добавить в `tailwind.config` именованные размеры (`text-micro`, `text-tiny`), либо переключаться на `text-xs` (12px). Сейчас ритм ломается.
+
+9. **Hardcoded purple `#A855F7` / `rgba(168,85,247,X)`** разбросано по всем файлам. Если когда-то поменяется brand-цвет — нужно править в 80+ местах. Вынести в CSS-переменные `--color-accent` + `tailwind.theme.extend`.
+
+10. **Glassmorphism `backdrop-filter: blur(30px)` в BottomNav** — на slow Android (Telegram in-app webview) тормозит scroll. Добавить fallback `@supports not (backdrop-filter: blur(0px)) { background: rgba(11,14,20,0.98); }`.
+
+11. **Нет `@media (prefers-reduced-motion: reduce)`** — анимации scale/transform не отключаются для пользователей с motion sensitivity.
+
+### 🟢 Минор
+
+12. Нет автоматического `aria-live` региона для toast'ов — `apps/tma/src/components/ui/Toast.tsx` стоит проверить.
+13. Кнопки контактов в магазинах (✈️ Telegram) `40×40` — пограничный размер, лучше 48.
+14. Скелетоны грузятся одновременно — на медленном соединении пользователь видит «застывший» скелет долго. Добавить шиммер-анимацию плавнее.
+
+### Рекомендации (приоритет)
+
+P0 (релиз-блокеры): #1 (BottomNav контраст), #2 (hit-area для Add-to-cart и Back).
+P1: #3 (a11y клавиатура), #4 (мелкий низкоконтрастный текст), #5 (aria-hidden emoji).
+P2: остальное.
+
+**Источник правил:** `C:/Users/USER/.claude/projects/.../memory/reference_uiux_design_basics.md` (WCAG AA, Apple HIG, Material).
+
+---
+
+## 2026-05-03 [DB-CHECK-001] Проверка совместимости миграции `super_admin_rbac_mfa_refunds` с моим API кодом
+
+- **Статус:** ✅ Конфликтов нет.
+- **Что в миграции:** `ALTER TABLE admin_users ADD COLUMN ...` (5 новых колонок с DEFAULT — backwards-compatible) + новая таблица `order_refunds` с FK на orders/admin_users.
+- **Не пересекается с:** products / stores / chat / cart / variants / wishlist — мои изменения по storefront perf и chat-fix БД-нейтральны.
+- **Возможные риски (когда миграция применится на проде):**
+  1. Существующие admin сессии могут потерять доступ если `adminRole` default 'admin' не совпадает с тем что фронт ожидает (но default есть → бэк проставит).
+  2. `order_refunds` table требует чтобы deletes на orders делались через `RESTRICT` — если где-то в API `order.delete()` — получит ошибку. Не нашёл таких мест в моём домене.
+- **Запуск миграции:** `pnpm db:migrate:deploy` на Railway после деплоя `api` ветки. Это делает Полат вручную (или параллельная сессия).
+
+---
+
 ## 2026-05-03 [PERF-TMA-API-001] TMA + API performance pass — AbortController, per-endpoint TTL, N+1 stores fix
 
 - **Статус:** ✅ Исправлено локально (запушится с merge'ом main → tma + main → api).
