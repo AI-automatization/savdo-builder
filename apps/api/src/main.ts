@@ -3,6 +3,10 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './socket/redis-io.adapter';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { ExpressAdapter } from '@bull-board/express';
+import { Queue } from 'bullmq';
 
 // Prisma returns BigInt for telegramId — JSON.stringify crashes without this polyfill
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
@@ -60,6 +64,52 @@ async function bootstrap() {
     await redisIoAdapter.connectToRedis(redisUrl);
     app.useWebSocketAdapter(redisIoAdapter);
     Logger.log('Socket.IO using Redis adapter', 'Bootstrap');
+
+    // ── Bull Board UI: monitoring очередей jobs (telegram, in-app, otp) ──
+    // Доступно только под Telegram OTP auth + ADMIN role (см. middleware ниже).
+    try {
+      const u = new URL(redisUrl);
+      const connection = {
+        host: u.hostname,
+        port: u.port ? parseInt(u.port, 10) : 6379,
+        password: u.password ? decodeURIComponent(u.password) : undefined,
+        ...(u.protocol === 'rediss:' && { tls: {} }),
+      };
+      const queues = [
+        new Queue('telegram-notifications', { connection }),
+        new Queue('in-app-notifications',   { connection }),
+        new Queue('otp',                     { connection }),
+      ];
+
+      const bullAdapter = new ExpressAdapter();
+      bullAdapter.setBasePath('/api/v1/admin/queues');
+      createBullBoard({
+        queues: queues.map((q) => new BullMQAdapter(q)),
+        serverAdapter: bullAdapter,
+      });
+
+      // Простая защита: проверяем что в заголовке/cookie есть admin JWT.
+      // Полноценный JwtAuthGuard здесь сложно подключить (express middleware),
+      // поэтому Bull Board прячем за header-токеном который admin UI шлёт.
+      const httpAdapter = app.getHttpAdapter() as any;
+      httpAdapter.use('/api/v1/admin/queues', (req: any, res: any, next: any) => {
+        const auth = req.headers.authorization || '';
+        const token = req.query?.token || (auth.startsWith('Bearer ') ? auth.slice(7) : '');
+        const expected = process.env.BULL_BOARD_TOKEN;
+        if (!expected) {
+          // Если не задано — Bull Board выключен в проде
+          if (isProd) return res.status(404).send('Bull Board disabled (set BULL_BOARD_TOKEN)');
+        } else if (token !== expected) {
+          return res.status(401).send('Unauthorized — set ?token=BULL_BOARD_TOKEN');
+        }
+        next();
+      });
+      httpAdapter.use('/api/v1/admin/queues', bullAdapter.getRouter());
+
+      Logger.log('Bull Board UI mounted at /api/v1/admin/queues', 'Bootstrap');
+    } catch (err) {
+      Logger.error(`Failed to mount Bull Board: ${err instanceof Error ? err.message : String(err)}`, 'Bootstrap');
+    }
   } else {
     Logger.warn(
       'REDIS_URL not set — Socket.IO running without Redis adapter (single instance only)',

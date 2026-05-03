@@ -13,6 +13,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
 import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.use-case';
 import { RefundOrderUseCase } from './use-cases/refund-order.use-case';
+import { VerifySellerExtendedUseCase } from './use-cases/verify-seller-extended.use-case';
 
 /**
  * Super-admin endpoints — изолированы от AdminController чтобы избежать
@@ -32,6 +33,7 @@ export class SuperAdminController {
     private readonly adminAuth: AdminAuthUseCase,
     private readonly adminUsersMgmt: AdminUsersManagementUseCase,
     private readonly refundOrder: RefundOrderUseCase,
+    private readonly verifySellerExtended: VerifySellerExtendedUseCase,
   ) {}
 
   // ─── Auth / Profile ────────────────────────────────────────────────────────
@@ -123,6 +125,29 @@ export class SuperAdminController {
       reason: body.reason,
       notes: body.notes,
       returnedToWallet: body.returnedToWallet,
+    });
+  }
+
+  // ─── Расширенная верификация продавца (с notes + checkedRequirements) ─────
+  @Patch('sellers/:id/verify-extended')
+  async verifySellerExtendedHandler(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') sellerId: string,
+    @Body() body: {
+      status: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+      reason?: string;
+      notes?: string;
+      checkedRequirements?: string[];
+    },
+  ) {
+    if (!body.status) throw new BadRequestException('status is required');
+    return this.verifySellerExtended.execute({
+      adminUserId: user.sub,
+      sellerId,
+      status: body.status,
+      reason: body.reason,
+      notes: body.notes,
+      checkedRequirements: body.checkedRequirements,
     });
   }
 
