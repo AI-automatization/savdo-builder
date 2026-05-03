@@ -345,13 +345,16 @@ model StoreDeliverySettings {
 // ─────────────────────────────────────────────
 
 model GlobalCategory {
-  id       String   @id @default(uuid())
-  parentId String?
-  nameRu   String
-  nameUz   String
-  slug     String   @unique
-  isActive Boolean  @default(true)
-  sortOrder Int     @default(0)
+  id        String   @id @default(uuid())
+  parentId  String?
+  nameRu    String
+  nameUz    String
+  slug      String   @unique
+  level     Int      @default(0) // 0=Отрасль, 1=Категория, 2=Подкатегория, 3=Тип товара (leaf)
+  isLeaf    Boolean  @default(false) // товары можно добавлять только в leaf
+  iconEmoji String?  // 📱 🏠 etc.
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
   parent   GlobalCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
@@ -361,18 +364,22 @@ model GlobalCategory {
 
   @@index([parentId])
   @@index([isActive])
+  @@index([level])
+  @@index([isLeaf])
   @@map("global_categories")
 }
 
 model CategoryFilter {
   id           String  @id @default(uuid())
-  categorySlug String
-  key          String
+  categorySlug String  // ссылка на GlobalCategory.slug (обычно leaf)
+  key          String  // brand, ram_gb, color, size
   nameRu       String
   nameUz       String
-  fieldType    String  @default("TEXT")
-  options      String?
-  unit         String?
+  fieldType    String  @default("TEXT") // TEXT | NUMBER | SELECT | BOOLEAN | COLOR | MULTI_SELECT
+  options      String? // JSON array для SELECT/MULTI_SELECT/COLOR
+  unit         String? // GB, дюйм, MP, см, кг
+  isRequired   Boolean @default(false)
+  isFilterable Boolean @default(true) // показывается в storefront-фильтрах
   sortOrder    Int     @default(0)
 
   @@unique([categorySlug, key])
@@ -423,6 +430,7 @@ model Product {
   isVisible          Boolean       @default(true)
   isFeatured         Boolean       @default(false)
   sku                String?
+  attributesJson     Json?         // {"brand":"Apple","ram_gb":32,"color":"black"} — schema-on-write по CategoryFilter
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   deletedAt          DateTime?

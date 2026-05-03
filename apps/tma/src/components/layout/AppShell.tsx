@@ -5,7 +5,6 @@ import { FullscreenButton } from './FullscreenButton';
 import { InAppBackBar } from './InAppBackBar';
 import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
 import { ToastContainer } from '@/components/ui/Toast';
-import { gradientBg, COLORS } from '@/lib/styles';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 interface Props {
@@ -18,17 +17,17 @@ export function AppShell({ children, role }: Props) {
   const isDesktop = (viewportWidth ?? 0) >= 768;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: gradientBg }}>
-      {/* Ambient depth layers */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--tg-bg-gradient)' }}>
+      {/* Ambient depth layers (только в тёмной теме — в светлой создают грязь) */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden z-0 hidden dark:block" data-ambient>
         <div className="absolute rounded-full" style={{
           width: 480, height: 480, top: -180, right: -120,
-          background: `radial-gradient(circle, ${COLORS.orchidGlow} 0%, transparent 68%)`,
+          background: 'radial-gradient(circle, var(--tg-accent-glow) 0%, transparent 68%)',
           filter: 'blur(72px)',
         }} />
         <div className="absolute rounded-full" style={{
           width: 320, height: 320, bottom: -100, left: -80,
-          background: `radial-gradient(circle, ${COLORS.cyanDim} 0%, transparent 70%)`,
+          background: 'radial-gradient(circle, var(--tg-cyan-dim) 0%, transparent 70%)',
           filter: 'blur(56px)',
         }} />
         <div className="absolute rounded-full" style={{
