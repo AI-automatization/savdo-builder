@@ -8,6 +8,7 @@ import { AuthModule } from '../auth/auth.module';
 
 import { AdminRepository } from './repositories/admin.repository';
 import { AdminController } from './admin.controller';
+import { SuperAdminController } from './super-admin.controller';
 
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
 import { GetUserDetailUseCase } from './use-cases/get-user-detail.use-case';
@@ -31,6 +32,9 @@ import { DbManagerUseCase } from './use-cases/db-manager.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
 import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
+import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
+import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.use-case';
+import { RefundOrderUseCase } from './use-cases/refund-order.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -41,7 +45,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     TelegramModule,
     BullModule.registerQueue({ name: QUEUE_TELEGRAM_NOTIFICATIONS }),
   ],
-  controllers: [AdminController],
+  controllers: [AdminController, SuperAdminController],
   providers: [
     AdminRepository,
     ListUsersUseCase,
@@ -66,6 +70,9 @@ import { TelegramModule } from '../telegram/telegram.module';
     AdminCreateSellerUseCase,
     AdminCreateStoreUseCase,
     GetSystemHealthUseCase,
+    AdminAuthUseCase,
+    AdminUsersManagementUseCase,
+    RefundOrderUseCase,
   ],
 })
 export class AdminModule {}

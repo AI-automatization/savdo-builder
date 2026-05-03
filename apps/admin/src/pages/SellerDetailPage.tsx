@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck, History, Plus, X } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { SellerVerificationPanel } from '../components/admin/SellerVerificationPanel'
 
 interface ModerationAction {
   id: string
@@ -373,7 +374,13 @@ export default function SellerDetailPage() {
         </div>
         {/* END LEFT COLUMN */}
 
-        {/* RIGHT COLUMN — История */}
+        {/* RIGHT COLUMN — Верификация + История */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <SellerVerificationPanel
+          sellerId={seller.id}
+          initialStatus={seller.verificationStatus}
+          onChanged={refetch}
+        />
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
           {/* Tabs */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
@@ -436,6 +443,7 @@ export default function SellerDetailPage() {
               </div>
             )}
           </div>
+        </div>
         </div>
         {/* END RIGHT COLUMN */}
 

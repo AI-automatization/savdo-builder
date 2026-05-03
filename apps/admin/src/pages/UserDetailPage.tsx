@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag } from 'lucide-react'
+import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye } from 'lucide-react'
+import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
-import { api } from '../lib/api'
+import { auth, api } from '../lib/api'
+import { useImpersonation } from '../lib/impersonation'
 import { PageHeader } from '../components/admin/PageHeader'
 import { Panel } from '../components/admin/Panel'
 import { InfoRow } from '../components/admin/InfoRow'
@@ -49,11 +51,14 @@ const ROLE_CFG: Record<string, { bg: string; text: string; label: string }> = {
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const impersonation = useImpersonation()
 
   const [suspendModal, setSuspendModal] = useState(false)
   const [reason, setReason] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [impersonateConfirm, setImpersonateConfirm] = useState(false)
+  const [impersonating, setImpersonating] = useState(false)
 
   const { data: user, loading, error, refetch } = useFetch<UserDetail>(
     `/api/v1/admin/users/${id}`,
@@ -87,6 +92,38 @@ export default function UserDetailPage() {
       setActionError(e.message ?? 'Ошибка')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  async function handleImpersonate() {
+    if (!id || !user) return
+    setImpersonating(true)
+    try {
+      const res = await api.post<{ accessToken: string; refreshToken?: string }>(
+        `/api/v1/admin/auth/impersonate/${id}`,
+        {},
+      )
+      const originalAccess = auth.getAccess() ?? ''
+      const originalRefresh = auth.getRefresh()
+      impersonation.start(
+        {
+          userId: id,
+          userPhone: user.phone,
+          userName: user.buyer?.fullName ?? null,
+          startedAt: new Date().toISOString(),
+        },
+        originalAccess,
+        originalRefresh,
+      )
+      auth.setTokens(res.accessToken, res.refreshToken ?? originalRefresh ?? '')
+      toast.success(`Вы вошли как ${user.phone}`)
+      const tmaUrl = (import.meta as any).env?.VITE_BUYER_URL ?? '/'
+      window.open(tmaUrl, '_blank', 'noopener')
+      setImpersonateConfirm(false)
+    } catch (e: any) {
+      toast.error(e.message ?? 'Не удалось переключиться на пользователя')
+    } finally {
+      setImpersonating(false)
     }
   }
 
@@ -275,6 +312,22 @@ export default function UserDetailPage() {
               <ShieldOff size={14} /> Заблокировать
             </button>
           )}
+
+          {!user.admin && !isBlocked && (
+            <button
+              onClick={() => setImpersonateConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[14px] font-semibold"
+              style={{
+                border: '1px solid rgba(245,158,11,0.3)',
+                background: 'rgba(245,158,11,0.08)',
+                color: '#F59E0B',
+                cursor: 'pointer',
+              }}
+              title="Войти в TMA от имени пользователя для диагностики"
+            >
+              <Eye size={14} /> Impersonate
+            </button>
+          )}
         </ActionPanel>
       </div>
 
@@ -342,6 +395,57 @@ export default function UserDetailPage() {
                 }}
               >
                 {actionLoading ? 'Загрузка...' : 'Заблокировать'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Impersonate Confirm */}
+      {impersonateConfirm && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 200 }}
+          onClick={() => !impersonating && setImpersonateConfirm(false)}
+        >
+          <div
+            className="rounded-2xl p-7 w-[480px] max-w-[92vw]"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+              Войти как {user.phone}?
+            </h3>
+            <p className="m-0 mb-3 text-[13px]" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              Все ваши действия в TMA будут выполнены от имени пользователя
+              и записаны в audit-log с пометкой <code style={{ background: 'var(--bg)', padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>impersonated_by</code>.
+            </p>
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: 12, marginBottom: 18 }}>
+              <p className="m-0 text-[12px]" style={{ color: '#F59E0B' }}>
+                ⚠ Используйте только для диагностики проблем.
+                Не делайте покупок, не пишите сообщения от имени пользователя без согласия.
+              </p>
+            </div>
+            <div className="flex gap-2.5 justify-end">
+              <button
+                onClick={() => setImpersonateConfirm(false)}
+                disabled={impersonating}
+                className="px-5 py-2.5 rounded-xl text-[14px]"
+                style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleImpersonate}
+                disabled={impersonating}
+                className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+                style={{ border: 'none', background: '#F59E0B', color: 'white', cursor: impersonating ? 'wait' : 'pointer', opacity: impersonating ? 0.6 : 1 }}
+              >
+                {impersonating ? 'Переключение...' : 'Войти как пользователь'}
               </button>
             </div>
           </div>
