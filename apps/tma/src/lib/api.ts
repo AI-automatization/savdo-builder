@@ -2,22 +2,42 @@ const BASE = import.meta.env.VITE_API_URL ?? '';
 
 const TOKEN_KEY = 'savdo_tma_token';
 
-// ── GET response cache (30 s TTL, module-level — persists across navigations) ──
-interface CacheEntry { data: unknown; expiresAt: number }
+// ── GET response cache (per-endpoint TTL, module-level) ────────────────────
+interface CacheEntry { data: unknown; expiresAt: number; staleAt: number }
 const _cache = new Map<string, CacheEntry>();
-const CACHE_TTL = 30_000;
+
+// Дефолтный TTL для GET. Можно перебить через opts.ttl.
+const DEFAULT_TTL = 30_000;
+// Stale-окно поверх TTL: после expiresAt, но до expiresAt+STALE_WINDOW
+// данные ещё можно показать пользователю + триггернуть refetch в фоне.
+const STALE_WINDOW = 5 * 60_000;
+
+// Эвристика TTL по пути. Категории/глобал-данные кешируем дольше.
+function inferTTL(path: string): number {
+  if (path.startsWith('/storefront/categories')) return 10 * 60_000; // 10 мин
+  if (path.startsWith('/storefront/stores'))    return 60_000;       // 1 мин
+  if (path.startsWith('/storefront/products'))  return 30_000;       // 30 с
+  if (path.startsWith('/stores/'))              return 60_000;       // 1 мин
+  if (path.startsWith('/buyer/orders'))         return 10_000;       // 10 с (часто меняется)
+  if (path.startsWith('/seller/orders'))        return 10_000;
+  if (path.startsWith('/chat/'))                return 5_000;
+  return DEFAULT_TTL;
+}
 
 export function bustCache(prefix: string) {
   for (const key of _cache.keys()) {
-    if (key.startsWith(prefix)) _cache.delete(key);
+    if (key.includes(prefix)) _cache.delete(key);
   }
 }
+
+// ── In-flight dedup ────────────────────────────────────────────────────────
+// Если 2 компонента просят один и тот же GET одновременно — делаем один fetch.
+const _inflight = new Map<string, Promise<unknown>>();
 
 let _token: string | null = (() => {
   try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
 })();
 
-// Callback вызывается когда 401 — провайдер переаутентифицирует
 let _onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(cb: () => void) { _onUnauthorized = cb; }
 
@@ -34,6 +54,10 @@ interface ApiOptions {
   method?: string;
   body?: unknown;
   headers?: Record<string, string>;
+  signal?: AbortSignal;       // отмена при unmount/смене параметров
+  ttl?: number;               // переопределить TTL для GET
+  forceFresh?: boolean;       // обойти кэш (но запись после успеха обновится)
+  noCache?: boolean;          // вообще не трогать кэш (write-only ответы)
 }
 
 export class ApiError extends Error {
@@ -42,17 +66,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
-  const method = opts.method ?? 'GET';
-  const isGet = method === 'GET';
+function cacheKey(path: string): string {
+  return `${_token ?? ''}:${path}`;
+}
 
-  // Cache hit
-  if (isGet && !opts.headers) {
-    const cacheKey = `${_token ?? ''}:${path}`;
-    const cached = _cache.get(cacheKey);
-    if (cached && Date.now() < cached.expiresAt) return cached.data as T;
-  }
-
+async function doFetch<T>(path: string, opts: ApiOptions, method: string): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...opts.headers,
@@ -63,6 +81,7 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
     method,
     headers,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
+    signal: opts.signal,
   });
 
   if (!res.ok) {
@@ -74,18 +93,79 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
     throw new ApiError(res.status, err.message ?? `API error ${res.status}`);
   }
 
-  // 204 No Content — нет тела, возвращаем undefined
   if (res.status === 204) return undefined as unknown as T;
+  return await res.json() as T;
+}
 
-  const data = await res.json() as T;
+export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
+  const method = opts.method ?? 'GET';
+  const isGet = method === 'GET';
+  const useCache = isGet && !opts.headers && !opts.noCache;
+  const key = cacheKey(path);
 
-  // Cache successful GET responses
-  if (isGet && !opts.headers) {
-    const cacheKey = `${_token ?? ''}:${path}`;
-    _cache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL });
+  // Чистый кэш-хит — мгновенный ответ
+  if (useCache && !opts.forceFresh) {
+    const cached = _cache.get(key);
+    if (cached && Date.now() < cached.expiresAt) return cached.data as T;
   }
 
-  return data;
+  // Dedup: если уже летит такой же GET — отдаём тот же промис
+  if (useCache && !opts.forceFresh) {
+    const inflight = _inflight.get(key);
+    if (inflight) return inflight as Promise<T>;
+  }
+
+  const promise = doFetch<T>(path, opts, method).then((data) => {
+    if (useCache && data !== undefined) {
+      const ttl = opts.ttl ?? inferTTL(path);
+      const now = Date.now();
+      _cache.set(key, { data, expiresAt: now + ttl, staleAt: now + ttl + STALE_WINDOW });
+    }
+    return data;
+  }).finally(() => {
+    if (useCache) _inflight.delete(key);
+  });
+
+  if (useCache) _inflight.set(key, promise as Promise<unknown>);
+  return promise;
+}
+
+// ── Stale-while-revalidate ────────────────────────────────────────────────
+// Колбек onFresh вызывается дважды если есть stale-кэш:
+// 1) сразу с кэшем (cache !== undefined)
+// 2) с актуальными данными после revalidate
+// При сетевой ошибке после первого колбека — второго не будет.
+export function apiSWR<T>(
+  path: string,
+  onFresh: (data: T, fromCache: boolean) => void,
+  opts: { signal?: AbortSignal; ttl?: number } = {},
+): Promise<T> {
+  const key = cacheKey(path);
+  const cached = _cache.get(key);
+  const now = Date.now();
+  if (cached && now < cached.staleAt) {
+    onFresh(cached.data as T, true);
+    // Если вышло за TTL но в окне stale — подкачаем фоном
+    if (now >= cached.expiresAt) {
+      api<T>(path, { ...opts, forceFresh: true })
+        .then((fresh) => onFresh(fresh, false))
+        .catch(() => {/* stale ок */});
+      return Promise.resolve(cached.data as T);
+    }
+    return Promise.resolve(cached.data as T);
+  }
+  // Кэша нет — обычный путь
+  return api<T>(path, opts).then((d) => { onFresh(d, false); return d; });
+}
+
+// ── Prefetch ──────────────────────────────────────────────────────────────
+// Стартовать запрос заранее (по hover/touchstart) — кэш отработает к моменту навигации.
+export function prefetch(path: string): void {
+  const key = cacheKey(path);
+  const cached = _cache.get(key);
+  if (cached && Date.now() < cached.expiresAt) return;
+  if (_inflight.has(key)) return;
+  api(path).catch(() => {/* prefetch — тихо */});
 }
 
 export async function apiUpload<T = unknown>(

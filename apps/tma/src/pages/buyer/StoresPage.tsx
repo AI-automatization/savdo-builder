@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
@@ -35,13 +35,17 @@ export default function StoresPage() {
   const [storesError, setStoresError] = useState(false);
   const [storesQuery, setStoresQuery] = useState('');
 
+  const storesAbortRef = useRef<AbortController | null>(null);
   const loadStores = () => {
+    storesAbortRef.current?.abort();
+    const ac = new AbortController();
+    storesAbortRef.current = ac;
     setStoresLoading(true);
     setStoresError(false);
-    api<{ data: Store[] }>('/storefront/stores')
+    api<{ data: Store[] }>('/storefront/stores', { signal: ac.signal })
       .then((res) => setStores(res.data ?? []))
       .catch((err) => {
-        // 401 при анонимном вызове = ОК, считаем что магазинов нет (БД пустая)
+        if (ac.signal.aborted) return;
         const status = (err as { status?: number })?.status;
         if (status === 401 || status === 403) {
           setStores([]);
@@ -49,9 +53,12 @@ export default function StoresPage() {
           setStoresError(true);
         }
       })
-      .finally(() => setStoresLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setStoresLoading(false); });
   };
-  useEffect(() => { loadStores(); }, []);
+  useEffect(() => {
+    loadStores();
+    return () => storesAbortRef.current?.abort();
+  }, []);
 
   const filteredStores = useMemo(() => {
     if (!storesQuery.trim()) return stores;
@@ -85,16 +92,21 @@ export default function StoresPage() {
     api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
   }, [tab]);
 
+  const productsAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (tab !== 'products') return;
+    productsAbortRef.current?.abort();
+    const ac = new AbortController();
+    productsAbortRef.current = ac;
     setProductsLoading(true);
     const params = new URLSearchParams({ sort });
     if (debouncedQuery.trim()) params.set('q', debouncedQuery.trim());
     if (activeCat) params.set('globalCategoryId', activeCat);
-    api<{ data: FeedProduct[]; meta: { total: number; page: number } }>(`/storefront/products?${params}`)
-      .then((res) => setProducts(res.data ?? []))
-      .catch(() => {})
-      .finally(() => setProductsLoading(false));
+    api<{ data: FeedProduct[]; meta: { total: number; page: number } }>(`/storefront/products?${params}`, { signal: ac.signal })
+      .then((res) => { if (!ac.signal.aborted) setProducts(res.data ?? []); })
+      .catch(() => { /* abort/error: оставляем прежний список */ })
+      .finally(() => { if (!ac.signal.aborted) setProductsLoading(false); });
+    return () => ac.abort();
   }, [tab, debouncedQuery, activeCat, sort]);
 
   const openTgContact = (e: React.MouseEvent, link: string) => {
@@ -278,6 +290,10 @@ export default function StoresPage() {
                 key={store.id}
                 className="flex items-center gap-3 px-4 py-3.5"
                 onClick={() => navigate(`/buyer/store/${store.slug}`)}
+                onPointerEnter={() => {
+                  prefetch(`/storefront/stores/${store.slug}`);
+                  prefetch(`/stores/${store.slug}/products`);
+                }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold uppercase"

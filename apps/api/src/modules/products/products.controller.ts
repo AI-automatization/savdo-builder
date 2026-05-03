@@ -525,13 +525,35 @@ export class ProductsController {
   @Get('storefront/stores')
   async listStorefrontStores() {
     const stores = await this.storesRepo.findAllPublished();
-    const resolved = await Promise.all(
-      stores.map(async (s) => {
-        const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-        return { ...s, logoUrl, coverUrl };
-      }),
-    );
-    return { data: resolved };
+    if (!stores.length) return { data: [] };
+
+    // Batch: один findMany на все магазины вместо N запросов
+    const ids = stores
+      .flatMap((s) => [s.logoMediaId, s.coverMediaId])
+      .filter((id): id is string => Boolean(id));
+
+    const mediaMap = new Map<string, { id: string; bucket: string; objectKey: string }>();
+    if (ids.length) {
+      const files = await this.prisma.mediaFile.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, bucket: true, objectKey: true },
+      });
+      for (const f of files) mediaMap.set(f.id, f);
+    }
+
+    const resolveOne = (id: string | null | undefined): string | null => {
+      if (!id) return null;
+      const m = mediaMap.get(id);
+      if (!m) return null;
+      return this.resolveImageUrl(m) || null;
+    };
+
+    const data = stores.map((s) => ({
+      ...s,
+      logoUrl: resolveOne(s.logoMediaId),
+      coverUrl: resolveOne(s.coverMediaId),
+    }));
+    return { data };
   }
 
   @Get('storefront/stores/:slug')

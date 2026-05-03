@@ -10,6 +10,34 @@
 
 ---
 
+## 2026-05-03 [PERF-TMA-API-001] TMA + API performance pass — AbortController, per-endpoint TTL, N+1 stores fix
+
+- **Статус:** ✅ Исправлено локально (запушится с merge'ом main → tma + main → api).
+- **Корни медленных запросов в TMA:**
+  1. `apps/tma/src/lib/api.ts` — был один глобальный TTL=30s на все GET. Категории (статичные) запрашивались каждые 30 сек заново при переходе между страницами.
+  2. Нет `AbortController` — при быстром свитче табов в `StoresPage` или категории фильтра летели гонки запросов; setState мог отработать на unmounted компонент.
+  3. Нет dedup'а — два компонента, открывшихся одновременно, делали два одинаковых GET.
+  4. `/storefront/stores` имел N+1: на каждый магазин шёл отдельный `prisma.mediaFile.findMany` для logo/cover. 50 магазинов = 51 запрос.
+  5. `/stores/:slug/products` отдавал ВСЕ товары без cap, причём `images: include({ media: true })` без `take: 1` — 8 фото × 50 товаров × media = тяжёлый payload.
+- **Что сделано (TMA):**
+  - `apps/tma/src/lib/api.ts` переписан: `inferTTL()` (категории 10мин, магазины 1мин, продукты 30с, заказы 10с, чат 5с), `_inflight` Map для dedup, `opts.signal` для отмены, `apiSWR()` для stale-while-revalidate, `prefetch()` helper.
+  - `pages/buyer/StoresPage.tsx`: AbortController на stores + products запросы; `prefetch(/storefront/stores/:slug + /stores/:slug/products)` на `onPointerEnter` карточки магазина.
+  - `pages/buyer/StorePage.tsx`: AbortController на оба параллельных запроса (store + products) + `aborted`-guard.
+  - `pages/buyer/ProductPage.tsx`: AbortController + aborted-guard.
+  - `pages/buyer/OrdersPage.tsx`: AbortController + `forceFresh: true` (заказы — высокая частота изменений).
+  - `components/ui/ProductCard.tsx`: `prefetch(/stores/:slug/products/:id)` на pointerenter/touchstart.
+  - `components/ui/GlassCard.tsx`: добавлен опциональный `onPointerEnter` prop для prefetch с карточки магазина.
+- **Что сделано (API):**
+  - `apps/api/src/modules/products/products.controller.ts` `listStorefrontStores`: батчевый `mediaFile.findMany({ id: { in: allIds } })` вместо `Promise.all(stores.map(resolveStoreImageUrls))`. От 51 запроса до 2 (stores + media).
+  - `apps/api/src/modules/products/repositories/products.repository.ts` `findPublicByStoreId`: добавлен soft cap 200 (max 500) + `images: take: 1` (вместо всех 8). Защита от unbounded query + минус 80% media payload.
+- **Чек после деплоя:** в TMA быстрый свитч табов магазины⇄товары не должен показывать спиннер если между переключениями <10 минут (категории + магазины кэшируются дольше). На мобиле скролл по карточкам товаров → клик → ProductPage открывается мгновенно из prefetch. На бэке `/storefront/stores` p95 latency должен упасть в 2-5 раз.
+- **Не сделано (отдельные TODO):**
+  - Composite индекс `Product (status, deletedAt, createdAt DESC)` для feed sort by new — нужна миграция, делать в отдельном PR.
+  - `pg_trgm` GIN на `Product.title` для быстрого ILIKE %q% — также миграция, не критично для MVP.
+- **Параллельная сессия Claude:** работает над `apps/admin/src/pages/{FeatureFlagsPage,SystemHealthPage}.tsx` + `GetSystemHealthUseCase` в admin модуле API. Не пересекается с моими файлами.
+
+---
+
 ## 2026-04-29 [INFRA-DEPLOY-BRANCHES-001] Root cause Railway-skip: каждый сервис теперь деплоится со своей ветки, не с main
 
 - **Статус:** ✅ Исправлено для buyer (29.04.2026 вечер). 🟡 Web-seller — без изменений, на main для seller новой работы нет, ветка `origin/web-seller` свежая.
