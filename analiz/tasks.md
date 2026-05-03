@@ -5,6 +5,50 @@
 
 ---
 
+# 🆕 Спринт TMA Quality + Platform Hardening (04-09.05.2026)
+
+> Полный план: `analiz/sprint-tma-quality-04-05-2026.md`. Здесь — короткая чек-лист.
+
+## 🔴 P0 — Полат
+
+- [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
+- [ ] **`TMA-CHAT-403-WRITE-001`** — dual-role check на `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`.
+  - Файлы: `apps/api/src/modules/chat/chat.controller.ts` + 5 use-cases в `chat/use-cases/`.
+  - Паттерн: как в `getMessages` после `2b2bca7` — `resolveBothProfileIds` + `isBuyer || isSeller`.
+- [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
+  - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
+  - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
+
+## 🟠 P1 — Полат
+
+- [ ] **`TMA-SELECT-CUSTOM-001`** — портировать `apps/web-seller/src/components/select.tsx` в `apps/tma/src/components/ui/Select.tsx`. Применить везде где `<select>` (AddProductPage, EditProductPage, SettingsPage seller).
+- [ ] **`TMA-CROPPER-UX-001`** — большая видимая «✕ Отменить» в шапке кропера, `zIndex: 9999`, кнопка «➕ Добавить ещё фото» в AddProductPage / EditProductPage.
+  - Файлы: `apps/tma/src/components/ui/ImageCropper.tsx` + `apps/tma/src/pages/seller/{AddProductPage,EditProductPage}.tsx`.
+- [ ] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** — динамические опции товара из `CategoryFilter` по выбранной категории. Заменить хардкод-toggle «Товар с размерами».
+  - Endpoint: `GET /storefront/categories/:slug/filters` (уже работает).
+  - Поведение: SELECT/MULTI_SELECT с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
+- [ ] **`TMA-DESIGN-P0P1-001`** — P0+P1 из `[DESIGN-AUDIT-TMA-001]` (см. `analiz/logs.md` 2026-05-03):
+  - BottomNav inactive label `rgba(255,255,255,0.28)` → `0.50`.
+  - Hit-area Add-to-cart, back, ✕ → 44+ px.
+  - `aria-hidden="true"` на decorative emoji.
+  - `role/tabIndex/onKeyDown` на интерактивных `<div>`.
+- [ ] **`TMA-RESPONSIVE-DESKTOP-001`** — modals и cropper перекрывают весь экран (включая sidebar). Sidebar width дефиниция на breakpoint'ах.
+
+## 🟡 P2 — Полат + параллельная сессия
+
+- [ ] **`API-SQL-INJECTION-AUDIT-001`** — grep `$queryRaw`/`$executeRaw` в `apps/api`, проверить prepared params.
+- [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
+- [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
+- [ ] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA (делегировать параллельной сессии, шаблон №1 в `parallel-session-prompts.md`).
+
+## 🟢 P3 — после спринта
+
+- [ ] **`NOTIF-IN-APP-001`** — in-app уведомления (Notification модель + socket emit + toast/badge).
+- [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
+- [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
+
+---
+
 # 🆕 Очередь от Полата (через Азима, 30.04.2026 поздно вечер)
 
 > ✅ 4 TMA задачи закрыты Полатом 02.05.2026, коммит `a2e1767`. См. `analiz/done.md`.
