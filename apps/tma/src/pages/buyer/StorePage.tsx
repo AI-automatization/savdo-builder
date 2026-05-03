@@ -8,6 +8,7 @@ import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
+import { webStoreUrl, webStoreLabel } from '@/lib/webUrl';
 
 interface Product {
   id: string;
@@ -160,7 +161,14 @@ export default function StorePage() {
             </div>
             <div>
               <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>{store.name}</h1>
-              <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>savdo.uz/{store.slug}</p>
+              <button
+                onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
+                className="text-[11px] underline-offset-2 hover:underline"
+                style={{ color: 'rgba(167,139,250,0.80)', cursor: 'pointer' }}
+                aria-label="Открыть в браузере"
+              >
+                {webStoreLabel(store.slug)} ↗
+              </button>
             </div>
           </div>
           {store.description && (

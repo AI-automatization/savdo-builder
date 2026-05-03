@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { glass } from '@/lib/styles';
+import { webStoreUrl, webStoreLabel } from '@/lib/webUrl';
 
 interface Store {
   id: string;
@@ -57,10 +58,11 @@ export default function SellerStorePage() {
   const [createError, setCreateError] = useState('');
 
   const botUsername = (import.meta.env.VITE_BOT_USERNAME as string) ?? '';
+  // Mini App deep-link если бот настроен, иначе публичная веб-витрина.
   const storeLink = (s: Store) =>
     botUsername
       ? `https://t.me/${botUsername}?startapp=store_${s.slug}`
-      : `https://savdo.uz/${s.slug}`;
+      : webStoreUrl(s.slug);
 
   const copyLink = async (s: Store) => {
     try {
@@ -281,7 +283,14 @@ export default function SellerStorePage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
-              <p className="text-[11px]" style={{ color: 'rgba(168,85,247,0.80)' }}>savdo.uz/{store.slug}</p>
+              <button
+                onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
+                className="text-[11px] underline-offset-2 hover:underline"
+                style={{ color: 'rgba(168,85,247,0.80)', cursor: 'pointer' }}
+                aria-label="Открыть витрину магазина"
+              >
+                {webStoreLabel(store.slug)} ↗
+              </button>
             </div>
             <Badge status={store.status} />
           </div>
