@@ -49,6 +49,7 @@ import { BroadcastUseCase } from './use-cases/broadcast.use-case';
 import { DbManagerUseCase } from './use-cases/db-manager.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
+import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -81,7 +82,36 @@ export class AdminController {
     private readonly dbManagerUseCase: DbManagerUseCase,
     private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
     private readonly adminCreateStoreUseCase: AdminCreateStoreUseCase,
+    private readonly getSystemHealthUseCase: GetSystemHealthUseCase,
   ) {}
+
+  // ── System Health (DevOps Dashboard) ──────────────────────────────────────
+  @Get('system/health')
+  async getSystemHealth() {
+    return this.getSystemHealthUseCase.execute();
+  }
+
+  // ── Feature flags (read-only view of process.env) ─────────────────────────
+  @Get('system/feature-flags')
+  async getFeatureFlags() {
+    return {
+      flags: [
+        { key: 'CHAT_ENABLED',                  label: 'Чат',                     value: process.env.CHAT_ENABLED !== 'false',                  envOverridable: true },
+        { key: 'STORE_APPROVAL_REQUIRED',       label: 'Модерация магазинов',     value: process.env.STORE_APPROVAL_REQUIRED !== 'false',       envOverridable: true },
+        { key: 'TELEGRAM_NOTIFICATIONS_ENABLED',label: 'Уведомления Telegram',    value: process.env.TELEGRAM_NOTIFICATIONS_ENABLED !== 'false', envOverridable: true },
+        { key: 'DEV_OTP_ENABLED',               label: 'DEV OTP (код в логах)',   value: process.env.DEV_OTP_ENABLED === 'true',                envOverridable: true },
+        { key: 'OTP_REQUIRED_FOR_CHECKOUT',     label: 'OTP при оформлении',      value: process.env.OTP_REQUIRED_FOR_CHECKOUT === 'true',      envOverridable: true },
+        { key: 'PAYMENT_ONLINE_ENABLED',        label: 'Онлайн-платежи',          value: process.env.PAYMENT_ONLINE_ENABLED === 'true',         envOverridable: true },
+        { key: 'ANALYTICS_ENABLED',             label: 'Аналитика',                value: process.env.ANALYTICS_ENABLED !== 'false',             envOverridable: true },
+        { key: 'WEB_PUSH_ENABLED',              label: 'Web Push',                value: process.env.WEB_PUSH_ENABLED === 'true',               envOverridable: true },
+        { key: 'MOBILE_PUSH_ENABLED',           label: 'Mobile Push',             value: process.env.MOBILE_PUSH_ENABLED === 'true',            envOverridable: true },
+        { key: 'SMS_FALLBACK_ENABLED',          label: 'SMS Fallback (запрещён)', value: false, envOverridable: false, locked: true, reason: 'SMS/Eskiz запрещены законом РУз' },
+        { key: 'SELLER_INSIGHTS_ENABLED',       label: 'Seller Insights',         value: process.env.SELLER_INSIGHTS_ENABLED === 'true',        envOverridable: true },
+        { key: 'PRODUCT_IMAGE_ATTACHMENT_ENABLED', label: 'Фото к товарам',        value: process.env.PRODUCT_IMAGE_ATTACHMENT_ENABLED !== 'false', envOverridable: true },
+      ],
+      note: 'Изменение feature flag требует перезапуска api. Через UI пока read-only — переменные задаются в Railway → Variables.',
+    };
+  }
 
   // Resolve AdminUser record from JWT payload.
   // Throws ADMIN_NOT_FOUND if the caller has role=ADMIN in JWT but no AdminUser row.

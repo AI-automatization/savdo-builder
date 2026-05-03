@@ -10,10 +10,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['lucide-react'],
-          'vendor-charts': ['recharts'],
+        manualChunks: (id: string) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react-router')) return 'vendor-react'
+            if (id.includes('react-dom') || /node_modules[\\/]react[\\/]/.test(id)) return 'vendor-react'
+            if (id.includes('lucide-react')) return 'vendor-ui'
+            if (id.includes('recharts')) return 'vendor-charts'
+          }
+          return undefined
         },
       },
     },
