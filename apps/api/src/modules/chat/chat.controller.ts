@@ -474,14 +474,24 @@ export class ChatController {
     userId: string,
     role: string,
   ): Promise<{ buyerId?: string; sellerId?: string }> {
+    // Для list-my-threads (read-only): soft-резолв. Если профиля ещё нет —
+    // use-case вернёт пустой список вместо 422. Это нормально для нового юзера,
+    // который зашёл в "Чаты" до первой покупки или до создания магазина.
     if (role === 'BUYER') {
-      const buyerId = await this.resolveBuyerId(userId);
-      return { buyerId };
+      const user = await this.usersRepo.findById(userId);
+      return { buyerId: user?.buyer?.id };
     }
 
     if (role === 'SELLER') {
-      const sellerId = await this.resolveSellerProfileId(userId);
-      return { sellerId };
+      const seller = await this.sellersRepo.findByUserId(userId);
+      if (seller?.isBlocked) {
+        throw new DomainException(
+          ErrorCode.SELLER_BLOCKED,
+          'Seller account is blocked',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      return { sellerId: seller?.id };
     }
 
     // ADMIN or dual-role: resolve profiles from DB directly

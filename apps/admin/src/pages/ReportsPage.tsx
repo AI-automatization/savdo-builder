@@ -1,21 +1,9 @@
 import { useState } from 'react'
 import { Flag, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
-
-function toast(msg: string) {
-  const el = document.createElement('div')
-  el.textContent = msg
-  Object.assign(el.style, {
-    position: 'fixed', bottom: '24px', right: '24px', zIndex: '9999',
-    background: 'rgba(30,30,40,0.95)', color: '#fff', padding: '10px 18px',
-    borderRadius: '10px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.12)',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-  })
-  document.body.appendChild(el)
-  setTimeout(() => el.remove(), 2500)
-}
 
 interface ReportRow {
   id: string
@@ -46,10 +34,10 @@ export default function ReportsPage() {
     setDismissingId(id)
     try {
       await api.delete(`/api/v1/admin/chat/messages/${id}/report`)
-      toast('✅ Жалоба снята')
+      toast.success('Жалоба снята')
       refetch()
     } catch {
-      toast('❌ Не удалось снять жалобу')
+      toast.error('Не удалось снять жалобу')
     } finally {
       setDismissingId(null)
     }
