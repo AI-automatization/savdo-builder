@@ -28,6 +28,21 @@ interface ChatMessage {
   text: string;
   senderRole: 'BUYER' | 'SELLER';
   createdAt: string;
+  editedAt?: string | null;
+  isDeleted?: boolean;
+  mediaUrl?: string | null;
+  messageType?: string;
+  parentMessage?: { id: string; text: string; senderRole: 'BUYER' | 'SELLER' } | null;
+}
+
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
+function canEditMessage(m: ChatMessage): boolean {
+  if (m.senderRole !== 'BUYER') return false;
+  if (m.isDeleted) return false;
+  return Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
+}
+function timeStr(iso: string): string {
+  return new Date(iso).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function BuyerChatPage() {
@@ -39,6 +54,7 @@ export default function BuyerChatPage() {
   // ── Thread list ──────────────────────────────────────────────────────────────
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [threadsError, setThreadsError] = useState(false);
 
   // ── Conversation ─────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -46,10 +62,16 @@ export default function BuyerChatPage() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
-  // ── Report ───────────────────────────────────────────────────────────────────
+  // ── Long-press menu / Edit / Reply / Delete ────────────────────────────────
+  const [actionTarget, setActionTarget] = useState<ChatMessage | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -65,12 +87,21 @@ export default function BuyerChatPage() {
   }, [navigate, tg, threadId]);
 
   // ── Load thread list ─────────────────────────────────────────────────────────
-  useEffect(() => {
+  const loadThreads = () => {
+    setLoading(true);
+    setThreadsError(false);
     api<ChatThread[]>('/chat/threads')
-      .then(setThreads)
-      .catch(() => {})
+      .then((data) => {
+        setThreads(data ?? []);
+      })
+      .catch((err) => {
+        setThreadsError(true);
+        const msg = err instanceof Error ? err.message : 'Не удалось загрузить чаты';
+        showToast(`❌ ${msg}`, 'error');
+      })
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(() => { loadThreads(); }, []);
 
   // ── Load messages + connect socket when threadId changes ─────────────────────
   useEffect(() => {
@@ -111,11 +142,22 @@ export default function BuyerChatPage() {
       api(`/chat/threads/${threadId}/read`, { method: 'PATCH' }).catch(() => {});
     };
 
+    const onEdited = (msg: { id: string; text: string; editedAt: string | null }) => {
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, text: msg.text, editedAt: msg.editedAt } : m));
+    };
+    const onDeleted = (msg: { id: string }) => {
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, isDeleted: true, text: '' } : m));
+    };
+
     socket.on('chat:message', onMessage);
+    socket.on('chat:message:edited', onEdited);
+    socket.on('chat:message:deleted', onDeleted);
 
     return () => {
       socket.emit('leave-chat-room', { threadId });
       socket.off('chat:message', onMessage);
+      socket.off('chat:message:edited', onEdited);
+      socket.off('chat:message:deleted', onDeleted);
     };
   }, [threadId, navigate]);
 
@@ -128,21 +170,23 @@ export default function BuyerChatPage() {
   const sendMsg = async () => {
     if (!text.trim() || !threadId || sending) return;
     const msgText = text.trim();
+    const parentId = replyTo?.id;
+    const parentSnapshot = replyTo ? { id: replyTo.id, text: replyTo.text, senderRole: replyTo.senderRole } : null;
     setSending(true);
     setText('');
+    setReplyTo(null);
 
     const tempId = `temp_${Date.now()}`;
     setMessages((prev) => [
       ...prev,
-      { id: tempId, threadId, text: msgText, senderRole: 'BUYER', createdAt: new Date().toISOString() },
+      { id: tempId, threadId, text: msgText, senderRole: 'BUYER', createdAt: new Date().toISOString(), parentMessage: parentSnapshot },
     ]);
 
     try {
       await api(`/chat/threads/${threadId}/messages`, {
         method: 'POST',
-        body: { text: msgText },
+        body: { text: msgText, parentMessageId: parentId },
       });
-      // Socket event from server will arrive and replace the temp message
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setText(msgText);
@@ -153,11 +197,69 @@ export default function BuyerChatPage() {
     }
   };
 
-  // ── Report message ───────────────────────────────────────────────────────────
+  const sendPhoto = async (file: File) => {
+    if (!threadId || uploadingPhoto) return;
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('purpose', 'chat_photo');
+      const uploadRes = await api<{ id: string; url: string }>('/media/upload', { method: 'POST', body: formData });
+      await api(`/chat/threads/${threadId}/messages`, {
+        method: 'POST',
+        body: { mediaId: uploadRes.id, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
+      });
+      setReplyTo(null);
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Не удалось отправить фото';
+      showToast(`❌ ${msg}`, 'error');
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  // ── Edit message ─────────────────────────────────────────────────────────────
+  const submitEdit = async () => {
+    if (!editingId || !threadId || !editText.trim()) return;
+    const newText = editText.trim();
+    const id = editingId;
+    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, text: newText, editedAt: new Date().toISOString() } : m));
+    setEditingId(null);
+    setEditText('');
+    try {
+      await api(`/chat/threads/${threadId}/messages/${id}`, {
+        method: 'PATCH',
+        body: { text: newText },
+      });
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Не удалось изменить';
+      showToast(`❌ ${msg}`, 'error');
+      tg?.HapticFeedback.notificationOccurred('error');
+    }
+  };
+
+  // ── Delete message ───────────────────────────────────────────────────────────
+  const deleteMsg = async (id: string) => {
+    if (!threadId) return;
+    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, isDeleted: true, text: '' } : m));
+    try {
+      await api(`/chat/threads/${threadId}/messages/${id}`, { method: 'DELETE' });
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Не удалось удалить';
+      showToast(`❌ ${msg}`, 'error');
+    }
+  };
+
+  // ── Long-press menu ──────────────────────────────────────────────────────────
   const startLongPress = (msg: ChatMessage) => {
+    if (msg.isDeleted || msg.id.startsWith('temp_')) return;
     longPressTimer.current = setTimeout(() => {
       tg?.HapticFeedback.impactOccurred('medium');
-      setReportTarget(msg);
+      setActionTarget(msg);
     }, 500);
   };
   const cancelLongPress = () => {
@@ -304,28 +406,75 @@ export default function BuyerChatPage() {
                 onTouchStart={() => startLongPress(m)}
                 onTouchEnd={cancelLongPress}
                 onTouchMove={cancelLongPress}
-                onContextMenu={(e) => { e.preventDefault(); setReportTarget(m); }}
+                onContextMenu={(e) => { e.preventDefault(); if (!m.isDeleted && !m.id.startsWith('temp_')) setActionTarget(m); }}
               >
-                <div
-                  className="px-3 py-2 rounded-xl text-sm"
-                  style={{
-                    background: m.id.startsWith('temp_')
-                      ? 'rgba(124,58,237,0.20)'
-                      : m.senderRole === 'BUYER'
-                        ? 'rgba(124,58,237,0.30)'
-                        : 'rgba(255,255,255,0.08)',
-                    border: `1px solid ${m.senderRole === 'BUYER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
-                    color: 'rgba(255,255,255,0.88)',
-                    opacity: m.id.startsWith('temp_') ? 0.7 : 1,
-                  }}
-                >
-                  {m.text}
-                </div>
+                {m.isDeleted ? (
+                  <div
+                    className="px-3 py-2 rounded-xl text-xs italic"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      color: 'rgba(255,255,255,0.40)',
+                    }}
+                  >
+                    🗑 Сообщение удалено
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-xl overflow-hidden"
+                    style={{
+                      background: m.id.startsWith('temp_')
+                        ? 'rgba(124,58,237,0.20)'
+                        : m.senderRole === 'BUYER'
+                          ? 'rgba(124,58,237,0.30)'
+                          : 'rgba(255,255,255,0.08)',
+                      border: `1px solid ${m.senderRole === 'BUYER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
+                      color: 'rgba(255,255,255,0.88)',
+                      opacity: m.id.startsWith('temp_') ? 0.7 : 1,
+                    }}
+                  >
+                    {m.parentMessage && (
+                      <div
+                        className="px-3 pt-2"
+                      >
+                        <div
+                          className="px-2 py-1 rounded-md text-[11px] truncate"
+                          style={{
+                            background: 'rgba(255,255,255,0.08)',
+                            borderLeft: '3px solid rgba(168,85,247,0.70)',
+                            color: 'rgba(255,255,255,0.65)',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, color: 'rgba(168,85,247,0.95)' }}>
+                            ↩ {m.parentMessage.senderRole === 'BUYER' ? 'Вы' : 'Продавец'}
+                          </span>
+                          <span className="ml-1.5">{m.parentMessage.text.slice(0, 60) || '📷 Фото'}</span>
+                        </div>
+                      </div>
+                    )}
+                    {m.mediaUrl && (
+                      <img
+                        src={m.mediaUrl}
+                        alt=""
+                        className="w-full"
+                        style={{ maxHeight: 320, objectFit: 'cover', display: 'block' }}
+                      />
+                    )}
+                    {m.text && (
+                      <div className="px-3 py-2 text-sm">
+                        {m.text}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <span
-                  className="text-[10px] mt-0.5"
-                  style={{ color: 'rgba(255,255,255,0.25)', textAlign: m.senderRole === 'BUYER' ? 'right' : 'left' }}
+                  className="text-[10px] mt-0.5 flex items-center gap-1"
+                  style={{ color: 'rgba(255,255,255,0.30)', alignSelf: m.senderRole === 'BUYER' ? 'flex-end' : 'flex-start' }}
                 >
-                  {m.id.startsWith('temp_') ? '...' : new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                  {m.id.startsWith('temp_') ? '...' : timeStr(m.createdAt)}
+                  {m.editedAt && !m.isDeleted && (
+                    <span style={{ fontStyle: 'italic' }}>· изменено</span>
+                  )}
                 </span>
               </div>
             ))}
@@ -334,50 +483,194 @@ export default function BuyerChatPage() {
 
           {/* Input / closed notice */}
           {(activeThread?.status === 'OPEN' || !activeThread) ? (
-            <div className="flex gap-2 pt-2 shrink-0">
-              <input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (text.trim()) sendMsg();
-                  }
-                }}
-                placeholder="Сообщение... (Enter ↵)"
-                style={{
-                  flex: 1,
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: 12,
-                  color: '#fff',
-                  fontSize: 14,
-                  padding: '10px 14px',
-                  outline: 'none',
-                }}
-              />
-              <button
-                onClick={sendMsg}
-                disabled={!text.trim() || sending}
-                aria-label="Отправить сообщение"
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: 12,
-                  background: 'rgba(124,58,237,0.40)',
-                  border: '1px solid rgba(124,58,237,0.50)',
-                  color: '#fff',
-                  fontSize: 18,
-                  cursor: text.trim() && !sending ? 'pointer' : 'default',
-                  opacity: text.trim() && !sending ? 1 : 0.4,
-                  minWidth: 46,
-                }}
-              >
-                {sending ? '⏳' : '➤'}
-              </button>
+            <div className="flex flex-col gap-1.5 pt-2 shrink-0">
+              {/* Reply banner */}
+              {replyTo && (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                  style={{ background: 'rgba(168,85,247,0.12)', borderLeft: '3px solid rgba(168,85,247,0.70)' }}
+                >
+                  <span style={{ fontSize: 16 }}>↩</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold" style={{ color: 'rgba(168,85,247,0.95)' }}>
+                      Ответ {replyTo.senderRole === 'BUYER' ? 'себе' : 'продавцу'}
+                    </p>
+                    <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                      {replyTo.text || '📷 Фото'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setReplyTo(null)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}
+                    aria-label="Отменить ответ"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {/* Edit banner */}
+              {editingId && (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                  style={{ background: 'rgba(34,211,238,0.12)', borderLeft: '3px solid rgba(34,211,238,0.70)' }}
+                >
+                  <span style={{ fontSize: 16 }}>✎</span>
+                  <p className="flex-1 text-xs" style={{ color: '#22D3EE' }}>Редактирование сообщения</p>
+                  <button
+                    onClick={() => { setEditingId(null); setEditText(''); }}
+                    className="w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}
+                    aria-label="Отменить"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                {/* Photo upload */}
+                {!editingId && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) sendPhoto(file);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingPhoto || sending}
+                      aria-label="Прикрепить фото"
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        background: 'rgba(255,255,255,0.07)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: 'rgba(255,255,255,0.70)',
+                        fontSize: 18,
+                        cursor: uploadingPhoto ? 'wait' : 'pointer',
+                        opacity: uploadingPhoto ? 0.5 : 1,
+                      }}
+                    >
+                      {uploadingPhoto ? '⏳' : '📎'}
+                    </button>
+                  </>
+                )}
+                <input
+                  value={editingId ? editText : text}
+                  onChange={(e) => editingId ? setEditText(e.target.value) : setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (editingId) {
+                        if (editText.trim()) submitEdit();
+                      } else if (text.trim()) {
+                        sendMsg();
+                      }
+                    }
+                  }}
+                  placeholder={editingId ? 'Изменить сообщение... (Enter ↵)' : 'Сообщение... (Enter ↵)'}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 12,
+                    color: '#fff',
+                    fontSize: 14,
+                    padding: '10px 14px',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={editingId ? submitEdit : sendMsg}
+                  disabled={editingId ? !editText.trim() : (!text.trim() || sending)}
+                  aria-label={editingId ? 'Сохранить' : 'Отправить сообщение'}
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: 12,
+                    background: 'rgba(124,58,237,0.40)',
+                    border: '1px solid rgba(124,58,237,0.50)',
+                    color: '#fff',
+                    fontSize: 18,
+                    cursor: 'pointer',
+                    opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4,
+                    minWidth: 46,
+                  }}
+                >
+                  {editingId ? '✓' : (sending ? '⏳' : '➤')}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="pt-2 text-center text-[12px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
               Диалог закрыт продавцом — новые сообщения недоступны
+            </div>
+          )}
+
+          {/* Action menu (long-press / right-click) */}
+          {actionTarget && (
+            <div
+              className="fixed inset-0 z-50 flex items-end"
+              style={{ background: 'rgba(0,0,0,0.55)' }}
+              onClick={() => setActionTarget(null)}
+            >
+              <div
+                className="w-full rounded-t-2xl flex flex-col"
+                style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)', maxWidth: 600, margin: '0 auto' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} />
+                </div>
+                <div className="flex flex-col">
+                  <button
+                    onClick={() => { setReplyTo(actionTarget); setActionTarget(null); }}
+                    className="text-left px-5 py-3 text-sm flex items-center gap-3"
+                    style={{ color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                  >
+                    <span>↩</span> Ответить
+                  </button>
+                  {canEditMessage(actionTarget) && (
+                    <button
+                      onClick={() => { setEditingId(actionTarget.id); setEditText(actionTarget.text); setActionTarget(null); }}
+                      className="text-left px-5 py-3 text-sm flex items-center gap-3"
+                      style={{ color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                    >
+                      <span>✎</span> Изменить
+                    </button>
+                  )}
+                  {actionTarget.senderRole === 'BUYER' && (
+                    <button
+                      onClick={() => { deleteMsg(actionTarget.id); setActionTarget(null); }}
+                      className="text-left px-5 py-3 text-sm flex items-center gap-3"
+                      style={{ color: '#f87171', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                    >
+                      <span>🗑</span> Удалить
+                    </button>
+                  )}
+                  {actionTarget.senderRole === 'SELLER' && (
+                    <button
+                      onClick={() => { setReportTarget(actionTarget); setActionTarget(null); }}
+                      className="text-left px-5 py-3 text-sm flex items-center gap-3"
+                      style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                    >
+                      <span>⚠️</span> Пожаловаться
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActionTarget(null)}
+                    className="text-center px-5 py-3 text-sm font-semibold"
+                    style={{ color: 'rgba(255,255,255,0.55)' }}
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -396,7 +689,21 @@ export default function BuyerChatPage() {
 
       {loading && [1, 2, 3].map((i) => <ThreadRowSkeleton key={i} />)}
 
-      {!loading && threads.length === 0 && (
+      {!loading && threadsError && (
+        <div className="flex flex-col items-center gap-3 py-16">
+          <span style={{ fontSize: 40 }}>⚠️</span>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Не удалось загрузить чаты</p>
+          <button
+            onClick={loadThreads}
+            className="text-xs font-semibold py-2 px-4 rounded-full"
+            style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.35)', color: '#A855F7' }}
+          >
+            ↻ Повторить
+          </button>
+        </div>
+      )}
+
+      {!loading && !threadsError && threads.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-16">
           <span style={{ fontSize: 40 }}>💬</span>
           <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: 14 }}>Диалогов пока нет</p>

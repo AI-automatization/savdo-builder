@@ -46,8 +46,12 @@ export function AppShell({ children, role }: Props) {
         <>
           <Sidebar role={role} />
           <div
-            className="relative z-10 flex-1 px-8 pt-6 pb-8"
-            style={{ marginLeft: SIDEBAR_WIDTH }}
+            className="relative z-10 flex-1 px-8 pb-8"
+            style={{
+              marginLeft: SIDEBAR_WIDTH,
+              paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)',
+              paddingRight: 'max(96px, env(safe-area-inset-right, 0px))',
+            }}
           >
             <FullscreenButton />
             <div className="w-full max-w-screen-2xl mx-auto">
@@ -59,7 +63,13 @@ export function AppShell({ children, role }: Props) {
       ) : (
         /* ── Mobile: content + bottom nav ── */
         <>
-          <div className="relative z-10 flex-1 px-4 pt-4 pb-20">
+          <div
+            className="relative z-10 flex-1 px-4 pb-20"
+            style={{
+              paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
+              paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
+            }}
+          >
             <FullscreenButton />
             <div className="w-full max-w-3xl mx-auto">
               <InAppBackBar />

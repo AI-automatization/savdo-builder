@@ -64,16 +64,37 @@ export class ChatGateway implements OnGatewayConnection {
     this.logger.debug(`Client ${client.id} left room ${room}`);
   }
 
-  emitChatMessage(message: ChatMessage, senderRole: 'BUYER' | 'SELLER'): void {
+  emitChatMessage(message: ChatMessage & { mediaUrl?: string | null; parentMessage?: unknown }, senderRole: 'BUYER' | 'SELLER'): void {
     const payload = {
       id: message.id,
       threadId: message.threadId,
       text: message.body ?? '',
       senderRole,
       createdAt: message.createdAt.toISOString(),
+      editedAt: message.editedAt ? message.editedAt.toISOString() : null,
+      messageType: message.messageType,
+      mediaUrl: message.mediaUrl ?? null,
+      parentMessage: message.parentMessage ?? null,
+      isDeleted: message.isDeleted,
     };
     this.server.to(`thread:${message.threadId}`).emit('chat:message', payload);
     this.logger.log(`Emitted chat:message to thread:${message.threadId} — messageId=${message.id}`);
+  }
+
+  emitChatMessageEdited(message: ChatMessage): void {
+    const payload = {
+      id: message.id,
+      threadId: message.threadId,
+      text: message.body ?? '',
+      editedAt: message.editedAt ? message.editedAt.toISOString() : null,
+    };
+    this.server.to(`thread:${message.threadId}`).emit('chat:message:edited', payload);
+    this.logger.log(`Emitted chat:message:edited to thread:${message.threadId} — messageId=${message.id}`);
+  }
+
+  emitChatMessageDeleted(threadId: string, messageId: string): void {
+    this.server.to(`thread:${threadId}`).emit('chat:message:deleted', { id: messageId, threadId });
+    this.logger.log(`Emitted chat:message:deleted to thread:${threadId} — messageId=${messageId}`);
   }
 
   emitChatNewMessage(storeId: string, payload: { threadId: string; buyerName?: string }): void {

@@ -751,6 +751,8 @@ model ChatMessage {
   body             String?
   productContextId String?
   orderContextId   String?
+  parentMessageId  String?
+  mediaId          String?
   isDeleted        Boolean   @default(false)
   editedAt         DateTime?
   deletedAt        DateTime?
@@ -758,11 +760,16 @@ model ChatMessage {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  thread ChatThread @relation(fields: [threadId], references: [id])
+  thread        ChatThread    @relation(fields: [threadId], references: [id])
+  parentMessage ChatMessage?  @relation("ChatReply", fields: [parentMessageId], references: [id], onDelete: SetNull)
+  replies       ChatMessage[] @relation("ChatReply")
+  media         MediaFile?    @relation("ChatMessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   @@index([threadId])
   @@index([senderUserId])
   @@index([createdAt])
+  @@index([parentMessageId])
+  @@index([mediaId])
   @@map("chat_messages")
 }
 
@@ -784,6 +791,7 @@ model MediaFile {
 
   productImages              ProductImage[]
   sellerVerificationDocuments SellerVerificationDocument[]
+  chatMessages               ChatMessage[]                @relation("ChatMessageMedia")
 
   @@index([ownerUserId])
   @@map("media_files")
