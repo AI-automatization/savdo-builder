@@ -35,12 +35,23 @@ export default function StoresPage() {
   const [storesError, setStoresError] = useState(false);
   const [storesQuery, setStoresQuery] = useState('');
 
-  useEffect(() => {
+  const loadStores = () => {
+    setStoresLoading(true);
+    setStoresError(false);
     api<{ data: Store[] }>('/storefront/stores')
       .then((res) => setStores(res.data ?? []))
-      .catch(() => setStoresError(true))
+      .catch((err) => {
+        // 401 при анонимном вызове = ОК, считаем что магазинов нет (БД пустая)
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          setStores([]);
+        } else {
+          setStoresError(true);
+        }
+      })
       .finally(() => setStoresLoading(false));
-  }, []);
+  };
+  useEffect(() => { loadStores(); }, []);
 
   const filteredStores = useMemo(() => {
     if (!storesQuery.trim()) return stores;
@@ -245,7 +256,7 @@ export default function StoresPage() {
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
                 <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-                <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+                <button onClick={loadStores} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
               </div>
             )}
 
