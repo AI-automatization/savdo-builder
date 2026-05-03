@@ -63,8 +63,10 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (!slug || !id) return;
-    api<Product>(`/stores/${slug}/products/${id}`)
+    const ac = new AbortController();
+    api<Product>(`/stores/${slug}/products/${id}`, { signal: ac.signal })
       .then((p) => {
+        if (ac.signal.aborted) return;
         setProduct(p);
         if (trackedRef.current !== p.id) {
           trackedRef.current = p.id;
@@ -79,8 +81,9 @@ export default function ProductPage() {
           setSelectedVariantId(firstInStock?.id ?? null);
         }
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!ac.signal.aborted) setError(true); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [slug, id]);
 
   const selectedVariant = hasGroups

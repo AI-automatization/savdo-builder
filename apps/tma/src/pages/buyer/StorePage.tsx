@@ -50,15 +50,20 @@ export default function StorePage() {
   const [activeCat, setActiveCat] = useState<string | null>(null);
 
   useEffect(() => {
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    const ac = new AbortController();
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then(setGlobalCategories).catch(() => {});
+    return () => ac.abort();
   }, []);
 
   useEffect(() => {
     if (!slug) return;
+    const ac = new AbortController();
     Promise.allSettled([
-      api<Store>(`/storefront/stores/${slug}`),
-      api<Product[]>(`/stores/${slug}/products`),
+      api<Store>(`/storefront/stores/${slug}`, { signal: ac.signal }),
+      api<Product[]>(`/stores/${slug}/products`, { signal: ac.signal }),
     ]).then(([storeResult, productsResult]) => {
+      if (ac.signal.aborted) return;
       if (storeResult.status === 'fulfilled') {
         setStore(storeResult.value);
         if (trackedRef.current !== storeResult.value.id) {
@@ -71,7 +76,8 @@ export default function StorePage() {
       if (productsResult.status === 'fulfilled') {
         setProducts(productsResult.value ?? []);
       }
-    }).finally(() => setLoading(false));
+    }).finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [slug]);
 
   const addToCart = (product: Product) => {
