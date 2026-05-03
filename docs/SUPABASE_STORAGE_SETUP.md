@@ -3,6 +3,18 @@
 > Используем Supabase Storage как primary storage для фото товаров и чатов.
 > Telegram channel остаётся fallback'ом если Supabase недоступен.
 
+## ⚠️ Чистый старт без миграции данных
+
+Поскольку проект ещё не в проде — **не делаем pg_dump со старой Railway БД**.
+Просто меняем `DATABASE_URL` на Supabase, Prisma `migrate deploy` создаст
+схему с нуля, сидер засеет 60+ категорий. Старые тестовые товары/заказы/фото
+из Telegram channel **потеряются** — это OK, всё начинается чисто.
+
+Если в каких-то старых записях `primaryImageUrlSnapshot` указывает на удалённый
+файл (Telegram URL истёк, R2 не настроен) — UI покажет красивый placeholder
+«📷 Нет фото» / «🗑 Фото удалено» / «⚠️ Фото недоступно» (см. `ImagePlaceholder`
++ `ProductImage` компоненты), а не сломается.
+
 ---
 
 ## 0. Что выбрать в "Connect to your project" (твой скрин)

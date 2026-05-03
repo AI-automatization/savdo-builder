@@ -6,6 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { showToast } from '@/components/ui/Toast';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { glass } from '@/lib/styles';
 import {
@@ -250,16 +251,12 @@ export default function ProductPage() {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {images.length ? (
-          <img
-            src={images[activeImage]}
-            alt={product.title}
-            className="w-full h-full object-cover"
-            style={{ userSelect: 'none' }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ fontSize: 48 }}>📦</div>
-        )}
+        <ProductImage
+          src={images[activeImage]}
+          alt={product.title}
+          emptyVariant="no-photo"
+          imgStyle={{ userSelect: 'none' }}
+        />
 
         {/* Dot indicators */}
         {displayType !== 'SINGLE' && images.length > 1 && (

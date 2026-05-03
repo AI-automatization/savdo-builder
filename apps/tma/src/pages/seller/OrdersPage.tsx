@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 interface Order {
   id: string;
@@ -286,14 +287,10 @@ export default function SellerOrdersPage() {
                 <div className="flex items-start gap-3 min-w-0">
                   {/* Thumbnail (preview.imageUrl на свежих заказах) */}
                   <div
-                    className="shrink-0 w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center"
+                    className="shrink-0 w-14 h-14 rounded-xl overflow-hidden"
                     style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
                   >
-                    {o.preview?.imageUrl ? (
-                      <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span style={{ fontSize: 22 }}>📦</span>
-                    )}
+                    <ProductImage src={o.preview?.imageUrl} emptyVariant="thumbnail" hideLabel />
                   </div>
 
                   <div className="min-w-0 flex-1 flex flex-col gap-1">
