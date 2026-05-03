@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, UserCog, Store, ShoppingCart,
   Shield, ScrollText, LogOut, Package, Database, Megaphone,
   ChevronRight, Search, Sun, Moon, BarChart2, Activity, MessageSquare, Tags, Flag,
+  Heart, ToggleLeft,
 } from 'lucide-react'
 
 const NAV_DATA = [
@@ -32,6 +33,13 @@ const NAV_DATA = [
       { to: '/broadcast',  icon: Megaphone,       label: 'Рассылка' },
       { to: '/chats',      icon: MessageSquare,   label: 'Чаты' },
       { to: '/reports',    icon: Flag,            label: 'Жалобы' },
+    ],
+  },
+  {
+    group: 'DevOps',
+    items: [
+      { to: '/system/health',         icon: Heart,      label: 'Состояние системы' },
+      { to: '/system/feature-flags',  icon: ToggleLeft, label: 'Feature flags' },
     ],
   },
 ]

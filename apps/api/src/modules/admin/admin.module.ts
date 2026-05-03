@@ -30,6 +30,7 @@ import { BroadcastUseCase } from './use-cases/broadcast.use-case';
 import { DbManagerUseCase } from './use-cases/db-manager.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
+import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -64,6 +65,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     DbManagerUseCase,
     AdminCreateSellerUseCase,
     AdminCreateStoreUseCase,
+    GetSystemHealthUseCase,
   ],
 })
 export class AdminModule {}
