@@ -8,7 +8,15 @@ import { JwtPayload } from '../common/decorators/current-user.decorator';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.ALLOWED_ORIGINS?.split(',') ?? '*',
+    // Принимает любой *.up.railway.app + telegram + savdo.uz + список из ALLOWED_ORIGINS
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin) return cb(null, true);
+      const list = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) ?? [];
+      if (list.includes(origin)) return cb(null, true);
+      const patterns = [/\.railway\.app$/i, /(^|\.)telegram\.org$/i, /(^|\.)t\.me$/i, /(^|\.)savdo\.uz$/i];
+      if (patterns.some((re) => re.test(new URL(origin).hostname))) return cb(null, true);
+      cb(null, false);
+    },
     credentials: true,
   },
 })

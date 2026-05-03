@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 interface ProductImage {
   id: string;
@@ -241,13 +242,9 @@ export default function SellerProductsPage() {
                   className="p-3 flex flex-col gap-2 cursor-pointer active:opacity-70"
                   onClick={() => navigate(`/seller/products/${product.id}/edit`)}
                 >
-                  <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center relative"
+                  <div className="w-full aspect-square rounded-xl overflow-hidden relative"
                     style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.18)' }}>
-                    {thumbUrl ? (
-                      <img src={thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <span style={{ fontSize: 32 }}>🛍</span>
-                    )}
+                    <ProductImage src={thumbUrl} alt={product.title} emptyVariant="no-photo" />
                     {typeof product.totalStock === 'number' && product.totalStock <= 0 && (
                       <div style={{ position: 'absolute', left: 6, top: 6, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', letterSpacing: 0.3 }}>
                         НЕТ В НАЛИЧИИ
@@ -336,14 +333,10 @@ export default function SellerProductsPage() {
               onClick={() => navigate(`/seller/products/${product.id}/edit`)}
             >
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden"
+                className="w-10 h-10 rounded-xl shrink-0 overflow-hidden"
                 style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.20)' }}
               >
-                {thumbUrl ? (
-                  <img src={thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  '🛍'
-                )}
+                <ProductImage src={thumbUrl} emptyVariant="thumbnail" hideLabel />
               </div>
 
               <div className="flex-1 min-w-0">

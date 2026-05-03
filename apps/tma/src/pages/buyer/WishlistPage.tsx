@@ -5,6 +5,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { WishlistButton } from '@/components/ui/WishlistButton';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
 
 export default function WishlistPage() {
@@ -96,13 +97,7 @@ export default function WishlistPage() {
                 }}
               >
                 <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
-                  {url ? (
-                    <img src={url} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-                      📦
-                    </div>
-                  )}
+                  <ProductImage src={url} alt={p.title} emptyVariant="product-empty" />
                   <div style={{ position: 'absolute', top: 6, right: 6 }}>
                     <WishlistButton productId={p.id} variant="card" />
                   </div>

@@ -5,6 +5,7 @@ import { track } from '@/lib/analytics';
 import { getCart, saveCart } from '@/lib/cart';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
@@ -216,11 +217,9 @@ export default function StorePage() {
               className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
               style={glass}
             >
-              <div className="w-full aspect-square rounded-xl flex items-center justify-center text-3xl overflow-hidden"
+              <div className="w-full aspect-square rounded-xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.04)' }}>
-                {p.images?.[0]?.url
-                  ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover" />
-                  : '📦'}
+                <ProductImage src={p.images?.[0]?.url} alt={p.title} emptyVariant="product-empty" />
               </div>
               <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
                 {p.title}

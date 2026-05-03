@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Sticker } from '@/components/ui/Sticker';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 function GearIcon() {
@@ -101,14 +102,10 @@ export default function DashboardPage() {
             style={{ cursor: 'pointer' }}
           >
             <div
-              className="shrink-0 w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center"
+              className="shrink-0 w-10 h-10 rounded-xl overflow-hidden"
               style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
             >
-              {o.preview?.imageUrl ? (
-                <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span style={{ fontSize: 18 }}>📦</span>
-              )}
+              <ProductImage src={o.preview?.imageUrl} emptyVariant="thumbnail" hideLabel />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">

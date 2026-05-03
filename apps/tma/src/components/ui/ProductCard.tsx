@@ -3,6 +3,7 @@ import { getCart, saveCart } from '@/lib/cart';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { WishlistButton } from '@/components/ui/WishlistButton';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 export interface FeedProduct {
   id: string;
@@ -59,13 +60,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
       }}
     >
       <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
-        {imageUrl ? (
-          <img src={imageUrl} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-            📦
-          </div>
-        )}
+        <ProductImage src={imageUrl} alt={product.title} emptyVariant="product-empty" />
         <div style={{ position: 'absolute', top: 6, right: 6 }}>
           <WishlistButton productId={product.id} variant="card" />
         </div>
