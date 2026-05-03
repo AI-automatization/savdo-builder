@@ -28,7 +28,8 @@ interface StoreCategory {
 }
 
 export default function SellerStorePage() {
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  const isDesktop = (viewportWidth ?? 0) >= 1024;
   const navigate = useNavigate();
   const { authVersion } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
@@ -264,8 +265,12 @@ export default function SellerStorePage() {
 
   return (
 
-      <div className="flex flex-col gap-4 max-w-4xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
+      <div className={`grid gap-5 ${isDesktop ? 'max-w-screen-xl' : 'max-w-4xl'} mx-auto w-full`}
+        style={isDesktop ? { gridTemplateColumns: '1.1fr 1fr', alignItems: 'start' } : undefined}
+      >
+        <h1 className="text-base font-bold" style={isDesktop ? { gridColumn: '1 / -1', color: 'rgba(255,255,255,0.90)' } : { color: 'rgba(255,255,255,0.90)' }}>
+          Мой магазин
+        </h1>
 
         {/* Store info */}
         <GlassCard className="p-4 flex flex-col gap-3">
@@ -347,7 +352,7 @@ export default function SellerStorePage() {
         )}
 
         {/* Categories inline section */}
-        <GlassCard className="p-4 flex flex-col gap-3">
+        <GlassCard className="p-4 flex flex-col gap-3" style={isDesktop ? { gridColumn: '1 / -1' } : undefined}>
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>

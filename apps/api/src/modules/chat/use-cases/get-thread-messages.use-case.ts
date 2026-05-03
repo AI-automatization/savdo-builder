@@ -19,6 +19,9 @@ export interface MappedChatMessage {
   createdAt: string;
   editedAt: string | null;
   isDeleted: boolean;
+  mediaUrl?: string | null;
+  messageType?: string;
+  parentMessage?: { id: string; text: string; senderRole: 'BUYER' | 'SELLER' } | null;
 }
 
 export interface GetThreadMessagesOutput {
@@ -82,15 +85,43 @@ export class GetThreadMessagesUseCase {
     const hasMore = raw.length > limit;
     const slice = hasMore ? raw.slice(0, limit) : raw;
 
-    const messages: MappedChatMessage[] = slice.map((m) => ({
-      id: m.id,
-      threadId: m.threadId,
-      text: m.isDeleted ? '' : (m.body ?? ''),
-      senderRole: m.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
-      editedAt: (m as any).editedAt ? new Date((m as any).editedAt).toISOString() : null,
-      isDeleted: m.isDeleted,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+
+    // Resolve parent message previews in batch (избежать N+1)
+    const parentIds = Array.from(
+      new Set(
+        slice
+          .map((m) => (m as any).parentMessageId as string | null)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const parents = parentIds.length
+      ? await this.chatRepo.findMessagesByIds(parentIds)
+      : [];
+    const parentsById = new Map(parents.map((p) => [p.id, p]));
+
+    const messages: MappedChatMessage[] = slice.map((m) => {
+      const mAny = m as any;
+      const parent = mAny.parentMessageId ? parentsById.get(mAny.parentMessageId) : null;
+      return {
+        id: m.id,
+        threadId: m.threadId,
+        text: m.isDeleted ? '' : (m.body ?? ''),
+        senderRole: m.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+        editedAt: mAny.editedAt ? new Date(mAny.editedAt).toISOString() : null,
+        isDeleted: m.isDeleted,
+        createdAt: m.createdAt.toISOString(),
+        mediaUrl: mAny.mediaId ? `${appUrl}/api/v1/media/proxy/${mAny.mediaId}` : null,
+        messageType: mAny.messageType ?? 'text',
+        parentMessage: parent
+          ? {
+              id: parent.id,
+              text: parent.isDeleted ? '' : ((parent as any).body ?? ''),
+              senderRole: parent.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+            }
+          : null,
+      };
+    });
 
     return { messages, hasMore };
   }

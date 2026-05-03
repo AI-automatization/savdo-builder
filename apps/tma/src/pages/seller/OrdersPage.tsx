@@ -101,6 +101,15 @@ function compareOrders(a: Order, b: Order): number {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 }
 
+// Цветовая обводка карточки по важности статуса для продавца
+function cardAccent(status: string): { border: string; glow: string; opacity: number } {
+  if (status === 'PENDING')    return { border: 'rgba(251,146,60,0.55)', glow: '0 0 24px rgba(251,146,60,0.20)', opacity: 1 };
+  if (status === 'CONFIRMED' || status === 'PROCESSING') return { border: 'rgba(34,211,238,0.40)', glow: '0 0 18px rgba(34,211,238,0.14)', opacity: 1 };
+  if (status === 'SHIPPED')    return { border: 'rgba(168,85,247,0.40)', glow: '0 0 16px rgba(168,85,247,0.14)', opacity: 1 };
+  if (status === 'DELIVERED')  return { border: 'rgba(52,211,153,0.30)', glow: 'none', opacity: 1 };
+  return { border: 'rgba(255,255,255,0.06)', glow: 'none', opacity: 0.55 };
+}
+
 export default function SellerOrdersPage() {
   const { tg, viewportWidth } = useTelegram();
   const isWide = (viewportWidth ?? 0) >= 1024;
@@ -113,6 +122,7 @@ export default function SellerOrdersPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const fetchOrders = () => {
     setError(false);
@@ -249,84 +259,115 @@ export default function SellerOrdersPage() {
           </div>
         )}
 
-        <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
-        {[...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
-          const next = NEXT_STATUS[o.status];
-          const isUpdating = updating === o.id;
-          return (
-            <GlassCard key={o.id} className="flex flex-col gap-3 p-4" style={{ cursor: 'pointer' }} onClick={() => openDetail(o.id)}>
-              {/* Main row: thumbnail + title/meta + amount/badge */}
-              <div className="flex items-start gap-3 min-w-0">
-                {/* Thumbnail */}
-                <div
-                  className="shrink-0 w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center"
-                  style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
-                >
-                  {o.preview?.imageUrl ? (
-                    <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span style={{ fontSize: 20 }}>📦</span>
-                  )}
-                </div>
+        {(() => {
+          const filtered = [...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter));
+          // Когда фильтр Все — отменённые прячем под кнопку "Показать N отменённых"
+          const hideCancelled = statusFilter === 'all' && !showCancelled;
+          const visible = hideCancelled ? filtered.filter((o) => o.status !== 'CANCELLED') : filtered;
+          const cancelledHidden = hideCancelled ? filtered.filter((o) => o.status === 'CANCELLED').length : 0;
 
-                {/* Middle: title + meta line with right-side amount + badge */}
-                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                  {/* Row 1: title · amount */}
-                  <div className="flex items-baseline justify-between gap-2 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
-                      {o.preview?.title ?? 'Без товаров'}
-                      {o.preview && o.preview.itemCount > 1 && (
-                        <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
-                          +{o.preview.itemCount - 1}
-                        </span>
-                      )}
-                    </p>
-                    <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: '#A855F7' }}>
-                      {Number(o.totalAmount).toLocaleString('ru')} сум
-                    </p>
+          const renderCard = (o: Order) => {
+            const next = NEXT_STATUS[o.status];
+            const isUpdating = updating === o.id;
+            const accent = cardAccent(o.status);
+            return (
+              <GlassCard
+                key={o.id}
+                className="flex flex-col gap-3 p-4 transition-all"
+                style={{
+                  cursor: 'pointer',
+                  border: `1px solid ${accent.border}`,
+                  boxShadow: accent.glow,
+                  opacity: accent.opacity,
+                }}
+                onClick={() => openDetail(o.id)}
+              >
+                {/* Main row: thumbnail + title/meta + amount/badge */}
+                <div className="flex items-start gap-3 min-w-0">
+                  {/* Thumbnail (preview.imageUrl на свежих заказах) */}
+                  <div
+                    className="shrink-0 w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center"
+                    style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
+                  >
+                    {o.preview?.imageUrl ? (
+                      <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span style={{ fontSize: 22 }}>📦</span>
+                    )}
                   </div>
-                  {/* Row 2: meta · badge */}
-                  <div className="flex items-center justify-between gap-2 min-w-0">
-                    <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                      #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
-                      {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
-                    </p>
-                    <div className="shrink-0">
-                      <Badge status={o.status} />
+
+                  <div className="min-w-0 flex-1 flex flex-col gap-1">
+                    <div className="flex items-baseline justify-between gap-2 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                        {o.preview?.title ?? 'Без товаров'}
+                        {o.preview && o.preview.itemCount > 1 && (
+                          <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
+                            +{o.preview.itemCount - 1}
+                          </span>
+                        )}
+                      </p>
+                      <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: '#A855F7' }}>
+                        {Number(o.totalAmount).toLocaleString('ru')} сум
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                        #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
+                        {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
+                      </p>
+                      <div className="shrink-0">
+                        <Badge status={o.status} />
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {(next || o.status === 'PENDING' || o.status === 'CONFIRMED') && (
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    {next && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); changeStatus(o.id, next.status); }}
+                        disabled={isUpdating}
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
+                        style={{ background: 'rgba(167,139,250,0.20)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.30)' }}
+                      >
+                        {isUpdating ? '...' : next.label}
+                      </button>
+                    )}
+                    {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); cancelOrder(o.id); }}
+                        disabled={isUpdating}
+                        className="py-2 px-3 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
+                        style={{ background: 'rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}
+                      >
+                        ✕ Отменить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </GlassCard>
+            );
+          };
+
+          return (
+            <>
+              <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+                {visible.map(renderCard)}
               </div>
 
-              {/* Actions */}
-              {(next || o.status === 'PENDING' || o.status === 'CONFIRMED') && (
-                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  {next && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); changeStatus(o.id, next.status); }}
-                      disabled={isUpdating}
-                      className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
-                      style={{ background: 'rgba(167,139,250,0.20)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.30)' }}
-                    >
-                      {isUpdating ? '...' : next.label}
-                    </button>
-                  )}
-                  {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); cancelOrder(o.id); }}
-                      disabled={isUpdating}
-                      className="py-2 px-3 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
-                      style={{ background: 'rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}
-                    >
-                      ✕ Отменить
-                    </button>
-                  )}
-                </div>
+              {cancelledHidden > 0 && (
+                <button
+                  onClick={() => setShowCancelled(true)}
+                  className="self-start text-xs font-semibold py-2 px-4 rounded-full transition-all"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.50)' }}
+                >
+                  ↓ Показать {cancelledHidden} {cancelledHidden === 1 ? 'отменённый' : 'отменённых'}
+                </button>
               )}
-            </GlassCard>
+            </>
           );
-        })}
-        </div>
+        })()}
       </div>
 
       {detailId && (
