@@ -10,6 +10,172 @@
 
 ---
 
+## 2026-05-04 [TG-AUDIT-2026-05] Аудит Telegram-интеграции (audit-only, фиксы отдельным PR)
+
+- **Статус:** 📋 Audit-only — найдено 2 критических утечки, 2 предупреждения, 2 пункта OK.
+- **Метод:** статический ревью `apps/api/src/modules/{telegram,notifications,auth}` + `queues/`. Сверка с требованиями: BullMQ для нотификаций, env-only Bot Token, webhook secret, OTP rate-limit, Cache-Control на `/media/proxy/:id`.
+
+### ✅ (1) TG-уведомления идут через BullMQ — OK
+
+- `seller-notification.service.ts` имеет 6 публичных методов (`notifyNewOrder`, `notifyStoreApproved`, `notifyStoreRejected`, `notifyVerificationApproved`, `notifyOrderStatusChanged`, `notifyChatMessage`) — все добавляют job в очередь `QUEUE_TELEGRAM_NOTIFICATIONS` через `InjectQueue`. Запросы НЕ блокируют main flow (методы `void`, ошибки enqueue ловятся `.catch`).
+- Очередь `telegram-notifications` (queues.module.ts:28-35): attempts=3, exponential backoff 2s, removeOnComplete=100, removeOnFail=500.
+- OTP — отдельная очередь `QUEUE_OTP` (queues.module.ts:46-54), attempts=5, backoff 500 ms, priority=1 в `otp.service.ts:89,105`.
+- Broadcast (admin) тоже через telegram-queue: `broadcast.use-case.ts` ставит job `TELEGRAM_JOB_BROADCAST`, processor пишет результат в `BroadcastLog`.
+- `apps/api/src/modules/auth/services/otp.service.ts:80-107` — синхронной отправки в `TelegramBotService` нигде не осталось (grep `telegramBot.sendMessage` вне processors → 0 совпадений). Вердикт: ✅.
+
+### 🔴 (2/5) Bot Token утекает через `/api/v1/media/proxy/:id` 302 redirect
+
+- **Корень:** `media.controller.ts:142-160` (`proxyFile`) для media с `bucket=telegram` вызывает `tgStorage.getFileUrl(fileId)` и возвращает `{ url, statusCode: 302 }` через `@Redirect()`. `getFileUrl` (telegram-storage.service.ts:80) формирует URL `https://api.telegram.org/file/bot${this.botToken}/${file_path}` — **Bot Token попадает прямо в HTTP-заголовок `Location`**, видимый любому пользователю (Network tab браузера) и любому upstream-прокси/CDN/ngrok.
+- Угроза: компрометация Bot Token = полный захват `@savdo_builderBOT` (рассылка от имени бота, чтение всех update'ов, smtp всем привязанным OTP). Endpoint публичный (нет JwtAuthGuard).
+- Дополнительно: тот же эндпойнт **не выставляет `Cache-Control`**. Комментарий в коде «Browser caches for 1h» вводит в заблуждение — без явного header'а 302 не кешируется (или кешируется агрессивно/неконтролируемо). Если CDN добавит heuristic cache → URL с токеном осядет в логах.
+- **Что должно быть:** прокси стримит файл (axios `responseType: 'stream'`, `pipe(res)`), Bot Token не покидает сервер; на ответе ставится `Cache-Control: public, max-age=600` (10 мин — меньше TTL Telegram URL ~1ч, но без `immutable`, чтобы при поломке файла обновлялось). 5 мест в коде уже используют `${appUrl}/api/v1/media/proxy/${m.id}` — менять не придётся, поведение для клиента то же.
+- **Фикс отдельным PR:** `[SEC-TG-001]` (см. tasks.md).
+
+### 🟢 (2-доп) Bot Token в логах — OK
+
+- `process.env.TELEGRAM_BOT_TOKEN` читается в 2 местах: `telegram.config.ts`, `telegram-storage.service.ts:12`, `telegram-auth.use-case.ts:22`. Joi (`env.validation.ts:29`) делает обязательным.
+- В логах токен не встречается: `apiBase` приватный, log-сообщения берут только `err.message` (axios на ошибках кладёт URL в `err.config.url`, не в `.message` — leak возможен только при `console.log(err)` целиком, такого нет).
+- В коммитах `.env`/`.env.local` отсутствуют (`.gitignore` корректный).
+
+### 🟡 (3) Webhook secret token — частично OK
+
+- `telegram-webhook.controller.ts:43-46`: `if (expected && secretToken !== expected) return { ok: true };` — **верификация работает только если `TELEGRAM_WEBHOOK_SECRET` непустой**. Joi (`env.validation.ts:30`) разрешает пустую строку (`Joi.string().allow('').optional()`). В прод-окружении без этой переменной ЛЮБОЙ POST-запрос на `/api/v1/telegram/webhook` примется как валидный update.
+- Возврат 200 при невалидном секрете — корректно (Telegram перестаёт ретраить); это намеренное молчаливое отбрасывание.
+- **Рекомендация:** в `setWebhook` (telegram-bot.service.ts:43-48) если `secret` пустой, бросить `Logger.error('TELEGRAM_WEBHOOK_SECRET is empty — webhook unauthenticated')` и/или сделать переменную required в проде. Тикет: `[SEC-TG-002]`.
+
+### 🟡 (4) OTP rate-limit — формально строже спеки, но per-purpose
+
+- Спека: «max 3 OTP в минуту на user_id».
+- Реализация (`request-otp.use-case.ts:9-31`): 3 попытки за **10 минут** на пару `(phone, purpose)` через таблицу `OtpRequest` + brute-force защита 5 неверных проверок → 15 мин блок (`otp.service.ts:42-58`).
+- **Время** строже спеки (10 мин vs 1 мин) ✓.
+- **Per-purpose** — потенциальный обход: пользователь может запросить 3× `login` + 3× `register` + 3× `change_phone` за 10 минут (= 9 OTP). На практике purposes ограниченное множество, но если их станет много — стоит добавить overall-лимит на phone (например 6/час).
+- **Идентификатор:** rate-limit по `phone`, а не `user_id` — корректно (на момент запроса OTP пользователя в БД ещё может не быть).
+
+### Сводка
+
+| # | Требование | Статус | Тикет |
+|---|------------|--------|-------|
+| 1 | Уведомления через BullMQ | ✅ | — |
+| 2 | Bot Token только в env | 🟢 (env) / 🔴 (утечка через redirect — см. ниже) | `[SEC-TG-001]` |
+| 3 | Webhook X-Telegram-Bot-Api-Secret-Token | 🟡 (без secret отключается) | `[SEC-TG-002]` |
+| 4 | OTP rate-limit | 🟡 (per-purpose, overall лимита нет) | — (low) |
+| 5 | `/media/proxy/:id` Cache-Control | 🔴 (header не ставится + leak token) | `[SEC-TG-001]` |
+
+### Файлы (для будущего фикса)
+
+- `apps/api/src/modules/media/media.controller.ts` (proxyFile → stream вместо 302)
+- `apps/api/src/modules/media/services/telegram-storage.service.ts` (нужен метод `streamFile(fileId)`)
+- `apps/api/src/modules/telegram/telegram-webhook.controller.ts` (warn если secret пуст)
+- `apps/api/src/config/env.validation.ts` (опционально — required в проде)
+
+---
+
+## 2026-05-04 [DB-AUDIT-001] Аудит Prisma schema + миграций (audit-only, без правок)
+
+- **Статус:** 📋 Audit-only. Миграций НЕ создавал, `schema.prisma` НЕ трогал. Все правки — только с согласия Полата.
+- **Метод:** ручной обход `packages/db/prisma/schema.prisma` (988 строк) + 18 миграций + cross-check с API кодом (`apps/api/src/modules/**/repositories`).
+- **Что проверял:** ON DELETE на FK, composite indexes на горячих запросах, missing `@unique`, согласованность enum'ов между schema и API constants, фильтрация `deletedAt: null`.
+
+### 🟥 P1 — Consistency (риск orphan-данных и неконсистентного поведения)
+
+**[DB-AUDIT-001-01] Отсутствуют FK на User у 7 таблиц с `userId`**
+- Поля `userId String` БЕЗ `User @relation(...)`:
+  - `InAppNotification.userId`           (`schema.prisma:814`)
+  - `NotificationPreference.userId`      (`schema.prisma:831`, есть `@unique`, но FK нет)
+  - `PushSubscription.userId`            (`schema.prisma:843`)
+  - `NotificationLog.userId`             (`schema.prisma:860`)
+  - `ChatMessage.senderUserId`           (`schema.prisma:757`)
+  - `OrderStatusHistory.changedByUserId` (`schema.prisma:709`)
+  - `AnalyticsEvent.actorUserId`         (`schema.prisma:956`)
+- В Postgres нет FK constraint → нет проверки целостности на write-time, можно вставить любой UUID. При `DELETE FROM users` останутся orphan-строки.
+- Риск: тихая утечка в notification-таблицах, неработающие joins в админке, данные о действиях несуществующего пользователя.
+- Рекомендация: для notification-таблиц — `User @relation(..., onDelete: Cascade)`. Для history/analytics — `onDelete: SetNull` (сохранить snapshot). Перед миграцией обязательно backfill orphan-проверка: `SELECT … WHERE userId NOT IN (SELECT id FROM users)`.
+
+**[DB-AUDIT-001-02] `ChatThread.status` — schema vs код рассинхрон**
+- `schema.prisma:730`: `status String @default("active")` — TEXT.
+- API: `chat.repository.ts:113` пишет `'OPEN'` при создании, `chat.repository.ts:192` пишет `'CLOSED'`. `send-message.use-case.ts:70` и `resolve-thread.use-case.ts:53` сравнивают с `'CLOSED'`.
+- Эффект: треды, созданные SQL-вставкой / старым кодом, имеют `status='active'` и проходят проверку `status !== 'CLOSED'` — можно отправлять сообщения в "не-открытый" тред без обнаружения.
+- Рекомендация: ввести `enum ChatThreadStatus { OPEN, CLOSED }` (миграция: `UPDATE chat_threads SET status='OPEN' WHERE status='active'`, потом `ALTER TABLE … ALTER COLUMN status TYPE`). Или в коде заменить `OPEN/CLOSED` на `active/closed` и оставить TEXT. Согласовать с Полатом.
+
+### 🟧 P2 — Performance (горячие запросы без идеальных индексов)
+
+**[DB-AUDIT-001-03] `Product` — нет composite индекса для public feed**
+- Запрос: `products.repository.ts:266-279` (`findAllPublic`) → `WHERE status='ACTIVE' AND deletedAt IS NULL ORDER BY createdAt DESC` + опционально `globalCategoryId` + ILIKE по title/description.
+- Сейчас одиночные `status`, `globalCategoryId`, `storeId`, `isVisible` — Postgres использует только один.
+- Рекомендация: `@@index([status, deletedAt, createdAt(sort: Desc)])`. Дополнительно `@@index([globalCategoryId, status, deletedAt, createdAt(sort: Desc)])` если category-фильтр популярный.
+
+**[DB-AUDIT-001-04] `Order` — нет composite `(storeId, status, placedAt DESC)`**
+- Запрос: `orders.repository.ts:88-94` (`findByStoreId`) → `WHERE storeId=? [AND status=?] ORDER BY placedAt DESC LIMIT 20`. Самый горячий запрос продавца (dashboard, orders list).
+- Сейчас одиночные `storeId`, `status`, `paymentStatus`, `placedAt`, `buyerId`, `sellerId`.
+- Рекомендация: `@@index([storeId, status, placedAt(sort: Desc)])` + симметричный `@@index([buyerId, status, placedAt(sort: Desc)])` для buyer-flow.
+
+**[DB-AUDIT-001-05] `ChatMessage` — нет composite `(threadId, createdAt DESC)`**
+- Запрос: `chat.repository.ts:170-178` cursor pagination → `WHERE threadId=? AND isDeleted=false AND createdAt < ? ORDER BY createdAt DESC LIMIT 50`.
+- Сейчас одиночные `threadId`, `createdAt`. Postgres делает Bitmap heap scan + sort.
+- Рекомендация: `@@index([threadId, createdAt(sort: Desc)])`. Уберёт sort-step, ускорит "догрузку истории".
+
+**[DB-AUDIT-001-06] `ProductImage` — composite `(productId, sortOrder)` отсутствует**
+- Запрос: `products.repository.ts:97, 116, 157, 270` → `WHERE productId=? ORDER BY sortOrder ASC`.
+- Сейчас `@@index([productId])` (`schema.prisma:482`).
+- Эффект: умеренный (обычно ≤10 фото на товар), но запрос постоянно делает sort.
+- Рекомендация: `@@index([productId, sortOrder])`. Грань P2/P3 — можно отложить.
+
+**[DB-AUDIT-001-07] Soft-delete фильтр `deletedAt: null` пропущен**
+- `Store` имеет `deletedAt`, но НЕ фильтруют:
+  - `stores.repository.ts:9, 16, 23` — `findBySellerId`/`findById`/`findBySlug`.
+  - `admin.repository.ts:231, 247` — admin store list/detail.
+  - `telegram-demo.handler.ts:248, 426, 515, 549, 642, 690, 718, 737, 775` — bot handlers.
+  - `checkout.repository.ts:78`, `change-product-status.use-case.ts:73`.
+- `Product` — `telegram-demo.handler.ts:549` (`postProductToChannel`) вызывает `findUnique({where:{id}})` БЕЗ `deletedAt: null` → можно опубликовать удалённый товар в TG-канал.
+- `User.deletedAt` фактически нигде не фильтруется (но `User.status==='BLOCKED'` используется как софт-блок). Низкий риск — soft-delete юзера не реализован.
+- Рекомендация: либо добавить helper `prisma.store.findActive`, либо systematically `deletedAt: null` во все store-repositories. Альтернатива: отказаться от soft-delete для Store (тогда нужна миграция и backfill).
+
+### 🟨 P2 — Schema design (стилистические/структурные улучшения)
+
+**[DB-AUDIT-001-08] TEXT-поля, которые должны быть enum'ами**
+- `Cart.status` (`schema.prisma:585`): `String @default("active")` — задокументированы значения `active|converted|merged|expired`. Кандидат на `enum CartStatus`.
+- `OrderRefund.status`: TEXT default `'completed'` (миграция `20260503020000`).
+- `AdminUser.adminRole`: TEXT default `'admin'` (та же миграция). Сейчас RBAC делается строкой — нет compile-time проверок.
+- `SellerVerificationDocument.status`: TEXT default `'pending'`.
+- `ChatMessage.messageType`: TEXT default `'text'` (значения `text|image|system`).
+- `ModerationCase.status/caseType`, `ModerationAction.actionType` — все TEXT.
+- Решение Полата: лечить пакетом или оставить (TEXT гибче, enum — compile-time гарантии).
+
+### 🟦 P3 — Cleanup
+
+**[DB-AUDIT-001-09] `CartItem.productId` ON DELETE CASCADE** (`migration 20260417085123`)
+- При hard-delete товара (редкий случай — обычно soft-delete) пропадёт запись в чужой корзине. Семантически `SetNull` правильнее, но т.к. hard-delete не используется — низкий приоритет.
+
+**[DB-AUDIT-001-10] `User.referredBy` без FK** (`schema.prisma:121`)
+- Поле существует, но нет self-relation на User → нет проверки что referrer существует. Сейчас не используется (grep по коду — только определение). Если реферальная программа запустится — приведёт к мусору.
+
+### ✅ Что хорошо
+
+- **ON DELETE распределение корректное:** `RESTRICT` на бизнес-критичных (Store→Seller, Order→Store/Seller, OrderRefund→Order); `SET NULL` на исторических (OrderItem.productId/variantId, AuditLog.actorUserId, InventoryMovement.variantId, ChatMessage.parentMessageId/mediaId); `CASCADE` где правильно (ProductImage→Product, CartItem→Cart, OrderItem→Order, BuyerWishlistItem→Buyer/Product).
+- **Уникальные ключи на месте:** `User.phone`, `User.telegramId`, `Store.slug`, `Store.sellerId` (INV-S01), `Order.orderNumber`, `Buyer.userId`, `Seller.userId`, `AdminUser.userId`.
+- **Composite uniqueness:** `BuyerWishlistItem(buyerId, productId)`, `ProductVariant(productId, sku)`, `ProductOptionGroup(productId, code)`, `StoreCategory(storeId, slug)`, `CategoryFilter(categorySlug, key)`, `CartItem(cartId, variantId)`.
+- **Partial unique** `carts_active_buyer_store_unique` (миграция `20260417090000`) — отличное решение INV-C01 на DB-уровне.
+- **GIN-индекс** `products_attributesJson_gin_idx` для JSONB-фильтра (миграция `20260503010000`).
+- **Enum'ы** `OrderStatus`, `ProductStatus`, `StoreStatus`, `SellerVerificationStatus`, `PaymentMethod`, `PaymentStatus`, `DeliveryType`, `ThreadType`, `MediaVisibility`, `InventoryMovementType`, `UserRole`, `UserStatus`, `ProductDisplayType` — синхронизированы между Prisma и migrations. API использует типы из `@prisma/client` — нет рассинхрона значений.
+
+### Action items для Полата (по приоритету)
+
+1. **P1-01:** добавить FK на User в notification-таблицы и chat/history/analytics — отдельная миграция с проверкой orphan-строк ДО создания constraint.
+2. **P1-02:** решить судьбу `ChatThread.status` — enum или согласовать TEXT-значения. Сейчас `OPEN/CLOSED` зашиты в коде, но default в БД — `active`.
+3. **P2-04:** добавить composite `Order(storeId, status, placedAt DESC)` — самый болезненный hot path продавца.
+4. **P2-03/05:** composite индексы для Product feed и ChatMessage — можно после нагрузочного теста.
+5. **P2-07:** пройтись по всем `prisma.store.find*` и добавить `deletedAt: null`. Либо отказаться от soft-delete для Store.
+6. **P2-08:** рассмотреть пакетную миграцию TEXT-полей в enum.
+
+### Что НЕ менял
+
+- `schema.prisma` — не правил.
+- Миграций не создавал.
+- `prisma migrate dev` не запускал (нет доступа к БД).
+- Чужие файлы (TG-AUDIT параллельной сессии) не трогал.
+
+---
+
 ## 2026-05-03 [BUG-CHAT-LOAD-001] Чат не грузится у новых пользователей — 422 BUYER_NOT_IDENTIFIED
 
 - **Статус:** ✅ Исправлено (не задеплоено пока — pending push в `api` ветку).

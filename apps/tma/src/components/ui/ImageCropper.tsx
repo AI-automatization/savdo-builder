@@ -58,8 +58,8 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 200,
-        background: 'rgba(0,0,0,0.92)',
+        zIndex: 9999,
+        background: 'rgba(0,0,0,0.95)',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -67,23 +67,42 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
       {/* Header */}
       <div
         style={{
-          padding: '16px 20px 12px',
+          padding: '14px 16px 12px',
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 12,
+          background: 'rgba(0,0,0,0.55)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}
       >
         <button
           onClick={onCancel}
-          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontSize: 14, cursor: 'pointer', padding: 0 }}
+          aria-label="Отменить кадрирование"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            minWidth: 44,
+            minHeight: 44,
+            padding: '8px 14px',
+            borderRadius: 12,
+            background: 'rgba(239,68,68,0.18)',
+            border: '1px solid rgba(239,68,68,0.45)',
+            color: '#fca5a5',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
         >
-          Отмена
+          ✕ Отменить
         </button>
-        <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600, margin: 0 }}>
+        <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: 15, fontWeight: 700, margin: 0, textAlign: 'center', flex: 1 }}>
           Кадрировать фото
         </p>
-        <div style={{ width: 52 }} />
+        {/* Spacer для симметрии (равен ширине Отменить ~110px) */}
+        <div style={{ width: 110, flexShrink: 0 }} />
       </div>
 
       {/* Hint */}
