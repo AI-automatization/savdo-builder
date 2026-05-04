@@ -8,6 +8,29 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-04 [API-WS-AUDIT-001] WebSocket gateways audit: information leak в chat.gateway
+
+- **Статус:** ✅ Исправлено (chat join-room participant check + DatabaseModule в SocketModule).
+- **Корень:** `apps/api/src/socket/chat.gateway.ts:51 handleJoinChatRoom` — НЕ проверял что юзер участник треда. Любой авторизованный юзер мог сделать `socket.emit('join-chat-room', { threadId: 'someone-elses-thread' })` → подписаться на room `thread:{id}` → получать **все** последующие `chat:message` / `chat:message:edited` / `chat:message:deleted` события чужого приватного чата.
+- **Атака сценарий:**
+  1. Залогиниться (любой авторизованный юзер).
+  2. Узнать threadId — через рассказ другого юзера, лог-файл, side-channel, brute-force (UUID v4 — длинный, но не невозможный).
+  3. `socket.emit('join-chat-room', { threadId })` → server.to(room).emit идёт ВСЕМ кто в room → атакующий получает свежие сообщения buyer↔seller.
+- **Что сделано (фикс):**
+  - `chat.gateway.ts handleJoinChatRoom` стал async. Перед `client.join(room)` делает: `prisma.chatThread.findUnique({ where: id, select: buyerId, sellerId })` + `prisma.user.findUnique({ where: user.sub, select: { buyer.id, seller.id } })`. Проверка `isBuyer || isSeller` — иначе тихий return (не join'ится в room).
+  - `socket.module.ts` импортирует `DatabaseModule` — даёт PrismaService в gateway.
+  - Логирование: `WS join-chat-room rejected: user X not participant of thread Y` — чтобы потом отслеживать попытки.
+- **Что НЕ исправлено (отдельный PR):**
+  - `orders.gateway.handleJoinBuyerRoom` (строка 77) сравнивает `user.sub === data.buyerId`. `user.sub` это `User.id`, а в API `buyerId` обычно `Buyer.id` (профиль). Если фронт передаёт `Buyer.id` — проверка ломает легитимный flow; если `User.id` — ок. Нужно проверить что передаёт TMA на фронте и устранить ambiguity. ID `API-WS-AUDIT-002`.
+  - Нет rate-limit на emit события с клиента (например spam join-room/leave-room) — но Socket.io не подвержен этому критично; throttle decorator не применим к WS-handlers напрямую.
+- **Хорошие практики уже на месте:**
+  - JWT verify в handshake (commit `7cdb4c6` — добавил `OnGatewayConnection`).
+  - join-seller-room проверяет `user.storeId === data.storeId` через JWT.
+  - emitChatMessage отправляет только в room thread:id — а не broadcast.
+  - CORS regex для railway.app/telegram.org/savdo.uz.
+
+---
+
 ## 2026-05-04 [TMA-PHOTO-UPLOAD-DIAG-001] Корень «фото не грузит» — APP_URL не валидировался
 
 - **Статус:** 🟡 Частично исправлено (env validation добавлено), нужна правка на Railway.

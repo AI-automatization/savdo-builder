@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Order } from '@prisma/client';
 import { JwtPayload } from '../common/decorators/current-user.decorator';
+import { PrismaService } from '../database/prisma.service';
 
 @WebSocketGateway({
   cors: {
@@ -28,6 +29,7 @@ export class OrdersGateway implements OnGatewayConnection {
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   handleConnection(client: Socket): void {
@@ -95,11 +97,22 @@ export class OrdersGateway implements OnGatewayConnection {
     this.logger.log(`Emitted order:status_changed to seller:${order.storeId} — orderId=${order.id} ${oldStatus}→${order.status}`);
   }
 
-  emitOrderStatusChangedToBuyer(order: Order, oldStatus: string): void {
+  async emitOrderStatusChangedToBuyer(order: Order, oldStatus: string): Promise<void> {
     if (!order.buyerId) return;
+    // API-WS-AUDIT-002: web-buyer subscribes to room `buyer:{User.id}` (через
+    // useAuth().user.id), но Order.buyerId — это Buyer.id (FK на Buyer table).
+    // Без резолва на User.id buyer НИКОГДА не получает real-time order updates.
+    const buyer = await this.prisma.buyer.findUnique({
+      where: { id: order.buyerId },
+      select: { userId: true },
+    });
+    if (!buyer?.userId) {
+      this.logger.warn(`emitOrderStatusChangedToBuyer: buyer ${order.buyerId} has no userId — order ${order.id} skipped`);
+      return;
+    }
     const payload = { ...this.buildPayload(order), oldStatus };
-    this.server.to(`buyer:${order.buyerId}`).emit('order:status_changed', payload);
-    this.logger.log(`Emitted order:status_changed to buyer:${order.buyerId} — orderId=${order.id} ${oldStatus}→${order.status}`);
+    this.server.to(`buyer:${buyer.userId}`).emit('order:status_changed', payload);
+    this.logger.log(`Emitted order:status_changed to buyer:${buyer.userId} (Buyer.id=${order.buyerId}) — orderId=${order.id} ${oldStatus}→${order.status}`);
   }
 
   private buildPayload(order: Order) {
