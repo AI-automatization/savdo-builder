@@ -13,6 +13,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -635,6 +636,7 @@ export class ProductsController {
 
   @Get('storefront/products')
   @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 60 } }) // search ILIKE дорогая, ограничиваем
   async listStorefrontProducts(
     @CurrentUser() user: JwtPayload | undefined,
     @Query('storeId') storeId?: string,

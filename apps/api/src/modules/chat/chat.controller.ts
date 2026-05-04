@@ -65,6 +65,7 @@ export class ChatController {
 
   // POST /api/v1/chat/threads
   @Post('chat/threads')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // защита от спама создания тредов
   async createThread(@CurrentUser() user: JwtPayload, @Body() dto: CreateThreadDto) {
     const buyerId = await this.resolveBuyerId(user.sub);
 

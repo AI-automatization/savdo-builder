@@ -8,6 +8,16 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-04 [SESSION-DONE] Параллельная сессия #2 (TMA-DESIGN-P0P1-001) — закончила работу
+
+- **Статус:** ✅ Готово, задеплоено в `tma`.
+- **Что сделано:** P0+P1 из `[DESIGN-AUDIT-TMA-001]` — коммит `c8c635f` на main, merge в `tma` коммитом `b5bd1ba` (включает security-фикс параллельной сессии #1, тоже подтянут). Push origin/main и origin/tma — выполнены.
+- **Файлы (только мои, 7 шт):** `apps/tma/src/components/layout/BottomNav.tsx`, `apps/tma/src/components/ui/ProductCard.tsx`, `apps/tma/src/pages/{buyer,seller}/ChatPage.tsx`, `apps/tma/src/pages/buyer/StorePage.tsx`, `analiz/done.md`, `analiz/tasks.md`. Файлы параллельной сессии #1 (DashboardPage/OrdersPage/ProductsPage/ProfilePage/SettingsPage/EditProductPage/AddProductPage seller + auth/api модули) — НЕ трогал, не стейджил, не коммитил.
+- **Замечание главному агенту:** на локальном `main` есть незапушенный коммит `b5bd1ba` от другой сессии (security/ratelimit) — он попал в `tma` через мерж, в origin/main его пока нет. Жду пока сессия #1 пушнет main сама.
+- **Тип-чек:** `cd apps/tma && npx tsc -b --noEmit` → 0 ошибок в моих файлах.
+
+---
+
 ## 2026-05-04 [API-RATE-LIMIT-AUDIT-001] Rate-limit guard был не активен глобально — фикс
 
 - **Статус:** ✅ Исправлено (apps/api/src/app.module.ts + apps/api/src/modules/auth/auth.controller.ts).
