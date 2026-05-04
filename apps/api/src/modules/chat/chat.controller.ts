@@ -106,11 +106,26 @@ export class ChatController {
     @Param('id') threadId: string,
     @Body() dto: SendMessageDto,
   ) {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    // Dual-role: определяем senderUserId по тому, в какой роли юзер участвует в треде.
+    const ids = await this.resolveBothProfileIds(user.sub);
+    const thread = await this.prisma.chatThread.findUnique({
+      where: { id: threadId },
+      select: { buyerId: true, sellerId: true },
+    });
+    if (!thread) {
+      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
+    }
+    const senderUserId =
+      ids.buyerProfileId && thread.buyerId === ids.buyerProfileId ? ids.buyerProfileId :
+      ids.sellerProfileId && thread.sellerId === ids.sellerProfileId ? ids.sellerProfileId :
+      null;
+    if (!senderUserId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant of this thread', HttpStatus.FORBIDDEN);
+    }
 
     return this.sendMessageUseCase.execute({
       threadId,
-      senderUserId: participantId,
+      senderUserId,
       text: dto.text,
       parentMessageId: dto.parentMessageId,
       mediaId: dto.mediaId,
@@ -137,7 +152,7 @@ export class ChatController {
     @CurrentUser() user: JwtPayload,
     @Param('id') threadId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const thread = await this.prisma.chatThread.findUnique({
       where: { id: threadId },
@@ -148,8 +163,8 @@ export class ChatController {
       throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
     }
 
-    const isBuyer = thread.buyerId === participantId;
-    const isSeller = thread.sellerId === participantId;
+    const isBuyer = !!ids.buyerProfileId && thread.buyerId === ids.buyerProfileId;
+    const isSeller = !!ids.sellerProfileId && thread.sellerId === ids.sellerProfileId;
 
     if (!isBuyer && !isSeller) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
@@ -170,7 +185,7 @@ export class ChatController {
     @CurrentUser() user: JwtPayload,
     @Param('id') threadId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const thread = await this.prisma.chatThread.findUnique({
       where: { id: threadId },
@@ -181,8 +196,8 @@ export class ChatController {
       throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
     }
 
-    const isBuyer = thread.buyerId === participantId;
-    const isSeller = thread.sellerId === participantId;
+    const isBuyer = !!ids.buyerProfileId && thread.buyerId === ids.buyerProfileId;
+    const isSeller = !!ids.sellerProfileId && thread.sellerId === ids.sellerProfileId;
 
     if (!isBuyer && !isSeller) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
@@ -204,7 +219,7 @@ export class ChatController {
     @Param('threadId') threadId: string,
     @Param('msgId') msgId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const message = await this.prisma.chatMessage.findUnique({
       where: { id: msgId },
@@ -217,7 +232,13 @@ export class ChatController {
 
     if (message.isDeleted) return;
 
-    if (message.senderUserId !== participantId) {
+    // Author check: senderUserId — это Buyer.id или Seller.id. Юзер автор если
+    // совпало с любым из его профилей.
+    const isAuthor =
+      (!!ids.buyerProfileId && message.senderUserId === ids.buyerProfileId) ||
+      (!!ids.sellerProfileId && message.senderUserId === ids.sellerProfileId);
+
+    if (!isAuthor) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can delete this message', HttpStatus.FORBIDDEN);
     }
 
@@ -242,7 +263,7 @@ export class ChatController {
       throw new BadRequestException('text is required');
     }
 
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const message = await this.prisma.chatMessage.findUnique({
       where: { id: msgId },
@@ -257,7 +278,10 @@ export class ChatController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Cannot edit a deleted message', HttpStatus.FORBIDDEN);
     }
 
-    if (message.senderUserId !== participantId) {
+    const isAuthorAsBuyer = !!ids.buyerProfileId && message.senderUserId === ids.buyerProfileId;
+    const isAuthorAsSeller = !!ids.sellerProfileId && message.senderUserId === ids.sellerProfileId;
+
+    if (!isAuthorAsBuyer && !isAuthorAsSeller) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can edit this message', HttpStatus.FORBIDDEN);
     }
 
@@ -277,7 +301,7 @@ export class ChatController {
       id: updated.id,
       threadId: updated.threadId,
       text: updated.body ?? '',
-      senderRole: user.role === 'SELLER' ? 'SELLER' : 'BUYER',
+      senderRole: isAuthorAsSeller ? 'SELLER' : 'BUYER',
       editedAt: updated.editedAt ? new Date(updated.editedAt).toISOString() : null,
       isDeleted: false,
       createdAt: new Date(updated.createdAt).toISOString(),
@@ -292,7 +316,7 @@ export class ChatController {
     @CurrentUser() user: JwtPayload,
     @Param('id') messageId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const message = await this.prisma.chatMessage.findUnique({
       where: { id: messageId },
@@ -304,7 +328,11 @@ export class ChatController {
     }
 
     const { buyerId, sellerId } = message.thread;
-    if (participantId !== buyerId && participantId !== sellerId) {
+    const isParticipant =
+      (!!ids.buyerProfileId && ids.buyerProfileId === buyerId) ||
+      (!!ids.sellerProfileId && ids.sellerProfileId === sellerId);
+
+    if (!isParticipant) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
     }
 
@@ -314,7 +342,7 @@ export class ChatController {
       data: { reportedAt: new Date() },
     });
 
-    this.logger.warn(`Message ${messageId} reported by participant ${participantId}`);
+    this.logger.warn(`Message ${messageId} reported by user ${user.sub}`);
   }
 
   // ─── Admin endpoints ────────────────────────────────────────────────────────
