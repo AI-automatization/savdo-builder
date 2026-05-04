@@ -122,7 +122,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-[9999] flex flex-col"
       style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >

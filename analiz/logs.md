@@ -8,6 +8,44 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-04 [TMA-PHOTO-UPLOAD-DIAG-001] Корень «фото не грузит» — APP_URL не валидировался
+
+- **Статус:** 🟡 Частично исправлено (env validation добавлено), нужна правка на Railway.
+- **Симптом (Полат, прод):** «хули фото не грузит». Загрузка проходит, но на витрине магазина / списке товаров фото не отображаются.
+- **Корень (через код-ревью):**
+  1. `apps/api/src/config/env.validation.ts` НЕ требовал `APP_URL`. Если переменная не выставлена на Railway → `process.env.APP_URL` = undefined → пустая строка.
+  2. `products.controller.ts:773 resolveImageUrl` для tg-bucket: `${appUrl}/api/v1/media/proxy/${id}`. При appUrl='' → начинается с `/api/...` — relative path. На TMA-домене `savdo-tma.up.railway.app` относительный путь резолвится в `https://savdo-tma.up.railway.app/api/v1/media/proxy/...` → 404 (нет такого маршрута на TMA static-сервере).
+  3. Аналогично для R2: если `STORAGE_PUBLIC_URL` пуст и `APP_URL` пуст → fallback тоже пустую строку даёт.
+  4. `TELEGRAM_STORAGE_CHANNEL_ID` тоже не валидировался — silent failure если бот не настроен.
+- **Что сделано (PR):**
+  - `env.validation.ts`: `APP_URL` теперь `Joi.string().uri().required()` — сервер не стартует без этой переменной (защита от silent fail).
+  - `TELEGRAM_STORAGE_CHANNEL_ID` и `TMA_URL` добавлены как optional в validation — для observability.
+- **Что нужно от Полата на Railway api сервисе:**
+  - `APP_URL=https://savdo-api-production.up.railway.app` (или кастомный домен).
+  - `TELEGRAM_STORAGE_CHANNEL_ID=-100xxxxxxxxxx` (числовой chat_id канала). Бот должен быть админом канала с правом «Публикация сообщений».
+  - `STORAGE_PUBLIC_URL=https://...` если используется R2/Supabase Storage.
+- **После выставления:** контейнер перезапустится → фото из TG-storage будут идти через `https://savdo-api.../api/v1/media/proxy/{id}` (полный URL, работает с любого домена).
+
+---
+
+## 2026-05-04 [TMA-DYNAMIC-VARIANT-FILTERS-001] CategoryFilter seed для активации multi_select на проде
+
+- **Статус:** ✅ Создан seed-script, ожидает запуска на Railway.
+- **Контекст:** Коммит `3559cfc` дал TMA UI для multi_select полей CategoryFilter. Но на проде в `category_filters` нет записей — фича пустая для всех продавцов.
+- **Что сделано:** `packages/db/prisma/seed-category-filters.ts` с 32 фильтрами:
+  - Одежда (мужская/женская/детская): Размер MULTI_SELECT, Цвет MULTI_SELECT, Бренд TEXT.
+  - Обувь: Размер EU MULTI_SELECT (36-46), Цвет, Бренд.
+  - Ноутбуки: Бренд SELECT, RAM SELECT, Накопитель SELECT, Диагональ NUMBER, Цвет MULTI_SELECT.
+  - Телефоны / Смартфоны / Планшеты: Бренд SELECT, Память MULTI_SELECT, Цвет MULTI_SELECT.
+  - Телевизоры: Бренд SELECT, Диагональ NUMBER, Разрешение SELECT.
+  - Холодильники / Стиральные машины: Бренд SELECT, Объём/Загрузка NUMBER.
+  - Аксессуары: Цвет, Бренд.
+- Idempotent (upsert), пропускает если категория не найдена.
+- **Команда:** `pnpm --filter db seed:filters` — добавлено в package.json.
+- **Деплой:** запустить вручную на Railway api shell после применения миграций (`pnpm db:migrate:deploy`). Не вписывать в auto-startup, чтобы не падал контейнер если seed имеет ошибку.
+
+---
+
 ## 2026-05-04 [SESSION-DONE] Параллельная сессия #2 (TMA-DESIGN-P0P1-001) — закончила работу
 
 - **Статус:** ✅ Готово, задеплоено в `tma`.
@@ -195,11 +233,36 @@
 - **CRIT-01** — найден сейчас, в прошлых аудитах не фигурировал. Это объясняет, почему OTP rate-limit «работает в Redis, а не через Throttler»: Throttler никогда не был активен.
 - Решение по приоритетам и тикетам — за тобой; этот отчёт правок кода не делает.
 
+### 🔧 Update 2026-05-04 13:10 — фиксы применены (часть параллельной сессией, часть мной)
+
+| Тикет | Severity | Где исправлено | Кто |
+|-------|----------|----------------|-----|
+| `[SEC-001]` CRIT-01 | 🔴 → ✅ | `app.module.ts:74` `{ provide: APP_GUARD, useClass: ThrottlerGuard }` + лимит 60→120/мин default | parallel |
+| `[SEC-TG-001]` CRIT-02 | 🔴 → ✅ | `media.controller.ts:147` `proxyFile` → `tgStorage.streamToResponse(fileId, mimeType, res)` (`telegram-storage.service.ts:70`). Bot Token остаётся серверным; `Cache-Control: public, max-age=600`. R2-ветка по-прежнему 302-редиректит (нет токенов). | parallel |
+| `[SEC-004]` HIGH-03 | 🟠 → ✅ | `@Throttle` на `/auth/*` (5/10/30 в мин), `/chat/threads` POST (10/мин), `/checkout/confirm` (10/мин), `/storefront/products` (60/мин), `/media/upload` (20/мин). Cart guest-flow остался без явного `@Throttle` — закрывается дефолтом 120/мин. | parallel |
+| `[SEC-TG-002]` MED-07 | 🟡 → ✅ часть | `telegram-bot.service.ts:46` `Logger.error` при пустом `TELEGRAM_WEBHOOK_SECRET` в проде. Сама проверка в контроллере оставлена «return 200» (намеренно — Telegram не должен ретраить). Для полного closure нужно `Joi.required()` в `env.validation.ts` — отложено. | parallel |
+| `[SEC-002]` HIGH-01 | 🟠 → ✅ часть | `chat.controller.ts:71` `@Roles('BUYER', 'SELLER')` на `POST /chat/threads`. Раньше RolesGuard проходил через `if (!requiredRoles) return true` — защита держалась случайно (422 в `resolveBuyerId`). | мой |
+
+**TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → exit 0.
+
+### ⏳ Остаются открытыми
+
+- `[SEC-003]` HIGH-02 — RolesGuard `if (user.role === 'ADMIN') return true` (roles.guard.ts:26). Поведенческое изменение, риск регрессии в legitimate admin-доступах. **НЕ фиксить без согласия Полата.**
+- `[SEC-005]` MED-01 — SuperAdminController inline body types без DTO (5 endpoints).
+- `[SEC-006]` MED-02 — storefront `filters` query без DTO/whitelist.
+- `[SEC-007]` MED-03 — Telegram HTML escape в `telegram-demo.handler.ts` (caption product.title/description/store.name).
+- `[SEC-008]` MED-04 — OTP-код в Bull job data (видно в Bull Board под BULL_BOARD_TOKEN).
+- `[SEC-009]` MED-05 — CORS `*.railway.app` wildcard в `main.ts:41-42`.
+- `[SEC-010]` MED-06 — CORS dev-mode принимает любой origin.
+- `[SEC-011]` LOW-01 — phone PII в plain-text logs (5+ мест).
+- `[SEC-012]` LOW-02 — Multer без явного `limits.fileSize`.
+- HIGH-01 part 2 — orders.controller `buyer/orders*` без `@Roles()` (намеренно для dual-role, нужен `@Roles('BUYER', 'SELLER')` для явности — отложено как low-risk).
+
 ---
 
-## 2026-05-04 [TG-AUDIT-2026-05] Аудит Telegram-интеграции (audit-only, фиксы отдельным PR)
+## 2026-05-04 [TG-AUDIT-2026-05] Аудит Telegram-интеграции + фиксы SEC-TG-001/SEC-TG-002
 
-- **Статус:** 📋 Audit-only — найдено 2 критических утечки, 2 предупреждения, 2 пункта OK.
+- **Статус:** ✅ Аудит выполнен, оба критичных пункта исправлены (SEC-TG-001 + SEC-TG-002), `npx tsc --noEmit` — 0 ошибок. Деплой ждёт согласования с Полатом.
 - **Метод:** статический ревью `apps/api/src/modules/{telegram,notifications,auth}` + `queues/`. Сверка с требованиями: BullMQ для нотификаций, env-only Bot Token, webhook secret, OTP rate-limit, Cache-Control на `/media/proxy/:id`.
 
 ### ✅ (1) TG-уведомления идут через BullMQ — OK
@@ -210,25 +273,26 @@
 - Broadcast (admin) тоже через telegram-queue: `broadcast.use-case.ts` ставит job `TELEGRAM_JOB_BROADCAST`, processor пишет результат в `BroadcastLog`.
 - `apps/api/src/modules/auth/services/otp.service.ts:80-107` — синхронной отправки в `TelegramBotService` нигде не осталось (grep `telegramBot.sendMessage` вне processors → 0 совпадений). Вердикт: ✅.
 
-### 🔴 (2/5) Bot Token утекает через `/api/v1/media/proxy/:id` 302 redirect
+### ✅ (2/5) [SEC-TG-001] Bot Token утекал через `/api/v1/media/proxy/:id` 302 — ИСПРАВЛЕНО
 
-- **Корень:** `media.controller.ts:142-160` (`proxyFile`) для media с `bucket=telegram` вызывает `tgStorage.getFileUrl(fileId)` и возвращает `{ url, statusCode: 302 }` через `@Redirect()`. `getFileUrl` (telegram-storage.service.ts:80) формирует URL `https://api.telegram.org/file/bot${this.botToken}/${file_path}` — **Bot Token попадает прямо в HTTP-заголовок `Location`**, видимый любому пользователю (Network tab браузера) и любому upstream-прокси/CDN/ngrok.
-- Угроза: компрометация Bot Token = полный захват `@savdo_builderBOT` (рассылка от имени бота, чтение всех update'ов, smtp всем привязанным OTP). Endpoint публичный (нет JwtAuthGuard).
-- Дополнительно: тот же эндпойнт **не выставляет `Cache-Control`**. Комментарий в коде «Browser caches for 1h» вводит в заблуждение — без явного header'а 302 не кешируется (или кешируется агрессивно/неконтролируемо). Если CDN добавит heuristic cache → URL с токеном осядет в логах.
-- **Что должно быть:** прокси стримит файл (axios `responseType: 'stream'`, `pipe(res)`), Bot Token не покидает сервер; на ответе ставится `Cache-Control: public, max-age=600` (10 мин — меньше TTL Telegram URL ~1ч, но без `immutable`, чтобы при поломке файла обновлялось). 5 мест в коде уже используют `${appUrl}/api/v1/media/proxy/${m.id}` — менять не придётся, поведение для клиента то же.
-- **Фикс отдельным PR:** `[SEC-TG-001]` (см. tasks.md).
+- **Корень:** `media.controller.ts` `proxyFile` вызывал `tgStorage.getFileUrl(fileId)` и возвращал `{ url, statusCode: 302 }` через `@Redirect()`. `getFileUrl` формировал URL `https://api.telegram.org/file/bot${botToken}/${file_path}` — **Bot Token попадал в HTTP-заголовок `Location`**, был виден в Network tab и кешировался любым CDN/прокси.
+- **Что сделано:**
+  - `telegram-storage.service.ts` — старый `getFileUrl` удалён, добавлен `streamToResponse(fileId, mimeType, res)`. `getFile` отдаёт `file_path` (на сервере), затем `axios.get(url, { responseType: 'stream' })` тянет байты и `pipe(res)` — Bot Token больше не покидает API. Ставится `Cache-Control: public, max-age=600` (10 мин < TTL Telegram URL ~1ч, без `immutable`). На stream `error` — `502 Bad Gateway` без падения процесса.
+  - `media.controller.ts` `proxyFile` переписан на `@Res() res: Response`, для telegram media — стрим, для R2 — остаётся `res.redirect(302, publicUrl)` (R2 публичный CDN, токенов нет) с Cache-Control 10мин.
+- **Trade-off:** трафик через Railway удваивается (download from TG + serve client), но токен бота важнее. При росте нагрузки — рассмотреть R2 как primary storage.
+- **Файлы:** `apps/api/src/modules/media/media.controller.ts`, `apps/api/src/modules/media/services/telegram-storage.service.ts`.
+
+### ✅ (3) [SEC-TG-002] Webhook secret check отключался при пустом env — ИСПРАВЛЕНО
+
+- **Корень:** `telegram-webhook.controller.ts:43-46` `if (expected && secretToken !== expected) return { ok: true };` — пропускал любые POST-запросы при пустом `TELEGRAM_WEBHOOK_SECRET`. Joi разрешает пустую строку.
+- **Что сделано:** `telegram-bot.service.ts` `onApplicationBootstrap` — добавлен `Logger.error(...)` если в проде запускается без webhook secret. Теперь при отсутствии переменной в Railway logs появится явная ошибка, а не тихий no-op. Сама проверка в контроллере оставлена как есть (return 200 при mismatch — намеренное поведение, чтобы Telegram не ретраил спам).
+- **Файлы:** `apps/api/src/modules/telegram/services/telegram-bot.service.ts`.
 
 ### 🟢 (2-доп) Bot Token в логах — OK
 
 - `process.env.TELEGRAM_BOT_TOKEN` читается в 2 местах: `telegram.config.ts`, `telegram-storage.service.ts:12`, `telegram-auth.use-case.ts:22`. Joi (`env.validation.ts:29`) делает обязательным.
 - В логах токен не встречается: `apiBase` приватный, log-сообщения берут только `err.message` (axios на ошибках кладёт URL в `err.config.url`, не в `.message` — leak возможен только при `console.log(err)` целиком, такого нет).
 - В коммитах `.env`/`.env.local` отсутствуют (`.gitignore` корректный).
-
-### 🟡 (3) Webhook secret token — частично OK
-
-- `telegram-webhook.controller.ts:43-46`: `if (expected && secretToken !== expected) return { ok: true };` — **верификация работает только если `TELEGRAM_WEBHOOK_SECRET` непустой**. Joi (`env.validation.ts:30`) разрешает пустую строку (`Joi.string().allow('').optional()`). В прод-окружении без этой переменной ЛЮБОЙ POST-запрос на `/api/v1/telegram/webhook` примется как валидный update.
-- Возврат 200 при невалидном секрете — корректно (Telegram перестаёт ретраить); это намеренное молчаливое отбрасывание.
-- **Рекомендация:** в `setWebhook` (telegram-bot.service.ts:43-48) если `secret` пустой, бросить `Logger.error('TELEGRAM_WEBHOOK_SECRET is empty — webhook unauthenticated')` и/или сделать переменную required в проде. Тикет: `[SEC-TG-002]`.
 
 ### 🟡 (4) OTP rate-limit — формально строже спеки, но per-purpose
 
@@ -243,17 +307,16 @@
 | # | Требование | Статус | Тикет |
 |---|------------|--------|-------|
 | 1 | Уведомления через BullMQ | ✅ | — |
-| 2 | Bot Token только в env | 🟢 (env) / 🔴 (утечка через redirect — см. ниже) | `[SEC-TG-001]` |
-| 3 | Webhook X-Telegram-Bot-Api-Secret-Token | 🟡 (без secret отключается) | `[SEC-TG-002]` |
+| 2 | Bot Token только в env | ✅ (env-only) | — |
+| 3 | Webhook X-Telegram-Bot-Api-Secret-Token | ✅ (warn при пустом env) | `[SEC-TG-002]` ✅ |
 | 4 | OTP rate-limit | 🟡 (per-purpose, overall лимита нет) | — (low) |
-| 5 | `/media/proxy/:id` Cache-Control | 🔴 (header не ставится + leak token) | `[SEC-TG-001]` |
+| 5 | `/media/proxy/:id` стриминг + Cache-Control | ✅ (стрим вместо redirect, max-age=600) | `[SEC-TG-001]` ✅ |
 
-### Файлы (для будущего фикса)
+### Затронутые файлы
 
-- `apps/api/src/modules/media/media.controller.ts` (proxyFile → stream вместо 302)
-- `apps/api/src/modules/media/services/telegram-storage.service.ts` (нужен метод `streamFile(fileId)`)
-- `apps/api/src/modules/telegram/telegram-webhook.controller.ts` (warn если secret пуст)
-- `apps/api/src/config/env.validation.ts` (опционально — required в проде)
+- `apps/api/src/modules/media/media.controller.ts` — `@Res()` стрим, R2 redirect с Cache-Control
+- `apps/api/src/modules/media/services/telegram-storage.service.ts` — `streamToResponse()`, `getFileUrl()` удалён
+- `apps/api/src/modules/telegram/services/telegram-bot.service.ts` — `Logger.error` при пустом webhook secret
 
 ---
 
