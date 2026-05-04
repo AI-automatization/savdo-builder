@@ -66,6 +66,10 @@ export class ChatController {
   // POST /api/v1/chat/threads
   @Post('chat/threads')
   @Throttle({ default: { ttl: 60_000, limit: 10 } }) // защита от спама создания тредов
+  // SEC-AUDIT-2026-05 HIGH-01: explicit @Roles. RolesGuard returns true когда
+  // @Roles() отсутствует — без этого декоратора защита создавалась только
+  // случайно (resolveBuyerId кидает 422 у seller'а без buyer-профиля).
+  @Roles('BUYER', 'SELLER')
   async createThread(@CurrentUser() user: JwtPayload, @Body() dto: CreateThreadDto) {
     const buyerId = await this.resolveBuyerId(user.sub);
 
