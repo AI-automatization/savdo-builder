@@ -70,7 +70,10 @@ export class ChangeProductStatusUseCase {
   }
 
   private async postToChannel(product: Product): Promise<void> {
-    const store = await this.prisma.store.findUnique({ where: { id: product.storeId } });
+    // DB-AUDIT-001-07: не постим товары удалённых магазинов в TG-канал
+    const store = await this.prisma.store.findFirst({
+      where: { id: product.storeId, deletedAt: null },
+    });
     if (!store?.telegramChannelId) return;
 
     const price       = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;

@@ -452,6 +452,8 @@ model Product {
   @@index([storeCategoryId])
   @@index([status])
   @@index([isVisible])
+  // DB-AUDIT-001-03: hot path public storefront feed (sort by new)
+  @@index([status, deletedAt, createdAt(sort: Desc)])
   @@map("products")
 }
 
@@ -480,6 +482,8 @@ model ProductImage {
   media   MediaFile @relation(fields: [mediaId], references: [id])
 
   @@index([productId])
+  // DB-AUDIT-001-06: ORDER BY sortOrder при загрузке фото товара
+  @@index([productId, sortOrder])
   @@map("product_images")
 }
 
@@ -672,6 +676,9 @@ model Order {
   @@index([status])
   @@index([paymentStatus])
   @@index([placedAt])
+  // DB-AUDIT-001-04: hot path seller dashboard / orders list
+  @@index([storeId, status, placedAt(sort: Desc)])
+  @@index([buyerId, status, placedAt(sort: Desc)])
   @@map("orders")
 }
 
@@ -720,6 +727,11 @@ model OrderStatusHistory {
 // CHAT
 // ─────────────────────────────────────────────
 
+enum ChatThreadStatus {
+  OPEN
+  CLOSED
+}
+
 model ChatThread {
   id            String     @id @default(uuid())
   threadType    ThreadType
@@ -727,7 +739,9 @@ model ChatThread {
   orderId       String?
   buyerId       String?
   sellerId      String
-  status        String     @default("active")
+  // DB-AUDIT-001-02: было `String @default("active")`, но код пишет/читает
+  // 'OPEN'/'CLOSED'. Переведено в enum для consistency.
+  status        ChatThreadStatus @default(OPEN)
   lastMessageId    String?
   lastMessageAt    DateTime?
   buyerLastReadAt  DateTime?
@@ -778,6 +792,8 @@ model ChatMessage {
   @@index([createdAt])
   @@index([parentMessageId])
   @@index([mediaId])
+  // DB-AUDIT-001-05: hot path cursor pagination сообщений в треде
+  @@index([threadId, createdAt(sort: Desc)])
   @@map("chat_messages")
 }
 

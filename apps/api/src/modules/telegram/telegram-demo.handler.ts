@@ -245,7 +245,7 @@ export class TelegramDemoHandler {
           });
         }
         // Продавец — проверяем есть ли магазин
-        const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+        const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } });
         if (store) {
           await this.showSellerMenu(chatId, firstName ?? normalized);
         } else {
@@ -423,7 +423,7 @@ export class TelegramDemoHandler {
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!seller) { await this.handleStart(chatId); return; }
 
-    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } });
     if (!store) {
       // Нет магазина — сначала создаём
       await this.setState(chatId, 'seller_create_store_name');
@@ -512,7 +512,7 @@ export class TelegramDemoHandler {
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!seller) { await this.handleStart(chatId); return; }
 
-    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } });
     if (!store) {
       // Этого не должно быть (handleLinkChannel теперь создаёт store заранее),
       // но на всякий случай — предлагаем создать
@@ -546,7 +546,8 @@ export class TelegramDemoHandler {
   // ─────────────────────────────────────────────────────────────────────────
 
   async postProductToChannel(storeId: string, productId: string): Promise<void> {
-    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    // DB-AUDIT-001-07: не публикуем товары удалённого магазина в TG-канал
+    const store = await this.prisma.store.findFirst({ where: { id: storeId, deletedAt: null } });
     if (!store?.telegramChannelId) return;
 
     const product = await this.prisma.product.findUnique({
@@ -639,7 +640,7 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
 
     // Deep link в TMA сразу на страницу товаров
     const deepLink = tmaUrl ? `${tmaUrl}` : null;
@@ -687,7 +688,7 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
     if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
 
     const orders = await this.prisma.order.findMany({
@@ -715,7 +716,7 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
     if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
 
     const channel = store.telegramChannelId
@@ -734,7 +735,7 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
     if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
 
     const [productCount, orderCount] = await Promise.all([
@@ -772,7 +773,7 @@ export class TelegramDemoHandler {
   async handleStoreSlugInput(chatId: string, slug: string): Promise<void> {
     await this.clearState(chatId);
 
-    const store = await this.prisma.store.findUnique({ where: { slug: slug.trim().toLowerCase() } });
+    const store = await this.prisma.store.findFirst({ where: { slug: slug.trim().toLowerCase(), deletedAt: null } });
     if (!store) {
       await this.bot.sendInlineKeyboard(
         chatId,

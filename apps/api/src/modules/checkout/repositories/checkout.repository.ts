@@ -75,8 +75,9 @@ export class CheckoutRepository {
   }
 
   async findStoreWithSeller(storeId: string): Promise<StoreWithSeller | null> {
-    return this.prisma.store.findUnique({
-      where: { id: storeId },
+    // DB-AUDIT-001-07: фильтр soft-deleted магазинов
+    return this.prisma.store.findFirst({
+      where: { id: storeId, deletedAt: null },
       select: {
         id: true,
         sellerId: true,
