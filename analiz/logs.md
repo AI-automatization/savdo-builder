@@ -8,6 +8,183 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-04 [API-RATE-LIMIT-AUDIT-001] Rate-limit guard был не активен глобально — фикс
+
+- **Статус:** ✅ Исправлено (apps/api/src/app.module.ts + apps/api/src/modules/auth/auth.controller.ts).
+- **Корень:** `ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }])` был подключён, но `APP_GUARD: ThrottlerGuard` НЕ был зарегистрирован в `providers`. Без guard'а декоратор `@Throttle({...})` — silent no-op. То есть `@Throttle` на `sendMessage` в чате **никогда не срабатывал**, и весь backend был без rate-limit'а на любых endpoint'ах.
+- **Симптомы (теоретические, до фикса):** OTP-bomb (5+ phone-number'ов), brute-force OTP, DDoS на `/storefront/products?q=` (тяжёлый ILIKE), spam create-thread, spam media/upload.
+- **Что сделано:**
+  1. `app.module.ts` providers += `{ provide: APP_GUARD, useClass: ThrottlerGuard }`.
+  2. Глобальный лимит поднят 60→120 req/60s (storefront feed читается часто).
+  3. `auth.controller.ts` жёсткие per-endpoint лимиты:
+     - `/auth/telegram` — 10/мин (TMA initData verify)
+     - `/auth/request-otp` — **5/мин** (защита от OTP-bomb)
+     - `/auth/verify-otp` — 10/мин (brute-force ограничение)
+     - `/auth/refresh` — 30/мин
+  4. `chat/sendMessage` остался 30/мин (как был).
+- **TODO (другие endpoints, отдельный PR):**
+  - `/media/upload` — должно быть жёстче (большой трафик): 20/мин.
+  - `/checkout/create-order` — 10/мин (защита от спама заказов).
+  - `/storefront/products?q=` — search с ILIKE, 60/мин на конкретный IP.
+  - `/chat/threads POST` (createThread) — 10/мин.
+- **Verify after deploy:** в Network tab DevTools → 6й request на `/auth/request-otp` за минуту должен вернуть 429.
+
+---
+
+## 2026-05-04 [WEB-TMA-SELLER-PERF-001] AbortController + prefetch в TMA seller pages
+
+- **Статус:** ✅ Сделано (8 из 9 файлов)
+- **Что случилось:** Seller-страницы TMA дёргали `api()` в `useEffect` без AbortController — при быстрой навигации (свайп back в Telegram, пересоздание AppShell, переключение между Dashboard/Products/Orders) возникали:
+  1. setState на размонтированном компоненте → React warning + утечки памяти.
+  2. Race conditions: предыдущий fetch заканчивался ПОСЛЕ нового и перетирал свежие данные старыми.
+  3. Карточки товаров в `ProductsPage` грузили `/seller/products/:id` только после клика → ~300ms пустой EditPage.
+- **Что сделано:** Каждый `useEffect` создаёт `AbortController`, на cleanup `ac.abort()`. `then/catch/finally` проверяют `ac.signal.aborted` до setState. Заказы (`/seller/orders`, `/seller/orders/:id`) — `forceFresh: true` (статусы быстро меняются). `ProductsPage` карточки — `prefetch` на `onPointerEnter` (`/seller/products/:id` + `/.../attributes`).
+- **Не сделано:** `apps/tma/src/pages/seller/ChatPage.tsx` — параллельная сессия делает `TMA-DESIGN-P0P1-001` (44px hit-area, aria-hidden). Чтобы не воровать чужой коммит — пропустил, открыл follow-up `TMA-SELLER-CHAT-PERF-001`.
+- **Type check:** `npx tsc --noEmit` в `apps/tma` → 0 ошибок.
+
+---
+
+## 2026-05-04 [WEB-DESIGN-AUDIT-001] Дизайн-аудит web-buyer + web-seller (5 критериев) — pointer
+
+- **Статус:** 🟡 Аудит — findings в отдельном файле, фиксы НЕ применены, ждут согласия Полата.
+- **Полный отчёт:** `analiz/web-design-audit-001.md` (вынесен из logs.md чтобы не конкурировать с параллельными сессиями за один файл).
+- **Кратко:** P0 = hit-area в web-buyer (BottomNav/Header/back/+−/dots все <44px), `prefers-reduced-motion` нигде нет. P1 = контраст `textDim` в обоих апп (~3.0–4.2:1, ниже AA), `success` в light теме тоже не AA. P2 = `aria-label` на ±/dots/inline-confirm, modal `role=dialog`, sidebar `<nav aria-label>`, skeleton `aria-busy`.
+- **Что нужно от Полата:** согласие на (1) рост BottomNav 64→76px, (2) правку tokens (`textDim`, `success`) одной таблицей, (3) подтверждение что web-* можно фиксить самому, не ждать Азима.
+
+---
+
+## 2026-05-04 [SEC-AUDIT-2026-05] Backend security audit (audit-only, без правок кода)
+
+- **Статус:** 📋 Audit-only — найдено 2 CRITICAL, 3 HIGH, 7 MEDIUM, 2 LOW. ⚠️ Push кода НЕ выполняется до согласования с Полатом по CRIT-01/CRIT-02.
+- **Скоуп:** `apps/api/src/**/*` — public endpoints, JwtAuthGuard/RolesGuard, `$queryRaw`/`$executeRaw`, XSS surface (Telegram HTML), SSRF, secrets logging, CORS.
+- **Метод:** статический ревью. Per §6.1 политики самообучения exploit-payload'ы не пишу — только корни и рекомендации.
+
+### 🔴 CRIT-01 — ThrottlerGuard не зарегистрирован глобально → rate-limit отключён повсюду
+
+- **Корень:** `apps/api/src/app.module.ts:45` импортирует `ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }])`, но в `providers` нет `{ provide: APP_GUARD, useClass: ThrottlerGuard }`. Без этого `@nestjs/throttler` не подключается ни к одному маршруту.
+- Следствие: `@Throttle({ default: { ttl: 60000, limit: 30 } })` на `chat.controller.ts:102` (POST /chat/threads/:id/messages) **не работает**. Дефолтный 60/мин тоже не применяется.
+- Угроза: на public-endpoints нет вообще ничего, что ограничивало бы частоту:
+  - `POST /auth/verify-otp` — brute-force OTP. Есть Redis-счётчик 5 попыток/15мин в `otp.service.ts:14-58`, но он на phone+code; смена phone позволяет атаковать многократно.
+  - `POST /auth/request-otp` — флуд OTP-кодов в Telegram (use-case ограничивает 3/10мин на `(phone, purpose)`, но purposes 3 → 9 OTP / 10 мин на телефон).
+  - `POST /auth/refresh`, `POST /auth/telegram` — без лимитов.
+  - `GET /storefront/products`, `/storefront/categories*`, `/stores/:slug*` — без лимитов, scrape-friendly.
+  - `POST /analytics/track` (guest), `GET/POST/PATCH/DELETE /cart*` (guest через `x-session-token`) — DB-write без лимитов.
+- **Рекомендация:** добавить в `app.module.ts` `providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, ...]`. Затем точечно усилить лимиты на `auth/*` (например 5/мин) через `@Throttle()`.
+
+### 🔴 CRIT-02 — Telegram Bot Token утекает через `/api/v1/media/proxy/:id`
+
+- **Дублирует** запись `[TG-AUDIT-2026-05] (2/5)` ниже. Подтверждаю: уязвимость **до сих пор открыта**, фикс не сделан.
+- **Корень:** `media.controller.ts:142-160` → `tgStorage.getFileUrl()` (`telegram-storage.service.ts:80`) возвращает `https://api.telegram.org/file/bot${botToken}/${file_path}`; контроллер шлёт это значение в `Location` 302-редиректа. Любой пользователь видит токен в Network-tab.
+- **Угроза:** полный захват `@savdo_builderBOT`: massending от имени бота, чтение всех апдейтов (включая контакты с phone), перехват OTP при наличии `chatId` маппинга.
+- **Рекомендация:** проксировать байты (`axios.get(url, { responseType: 'stream' })` → `pipe(res)` + `Cache-Control: private, max-age=600`). Никогда не отдавать клиенту URL с токеном.
+
+### 🟠 HIGH-01 — RolesGuard молча пропускает endpoints без `@Roles()`
+
+- **Корень:** `apps/api/src/common/guards/roles.guard.ts:17` `if (!requiredRoles) return true;`. В сочетании с `@UseGuards(JwtAuthGuard, RolesGuard)` без `@Roles()` это даёт false sense of security — guard добавлен, но проверки нет.
+- **Где видно:**
+  - `chat.controller.ts:67` `POST /chat/threads` — `@UseGuards(JwtAuthGuard, RolesGuard)` контроллерного уровня + `@Roles()` отсутствует на handler'е → любой аутентифицированный (включая SELLER без buyer-профиля → словит 422 в use-case, но это случайная защита, не явная).
+  - `orders.controller.ts:48-133` — все `buyer/orders*` без `@Roles()`. Сделано осознанно (`API-BUYER-ORDERS-ROLE-GUARD-001` для dual-role), но не задокументировано в декораторе.
+- **Рекомендация:** в `roles.guard.ts` оставить `return true` только при наличии явного маркера `@AllowAnyRole()`; иначе — `throw FORBIDDEN`. Все осознанные dual-role хэндлеры пометить `@Roles('BUYER', 'SELLER')`.
+
+### 🟠 HIGH-02 — RolesGuard: `if (user.role === 'ADMIN') return true` на всех endpoints
+
+- **Корень:** `roles.guard.ts:26` — ADMIN всегда проходит, даже на seller/buyer-only маршрутах.
+- **Угроза:** скомпрометированный admin-токен (или legitimate admin кликающий по случайному URL) может писать в `seller/store`, `seller/products`, отправлять чат-сообщения от чужого имени, оформлять чужие cart'ы.
+- **Рекомендация:** убрать short-circuit; ADMIN-операции должны идти строго через `/admin/*` controllers (которые помечены `@Roles('ADMIN')`). Если требуется bypass для саппорта — отдельный декоратор `@AllowAdminBypass()`.
+
+### 🟠 HIGH-03 — Public storefront/auth endpoints без явного rate-limit (продолжение CRIT-01)
+
+- Конкретные controllers без `@Throttle`:
+  - `auth.controller.ts:27,33,40,49` — все 4 публичных POST.
+  - `categories.controller.ts:93,103,127,137` — storefront categories.
+  - `products.controller.ts:559,570,581,607,636,722` — storefront stores+products.
+  - `cart.controller.ts:60,72,89,117,141` — guest cart.
+  - `analytics.controller.ts:47` — `POST /analytics/track`.
+  - `telegram-webhook.controller.ts:39` — webhook (защищён secret token, но при пустом env — открыт; см. `[TG-AUDIT-2026-05] (3)`).
+- **Рекомендация:** после фикса CRIT-01 точечно повесить `@Throttle({ default: { ttl: 60000, limit: 5 } })` на auth + 30/мин на storefront + 60/мин на cart.
+
+### 🟡 MED-01 — SuperAdminController использует inline-типы вместо DTO с class-validator
+
+- `super-admin.controller.ts:83,96,117,136-141` (5 endpoints): `@Body() body: { phone: string; adminRole: string }` и т.п. — **TypeScript-тип, а не DTO-класс**. ValidationPipe whitelist/forbidNonWhitelisted работает только с DTO-классами c `class-validator` декораторами. Сейчас тело принимается как-есть, длина/формат не проверяются (есть только `if (!body.x) BadRequestException`).
+- Аналогично: `admin.controller.ts:212,236,336-337` (`@Body('status') status: string` без `@IsIn`).
+- **Угроза:** мусор в `audit_log.payload`, неожиданные значения `adminRole`/`status` в БД (миграция/индексы могут не учитывать), `description` ловит arbitrary HTML.
+- **Рекомендация:** создать DTO-классы (`CreateAdminDto`, `ChangeAdminRoleDto`, `RefundOrderDto`, `VerifySellerExtendedDto`) с `@IsString @IsIn @MaxLength`.
+
+### 🟡 MED-02 — Storefront filters без DTO
+
+- `products.controller.ts:643` `@Query('filters') rawFilters?: Record<string, string>` принимает произвольный объект (Express `qs`). Нет ограничения количества ключей или длины значений.
+- **Угроза:** DoS через `?filters[a]=…&filters[b]=…&...` (Express по умолчанию 1000 keys через `qs`). В DB-запросе фильтры идут в `findPublicByStoreId` — много ключей → много условий.
+- **Рекомендация:** обернуть в DTO с явным whitelist полей или пропустить через `Object.entries(rawFilters).slice(0, 20)`.
+
+### 🟡 MED-03 — XSS/HTML-injection в Telegram-каналах продавцов
+
+- `telegram-demo.handler.ts:564,627,654-656`: `caption = '🛍 <b>${product.title}</b>...${product.description}...${store.name}'` рендерится `parseMode: 'HTML'`. Поля приходят от продавца (свободный input).
+- **Угроза:** низкая — продавец постит в свой канал. Но: `<` `>` `&` в названии сломают парсинг, Telegram отвергнет → пост не появится; `<a href="https://evil">текст</a>` в описании создаст рабочую ссылку (Telegram разрешает `<a>`).
+- **Рекомендация:** `escapeHtml(s) = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')` перед интерполяцией. Или перейти на `MarkdownV2` с экранированием.
+
+### 🟡 MED-04 — Bull Board: shared токен → утечка = доступ к OTP-кодам в очереди
+
+- `main.ts:91-107` Bull Board защищён `BULL_BOARD_TOKEN` (статический header). Очередь `otp` хранит `OtpSendTelegramJobData = { chatId, phone, code }` (`otp.service.ts:88,104`) — **открытый OTP-код в job data**.
+- **Угроза:** утечка `BULL_BOARD_TOKEN` (env, history) → атакующий читает живые OTP-коды до их истечения (5 мин).
+- **Рекомендация:** не класть `code` в job data; класть только `otpRequestId`, processor лезет в БД и достаёт `codeHash` + reverse через временный Redis key. Альтернатива — `removeOnComplete: true` для otp-queue (чтобы job исчезал сразу).
+
+### 🟡 MED-05 — CORS regex `\.railway\.app` принимает любой Railway-tenant
+
+- `main.ts:41-42`: `/^https:\/\/[a-z0-9-]+\.up\.railway\.app$/i` и `/^https:\/\/[a-z0-9-]+\.railway\.app$/i`.
+- **Угроза:** атакующий разворачивает свой проект на `evil.up.railway.app` → его origin принимается → CSRF-вектор для cookies-based endpoints (refresh-token cookie уже не используется, но `credentials: true` на `app.enableCors` подсвечивает.
+- **Рекомендация:** заменить wildcard на whitelist через `ALLOWED_ORIGINS`: `https://savdo-tma-…up.railway.app,https://savdo-admin-…up.railway.app,...` (4 deploy-ветки = 4 hostname'а).
+
+### 🟡 MED-06 — CORS dev-mode пропускает любой origin
+
+- `main.ts:52`: `if (!isProd) return callback(null, true);`. Если `NODE_ENV` случайно не `production` на Railway → принимается всё.
+- **Рекомендация:** держать как есть, но добавить assert при boot: если `NODE_ENV !== 'production'` И есть `DATABASE_URL` указывающий на prod → бросить ошибку. Низкий приоритет.
+
+### 🟡 MED-07 — Telegram webhook без обязательного secret
+
+- `telegram-webhook.controller.ts:43-46` — verify работает только при непустом `TELEGRAM_WEBHOOK_SECRET`. См. также `[TG-AUDIT-2026-05] (3)`.
+- **Рекомендация:** в `env.validation.ts` сделать `TELEGRAM_WEBHOOK_SECRET` `Joi.string().min(16).required()` для прода. Дублирует `[SEC-TG-002]`.
+
+### 🟢 LOW-01 — Phone PII в plain-text логах
+
+- `otp.processor.ts:26,34`, `otp.service.ts:85,106`, `admin-auth.use-case.ts:152` (`IMPERSONATION ... phone=${target.phone}`).
+- **Не криптосекрет**, но персональные данные. GDPR/Узб. закон №547 о защите персданных требует минимизации.
+- **Рекомендация:** маска `+998***1234` через helper `maskPhone()`.
+
+### 🟢 LOW-02 — Multer/FileInterceptor без явных limits
+
+- `media.controller.ts:62,74,99` — `@UseInterceptors(FileInterceptor('file'))` без `{ limits: { fileSize: ... } }`. Лимит фактически делается в use-case (`upload-direct.use-case.ts`), но для отказа в early phase лучше выставить `fileSize: 10 * 1024 * 1024` в interceptor, чтобы Express отклонял body до парсинга.
+
+### ✅ PASS — что проверено и чисто
+
+- **SQL injection (`$queryRaw`/`$executeRaw`)**: 4 места найдено (`health/prisma.health.ts:13`, `admin/get-system-health.use-case.ts:80`, `admin/get-analytics.use-case.ts:158,164`, `analytics/analytics.repository.ts:104`). Все используют **tagged template literals** Prisma с `${var}` — Prisma автоматически параметризует, инъекций нет. `$executeRaw` не использован нигде.
+- **SSRF**: axios используется в `telegram-bot.service.ts` и `telegram-storage.service.ts`. URL зафиксированы на `https://api.telegram.org/...`, user-controlled URL никуда не идёт. `axios.get/post(<userInput>)` patterns: 0.
+- **OTP-код в логах**: явный комментарий `SEC-003: never log the actual code` (`otp.service.ts:84`). Подтверждено — `code` не появляется в Logger.log/warn/error ни в одном файле.
+
+### Сводная таблица
+
+| ID | Severity | Где | Тикет (предлагаемый) |
+|----|----------|-----|----------------------|
+| CRIT-01 | 🔴 | `app.module.ts:45` (нет APP_GUARD ThrottlerGuard) | `[SEC-001]` |
+| CRIT-02 | 🔴 | `media.controller.ts:142` (Bot Token в Location) | `[SEC-TG-001]` |
+| HIGH-01 | 🟠 | `roles.guard.ts:17` (молчаливый bypass без @Roles) | `[SEC-002]` |
+| HIGH-02 | 🟠 | `roles.guard.ts:26` (ADMIN bypass всего) | `[SEC-003]` |
+| HIGH-03 | 🟠 | auth + storefront без `@Throttle` | `[SEC-004]` |
+| MED-01 | 🟡 | super-admin inline body types | `[SEC-005]` |
+| MED-02 | 🟡 | storefront `filters` без DTO | `[SEC-006]` |
+| MED-03 | 🟡 | Telegram HTML escape | `[SEC-007]` |
+| MED-04 | 🟡 | Bull Board: OTP code в job data | `[SEC-008]` |
+| MED-05 | 🟡 | CORS wildcard `*.railway.app` | `[SEC-009]` |
+| MED-06 | 🟡 | CORS dev-mode | `[SEC-010]` |
+| MED-07 | 🟡 | Webhook secret optional | `[SEC-TG-002]` (дубль) |
+| LOW-01 | 🟢 | phone PII в логах | `[SEC-011]` |
+| LOW-02 | 🟢 | Multer без limits | `[SEC-012]` |
+
+### ⚠️ Полату — перед пушем
+
+- **CRIT-02** уже описан в `[TG-AUDIT-2026-05]` от того же дня — фикс висит как `[SEC-TG-001]` в `tasks.md`, но не сделан. Подтверждаю: **уязвимость открыта на main**.
+- **CRIT-01** — найден сейчас, в прошлых аудитах не фигурировал. Это объясняет, почему OTP rate-limit «работает в Redis, а не через Throttler»: Throttler никогда не был активен.
+- Решение по приоритетам и тикетам — за тобой; этот отчёт правок кода не делает.
+
 ---
 
 ## 2026-05-04 [TG-AUDIT-2026-05] Аудит Telegram-интеграции (audit-only, фиксы отдельным PR)
