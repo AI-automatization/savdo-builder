@@ -68,6 +68,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             {/* Icon + badge */}
             <span style={{ position: 'relative', display: 'inline-block' }}>
               <span
+                aria-hidden="true"
                 style={{
                   fontSize: 22,
                   display: 'block',
@@ -108,7 +109,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             <span
               className="text-[10px] font-semibold truncate w-full text-center"
               style={{
-                color: active ? '#A855F7' : 'rgba(255,255,255,0.28)',
+                color: active ? '#A855F7' : 'rgba(255,255,255,0.50)',
                 transition: 'color 0.15s',
                 letterSpacing: '0.01em',
               }}
