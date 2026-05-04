@@ -103,7 +103,12 @@ export class UpdateOrderStatusUseCase {
     );
 
     this.ordersGateway.emitOrderStatusChanged(updatedOrder, oldStatus);
-    this.ordersGateway.emitOrderStatusChangedToBuyer(updatedOrder, oldStatus);
+    // emitOrderStatusChangedToBuyer теперь async (резолв Buyer.userId). Не блокируем
+    // основной flow — fire-and-forget с логом ошибки.
+    void this.ordersGateway.emitOrderStatusChangedToBuyer(updatedOrder, oldStatus)
+      .catch((err: unknown) => this.logger.warn(
+        `emitOrderStatusChangedToBuyer failed: ${err instanceof Error ? err.message : String(err)}`,
+      ));
 
     // TG notifications: buyer always (own order); seller only if cancelled by buyer
     const storeName = order.store?.name ?? '';
