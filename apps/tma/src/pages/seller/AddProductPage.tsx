@@ -6,6 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImageCropper } from '@/components/ui/ImageCropper';
+import { Select } from '@/components/ui/Select';
 import { glass } from '@/lib/styles';
 
 interface SizeRow {
@@ -468,16 +469,17 @@ export default function AddProductPage() {
                   {f.isRequired && <span style={{ color: '#f87171' }}> *</span>}
                 </label>
                 {f.fieldType === 'select' && f.options ? (
-                  <select
+                  <Select
                     value={String(attrValues[f.key] ?? '')}
-                    onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                    style={{ ...inputStyle, padding: '10px 14px', fontSize: 13, appearance: 'none' }}
-                  >
-                    <option value="">— выберите —</option>
-                    {f.options.map((opt) => (
-                      <option key={opt} value={opt}>{opt}{f.unit ? ` ${f.unit}` : ''}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setAttrValues((prev) => ({ ...prev, [f.key]: v }))}
+                    options={f.options.map((opt) => ({
+                      value: opt,
+                      label: f.unit ? `${opt} ${f.unit}` : opt,
+                    }))}
+                    placeholder="— выберите —"
+                    clearable={!f.isRequired}
+                    ariaLabel={f.nameRu}
+                  />
                 ) : f.fieldType === 'boolean' ? (
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
