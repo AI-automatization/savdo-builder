@@ -68,13 +68,15 @@ export default function AddProductPage() {
   ]);
   const [sizeInput, setSizeInput] = useState('');
 
-  // Фото
+  // Фото — массив (TMA-MULTI-PHOTO-001). До 8 штук, первое = primary.
   const fileRef                         = useRef<HTMLInputElement>(null);
-  const [photoFile, setPhotoFile]       = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [photoFiles, setPhotoFiles]     = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cropSrc, setCropSrc]           = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number>(-1);
+  const MAX_PHOTOS = 8;
 
   // Категории
   const [categories, setCategories]           = useState<StoreCategory[]>([]);
@@ -201,6 +203,10 @@ export default function AddProductPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (fileRef.current) fileRef.current.value = '';
+    if (photoFiles.length >= MAX_PHOTOS) {
+      setError(`Максимум ${MAX_PHOTOS} фото на товар`);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => setCropSrc(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -208,38 +214,66 @@ export default function AddProductPage() {
 
   const handleCropConfirm = (croppedFile: File) => {
     setCropSrc('');
-    setPhotoFile(croppedFile);
+    setPhotoFiles((prev) => [...prev, croppedFile]);
     const url = URL.createObjectURL(croppedFile);
-    setPhotoPreview(url);
+    setPhotoPreviews((prev) => [...prev, url]);
   };
 
-  const removePhoto = () => {
-    setPhotoFile(null);
-    setPhotoPreview('');
-    setCropSrc('');
-    setUploadProgress(0);
-    setPhotoUploading(false);
+  const removePhoto = (index: number) => {
+    setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+    setPhotoPreviews((prev) => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const uploadPhotoForProduct = async (pid: string, file: File): Promise<void> => {
-    setPhotoUploading(true);
+  const movePhoto = (from: number, to: number) => {
+    if (to < 0 || to >= photoFiles.length) return;
+    setPhotoFiles((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+    setPhotoPreviews((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  // Загружает одно фото и возвращает mediaFileId (для batch upload в submit).
+  const uploadPhoto = async (file: File, idx: number): Promise<string> => {
+    setUploadingIndex(idx);
     setUploadProgress(0);
+    const form = new FormData();
+    form.append('file', file);
+    form.append('purpose', 'product_image');
+    const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+      '/media/upload',
+      form,
+      setUploadProgress,
+    );
+    return mediaFileId;
+  };
+
+  const uploadPhotosForProduct = async (pid: string): Promise<void> => {
+    setPhotoUploading(true);
     try {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('purpose', 'product_image');
-      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
-        '/media/upload',
-        form,
-        setUploadProgress,
-      );
-      await api(`/seller/products/${pid}/images`, {
-        method: 'POST',
-        body: { mediaId: mediaFileId },
-      });
+      for (let i = 0; i < photoFiles.length; i++) {
+        const mediaId = await uploadPhoto(photoFiles[i], i);
+        // POST в /seller/products/:id/images — первое фото primary.
+        await api(`/seller/products/${pid}/images`, {
+          method: 'POST',
+          body: { mediaId, isPrimary: i === 0, sortOrder: i },
+        });
+      }
     } finally {
       setPhotoUploading(false);
+      setUploadingIndex(-1);
     }
   };
 
@@ -373,20 +407,19 @@ export default function AddProductPage() {
         }
       }
 
-      // 4. Загрузить фото если выбрано (отдельный try — ошибка фото не отменяет товар)
-      if (photoFile) {
+      // 4. Загрузить фото (TMA-MULTI-PHOTO-001: массив, не одно). Ошибка
+      // фото не отменяет товар — переход в редактор для retry.
+      if (photoFiles.length > 0) {
         try {
-          await uploadPhotoForProduct(pid, photoFile);
+          await uploadPhotosForProduct(pid);
         } catch (photoErr: unknown) {
           const isStorageDown = photoErr instanceof ApiError && photoErr.status === 503;
           tg?.HapticFeedback.notificationOccurred('warning');
-          // Показываем ошибку фото и переходим в редактор товара
-          // чтобы пользователь мог попробовать загрузить фото там
           navigate(`/seller/products/${pid}/edit`, {
             state: {
               photoError: isStorageDown
                 ? 'Загрузка фото временно недоступна — попробуйте позже'
-                : 'Фото не загружено — попробуйте добавить здесь',
+                : 'Часть фото не загружена — попробуйте добавить остальные здесь',
             },
           });
           return;
@@ -720,69 +753,129 @@ export default function AddProductPage() {
           </div>
         </GlassCard>
 
-        {/* Фото товара */}
+        {/* Фото товара (TMA-MULTI-PHOTO-001) — массив до 8 шт, первое = главное */}
         <GlassCard className="p-4 flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            Фото товара
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Фото товара {photoPreviews.length > 0 && (
+                <span style={{ color: 'rgba(167,139,250,0.65)' }}>· {photoPreviews.length}/{MAX_PHOTOS}</span>
+              )}
+            </p>
+          </div>
 
-          {photoPreview ? (
-            <div className="flex items-start gap-3">
-              <img
-                src={photoPreview}
-                alt="preview"
-                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
-              />
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  {photoFile?.name}
-                </p>
-                {photoUploading && (
-                  <div className="flex flex-col gap-1">
-                    <div
+          {photoPreviews.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {photoPreviews.map((preview, idx) => (
+                <div
+                  key={preview}
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '1/1',
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    border: idx === 0 ? '2px solid rgba(168,85,247,0.55)' : '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <img
+                    src={preview}
+                    alt={`фото ${idx + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                  {idx === 0 && (
+                    <span
                       style={{
-                        height: 4, borderRadius: 4,
-                        background: 'rgba(255,255,255,0.10)',
-                        overflow: 'hidden',
+                        position: 'absolute', top: 4, left: 4,
+                        background: 'rgba(168,85,247,0.85)', color: '#fff',
+                        fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, letterSpacing: 0.3,
                       }}
                     >
-                      <div
-                        style={{
-                          height: '100%',
-                          width: `${uploadProgress}%`,
-                          background: 'linear-gradient(90deg, #7C3AED, #A855F7)',
-                          transition: 'width 0.2s',
-                          borderRadius: 4,
-                        }}
-                      />
+                      ГЛАВНОЕ
+                    </span>
+                  )}
+                  {photoUploading && uploadingIndex === idx && (
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: 'rgba(0,0,0,0.55)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      flexDirection: 'column', gap: 4,
+                    }}>
+                      <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>{uploadProgress}%</span>
                     </div>
-                    <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.70)' }}>
-                      {uploadProgress}%
-                    </p>
-                  </div>
-                )}
-                <button
-                  onClick={removePhoto}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
-                >
-                  <span className="text-xs" style={{ color: 'rgba(248,113,113,0.65)' }}>✕ Удалить</span>
-                </button>
-              </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(idx)}
+                    aria-label="Удалить"
+                    style={{
+                      position: 'absolute', top: 4, right: 4,
+                      width: 24, height: 24, borderRadius: 12,
+                      background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.18)',
+                      color: 'rgba(255,255,255,0.92)', fontSize: 13, lineHeight: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕
+                  </button>
+                  {photoPreviews.length > 1 && (
+                    <div style={{ position: 'absolute', bottom: 4, left: 4, display: 'flex', gap: 3 }}>
+                      <button
+                        type="button"
+                        onClick={() => movePhoto(idx, idx - 1)}
+                        disabled={idx === 0}
+                        aria-label="Влево"
+                        style={{
+                          width: 22, height: 22, borderRadius: 11,
+                          background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
+                          color: 'rgba(255,255,255,0.85)', fontSize: 11, padding: 0,
+                          opacity: idx === 0 ? 0.4 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        ◀
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => movePhoto(idx, idx + 1)}
+                        disabled={idx === photoPreviews.length - 1}
+                        aria-label="Вправо"
+                        style={{
+                          width: 22, height: 22, borderRadius: 11,
+                          background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
+                          color: 'rgba(255,255,255,0.85)', fontSize: 11, padding: 0,
+                          opacity: idx === photoPreviews.length - 1 ? 0.4 : 1,
+                          cursor: idx === photoPreviews.length - 1 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        ▶
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : (
+          )}
+
+          {photoPreviews.length < MAX_PHOTOS && (
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
+              disabled={photoUploading}
               style={{
                 border: '1px dashed rgba(167,139,250,0.30)',
                 borderRadius: 12,
-                padding: '20px 0',
+                padding: photoPreviews.length === 0 ? '20px 0' : '14px 0',
                 background: 'rgba(167,139,250,0.05)',
-                cursor: 'pointer',
+                cursor: photoUploading ? 'wait' : 'pointer',
                 width: '100%',
+                opacity: photoUploading ? 0.6 : 1,
               }}
             >
-              <p className="text-sm" style={{ color: 'rgba(167,139,250,0.70)' }}>📷 Выбрать фото</p>
-              <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>JPG, PNG, WEBP</p>
+              <p className="text-sm" style={{ color: 'rgba(167,139,250,0.80)' }}>
+                {photoPreviews.length === 0 ? '📷 Добавить фото' : '➕ Добавить ещё фото'}
+              </p>
+              <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                JPG, PNG, WEBP · до {MAX_PHOTOS} шт
+              </p>
             </button>
           )}
 
