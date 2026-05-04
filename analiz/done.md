@@ -1,5 +1,43 @@
 # Done — Азим + Полат
 
+## 2026-05-04 (параллельная сессия, security audit) — SEC-AUDIT-2026-05 backend audit + HIGH-01 fix
+
+### ✅ [SEC-AUDIT-2026-05] Backend security audit (apps/api) — отчёт + точечный фикс HIGH-01
+
+- **Важность:** 🔴 audit + один безопасный фикс (HIGH-01)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `analiz/logs.md` — полный отчёт `[SEC-AUDIT-2026-05]` (2 CRITICAL, 3 HIGH, 7 MEDIUM, 2 LOW + сводная таблица + раздел Update со статусом фиксов).
+  - `apps/api/src/modules/chat/chat.controller.ts` — `@Roles('BUYER', 'SELLER')` на `POST /chat/threads`.
+  - `D:/Obsidian Vault/PROJECTS/savdo-builder/decisions/2026-05-04-secaudit202605-backend-security-audit.md` — ADR.
+- **Что сделано:**
+  - Аудит по 7 направлениям (rate-limit, JWT/Roles, raw SQL, XSS, SSRF, secrets logging, CORS).
+  - SQL injection и SSRF — чисто (Prisma tagged templates, axios только на api.telegram.org).
+  - Найдены 2 CRITICAL: `[SEC-001]` ThrottlerGuard не зарегистрирован APP_GUARD (rate-limit фактически выключен) + `[SEC-TG-001]` Bot Token в 302 Location header `/media/proxy/:id`.
+  - Параллельная сессия за время аудита закрыла оба CRITICAL + HIGH-03 (auth/chat/checkout/products/media `@Throttle`) + MED-07 (loud warning при пустом webhook secret). См. Update-блок в logs.md.
+  - Свой фикс: `[SEC-002]` HIGH-01 — добавлен явный `@Roles` на `POST /chat/threads`. Раньше RolesGuard молчаливо пропускал endpoint через `if (!requiredRoles) return true`.
+- **TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → exit 0.
+- **Открытые тикеты:** `[SEC-003]` HIGH-02, `[SEC-005..SEC-012]` MED+LOW — список в logs.md, фиксы вне скоупа этой сессии.
+
+---
+
+## 2026-05-04 (параллельная сессия, web design audit) — Дизайн-аудит web-buyer + web-seller
+
+### ✅ [WEB-DESIGN-AUDIT-001] Аудит web-buyer + web-seller по 5 критериям (контраст WCAG AA, hit-area 44pt, hierarchy, 4px-grid, a11y) 📋
+
+- **Важность:** 🟡 audit-only (фиксы — отдельным PR, после согласия Полата; зона Азима по `CLAUDE.md`)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `analiz/web-design-audit-001.md` — полный отчёт с findings и приоритезацией.
+  - `analiz/logs.md` — pointer-запись.
+  - Obsidian: `D:/Obsidian Vault/PROJECTS/savdo-builder/_ideas.md`.
+- **Найдено:** P0 (mobile UX broken) — hit-area в web-buyer: BottomNavBar ≈40px, Header.NavIconLink 36×36, ProductPage back/share 36×36, cart +/− 28×28, image-dots 8×8 (всё ниже 44pt); `prefers-reduced-motion` отсутствует в globals.css обоих апп. P1 — `textDim` ниже AA в обоих темах (~3.0–4.2:1, сотни вхождений); `success #16A34A` на light bg ~3.4:1. P2 — aria-label на ±/dots/inline-confirm, `role="dialog"` + focus-trap в `OrdersPage.CancelModal`, `<nav aria-label>` в seller sidebar.
+- **Архитектура:** `packages/ui/tokens/colors.ts` содержит 4 неиспользуемые палитры (variantA-D), активные токены живут в `lib/styles.ts` каждого апп — рассинхрон.
+- **НЕ сделано:** код не правил, dev-сервер не запускал, axe-core/Lighthouse — нужен браузер.
+- **Ждёт от Полата:** согласие на (1) рост BottomNav 64→76px, (2) правку tokens одной таблицей, (3) подтверждение что web-* можно фиксить самому, не ждать Азима.
+
+---
+
 ## 2026-05-04 (параллельная сессия, DB audit) — Аудит Prisma schema + миграций
 
 ### ✅ [DB-AUDIT-001] Аудит `packages/db/prisma/schema.prisma` + 18 миграций 📋
