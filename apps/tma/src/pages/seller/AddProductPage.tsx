@@ -97,17 +97,32 @@ export default function AddProductPage() {
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(() => navigate('/seller/products')); };
   }, [navigate, tg]);
 
+  const catsAbortRef = useRef<AbortController | null>(null);
+  const filtersAbortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
-    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
+    catsAbortRef.current?.abort();
+    const ac = new AbortController();
+    catsAbortRef.current = ac;
+    api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setCategories(c); })
+      .catch(() => {});
     // Используем дерево с level/isLeaf/iconEmoji для cascade-modal
-    api<GlobalCategory[]>('/storefront/categories/tree').then(setGlobalCategories).catch(() => {
-      // Fallback: если эндпоинта нет (старая api версия) — обычный flat список
-      api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
-    });
+    api<GlobalCategory[]>('/storefront/categories/tree', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
+      .catch(() => {
+        if (ac.signal.aborted) return;
+        // Fallback: если эндпоинта нет (старая api версия) — обычный flat список
+        api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+          .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
+          .catch(() => {});
+      });
+    return () => ac.abort();
   }, []);
 
   // При выборе типа товара — загружаем характеристики этой категории
   useEffect(() => {
+    filtersAbortRef.current?.abort();
     if (!globalCategoryId) {
       setCategoryFilters([]);
       setAttrValues({});
@@ -115,9 +130,12 @@ export default function AddProductPage() {
     }
     const cat = globalCategories.find((c) => c.id === globalCategoryId);
     if (!cat?.slug) return;
-    api<CategoryFilter[]>(`/storefront/categories/${cat.slug}/filters`)
-      .then(setCategoryFilters)
-      .catch(() => setCategoryFilters([]));
+    const ac = new AbortController();
+    filtersAbortRef.current = ac;
+    api<CategoryFilter[]>(`/storefront/categories/${cat.slug}/filters`, { signal: ac.signal })
+      .then((f) => { if (!ac.signal.aborted) setCategoryFilters(f); })
+      .catch(() => { if (!ac.signal.aborted) setCategoryFilters([]); });
+    return () => ac.abort();
   }, [globalCategoryId, globalCategories]);
 
   const inputStyle = {

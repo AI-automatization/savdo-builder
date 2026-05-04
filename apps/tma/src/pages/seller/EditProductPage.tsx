@@ -122,12 +122,16 @@ export default function EditProductPage() {
     setTimeout(() => setToast(''), 2500);
   };
 
-  const load = useCallback(async () => {
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const catsAbortRef = useRef<AbortController | null>(null);
+
+  const load = useCallback(async (signal?: AbortSignal) => {
     if (!id) return;
     setLoading(true);
     setLoadError('');
     try {
-      const p = await api<Product>(`/seller/products/${id}`);
+      const p = await api<Product>(`/seller/products/${id}`, { signal });
+      if (signal?.aborted) return;
       setProduct(p);
       setTitle(p.title);
       setDescription(p.description ?? '');
@@ -141,25 +145,38 @@ export default function EditProductPage() {
         setStockEdits(initial);
       }
       // Load attributes
-      api<ProductAttr[]>(`/seller/products/${id}/attributes`).then(setAttrs).catch(() => {});
+      api<ProductAttr[]>(`/seller/products/${id}/attributes`, { signal })
+        .then((a) => { if (!signal?.aborted) setAttrs(a); })
+        .catch(() => {});
     } catch {
-      setLoadError('Не удалось загрузить товар');
+      if (!signal?.aborted) setLoadError('Не удалось загрузить товар');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    load();
+    loadAbortRef.current?.abort();
+    const ac = new AbortController();
+    loadAbortRef.current = ac;
+    load(ac.signal);
     tg?.BackButton.show();
     const goBack = () => navigate('/seller/products');
     tg?.BackButton.onClick(goBack);
-    return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
+    return () => { ac.abort(); tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [load, navigate, tg]);
 
   useEffect(() => {
-    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    catsAbortRef.current?.abort();
+    const ac = new AbortController();
+    catsAbortRef.current = ac;
+    api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setCategories(c); })
+      .catch(() => {});
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
+      .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   // Показать ошибку фото переданную из AddProductPage
@@ -489,7 +506,16 @@ export default function EditProductPage() {
         {!loading && loadError && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{loadError}</p>
-            <Button variant="ghost" className="mt-3" onClick={load}>Повторить</Button>
+            <Button
+              variant="ghost"
+              className="mt-3"
+              onClick={() => {
+                loadAbortRef.current?.abort();
+                const ac = new AbortController();
+                loadAbortRef.current = ac;
+                load(ac.signal);
+              }}
+            >Повторить</Button>
           </GlassCard>
         )}
 

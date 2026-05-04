@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -49,14 +49,19 @@ export default function DashboardPage() {
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
     setLoading(true);
 
     // Promise.allSettled — не падает если один из запросов вернул ошибку
     Promise.allSettled([
-      api<PagedResponse<Order>>('/seller/orders?limit=5'),
-      api<{ products: unknown[]; total: number }>('/seller/products?limit=1'),
+      api<PagedResponse<Order>>('/seller/orders?limit=5', { signal: ac.signal, forceFresh: true }),
+      api<{ products: unknown[]; total: number }>('/seller/products?limit=1', { signal: ac.signal }),
     ]).then(([ordersResult, productsResult]) => {
+      if (ac.signal.aborted) return;
       if (ordersResult.status === 'fulfilled') {
         setOrders(ordersResult.value.data ?? []);
         setOrderCount(ordersResult.value.meta?.total ?? 0);
@@ -64,7 +69,9 @@ export default function DashboardPage() {
       if (productsResult.status === 'fulfilled') {
         setProductCount(productsResult.value.total ?? 0);
       }
-    }).finally(() => setLoading(false));
+    }).finally(() => { if (!ac.signal.aborted) setLoading(false); });
+
+    return () => ac.abort();
   }, [authVersion]);
 
   const pendingCount = orderCount != null

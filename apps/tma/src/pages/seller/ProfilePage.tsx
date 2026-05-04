@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -24,10 +24,15 @@ export default function SellerProfilePage() {
   const navigate = useNavigate();
   const [store, setStore] = useState<Store | null>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    api<Store>('/seller/store')
-      .then((s) => setStore(s))
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    api<Store>('/seller/store', { signal: ac.signal })
+      .then((s) => { if (!ac.signal.aborted) setStore(s); })
       .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   const handleLogout = () => {
