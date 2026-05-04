@@ -1,5 +1,24 @@
 # Done — Азим + Полат
 
+## 2026-05-04 (параллельная сессия, DB audit) — Аудит Prisma schema + миграций
+
+### ✅ [DB-AUDIT-001] Аудит `packages/db/prisma/schema.prisma` + 18 миграций 📋
+
+- **Важность:** 🟡 audit-only (фиксы — отдельным PR, миграциями, после согласия Полата)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `analiz/logs.md` — полный отчёт `DB-AUDIT-001` с разбивкой P1/P2/P3 и action items.
+- **Что сделано:** ручной обход schema + миграций + cross-check с API кодом (`apps/api/src/modules/**/repositories`). Проверены: ON DELETE FK, composite indexes на горячих запросах (Product feed, Order, ChatMessage, ProductImage), missing `@unique`, согласованность enum'ов, фильтрация `deletedAt: null`.
+- **Найдено:**
+  - **P1 (2):** 7 таблиц с `userId` без FK на User (orphan-риск); `ChatThread.status` рассинхрон — schema default `'active'`, код пишет `'OPEN'/'CLOSED'`.
+  - **P2 (5):** нет composite индексов для public Product feed, `Order(storeId,status,placedAt DESC)`, `ChatMessage(threadId,createdAt DESC)`, `ProductImage(productId,sortOrder)`; `deletedAt: null` пропущен в ~12 местах (Store/Product) — `postProductToChannel` бота может опубликовать удалённый товар в TG-канал.
+  - **P2 design (1):** TEXT-поля кандидаты на enum (`Cart.status`, `OrderRefund.status`, `AdminUser.adminRole`, `ChatMessage.messageType`, Moderation*).
+  - **P3 (2):** `CartItem.productId CASCADE` (семантически SetNull), `User.referredBy` без self-FK.
+- **НЕ менял:** `schema.prisma`, миграций не создавал, `prisma migrate dev` не запускал, чужие файлы параллельной TMA-design сессии не трогал.
+- **Action items для Полата:** см. в конце `[DB-AUDIT-001]` в `analiz/logs.md` (приоритизированный список из 6 пунктов).
+
+---
+
 ## 2026-05-04 (параллельная сессия, TMA design pass) — WCAG AA + 44pt hit-area + a11y emoji
 
 ### ✅ [TMA-DESIGN-P0P1-001] P0 + P1 фиксы из DESIGN-AUDIT-TMA-001 🟠

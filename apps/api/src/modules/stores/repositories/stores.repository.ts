@@ -5,23 +5,25 @@ import { PrismaService } from '../../../database/prisma.service';
 export class StoresRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Все find* теперь фильтруют deletedAt: null чтобы soft-deleted магазины
+  // не лились в storefront/seller dashboard/admin/TG-bot. См. DB-AUDIT-001-07.
   async findBySellerId(sellerId: string) {
-    return this.prisma.store.findUnique({
-      where: { sellerId },
+    return this.prisma.store.findFirst({
+      where: { sellerId, deletedAt: null },
       include: { deliverySettings: true, contacts: true },
     });
   }
 
   async findById(id: string) {
-    return this.prisma.store.findUnique({
-      where: { id },
+    return this.prisma.store.findFirst({
+      where: { id, deletedAt: null },
       include: { seller: true, deliverySettings: true, contacts: true },
     });
   }
 
   async findBySlug(slug: string) {
-    return this.prisma.store.findUnique({
-      where: { slug },
+    return this.prisma.store.findFirst({
+      where: { slug, deletedAt: null },
       include: {
         deliverySettings: true,
         contacts: true,
