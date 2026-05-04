@@ -107,25 +107,27 @@ export function ProductCard({ product }: { product: FeedProduct }) {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
           <p style={{
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.35)',
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.50)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            maxWidth: 'calc(100% - 34px)',
+            maxWidth: 'calc(100% - 52px)',
           }}>
-            🏪 {product.store.name}
+            <span aria-hidden="true">🏪</span> {product.store.name}
           </p>
           <button
             onClick={addToCart}
+            aria-label="Добавить в корзину"
             style={{
-              width: 26,
-              height: 26,
-              borderRadius: 8,
+              width: 44,
+              height: 44,
+              borderRadius: 12,
               background: 'rgba(168,85,247,0.25)',
               border: '1px solid rgba(168,85,247,0.40)',
               color: '#A855F7',
-              fontSize: 16,
+              fontSize: 22,
+              fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

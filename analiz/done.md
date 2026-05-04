@@ -1,5 +1,48 @@
 # Done — Азим + Полат
 
+## 2026-05-04 (параллельная сессия, TMA design pass) — WCAG AA + 44pt hit-area + a11y emoji
+
+### ✅ [TMA-DESIGN-P0P1-001] P0 + P1 фиксы из DESIGN-AUDIT-TMA-001 🟠
+
+- **Важность:** 🟠 P1 (один P0 «#1 BottomNav контраст» — релиз-блокер)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `apps/tma/src/components/layout/BottomNav.tsx` — inactive label color `rgba(255,255,255,0.28)` → `0.50` (WCAG AA), `aria-hidden="true"` на иконке.
+  - `apps/tma/src/components/ui/ProductCard.tsx` — Add-to-cart `+` 26×26 → 44×44, `aria-label`, `🏪` теперь `aria-hidden`, meta-текст 10px → 12px (`text-xs`) c opacity 0.50.
+  - `apps/tma/src/pages/buyer/StorePage.tsx` — Add-to-cart `+` 32×32 → 44×44 (`w-11 h-11`), `aria-label`, `aria-hidden` на 😕/📭.
+  - `apps/tma/src/pages/buyer/ChatPage.tsx` — back `‹` 32×32 → 44×44, `aria-label`, status badge OPEN/CLOSED с иконкой ✓/🔒, opacity 0.35 → 0.50, text-[11px] → text-xs у meta-инфы (lastMessage, дата), aria-hidden на 💬/💬/💬.
+  - `apps/tma/src/pages/seller/ChatPage.tsx` — back `‹` 32×32 → 44×44, `aria-label`, status badge OPEN/CLOSED с иконкой ✓/🔒, text-[11px] → text-xs у meta-инфы (lastMessage, дата, «Покупатель»), aria-hidden на ⚠️/💬/💬.
+- **Что сделано:** Применены P0 (контраст BottomNav, hit-area Add-to-cart + back) и P1 (decorative emoji aria-hidden, status-only badges с иконкой, мелкий low-contrast meta-текст → 12px с opacity ≥0.45) из аудита `[DESIGN-AUDIT-TMA-001]` в `analiz/logs.md`.
+- **Не трогал:** `apps/tma/src/lib/api.ts` (fetch-слой), `apps/tma/src/pages/{buyer,seller}/StorePage.tsx` блок webStoreUrl/webStoreLabel (только что сделано Полатом), все seller-страницы кроме ChatPage (параллельная сессия делает perf-pass).
+- **Type check:** `cd apps/tma && npx tsc -b --noEmit` → 0 ошибок в моих файлах.
+
+---
+
+## 2026-05-04 (параллельная сессия) — TMA seller fetch-слой: AbortController + per-endpoint cache discipline
+
+### ✅ [WEB-TMA-SELLER-PERF-001] AbortController + prefetch во всех seller-страницах TMA 🟡
+
+- **Файлы (8 из 9):**
+  - `apps/tma/src/pages/seller/DashboardPage.tsx`
+  - `apps/tma/src/pages/seller/ProductsPage.tsx`
+  - `apps/tma/src/pages/seller/OrdersPage.tsx`
+  - `apps/tma/src/pages/seller/StorePage.tsx`
+  - `apps/tma/src/pages/seller/SettingsPage.tsx`
+  - `apps/tma/src/pages/seller/ProfilePage.tsx`
+  - `apps/tma/src/pages/seller/EditProductPage.tsx`
+  - `apps/tma/src/pages/seller/AddProductPage.tsx`
+- **Что сделано:**
+  - В каждом `useEffect` который дёргает `api()` создаётся `AbortController`, signal передаётся в `api()` через `opts.signal`. На return useEffect — `ac.abort()`.
+  - Все then/catch/finally проверяют `ac.signal.aborted` ДО вызова setState — больше нет state-обновлений на размонтированном компоненте.
+  - `OrdersPage` и `DashboardPage` (`/seller/orders`, `/seller/orders/:id`) — `forceFresh: true`, статусы заказов меняются быстро.
+  - `ProductsPage` — `prefetch` на `onPointerEnter` карточек: `/seller/products/:id` + `/seller/products/:id/attributes`. Когда продавец навёл курсор/тапнул — товар уже в кэше к моменту навигации в редактор.
+  - "Повторить" кнопки (ProductsPage, EditProductPage, StorePage) пересоздают AbortController вместо игнорирования предыдущего fetch'а.
+- **Не сделано:** `apps/tma/src/pages/seller/ChatPage.tsx` — параллельная сессия активно работает над ним по `TMA-DESIGN-P0P1-001` (hit-area back-кнопки 44px, aria-hidden на decorative emoji, контраст inactive labels). Чтобы не воровать чужой коммит, ChatPage пропущен. Откроем как `TMA-SELLER-CHAT-PERF-001` (см. tasks.md).
+- **UI/визуал не менялся** — только fetch-слой.
+- **Type check:** `npx tsc --noEmit` в `apps/tma` → 0 ошибок.
+
+---
+
 ## 2026-05-02 (сессия 45 финал, Полат) — Content-Security-Policy на web-buyer + web-seller
 
 ### ✅ [WEB-CSP-HEADER-002] CSP headers на обоих веб-апах 🟢

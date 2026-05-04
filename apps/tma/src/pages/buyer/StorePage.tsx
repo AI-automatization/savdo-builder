@@ -135,7 +135,7 @@ export default function StorePage() {
     return (
       
         <div className="flex flex-col items-center gap-3 py-16">
-          <span style={{ fontSize: 40 }}>😕</span>
+          <span aria-hidden="true" style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
           <button onClick={() => navigate('/buyer')} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
         </div>
@@ -214,7 +214,7 @@ export default function StorePage() {
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
-            <span style={{ fontSize: 36 }}>📭</span>
+            <span aria-hidden="true" style={{ fontSize: 36 }}>📭</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
               {activeCat ? 'Нет товаров в этой категории' : 'Товаров пока нет'}
             </p>
@@ -244,7 +244,8 @@ export default function StorePage() {
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold"
+                  aria-label="Добавить в корзину"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold"
                   style={{ background: 'rgba(167,139,250,0.25)', border: '1px solid rgba(167,139,250,0.35)', color: '#A855F7' }}
                 >
                   +
