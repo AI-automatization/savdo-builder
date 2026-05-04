@@ -1,6 +1,6 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, prefetch } from '@/lib/api';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -49,25 +49,31 @@ export default function SellerProductsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const load = useCallback(() => {
+  const abortRef = useRef<AbortController | null>(null);
+  const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
     Promise.all([
-      api<{ products: Product[]; total: number }>('/seller/products?limit=50'),
-      api<StoreCategory[]>('/seller/categories'),
+      api<{ products: Product[]; total: number }>('/seller/products?limit=50', { signal }),
+      api<StoreCategory[]>('/seller/categories', { signal }),
     ])
       .then(([res, cats]) => {
+        if (signal?.aborted) return;
         setProducts(res?.products ?? []);
         setCategories(cats ?? []);
       })
-      .catch(() => setError('Не удалось загрузить товары'))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!signal?.aborted) setError('Не удалось загрузить товары'); })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
   }, []);
 
   useEffect(() => {
-    load();
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    load(ac.signal);
     tg?.BackButton.show();
-    tg?.BackButton.onClick(() => navigate('/seller'));
-    return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(() => navigate('/seller')); };
+    const goBack = () => navigate('/seller');
+    tg?.BackButton.onClick(goBack);
+    return () => { ac.abort(); tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [load, navigate, tg, authVersion]);
 
   const toggleStatus = async (product: Product) => {
@@ -208,7 +214,7 @@ export default function SellerProductsPage() {
         {!loading && error && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{error}</p>
-            <Button variant="ghost" className="mt-3" onClick={load}>Повторить</Button>
+            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>Повторить</Button>
           </GlassCard>
         )}
 
@@ -241,6 +247,10 @@ export default function SellerProductsPage() {
                   key={product.id}
                   className="p-3 flex flex-col gap-2 cursor-pointer active:opacity-70"
                   onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                  onPointerEnter={() => {
+                    prefetch(`/seller/products/${product.id}`);
+                    prefetch(`/seller/products/${product.id}/attributes`);
+                  }}
                 >
                   <div className="w-full aspect-square rounded-xl overflow-hidden relative"
                     style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.18)' }}>
@@ -331,6 +341,10 @@ export default function SellerProductsPage() {
               key={product.id}
               className="p-4 flex items-center gap-3 cursor-pointer active:opacity-70"
               onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+              onPointerEnter={() => {
+                prefetch(`/seller/products/${product.id}`);
+                prefetch(`/seller/products/${product.id}/attributes`);
+              }}
             >
               <div
                 className="w-10 h-10 rounded-xl shrink-0 overflow-hidden"

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -125,24 +125,37 @@ export default function SellerOrdersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
 
+  const ordersAbortRef = useRef<AbortController | null>(null);
+  const detailAbortRef = useRef<AbortController | null>(null);
+
   const fetchOrders = () => {
+    ordersAbortRef.current?.abort();
+    const ac = new AbortController();
+    ordersAbortRef.current = ac;
     setError(false);
-    api<{ data: Order[] }>('/seller/orders')
-      .then((r) => setOrders(r.data ?? []))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    // forceFresh: заказы быстро меняются — статусы, новые поступления.
+    api<{ data: Order[] }>('/seller/orders', { signal: ac.signal, forceFresh: true })
+      .then((r) => { if (!ac.signal.aborted) setOrders(r.data ?? []); })
+      .catch(() => { if (!ac.signal.aborted) setError(true); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => {
+    fetchOrders();
+    return () => ordersAbortRef.current?.abort();
+  }, []);
 
   const openDetail = (orderId: string) => {
+    detailAbortRef.current?.abort();
+    const ac = new AbortController();
+    detailAbortRef.current = ac;
     setDetailId(orderId);
     setDetail(null);
     setDetailLoading(true);
-    api<OrderDetail>(`/seller/orders/${orderId}`)
-      .then(setDetail)
+    api<OrderDetail>(`/seller/orders/${orderId}`, { signal: ac.signal, forceFresh: true })
+      .then((d) => { if (!ac.signal.aborted) setDetail(d); })
       .catch(() => {})
-      .finally(() => setDetailLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setDetailLoading(false); });
   };
 
   const changeStatus = async (orderId: string, newStatus: string) => {
