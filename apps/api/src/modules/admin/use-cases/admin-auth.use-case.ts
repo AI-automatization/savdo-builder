@@ -1,6 +1,7 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
-// otplib has CJS exports — import from the preset entry point
-// (see: https://github.com/yeojz/otplib#installation)
+// otplib v12 API (authenticator.options/generateSecret/keyuri/verify).
+// В package.json downgrade с ^13.4.0 на ^12.0.1 — v13 убрал
+// `authenticator` namespace и сломал production старт api.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const otplib = require('otplib') as { authenticator: { options: any; generateSecret: () => string; keyuri: (a: string, i: string, s: string) => string; verify: (o: { token: string; secret: string }) => boolean } };
 const authenticator = otplib.authenticator;
