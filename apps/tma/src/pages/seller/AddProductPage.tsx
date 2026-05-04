@@ -83,6 +83,9 @@ export default function AddProductPage() {
   const [globalCategoryId, setGlobalCategoryId]   = useState<string>('');
   const [categoryFilters, setCategoryFilters] = useState<CategoryFilter[]>([]);
   const [attrValues, setAttrValues] = useState<Record<string, string | boolean>>({});
+  // TMA-DYNAMIC-VARIANT-FILTERS-001: multi_select поля категории формируют
+  // ProductOptionGroup + ProductVariant matrix. Map: filterKey → { selectedValues, stockByValue }.
+  const [variantOptions, setVariantOptions] = useState<Record<string, { selected: string[]; stock: Record<string, number> }>>({});
   const [attrs, setAttrs] = useState<AttrRow[]>([]);
   const [attrName, setAttrName] = useState('');
   const [attrValue, setAttrValue] = useState('');
@@ -127,6 +130,7 @@ export default function AddProductPage() {
     if (!globalCategoryId) {
       setCategoryFilters([]);
       setAttrValues({});
+      setVariantOptions({});
       return;
     }
     const cat = globalCategories.find((c) => c.id === globalCategoryId);
@@ -150,19 +154,30 @@ export default function AddProductPage() {
     borderRadius: 12,
   } as const;
 
+  // Категория имеет multi_select поля → они сами формируют варианты с
+  // запасом per option. Хардкод-toggle "Товар с размерами" в этом случае
+  // скрыт чтобы не дублировать (TMA-DYNAMIC-VARIANT-FILTERS-001).
+  const multiSelectFilters = categoryFilters.filter((f) => f.fieldType === 'multi_select');
+  const hasDynamicVariants = multiSelectFilters.some(
+    (f) => (variantOptions[f.key]?.selected.length ?? 0) > 0,
+  );
+
   // Required-характеристики типа товара должны быть заполнены
   const missingRequiredFilters = categoryFilters
     .filter((f) => f.isRequired)
     .filter((f) => {
-      const v = attrValues[f.key];
       if (f.fieldType === 'boolean') return false; // boolean всегда есть
+      if (f.fieldType === 'multi_select') {
+        return (variantOptions[f.key]?.selected.length ?? 0) === 0;
+      }
+      const v = attrValues[f.key];
       return v === undefined || v === '' || v === null;
     });
 
   const isValid = title.trim().length >= 2 && Number(price) > 0 &&
     !!globalCategoryId &&
     missingRequiredFilters.length === 0 &&
-    (!hasSizes || sizes.length > 0);
+    (hasDynamicVariants || !hasSizes || sizes.length > 0);
 
   const addSize = () => {
     const label = sizeInput.trim().toUpperCase();
@@ -254,15 +269,76 @@ export default function AddProductPage() {
       const pid = product.id;
       const sku = slugify(title);
 
-      if (hasSizes && sizes.length > 0) {
-        // 2а. Создать группу "Размер"
+      if (hasDynamicVariants) {
+        // 2а. Динамические варианты из multi_select полей категории
+        // (TMA-DYNAMIC-VARIANT-FILTERS-001). Поддерживаем несколько групп
+        // (если категория имеет 2+ multi_select — Размер × Цвет = matrix).
+        const activeGroups = multiSelectFilters
+          .filter((f) => (variantOptions[f.key]?.selected.length ?? 0) > 0);
+
+        // Создаём группы и значения параллельно (для одной группы — порядок
+        // сохраняется через sortOrder).
+        const groupValueMap: Record<string, { groupId: string; valueIds: Record<string, string> }> = {};
+        for (let g = 0; g < activeGroups.length; g++) {
+          const f = activeGroups[g];
+          const group = await api<{ id: string }>(`/seller/products/${pid}/option-groups`, {
+            method: 'POST',
+            body: { name: f.nameRu, code: f.key, sortOrder: g },
+          });
+          const valueIds: Record<string, string> = {};
+          const sel = variantOptions[f.key].selected;
+          for (let i = 0; i < sel.length; i++) {
+            const opt = sel[i];
+            const val = await api<{ id: string }>(`/seller/products/${pid}/option-groups/${group.id}/values`, {
+              method: 'POST',
+              body: { value: opt, code: opt, sortOrder: i },
+            });
+            valueIds[opt] = val.id;
+          }
+          groupValueMap[f.key] = { groupId: group.id, valueIds };
+        }
+
+        // Cartesian product: создаём по варианту на каждую комбинацию.
+        // Для одной группы — стандарт (один опшн на вариант).
+        // Для двух групп — каждая комбинация делит общий stock пополам поровну
+        // как fallback (точная matrix-разбивка stock — отдельная UI задача).
+        function cartesian(keys: string[]): string[][] {
+          if (keys.length === 0) return [[]];
+          const [first, ...rest] = keys;
+          const sub = cartesian(rest);
+          return variantOptions[first].selected.flatMap((v) =>
+            sub.map((tail) => [v, ...tail]),
+          );
+        }
+        const groupKeys = activeGroups.map((f) => f.key);
+        const combinations = cartesian(groupKeys);
+
+        for (let i = 0; i < combinations.length; i++) {
+          const combo = combinations[i];
+          // stock: для одной группы берём stock конкретной option; для нескольких
+          // распределяем equally — продавец потом доуточнит в EditProductPage.
+          const stockQuantity = combo.length === 1
+            ? (variantOptions[activeGroups[0].key].stock[combo[0]] ?? 0)
+            : Math.floor(
+                combo.reduce((sum, v, idx) => sum + (variantOptions[activeGroups[idx].key].stock[v] ?? 0), 0)
+                / combo.length,
+              );
+          const optionValueIds = combo.map((v, idx) => groupValueMap[activeGroups[idx].key].valueIds[v]);
+          const variantSku = `${sku}-${combo.join('-')}`;
+          await api(`/seller/products/${pid}/variants`, {
+            method: 'POST',
+            body: { sku: variantSku, stockQuantity, optionValueIds },
+          });
+        }
+      } else if (hasSizes && sizes.length > 0) {
+        // 2а (legacy). Хардкод-блок "Товар с размерами" — fallback если в
+        // категории нет multi_select. Будет удалён после миграции seed на
+        // CategoryFilter с multi_select для всех категорий с размерами.
         const group = await api<{ id: string }>(`/seller/products/${pid}/option-groups`, {
           method: 'POST',
           body: { name: 'Размер', code: 'size', sortOrder: 0 },
         });
         const gid = group.id;
-
-        // 2б. Создать значения и варианты
         for (let i = 0; i < sizes.length; i++) {
           const sz = sizes[i];
           const val = await api<{ id: string }>(`/seller/products/${pid}/option-groups/${gid}/values`, {
@@ -279,7 +355,7 @@ export default function AddProductPage() {
           });
         }
       } else {
-        // 2б. Простой вариант без размеров
+        // 2б. Простой вариант без вариативности
         await api(`/seller/products/${pid}/variants`, {
           method: 'POST',
           body: { sku, stockQuantity: Math.max(0, Number(stock) || 0) },
@@ -497,6 +573,90 @@ export default function AddProductPage() {
                     placeholder={f.unit ? `например 32 ${f.unit}` : ''}
                     style={{ ...inputStyle, padding: '10px 14px', fontSize: 13 }}
                   />
+                ) : f.fieldType === 'multi_select' && f.options ? (
+                  // Несколько значений = варианты товара. Показываем chips-выбор +
+                  // под ним блок «Остаток по {nameRu}» с input на каждое выбранное.
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      Отметьте все варианты которые есть в наличии
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {f.options.map((opt) => {
+                        const cur = variantOptions[f.key];
+                        const active = cur?.selected.includes(opt) ?? false;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              setVariantOptions((prev) => {
+                                const cur = prev[f.key] ?? { selected: [], stock: {} };
+                                const isOn = cur.selected.includes(opt);
+                                const nextSel = isOn
+                                  ? cur.selected.filter((s) => s !== opt)
+                                  : [...cur.selected, opt];
+                                const nextStock = { ...cur.stock };
+                                if (isOn) delete nextStock[opt]; else nextStock[opt] ??= 0;
+                                return { ...prev, [f.key]: { selected: nextSel, stock: nextStock } };
+                              });
+                            }}
+                            style={{
+                              minHeight: 36,
+                              padding: '6px 12px',
+                              borderRadius: 10,
+                              border: `1px solid ${active ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
+                              background: active ? 'rgba(167,139,250,0.20)' : 'rgba(255,255,255,0.05)',
+                              color: active ? '#A855F7' : 'rgba(255,255,255,0.70)',
+                              fontSize: 13,
+                              fontWeight: active ? 600 : 500,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {opt}{f.unit ? ` ${f.unit}` : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(variantOptions[f.key]?.selected.length ?? 0) > 0 && (
+                      <div className="flex flex-col gap-1.5 mt-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          Остаток по {f.nameRu.toLowerCase()}
+                        </p>
+                        {variantOptions[f.key].selected.map((opt) => (
+                          <div key={opt} className="flex items-center gap-2">
+                            <div
+                              className="flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{
+                                minWidth: 44, height: 36, padding: '0 8px', borderRadius: 8,
+                                background: 'rgba(167,139,250,0.15)',
+                                border: '1px solid rgba(167,139,250,0.25)',
+                                color: '#A855F7',
+                              }}
+                            >
+                              {opt}{f.unit ? ` ${f.unit}` : ''}
+                            </div>
+                            <input
+                              inputMode="numeric"
+                              value={variantOptions[f.key].stock[opt] || ''}
+                              onChange={(e) => {
+                                const n = Math.max(0, Number(e.target.value) || 0);
+                                setVariantOptions((prev) => ({
+                                  ...prev,
+                                  [f.key]: {
+                                    ...prev[f.key],
+                                    stock: { ...prev[f.key].stock, [opt]: n },
+                                  },
+                                }));
+                              }}
+                              placeholder="0"
+                              style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+                            />
+                            <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <input
                     value={String(attrValues[f.key] ?? '')}
@@ -635,7 +795,9 @@ export default function AddProductPage() {
           />
         </GlassCard>
 
-        {/* Остаток / размеры */}
+        {/* Остаток / размеры. Показываем только если категория НЕ предоставляет
+            multi_select-фильтры (тогда варианты строятся динамически выше). */}
+        {multiSelectFilters.length === 0 && (
         <GlassCard className="p-4 flex flex-col gap-4">
           {/* Переключатель размеров */}
           <button
@@ -753,6 +915,7 @@ export default function AddProductPage() {
             </div>
           )}
         </GlassCard>
+        )}
 
         {error && (
           <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 13, textAlign: 'center' }}>{error}</p>
