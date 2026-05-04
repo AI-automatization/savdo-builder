@@ -132,6 +132,7 @@ model User {
   pushSubscriptions      PushSubscription[]
   notificationLogs       NotificationLog[]
   orderStatusHistory     OrderStatusHistory[]
+  analyticsEvents        AnalyticsEvent[]
 
   @@index([role])
   @@index([status])
@@ -997,6 +998,10 @@ model AnalyticsEvent {
   eventPayload Json    @default("{}")
   sessionKey  String?
   createdAt   DateTime @default(now())
+
+  // DB-AUDIT-001-01 phase 2: SetNull чтобы analytics-история сохранялась
+  // даже после удаления юзера (snapshot remains).
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([actorUserId])
   @@index([storeId])
