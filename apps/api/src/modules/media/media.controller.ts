@@ -16,6 +16,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -59,6 +60,7 @@ export class MediaController {
   /** Direct multipart upload → stored in Telegram channel */
   @Post('upload')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } }) // защита от bandwidth-spam
   @UseInterceptors(FileInterceptor('file'))
   async uploadFileDirect(
     @CurrentUser() user: JwtPayload,
