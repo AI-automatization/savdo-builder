@@ -8,6 +8,44 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-04 [TMA-PHOTO-UPLOAD-DIAG-001] Корень «фото не грузит» — APP_URL не валидировался
+
+- **Статус:** 🟡 Частично исправлено (env validation добавлено), нужна правка на Railway.
+- **Симптом (Полат, прод):** «хули фото не грузит». Загрузка проходит, но на витрине магазина / списке товаров фото не отображаются.
+- **Корень (через код-ревью):**
+  1. `apps/api/src/config/env.validation.ts` НЕ требовал `APP_URL`. Если переменная не выставлена на Railway → `process.env.APP_URL` = undefined → пустая строка.
+  2. `products.controller.ts:773 resolveImageUrl` для tg-bucket: `${appUrl}/api/v1/media/proxy/${id}`. При appUrl='' → начинается с `/api/...` — relative path. На TMA-домене `savdo-tma.up.railway.app` относительный путь резолвится в `https://savdo-tma.up.railway.app/api/v1/media/proxy/...` → 404 (нет такого маршрута на TMA static-сервере).
+  3. Аналогично для R2: если `STORAGE_PUBLIC_URL` пуст и `APP_URL` пуст → fallback тоже пустую строку даёт.
+  4. `TELEGRAM_STORAGE_CHANNEL_ID` тоже не валидировался — silent failure если бот не настроен.
+- **Что сделано (PR):**
+  - `env.validation.ts`: `APP_URL` теперь `Joi.string().uri().required()` — сервер не стартует без этой переменной (защита от silent fail).
+  - `TELEGRAM_STORAGE_CHANNEL_ID` и `TMA_URL` добавлены как optional в validation — для observability.
+- **Что нужно от Полата на Railway api сервисе:**
+  - `APP_URL=https://savdo-api-production.up.railway.app` (или кастомный домен).
+  - `TELEGRAM_STORAGE_CHANNEL_ID=-100xxxxxxxxxx` (числовой chat_id канала). Бот должен быть админом канала с правом «Публикация сообщений».
+  - `STORAGE_PUBLIC_URL=https://...` если используется R2/Supabase Storage.
+- **После выставления:** контейнер перезапустится → фото из TG-storage будут идти через `https://savdo-api.../api/v1/media/proxy/{id}` (полный URL, работает с любого домена).
+
+---
+
+## 2026-05-04 [TMA-DYNAMIC-VARIANT-FILTERS-001] CategoryFilter seed для активации multi_select на проде
+
+- **Статус:** ✅ Создан seed-script, ожидает запуска на Railway.
+- **Контекст:** Коммит `3559cfc` дал TMA UI для multi_select полей CategoryFilter. Но на проде в `category_filters` нет записей — фича пустая для всех продавцов.
+- **Что сделано:** `packages/db/prisma/seed-category-filters.ts` с 32 фильтрами:
+  - Одежда (мужская/женская/детская): Размер MULTI_SELECT, Цвет MULTI_SELECT, Бренд TEXT.
+  - Обувь: Размер EU MULTI_SELECT (36-46), Цвет, Бренд.
+  - Ноутбуки: Бренд SELECT, RAM SELECT, Накопитель SELECT, Диагональ NUMBER, Цвет MULTI_SELECT.
+  - Телефоны / Смартфоны / Планшеты: Бренд SELECT, Память MULTI_SELECT, Цвет MULTI_SELECT.
+  - Телевизоры: Бренд SELECT, Диагональ NUMBER, Разрешение SELECT.
+  - Холодильники / Стиральные машины: Бренд SELECT, Объём/Загрузка NUMBER.
+  - Аксессуары: Цвет, Бренд.
+- Idempotent (upsert), пропускает если категория не найдена.
+- **Команда:** `pnpm --filter db seed:filters` — добавлено в package.json.
+- **Деплой:** запустить вручную на Railway api shell после применения миграций (`pnpm db:migrate:deploy`). Не вписывать в auto-startup, чтобы не падал контейнер если seed имеет ошибку.
+
+---
+
 ## 2026-05-04 [SESSION-DONE] Параллельная сессия #2 (TMA-DESIGN-P0P1-001) — закончила работу
 
 - **Статус:** ✅ Готово, задеплоено в `tma`.
