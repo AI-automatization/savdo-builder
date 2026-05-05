@@ -22,7 +22,7 @@ export default function Header() {
 
   return (
     <header
-      className="sticky top-0 z-40 px-4 py-2.5"
+      className="sticky top-0 z-40 px-4 py-3"
       style={{
         background: colors.surface,
         borderBottom: `1px solid ${colors.divider}`,
@@ -32,7 +32,7 @@ export default function Header() {
         {/* Logo */}
         <Link
           href={slug ? `/${slug}` : "/"}
-          className="text-lg font-bold flex-shrink-0"
+          className="text-lg font-bold tracking-tight flex-shrink-0"
           style={{ color: colors.brand }}
         >
           Savdo
@@ -40,15 +40,15 @@ export default function Header() {
 
         {/* Search — grows */}
         <div
-          className="flex-1 flex items-center gap-2 px-3 h-9 rounded-xl"
-          style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
+          className="flex-1 flex items-center gap-2 px-3 h-9"
+          style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '6px' }}
         >
           <Search size={14} style={{ color: colors.textDim }} className="flex-shrink-0" />
           <input
             type="text"
             placeholder="Поиск магазинов..."
-            className="grow bg-transparent text-sm outline-none"
-            style={{ color: colors.textPrimary }}
+            className="grow bg-transparent text-sm outline-none placeholder:opacity-60"
+            style={{ color: colors.textBody }}
           />
         </div>
 
@@ -108,7 +108,7 @@ function NavIconLink({
         href={href}
         aria-label={ariaLabel}
         className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
-        style={{ color: colors.textPrimary }}
+        style={{ color: colors.textBody }}
         onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceMuted; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
       >
@@ -116,7 +116,7 @@ function NavIconLink({
         {badge > 0 && (
           <span
             className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: colors.accent, color: colors.accentTextOnBg }}
+            style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
             {badge > 9 ? "9+" : badge}
           </span>
