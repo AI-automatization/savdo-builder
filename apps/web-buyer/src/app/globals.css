@@ -1,25 +1,91 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* ──────────────────────────────────────────────────────────────────────────────
+   Theme tokens — buyer
+   Single source of truth for both light & dark themes.
+   Values must mirror `apps/web-buyer/src/lib/styles.ts` 1-to-1 for `:root`.
+   Dark theme overrides via `[data-theme="dark"]`.
+   See `docs/design/liquid-authority.md` for the broader system.
+   ─────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #FAFAF7;
-  --foreground: #0F1115;
+  /* ── Light (default) ─────────────────────────────────────────────────────── */
+  --color-bg:                #FAFAF7;
+  --color-surface:           #FFFFFF;
+  --color-surface-muted:     #F4F4EF;
+  --color-surface-elevated:  #FFFFFF;
+  --color-surface-sunken:    #EFEFEA;
+  --color-divider:           rgba(15,17,21,0.06);
+  --color-border:            rgba(15,17,21,0.10);
+  --color-border-strong:     rgba(15,17,21,0.18);
+  --color-text-primary:      #0F1115;
+  --color-text-muted:        #5C6470;
+  --color-text-dim:          #8A93A0;
+  --color-accent:            #7C3AED;
+  --color-accent-hover:      #6D28D9;
+  --color-accent-muted:      rgba(124,58,237,0.10);
+  --color-accent-border:     rgba(124,58,237,0.32);
+  --color-accent-text-on-bg: #FFFFFF;
+  --color-brand:             #7C3AED;
+  --color-success:           #16A34A;
+  --color-warning:           #D97706;
+  --color-danger:            #DC2626;
+  --color-telegram:          #2AABEE;
+  --color-skeleton:          rgba(15,17,21,0.06);
+
   color-scheme: light;
 }
 
+[data-theme="dark"] {
+  /* ── Dark — warm near-black (#0F0F12) with violet accent kept for brand ──── */
+  --color-bg:                #0F0F12;
+  --color-surface:           #18181C;
+  --color-surface-muted:     #1F1F24;
+  --color-surface-elevated:  #232328;
+  --color-surface-sunken:    #131316;
+  --color-divider:           rgba(255,255,255,0.06);
+  --color-border:            rgba(255,255,255,0.10);
+  --color-border-strong:     rgba(255,255,255,0.18);
+  --color-text-primary:      #F4F4F5;
+  --color-text-muted:        #A1A1AA;
+  --color-text-dim:          #71717A;
+  --color-accent:            #8B5CF6;
+  --color-accent-hover:      #A78BFA;
+  --color-accent-muted:      rgba(139,92,246,0.18);
+  --color-accent-border:     rgba(139,92,246,0.42);
+  --color-accent-text-on-bg: #FFFFFF;
+  --color-brand:             #A78BFA;
+  --color-success:           #22C55E;
+  --color-warning:           #FBBF24;
+  --color-danger:            #F87171;
+  --color-telegram:          #38BDF8;
+  --color-skeleton:          rgba(255,255,255,0.06);
+
+  color-scheme: dark;
+}
+
+/* Tailwind v4 — expose tokens as utilities (bg-bg, text-fg, etc.) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  /* Smooth swap when theme changes */
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* Hide horizontal-scroll scrollbars on category chip rows */
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Honor reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+}

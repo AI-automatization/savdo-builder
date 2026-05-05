@@ -243,7 +243,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               onClick={() => handleForward(next.status)}
               disabled={pending}
               className="px-4 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: colors.accent, color: colors.bg }}
+              style={{ background: colors.accent, color: colors.accentTextOnBg }}
             >
               {pending ? '...' : next.label}
             </button>

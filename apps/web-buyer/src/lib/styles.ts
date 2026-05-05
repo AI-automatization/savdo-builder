@@ -1,47 +1,48 @@
 /**
- * Savdo buyer — shared visual tokens (Light revamp, Phase 1)
+ * Savdo buyer — shared visual tokens.
  *
- * Buyer storefront moved from glass to light solid surfaces:
- * - White/cream background, dark text → matches familiar e-commerce pattern
- *   (WB / Ozon / Uzum) and trust signal for small UZ sellers.
- * - Solid surfaces with subtle borders, no blur.
- * - Brand violet (#7C3AED) reserved for prices and CTAs — visible against light.
+ * Values resolve to CSS variables defined in `apps/web-buyer/src/app/globals.css`,
+ * which are themed by `[data-theme="dark|light"]` on <html>. This means every
+ * component that reads `colors.X` / `card` / `pill` etc. automatically reflects
+ * the active theme — no per-component refactor needed.
  *
- * Seller stays dark (CRM mood). Same tokens shape, different values.
- * Legacy `glass` exports kept temporarily for pages not yet migrated; they will
- * read poorly on the new light background — that's the visual cue to migrate.
+ * Light values (originally hex literals here) live in `:root` of globals.css.
+ * Dark values live in `[data-theme="dark"]` of the same file.
+ *
+ * If you add a new semantic token: add it BOTH here (as `var(--color-foo)`)
+ * AND in globals.css for both `:root` and `[data-theme="dark"]`.
  */
 
-// ── Raw colour tokens ────────────────────────────────────────────────────────
+// ── Raw colour tokens (resolve via CSS vars) ─────────────────────────────────
 
 export const colors = {
-  // Surface palette (cream-tinted off-white)
-  bg:              '#FAFAF7',                  // body / app shell
-  surface:         '#FFFFFF',                  // primary card surface
-  surfaceMuted:    '#F4F4EF',                  // sunken / nested panels, list rows
-  surfaceElevated: '#FFFFFF',                  // hover/active (uses border lift)
-  surfaceSunken:   '#EFEFEA',                  // inputs, dim wells
-  divider:         'rgba(15,17,21,0.06)',
-  border:          'rgba(15,17,21,0.10)',
-  borderStrong:    'rgba(15,17,21,0.18)',
+  // Surface palette
+  bg:              'var(--color-bg)',
+  surface:         'var(--color-surface)',
+  surfaceMuted:    'var(--color-surface-muted)',
+  surfaceElevated: 'var(--color-surface-elevated)',
+  surfaceSunken:   'var(--color-surface-sunken)',
+  divider:         'var(--color-divider)',
+  border:          'var(--color-border)',
+  borderStrong:    'var(--color-border-strong)',
   // Type
-  textPrimary:     '#0F1115',                  // near-black slate
-  textMuted:       '#5C6470',                  // slate-500
-  textDim:         '#8A93A0',                  // slate-400
-  // Accent (violet — bridges to seller)
-  accent:          '#7C3AED',                  // violet-600 — solid actions
-  accentHover:     '#6D28D9',                  // violet-700
-  accentMuted:     'rgba(124,58,237,0.10)',
-  accentBorder:    'rgba(124,58,237,0.32)',
-  accentTextOnBg:  '#FFFFFF',                  // white text on violet button
-  // Brand wordmark — single shared violet between buyer & seller for "Savdo" logo / hero
-  brand:           '#7C3AED',                  // identical token in seller styles.ts
-  // Semantic (light-readable)
-  success:         '#16A34A',                  // green-600
-  warning:         '#D97706',                  // amber-600
-  danger:          '#DC2626',                  // red-600
+  textPrimary:     'var(--color-text-primary)',
+  textMuted:       'var(--color-text-muted)',
+  textDim:         'var(--color-text-dim)',
+  // Accent
+  accent:          'var(--color-accent)',
+  accentHover:     'var(--color-accent-hover)',
+  accentMuted:     'var(--color-accent-muted)',
+  accentBorder:    'var(--color-accent-border)',
+  accentTextOnBg:  'var(--color-accent-text-on-bg)',
+  // Brand wordmark — unified between buyer & seller for "Savdo" logo / hero
+  brand:           'var(--color-brand)',
+  // Semantic
+  success:         'var(--color-success)',
+  warning:         'var(--color-warning)',
+  danger:          'var(--color-danger)',
   // Telegram blue (kept for "Написать в TG" CTA)
-  telegram:        '#2AABEE',
+  telegram:        'var(--color-telegram)',
 } as const;
 
 // ── Surface presets — drop-in style objects ──────────────────────────────────
@@ -100,11 +101,10 @@ export const ctaSoft = {
 } as const;
 
 // ── Legacy glass tokens (kept until all pages migrate) ───────────────────────
-// These render poorly on the new light bg — visible cue to refactor the page.
 
 /** @deprecated — migrate to `card` */
 export const glass = {
-  background:           'rgba(255,255,255,0.85)',
+  background:           colors.surface,
   backdropFilter:       'none',
   WebkitBackdropFilter: 'none',
   border:               `1px solid ${colors.border}`,

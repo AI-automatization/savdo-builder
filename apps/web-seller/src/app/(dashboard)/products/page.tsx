@@ -96,7 +96,7 @@ export default function ProductsPage() {
         <Link
           href="/products/create"
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shrink-0 transition-opacity hover:opacity-90"
-          style={{ background: colors.accent, color: colors.bg }}
+          style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
           + Добавить
         </Link>

@@ -236,7 +236,7 @@ function InlineVariantForm({
 
       {/* Row 3: active toggle + buttons */}
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-white">
+        <label className="flex items-center gap-2 cursor-pointer select-none text-sm" style={{ color: colors.textPrimary }}>
           <input
             type="checkbox"
             className="sr-only peer"
@@ -395,7 +395,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
 
               {/* Name + stock */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">
+                <p className="text-sm truncate" style={{ color: colors.textPrimary }}>
                   {variantLabel(v)}
                 </p>
                 {subLabel && v.titleOverride && (

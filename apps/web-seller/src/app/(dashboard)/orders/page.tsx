@@ -219,7 +219,7 @@ function OrderRow({
             onClick={() => onAction(order, next.status)}
             disabled={isLoading}
             className="px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {isLoading ? '...' : next.label}
           </button>
