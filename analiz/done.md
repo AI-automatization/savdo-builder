@@ -2,6 +2,18 @@
 
 ## 2026-05-05 (сессия 45 продолжение, Азим) — Wishlist UI для web-buyer
 
+### ✅ [WEB-BUYER-TOOLTIPS-001] Кастомные tooltip-подсказки на иконки в buyer 🟢
+
+- **Дата:** 05.05.2026 (по запросу Азима)
+- **Файлы:**
+  - `apps/web-buyer/src/components/tooltip.tsx` (новый) — pure-CSS hover/focus-within tooltip с inverted темой (bg=textPrimary, text=bg → высокий контраст в обеих темах). Pill снизу триггера, 150ms fade. `pointer-events-none` чтобы не блокировать клики, `z-50`. role="tooltip".
+  - `apps/web-buyer/src/components/layout/Header.tsx` — `NavIconLink` теперь оборачивает `Link` в `<Tooltip label={ariaLabel}>`. Все 6 иконок Header (Чаты, Заказы, Профиль, Избранное, Корзина, Уведомления) получают подсказку.
+  - `apps/web-buyer/src/components/theme-toggle.tsx` — кнопка обёрнута в Tooltip с динамической меткой («Включить светлую/тёмную тему»). Native `title` атрибут удалён (избежать дублирования). Popover на right-click продолжает работать (Tooltip не мешает stacking'у).
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — Back/Heart/Share на product detail top bar тоже обёрнуты в Tooltip. Native `title` удалён.
+- **Триггер:** Азим: «Когда наводиш на иконик в buyer под иконкой выходило слово типо подсказка того что это за иконка». Нативный `title` browser-tooltip медленный (~700ms delay) и стилизуется по-разному в каждом браузере.
+- **Решение:** Pure-CSS pattern с `group-hover` + `group-focus-within`, без JS, без портала. Подсказка появляется мгновенно на hover, fade 150ms. Theme-aware через токены — в light темной pill (#0F1115 на cream), в dark светлой pill (#F4F4F5 на near-black).
+- **Что НЕ сделано:** ProductCard heart icon (на каждой карточке) — оставлено без tooltip потому что (a) heart как иконка визуально однозначная, (b) tooltip снизу на mobile-grid выглядел бы клаустрофобно. Cart/Profile/Chat страницы — отдельно по запросу если потребуется.
+
 ### ✅ [WEB-BUYER-WISHLIST-DETAIL-001] Wishlist heart на product detail page (follow-up) 🟢
 
 - **Дата:** 05.05.2026 (через ~30 мин после WEB-BUYER-WISHLIST-PAGE-001)

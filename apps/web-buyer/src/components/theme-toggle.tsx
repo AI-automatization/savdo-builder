@@ -4,6 +4,7 @@ import { Moon, Sun, Monitor } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTheme, type Theme } from '@/lib/theme/theme-provider';
 import { colors } from '@/lib/styles';
+import { Tooltip } from '@/components/tooltip';
 
 interface Props {
   className?: string;
@@ -46,12 +47,12 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
 
   return (
     <div ref={ref} className={`relative inline-flex ${className}`}>
+      <Tooltip label={label}>
       <button
         type="button"
         onClick={toggleTheme}
         onContextMenu={withMenu ? (e) => { e.preventDefault(); setOpen(v => !v); } : undefined}
         aria-label={label}
-        title={label}
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors"
         style={{
           border: bordered ? `1px solid ${colors.border}` : 'none',
@@ -80,6 +81,7 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
           }}
         />
       </button>
+      </Tooltip>
 
       {withMenu && open && (
         <div
