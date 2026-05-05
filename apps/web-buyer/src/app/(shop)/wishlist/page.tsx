@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { WishlistItem } from "types";
-import { Heart, ShoppingBag, X } from "lucide-react";
+import { Heart, ShoppingBag } from "lucide-react";
 import Header from "@/components/layout/Header";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
@@ -11,88 +11,92 @@ import { useAuth } from "@/lib/auth/context";
 import { useWishlist, useToggleWishlist } from "@/hooks/use-wishlist";
 import { colors } from "@/lib/styles";
 
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 export default function WishlistPage() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textPrimary }}>
+    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
       <Header />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 pb-28 md:pb-12">
-        <h1 className="text-xl sm:text-2xl font-bold mb-5" style={{ color: colors.textPrimary }}>
-          Избранное
-        </h1>
+
+      <div className="max-w-7xl mx-auto pb-28 md:pb-12">
         {isAuthenticated ? <WishlistContent /> : (
-          <OtpGate
-            icon={<Heart size={22} />}
-            title="Войдите чтобы видеть избранное"
-            subtitle="Подтвердите номер телефона — после этого сможете сохранять товары и видеть их здесь."
-          />
+          <div className="px-4 pt-6">
+            <OtpGate
+              icon={<Heart size={22} />}
+              title="Войдите чтобы видеть избранное"
+              subtitle="Подтвердите номер телефона — после этого сможете сохранять товары и видеть их здесь."
+            />
+          </div>
         )}
       </div>
+
       <BottomNavBar active="wishlist" />
     </div>
   );
 }
 
+// ── Content ──────────────────────────────────────────────────────────────────
+
 function WishlistContent() {
   const { data, isLoading, isError } = useWishlist();
-
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div
-        className="rounded-2xl p-5 text-sm"
-        style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.30)', color: colors.danger }}
-      >
-        Не удалось загрузить избранное. Попробуйте обновить страницу.
-      </div>
-    );
-  }
-
   const items = data ?? [];
 
-  if (items.length === 0) {
-    return (
-      <div
-        className="rounded-2xl p-8 text-center flex flex-col items-center gap-3"
-        style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-      >
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center"
-          style={{ background: colors.accentMuted, color: colors.accent }}
-        >
-          <Heart size={24} />
+  return (
+    <>
+      {/* Sub-header — editorial */}
+      <div className="px-4 md:px-6 pt-5 pb-3 flex items-baseline justify-between">
+        <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
+          — Избранное{items.length > 0 ? ` · ${items.length}` : ""}
         </div>
-        <div className="flex flex-col gap-1">
-          <p className="font-semibold" style={{ color: colors.textPrimary }}>Здесь пусто</p>
-          <p className="text-sm" style={{ color: colors.textMuted }}>
-            Нажимайте на сердечко на карточке товара — товар появится здесь.
+      </div>
+
+      {isLoading && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3.5 px-4 md:px-6">
+          {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+        </div>
+      )}
+
+      {isError && (
+        <div className="px-4 md:px-6">
+          <p className="text-sm py-8 text-center" style={{ color: colors.danger }}>
+            Не удалось загрузить избранное. Попробуйте обновить страницу.
           </p>
         </div>
-        <Link
-          href="/"
-          className="inline-block mt-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: colors.accent, color: colors.accentTextOnBg }}
-        >
-          К магазинам
-        </Link>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-      {items.map((item) => <WishlistCard key={item.id} item={item} />)}
-    </div>
+      {!isLoading && !isError && items.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+          <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
+            — Пока пусто
+          </div>
+          <h2 className="text-lg font-bold mb-2" style={{ color: colors.textStrong }}>
+            Избранное пустое
+          </h2>
+          <p className="text-sm mb-6 max-w-sm" style={{ color: colors.textMuted }}>
+            Нажимайте на сердечко на карточке товара — товар появится здесь.
+          </p>
+          <Link
+            href="/"
+            className="px-6 py-3 text-sm font-bold rounded-md"
+            style={{ background: colors.brand, color: colors.brandTextOnBg }}
+          >
+            К магазинам
+          </Link>
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3.5 px-4 md:px-6">
+          {items.map((item) => <WishlistCard key={item.id} item={item} />)}
+        </div>
+      )}
+    </>
   );
 }
+
+// ── WishlistCard ─────────────────────────────────────────────────────────────
 
 function WishlistCard({ item }: { item: WishlistItem }) {
   const { product } = item;
@@ -109,87 +113,84 @@ function WishlistCard({ item }: { item: WishlistItem }) {
 
   return (
     <Link href={href} className="block group">
+      {/* Image */}
       <div
-        className="rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-active:scale-[0.98]"
-        style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+        className="relative aspect-square overflow-hidden rounded-md mb-2"
+        style={{ background: colors.surfaceSunken }}
       >
-        <div
-          className="aspect-square relative flex items-center justify-center select-none overflow-hidden"
-          style={{ background: colors.surfaceMuted }}
-        >
-          {cover ? (
-            <Image
-              src={cover}
-              alt={product.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
-            />
-          ) : (
+        {cover ? (
+          <Image
+            src={cover}
+            alt={product.title}
+            fill
+            className="object-cover transition-transform group-hover:scale-105"
+            sizes="(max-width: 768px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
             <ShoppingBag size={32} style={{ color: colors.textDim }} />
-          )}
-
-          {!product.isAvailable && (
-            <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.78)', zIndex: 3 }}
-            >
-              <span
-                className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
-              >
-                Нет в наличии
-              </span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleRemove}
-            aria-label="Убрать из избранного"
-            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
-            style={{
-              background: colors.surface,
-              border: `1px solid ${colors.border}`,
-              color: colors.textMuted,
-              zIndex: 4,
-              opacity: toggleWishlist.isPending ? 0.6 : 1,
-            }}
-          >
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="p-3 flex flex-col gap-1.5 flex-1">
-          <p className="text-[11px] uppercase tracking-wider truncate" style={{ color: colors.textDim }}>
-            {product.storeName}
-          </p>
-          <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: colors.textPrimary }}>
-            {product.title}
-          </p>
-          <div className="mt-auto">
-            <span className="text-base font-bold" style={{ color: colors.accent }}>
-              {Number(product.basePrice).toLocaleString("ru-RU")}
-            </span>
-            <span className="text-xs ml-1" style={{ color: colors.textMuted }}>сум</span>
           </div>
-        </div>
+        )}
+
+        {/* Heart overlay — filled brand, click removes */}
+        <button
+          type="button"
+          onClick={handleRemove}
+          disabled={toggleWishlist.isPending}
+          aria-label="Убрать из избранного"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90"
+          style={{
+            background: "rgba(255,255,255,0.85)",
+            opacity: toggleWishlist.isPending ? 0.6 : 1,
+          }}
+        >
+          <Heart size={14} fill={colors.brand} stroke={colors.brand} />
+        </button>
+
+        {/* OOS overlay */}
+        {!product.isAvailable && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.78)" }}
+          >
+            <span
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+              style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
+            >
+              Нет в наличии
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Store eyebrow */}
+      <p className="text-[10px] tracking-[0.1em] uppercase truncate mb-0.5" style={{ color: colors.textMuted }}>
+        {product.storeName}
+      </p>
+
+      {/* Title */}
+      <p className="text-[12px] md:text-[13px] leading-snug line-clamp-2" style={{ color: colors.textBody }}>
+        {product.title}
+      </p>
+
+      {/* Price */}
+      <div className="text-[13px] font-bold mt-0.5" style={{ color: colors.textStrong }}>
+        {Number(product.basePrice).toLocaleString("ru-RU")}
+        <span className="text-[11px] font-normal ml-1" style={{ color: colors.textMuted }}>сум</span>
       </div>
     </Link>
   );
 }
 
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+
 function SkeletonCard() {
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-    >
-      <div className="aspect-square animate-pulse" style={{ background: colors.surfaceMuted }} />
-      <div className="p-3 flex flex-col gap-2">
-        <div className="h-3 w-2/3 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
-        <div className="h-3 w-1/2 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
-      </div>
+    <div>
+      <div className="aspect-square rounded-md animate-pulse mb-2" style={{ background: colors.surfaceMuted }} />
+      <div className="h-2.5 w-1/2 rounded-full animate-pulse mb-1.5" style={{ background: colors.surfaceMuted }} />
+      <div className="h-3 w-3/4 rounded-full animate-pulse mb-1" style={{ background: colors.surfaceMuted }} />
+      <div className="h-3 w-1/3 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
     </div>
   );
 }
