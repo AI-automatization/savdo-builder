@@ -585,7 +585,7 @@ export default function SellerChatPage() {
                   aria-label={editingId ? 'Сохранить' : 'Отправить'}
                   style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(124,58,237,0.40)', border: '1px solid rgba(124,58,237,0.50)', color: '#fff', fontSize: 18, cursor: 'pointer', opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4, minWidth: 46 }}
                 >
-                  {editingId ? '✓' : (sending ? '⏳' : '➤')}
+                  {editingId ? '✓' : (sending ? <Spinner size={14} /> : '➤')}
                 </button>
               </div>
             </div>

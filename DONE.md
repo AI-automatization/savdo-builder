@@ -1,5 +1,29 @@
 # DONE — savdo-builder
 
+## Sprint cleanup (05.05.2026)
+
+### ✅ [SEC-005] media: защищённый /private/:id для seller_doc
+- **Файлы:** `apps/api/src/modules/media/media.controller.ts`, `apps/api/src/modules/media/use-cases/upload-direct.use-case.ts`
+- **Что сделано:**
+  - upload-direct: для `purpose=seller_doc` сохраняем `visibility=PROTECTED` (раньше всё было PUBLIC).
+  - Новый endpoint `GET /api/v1/media/private/:id` под `@UseGuards(JwtAuthGuard)` — отдаёт PROTECTED файлы только владельцу или ADMIN.
+  - URL в response upload-direct для seller_doc теперь `/api/v1/media/private/:id` (а не `/proxy/:id`).
+- **Why:** документы продавцов раньше были открыты по ID без проверки прав. Теперь даже зная media id посторонний получит 404 — нужен JWT + (owner OR admin).
+
+### ✅ [BUG-FIX] BottomSheet: `z-[9999]flex` → `z-[9999] flex`
+- Линтер съел пробел между Tailwind-utility classes — BottomSheet не рендерился. Поправлено в коммите `20cfcec`.
+
+### ✅ [UX-007] Spinner при отправке сообщения вместо ⏳ эмодзи
+- **Файлы:** `apps/tma/src/pages/buyer/ChatPage.tsx`, `apps/tma/src/pages/seller/ChatPage.tsx`
+- Кнопка ➤ при `sending=true` теперь показывает `<Spinner size={14} />` вместо ⏳ — ровный круговой crescent, без скачка размера.
+
+### ✅ Already-done (closed после re-audit TASK.md)
+- **UX-001** human-readable статусы — `Badge.tsx` уже маппит PENDING→«Обрабатывается», DELIVERED→«Доставлен» и т.д.
+- **UX-005** объяснение «Диалог закрыт» — текст уже отображается в обоих ChatPage.
+- **UX-006** Enter без текста — guard `if (text.trim()) sendMsg()` уже есть в onKeyDown.
+- **BUG-001** colSpan в ChatsPage — admin/ChatsPage.tsx уже `colSpan={6}`.
+- **BUG-002** messages.slice().reverse() — выполняется один раз в `.then()` после fetch, не на каждом рендере. Бага нет.
+
 ## Super-admin UI feature pack (03.05.2026)
 
 Реализовано P1–P7 в `apps/admin/`. Сборка проходит чисто, коммит `5eab85f`, мерж в `admin` ветку запушен на Railway.
