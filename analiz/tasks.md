@@ -58,13 +58,14 @@
 
 > ✅ `WISHLIST-CONTRACT-001` + `TMA-BUYER-WISHLIST-001` закрыты Полатом 02.05.2026, коммиты `0f46a63` (backend) + `fd8721f` (UI). См. `analiz/done.md`.
 
-> ⏳ Открыто для Азима: `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` в web-buyer + heart на ProductCard. Бэкенд готов: `GET/POST /buyer/wishlist`, `DELETE /buyer/wishlist/:productId`, `WishlistItem` тип в `packages/types`, флаг `inWishlist?: boolean` на storefront feed для авторизованных buyer'ов. Подсмотрите паттерн в `apps/tma/src/lib/wishlist.ts` (optimistic toggle с локальным кэшем).
+> ✅ `WEB-BUYER-WISHLIST-PAGE-001` закрыт Азимом 05.05.2026 (сессия 45 — после theme system). Подробности в `analiz/done.md`.
 
 ---
 
-# ✅ Закрыто Азимом в сессии 45 (05.05.2026) — Dark/Light theme system
+# ✅ Закрыто Азимом в сессии 45 (05.05.2026) — Dark/Light theme system + Wishlist UI
 
 - `WEB-THEME-SYSTEM-001` 🟡 — полная theme system для web-buyer и web-seller: ThemeProvider + no-flash inline script + ThemeToggle (Sun/Moon с rotate-анимацией + 3-state popover Light/Dark/System). Реализована через CSS-переменные в globals.css с `[data-theme]` overrides, `lib/styles.ts` отрефакторен — все `colors.X` теперь возвращают `var(--color-X)`. Все компоненты, которые уже использовали `colors`/`card`/`shell` из styles.ts, авто-темизуются. Plus migration `text-white` / `color: colors.bg` → `colors.textPrimary` / `accentTextOnBg` в 14 файлах seller (chat/onboarding/login/products/settings/orders + 2 components). Buyer ChatComposerModal полностью переписан с tokens. Onboarding background и orbs — через CSS-переменные. Подробности в `analiz/done.md`. Дефолт buyer — system preference, дефолт seller — dark (сохраняет CRM identity). Локально не запускалось.
+- `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` + сердечко на ProductCard (top-right corner) + ссылка в Header (между nav и Cart). Использует серверный флаг `product.inWishlist` (приоритет) с фолбэком на клиентский кэш `useWishlistIds()`. Optimistic toggle через TanStack Query. Unauth-юзеры по клику на heart редиректятся на `/wishlist` где кикает OtpGate. Файлы: `apps/web-buyer/src/lib/api/wishlist.api.ts`, `apps/web-buyer/src/hooks/use-wishlist.ts`, `apps/web-buyer/src/components/store/ProductCard.tsx` (+heart), `apps/web-buyer/src/app/(shop)/wishlist/page.tsx` (новая), `apps/web-buyer/src/components/layout/Header.tsx` (+heart link), `apps/web-buyer/src/components/layout/BottomNavBar.tsx` (NavActive расширен 'wishlist'). Подробности в `analiz/done.md`.
 
 # ✅ Закрыто Азимом в сессии 44 (01.05.2026, прямо сейчас, перед отбоем Азима)
 
