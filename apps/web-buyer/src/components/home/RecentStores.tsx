@@ -35,24 +35,23 @@ export function RecentStores() {
           <Link
             key={store.slug}
             href={`/${store.slug}`}
-            className="group relative flex flex-col items-center gap-2 flex-shrink-0 w-[84px] p-2.5 rounded-md transition-all hover:-translate-y-0.5"
-            style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+            className="group relative flex flex-col items-center gap-2 flex-shrink-0 w-[84px] p-2 rounded-md transition-all hover:-translate-y-0.5"
           >
             <button
               type="button"
               onClick={(e) => handleRemove(e, store.slug)}
               aria-label="Забыть магазин"
-              className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 focus:opacity-100 transition-opacity"
-              style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
+              className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+              style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
             >
               <X size={11} />
             </button>
             <div
-              className="w-12 h-12 rounded-md flex items-center justify-center text-lg font-bold relative overflow-hidden"
-              style={{ background: colors.brandMuted, color: colors.brand, border: `1px solid ${colors.brandBorder}` }}
+              className="w-14 h-14 rounded-md flex items-center justify-center text-lg font-bold relative overflow-hidden"
+              style={{ background: colors.brandMuted, color: colors.brand }}
             >
               {store.logoUrl ? (
-                <Image src={store.logoUrl} alt={store.name} fill className="object-cover" sizes="48px" />
+                <Image src={store.logoUrl} alt={store.name} fill className="object-cover" sizes="56px" />
               ) : (
                 store.name.charAt(0).toUpperCase()
               )}
