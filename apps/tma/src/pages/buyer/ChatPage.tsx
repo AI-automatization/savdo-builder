@@ -604,7 +604,7 @@ export default function BuyerChatPage() {
                     minWidth: 46,
                   }}
                 >
-                  {editingId ? '✓' : (sending ? '⏳' : '➤')}
+                  {editingId ? '✓' : (sending ? <Spinner size={14} /> : '➤')}
                 </button>
               </div>
             </div>

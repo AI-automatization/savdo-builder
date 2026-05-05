@@ -1,5 +1,58 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 47, Азим) — Task 1: Foundation tokens + Inter font
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 1] Foundation tokens — Soft Color Lifestyle palette + Inter font 🔴
+
+- **Дата:** 05.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/globals.css` — заменён `:root` light-блок на терракотовую палитру, обновлены `body` и `@theme inline` (Geist → Inter, удалён `--font-mono`)
+  - `apps/web-buyer/src/app/layout.tsx` — заменены `Geist`/`Geist_Mono` на `Inter` (latin + cyrillic, display:swap)
+  - `apps/web-buyer/src/lib/styles.ts` — добавлены `brandHover/brandMuted/brandBorder/brandTextOnBg/textBody/textStrong`; удалены deprecated `glass`/`glassDim`/`glassDark` экспорты
+- **Что сделано:** полная замена «Liquid Authority» violet `:root` токенов на «Soft Color Lifestyle» терракотовую палитру. `accent*` остались как CSS-variable aliases на `brand*` — обратная совместимость для всех существующих компонентов. Dark theme (`[data-theme="dark"]`) не тронут. `glass*` удалены безопасно — ни один consumer-файл их не импортировал (проверено grep).
+- **Commit:** см. git log (feat: foundation tokens)
+- **Push:** main + web-buyer (Railway autodeploy)
+
+---
+
+## 2026-05-05 (сессия 46, Азим) — Дизайн-стратегия web-buyer + 2 hotfix
+
+### ✅ [WEB-BUYER-DESIGN-PLAN-001] Spec + implementation plan для редизайна web-buyer 🟡
+
+- **Дата:** 05.05.2026 (вечер)
+- **Триггер:** Азим — «Qlay 1:1 конкурент, дизайн похож, надо отстроиться чтобы люди тянулись к нам».
+- **Что сделано:** через `superpowers:brainstorming` скилл + visual companion (http://localhost:62530) проработали 3 раунда направлений, Азим выбрал **B · Soft Color Lifestyle** (Sezane / Aimé Leon Dore вайб с тёплой палитрой и кураторскими brand-цветами для каждого магазина).
+- **Артефакты:**
+  - **Spec** `docs/superpowers/specs/2026-05-05-buyer-design-differentiation-design.md` — commit `5e56f80`. 339 строк, 5 секций (Foundation / Storefront / Product detail / Cart+Checkout / Connection).
+  - **Implementation plan** `docs/superpowers/plans/2026-05-05-buyer-design-soft-color-lifestyle.md` — commit `e0157df`. 10 задач в порядке: foundation tokens → header/nav → storefront → ProductCard → product detail → cart → checkout → chat → orders → profile/wishlist.
+  - **Visual mockups** в `.superpowers/brainstorm/375-1777971328/content/01-09*.html` — 9 HTML страниц с реальными picsum-фото, сохранены через `--project-dir` режим.
+- **Ключевые решения** (зафиксированы в спеке):
+  - Default brand color: **#7C3F2E (терракота)** — узбекский tone (тандыр, suzani)
+  - Curated палитра: **8 цветов** (терракота / шоколад / горчица / олива / хвоя / морская волна / слива / уголь)
+  - Шрифт: **Inter** (отвергли Geist — кириллица в Telegram WebView хуже)
+  - Hero ratio desktop: **6fr photo : 4fr color**
+  - Цена на ProductCard: **#1F1A12, НЕ brand-цвет** (brand «зарабатывается» — только hero/CTA/links/hover)
+  - Dark theme — оставляем как есть до отдельной итерации
+- **Status:** дизайн-фундамент готов, **код ещё НЕ тронут**. Имплементация — через subagent-driven-development по 10 задачам плана. Откуда продолжать: Task 1 (foundation tokens + Inter font в `lib/styles.ts` + `globals.css` + `app/layout.tsx`).
+
+### ✅ [WEB-BUYER-PROFILE-ICON-RIGHT-001] Profile icon → правый край header (desktop) 🟢
+
+- **Дата:** 05.05.2026 (середина сессии 46)
+- **Файлы:** `apps/web-buyer/src/components/layout/Header.tsx`
+- **Что сделано:** перенёс профиль-иконку из desktop-only nav-группы (где она шла рядом с Чаты/Заказы) в самый конец после ThemeToggle. На mobile профиль остаётся в BottomNavBar (без изменений).
+- **Commit:** `f72cec8` (после rebase). Запушено в main + web-buyer.
+- **Заметка:** будет частично переделано в Task 2 implementation plan'a (полный редизайн Header), но пока стоит как небольшая UX-правка.
+
+### ✅ [WEB-BUYER-WISHLIST-MUTATION-FIX-001] TS2322 в wishlist mutation → Railway build падал 🔴
+
+- **Дата:** 05.05.2026 (начало сессии 46)
+- **Файлы:** `apps/web-buyer/src/hooks/use-wishlist.ts`
+- **Проблема:** Railway build buyer'а падал на TS-check: `mutationFn` возвращал union `Promise<void> | Promise<WishlistAddResponse>`, TanStack Query вывел generic как `Promise<void>` от первой ветки, и тут же ругался что вторая ветка не подходит.
+- **Что сделано:** завернул обе ветки в `async/await`-блок, тип схлопнулся в `Promise<void>`. Все 3 use-site-а вызывают только `.mutate(...)` без чтения результата → семантика не изменилась.
+- **Commit:** `d872bab`. Запушено в main + web-buyer (Railway передеплоил).
+
+---
+
 ## 2026-05-05 (сессия 45 продолжение, Азим) — Wishlist UI для web-buyer
 
 ### ✅ [WEB-BUYER-TOOLTIPS-001] Кастомные tooltip-подсказки на иконки в buyer 🟢

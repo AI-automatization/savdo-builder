@@ -1,22 +1,9 @@
 # TASK — savdo-builder
-> Обновлено: 02.05.2026 | Источник: UI/UX + Security Audit
-
----
-
-## 🔴 Критические — Security (блокируют безопасность)
-
-- [ ] [SEC-005] media/proxy: добавить JWT guard для purpose=seller_doc
-  - Файл: `apps/api/src/modules/media/media.controller.ts:142` (`@Get('proxy/:id')`)
-  - Проблема: документы продавцов (purpose=seller_doc) доступны публично по ID
-  - Решение: проверять purpose в media-record — если seller_doc → требовать JwtAuthGuard + RolesGuard(ADMIN/SELLER-owner)
+> Обновлено: 05.05.2026 | Источник: UI/UX + Security Audit
 
 ---
 
 ## 🟠 Высокие — UX (снижают retention)
-
-- [ ] [UX-001] Статусы заказов: технические → human-readable в TMA
-  - Файл: `apps/tma/src/pages/buyer/OrdersPage.tsx`
-  - PENDING→"Обрабатывается", CONFIRMED→"Подтверждён", SHIPPED→"В доставке", DELIVERED→"Доставлен", CANCELLED→"Отменён"
 
 - [ ] [UX-002] Unread badge на иконке чата в TMA (buyer + seller)
   - Файл: `apps/tma/src/components/layout/AppShell.tsx` (нижний nav)
@@ -28,15 +15,6 @@
 - [ ] [UX-004] Admin bundle: code splitting (903KB → ~300KB)
   - Файл: `apps/admin/vite.config.ts`
   - Добавить manualChunks по роутам
-
-- [ ] [UX-005] ChatPage: показывать объяснение почему нельзя писать в закрытом треде
-  - Файл: `apps/tma/src/pages/buyer/ChatPage.tsx` и `seller/ChatPage.tsx`
-
-- [ ] [UX-006] ChatPage: Enter без текста не вызывает sendMsg
-  - Файл: оба ChatPage — добавить guard в onKeyDown
-
-- [ ] [UX-007] Loader при отправке сообщения — spinner в кнопке ➤
-  - Файл: оба ChatPage
 
 - [ ] [UX-008] Socket connection status badge в заголовке чата
 
@@ -79,8 +57,4 @@
 
 ## 🔵 Правки/Баги (найдены в процессе)
 
-- [ ] [BUG-001] colSpan=5 в ChatsPage при 6 колонках (после добавления кнопки удаления)
-  - Файл: `apps/admin/src/pages/ChatsPage.tsx:133,135`
-
-- [ ] [BUG-002] messages.slice().reverse() при каждом рендере — нужен useMemo
-  - Файл: обa ChatPage
+(ничего открытого)
