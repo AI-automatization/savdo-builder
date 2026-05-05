@@ -14,6 +14,7 @@ import { useSellerOrders } from "../../hooks/use-orders";
 import { OrderStatus } from "types";
 import { ShoppingCart } from "lucide-react";
 import { colors, shell, shellTop } from "@/lib/styles";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 
@@ -295,6 +296,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </h2>
           </div>
           <div className="flex items-center gap-3">
+            {/* Theme toggle */}
+            <ThemeToggle />
+
             {/* Notifications bell */}
             <button
               onClick={() => router.push('/notifications')}
@@ -308,7 +312,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {unreadCount > 0 && (
                 <span
                   className="absolute -top-1 -right-1.5 flex items-center justify-center rounded-full font-bold"
-                  style={{ minWidth: 14, height: 14, padding: '0 3px', fontSize: 9, background: colors.accent, color: colors.bg, borderRadius: 7 }}
+                  style={{ minWidth: 14, height: 14, padding: '0 3px', fontSize: 9, background: colors.accent, color: colors.accentTextOnBg, borderRadius: 7 }}
                 >
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>

@@ -1,5 +1,116 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 45 продолжение, Азим) — Wishlist UI для web-buyer
+
+### ✅ [WEB-BUYER-TOOLTIPS-001] Кастомные tooltip-подсказки на иконки в buyer 🟢
+
+- **Дата:** 05.05.2026 (по запросу Азима)
+- **Файлы:**
+  - `apps/web-buyer/src/components/tooltip.tsx` (новый) — pure-CSS hover/focus-within tooltip с inverted темой (bg=textPrimary, text=bg → высокий контраст в обеих темах). Pill снизу триггера, 150ms fade. `pointer-events-none` чтобы не блокировать клики, `z-50`. role="tooltip".
+  - `apps/web-buyer/src/components/layout/Header.tsx` — `NavIconLink` теперь оборачивает `Link` в `<Tooltip label={ariaLabel}>`. Все 6 иконок Header (Чаты, Заказы, Профиль, Избранное, Корзина, Уведомления) получают подсказку.
+  - `apps/web-buyer/src/components/theme-toggle.tsx` — кнопка обёрнута в Tooltip с динамической меткой («Включить светлую/тёмную тему»). Native `title` атрибут удалён (избежать дублирования). Popover на right-click продолжает работать (Tooltip не мешает stacking'у).
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — Back/Heart/Share на product detail top bar тоже обёрнуты в Tooltip. Native `title` удалён.
+- **Триггер:** Азим: «Когда наводиш на иконик в buyer под иконкой выходило слово типо подсказка того что это за иконка». Нативный `title` browser-tooltip медленный (~700ms delay) и стилизуется по-разному в каждом браузере.
+- **Решение:** Pure-CSS pattern с `group-hover` + `group-focus-within`, без JS, без портала. Подсказка появляется мгновенно на hover, fade 150ms. Theme-aware через токены — в light темной pill (#0F1115 на cream), в dark светлой pill (#F4F4F5 на near-black).
+- **Что НЕ сделано:** ProductCard heart icon (на каждой карточке) — оставлено без tooltip потому что (a) heart как иконка визуально однозначная, (b) tooltip снизу на mobile-grid выглядел бы клаустрофобно. Cart/Profile/Chat страницы — отдельно по запросу если потребуется.
+
+### ✅ [WEB-BUYER-WISHLIST-DETAIL-001] Wishlist heart на product detail page (follow-up) 🟢
+
+- **Дата:** 05.05.2026 (через ~30 мин после WEB-BUYER-WISHLIST-PAGE-001)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`
+- **Что сделано:** Heart (lucide) теперь в top bar страницы товара между «Назад» и «Поделиться». Использует тот же `useToggleWishlist` + `useWishlistIds` паттерн, читает `product.inWishlist` (server flag для авторизованных) с фолбэком на client cache. Click → optimistic toggle. Unauth → редирект на /wishlist. Закрашен accent-цветом + filled когда in-wishlist, outlined иначе.
+- **Почему follow-up, а не часть исходной задачи:** Гэп заметил после push `WEB-BUYER-WISHLIST-PAGE-001` — юзер на detail page не мог сохранить товар, надо было возвращаться к листу. Закрыл сразу, т.к. это очевидная брешь в свежеотправленной фиче.
+
+### ✅ [WEB-BUYER-WISHLIST-PAGE-001] Wishlist: heart на ProductCard + страница /wishlist 🟡
+
+- **Важность:** 🟡 (фича была заблокирована бэком до 02.05.2026, после `0f46a63` Полата готова к UI)
+- **Дата:** 05.05.2026
+- **Домен:** `apps/web-buyer`
+- **Файлы (новые):**
+  - `apps/web-buyer/src/lib/api/wishlist.api.ts` — `getWishlist()`, `addToWishlist(productId)`, `removeFromWishlist(productId)`. Использует `WishlistItem` из `packages/types`.
+  - `apps/web-buyer/src/hooks/use-wishlist.ts` — `useWishlist()` (TanStack Query, enabled по `isAuthenticated`, staleTime 60s), `useWishlistIds()` (мемоизированный `Set<productId>` для быстрого lookup на каждой карточке), `useToggleWishlist()` (optimistic mutate с `onMutate`/`onError`/`onSettled` invalidate).
+  - `apps/web-buyer/src/app/(shop)/wishlist/page.tsx` — страница со встроенным `<Header />` + `<BottomNavBar active="wishlist" />`, OtpGate если unauth, иначе grid 2/3/4 колонок (responsive) с `WishlistCard` для каждого товара. Skeleton loading state. Empty state с CTA «К магазинам». Error state.
+- **Файлы (изменены):**
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — добавлен heart (lucide `Heart`) в top-right corner. Filled accent если `inWishlist` (server flag prioritized, иначе client cache lookup), outlined иначе. Click → `e.preventDefault()` + `e.stopPropagation()` (не триггерит Link навигацию) → `useToggleWishlist().mutate({productId, inWishlist})`. Если unauth → `router.push('/wishlist')` где OtpGate логинит юзера.
+  - `apps/web-buyer/src/components/layout/Header.tsx` — добавлена `<NavIconLink href="/wishlist">` с иконкой `Heart` между desktop nav и Cart. Всегда видима (mobile + desktop).
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `NavActive` тип расширен `| 'wishlist'`. В NAV-массив не добавляется (5 items уже плотно), но валидное значение не подсвечивает ни одну вкладку — корректное поведение когда юзер на /wishlist.
+- **Что работает:**
+  - **Heart на каждой карточке витрины** — мгновенный optimistic flip, серверный POST/DELETE на фоне, revert при ошибке.
+  - **Authenticated buyers** видят правильное состояние сердечек на storefront feed (бэк уже шлёт `product.inWishlist` в `ProductListItem` для авторизованных — Polat `0f46a63`).
+  - **Anonymous users** — heart показывается outlined; клик → редирект на `/wishlist` где OtpGate просит подтвердить телефон.
+  - **/wishlist** — список с store name + title + price + cover photo. X-кнопка вверху каждой карточки убирает товар (тоже optimistic). Empty state, error state, skeleton — все в дизайн-системе с токенами (работает в обеих темах).
+- **Архитектурные решения:**
+  - **`useWishlistIds()` возвращает Set** — карточки на витрине вызывают этот hook, и react-query разделяет один cached запрос между всеми subscriber'ами (нет N запросов на N карточек). `useMemo` с deps `[data]` гарантирует стабильную ссылку для `Set.has()` при ре-рендерах.
+  - **Server flag wins, client cache fallback** — `product.inWishlist ?? wishlistIds.has(product.id)`. Server flag установлен на storefront feed (быстрый path), client cache используется когда карточка в нестандартном контексте (recent stores, итд).
+  - **Optimistic mutation без productPreview** — server возвращает `{id, productId, createdAt}` без embedded product. Чтобы вставить корректный `WishlistItem` оптимистично, нужен `productPreview` (storeName/storeSlug/etc), но ProductCard этих данных не имеет. Решение: `onSettled` invalidate список → refetch принесёт authoritative data. Между optimistic и refetch (~100-300ms) карточка просто не появится в `/wishlist`, но heart на витрине уже показывает правильное состояние (через cache update).
+  - **OtpGate для unauth flow** — вместо отдельного modal/popup на ProductCard'е (overhead на каждой карточке), редиректим на `/wishlist` где OtpGate уже встроен. После логина юзер видит пустой список и может вернуться к товарам.
+- **Что НЕ сделано (out of scope):**
+  - Wishlist count badge на heart icon в Header (как у cart) — лишняя нагрузка для не-критичной метрики, может быть добавлено позже если будет запрос.
+  - Sync wishlist между TMA (sessionStorage cache) и web (TanStack Query cache) — два отдельных мирa, бэк сам source of truth.
+- **Проверка:** локально не запускалось (запрет `feedback_no_local_run`). Static check: типы `WishlistItem` импортируются из `packages/types`, `apiClient.get/.post/.delete` — стандарт axios, `useMutation` callback signatures совпадают с TanStack Query v5 контрактом, `inWishlist?: boolean` есть в `ProductListItem` (`packages/types/src/api/products.ts:68`).
+
+---
+
+## 2026-05-05 (сессия 45, Азим) — Dark/Light theme system для web-buyer и web-seller
+
+### ✅ [WEB-THEME-SYSTEM-001] Полная theme system: ThemeProvider + ThemeToggle + token migration 🟡
+
+- **Важность:** 🟡 (новая фича, заметный UX-улучшение)
+- **Дата:** 05.05.2026
+- **Домен:** `apps/web-buyer`, `apps/web-seller`
+- **Файлы (новые):**
+  - `apps/web-buyer/src/lib/theme/theme-provider.tsx`
+  - `apps/web-buyer/src/lib/theme/theme-script.tsx`
+  - `apps/web-buyer/src/components/theme-toggle.tsx`
+  - `apps/web-seller/src/lib/theme/theme-provider.tsx`
+  - `apps/web-seller/src/lib/theme/theme-script.tsx`
+  - `apps/web-seller/src/components/theme-toggle.tsx`
+- **Файлы (изменены):**
+  - `apps/web-buyer/src/app/globals.css` — добавлен dark `[data-theme="dark"]` блок (warm `#0F0F12` near-black + violet accent), все цвета через CSS-переменные, transition при смене темы
+  - `apps/web-seller/src/app/globals.css` — добавлен light `:root` блок (cream/slate), `--app-bg` переменная (gradient в dark, solid в light), `--onboarding-bg` + 2 orb-переменных
+  - `apps/web-buyer/src/lib/styles.ts` — все `colors.X` теперь возвращают `var(--color-X)` вместо хексов; компоненты автоматически темизуются без правок
+  - `apps/web-seller/src/lib/styles.ts` — то же + новый токен `accentTextOnBg` (всегда контрастный текст на violet кнопках)
+  - `apps/web-buyer/src/app/layout.tsx` — `<head><ThemeScript defaultTheme="system" /></head>`, `<ThemeProvider>` обёрнут вокруг детей, `suppressHydrationWarning` на `<html>`
+  - `apps/web-seller/src/app/layout.tsx` — то же с `defaultTheme="dark"` (сохраняет CRM identity)
+  - `apps/web-buyer/src/components/layout/Header.tsx` — `<ThemeToggle bordered={false} />` справа от Bell, `hover:bg-black/5` заменён на токен-aware mouseEnter/Leave
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — `<ThemeToggle />` слева от Bell в topbar
+  - `apps/web-seller/src/app/(onboarding)/layout.tsx` — gradient → `var(--onboarding-bg)`, orbs → CSS vars
+- **Файлы (миграция `text-white`/`color: colors.bg` → семантические токены):**
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — 9 правок: `text-white` → `colors.textPrimary`, accent-bubble text → `accentTextOnBg`, edit-textarea/buttons на accent bubble переписаны через rgba(255,255,255) (стабильно в обеих темах т.к. bubble всегда violet), `hover:bg-white/5` → `bg-[var(--color-surface-muted)]`
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — все `text-white` headings → `colors.textPrimary`; ProgressBar checkmark text + accent submit-buttons → `accentTextOnBg`
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — primary button text + Logo icon color → `accentTextOnBg`
+  - `apps/web-seller/src/app/(dashboard)/{layout,orders,orders/[id],products,products/create,products/[id]/edit,settings}/*` — batch-замена `color: colors.bg` → `colors.accentTextOnBg` (8 файлов)
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — 3 дополнительных `text-white` → `colors.textPrimary`
+  - `apps/web-seller/src/components/{product-variants-section,product-option-groups-section}.tsx` — 3 `text-white` → `colors.textPrimary`
+  - `apps/web-buyer/src/components/chat/ChatComposerModal.tsx` — полная переработка: был сломан хардкоденым white text на (теперь light) `glass` surface; теперь использует `card` + `colors.textPrimary` + `accentTextOnBg`
+- **Что работает:**
+  - **Toggle** в header buyer'a + topbar seller'a: иконка Sun ↔ Moon с smooth rotate+scale (300ms ease-out). Click = toggle light↔dark. Right-click = popover с 3 опциями: Светлая / Тёмная / Как в системе. Esc / click-outside закрывают popover.
+  - **No-flash hydration:** inline-script в `<head>` ставит `data-theme` ДО React-hydration, читая `localStorage('savdo-theme')` или `prefers-color-scheme`. Никаких миганий.
+  - **Persist:** выбор сохраняется в `localStorage('savdo-theme')`. При reload — восстанавливается.
+  - **System sync:** если выбрано «Как в системе», `matchMedia('change')` listener реагирует на смену OS-темы без перезагрузки.
+  - **Smooth swap:** `body { transition: background-color 200ms ease, color 200ms ease }` (отключено для `prefers-reduced-motion: reduce`).
+  - **Accessibility:** `aria-label`, `role="menu"`, `role="menuitemradio"`, `aria-checked`, keyboard (Esc).
+- **Архитектурное решение — почему через CSS-переменные, а не Tailwind `dark:`:**
+  - Все компоненты обоих app'ов уже импортируют `colors`/`card`/`shell` из `lib/styles.ts` (Phase 3 cleanup сделал это инвариантом). Изменив значения этих констант с хексов на `var(--color-X)`, я автоматически темизовал ВЕСЬ UI без касания компонентов.
+  - Это совпадает с предписанием `docs/design/liquid-authority.md`: «Не использовать `dark:` класс Tailwind отдельно — только через CSS переменные».
+  - Альтернатива (Tailwind `dark:`) потребовала бы рефакторинга десятков файлов и не масштабируется на inline `style={{}}` (которых много).
+- **Палитры:**
+  - **buyer light** (default): `#FAFAF7` cream bg + `#7C3AED` violet accent + `#0F1115` text — без изменений (то что было)
+  - **buyer dark** (новое): `#0F0F12` warm near-black + `#8B5CF6` lighter violet accent + `#F4F4F5` text + `#A78BFA` brand wordmark
+  - **seller dark** (default): сохранён оригинальный gradient body + slate-900 surfaces + `#A78BFA` accent — без изменений
+  - **seller light** (новое): `#F4F5F7` solid bg + `#7C3AED` violet accent + `#0F172A` text
+  - **brand wordmark** «Savdo» — единый `#7C3AED` в light, `#A78BFA` в dark (оба контрастно читаются на своей теме)
+- **Что НЕ сломано (verified):**
+  - 0 хардкоженых `bg-white`/`text-black`/`bg-black` в обоих app'ах (Phase 3 cleanup был чистый)
+  - Все inline `colors.X` авто-темизуются через CSS vars
+  - Telegram-blue gradient buttons (`linear-gradient(135deg, ${colors.telegram} 0%, #1d6fa4 100%)` + `color: "#FFFFFF"`) — корректно в обеих темах (Telegram brand)
+  - Logo gradient `linear-gradient(135deg, #7C3AED, #A78BFA)` в seller sidebar — brand identity, корректно в обеих
+  - Mobile drawer overlay `rgba(0,0,0,0.65)` — универсальный dark backdrop
+  - Loader2 `text-white` на `rgba(0,0,0,0.45)` overlay в seller profile — корректно (white spinner на dark backdrop в обеих темах)
+- **Проверка:** локально не запускалось (запрет `feedback_no_local_run`). Static audit: 0 проблемных хардкодов после миграции, type-shape `colors` объекта не изменился (только значения), все consumers `colors.X` остались валидны.
+
+---
+
 ## 2026-05-04 (параллельная сессия, security audit) — SEC-AUDIT-2026-05 backend audit + HIGH-01 fix
 
 ### ✅ [SEC-AUDIT-2026-05] Backend security audit (apps/api) — отчёт + точечный фикс HIGH-01

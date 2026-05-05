@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Search, ShoppingCart, Bell, MessageSquare, User as UserIcon, Package } from "lucide-react";
+import { Search, ShoppingCart, Bell, MessageSquare, User as UserIcon, Package, Heart } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-notifications";
 import { useUnreadChatCount } from "@/hooks/use-chat";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/lib/auth/context";
 import { colors } from "@/lib/styles";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Tooltip } from "@/components/tooltip";
 
 export default function Header() {
   const params = useParams();
@@ -63,6 +65,11 @@ export default function Header() {
           </NavIconLink>
         </nav>
 
+        {/* Wishlist — always visible */}
+        <NavIconLink href="/wishlist" ariaLabel="Избранное">
+          <Heart size={18} />
+        </NavIconLink>
+
         {/* Cart — always visible */}
         <NavIconLink href="/cart" badge={cartCount} ariaLabel="Корзина">
           <ShoppingCart size={18} />
@@ -72,6 +79,9 @@ export default function Header() {
         <NavIconLink href="/notifications" badge={unreadCount} ariaLabel="Уведомления">
           <Bell size={18} />
         </NavIconLink>
+
+        {/* Theme toggle — always visible */}
+        <ThemeToggle bordered={false} />
       </div>
     </header>
   );
@@ -89,21 +99,25 @@ function NavIconLink({
   ariaLabel: string;
 }) {
   return (
-    <Link
-      href={href}
-      aria-label={ariaLabel}
-      className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:bg-black/5"
-      style={{ color: colors.textPrimary }}
-    >
-      {children}
-      {badge > 0 && (
-        <span
-          className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full text-[10px] font-bold"
-          style={{ background: colors.accent, color: colors.accentTextOnBg }}
-        >
-          {badge > 9 ? "9+" : badge}
-        </span>
-      )}
-    </Link>
+    <Tooltip label={ariaLabel}>
+      <Link
+        href={href}
+        aria-label={ariaLabel}
+        className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+        style={{ color: colors.textPrimary }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceMuted; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+      >
+        {children}
+        {badge > 0 && (
+          <span
+            className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full text-[10px] font-bold"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
+          >
+            {badge > 9 ? "9+" : badge}
+          </span>
+        )}
+      </Link>
+    </Tooltip>
   );
 }
