@@ -60,9 +60,6 @@ export default function Header() {
           <NavIconLink href="/orders" ariaLabel="Заказы">
             <Package size={18} />
           </NavIconLink>
-          <NavIconLink href="/profile" ariaLabel="Профиль">
-            <UserIcon size={18} />
-          </NavIconLink>
         </nav>
 
         {/* Wishlist — always visible */}
@@ -82,6 +79,13 @@ export default function Header() {
 
         {/* Theme toggle — always visible */}
         <ThemeToggle bordered={false} />
+
+        {/* Profile — rightmost, desktop only (mobile uses BottomNavBar) */}
+        <div className="hidden md:flex">
+          <NavIconLink href="/profile" ariaLabel="Профиль">
+            <UserIcon size={18} />
+          </NavIconLink>
+        </div>
       </div>
     </header>
   );
