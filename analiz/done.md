@@ -1,5 +1,19 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 48, Азим) — Task 4: ProductCard + filters redesign
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 4] ProductCard borderless + brand tokens + filter chips 🔴
+
+- **Дата:** 05.05.2026
+- **Commit:** `4f0cea2`
+- **Файлы:**
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — убран border/background с внешней обёртки; image-area получила `rounded-md` + `surfaceSunken`; heart 32px rgba(255,255,255,0.85) без border + brand-цвет активного; price в `textStrong`; slider dots → `brand`; variants badge → `brandTextOnBg/brand/brandBorder`; OOS badge → `brandTextOnBg`; CollageGrid пустой слот → `textMuted`; `<span>сум</span>` — muted weight
+  - `apps/web-buyer/src/components/store/ProductsWithSearch.tsx` — grid: 2/3/4 cols (убраны xl/2xl), gap 2.5/3.5; input text → `textBody`; ring → `brandBorder`
+  - `apps/web-buyer/src/components/store/CategoryAttributeFilters.tsx` — filter button + category chips active = `textStrong` fill (dark-fill, per spec); inactive chips → surface/border/textBody, radius 4-6px (без rounded-full); counter badge → `brand`; section headings → `textStrong`; boolean toggle → `brand`; select/input → `textBody`, radius 6px; divider выше attribute-list
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
+---
+
 ## 2026-05-05 (сессия 47, Азим) — Task 1: Foundation tokens + Inter font
 
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 1] Foundation tokens — Soft Color Lifestyle palette + Inter font 🔴
