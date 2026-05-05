@@ -1,6 +1,6 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, prefetch } from '@/lib/api';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 interface ProductImage {
   id: string;
@@ -23,6 +24,7 @@ interface Product {
   description: string | null;
   storeCategoryId?: string | null;
   images?: ProductImage[];
+  totalStock?: number;
 }
 
 interface StoreCategory {
@@ -32,7 +34,12 @@ interface StoreCategory {
 
 export default function SellerProductsPage() {
   const navigate = useNavigate();
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  const gridCols =
+    viewportWidth >= 1536 ? 'grid-cols-5' :
+    viewportWidth >= 1280 ? 'grid-cols-4' :
+    viewportWidth >= 1024 ? 'grid-cols-3' :
+    viewportWidth >= 768  ? 'grid-cols-2' : '';
   const { authVersion } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -42,25 +49,31 @@ export default function SellerProductsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const load = useCallback(() => {
+  const abortRef = useRef<AbortController | null>(null);
+  const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
     Promise.all([
-      api<{ products: Product[]; total: number }>('/seller/products?limit=50'),
-      api<StoreCategory[]>('/seller/categories'),
+      api<{ products: Product[]; total: number }>('/seller/products?limit=50', { signal }),
+      api<StoreCategory[]>('/seller/categories', { signal }),
     ])
       .then(([res, cats]) => {
+        if (signal?.aborted) return;
         setProducts(res?.products ?? []);
         setCategories(cats ?? []);
       })
-      .catch(() => setError('Не удалось загрузить товары'))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!signal?.aborted) setError('Не удалось загрузить товары'); })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
   }, []);
 
   useEffect(() => {
-    load();
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    load(ac.signal);
     tg?.BackButton.show();
-    tg?.BackButton.onClick(() => navigate('/seller'));
-    return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(() => navigate('/seller')); };
+    const goBack = () => navigate('/seller');
+    tg?.BackButton.onClick(goBack);
+    return () => { ac.abort(); tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [load, navigate, tg, authVersion]);
 
   const toggleStatus = async (product: Product) => {
@@ -144,51 +157,53 @@ export default function SellerProductsPage() {
 
         {/* Category filter — WB/Uzum style horizontal chips */}
         {!loading && categories.length > 0 && (
-          <div
-            className="flex gap-2 overflow-x-auto pb-0.5"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {/* "Все" chip */}
-            <button
-              onClick={() => setActiveCat('')}
-              className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-              style={{
-                background: !activeCat ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${!activeCat ? 'rgba(124,58,237,0.60)' : 'rgba(255,255,255,0.10)'}`,
-                color: !activeCat ? '#A855F7' : 'rgba(255,255,255,0.50)',
-              }}
+          <div className="scroll-fade-x">
+            <div
+              className="flex gap-2 overflow-x-auto scroll-snap-x pb-0.5"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              Все
-            </button>
-            {categories.map((cat) => {
-              const active = activeCat === cat.id;
-              const count = products.filter((p) => p.storeCategoryId === cat.id).length;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCat(active ? '' : cat.id)}
-                  className="shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-                  style={{
-                    background: active ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.06)',
-                    border: `1px solid ${active ? 'rgba(124,58,237,0.60)' : 'rgba(255,255,255,0.10)'}`,
-                    color: active ? '#A855F7' : 'rgba(255,255,255,0.50)',
-                  }}
-                >
-                  {cat.name}
-                  {count > 0 && (
-                    <span
-                      className="text-[10px] font-bold px-1 rounded-full"
-                      style={{
-                        background: active ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.08)',
-                        color: active ? '#A855F7' : 'rgba(255,255,255,0.35)',
-                      }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+              {/* "Все" chip */}
+              <button
+                onClick={() => setActiveCat('')}
+                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${!activeCat ? 'chip-active' : ''}`}
+                style={activeCat ? {
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'rgba(255,255,255,0.50)',
+                } : undefined}
+              >
+                Все
+              </button>
+              {categories.map((cat) => {
+                const active = activeCat === cat.id;
+                const count = products.filter((p) => p.storeCategoryId === cat.id).length;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCat(active ? '' : cat.id)}
+                    className={`shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${active ? 'chip-active' : ''}`}
+                    style={!active ? {
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      color: 'rgba(255,255,255,0.50)',
+                    } : undefined}
+                  >
+                    {cat.name}
+                    {count > 0 && (
+                      <span
+                        className="text-[10px] font-bold px-1 rounded-full"
+                        style={{
+                          background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
+                          color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -199,7 +214,7 @@ export default function SellerProductsPage() {
         {!loading && error && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{error}</p>
-            <Button variant="ghost" className="mt-3" onClick={load}>Повторить</Button>
+            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>Повторить</Button>
           </GlassCard>
         )}
 
@@ -222,7 +237,103 @@ export default function SellerProductsPage() {
           </div>
         )}
 
-        {!loading && filtered.map((product) => {
+        {!loading && filtered.length > 0 && gridCols && (
+          <div className={`grid ${gridCols} gap-3`}>
+            {filtered.map((product) => {
+              const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
+              const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
+              return (
+                <GlassCard
+                  key={product.id}
+                  className="p-3 flex flex-col gap-2 cursor-pointer active:opacity-70"
+                  onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                  onPointerEnter={() => {
+                    prefetch(`/seller/products/${product.id}`);
+                    prefetch(`/seller/products/${product.id}/attributes`);
+                  }}
+                >
+                  <div className="w-full aspect-square rounded-xl overflow-hidden relative"
+                    style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.18)' }}>
+                    <ProductImage src={thumbUrl} alt={product.title} emptyVariant="no-photo" />
+                    {typeof product.totalStock === 'number' && product.totalStock <= 0 && (
+                      <div style={{ position: 'absolute', left: 6, top: 6, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', letterSpacing: 0.3 }}>
+                        НЕТ В НАЛИЧИИ
+                      </div>
+                    )}
+                    {typeof product.totalStock === 'number' && product.totalStock > 0 && product.totalStock <= 5 && (
+                      <div style={{ position: 'absolute', left: 6, top: 6, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'rgba(251,191,36,0.92)', color: '#1a1208', letterSpacing: 0.3 }}>
+                        ОСТАЛОСЬ {product.totalStock}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold" style={{
+                    color: 'rgba(255,255,255,0.92)',
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                  }}>
+                    {product.title}
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold" style={{ color: '#A855F7' }}>{price(product)}</p>
+                    <Badge status={product.status} />
+                  </div>
+                  {typeof product.totalStock === 'number' && (
+                    <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'rgba(255,255,255,0.40)' }}>
+                      {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-1.5 mt-auto pt-1">
+                    {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleStatus(product); }}
+                        disabled={togglingId === product.id}
+                        title={product.status === 'ACTIVE' ? 'Снять с публикации' : 'Опубликовать'}
+                        style={{
+                          flex: 1, height: 32, borderRadius: 10, border: 'none',
+                          background: product.status === 'ACTIVE' ? 'rgba(248,113,113,0.15)' : 'rgba(52,211,153,0.15)',
+                          color: product.status === 'ACTIVE' ? '#f87171' : '#34d399',
+                          fontSize: 13, fontWeight: 600,
+                          cursor: togglingId === product.id ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {togglingId === product.id ? '…' : product.status === 'ACTIVE' ? '⏸ Скрыть' : '▶ Опубл.'}
+                      </button>
+                    )}
+                    {(product.status === 'ACTIVE' || product.status === 'DRAFT') && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); archiveProduct(product); }}
+                        disabled={togglingId === product.id}
+                        title="Архивировать"
+                        style={{
+                          width: 32, height: 32, borderRadius: 10, border: 'none',
+                          background: 'rgba(251,191,36,0.15)',
+                          color: '#fbbf24', fontSize: 13,
+                          cursor: togglingId === product.id ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}
+                      >📥</button>
+                    )}
+                    {product.status !== 'ACTIVE' && product.status !== 'HIDDEN_BY_ADMIN' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteProduct(product); }}
+                        disabled={togglingId === product.id}
+                        title="Удалить навсегда"
+                        style={{
+                          width: 32, height: 32, borderRadius: 10, border: 'none',
+                          background: 'rgba(248,113,113,0.15)',
+                          color: '#f87171', fontSize: 13,
+                          cursor: togglingId === product.id ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}
+                      >🗑</button>
+                    )}
+                  </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && filtered.length > 0 && !gridCols && filtered.map((product) => {
           const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
           const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
           return (
@@ -230,16 +341,16 @@ export default function SellerProductsPage() {
               key={product.id}
               className="p-4 flex items-center gap-3 cursor-pointer active:opacity-70"
               onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+              onPointerEnter={() => {
+                prefetch(`/seller/products/${product.id}`);
+                prefetch(`/seller/products/${product.id}/attributes`);
+              }}
             >
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden"
+                className="w-10 h-10 rounded-xl shrink-0 overflow-hidden"
                 style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.20)' }}
               >
-                {thumbUrl ? (
-                  <img src={thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  '🛍'
-                )}
+                <ProductImage src={thumbUrl} emptyVariant="thumbnail" hideLabel />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -249,6 +360,11 @@ export default function SellerProductsPage() {
                 <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>
                   {price(product)}
                 </p>
+                {typeof product.totalStock === 'number' && (
+                  <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'rgba(255,255,255,0.40)' }}>
+                    {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">

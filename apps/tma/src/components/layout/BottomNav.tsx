@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { getCart } from '@/lib/cart';
+import { subscribeToUnread } from '@/lib/notifications';
 
 interface NavItem {
   path: string;
@@ -36,6 +38,11 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
   const navigate = useNavigate();
   const { tg } = useTelegram();
 
+  // NOTIF-IN-APP-001: unread-count badge на иконку «Чат» (общий счётчик
+  // уведомлений: новые сообщения + статусы заказов + апдейты магазина).
+  const [unread, setUnread] = useState(0);
+  useEffect(() => subscribeToUnread(setUnread), []);
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 flex z-50"
@@ -51,7 +58,10 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
     >
       {tabs.map((tab) => {
         const active = isActive(tab, location.pathname);
-        const badgeCount = tab.badge?.() ?? 0;
+        const tabBadge = tab.badge?.() ?? 0;
+        // Уведомления добавляются к иконке «Чат» если она есть.
+        const isChatTab = tab.path.endsWith('/chat');
+        const badgeCount = isChatTab ? tabBadge + unread : tabBadge;
 
         return (
           <button
@@ -68,6 +78,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             {/* Icon + badge */}
             <span style={{ position: 'relative', display: 'inline-block' }}>
               <span
+                aria-hidden="true"
                 style={{
                   fontSize: 22,
                   display: 'block',
@@ -108,7 +119,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             <span
               className="text-[10px] font-semibold truncate w-full text-center"
               style={{
-                color: active ? '#A855F7' : 'rgba(255,255,255,0.28)',
+                color: active ? '#A855F7' : 'rgba(255,255,255,0.50)',
                 transition: 'color 0.15s',
                 letterSpacing: '0.01em',
               }}

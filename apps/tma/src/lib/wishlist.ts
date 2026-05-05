@@ -4,7 +4,29 @@
 // stay snappy even between page transitions.
 
 import { api } from './api';
-import type { WishlistItem } from 'types';
+
+/**
+ * Local mirror of WishlistItem from packages/types.
+ * Defined inline because TMA Dockerfile doesn't copy packages/* into the build
+ * context (apps/tma is the only app without workspace-type imports).
+ */
+export interface WishlistItem {
+  id: string;
+  productId: string;
+  createdAt: string;
+  product: {
+    id: string;
+    title: string;
+    basePrice: number;
+    currencyCode: string;
+    mediaUrls: string[];
+    displayType: string;
+    storeId: string;
+    storeName: string;
+    storeSlug: string;
+    isAvailable: boolean;
+  };
+}
 
 const STORAGE_KEY = 'tma_wishlist_ids_v1';
 

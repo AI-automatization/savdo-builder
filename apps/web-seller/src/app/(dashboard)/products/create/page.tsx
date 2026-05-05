@@ -363,7 +363,7 @@ export default function CreateProductPage() {
             type="submit"
             disabled={isSubmitting || create.isPending}
             className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {create.isPending ? 'Создание...' : 'Создать товар'}
           </button>

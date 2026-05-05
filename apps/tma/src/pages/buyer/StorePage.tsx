@@ -5,8 +5,10 @@ import { track } from '@/lib/analytics';
 import { getCart, saveCart } from '@/lib/cart';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
+import { webStoreUrl, webStoreLabel } from '@/lib/webUrl';
 
 interface Product {
   id: string;
@@ -35,9 +37,11 @@ export default function StorePage() {
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
   const gridCols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,15 +51,20 @@ export default function StorePage() {
   const [activeCat, setActiveCat] = useState<string | null>(null);
 
   useEffect(() => {
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    const ac = new AbortController();
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then(setGlobalCategories).catch(() => {});
+    return () => ac.abort();
   }, []);
 
   useEffect(() => {
     if (!slug) return;
+    const ac = new AbortController();
     Promise.allSettled([
-      api<Store>(`/storefront/stores/${slug}`),
-      api<Product[]>(`/stores/${slug}/products`),
+      api<Store>(`/storefront/stores/${slug}`, { signal: ac.signal }),
+      api<Product[]>(`/stores/${slug}/products`, { signal: ac.signal }),
     ]).then(([storeResult, productsResult]) => {
+      if (ac.signal.aborted) return;
       if (storeResult.status === 'fulfilled') {
         setStore(storeResult.value);
         if (trackedRef.current !== storeResult.value.id) {
@@ -68,7 +77,8 @@ export default function StorePage() {
       if (productsResult.status === 'fulfilled') {
         setProducts(productsResult.value ?? []);
       }
-    }).finally(() => setLoading(false));
+    }).finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [slug]);
 
   const addToCart = (product: Product) => {
@@ -125,7 +135,7 @@ export default function StorePage() {
     return (
       
         <div className="flex flex-col items-center gap-3 py-16">
-          <span style={{ fontSize: 40 }}>😕</span>
+          <span aria-hidden="true" style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
           <button onClick={() => navigate('/buyer')} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
         </div>
@@ -151,7 +161,14 @@ export default function StorePage() {
             </div>
             <div>
               <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>{store.name}</h1>
-              <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>savdo.uz/{store.slug}</p>
+              <button
+                onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
+                className="text-[11px] underline-offset-2 hover:underline"
+                style={{ color: 'rgba(167,139,250,0.80)', cursor: 'pointer' }}
+                aria-label="Открыть в браузере"
+              >
+                {webStoreLabel(store.slug)} ↗
+              </button>
             </div>
           </div>
           {store.description && (
@@ -160,32 +177,34 @@ export default function StorePage() {
         </div>
 
         {globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                border: `1px solid ${activeCat === null ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((c) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={c.id}
-                onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === c.id ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                  border: `1px solid ${activeCat === c.id ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                  color: activeCat === c.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                }}
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.55)',
+                } : undefined}
               >
-                {c.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === c.id ? 'chip-active' : ''}`}
+                  style={activeCat !== c.id ? {
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.55)',
+                  } : undefined}
+                >
+                  {c.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -195,7 +214,7 @@ export default function StorePage() {
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
-            <span style={{ fontSize: 36 }}>📭</span>
+            <span aria-hidden="true" style={{ fontSize: 36 }}>📭</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
               {activeCat ? 'Нет товаров в этой категории' : 'Товаров пока нет'}
             </p>
@@ -212,11 +231,9 @@ export default function StorePage() {
               className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
               style={glass}
             >
-              <div className="w-full aspect-square rounded-xl flex items-center justify-center text-3xl overflow-hidden"
+              <div className="w-full aspect-square rounded-xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.04)' }}>
-                {p.images?.[0]?.url
-                  ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover" />
-                  : '📦'}
+                <ProductImage src={p.images?.[0]?.url} alt={p.title} emptyVariant="product-empty" />
               </div>
               <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
                 {p.title}
@@ -227,7 +244,8 @@ export default function StorePage() {
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold"
+                  aria-label="Добавить в корзину"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold"
                   style={{ background: 'rgba(167,139,250,0.25)', border: '1px solid rgba(167,139,250,0.35)', color: '#A855F7' }}
                 >
                   +

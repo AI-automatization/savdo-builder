@@ -21,7 +21,10 @@ export interface CreateThreadData {
 export interface AddMessageData {
   threadId: string;
   senderUserId: string;
-  body: string;
+  body?: string | null;
+  parentMessageId?: string | null;
+  mediaId?: string | null;
+  messageType?: 'text' | 'image' | 'system';
 }
 
 @Injectable()
@@ -112,15 +115,26 @@ export class ChatRepository {
     });
   }
 
+  async findMessageById(id: string): Promise<ChatMessage | null> {
+    return this.prisma.chatMessage.findUnique({ where: { id } });
+  }
+
+  async findMessagesByIds(ids: string[]): Promise<ChatMessage[]> {
+    if (!ids.length) return [];
+    return this.prisma.chatMessage.findMany({ where: { id: { in: ids } } });
+  }
+
   async addMessage(data: AddMessageData): Promise<ChatMessage> {
     return this.prisma.$transaction(async (tx) => {
       const message = await tx.chatMessage.create({
         data: {
           threadId: data.threadId,
           senderUserId: data.senderUserId,
-          messageType: 'text',
-          body: data.body,
-        },
+          messageType: data.messageType ?? (data.mediaId ? 'image' : 'text'),
+          body: data.body ?? null,
+          ...(data.parentMessageId ? { parentMessageId: data.parentMessageId } : {}),
+          ...(data.mediaId ? { mediaId: data.mediaId } : {}),
+        } as any,
       });
 
       await tx.chatThread.update({

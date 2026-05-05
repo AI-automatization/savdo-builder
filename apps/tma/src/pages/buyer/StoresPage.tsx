@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
@@ -35,11 +35,29 @@ export default function StoresPage() {
   const [storesError, setStoresError] = useState(false);
   const [storesQuery, setStoresQuery] = useState('');
 
-  useEffect(() => {
-    api<{ data: Store[] }>('/storefront/stores')
+  const storesAbortRef = useRef<AbortController | null>(null);
+  const loadStores = () => {
+    storesAbortRef.current?.abort();
+    const ac = new AbortController();
+    storesAbortRef.current = ac;
+    setStoresLoading(true);
+    setStoresError(false);
+    api<{ data: Store[] }>('/storefront/stores', { signal: ac.signal })
       .then((res) => setStores(res.data ?? []))
-      .catch(() => setStoresError(true))
-      .finally(() => setStoresLoading(false));
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          setStores([]);
+        } else {
+          setStoresError(true);
+        }
+      })
+      .finally(() => { if (!ac.signal.aborted) setStoresLoading(false); });
+  };
+  useEffect(() => {
+    loadStores();
+    return () => storesAbortRef.current?.abort();
   }, []);
 
   const filteredStores = useMemo(() => {
@@ -74,16 +92,21 @@ export default function StoresPage() {
     api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
   }, [tab]);
 
+  const productsAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (tab !== 'products') return;
+    productsAbortRef.current?.abort();
+    const ac = new AbortController();
+    productsAbortRef.current = ac;
     setProductsLoading(true);
     const params = new URLSearchParams({ sort });
     if (debouncedQuery.trim()) params.set('q', debouncedQuery.trim());
     if (activeCat) params.set('globalCategoryId', activeCat);
-    api<{ data: FeedProduct[]; meta: { total: number; page: number } }>(`/storefront/products?${params}`)
-      .then((res) => setProducts(res.data ?? []))
-      .catch(() => {})
-      .finally(() => setProductsLoading(false));
+    api<{ data: FeedProduct[]; meta: { total: number; page: number } }>(`/storefront/products?${params}`, { signal: ac.signal })
+      .then((res) => { if (!ac.signal.aborted) setProducts(res.data ?? []); })
+      .catch(() => { /* abort/error: оставляем прежний список */ })
+      .finally(() => { if (!ac.signal.aborted) setProductsLoading(false); });
+    return () => ac.abort();
   }, [tab, debouncedQuery, activeCat, sort]);
 
   const openTgContact = (e: React.MouseEvent, link: string) => {
@@ -175,34 +198,36 @@ export default function StoresPage() {
 
         {/* Products tab — categories */}
         {tab === 'products' && globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                border: `1px solid ${activeCat === null ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((cat) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={cat.id}
-                onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === cat.id ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                  color: activeCat === cat.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                  border: `1px solid ${activeCat === cat.id ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'rgba(255,255,255,0.07)',
+                  color: 'rgba(255,255,255,0.55)',
+                  border: '1px solid rgba(255,255,255,0.10)',
                   whiteSpace: 'nowrap',
-                }}
+                } : { whiteSpace: 'nowrap' }}
               >
-                {cat.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === cat.id ? 'chip-active' : ''}`}
+                  style={activeCat !== cat.id ? {
+                    background: 'rgba(255,255,255,0.07)',
+                    color: 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    whiteSpace: 'nowrap',
+                  } : { whiteSpace: 'nowrap' }}
+                >
+                  {cat.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -217,12 +242,12 @@ export default function StoresPage() {
               <button
                 key={s.value}
                 onClick={() => setSort(s.value)}
-                className="px-3 py-1 rounded-lg text-xs font-medium"
-                style={{
-                  background: sort === s.value ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.06)',
-                  color: sort === s.value ? '#22D3EE' : 'rgba(255,255,255,0.45)',
-                  border: `1px solid ${sort === s.value ? 'rgba(34,211,238,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                }}
+                className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
+                style={sort !== s.value ? {
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.45)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                } : undefined}
               >
                 {s.label}
               </button>
@@ -243,7 +268,7 @@ export default function StoresPage() {
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
                 <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-                <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+                <button onClick={loadStores} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
               </div>
             )}
 
@@ -256,11 +281,19 @@ export default function StoresPage() {
               </div>
             )}
 
+            <div className={`grid gap-3 ${
+              viewportWidth >= 1280 ? 'grid-cols-3' :
+              viewportWidth >= 768  ? 'grid-cols-2' : 'grid-cols-1'
+            }`}>
             {filteredStores.map((store) => (
               <GlassCard
                 key={store.id}
                 className="flex items-center gap-3 px-4 py-3.5"
                 onClick={() => navigate(`/buyer/store/${store.slug}`)}
+                onPointerEnter={() => {
+                  prefetch(`/storefront/stores/${store.slug}`);
+                  prefetch(`/stores/${store.slug}/products`);
+                }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold uppercase"
@@ -301,6 +334,7 @@ export default function StoresPage() {
                 </div>
               </GlassCard>
             ))}
+            </div>
           </>
         )}
 
@@ -322,9 +356,11 @@ export default function StoresPage() {
 
             {!productsLoading && products.length > 0 && (
               <div className={`grid gap-3 ${
-                viewportWidth >= 960 ? 'grid-cols-5' :
-                viewportWidth >= 768 ? 'grid-cols-4' :
-                viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2'
+                viewportWidth >= 1536 ? 'grid-cols-7' :
+                viewportWidth >= 1280 ? 'grid-cols-6' :
+                viewportWidth >= 1024 ? 'grid-cols-5' :
+                viewportWidth >= 768  ? 'grid-cols-4' :
+                viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2'
               }`}>
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} />

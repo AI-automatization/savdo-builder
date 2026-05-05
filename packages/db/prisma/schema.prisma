@@ -126,6 +126,13 @@ model User {
   sessions      UserSession[]
   auditLogs     AuditLog[]
   broadcastLogs BroadcastLog[]
+  // DB-AUDIT-001-01: FK relations на notification/history таблицы
+  inAppNotifications     InAppNotification[]
+  notificationPreference NotificationPreference?
+  pushSubscriptions      PushSubscription[]
+  notificationLogs       NotificationLog[]
+  orderStatusHistory     OrderStatusHistory[]
+  analyticsEvents        AnalyticsEvent[]
 
   @@index([role])
   @@index([status])
@@ -345,13 +352,16 @@ model StoreDeliverySettings {
 // ─────────────────────────────────────────────
 
 model GlobalCategory {
-  id       String   @id @default(uuid())
-  parentId String?
-  nameRu   String
-  nameUz   String
-  slug     String   @unique
-  isActive Boolean  @default(true)
-  sortOrder Int     @default(0)
+  id        String   @id @default(uuid())
+  parentId  String?
+  nameRu    String
+  nameUz    String
+  slug      String   @unique
+  level     Int      @default(0) // 0=Отрасль, 1=Категория, 2=Подкатегория, 3=Тип товара (leaf)
+  isLeaf    Boolean  @default(false) // товары можно добавлять только в leaf
+  iconEmoji String?  // 📱 🏠 etc.
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
   parent   GlobalCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
@@ -361,18 +371,22 @@ model GlobalCategory {
 
   @@index([parentId])
   @@index([isActive])
+  @@index([level])
+  @@index([isLeaf])
   @@map("global_categories")
 }
 
 model CategoryFilter {
   id           String  @id @default(uuid())
-  categorySlug String
-  key          String
+  categorySlug String  // ссылка на GlobalCategory.slug (обычно leaf)
+  key          String  // brand, ram_gb, color, size
   nameRu       String
   nameUz       String
-  fieldType    String  @default("TEXT")
-  options      String?
-  unit         String?
+  fieldType    String  @default("TEXT") // TEXT | NUMBER | SELECT | BOOLEAN | COLOR | MULTI_SELECT
+  options      String? // JSON array для SELECT/MULTI_SELECT/COLOR
+  unit         String? // GB, дюйм, MP, см, кг
+  isRequired   Boolean @default(false)
+  isFilterable Boolean @default(true) // показывается в storefront-фильтрах
   sortOrder    Int     @default(0)
 
   @@unique([categorySlug, key])
@@ -423,6 +437,7 @@ model Product {
   isVisible          Boolean       @default(true)
   isFeatured         Boolean       @default(false)
   sku                String?
+  attributesJson     Json?         // {"brand":"Apple","ram_gb":32,"color":"black"} — schema-on-write по CategoryFilter
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   deletedAt          DateTime?
@@ -444,6 +459,8 @@ model Product {
   @@index([storeCategoryId])
   @@index([status])
   @@index([isVisible])
+  // DB-AUDIT-001-03: hot path public storefront feed (sort by new)
+  @@index([status, deletedAt, createdAt(sort: Desc)])
   @@map("products")
 }
 
@@ -472,6 +489,8 @@ model ProductImage {
   media   MediaFile @relation(fields: [mediaId], references: [id])
 
   @@index([productId])
+  // DB-AUDIT-001-06: ORDER BY sortOrder при загрузке фото товара
+  @@index([productId, sortOrder])
   @@map("product_images")
 }
 
@@ -664,6 +683,9 @@ model Order {
   @@index([status])
   @@index([paymentStatus])
   @@index([placedAt])
+  // DB-AUDIT-001-04: hot path seller dashboard / orders list
+  @@index([storeId, status, placedAt(sort: Desc)])
+  @@index([buyerId, status, placedAt(sort: Desc)])
   @@map("orders")
 }
 
@@ -702,15 +724,23 @@ model OrderStatusHistory {
   comment         String?
   createdAt       DateTime @default(now())
 
-  order Order @relation(fields: [orderId], references: [id])
+  order      Order @relation(fields: [orderId], references: [id])
+  // DB-AUDIT-001-01: SetNull чтобы сохранить snapshot истории при удалении юзера
+  changedBy  User? @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+  @@index([changedByUserId])
   @@map("order_status_history")
 }
 
 // ─────────────────────────────────────────────
 // CHAT
 // ─────────────────────────────────────────────
+
+enum ChatThreadStatus {
+  OPEN
+  CLOSED
+}
 
 model ChatThread {
   id            String     @id @default(uuid())
@@ -719,7 +749,9 @@ model ChatThread {
   orderId       String?
   buyerId       String?
   sellerId      String
-  status        String     @default("active")
+  // DB-AUDIT-001-02: было `String @default("active")`, но код пишет/читает
+  // 'OPEN'/'CLOSED'. Переведено в enum для consistency.
+  status        ChatThreadStatus @default(OPEN)
   lastMessageId    String?
   lastMessageAt    DateTime?
   buyerLastReadAt  DateTime?
@@ -751,6 +783,8 @@ model ChatMessage {
   body             String?
   productContextId String?
   orderContextId   String?
+  parentMessageId  String?
+  mediaId          String?
   isDeleted        Boolean   @default(false)
   editedAt         DateTime?
   deletedAt        DateTime?
@@ -758,11 +792,18 @@ model ChatMessage {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  thread ChatThread @relation(fields: [threadId], references: [id])
+  thread        ChatThread    @relation(fields: [threadId], references: [id])
+  parentMessage ChatMessage?  @relation("ChatReply", fields: [parentMessageId], references: [id], onDelete: SetNull)
+  replies       ChatMessage[] @relation("ChatReply")
+  media         MediaFile?    @relation("ChatMessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   @@index([threadId])
   @@index([senderUserId])
   @@index([createdAt])
+  @@index([parentMessageId])
+  @@index([mediaId])
+  // DB-AUDIT-001-05: hot path cursor pagination сообщений в треде
+  @@index([threadId, createdAt(sort: Desc)])
   @@map("chat_messages")
 }
 
@@ -784,6 +825,7 @@ model MediaFile {
 
   productImages              ProductImage[]
   sellerVerificationDocuments SellerVerificationDocument[]
+  chatMessages               ChatMessage[]                @relation("ChatMessageMedia")
 
   @@index([ownerUserId])
   @@map("media_files")
@@ -804,6 +846,9 @@ model InAppNotification {
   readAt    DateTime?
   createdAt DateTime @default(now())
 
+  // DB-AUDIT-001-01: Cascade — удаление юзера чистит его уведомления
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([userId, isRead])
   @@index([createdAt])
@@ -818,6 +863,9 @@ model NotificationPreference {
   telegramEnabled   Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  // DB-AUDIT-001-01: Cascade
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
 }
@@ -835,6 +883,9 @@ model PushSubscription {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  // DB-AUDIT-001-01: Cascade
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@map("push_subscriptions")
 }
@@ -849,6 +900,9 @@ model NotificationLog {
   failureReason  String?
   sentAt         DateTime?
   createdAt      DateTime @default(now())
+
+  // DB-AUDIT-001-01: Cascade — лог-таблица доставки уведомлений; orphan не нужен
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([channel])
@@ -944,6 +998,10 @@ model AnalyticsEvent {
   eventPayload Json    @default("{}")
   sessionKey  String?
   createdAt   DateTime @default(now())
+
+  // DB-AUDIT-001-01 phase 2: SetNull чтобы analytics-история сохранялась
+  // даже после удаления юзера (snapshot remains).
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([actorUserId])
   @@index([storeId])

@@ -17,10 +17,11 @@ const sellerItems: NavItem[] = [
 ];
 
 const buyerItems: NavItem[] = [
-  { path: '/buyer',        label: 'Магазины', icon: '🏪', exact: true },
-  { path: '/buyer/cart',   label: 'Корзина',  icon: '🛒' },
-  { path: '/buyer/orders', label: 'Заказы',   icon: '📦' },
-  { path: '/buyer/chat',   label: 'Чат',      icon: '💬' },
+  { path: '/buyer',          label: 'Магазины',  icon: '🏪', exact: true },
+  { path: '/buyer/wishlist', label: 'Избранное', icon: '❤️' },
+  { path: '/buyer/cart',     label: 'Корзина',   icon: '🛒' },
+  { path: '/buyer/orders',   label: 'Заказы',    icon: '📦' },
+  { path: '/buyer/chat',     label: 'Чат',       icon: '💬' },
 ];
 
 function isActive(path: string, pathname: string, exact?: boolean): boolean {

@@ -1,5 +1,197 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 45, Азим) — Dark/Light theme system для web-buyer и web-seller
+
+### ✅ [WEB-THEME-SYSTEM-001] Полная theme system: ThemeProvider + ThemeToggle + token migration 🟡
+
+- **Важность:** 🟡 (новая фича, заметный UX-улучшение)
+- **Дата:** 05.05.2026
+- **Домен:** `apps/web-buyer`, `apps/web-seller`
+- **Файлы (новые):**
+  - `apps/web-buyer/src/lib/theme/theme-provider.tsx`
+  - `apps/web-buyer/src/lib/theme/theme-script.tsx`
+  - `apps/web-buyer/src/components/theme-toggle.tsx`
+  - `apps/web-seller/src/lib/theme/theme-provider.tsx`
+  - `apps/web-seller/src/lib/theme/theme-script.tsx`
+  - `apps/web-seller/src/components/theme-toggle.tsx`
+- **Файлы (изменены):**
+  - `apps/web-buyer/src/app/globals.css` — добавлен dark `[data-theme="dark"]` блок (warm `#0F0F12` near-black + violet accent), все цвета через CSS-переменные, transition при смене темы
+  - `apps/web-seller/src/app/globals.css` — добавлен light `:root` блок (cream/slate), `--app-bg` переменная (gradient в dark, solid в light), `--onboarding-bg` + 2 orb-переменных
+  - `apps/web-buyer/src/lib/styles.ts` — все `colors.X` теперь возвращают `var(--color-X)` вместо хексов; компоненты автоматически темизуются без правок
+  - `apps/web-seller/src/lib/styles.ts` — то же + новый токен `accentTextOnBg` (всегда контрастный текст на violet кнопках)
+  - `apps/web-buyer/src/app/layout.tsx` — `<head><ThemeScript defaultTheme="system" /></head>`, `<ThemeProvider>` обёрнут вокруг детей, `suppressHydrationWarning` на `<html>`
+  - `apps/web-seller/src/app/layout.tsx` — то же с `defaultTheme="dark"` (сохраняет CRM identity)
+  - `apps/web-buyer/src/components/layout/Header.tsx` — `<ThemeToggle bordered={false} />` справа от Bell, `hover:bg-black/5` заменён на токен-aware mouseEnter/Leave
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — `<ThemeToggle />` слева от Bell в topbar
+  - `apps/web-seller/src/app/(onboarding)/layout.tsx` — gradient → `var(--onboarding-bg)`, orbs → CSS vars
+- **Файлы (миграция `text-white`/`color: colors.bg` → семантические токены):**
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — 9 правок: `text-white` → `colors.textPrimary`, accent-bubble text → `accentTextOnBg`, edit-textarea/buttons на accent bubble переписаны через rgba(255,255,255) (стабильно в обеих темах т.к. bubble всегда violet), `hover:bg-white/5` → `bg-[var(--color-surface-muted)]`
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — все `text-white` headings → `colors.textPrimary`; ProgressBar checkmark text + accent submit-buttons → `accentTextOnBg`
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — primary button text + Logo icon color → `accentTextOnBg`
+  - `apps/web-seller/src/app/(dashboard)/{layout,orders,orders/[id],products,products/create,products/[id]/edit,settings}/*` — batch-замена `color: colors.bg` → `colors.accentTextOnBg` (8 файлов)
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — 3 дополнительных `text-white` → `colors.textPrimary`
+  - `apps/web-seller/src/components/{product-variants-section,product-option-groups-section}.tsx` — 3 `text-white` → `colors.textPrimary`
+  - `apps/web-buyer/src/components/chat/ChatComposerModal.tsx` — полная переработка: был сломан хардкоденым white text на (теперь light) `glass` surface; теперь использует `card` + `colors.textPrimary` + `accentTextOnBg`
+- **Что работает:**
+  - **Toggle** в header buyer'a + topbar seller'a: иконка Sun ↔ Moon с smooth rotate+scale (300ms ease-out). Click = toggle light↔dark. Right-click = popover с 3 опциями: Светлая / Тёмная / Как в системе. Esc / click-outside закрывают popover.
+  - **No-flash hydration:** inline-script в `<head>` ставит `data-theme` ДО React-hydration, читая `localStorage('savdo-theme')` или `prefers-color-scheme`. Никаких миганий.
+  - **Persist:** выбор сохраняется в `localStorage('savdo-theme')`. При reload — восстанавливается.
+  - **System sync:** если выбрано «Как в системе», `matchMedia('change')` listener реагирует на смену OS-темы без перезагрузки.
+  - **Smooth swap:** `body { transition: background-color 200ms ease, color 200ms ease }` (отключено для `prefers-reduced-motion: reduce`).
+  - **Accessibility:** `aria-label`, `role="menu"`, `role="menuitemradio"`, `aria-checked`, keyboard (Esc).
+- **Архитектурное решение — почему через CSS-переменные, а не Tailwind `dark:`:**
+  - Все компоненты обоих app'ов уже импортируют `colors`/`card`/`shell` из `lib/styles.ts` (Phase 3 cleanup сделал это инвариантом). Изменив значения этих констант с хексов на `var(--color-X)`, я автоматически темизовал ВЕСЬ UI без касания компонентов.
+  - Это совпадает с предписанием `docs/design/liquid-authority.md`: «Не использовать `dark:` класс Tailwind отдельно — только через CSS переменные».
+  - Альтернатива (Tailwind `dark:`) потребовала бы рефакторинга десятков файлов и не масштабируется на inline `style={{}}` (которых много).
+- **Палитры:**
+  - **buyer light** (default): `#FAFAF7` cream bg + `#7C3AED` violet accent + `#0F1115` text — без изменений (то что было)
+  - **buyer dark** (новое): `#0F0F12` warm near-black + `#8B5CF6` lighter violet accent + `#F4F4F5` text + `#A78BFA` brand wordmark
+  - **seller dark** (default): сохранён оригинальный gradient body + slate-900 surfaces + `#A78BFA` accent — без изменений
+  - **seller light** (новое): `#F4F5F7` solid bg + `#7C3AED` violet accent + `#0F172A` text
+  - **brand wordmark** «Savdo» — единый `#7C3AED` в light, `#A78BFA` в dark (оба контрастно читаются на своей теме)
+- **Что НЕ сломано (verified):**
+  - 0 хардкоженых `bg-white`/`text-black`/`bg-black` в обоих app'ах (Phase 3 cleanup был чистый)
+  - Все inline `colors.X` авто-темизуются через CSS vars
+  - Telegram-blue gradient buttons (`linear-gradient(135deg, ${colors.telegram} 0%, #1d6fa4 100%)` + `color: "#FFFFFF"`) — корректно в обеих темах (Telegram brand)
+  - Logo gradient `linear-gradient(135deg, #7C3AED, #A78BFA)` в seller sidebar — brand identity, корректно в обеих
+  - Mobile drawer overlay `rgba(0,0,0,0.65)` — универсальный dark backdrop
+  - Loader2 `text-white` на `rgba(0,0,0,0.45)` overlay в seller profile — корректно (white spinner на dark backdrop в обеих темах)
+- **Проверка:** локально не запускалось (запрет `feedback_no_local_run`). Static audit: 0 проблемных хардкодов после миграции, type-shape `colors` объекта не изменился (только значения), все consumers `colors.X` остались валидны.
+
+---
+
+## 2026-05-04 (параллельная сессия, security audit) — SEC-AUDIT-2026-05 backend audit + HIGH-01 fix
+
+### ✅ [SEC-AUDIT-2026-05] Backend security audit (apps/api) — отчёт + точечный фикс HIGH-01
+
+- **Важность:** 🔴 audit + один безопасный фикс (HIGH-01)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `analiz/logs.md` — полный отчёт `[SEC-AUDIT-2026-05]` (2 CRITICAL, 3 HIGH, 7 MEDIUM, 2 LOW + сводная таблица + раздел Update со статусом фиксов).
+  - `apps/api/src/modules/chat/chat.controller.ts` — `@Roles('BUYER', 'SELLER')` на `POST /chat/threads`.
+  - `D:/Obsidian Vault/PROJECTS/savdo-builder/decisions/2026-05-04-secaudit202605-backend-security-audit.md` — ADR.
+- **Что сделано:**
+  - Аудит по 7 направлениям (rate-limit, JWT/Roles, raw SQL, XSS, SSRF, secrets logging, CORS).
+  - SQL injection и SSRF — чисто (Prisma tagged templates, axios только на api.telegram.org).
+  - Найдены 2 CRITICAL: `[SEC-001]` ThrottlerGuard не зарегистрирован APP_GUARD (rate-limit фактически выключен) + `[SEC-TG-001]` Bot Token в 302 Location header `/media/proxy/:id`.
+  - Параллельная сессия за время аудита закрыла оба CRITICAL + HIGH-03 (auth/chat/checkout/products/media `@Throttle`) + MED-07 (loud warning при пустом webhook secret). См. Update-блок в logs.md.
+  - Свой фикс: `[SEC-002]` HIGH-01 — добавлен явный `@Roles` на `POST /chat/threads`. Раньше RolesGuard молчаливо пропускал endpoint через `if (!requiredRoles) return true`.
+- **TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → exit 0.
+- **Открытые тикеты:** `[SEC-003]` HIGH-02, `[SEC-005..SEC-012]` MED+LOW — список в logs.md, фиксы вне скоупа этой сессии.
+
+---
+
+## 2026-05-04 (параллельная сессия, web design audit) — Дизайн-аудит web-buyer + web-seller
+
+### ✅ [WEB-DESIGN-AUDIT-001] Аудит web-buyer + web-seller по 5 критериям (контраст WCAG AA, hit-area 44pt, hierarchy, 4px-grid, a11y) 📋
+
+- **Важность:** 🟡 audit-only (фиксы — отдельным PR, после согласия Полата; зона Азима по `CLAUDE.md`)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `analiz/web-design-audit-001.md` — полный отчёт с findings и приоритезацией.
+  - `analiz/logs.md` — pointer-запись.
+  - Obsidian: `D:/Obsidian Vault/PROJECTS/savdo-builder/_ideas.md`.
+- **Найдено:** P0 (mobile UX broken) — hit-area в web-buyer: BottomNavBar ≈40px, Header.NavIconLink 36×36, ProductPage back/share 36×36, cart +/− 28×28, image-dots 8×8 (всё ниже 44pt); `prefers-reduced-motion` отсутствует в globals.css обоих апп. P1 — `textDim` ниже AA в обоих темах (~3.0–4.2:1, сотни вхождений); `success #16A34A` на light bg ~3.4:1. P2 — aria-label на ±/dots/inline-confirm, `role="dialog"` + focus-trap в `OrdersPage.CancelModal`, `<nav aria-label>` в seller sidebar.
+- **Архитектура:** `packages/ui/tokens/colors.ts` содержит 4 неиспользуемые палитры (variantA-D), активные токены живут в `lib/styles.ts` каждого апп — рассинхрон.
+- **НЕ сделано:** код не правил, dev-сервер не запускал, axe-core/Lighthouse — нужен браузер.
+- **Ждёт от Полата:** согласие на (1) рост BottomNav 64→76px, (2) правку tokens одной таблицей, (3) подтверждение что web-* можно фиксить самому, не ждать Азима.
+
+---
+
+## 2026-05-04 (параллельная сессия, DB audit) — Аудит Prisma schema + миграций
+
+### ✅ [DB-AUDIT-001] Аудит `packages/db/prisma/schema.prisma` + 18 миграций 📋
+
+- **Важность:** 🟡 audit-only (фиксы — отдельным PR, миграциями, после согласия Полата)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `analiz/logs.md` — полный отчёт `DB-AUDIT-001` с разбивкой P1/P2/P3 и action items.
+- **Что сделано:** ручной обход schema + миграций + cross-check с API кодом (`apps/api/src/modules/**/repositories`). Проверены: ON DELETE FK, composite indexes на горячих запросах (Product feed, Order, ChatMessage, ProductImage), missing `@unique`, согласованность enum'ов, фильтрация `deletedAt: null`.
+- **Найдено:**
+  - **P1 (2):** 7 таблиц с `userId` без FK на User (orphan-риск); `ChatThread.status` рассинхрон — schema default `'active'`, код пишет `'OPEN'/'CLOSED'`.
+  - **P2 (5):** нет composite индексов для public Product feed, `Order(storeId,status,placedAt DESC)`, `ChatMessage(threadId,createdAt DESC)`, `ProductImage(productId,sortOrder)`; `deletedAt: null` пропущен в ~12 местах (Store/Product) — `postProductToChannel` бота может опубликовать удалённый товар в TG-канал.
+  - **P2 design (1):** TEXT-поля кандидаты на enum (`Cart.status`, `OrderRefund.status`, `AdminUser.adminRole`, `ChatMessage.messageType`, Moderation*).
+  - **P3 (2):** `CartItem.productId CASCADE` (семантически SetNull), `User.referredBy` без self-FK.
+- **НЕ менял:** `schema.prisma`, миграций не создавал, `prisma migrate dev` не запускал, чужие файлы параллельной TMA-design сессии не трогал.
+- **Action items для Полата:** см. в конце `[DB-AUDIT-001]` в `analiz/logs.md` (приоритизированный список из 6 пунктов).
+
+---
+
+## 2026-05-04 (параллельная сессия, TMA design pass) — WCAG AA + 44pt hit-area + a11y emoji
+
+### ✅ [TMA-DESIGN-P0P1-001] P0 + P1 фиксы из DESIGN-AUDIT-TMA-001 🟠
+
+- **Важность:** 🟠 P1 (один P0 «#1 BottomNav контраст» — релиз-блокер)
+- **Дата:** 04.05.2026
+- **Файлы:**
+  - `apps/tma/src/components/layout/BottomNav.tsx` — inactive label color `rgba(255,255,255,0.28)` → `0.50` (WCAG AA), `aria-hidden="true"` на иконке.
+  - `apps/tma/src/components/ui/ProductCard.tsx` — Add-to-cart `+` 26×26 → 44×44, `aria-label`, `🏪` теперь `aria-hidden`, meta-текст 10px → 12px (`text-xs`) c opacity 0.50.
+  - `apps/tma/src/pages/buyer/StorePage.tsx` — Add-to-cart `+` 32×32 → 44×44 (`w-11 h-11`), `aria-label`, `aria-hidden` на 😕/📭.
+  - `apps/tma/src/pages/buyer/ChatPage.tsx` — back `‹` 32×32 → 44×44, `aria-label`, status badge OPEN/CLOSED с иконкой ✓/🔒, opacity 0.35 → 0.50, text-[11px] → text-xs у meta-инфы (lastMessage, дата), aria-hidden на 💬/💬/💬.
+  - `apps/tma/src/pages/seller/ChatPage.tsx` — back `‹` 32×32 → 44×44, `aria-label`, status badge OPEN/CLOSED с иконкой ✓/🔒, text-[11px] → text-xs у meta-инфы (lastMessage, дата, «Покупатель»), aria-hidden на ⚠️/💬/💬.
+- **Что сделано:** Применены P0 (контраст BottomNav, hit-area Add-to-cart + back) и P1 (decorative emoji aria-hidden, status-only badges с иконкой, мелкий low-contrast meta-текст → 12px с opacity ≥0.45) из аудита `[DESIGN-AUDIT-TMA-001]` в `analiz/logs.md`.
+- **Не трогал:** `apps/tma/src/lib/api.ts` (fetch-слой), `apps/tma/src/pages/{buyer,seller}/StorePage.tsx` блок webStoreUrl/webStoreLabel (только что сделано Полатом), все seller-страницы кроме ChatPage (параллельная сессия делает perf-pass).
+- **Type check:** `cd apps/tma && npx tsc -b --noEmit` → 0 ошибок в моих файлах.
+
+---
+
+## 2026-05-04 (параллельная сессия) — TMA seller fetch-слой: AbortController + per-endpoint cache discipline
+
+### ✅ [WEB-TMA-SELLER-PERF-001] AbortController + prefetch во всех seller-страницах TMA 🟡
+
+- **Файлы (8 из 9):**
+  - `apps/tma/src/pages/seller/DashboardPage.tsx`
+  - `apps/tma/src/pages/seller/ProductsPage.tsx`
+  - `apps/tma/src/pages/seller/OrdersPage.tsx`
+  - `apps/tma/src/pages/seller/StorePage.tsx`
+  - `apps/tma/src/pages/seller/SettingsPage.tsx`
+  - `apps/tma/src/pages/seller/ProfilePage.tsx`
+  - `apps/tma/src/pages/seller/EditProductPage.tsx`
+  - `apps/tma/src/pages/seller/AddProductPage.tsx`
+- **Что сделано:**
+  - В каждом `useEffect` который дёргает `api()` создаётся `AbortController`, signal передаётся в `api()` через `opts.signal`. На return useEffect — `ac.abort()`.
+  - Все then/catch/finally проверяют `ac.signal.aborted` ДО вызова setState — больше нет state-обновлений на размонтированном компоненте.
+  - `OrdersPage` и `DashboardPage` (`/seller/orders`, `/seller/orders/:id`) — `forceFresh: true`, статусы заказов меняются быстро.
+  - `ProductsPage` — `prefetch` на `onPointerEnter` карточек: `/seller/products/:id` + `/seller/products/:id/attributes`. Когда продавец навёл курсор/тапнул — товар уже в кэше к моменту навигации в редактор.
+  - "Повторить" кнопки (ProductsPage, EditProductPage, StorePage) пересоздают AbortController вместо игнорирования предыдущего fetch'а.
+- **Не сделано:** `apps/tma/src/pages/seller/ChatPage.tsx` — параллельная сессия активно работает над ним по `TMA-DESIGN-P0P1-001` (hit-area back-кнопки 44px, aria-hidden на decorative emoji, контраст inactive labels). Чтобы не воровать чужой коммит, ChatPage пропущен. Откроем как `TMA-SELLER-CHAT-PERF-001` (см. tasks.md).
+- **UI/визуал не менялся** — только fetch-слой.
+- **Type check:** `npx tsc --noEmit` в `apps/tma` → 0 ошибок.
+
+---
+
+## 2026-05-02 (сессия 45 финал, Полат) — Content-Security-Policy на web-buyer + web-seller
+
+### ✅ [WEB-CSP-HEADER-002] CSP headers на обоих веб-апах 🟢
+
+- **Файлы:** `apps/web-buyer/next.config.ts`, `apps/web-seller/next.config.ts`
+- **Контекст:** Сессия 38 добавила базовый набор security-headers (X-Frame-Options/HSTS/Referrer-Policy/Permissions-Policy/X-Content-Type-Options) — но Content-Security-Policy не было. Без CSP в случае компрометации фронта (XSS-инъекция) защита неполная.
+- **Что сделано:** Добавил CSP-директивы в обоих `next.config.ts` рядом с существующими `securityHeaders`.
+- **CSP-стратегия (pragmatic baseline, не nonce-based):**
+  - `default-src 'self'` — базовая запретная политика.
+  - `script-src 'self' 'unsafe-inline' 'unsafe-eval'` — Next.js production требует обе. **Что блокирует:** инъекцию `<script src="https://attacker.example/...">` (только из 'self'), инъекцию `<script src="http://...">` (любого HTTP source).
+  - `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` — Tailwind/inline style props.
+  - `font-src 'self' data: https://fonts.gstatic.com`.
+  - `img-src 'self' data: blob: https:` — широкий, но https-only (R2/Telegram-proxy/любой CDN).
+  - `media-src 'self' https: blob:`.
+  - `connect-src 'self' https: wss:` — API + Socket.IO. Блокирует HTTP exfiltration.
+  - `frame-src` — для web-buyer: `'self' https://t.me https://oauth.telegram.org` (на случай TG login widgets). Для web-seller: только `'self'`.
+  - `frame-ancestors 'none'` — сильнее чем X-Frame-Options DENY (оставлены оба для совместимости со старыми браузерами).
+  - `object-src 'none'` — запрет Flash/Java applet/embed эксплойтов.
+  - `base-uri 'self'` — нет hijack'а через `<base href>`.
+  - `form-action 'self'` — нет submit'а на чужие origins.
+- **Что НЕ сделано (можно усилить позже):**
+  - Strict CSP с per-request nonce'ами (требует middleware изменений в Next 15) — отложено до появления реальной XSS-поверхности.
+  - Whitelist конкретных R2/Telegram media хостов в connect-src/img-src — пока wildcards `https:`, так как хосты варьируются по deploy'ям.
+  - CSP-Report-Only roll-out — задеплоил сразу как enforcing. Easy to revert если браузеры жалуются.
+- **Verify после деплоя:** открыть DevTools → Console на проде. Если есть нарушения — будут логи `Refused to load … because it violates …`. Если нарушений нет — CSP работает прозрачно.
+
+### Push: `main` → `web-buyer` + `web-seller` ветки. Коммит `814c35b`.
+
+> На этом очередь Полата по открытым задачам завершена. Осталось только manual action items: STORAGE_PUBLIC_URL на Railway api, миграция wishlist, ручная проверка TG-уведомлений.
+
+---
+
 ## 2026-05-02 (сессия 45 продолжение 2, Полат) — Wishlist (избранное товаров): backend + TMA UI
 
 ### ✅ [WISHLIST-CONTRACT-001] Wishlist — endpoints + тип + миграция (был БЛОКЕР для UI) 🟡

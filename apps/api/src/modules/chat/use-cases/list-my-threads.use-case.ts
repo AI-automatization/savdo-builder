@@ -80,26 +80,16 @@ export class ListMyThreadsUseCase {
     }
 
     if (input.role === 'BUYER') {
-      if (!input.buyerId) {
-        throw new DomainException(
-          ErrorCode.BUYER_NOT_IDENTIFIED,
-          'Buyer profile not found',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
+      // Buyer profile создаётся лениво (при первом действии) — если ещё нет, чатов нет.
+      if (!input.buyerId) return [];
       const threads = await this.chatRepo.findThreadsByBuyer(input.buyerId);
       const unreadMap = await this.chatRepo.getUnreadCounts(threads, 'buyer');
       return threads.map((t) => mapBuyerThread(t, unreadMap.get(t.id) ?? 0));
     }
 
     if (input.role === 'SELLER') {
-      if (!input.sellerId) {
-        throw new DomainException(
-          ErrorCode.NOT_FOUND,
-          'Seller profile not found',
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      // Seller без профиля = магазин ещё не создан, чатов точно нет.
+      if (!input.sellerId) return [];
       const threads = await this.chatRepo.findThreadsBySeller(input.sellerId);
       const unreadMap = await this.chatRepo.getUnreadCounts(threads, 'seller');
       return threads.map((t) => mapSellerThread(t, unreadMap.get(t.id) ?? 0));

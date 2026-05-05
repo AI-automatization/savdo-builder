@@ -4,6 +4,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { useTelegram } from '@/providers/TelegramProvider';
 
 interface OrderItem {
   id: string;
@@ -51,8 +52,27 @@ function matchesFilter(status: string, filter: StatusFilter): boolean {
   return true;
 }
 
+// Важные сверху: PENDING/CONFIRMED/SHIPPED → DELIVERED → CANCELLED.
+// Внутри одной группы — свежие первыми.
+const STATUS_PRIORITY: Record<string, number> = {
+  PENDING:    0,
+  CONFIRMED:  1,
+  PROCESSING: 1,
+  SHIPPED:    2,
+  DELIVERED:  3,
+  CANCELLED:  4,
+};
+function compareOrders(a: Order, b: Order): number {
+  const pa = STATUS_PRIORITY[a.status] ?? 5;
+  const pb = STATUS_PRIORITY[b.status] ?? 5;
+  if (pa !== pb) return pa - pb;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 export default function OrdersPage() {
   const { authenticated } = useAuth();
+  const { viewportWidth } = useTelegram();
+  const isWide = (viewportWidth ?? 0) >= 1024;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -64,22 +84,25 @@ export default function OrdersPage() {
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const fetchFirst = () => {
+  const fetchFirst = (signal?: AbortSignal) => {
     setError(false);
-    api<PagedResponse>('/buyer/orders?limit=10&page=1')
+    api<PagedResponse>('/buyer/orders?limit=10&page=1', { signal, forceFresh: true })
       .then((res) => {
+        if (signal?.aborted) return;
         setOrders(res.data ?? []);
         setPage(1);
         setHasMore((res.meta?.page ?? 1) < (res.meta?.totalPages ?? 1));
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!signal?.aborted) setError(true); })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
   };
 
   useEffect(() => {
     if (!authenticated) { setLoading(false); return; }
+    const ac = new AbortController();
     setLoading(true);
-    fetchFirst();
+    fetchFirst(ac.signal);
+    return () => ac.abort();
   }, [authenticated]);
 
   const loadMore = () => {
@@ -128,40 +151,42 @@ export default function OrdersPage() {
 
         {/* Status filter tabs */}
         {authenticated && !loading && orders.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            {STATUS_FILTERS.map((f) => {
-              const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
-              const active = statusFilter === f.value;
-              return (
-                <button
-                  key={f.value}
-                  onClick={() => setStatusFilter(f.value)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all"
-                  style={{
-                    background: active ? 'rgba(168,85,247,0.22)' : 'rgba(255,255,255,0.06)',
-                    border: `1px solid ${active ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                    color: active ? '#A855F7' : 'rgba(255,255,255,0.45)',
-                  }}
-                >
-                  {f.label}
-                  {count > 0 && (
-                    <span
-                      className="px-1.5 py-0 rounded-full text-[10px] font-bold"
-                      style={{
-                        background: active ? 'rgba(168,85,247,0.30)' : 'rgba(255,255,255,0.08)',
-                        color: active ? '#A855F7' : 'rgba(255,255,255,0.35)',
-                        minWidth: 18,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-1.5 overflow-x-auto scroll-snap-x pb-0.5 px-4" style={{ scrollbarWidth: 'none' }}>
+              {STATUS_FILTERS.map((f) => {
+                const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
+                const active = statusFilter === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    onClick={() => setStatusFilter(f.value)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                    style={!active ? {
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      color: 'rgba(255,255,255,0.45)',
+                    } : undefined}
+                  >
+                    {f.label}
+                    {count > 0 && (
+                      <span
+                        className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                        style={{
+                          background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
+                          color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                          minWidth: 18,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -199,14 +224,15 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {authenticated && !loading && !error && orders.length > 0 && orders.filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
+        {authenticated && !loading && !error && orders.length > 0 && [...orders].filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔍</span>
             <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Нет заказов в этой категории</p>
           </div>
         )}
 
-        {orders.filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
+        <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+        {[...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
           const isExpanded = expandedId === o.id;
           const detail = details[o.id];
           const isLoadingDetail = detailLoading === o.id;
@@ -283,6 +309,7 @@ export default function OrdersPage() {
             </GlassCard>
           );
         })}
+        </div>
 
         {hasMore && (
           <button

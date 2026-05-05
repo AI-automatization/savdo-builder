@@ -5,6 +5,12 @@ export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().default(3000),
 
+  // APP_URL — публичный URL api сервера. Используется для построения absolute
+  // URL прокси Telegram-фото и в storefront image resolution. Без него
+  // фото из TG-storage отдаются как relative path, который ломается на
+  // TMA-домене → 404 «фото не грузится». TMA-PHOTO-UPLOAD-DIAG-001.
+  APP_URL: Joi.string().uri().required(),
+
   // Database
   DATABASE_URL: Joi.string().required(),
 
@@ -29,6 +35,11 @@ export const envValidationSchema = Joi.object({
   TELEGRAM_BOT_TOKEN: Joi.string().required(),
   TELEGRAM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
   TELEGRAM_BOT_USERNAME: Joi.string().default('savdo_builderBOT'),
+  // Telegram-канал для хранения медиа (fallback к R2). Бот должен быть
+  // админом канала с правом «Публикация сообщений». Если не выставлен и
+  // R2 не сконфигурирован — uploadDirect вернёт 503.
+  TELEGRAM_STORAGE_CHANNEL_ID: Joi.string().allow('').optional(),
+  TMA_URL: Joi.string().uri().allow('').optional(),
 
   // Feature flags
   DEV_OTP_ENABLED: Joi.boolean().default(false),

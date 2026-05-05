@@ -13,6 +13,7 @@ export interface CreateProductData {
   isVisible?: boolean;
   sku?: string;
   displayType?: import('@prisma/client').ProductDisplayType;
+  attributesJson?: Record<string, unknown>;
 }
 
 export interface UpdateProductData {
@@ -81,6 +82,7 @@ export class ProductsRepository {
       },
       include: {
         images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
+        variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
         _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
@@ -133,9 +135,11 @@ export class ProductsRepository {
       globalCategoryId?: string;
       storeCategoryId?: string;
       attributes?: Record<string, string>;
+      limit?: number;
     },
   ): Promise<Product[]> {
     const attrEntries = Object.entries(filters?.attributes ?? {}).filter(([, v]) => !!v);
+    const take = Math.min(Math.max(filters?.limit ?? 200, 1), 500);
     return this.prisma.product.findMany({
       where: {
         storeId,
@@ -150,10 +154,12 @@ export class ProductsRepository {
         }),
       },
       include: {
-        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
+        images: { orderBy: { sortOrder: 'asc' }, take: 1, include: { media: true } },
+        variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
         _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
+      take,
     }) as unknown as Promise<Product[]>;
   }
 
@@ -177,7 +183,8 @@ export class ProductsRepository {
         sku: data.sku,
         status: 'DRAFT',
         ...(data.displayType !== undefined && { displayType: data.displayType }),
-      },
+        ...(data.attributesJson !== undefined && { attributesJson: data.attributesJson as any }),
+      } as any,
       include: {
         images: true,
       },
@@ -261,6 +268,7 @@ export class ProductsRepository {
         include: {
           images: { where: { isPrimary: true }, take: 1, include: { media: true } },
           store: { select: { id: true, name: true, slug: true } },
+          variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
           _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
         },
         orderBy,
