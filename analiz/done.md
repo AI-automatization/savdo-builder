@@ -1,5 +1,37 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 45 продолжение, Азим) — Wishlist UI для web-buyer
+
+### ✅ [WEB-BUYER-WISHLIST-PAGE-001] Wishlist: heart на ProductCard + страница /wishlist 🟡
+
+- **Важность:** 🟡 (фича была заблокирована бэком до 02.05.2026, после `0f46a63` Полата готова к UI)
+- **Дата:** 05.05.2026
+- **Домен:** `apps/web-buyer`
+- **Файлы (новые):**
+  - `apps/web-buyer/src/lib/api/wishlist.api.ts` — `getWishlist()`, `addToWishlist(productId)`, `removeFromWishlist(productId)`. Использует `WishlistItem` из `packages/types`.
+  - `apps/web-buyer/src/hooks/use-wishlist.ts` — `useWishlist()` (TanStack Query, enabled по `isAuthenticated`, staleTime 60s), `useWishlistIds()` (мемоизированный `Set<productId>` для быстрого lookup на каждой карточке), `useToggleWishlist()` (optimistic mutate с `onMutate`/`onError`/`onSettled` invalidate).
+  - `apps/web-buyer/src/app/(shop)/wishlist/page.tsx` — страница со встроенным `<Header />` + `<BottomNavBar active="wishlist" />`, OtpGate если unauth, иначе grid 2/3/4 колонок (responsive) с `WishlistCard` для каждого товара. Skeleton loading state. Empty state с CTA «К магазинам». Error state.
+- **Файлы (изменены):**
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — добавлен heart (lucide `Heart`) в top-right corner. Filled accent если `inWishlist` (server flag prioritized, иначе client cache lookup), outlined иначе. Click → `e.preventDefault()` + `e.stopPropagation()` (не триггерит Link навигацию) → `useToggleWishlist().mutate({productId, inWishlist})`. Если unauth → `router.push('/wishlist')` где OtpGate логинит юзера.
+  - `apps/web-buyer/src/components/layout/Header.tsx` — добавлена `<NavIconLink href="/wishlist">` с иконкой `Heart` между desktop nav и Cart. Всегда видима (mobile + desktop).
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `NavActive` тип расширен `| 'wishlist'`. В NAV-массив не добавляется (5 items уже плотно), но валидное значение не подсвечивает ни одну вкладку — корректное поведение когда юзер на /wishlist.
+- **Что работает:**
+  - **Heart на каждой карточке витрины** — мгновенный optimistic flip, серверный POST/DELETE на фоне, revert при ошибке.
+  - **Authenticated buyers** видят правильное состояние сердечек на storefront feed (бэк уже шлёт `product.inWishlist` в `ProductListItem` для авторизованных — Polat `0f46a63`).
+  - **Anonymous users** — heart показывается outlined; клик → редирект на `/wishlist` где OtpGate просит подтвердить телефон.
+  - **/wishlist** — список с store name + title + price + cover photo. X-кнопка вверху каждой карточки убирает товар (тоже optimistic). Empty state, error state, skeleton — все в дизайн-системе с токенами (работает в обеих темах).
+- **Архитектурные решения:**
+  - **`useWishlistIds()` возвращает Set** — карточки на витрине вызывают этот hook, и react-query разделяет один cached запрос между всеми subscriber'ами (нет N запросов на N карточек). `useMemo` с deps `[data]` гарантирует стабильную ссылку для `Set.has()` при ре-рендерах.
+  - **Server flag wins, client cache fallback** — `product.inWishlist ?? wishlistIds.has(product.id)`. Server flag установлен на storefront feed (быстрый path), client cache используется когда карточка в нестандартном контексте (recent stores, итд).
+  - **Optimistic mutation без productPreview** — server возвращает `{id, productId, createdAt}` без embedded product. Чтобы вставить корректный `WishlistItem` оптимистично, нужен `productPreview` (storeName/storeSlug/etc), но ProductCard этих данных не имеет. Решение: `onSettled` invalidate список → refetch принесёт authoritative data. Между optimistic и refetch (~100-300ms) карточка просто не появится в `/wishlist`, но heart на витрине уже показывает правильное состояние (через cache update).
+  - **OtpGate для unauth flow** — вместо отдельного modal/popup на ProductCard'е (overhead на каждой карточке), редиректим на `/wishlist` где OtpGate уже встроен. После логина юзер видит пустой список и может вернуться к товарам.
+- **Что НЕ сделано (out of scope):**
+  - Wishlist count badge на heart icon в Header (как у cart) — лишняя нагрузка для не-критичной метрики, может быть добавлено позже если будет запрос.
+  - Sync wishlist между TMA (sessionStorage cache) и web (TanStack Query cache) — два отдельных мирa, бэк сам source of truth.
+- **Проверка:** локально не запускалось (запрет `feedback_no_local_run`). Static check: типы `WishlistItem` импортируются из `packages/types`, `apiClient.get/.post/.delete` — стандарт axios, `useMutation` callback signatures совпадают с TanStack Query v5 контрактом, `inWishlist?: boolean` есть в `ProductListItem` (`packages/types/src/api/products.ts:68`).
+
+---
+
 ## 2026-05-05 (сессия 45, Азим) — Dark/Light theme system для web-buyer и web-seller
 
 ### ✅ [WEB-THEME-SYSTEM-001] Полная theme system: ThemeProvider + ThemeToggle + token migration 🟡

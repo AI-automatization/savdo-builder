@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth/context';
 import { IcoShop, IcoCart, IcoChat, IcoOrders, IcoProfile } from '@/components/icons';
 import { colors } from '@/lib/styles';
 
-export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile';
+export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile' | 'wishlist';
 
 export function BottomNavBar({
   active,

@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { ProductListItem } from "types";
 import { ProductStatus } from "types";
-import { ShoppingBag, Layers } from "lucide-react";
+import { ShoppingBag, Layers, Heart } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { useAuth } from "@/lib/auth/context";
+import { useToggleWishlist, useWishlistIds } from "@/hooks/use-wishlist";
 
 type Props = {
   product: ProductListItem;
@@ -13,6 +18,26 @@ type Props = {
 const MAX_DOTS = 5;
 
 export default function ProductCard({ product, storeSlug }: Props) {
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const wishlistIds = useWishlistIds();
+  const toggleWishlist = useToggleWishlist();
+
+  // Server-sent flag (auth'd storefront feed) wins; client cache is the fallback
+  // for cards rendered from a non-feed source (cart, recent stores, etc).
+  const inWishlist = product.inWishlist ?? wishlistIds.has(product.id);
+
+  function handleHeartClick(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      router.push('/wishlist');
+      return;
+    }
+    if (toggleWishlist.isPending) return;
+    toggleWishlist.mutate({ productId: product.id, inWishlist });
+  }
+
   const mediaUrls =
     (product as unknown as { images?: Array<{ url: string }> }).images?.map((i) => i.url)
     ?? product.mediaUrls
@@ -87,6 +112,28 @@ export default function ProductCard({ product, storeSlug }: Props) {
               {product.variantCount}
             </div>
           )}
+
+          {/* Wishlist heart */}
+          <button
+            type="button"
+            onClick={handleHeartClick}
+            aria-label={inWishlist ? "Убрать из избранного" : "В избранное"}
+            aria-pressed={inWishlist}
+            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
+            style={{
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              color: inWishlist ? colors.accent : colors.textMuted,
+              zIndex: 4,
+              opacity: toggleWishlist.isPending ? 0.6 : 1,
+            }}
+          >
+            <Heart
+              size={15}
+              fill={inWishlist ? "currentColor" : "none"}
+              strokeWidth={inWishlist ? 0 : 1.75}
+            />
+          </button>
 
           {/* Out of stock overlay */}
           {isUnavailable && (

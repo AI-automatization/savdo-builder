@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Search, ShoppingCart, Bell, MessageSquare, User as UserIcon, Package } from "lucide-react";
+import { Search, ShoppingCart, Bell, MessageSquare, User as UserIcon, Package, Heart } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-notifications";
 import { useUnreadChatCount } from "@/hooks/use-chat";
 import { useCart } from "@/hooks/use-cart";
@@ -63,6 +63,11 @@ export default function Header() {
             <UserIcon size={18} />
           </NavIconLink>
         </nav>
+
+        {/* Wishlist — always visible */}
+        <NavIconLink href="/wishlist" ariaLabel="Избранное">
+          <Heart size={18} />
+        </NavIconLink>
 
         {/* Cart — always visible */}
         <NavIconLink href="/cart" badge={cartCount} ariaLabel="Корзина">
