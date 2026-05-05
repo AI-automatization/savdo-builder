@@ -27,15 +27,15 @@ export function RecentStores() {
 
   return (
     <div className="w-full">
-      <p className="text-xs font-semibold mb-3 px-1" style={{ color: colors.textMuted }}>
-        Недавние магазины
+      <p className="text-[10px] tracking-[0.18em] uppercase font-semibold mb-3 px-1" style={{ color: colors.textMuted }}>
+        — Недавние магазины
       </p>
       <div className="flex gap-2.5 overflow-x-auto scrollbar-none pb-1">
         {stores.map((store) => (
           <Link
             key={store.slug}
             href={`/${store.slug}`}
-            className="group relative flex flex-col items-center gap-2 flex-shrink-0 w-[84px] p-2.5 rounded-2xl transition-all hover:-translate-y-0.5"
+            className="group relative flex flex-col items-center gap-2 flex-shrink-0 w-[84px] p-2.5 rounded-md transition-all hover:-translate-y-0.5"
             style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
           >
             <button
@@ -48,8 +48,8 @@ export function RecentStores() {
               <X size={11} />
             </button>
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold relative overflow-hidden"
-              style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+              className="w-12 h-12 rounded-md flex items-center justify-center text-lg font-bold relative overflow-hidden"
+              style={{ background: colors.brandMuted, color: colors.brand, border: `1px solid ${colors.brandBorder}` }}
             >
               {store.logoUrl ? (
                 <Image src={store.logoUrl} alt={store.name} fill className="object-cover" sizes="48px" />
@@ -57,7 +57,7 @@ export function RecentStores() {
                 store.name.charAt(0).toUpperCase()
               )}
             </div>
-            <p className="text-[11px] text-center leading-tight line-clamp-2 w-full" style={{ color: colors.textPrimary }}>
+            <p className="text-[11px] text-center leading-tight line-clamp-2 w-full" style={{ color: colors.textStrong }}>
               {store.name}
             </p>
           </Link>

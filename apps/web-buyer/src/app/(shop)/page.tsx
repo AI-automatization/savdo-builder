@@ -48,7 +48,7 @@ export default function HomePage() {
         <div className="flex flex-col items-center gap-3">
           <div
             className="w-20 h-20 rounded-3xl flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`, boxShadow: `0 12px 32px ${colors.accentMuted}` }}
+            style={{ background: colors.brand, boxShadow: `0 4px 16px rgba(124,63,46,0.18)` }}
           >
             <ShoppingCart size={36} style={{ color: "#FFFFFF" }} />
           </div>
@@ -59,9 +59,9 @@ export default function HomePage() {
 
         {/* Hero */}
         <div className="text-center flex flex-col gap-2">
-          <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: colors.textPrimary }}>
+          <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: colors.textStrong }}>
             Магазины Узбекистана —<br />
-            <span style={{ color: colors.accent }}>в одном месте</span>
+            <span style={{ color: colors.brand }}>в одном месте</span>
           </h1>
           <p className="text-sm sm:text-base leading-relaxed" style={{ color: colors.textMuted }}>
             Покупайте у проверенных продавцов через Telegram
@@ -73,7 +73,7 @@ export default function HomePage() {
           className="w-full rounded-2xl p-4 sm:p-5 flex flex-col gap-3"
           style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         >
-          <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Перейти в магазин</p>
+          <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Перейти в магазин</p>
           <p className="text-xs" style={{ color: colors.textMuted }}>
             Введите ссылку магазина из Telegram
           </p>
@@ -87,7 +87,7 @@ export default function HomePage() {
             >
               <span
                 className="px-3 text-sm flex-shrink-0 select-none h-[44px] flex items-center"
-                style={{ color: colors.textDim, borderRight: `1px solid ${colors.border}` }}
+                style={{ color: colors.textMuted, borderRight: `1px solid ${colors.border}` }}
               >
                 savdo.uz/
               </span>
@@ -98,13 +98,13 @@ export default function HomePage() {
                 onKeyDown={(e) => e.key === "Enter" && handleGo()}
                 placeholder="nike-uz"
                 className="flex-1 h-[44px] px-3 text-sm bg-transparent outline-none"
-                style={{ color: colors.textPrimary }}
+                style={{ color: colors.textStrong }}
               />
             </div>
             <button
               onClick={handleGo}
               className="px-5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.97] flex-shrink-0"
-              style={{ background: colors.accent, color: colors.accentTextOnBg }}
+              style={{ background: colors.brand, color: colors.brandTextOnBg }}
             >
               Перейти
             </button>
@@ -128,12 +128,12 @@ export default function HomePage() {
           >
             <div
               className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }}
+              style={{ background: colors.brandMuted, border: `1px solid ${colors.brandBorder}` }}
             >
-              <Package size={20} style={{ color: colors.accent }} />
+              <Package size={20} style={{ color: colors.brand }} />
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Мои заказы</p>
+              <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Мои заказы</p>
               <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Статус доставки и история</p>
             </div>
             <ChevronRight size={16} className="ml-auto flex-shrink-0" style={{ color: colors.textDim }} />
@@ -146,19 +146,19 @@ export default function HomePage() {
           >
             <div
               className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }}
+              style={{ background: colors.brandMuted, border: `1px solid ${colors.brandBorder}` }}
             >
-              <MessageSquare size={20} style={{ color: colors.accent }} />
+              <MessageSquare size={20} style={{ color: colors.brand }} />
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Чаты с продавцами</p>
+              <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Чаты с продавцами</p>
               <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Вопросы по заказу или товару</p>
             </div>
             <ChevronRight size={16} className="ml-auto flex-shrink-0" style={{ color: colors.textDim }} />
           </Link>
         </div>
 
-        <p className="text-[11px] text-center mt-auto" style={{ color: colors.textDim }}>© 2026 Savdo</p>
+        <p className="text-[11px] text-center mt-auto" style={{ color: colors.textMuted }}>© 2026 Savdo</p>
       </div>
 
       <BottomNavBar active="store" />
