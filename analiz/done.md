@@ -1,5 +1,40 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 52, Азим) — Task 9: Orders list + detail redesign
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 9] Orders redesign — list rows + status hero + timeline 🔴
+
+- **Дата:** 05.05.2026
+- **Commit:** `c117723`
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/orders/page.tsx` — borderless rows на `surface`, `StatusPill` компонент с tone-mapping (`success`/`brand`/`warning`/`muted`); filter tabs: активный = `textStrong` fill + `brandTextOnBg`, неактивный = surface+border+textBody; editorial empty states «— Пусто» + brand CTA «К магазинам»; order номер: `orderNumber ?? shortId(id)`; meta `{count} товаров · {date}`; total в `textStrong`; search input refactored под палитру; load-more кнопка обновлена.
+  - `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx` — Status hero (brand background) с editorial label «— Статус», заголовок status, ETA текст; на cancelled — `surfaceSunken` muted hero без timeline; vertical Timeline с 4 шагами (Заказ→Подтверждён→В пути→Доставлен), brand dots+connectors для completed/current, divider для upcoming; flat секции (Магазин с brand-avatar / Товары editorial / Доставка с MapPin / Итого с dashed total) разделены 1px dividers; sticky CTA bar — brand «Чат по заказу» (или «К магазинам» если cancelled) + outline Telegram + outline danger «Отменить» с inline confirm-card; cancel/chat/track/normalizeOrder/useBuyerSocket/ChatComposerModal сохранены; цены в `textStrong` (brand зарезервирован для status hero/CTA/links).
+- **Что не сделано (намеренно):**
+  - Per-step timestamps в timeline — API не отдаёт history of status changes, только createdAt/updatedAt; пропущено.
+  - «Помощь» / «Повторить заказ» CTA из спеки — оставлен только «Чат по заказу» + Telegram fallback (повторение заказа requires reorder mutation которой нет; помощь сейчас = тот же чат).
+- **Push:** main → Railway autodeploy; merged → `web-buyer` ветка
+- **Smoke:** проверить на Railway URL `/orders` (rows + filter + empty) → клик на order → детальная страница (status hero + timeline + items + total + sticky CTA).
+
+## 2026-05-05 (сессия 51, Азим) — Task 8: Chat list + thread + composer modal redesign
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 8] Chat redesign — brand avatars, search, filter chips, bubble tails 🔴
+
+- **Дата:** 05.05.2026
+- **Commit:** `7ed9eb2`
+- **Файлы:** `apps/web-buyer/src/app/(shop)/chats/page.tsx`, `apps/web-buyer/src/components/chat/ChatComposerModal.tsx`
+- **Что сделано:** ThreadItem — brand-color initial avatar (fallback `colors.brand`), unread row highlight (`brandMuted`), unread badge (brand fill), bold title. Search input над list panel. Filter chips «Все · N» / «Непрочитанные · N» — textStrong fill when active. Thread header: brand-color avatar + store name + status text + trash. Message bubbles: buyer `borderRadius: 14px 14px 4px 14px` brand fill + `brandTextOnBg`; seller `borderRadius: 14px 14px 14px 4px` surface + divider border. Day dividers (Сегодня/Вчера/дата). Composer: pill input `surfaceMuted` + brand circular send button. `pinnedProduct` поле отсутствует в `ChatThread` — блок пропущен. `brandColor` поля нет в типе — везде fallback `colors.brand`. ChatComposerModal: backdrop `rgba(15,17,21,0.5)`, panel `colors.surface`, `rounded-lg`, textarea `border + colors.border`, cancel text-only `textMuted`, submit `brand/brandTextOnBg`. Все hooks/socket/auth/routing сохранены. accent* → brand* во всех местах.
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
+## 2026-05-05 (сессия 50, Азим) — Task 7: Checkout page redesign
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 7] Checkout 3-step single-screen redesign 🔴
+
+- **Дата:** 05.05.2026
+- **Commit:** `e20a1c2`
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** CheckoutStep card компонент (numbered brand circle + action link). Step 1 «Контакты» — pre-filled из user; «Изменить»/«Готово» toggle показывает name+phone inputs. Step 2 «Доставка» — delivery/pickup toggle (brand-active) внутри шага; при delivery — два text-поля Улица+Город; при pickup — карточка «уточнить у продавца». Step 3 «Оплата» — 3 карточки: Cash (default), Картой курьеру, Online (disabled + «Скоро» badge в brandMuted/brand); выбранная карточка — 2px brand border; опциональный comment textarea. Summary sidebar: editorial label «— Ваш заказ», mini-items с Image, дробный Total с dashed разделителем, desktop submit кнопка. Mobile sticky bottom CTA «Подтвердить заказ · {total} сум» + disclaimer. Desktop: `md:grid-cols-[7fr_5fr]` split, `md:sticky md:top-5` sidebar. Все hooks/routing/validation/submit сохранены (deliveryAddress+buyerNote+deliveryFee → confirmCheckout).
+- **Push:** main → Railway autodeploy; merged → `web-buyer` (forced, behind)
+
 ## 2026-05-05 (сессия 49, Азим) — Task 6: Cart page redesign
 
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 6] Cart redesign — store-strip, free-delivery hint, OOS-fallback 🔴
