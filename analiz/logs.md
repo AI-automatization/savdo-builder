@@ -8,6 +8,179 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-05 [WEB-BUYER-AUDIT-2026-05-05] Полный аудит web-buyer (4 параллельных code-reviewer агента)
+
+Сделан после закрытия всего Soft Color Lifestyle plan (10/10 tasks). 4 агента параллельно прошли по слоям: storefront/product, cart/checkout/orders, chat/profile/wishlist/notifications, layout/hooks/lib/api.
+
+### 🔴 CRITICAL (must-fix перед prod testing)
+
+**[BUG-WB-AUDIT-001] `useCart()` без `enabled: isAuthenticated` → 401-loop для гостей**
+- Файл: `apps/web-buyer/src/hooks/use-cart.ts` + использование в `components/layout/Header.tsx:20`
+- Гостевой посетитель: `useCart` стреляет на `/cart`, ловит 401 (если endpoint требует auth), refresh-interceptor пытается рефрешить с `null` токеном, диспатчит `savdo:auth:expired`, `localLogout` + `queryClient.clear` — на каждый рендер Header.
+- Фикс: добавить `enabled: isAuthenticated` в `useCart` или передавать флаг снаружи. Либо подтвердить, что `/cart` принимает `X-Session-Token` без JWT.
+
+**[BUG-WB-AUDIT-002] `useBuyerSocket` cleanup не emit'ит `leave-buyer-room`**
+- Файл: `apps/web-buyer/src/hooks/use-buyer-socket.ts:38-41`
+- При logout / переключении user'а сокет-комната не покидается. Сервер продолжает слать `order:status_changed` в комнату экс-пользователя. `destroySocket()` существует в `lib/socket.ts`, но не вызывается из `AuthContext.logout`.
+- Фикс: в cleanup `socket.emit('leave-buyer-room', { buyerId })` + `socket.off(...)`. Либо `destroySocket()` в `localLogout`.
+
+**[BUG-WB-AUDIT-003] `useChatSocket` cleanup не emit'ит `leave-chat-room`**
+- Файл: `apps/web-buyer/src/hooks/use-chat.ts:73-76`
+- Переключение между чатами накапливает активные комнаты на сервере. Каждое новое сообщение в любом ранее открытом чате инвалидирует кэш текущего треда.
+- Фикс: `socket.emit('leave-chat-room', { threadId })` в return useEffect.
+
+**[BUG-WB-AUDIT-004] `useOrders` без `enabled: isAuthenticated` → 401 при гонке**
+- Файлы: `apps/web-buyer/src/hooks/use-orders.ts:13-19`, `app/(shop)/profile/page.tsx:91`, `app/(shop)/orders/page.tsx`
+- Хук вызывается в profile (best-effort counts) даже когда `isAuthenticated` ещё `false` (Strict Mode / token-refresh race). Возвращает 401, на секунду показывает «0 заказов».
+- Фикс: добавить опциональный `enabled` параметр в `useOrders`, передавать `isAuthenticated` из profile/orders.
+
+**[BUG-WB-AUDIT-005] `chats/page.tsx handleSend` — unhandled rejection + потеря текста**
+- Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx:150-154`
+- `handleSend` вызывает `mutateAsync` без try/catch. При ошибке сети promise rejects → unhandled. Текст уже очищен в input через `setText("")` — пользователь теряет своё сообщение без возможности повтора.
+- Фикс: try/catch + restore text при ошибке.
+
+**[BUG-WB-AUDIT-006] `orders/[id]/page.tsx` Sticky CTA bar перекрыт BottomNavBar (z-index)**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:343` (zIndex: 50) vs `BottomNavBar` (zIndex: 50)
+- Оба на z-50. CTA bar в DOM рендерится РАНЬШЕ `<BottomNavBar />` → BottomNavBar поверх. Кнопка «Чат по заказу» / «Отменить» может ловить тапы по BottomNav.
+- Фикс: поднять zIndex CTA до 51 или поменять порядок в DOM.
+
+**[BUG-WB-AUDIT-007] Product detail useEffect deps mismatch → race на стейле variants**
+- Файл: `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:148-162`
+- Оба useEffect зависят только от `[product?.id]`, но читают `optionGroups`, `selection`, `activeVariants`, `selectedVariantId`. После TanStack-кэша (back→forward) initialSelectionFromVariants использует старый optionGroups.
+- Фикс: вынести инициализацию в `useState(initializer)` или `useMemo`, добавить полные deps.
+
+### 🟡 MAJOR
+
+**[BUG-WB-AUDIT-008] `accOrders` race при смене фильтра (orders list)**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/page.tsx:114-118`
+- При смене фильтра: `setPage(1)` + `setAccOrders([])` синхронно, но `useEffect` срабатывает на старом `data?.data` (TanStack stale 2min) → перезаписывает accOrders заказами от старого фильтра.
+- Фикс: добавить `activeFilter` (или `page`) в deps, либо явный if внутри.
+
+**[BUG-WB-AUDIT-009] checkout: `contactName`/`contactPhone` редактируются, но НЕ отправляются в `confirm.mutateAsync`**
+- Файл: `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:380-404`
+- Step 1 «Контакты» позволяет редактировать имя/телефон, но `handleConfirm` шлёт только `deliveryAddress`/`buyerNote`/`deliveryFee`. Если backend ожидает `customerPhone`/`customerFullName` в теле — данные теряются.
+- Фикс: проверить контракт `POST /buyer/orders` и либо передавать поля, либо удалить редактирование из UI.
+
+**[BUG-WB-AUDIT-010] checkout: мигание OTP-gate для уже залогиненных при гидрации**
+- Файл: `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:303-307`
+- `pageStep` инициализируется при первом рендере как `isAuthed ? "form" : "otp-phone"`. Если `useAuth` загружает асинхронно — первый рендер показывает OTP даже залогиненному пользователю на 1 frame.
+- Фикс: использовать `isAuthLoading` из useAuth + skeleton.
+
+**[BUG-WB-AUDIT-011] ThemeProvider: state init не lazy → flash иконки ThemeToggle**
+- Файл: `apps/web-buyer/src/lib/theme/theme-provider.tsx:53-61`
+- `useState(defaultTheme)` инициализируется как `'system'`, потом useEffect синхронизируется с localStorage. Между ними — Sun-иконка вместо Moon на 1 frame для пользователя со сохранённым `dark`.
+- Фикс: lazy init `useState(() => readStored(defaultTheme))`.
+
+**[BUG-WB-AUDIT-012] `BottomNavBar` `last_store_slug` читается из localStorage, но НИГДЕ не пишется**
+- Файл: `apps/web-buyer/src/components/layout/BottomNavBar.tsx:30-34`
+- Ключ читается, fallback всегда `''`, ссылка «Магазин» всегда ведёт на `/`. Mert-код или забытый writer.
+- Фикс: либо найти/добавить writer (видимо в storefront page при visit), либо удалить и хранить через URL/params.
+
+**[BUG-WB-AUDIT-013] Cross-tab token desync: нет `storage` event listener в AuthContext**
+- Файл: `apps/web-buyer/src/lib/auth/storage.ts` + AuthContext
+- Логаут в табе B — таб A остаётся с `isAuthenticated: true` и устаревшим `user` до первого 401. Refresh пытается с null-токеном, дергает `savdo:auth:expired` — но юзер видит сломанные API-запросы между.
+- Фикс: `window.addEventListener('storage', e => { if (e.key === ACCESS_TOKEN_KEY && !e.newValue) localLogout(); })`.
+
+**[BUG-WB-AUDIT-014] `notifications/page.tsx` `readAll.mutate()` на каждый mount без guard**
+- Файл: `apps/web-buyer/src/app/(shop)/notifications/page.tsx:163-166`
+- Дёргает `POST /notifications/read-all` на каждый mount. В Strict Mode — два раза. При ремаунте по back/forward — снова, даже если unread=0.
+- Фикс: `if (isAuthenticated && !readAll.isPending && unreadItems.length > 0)`.
+
+**[BUG-WB-AUDIT-015] chats `menuRef` переназначается между сообщениями**
+- Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx:421`
+- `<div ref={showMenu ? menuRef : undefined}>` — один useRef на все message rows. Click-outside может закрыть не то меню.
+- Фикс: вынести row в отдельный компонент с локальным ref, или единый overlay.
+
+**[BUG-WB-AUDIT-016] `OtpGate.tsx` hardcoded `purpose: 'checkout'` для всех вызывающих экранов**
+- Файл: `apps/web-buyer/src/components/auth/OtpGate.tsx:27,37`
+- `OtpGate` используется на /chats, /wishlist, /profile — все они отправляют OTP с purpose=checkout. Если backend разделяет TTL/rate-limit/audit по purpose — будут странные записи.
+- Фикс: `purpose?: 'auth' | 'checkout'` props с default `'auth'`.
+
+**[BUG-WB-AUDIT-017] storefront `[slug]/page.tsx` — двойной fetch storeBySlug**
+- Файл: `apps/web-buyer/src/app/(shop)/[slug]/page.tsx:80-87` + `generateMetadata`
+- `serverGetStoreBySlug` вызывается в `generateMetadata` И в `StorePage` независимо. Если кастомный HTTP-клиент без `cache` — два HTTP-запроса на render.
+- Фикс: обернуть `serverGetStoreBySlug` в React `cache()` или Next.js `unstable_cache`.
+
+**[BUG-WB-AUDIT-018] ProductCard images: `as unknown as` cast скрывает shape mismatch**
+- Файл: `apps/web-buyer/src/components/store/ProductCard.tsx:41-44`
+- `(product as unknown as { images?: Array<{url}> }).images?.map(...)`. Это либо контракт API не совпадает с типом ProductListItem (mediaUrls vs images), либо мёртвый код. При изменении API — silently сломается.
+- Фикс: проверить актуальный shape ответа, исправить тип в packages/types, убрать cast.
+
+**[BUG-WB-AUDIT-019] notifications: `BottomNavBar active="profile"` на странице /notifications**
+- Файл: `apps/web-buyer/src/app/(shop)/notifications/page.tsx:282`
+- Тип `NavActive` не содержит `'notifications'` — нет соответствующего таба. Это design choice (notifications в Header через Bell icon), но active="profile" путает.
+- Фикс: либо удалить prop, либо рендерить BottomNavBar без `active` (если возможно), либо расширить тип.
+
+### 🟢 MINOR
+
+**[BUG-WB-AUDIT-020] `IcoSend` hardcoded `stroke="white"` → невидим в light-теме**
+- Файл: `apps/web-buyer/src/components/icons.tsx:10`
+- Все остальные иконки используют `currentColor`. Bell на white-кнопке невидима.
+- Фикс: `stroke="currentColor"`.
+
+**[BUG-WB-AUDIT-021] cart sticky CTA `z-30` < BottomNavBar `z-50`**
+- Файл: `apps/web-buyer/src/app/(minimal)/cart/page.tsx:491-504`
+- BottomNav поверх кнопки «Оформить заказ». Тапы могут попадать на BottomNav.
+- Фикс: поднять z до 51 или сменить позиционирование.
+
+**[BUG-WB-AUDIT-022] `normalizeOrder` — `id: raw.id` без fallback**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:58`
+- Если backend вернёт без `id` (edge), `shortId(undefined)` → TypeError на `.slice`.
+- Фикс: `id: raw.id ?? ''`.
+
+**[BUG-WB-AUDIT-023] orders/[id] Timeline: PROCESSING маппится на индекс 1 (CONFIRMED), визуально совпадает**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:108-114`
+- `STATUS_INDEX[PROCESSING]=1` и `TIMELINE[1]=CONFIRMED`. Когда статус PROCESSING, timeline показывает CONFIRMED как current. Логически PROCESSING — отдельный этап.
+- Фикс: добавить PROCESSING в TIMELINE между CONFIRMED и SHIPPED, или принять как design decision.
+
+**[BUG-WB-AUDIT-024] product detail `navigator.clipboard.writeText` без catch**
+- Файл: `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:110`
+- На HTTP / в WebView без permissions clipboard кидает DOMException → unhandled rejection.
+- Фикс: `.catch(() => {})`.
+
+**[BUG-WB-AUDIT-025] RecentStores: `<button>` внутри `<Link>` — невалидный HTML**
+- Файл: `apps/web-buyer/src/components/home/RecentStores.tsx:36-45`
+- Интерактивный контент внутри интерактивного. Tab-навигация и AT работают непредсказуемо.
+- Фикс: заменить Link обёртку на div с onClick, или вынести button через position:absolute.
+
+**[BUG-WB-AUDIT-026] notifications `bucketFor` использует `Date.now()` без подписки на смену суток**
+- Файл: `apps/web-buyer/src/app/(shop)/notifications/page.tsx:172-176`
+- При долгом mount (открыто на ночь) buckets не пересчитываются — события вчера остаются в «Сегодня».
+- Фикс: setInterval каждый час пересчитывать. Или принять как negligible.
+
+### Сводная таблица по приоритетам
+
+| ID | Severity | Файл | Что |
+|----|----------|------|-----|
+| 001 | 🔴 | hooks/use-cart.ts | useCart без enabled → 401-loop для гостей |
+| 002 | 🔴 | hooks/use-buyer-socket.ts | leave-buyer-room cleanup отсутствует |
+| 003 | 🔴 | hooks/use-chat.ts | leave-chat-room cleanup отсутствует |
+| 004 | 🔴 | hooks/use-orders.ts | enabled guard отсутствует |
+| 005 | 🔴 | chats/page.tsx | handleSend без catch + потеря текста |
+| 006 | 🔴 | orders/[id]/page.tsx | Sticky CTA z-50 vs BottomNav z-50 |
+| 007 | 🔴 | products/[id]/page.tsx | useEffect deps incomplete → race |
+| 008 | 🟡 | orders/page.tsx | accOrders race при смене фильтра |
+| 009 | 🟡 | checkout/page.tsx | contactName/Phone не отправляется |
+| 010 | 🟡 | checkout/page.tsx | OTP-gate flash для авторизованных |
+| 011 | 🟡 | theme-provider.tsx | non-lazy state init → flash icon |
+| 012 | 🟡 | BottomNavBar.tsx | last_store_slug never written |
+| 013 | 🟡 | lib/auth/storage.ts | Cross-tab logout desync |
+| 014 | 🟡 | notifications/page.tsx | readAll mutate без guard |
+| 015 | 🟡 | chats/page.tsx | menuRef shared между сообщениями |
+| 016 | 🟡 | OtpGate.tsx | purpose hardcoded |
+| 017 | 🟡 | [slug]/page.tsx | двойной fetch storeBySlug |
+| 018 | 🟡 | ProductCard.tsx | as-cast на mediaUrls/images |
+| 019 | 🟡 | notifications/page.tsx | BottomNavBar active="profile" |
+| 020 | 🟢 | icons.tsx | IcoSend stroke="white" |
+| 021 | 🟢 | cart/page.tsx | z-30 sticky CTA vs z-50 BottomNav |
+| 022 | 🟢 | orders/[id]/page.tsx | normalizeOrder id без fallback |
+| 023 | 🟢 | orders/[id]/page.tsx | PROCESSING == CONFIRMED в timeline |
+| 024 | 🟢 | products/[id]/page.tsx | clipboard без catch |
+| 025 | 🟢 | RecentStores.tsx | button в Link невалидный HTML |
+| 026 | 🟢 | notifications/page.tsx | bucketFor без интервала |
+
+---
+
 ## 2026-05-04 [API-WS-AUDIT-001] WebSocket gateways audit: information leak в chat.gateway
 
 - **Статус:** ✅ Исправлено (chat join-room participant check + DatabaseModule в SocketModule).
