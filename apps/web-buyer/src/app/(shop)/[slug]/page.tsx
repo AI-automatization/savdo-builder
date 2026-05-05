@@ -120,90 +120,83 @@ export default async function StorePage({
       <TrackStorefrontView storeId={store.id} storeSlug={slug} />
       <RegisterRecentStore slug={slug} name={store.name} logoUrl={store.logoUrl ?? null} />
 
-      {/* ── Cover hero ─────────────────────────────────────────────────────── */}
-      {store.coverUrl ? (
-        <div className="relative w-full h-40 sm:h-56 md:h-72 overflow-hidden">
-          <Image
-            src={store.coverUrl}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="100vw"
-            priority
-          />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(250,250,247,0.85) 90%, " + colors.bg + " 100%)" }} />
-        </div>
-      ) : (
-        <div className="h-4 md:h-8" />
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* ── Store header card (overlaps cover when present) ───────────────── */}
-        <div
-          className={`rounded-2xl overflow-hidden ${store.coverUrl ? "-mt-16 sm:-mt-20" : "mt-2"} relative z-10`}
-          style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: "0 4px 24px rgba(15,17,21,0.06)" }}
-        >
-          <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-            {/* Logo */}
-            <div
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0 relative overflow-hidden"
-              style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
-            >
-              {store.logoUrl ? (
-                <Image src={store.logoUrl} alt={store.name} fill className="object-cover" sizes="80px" />
-              ) : (
-                store.name.charAt(0)
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: colors.textPrimary }}>
-                {store.name}
-              </h1>
-              <p className="text-xs sm:text-sm mt-0.5" style={{ color: colors.textMuted }}>
-                @{slug} · {store.city}
-              </p>
-              {store.description && (
-                <p className="text-sm leading-relaxed mt-2 line-clamp-2 sm:line-clamp-none" style={{ color: colors.textMuted }}>
-                  {store.description}
-                </p>
-              )}
-            </div>
-
-            {store.telegramContactLink && (
-              <a
-                href={store.telegramContactLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 flex-shrink-0"
-                style={{
-                  background: `linear-gradient(135deg, ${colors.telegram} 0%, #1d6fa4 100%)`,
-                  color: "#FFFFFF",
-                  boxShadow: `0 4px 16px rgba(42,171,238,.25)`,
-                }}
-              >
-                <Send size={16} />
-                <span className="hidden sm:inline">Написать в Telegram</span>
-                <span className="sm:hidden">Telegram</span>
-              </a>
+      {/* ── Hero — split photo + brand-color block ──────────────────────────── */}
+      <section className="overflow-hidden">
+        <div className="md:grid md:grid-cols-[6fr_4fr]">
+          {/* Photo column */}
+          <div className="relative h-[200px] md:h-auto md:min-h-[340px] overflow-hidden" style={{ background: colors.surfaceSunken }}>
+            {store.coverUrl ? (
+              <Image
+                src={store.coverUrl}
+                alt={store.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 60vw"
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-6xl font-bold opacity-20" style={{ color: colors.brand }}>
+                {store.name.charAt(0)}
+              </div>
             )}
           </div>
-        </div>
 
-        {/* ── Store categories chips (sticky on scroll) ─────────────────────── */}
-        {store.categories.length > 0 && (
+          {/* Brand-color column */}
           <div
-            className="sticky top-[57px] z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 mt-4 mb-4"
-            style={{ background: colors.bg, borderBottom: `1px solid ${colors.divider}` }}
+            className="px-6 py-8 md:px-8 md:py-10 flex flex-col justify-center"
+            style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
-            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+            <div className="text-[10px] tracking-[0.2em] uppercase opacity-70 mb-3">— Магазин · {store.city}</div>
+            <h1 className="text-2xl md:text-4xl font-bold leading-[1.05] tracking-tight mb-3">
+              {store.name}
+            </h1>
+            {store.description && (
+              <p className="text-sm opacity-85 leading-relaxed mb-5 line-clamp-3 md:line-clamp-4">{store.description}</p>
+            )}
+            <div className="flex gap-2.5 flex-wrap">
+              <a
+                href="#products"
+                className="inline-flex items-center justify-center px-5 py-3 text-xs font-bold rounded transition-opacity hover:opacity-90"
+                style={{ background: colors.brandTextOnBg, color: colors.brand }}
+              >
+                Все товары →
+              </a>
+              {store.telegramContactLink && (
+                <a
+                  href={store.telegramContactLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold rounded border transition-opacity hover:opacity-90"
+                  style={{ borderColor: 'rgba(251,247,240,0.4)', color: colors.brandTextOnBg }}
+                >
+                  <Send size={14} />
+                  <span>Чат</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Content wrapper ─────────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* ── Store categories chip row ──────────────────────────────────────── */}
+        {store.categories.length > 0 && (
+          <section className="mt-6">
+            <div className="flex justify-between items-baseline mb-3">
+              <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
+                — По категориям
+              </div>
+            </div>
+            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
               <Link
                 href={buildStoreCategoryHref(null)}
-                className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                className="flex-shrink-0 px-4 py-2 text-xs font-semibold rounded transition-colors"
                 style={
                   !categoryId
-                    ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
-                    : { background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }
+                    ? { background: colors.textStrong, color: colors.brandTextOnBg, border: `1px solid ${colors.textStrong}` }
+                    : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
                 }
               >
                 Все
@@ -216,11 +209,11 @@ export default async function StorePage({
                     <Link
                       key={cat.id}
                       href={buildStoreCategoryHref(cat.id)}
-                      className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                      className="flex-shrink-0 px-4 py-2 text-xs font-semibold rounded transition-colors"
                       style={
                         isActive
-                          ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
-                          : { background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }
+                          ? { background: colors.textStrong, color: colors.brandTextOnBg, border: `1px solid ${colors.textStrong}` }
+                          : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
                       }
                     >
                       {cat.name}
@@ -228,26 +221,31 @@ export default async function StorePage({
                   );
                 })}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* ── Two-column layout: filters sidebar (desktop) + product grid ──── */}
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 lg:gap-8">
-          {/* Filters — sidebar on desktop, inline on mobile */}
-          <aside className="lg:sticky lg:top-[120px] lg:self-start">
-            <CategoryAttributeFilters
-              globalCategories={globalCategories}
-              activeGlobalSlug={gcat}
-              attributeFilters={attributeFilters}
-              activeAttributes={activeAttributes}
-            />
-          </aside>
+        {/* ── Products section ───────────────────────────────────────────────── */}
+        <section id="products" className="mt-8">
+          <div className="flex justify-between items-baseline mb-4">
+            <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
+              — Товары{products.length > 0 ? ` · ${products.length}` : ''}
+            </div>
+          </div>
 
-          {/* Products grid */}
-          <main>
-            <ProductsWithSearch products={products} storeSlug={slug} />
-          </main>
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 lg:gap-8">
+            <aside className="lg:sticky lg:top-[80px] lg:self-start">
+              <CategoryAttributeFilters
+                globalCategories={globalCategories}
+                activeGlobalSlug={gcat}
+                attributeFilters={attributeFilters}
+                activeAttributes={activeAttributes}
+              />
+            </aside>
+            <main>
+              <ProductsWithSearch products={products} storeSlug={slug} />
+            </main>
+          </div>
+        </section>
       </div>
 
       <BottomNavBar active="store" storeSlug={slug} />
