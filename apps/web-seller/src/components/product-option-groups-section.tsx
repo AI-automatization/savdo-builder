@@ -232,7 +232,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
           />
         ) : (
           <>
-            <p className="text-sm font-medium text-white flex-1">{group.name}</p>
+            <p className="text-sm font-medium flex-1" style={{ color: colors.textPrimary }}>{group.name}</p>
             <button
               type="button"
               className="text-xs transition-opacity opacity-40 hover:opacity-80"

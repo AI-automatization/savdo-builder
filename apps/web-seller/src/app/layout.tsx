@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "../providers/query-provider";
 import { AuthProvider } from "../lib/auth/context";
+import { ThemeProvider } from "../lib/theme/theme-provider";
+import { ThemeScript } from "../lib/theme/theme-script";
 
 export const metadata: Metadata = {
   title: "Savdo — Seller Dashboard",
@@ -10,13 +12,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className="h-full">
-      <body
-        className="h-full"
-        style={{ background: "linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%)" }}
-      >
+    <html lang="ru" className="h-full" suppressHydrationWarning>
+      <head>
+        <ThemeScript defaultTheme="dark" />
+      </head>
+      <body className="h-full">
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ThemeProvider defaultTheme="dark">
+              {children}
+            </ThemeProvider>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

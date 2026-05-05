@@ -395,7 +395,7 @@ function DeliverySettingsSection() {
             type="submit"
             disabled={!isDirty || updateStore.isPending}
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -552,7 +552,7 @@ function StoreSettingsSection() {
             type="submit"
             disabled={!isDirty || updateStore.isPending}
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -659,7 +659,7 @@ function ProfileSettingsSection() {
             type="submit"
             disabled={!isDirty || updateProfile.isPending}
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {updateProfile.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>

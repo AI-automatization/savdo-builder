@@ -261,12 +261,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
           aria-label="Назад"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-white">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: colors.textPrimary }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
         </button>
         <div>
-          <h1 className="text-xl font-bold text-white">Редактировать товар</h1>
+          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Редактировать товар</h1>
           <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
             {STATUS_LABELS[product.status] ?? product.status}
           </p>
@@ -408,7 +408,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {/* Visibility toggle */}
           <div className="flex items-center justify-between py-1">
             <div>
-              <p className="text-sm font-medium text-white">Показывать в магазине</p>
+              <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>Показывать в магазине</p>
               <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
                 Покупатели смогут видеть товар
               </p>
@@ -448,8 +448,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <button
             type="submit"
             disabled={!isDirty && storeCategoryId === initialCategoryIdRef.current && mediaId === null || isSubmitting || update.isPending}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-40"
-            style={{ background: colors.accent, color: colors.bg }}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-40"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {update.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>

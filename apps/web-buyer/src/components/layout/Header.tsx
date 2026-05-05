@@ -8,6 +8,7 @@ import { useUnreadChatCount } from "@/hooks/use-chat";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/lib/auth/context";
 import { colors } from "@/lib/styles";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Header() {
   const params = useParams();
@@ -72,6 +73,9 @@ export default function Header() {
         <NavIconLink href="/notifications" badge={unreadCount} ariaLabel="Уведомления">
           <Bell size={18} />
         </NavIconLink>
+
+        {/* Theme toggle — always visible */}
+        <ThemeToggle bordered={false} />
       </div>
     </header>
   );
@@ -92,8 +96,10 @@ function NavIconLink({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:bg-black/5"
+      className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
       style={{ color: colors.textPrimary }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceMuted; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
     >
       {children}
       {badge > 0 && (
