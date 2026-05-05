@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 47, Азим) — Task 1: Foundation tokens + Inter font
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 1] Foundation tokens — Soft Color Lifestyle palette + Inter font 🔴
+
+- **Дата:** 05.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/globals.css` — заменён `:root` light-блок на терракотовую палитру, обновлены `body` и `@theme inline` (Geist → Inter, удалён `--font-mono`)
+  - `apps/web-buyer/src/app/layout.tsx` — заменены `Geist`/`Geist_Mono` на `Inter` (latin + cyrillic, display:swap)
+  - `apps/web-buyer/src/lib/styles.ts` — добавлены `brandHover/brandMuted/brandBorder/brandTextOnBg/textBody/textStrong`; удалены deprecated `glass`/`glassDim`/`glassDark` экспорты
+- **Что сделано:** полная замена «Liquid Authority» violet `:root` токенов на «Soft Color Lifestyle» терракотовую палитру. `accent*` остались как CSS-variable aliases на `brand*` — обратная совместимость для всех существующих компонентов. Dark theme (`[data-theme="dark"]`) не тронут. `glass*` удалены безопасно — ни один consumer-файл их не импортировал (проверено grep).
+- **Commit:** см. git log (feat: foundation tokens)
+- **Push:** main + web-buyer (Railway autodeploy)
+
+---
+
 ## 2026-05-05 (сессия 46, Азим) — Дизайн-стратегия web-buyer + 2 hotfix
 
 ### ✅ [WEB-BUYER-DESIGN-PLAN-001] Spec + implementation plan для редизайна web-buyer 🟡

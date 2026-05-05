@@ -35,6 +35,14 @@ export const colors = {
   accentMuted:     'var(--color-accent-muted)',
   accentBorder:    'var(--color-accent-border)',
   accentTextOnBg:  'var(--color-accent-text-on-bg)',
+  // Brand (canonical names; accent* остаются как aliases)
+  brandHover:      'var(--color-brand-hover)',
+  brandMuted:      'var(--color-brand-muted)',
+  brandBorder:     'var(--color-brand-border)',
+  brandTextOnBg:   'var(--color-brand-text-on-bg)',
+  // Type — extended
+  textBody:        'var(--color-text-body)',
+  textStrong:      'var(--color-text-strong)',
   // Brand wordmark — unified between buyer & seller for "Savdo" logo / hero
   brand:           'var(--color-brand)',
   // Semantic
@@ -98,30 +106,4 @@ export const ctaSoft = {
   background: colors.accentMuted,
   color:      colors.accent,
   border:     `1px solid ${colors.accentBorder}`,
-} as const;
-
-// ── Legacy glass tokens (kept until all pages migrate) ───────────────────────
-
-/** @deprecated — migrate to `card` */
-export const glass = {
-  background:           colors.surface,
-  backdropFilter:       'none',
-  WebkitBackdropFilter: 'none',
-  border:               `1px solid ${colors.border}`,
-} as const;
-
-/** @deprecated — migrate to `cardMuted` */
-export const glassDim = {
-  background:           colors.surfaceMuted,
-  backdropFilter:       'none',
-  WebkitBackdropFilter: 'none',
-  border:               `1px solid ${colors.border}`,
-} as const;
-
-/** @deprecated — migrate to `cardMuted` */
-export const glassDark = {
-  background:           colors.surfaceMuted,
-  backdropFilter:       'none',
-  WebkitBackdropFilter: 'none',
-  border:               `1px solid ${colors.border}`,
 } as const;
