@@ -17,8 +17,8 @@
   --color-surface-muted:     #FBF7F0;
   --color-surface-elevated:  #FFFFFF;
   --color-surface-sunken:    #F4EEE0;
-  --color-divider:           #EFE8DA;
-  --color-border:            #EFE8DA;
+  --color-divider:           #EFE8DA;     /* structural separators (dividers, hr) */
+  --color-border:            #EFE8DA;     /* interactive element edges (inputs, buttons, cards) */
   --color-border-strong:     #D8CFB8;
   --color-text-primary:      #1F1A12;
   --color-text-muted:        #8A7D6A;
@@ -57,8 +57,8 @@
   --color-surface-muted:     #1F1F24;
   --color-surface-elevated:  #232328;
   --color-surface-sunken:    #131316;
-  --color-divider:           rgba(255,255,255,0.06);
-  --color-border:            rgba(255,255,255,0.10);
+  --color-divider:           rgba(255,255,255,0.06);  /* structural separators (dividers, hr) */
+  --color-border:            rgba(255,255,255,0.10);  /* interactive element edges (inputs, buttons, cards) */
   --color-border-strong:     rgba(255,255,255,0.18);
   --color-text-primary:      #F4F4F5;
   --color-text-muted:        #A1A1AA;
@@ -69,6 +69,13 @@
   --color-accent-border:     rgba(139,92,246,0.42);
   --color-accent-text-on-bg: #FFFFFF;
   --color-brand:             #A78BFA;
+  /* New tokens carried over from light system — dark variants */
+  --color-brand-hover:       #BFA8FA;
+  --color-brand-muted:       rgba(167,139,250,0.18);
+  --color-brand-border:      rgba(167,139,250,0.35);
+  --color-brand-text-on-bg:  #0F0F12;
+  --color-text-body:         #D1CFC9;
+  --color-text-strong:       #F4F4F5;
   --color-success:           #22C55E;
   --color-warning:           #FBBF24;
   --color-danger:            #F87171;
