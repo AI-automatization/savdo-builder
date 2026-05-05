@@ -1,5 +1,40 @@
 # Done — Азим + Полат
 
+## 2026-05-05 (сессия 52, Азим) — Task 10: profile + wishlist + notifications redesign
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 10] Profile / Wishlist / Notifications redesign 🔴
+
+- **Дата:** 05.05.2026
+- **Commit:** `0ba9561`
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — borderless user card с brand-fill avatar, Stats row 3-col (Заказов / В избранном / Корзина-link) на 1px-divider grid, editorial section label «— Активность», MenuRow компонент (brandMuted icon + label + sub + chevron) для Заказы/Избранное/Уведомления, outline-danger logout с confirm-card. `useOrders({page:1,limit:1})` + `useWishlist()` для best-effort counts. `accent*` → `brand*`, `rounded-2xl` → `rounded-md`, `textPrimary` → `textStrong`. Avatar upload, logout, OtpGate сохранены.
+  - `apps/web-buyer/src/app/(shop)/wishlist/page.tsx` — editorial sub-header «— Избранное · {count}», borderless card grid 2/4 cols (как ProductCard в Task 4), rounded-md image + ♡ overlay 32px (filled brand для удаления), store eyebrow + title в textBody, цена в textStrong, OOS overlay (white 78% + pill), editorial empty state «— Пока пусто» + brand CTA. Hover scale-105 image zoom. `useWishlist`/`useToggleWishlist` сохранены.
+  - `apps/web-buyer/src/app/(shop)/notifications/page.tsx` — borderless rows с background brandMuted на unread / surface на read, brand dot 8px справа для unread, brand-tinted icon container surfaceSunken, editorial group labels по дате (Сегодня/Вчера/Прошлая неделя/Ранее), filter chips с textStrong fill активного, header c brandMuted «Прочитать все», editorial empty state + auth gate. `useNotifications`/`useReadAll`/`router.push('/orders/{id}')` сохранены.
+- **🎉 ИТОГ:** Все 10 задач Soft Color Lifestyle implementation plan'а закрыты. Web-buyer полностью переведён на тёплую terracotta-палитру с editorial labels, brand-color CTAs, borderless минимализмом и dark-fill активными элементами.
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
+## 2026-05-05 (сессия 52, Азим) — Task 3: homepage + RecentStores polish
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 3] Homepage + RecentStores polish 🟡
+
+- **Дата:** 05.05.2026
+- **Commit:** `b2884bb`
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — Logo container `rounded-3xl` → `rounded-2xl`, slug-card `rounded-2xl` → `rounded-lg` (8px), inner row `rounded-xl` → `rounded-md`, «Перейти в магазин» → editorial label «— Перейти в магазин», quick links `rounded-2xl` → `rounded-md` + brandMuted icon container без border + tighter spacing (gap-3, w-10 h-10, size 18), CTA button `rounded-md` + font-bold для consistency с Tasks 4-9.
+  - `apps/web-buyer/src/components/home/RecentStores.tsx` — borderless карточки (per spec), убран background+border контейнера, avatar 48px → 56px, без brandBorder (минималистично), remove button hidden by default + on group-hover.
+- **Что не сделано (намеренно):** Storefront `(shop)/[slug]/page.tsx` уже полностью под новый дизайн — hero 6fr:4fr photo+brand-color split, editorial labels (— Магазин · {city} / — По категориям / — Товары · {N}), categories chip-row с textStrong fill активного, brand-color column со всеми правильными tokens. Никаких правок не потребовалось.
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
+## 2026-05-05 (сессия 52, Азим) — Task 2: Header/Nav refinements
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 2] Header + BottomNavBar refinements 🟢
+
+- **Дата:** 05.05.2026
+- **Commit:** `654f067`
+- **Файлы:** `apps/web-buyer/src/components/layout/Header.tsx`, `apps/web-buyer/src/components/theme-toggle.tsx`
+- **Что сделано:** Header и BottomNavBar уже использовали canonical brand-tokens после Task 1 alias-миграции (`colors.brand`, `colors.brandTextOnBg`, `colors.textBody`, `colors.divider`, `colors.surface*` — никаких `accent*` ссылок не осталось). Финальные правки: Header padding `py-3` → `py-3.5` (12→14px vertical, per spec). ThemeToggle MenuItem — `accent*` → `brand*` rename для консистентности (CSS-var alias, no-op runtime). BottomNavBar — без изменений.
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
 ## 2026-05-05 (сессия 52, Азим) — Task 9: Orders list + detail redesign
 
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 9] Orders redesign — list rows + status hero + timeline 🔴
