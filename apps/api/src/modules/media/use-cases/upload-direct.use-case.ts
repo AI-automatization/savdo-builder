@@ -77,12 +77,15 @@ export class UploadDirectUseCase {
           objectKey,
           mimeType: file.mimetype,
           fileSize: BigInt(file.size),
-          visibility: MediaVisibility.PUBLIC,
+          // SEC-005: документы продавцов приватны, не отдаются через public proxy.
+          visibility: purpose === 'seller_doc' ? MediaVisibility.PROTECTED : MediaVisibility.PUBLIC,
         });
 
         return {
           mediaFileId: mediaFile.id,
-          url: `/api/v1/media/proxy/${mediaFile.id}`,
+          url: purpose === 'seller_doc'
+            ? `/api/v1/media/private/${mediaFile.id}`
+            : `/api/v1/media/proxy/${mediaFile.id}`,
         };
       } catch (err) {
         this.logger.error('R2/Supabase upload failed — falling back to Telegram', err instanceof Error ? err.stack : err);
@@ -122,7 +125,9 @@ export class UploadDirectUseCase {
 
     return {
       mediaFileId: mediaFile.id,
-      url: `/api/v1/media/proxy/${mediaFile.id}`,
+      url: purpose === 'seller_doc'
+        ? `/api/v1/media/private/${mediaFile.id}`
+        : `/api/v1/media/proxy/${mediaFile.id}`,
     };
   }
 }
