@@ -22,7 +22,7 @@ export default function Header() {
 
   return (
     <header
-      className="sticky top-0 z-40 px-4 py-3"
+      className="sticky top-0 z-40 px-4 py-3.5"
       style={{
         background: colors.surface,
         borderBottom: `1px solid ${colors.divider}`,
