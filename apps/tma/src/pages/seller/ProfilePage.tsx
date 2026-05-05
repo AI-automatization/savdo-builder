@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -24,10 +24,15 @@ export default function SellerProfilePage() {
   const navigate = useNavigate();
   const [store, setStore] = useState<Store | null>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    api<Store>('/seller/store')
-      .then((s) => setStore(s))
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    api<Store>('/seller/store', { signal: ac.signal })
+      .then((s) => { if (!ac.signal.aborted) setStore(s); })
       .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   const handleLogout = () => {
@@ -49,8 +54,8 @@ export default function SellerProfilePage() {
   };
 
   return (
-    
-      <div className="flex flex-col gap-4">
+
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Профиль</h1>
 
         {/* Telegram аккаунт */}

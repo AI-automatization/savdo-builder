@@ -31,6 +31,7 @@ import { SendMessageUseCase } from './use-cases/send-message.use-case';
 import { GetThreadMessagesUseCase } from './use-cases/get-thread-messages.use-case';
 import { ListMyThreadsUseCase } from './use-cases/list-my-threads.use-case';
 import { ResolveThreadUseCase } from './use-cases/resolve-thread.use-case';
+import { ChatGateway } from '../../socket/chat.gateway';
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,6 +47,7 @@ export class ChatController {
     private readonly getThreadMessagesUseCase: GetThreadMessagesUseCase,
     private readonly listMyThreadsUseCase: ListMyThreadsUseCase,
     private readonly resolveThreadUseCase: ResolveThreadUseCase,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   // GET /api/v1/chat/threads
@@ -63,6 +65,11 @@ export class ChatController {
 
   // POST /api/v1/chat/threads
   @Post('chat/threads')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // защита от спама создания тредов
+  // SEC-AUDIT-2026-05 HIGH-01: explicit @Roles. RolesGuard returns true когда
+  // @Roles() отсутствует — без этого декоратора защита создавалась только
+  // случайно (resolveBuyerId кидает 422 у seller'а без buyer-профиля).
+  @Roles('BUYER', 'SELLER')
   async createThread(@CurrentUser() user: JwtPayload, @Body() dto: CreateThreadDto) {
     const buyerId = await this.resolveBuyerId(user.sub);
 
@@ -82,15 +89,14 @@ export class ChatController {
     @Param('id') threadId: string,
     @Query() query: ListMessagesDto,
   ) {
-    // Participant check is done inside the use case using userId.
-    // The thread stores buyerId (Buyer.id) and sellerId (Seller.id), but
-    // participant verification must be done using the User.id stored as
-    // senderUserId on messages. For thread access, we resolve the profile id.
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    // Read-path: проверяем оба профиля. Юзер мог открыть thread где он seller,
+    // но JWT.role=BUYER (или наоборот) — single-role check давал 403.
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     return this.getThreadMessagesUseCase.execute({
       threadId,
-      readerUserId: participantId,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
       limit: query.limit,
       before: query.before,
     });
@@ -105,12 +111,29 @@ export class ChatController {
     @Param('id') threadId: string,
     @Body() dto: SendMessageDto,
   ) {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    // Dual-role: определяем senderUserId по тому, в какой роли юзер участвует в треде.
+    const ids = await this.resolveBothProfileIds(user.sub);
+    const thread = await this.prisma.chatThread.findUnique({
+      where: { id: threadId },
+      select: { buyerId: true, sellerId: true },
+    });
+    if (!thread) {
+      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
+    }
+    const senderUserId =
+      ids.buyerProfileId && thread.buyerId === ids.buyerProfileId ? ids.buyerProfileId :
+      ids.sellerProfileId && thread.sellerId === ids.sellerProfileId ? ids.sellerProfileId :
+      null;
+    if (!senderUserId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant of this thread', HttpStatus.FORBIDDEN);
+    }
 
     return this.sendMessageUseCase.execute({
       threadId,
-      senderUserId: participantId,
+      senderUserId,
       text: dto.text,
+      parentMessageId: dto.parentMessageId,
+      mediaId: dto.mediaId,
     });
   }
 
@@ -134,7 +157,7 @@ export class ChatController {
     @CurrentUser() user: JwtPayload,
     @Param('id') threadId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const thread = await this.prisma.chatThread.findUnique({
       where: { id: threadId },
@@ -145,8 +168,8 @@ export class ChatController {
       throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
     }
 
-    const isBuyer = thread.buyerId === participantId;
-    const isSeller = thread.sellerId === participantId;
+    const isBuyer = !!ids.buyerProfileId && thread.buyerId === ids.buyerProfileId;
+    const isSeller = !!ids.sellerProfileId && thread.sellerId === ids.sellerProfileId;
 
     if (!isBuyer && !isSeller) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
@@ -167,7 +190,7 @@ export class ChatController {
     @CurrentUser() user: JwtPayload,
     @Param('id') threadId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const thread = await this.prisma.chatThread.findUnique({
       where: { id: threadId },
@@ -178,8 +201,8 @@ export class ChatController {
       throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
     }
 
-    const isBuyer = thread.buyerId === participantId;
-    const isSeller = thread.sellerId === participantId;
+    const isBuyer = !!ids.buyerProfileId && thread.buyerId === ids.buyerProfileId;
+    const isSeller = !!ids.sellerProfileId && thread.sellerId === ids.sellerProfileId;
 
     if (!isBuyer && !isSeller) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
@@ -201,7 +224,7 @@ export class ChatController {
     @Param('threadId') threadId: string,
     @Param('msgId') msgId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const message = await this.prisma.chatMessage.findUnique({
       where: { id: msgId },
@@ -214,7 +237,13 @@ export class ChatController {
 
     if (message.isDeleted) return;
 
-    if (message.senderUserId !== participantId) {
+    // Author check: senderUserId — это Buyer.id или Seller.id. Юзер автор если
+    // совпало с любым из его профилей.
+    const isAuthor =
+      (!!ids.buyerProfileId && message.senderUserId === ids.buyerProfileId) ||
+      (!!ids.sellerProfileId && message.senderUserId === ids.sellerProfileId);
+
+    if (!isAuthor) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can delete this message', HttpStatus.FORBIDDEN);
     }
 
@@ -222,6 +251,8 @@ export class ChatController {
       where: { id: msgId },
       data: { isDeleted: true, body: null, deletedAt: new Date() },
     });
+
+    this.chatGateway.emitChatMessageDeleted(threadId, msgId);
   }
 
   // PATCH /api/v1/chat/threads/:threadId/messages/:msgId  (edit, author only, 15 min window)
@@ -237,7 +268,7 @@ export class ChatController {
       throw new BadRequestException('text is required');
     }
 
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const message = await this.prisma.chatMessage.findUnique({
       where: { id: msgId },
@@ -252,7 +283,10 @@ export class ChatController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Cannot edit a deleted message', HttpStatus.FORBIDDEN);
     }
 
-    if (message.senderUserId !== participantId) {
+    const isAuthorAsBuyer = !!ids.buyerProfileId && message.senderUserId === ids.buyerProfileId;
+    const isAuthorAsSeller = !!ids.sellerProfileId && message.senderUserId === ids.sellerProfileId;
+
+    if (!isAuthorAsBuyer && !isAuthorAsSeller) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can edit this message', HttpStatus.FORBIDDEN);
     }
 
@@ -266,11 +300,13 @@ export class ChatController {
       data: { body: text.trim(), editedAt: new Date() },
     });
 
+    this.chatGateway.emitChatMessageEdited(updated);
+
     return {
       id: updated.id,
       threadId: updated.threadId,
       text: updated.body ?? '',
-      senderRole: user.role === 'SELLER' ? 'SELLER' : 'BUYER',
+      senderRole: isAuthorAsSeller ? 'SELLER' : 'BUYER',
       editedAt: updated.editedAt ? new Date(updated.editedAt).toISOString() : null,
       isDeleted: false,
       createdAt: new Date(updated.createdAt).toISOString(),
@@ -285,7 +321,7 @@ export class ChatController {
     @CurrentUser() user: JwtPayload,
     @Param('id') messageId: string,
   ): Promise<void> {
-    const { participantId } = await this.resolveParticipantId(user.sub, user.role);
+    const ids = await this.resolveBothProfileIds(user.sub);
 
     const message = await this.prisma.chatMessage.findUnique({
       where: { id: messageId },
@@ -297,7 +333,11 @@ export class ChatController {
     }
 
     const { buyerId, sellerId } = message.thread;
-    if (participantId !== buyerId && participantId !== sellerId) {
+    const isParticipant =
+      (!!ids.buyerProfileId && ids.buyerProfileId === buyerId) ||
+      (!!ids.sellerProfileId && ids.sellerProfileId === sellerId);
+
+    if (!isParticipant) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
     }
 
@@ -307,7 +347,7 @@ export class ChatController {
       data: { reportedAt: new Date() },
     });
 
-    this.logger.warn(`Message ${messageId} reported by participant ${participantId}`);
+    this.logger.warn(`Message ${messageId} reported by user ${user.sub}`);
   }
 
   // ─── Admin endpoints ────────────────────────────────────────────────────────
@@ -466,14 +506,24 @@ export class ChatController {
     userId: string,
     role: string,
   ): Promise<{ buyerId?: string; sellerId?: string }> {
+    // Для list-my-threads (read-only): soft-резолв. Если профиля ещё нет —
+    // use-case вернёт пустой список вместо 422. Это нормально для нового юзера,
+    // который зашёл в "Чаты" до первой покупки или до создания магазина.
     if (role === 'BUYER') {
-      const buyerId = await this.resolveBuyerId(userId);
-      return { buyerId };
+      const user = await this.usersRepo.findById(userId);
+      return { buyerId: user?.buyer?.id };
     }
 
     if (role === 'SELLER') {
-      const sellerId = await this.resolveSellerProfileId(userId);
-      return { sellerId };
+      const seller = await this.sellersRepo.findByUserId(userId);
+      if (seller?.isBlocked) {
+        throw new DomainException(
+          ErrorCode.SELLER_BLOCKED,
+          'Seller account is blocked',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      return { sellerId: seller?.id };
     }
 
     // ADMIN or dual-role: resolve profiles from DB directly
@@ -485,8 +535,24 @@ export class ChatController {
   }
 
   /**
-   * Returns a single `participantId` for message access checks.
-   * For ADMIN: prefers buyer profile, falls back to seller.
+   * Возвращает ОБА профиля юзера (buyer + seller). Юзер участвует в треде если
+   * thread.buyerId === buyerProfileId ИЛИ thread.sellerId === sellerProfileId.
+   * Это устраняет 403 когда JWT.role=BUYER, а thread на самом деле seller-thread юзера
+   * (или наоборот) — JWT хранит одну активную роль, а профилей у юзера может быть два.
+   */
+  private async resolveBothProfileIds(
+    userId: string,
+  ): Promise<{ buyerProfileId?: string; sellerProfileId?: string }> {
+    const user = await this.usersRepo.findById(userId);
+    return {
+      buyerProfileId: user?.buyer?.id,
+      sellerProfileId: user?.seller?.id,
+    };
+  }
+
+  /**
+   * Returns a single `participantId` for message access checks (write paths).
+   * Для read-only endpoints используй resolveBothProfileIds.
    */
   private async resolveParticipantId(
     userId: string,

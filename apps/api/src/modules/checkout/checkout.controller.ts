@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { ConfirmCheckoutDto } from './dto/confirm-checkout.dto';
@@ -40,6 +41,7 @@ export class CheckoutController {
 
   @Post('confirm')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // защита от спама заказов
   async confirm(
     @CurrentUser() user: JwtPayload,
     @Body() dto: ConfirmCheckoutDto,

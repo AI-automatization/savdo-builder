@@ -5,6 +5,47 @@
 
 ---
 
+# 🆕 Спринт TMA Quality + Platform Hardening (04-09.05.2026)
+
+> Полный план: `analiz/sprint-tma-quality-04-05-2026.md`. Здесь — короткая чек-лист.
+
+## 🔴 P0 — Полат
+
+- [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
+- [ ] **`TMA-CHAT-403-WRITE-001`** — dual-role check на `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`.
+  - Файлы: `apps/api/src/modules/chat/chat.controller.ts` + 5 use-cases в `chat/use-cases/`.
+  - Паттерн: как в `getMessages` после `2b2bca7` — `resolveBothProfileIds` + `isBuyer || isSeller`.
+- [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
+  - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
+  - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
+
+## 🟠 P1 — Полат
+
+- [ ] **`TMA-SELECT-CUSTOM-001`** — портировать `apps/web-seller/src/components/select.tsx` в `apps/tma/src/components/ui/Select.tsx`. Применить везде где `<select>` (AddProductPage, EditProductPage, SettingsPage seller).
+- [ ] **`TMA-CROPPER-UX-001`** — большая видимая «✕ Отменить» в шапке кропера, `zIndex: 9999`, кнопка «➕ Добавить ещё фото» в AddProductPage / EditProductPage.
+  - Файлы: `apps/tma/src/components/ui/ImageCropper.tsx` + `apps/tma/src/pages/seller/{AddProductPage,EditProductPage}.tsx`.
+- [ ] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** — динамические опции товара из `CategoryFilter` по выбранной категории. Заменить хардкод-toggle «Товар с размерами».
+  - Endpoint: `GET /storefront/categories/:slug/filters` (уже работает).
+  - Поведение: SELECT/MULTI_SELECT с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
+- [x] **`TMA-DESIGN-P0P1-001`** — P0+P1 из `[DESIGN-AUDIT-TMA-001]` ✅ закрыто 04.05.2026 (контраст BottomNav, hit-area Add-to-cart/back 44pt, aria-hidden на decorative emoji, OPEN/CLOSED с иконкой, text-[11px] meta → text-xs). См. `analiz/done.md`. Остаток `role/tabIndex/onKeyDown` на `<div>` — отдельным тиком если потребуется.
+- [ ] **`TMA-RESPONSIVE-DESKTOP-001`** — modals и cropper перекрывают весь экран (включая sidebar). Sidebar width дефиниция на breakpoint'ах.
+
+## 🟡 P2 — Полат + параллельная сессия
+
+- [ ] **`API-SQL-INJECTION-AUDIT-001`** — grep `$queryRaw`/`$executeRaw` в `apps/api`, проверить prepared params.
+- [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
+- [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
+- [x] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA. ✅ Закрыто в `WEB-TMA-SELLER-PERF-001` (8 из 9 файлов; ChatPage пропущен из-за конфликта с `TMA-DESIGN-P0P1-001`). См. `analiz/done.md` 2026-05-04.
+- [ ] **`TMA-SELLER-CHAT-PERF-001`** — после мёрджа `TMA-DESIGN-P0P1-001` добавить AbortController в `apps/tma/src/pages/seller/ChatPage.tsx` (loadThreads + load messages useEffect). Pattern — как в DashboardPage/SettingsPage.
+
+## 🟢 P3 — после спринта
+
+- [ ] **`NOTIF-IN-APP-001`** — in-app уведомления (Notification модель + socket emit + toast/badge).
+- [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
+- [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
+
+---
+
 # 🆕 Очередь от Полата (через Азима, 30.04.2026 поздно вечер)
 
 > ✅ 4 TMA задачи закрыты Полатом 02.05.2026, коммит `a2e1767`. См. `analiz/done.md`.
@@ -20,6 +61,10 @@
 > ⏳ Открыто для Азима: `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` в web-buyer + heart на ProductCard. Бэкенд готов: `GET/POST /buyer/wishlist`, `DELETE /buyer/wishlist/:productId`, `WishlistItem` тип в `packages/types`, флаг `inWishlist?: boolean` на storefront feed для авторизованных buyer'ов. Подсмотрите паттерн в `apps/tma/src/lib/wishlist.ts` (optimistic toggle с локальным кэшем).
 
 ---
+
+# ✅ Закрыто Азимом в сессии 45 (05.05.2026) — Dark/Light theme system
+
+- `WEB-THEME-SYSTEM-001` 🟡 — полная theme system для web-buyer и web-seller: ThemeProvider + no-flash inline script + ThemeToggle (Sun/Moon с rotate-анимацией + 3-state popover Light/Dark/System). Реализована через CSS-переменные в globals.css с `[data-theme]` overrides, `lib/styles.ts` отрефакторен — все `colors.X` теперь возвращают `var(--color-X)`. Все компоненты, которые уже использовали `colors`/`card`/`shell` из styles.ts, авто-темизуются. Plus migration `text-white` / `color: colors.bg` → `colors.textPrimary` / `accentTextOnBg` в 14 файлах seller (chat/onboarding/login/products/settings/orders + 2 components). Buyer ChatComposerModal полностью переписан с tokens. Onboarding background и orbs — через CSS-переменные. Подробности в `analiz/done.md`. Дефолт buyer — system preference, дефолт seller — dark (сохраняет CRM identity). Локально не запускалось.
 
 # ✅ Закрыто Азимом в сессии 44 (01.05.2026, прямо сейчас, перед отбоем Азима)
 
@@ -125,7 +170,7 @@
 | ~~`API-CART-EMPTY-CONTRACT-001`~~ | ✅ | `Cart.id/storeId: string | null`. Web-buyer: `cart!.storeId ?? ''`. `db72038` |
 | ~~`ADMIN-BROADCAST-XSS-CHECK-001`~~ | ✅ | Проверено: html — preview из user-input через pipeline HTML-escaping. Фикс: regex `(.*?)` → `[^"]*` в href capture — предотвращает attribute injection. Самостоятельный XSS невозможен. `6290737` |
 | ~~`INFRA-FULL-RELOAD-NAV-001`~~ | ✅ | TMA: AppShell лифтнут в nested routes → persistent layout (141c0a5). Admin: `window.location.href='/login'` → `CustomEvent auth:logout` + `AuthLogoutListener` в App.tsx. `6290737` |
-| `WEB-CSP-HEADER-002` | 🟢 | Сессия 38 добавила базовый набор security-headers, но **CSP не включён** (требует точного списка allowed sources: API_URL, R2, Telegram media, Google Fonts, …). На post-MVP — без CSP защита от XSS-инъекции в случае компрометации фронта неполная. |
+| ~~`WEB-CSP-HEADER-002`~~ | ✅ | CSP-директивы добавлены в оба `next.config.ts`. `script-src 'self' 'unsafe-inline' 'unsafe-eval'` (Next.js требует), но блокирует HTTP, чужие iframe, object/embed, base hijack. `814c35b` |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 

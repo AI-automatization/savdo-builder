@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_FILTER } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { appConfig } from './config/app.config';
 import { dbConfig } from './config/db.config';
 import { redisConfig } from './config/redis.config';
@@ -42,7 +42,9 @@ import { QueuesModule } from './queues/queues.module';
       validationSchema: envValidationSchema,
     }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
+    // Глобальный rate-limit. По умолчанию 120 req/60s на IP. Перебивается
+    // @Throttle на конкретных endpoint'ах (OTP, login, upload — жёстче).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     DatabaseModule,
     RedisModule,
     QueuesModule,
@@ -67,6 +69,9 @@ import { QueuesModule } from './queues/queues.module';
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    // Глобальный ThrottlerGuard — без него @Throttle декораторы не работают.
+    // ВНИМАНИЕ: до этого коммита @Throttle({...}) на sendMessage был silent no-op.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

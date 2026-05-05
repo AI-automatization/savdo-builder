@@ -4,6 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "../providers/query-provider";
 import { AuthProvider } from "../lib/auth/context";
+import { ThemeProvider } from "../lib/theme/theme-provider";
+import { ThemeScript } from "../lib/theme/theme-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,12 +50,20 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <ThemeScript defaultTheme="system" />
+      </head>
       <body className="min-h-full flex flex-col">
-          <QueryProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </QueryProvider>
-        </body>
+        <QueryProvider>
+          <AuthProvider>
+            <ThemeProvider defaultTheme="system">
+              {children}
+            </ThemeProvider>
+          </AuthProvider>
+        </QueryProvider>
+      </body>
     </html>
   );
 }

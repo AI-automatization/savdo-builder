@@ -13,6 +13,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -99,14 +100,16 @@ export class ProductsController {
       }),
       this.productsRepo.countByStoreId(storeId),
     ]);
-    const mapped = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, images, basePrice, oldPrice, salePrice, ...rest } = p;
+    const mapped = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+      const { _count, images, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
         basePrice: Number(basePrice),
         oldPrice: this.toPrice(oldPrice),
         salePrice: this.toPrice(salePrice),
         variantCount: _count?.variants ?? 0,
+        totalStock,
         mediaUrls: (images ?? []).map((img) => this.resolveImageUrl(img.media)),
       };
     });
@@ -130,6 +133,7 @@ export class ProductsController {
       isVisible: dto.isVisible,
       sku: dto.sku,
       displayType: dto.displayType,
+      attributesJson: dto.attributesJson,
     });
   }
 
@@ -522,13 +526,35 @@ export class ProductsController {
   @Get('storefront/stores')
   async listStorefrontStores() {
     const stores = await this.storesRepo.findAllPublished();
-    const resolved = await Promise.all(
-      stores.map(async (s) => {
-        const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-        return { ...s, logoUrl, coverUrl };
-      }),
-    );
-    return { data: resolved };
+    if (!stores.length) return { data: [] };
+
+    // Batch: один findMany на все магазины вместо N запросов
+    const ids = stores
+      .flatMap((s) => [s.logoMediaId, s.coverMediaId])
+      .filter((id): id is string => Boolean(id));
+
+    const mediaMap = new Map<string, { id: string; bucket: string; objectKey: string }>();
+    if (ids.length) {
+      const files = await this.prisma.mediaFile.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, bucket: true, objectKey: true },
+      });
+      for (const f of files) mediaMap.set(f.id, f);
+    }
+
+    const resolveOne = (id: string | null | undefined): string | null => {
+      if (!id) return null;
+      const m = mediaMap.get(id);
+      if (!m) return null;
+      return this.resolveImageUrl(m) || null;
+    };
+
+    const data = stores.map((s) => ({
+      ...s,
+      logoUrl: resolveOne(s.logoMediaId),
+      coverUrl: resolveOne(s.coverMediaId),
+    }));
+    return { data };
   }
 
   @Get('storefront/stores/:slug')
@@ -564,8 +590,9 @@ export class ProductsController {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
     const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
-    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
+    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+      const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
         basePrice: Number(basePrice),
@@ -573,6 +600,7 @@ export class ProductsController {
         salePrice: this.toPrice(salePrice),
         images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
         variantCount: _count?.variants ?? 0,
+        totalStock,
       };
     });
   }
@@ -608,6 +636,7 @@ export class ProductsController {
 
   @Get('storefront/products')
   @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 60 } }) // search ILIKE дорогая, ограничиваем
   async listStorefrontProducts(
     @CurrentUser() user: JwtPayload | undefined,
     @Query('storeId') storeId?: string,
@@ -633,8 +662,9 @@ export class ProductsController {
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,
       });
-      data = (result.products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
-        const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
+      data = (result.products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
+        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
           basePrice: Number(basePrice),
@@ -642,6 +672,7 @@ export class ProductsController {
           salePrice: this.toPrice(salePrice),
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
           variantCount: _count?.variants ?? 0,
+          totalStock,
         };
       });
       total = result.total;
@@ -650,8 +681,9 @@ export class ProductsController {
       // Store-specific feed
       const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
       const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-      data = (products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; _count?: { variants?: number } }>).map((p) => {
-        const { _count, basePrice, oldPrice, salePrice, ...rest } = p;
+      data = (products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
+        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
           basePrice: Number(basePrice),
@@ -659,6 +691,7 @@ export class ProductsController {
           salePrice: this.toPrice(salePrice),
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
           variantCount: _count?.variants ?? 0,
+          totalStock,
         };
       });
       total = data.length;

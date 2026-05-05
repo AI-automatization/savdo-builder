@@ -5,8 +5,8 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { WishlistButton } from '@/components/ui/WishlistButton';
-import type { WishlistItem } from 'types';
-import { setLocalFlag } from '@/lib/wishlist';
+import { ProductImage } from '@/components/ui/ProductImage';
+import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -36,9 +36,11 @@ export default function WishlistPage() {
   }, [authenticated, loading]);
 
   const cols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,13 +97,7 @@ export default function WishlistPage() {
                 }}
               >
                 <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
-                  {url ? (
-                    <img src={url} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-                      📦
-                    </div>
-                  )}
+                  <ProductImage src={url} alt={p.title} emptyVariant="product-empty" />
                   <div style={{ position: 'absolute', top: 6, right: 6 }}>
                     <WishlistButton productId={p.id} variant="card" />
                   </div>

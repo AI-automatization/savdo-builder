@@ -6,6 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { showToast } from '@/components/ui/Toast';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { glass } from '@/lib/styles';
 import {
@@ -62,8 +63,10 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (!slug || !id) return;
-    api<Product>(`/stores/${slug}/products/${id}`)
+    const ac = new AbortController();
+    api<Product>(`/stores/${slug}/products/${id}`, { signal: ac.signal })
       .then((p) => {
+        if (ac.signal.aborted) return;
         setProduct(p);
         if (trackedRef.current !== p.id) {
           trackedRef.current = p.id;
@@ -78,8 +81,9 @@ export default function ProductPage() {
           setSelectedVariantId(firstInStock?.id ?? null);
         }
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!ac.signal.aborted) setError(true); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [slug, id]);
 
   const selectedVariant = hasGroups
@@ -227,60 +231,95 @@ export default function ProductPage() {
     touchStartX.current = null;
   };
 
-  return (
-    
-      <div className="flex flex-col gap-4 pb-24">
-        {/* Gallery */}
-        {displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
-          <div
-            className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
-            style={{ aspectRatio: '1' }}
-            onClick={() => setActiveImage(0)}
-          >
-            {images.slice(0, 4).map((url, idx) => (
-              <div key={idx} className="relative overflow-hidden bg-white/5">
-                <img src={url} alt="" className="w-full h-full object-cover" style={{ aspectRatio: '1' }} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            className="rounded-2xl overflow-hidden relative"
-            style={{ ...glass, aspectRatio: viewportWidth >= 560 ? '4/3' : '1' }}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          >
-            {images.length ? (
-              <img
-                src={images[activeImage]}
-                alt={product.title}
-                className="w-full h-full object-cover"
-                style={{ userSelect: 'none' }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center" style={{ fontSize: 48 }}>📦</div>
-            )}
+  const isWide = (viewportWidth ?? 0) >= 1024;
+  const galleryAspect = isWide ? '1' : (viewportWidth >= 560 ? '4/3' : '1');
 
-            {/* Dot indicators */}
-            {displayType !== 'SINGLE' && images.length > 1 && (
-              <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
-                {images.map((_, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      width: idx === activeImage ? 16 : 6,
-                      height: 6,
-                      borderRadius: 3,
-                      background: idx === activeImage ? '#A855F7' : 'rgba(255,255,255,0.40)',
-                      transition: 'width 0.2s ease, background 0.2s ease',
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+  const galleryNode = (
+    displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
+      <div
+        className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
+        style={{ aspectRatio: '1' }}
+        onClick={() => setActiveImage(0)}
+      >
+        {images.slice(0, 4).map((url, idx) => (
+          <div key={idx} className="relative overflow-hidden bg-white/5">
+            <img src={url} alt="" className="w-full h-full object-cover" style={{ aspectRatio: '1' }} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div
+        className="rounded-2xl overflow-hidden relative"
+        style={{ ...glass, aspectRatio: galleryAspect }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <ProductImage
+          src={images[activeImage]}
+          alt={product.title}
+          emptyVariant="no-photo"
+          imgStyle={{ userSelect: 'none' }}
+        />
+
+        {/* Dot indicators */}
+        {displayType !== 'SINGLE' && images.length > 1 && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+            {images.map((_, idx) => (
+              <span
+                key={idx}
+                style={{
+                  width: idx === activeImage ? 16 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: idx === activeImage ? '#A855F7' : 'rgba(255,255,255,0.40)',
+                  transition: 'width 0.2s ease, background 0.2s ease',
+                }}
+              />
+            ))}
           </div>
         )}
 
+        {/* Desktop thumbnail strip — click to switch image */}
+        {isWide && images.length > 1 && displayType !== 'SINGLE' && (
+          <div
+            className="absolute left-2 bottom-2 right-2 flex gap-2 overflow-x-auto pointer-events-auto"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {images.map((url, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => { e.stopPropagation(); setActiveImage(idx); }}
+                style={{
+                  flexShrink: 0,
+                  width: 56, height: 56, borderRadius: 10, overflow: 'hidden',
+                  border: idx === activeImage ? '2px solid #A855F7' : '2px solid rgba(255,255,255,0.20)',
+                  background: 'rgba(0,0,0,0.45)',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s ease, transform 0.12s ease',
+                }}
+              >
+                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  );
+
+  return (
+
+      <div
+        className={isWide ? 'grid gap-8 pb-24' : 'flex flex-col gap-4 pb-24'}
+        style={isWide ? { gridTemplateColumns: '5fr 4fr', alignItems: 'start' } : undefined}
+      >
+        {/* Gallery — sticky on desktop */}
+        <div style={isWide ? { position: 'sticky', top: 16 } : undefined}>
+          {galleryNode}
+        </div>
+
+        {/* Info column */}
+        <div className="flex flex-col gap-4">
         {/* Info */}
         <div className="flex flex-col gap-2">
           <div className="flex items-start gap-3">
@@ -445,7 +484,8 @@ export default function ProductPage() {
         >
           💬 {contacting ? 'Открываем чат...' : 'Задать вопрос продавцу'}
         </button>
+        </div>
       </div>
-    
+
   );
 }
