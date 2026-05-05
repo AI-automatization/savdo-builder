@@ -25,6 +25,7 @@ export const colors = {
   divider:         'var(--color-divider)',
   border:          'var(--color-border)',
   borderStrong:    'var(--color-border-strong)',
+  skeleton:        'var(--color-skeleton)',
   // Type
   textPrimary:     'var(--color-text-primary)',
   textMuted:       'var(--color-text-muted)',
@@ -35,16 +36,15 @@ export const colors = {
   accentMuted:     'var(--color-accent-muted)',
   accentBorder:    'var(--color-accent-border)',
   accentTextOnBg:  'var(--color-accent-text-on-bg)',
-  // Brand (canonical names; accent* остаются как aliases)
+  // Type — extended
+  textBody:        'var(--color-text-body)',
+  textStrong:      'var(--color-text-strong)',
+  // Brand — canonical (accent* remain as aliases for existing components)
+  brand:           'var(--color-brand)',
   brandHover:      'var(--color-brand-hover)',
   brandMuted:      'var(--color-brand-muted)',
   brandBorder:     'var(--color-brand-border)',
   brandTextOnBg:   'var(--color-brand-text-on-bg)',
-  // Type — extended
-  textBody:        'var(--color-text-body)',
-  textStrong:      'var(--color-text-strong)',
-  // Brand wordmark — unified between buyer & seller for "Savdo" logo / hero
-  brand:           'var(--color-brand)',
   // Semantic
   success:         'var(--color-success)',
   warning:         'var(--color-warning)',
