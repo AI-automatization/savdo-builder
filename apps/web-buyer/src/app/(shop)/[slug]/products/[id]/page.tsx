@@ -8,9 +8,11 @@ import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus, ThreadType } from "types";
 import { track } from "@/lib/analytics";
-import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Send, Heart } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import { colors } from "@/lib/styles";
+import { useAuth } from "@/lib/auth/context";
+import { useToggleWishlist, useWishlistIds } from "@/hooks/use-wishlist";
 import {
   findVariantBySelection,
   initialSelectionFromVariants,
@@ -45,6 +47,22 @@ export default function ProductPage() {
 
   const { data: product, isLoading, isError } = useProduct(id);
   const addToCart = useAddToCart();
+  const { isAuthenticated } = useAuth();
+  const wishlistIds = useWishlistIds();
+  const toggleWishlist = useToggleWishlist();
+  const inWishlist = product
+    ? ((product as { inWishlist?: boolean }).inWishlist ?? wishlistIds.has(product.id))
+    : false;
+
+  function handleWishlistToggle() {
+    if (!product) return;
+    if (!isAuthenticated) {
+      router.push('/wishlist');
+      return;
+    }
+    if (toggleWishlist.isPending) return;
+    toggleWishlist.mutate({ productId: product.id, inWishlist });
+  }
 
   const [activeImage, setActiveImage] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -137,12 +155,29 @@ export default function ProductPage() {
           >
             <ArrowLeft size={18} />
           </button>
+          {!notFound && product && (
+            <button
+              onClick={handleWishlistToggle}
+              aria-label={inWishlist ? 'Убрать из избранного' : 'В избранное'}
+              aria-pressed={inWishlist}
+              title={inWishlist ? 'Убрать из избранного' : 'В избранное'}
+              className="ml-auto w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+              style={{
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                color: inWishlist ? colors.accent : colors.textMuted,
+                opacity: toggleWishlist.isPending ? 0.6 : 1,
+              }}
+            >
+              <Heart size={18} fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={inWishlist ? 0 : 1.75} />
+            </button>
+          )}
           {!notFound && (
             <button
               onClick={handleShare}
               aria-label="Поделиться в Telegram"
               title={shared ? 'Ссылка скопирована' : 'Поделиться в Telegram'}
-              className="ml-auto w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:bg-black/5"
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${product ? '' : 'ml-auto'}`}
               style={{
                 background: colors.surface,
                 border: `1px solid ${colors.border}`,

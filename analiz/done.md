@@ -2,6 +2,13 @@
 
 ## 2026-05-05 (сессия 45 продолжение, Азим) — Wishlist UI для web-buyer
 
+### ✅ [WEB-BUYER-WISHLIST-DETAIL-001] Wishlist heart на product detail page (follow-up) 🟢
+
+- **Дата:** 05.05.2026 (через ~30 мин после WEB-BUYER-WISHLIST-PAGE-001)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`
+- **Что сделано:** Heart (lucide) теперь в top bar страницы товара между «Назад» и «Поделиться». Использует тот же `useToggleWishlist` + `useWishlistIds` паттерн, читает `product.inWishlist` (server flag для авторизованных) с фолбэком на client cache. Click → optimistic toggle. Unauth → редирект на /wishlist. Закрашен accent-цветом + filled когда in-wishlist, outlined иначе.
+- **Почему follow-up, а не часть исходной задачи:** Гэп заметил после push `WEB-BUYER-WISHLIST-PAGE-001` — юзер на detail page не мог сохранить товар, надо было возвращаться к листу. Закрыл сразу, т.к. это очевидная брешь в свежеотправленной фиче.
+
 ### ✅ [WEB-BUYER-WISHLIST-PAGE-001] Wishlist: heart на ProductCard + страница /wishlist 🟡
 
 - **Важность:** 🟡 (фича была заблокирована бэком до 02.05.2026, после `0f46a63` Полата готова к UI)
