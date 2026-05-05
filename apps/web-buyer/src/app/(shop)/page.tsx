@@ -47,7 +47,7 @@ export default function HomePage() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div
-            className="w-20 h-20 rounded-3xl flex items-center justify-center"
+            className="w-20 h-20 rounded-2xl flex items-center justify-center"
             style={{ background: colors.brand, boxShadow: `0 4px 16px rgba(124,63,46,0.18)` }}
           >
             <ShoppingCart size={36} style={{ color: "#FFFFFF" }} />
@@ -70,16 +70,18 @@ export default function HomePage() {
 
         {/* Slug input */}
         <div
-          className="w-full rounded-2xl p-4 sm:p-5 flex flex-col gap-3"
+          className="w-full rounded-lg p-4 sm:p-5 flex flex-col gap-3"
           style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         >
-          <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Перейти в магазин</p>
+          <div className="text-[10px] tracking-[0.18em] uppercase font-semibold" style={{ color: colors.textMuted }}>
+            — Перейти в магазин
+          </div>
           <p className="text-xs" style={{ color: colors.textMuted }}>
             Введите ссылку магазина из Telegram
           </p>
           <div className="flex gap-2">
             <div
-              className="flex-1 flex items-center rounded-xl overflow-hidden"
+              className="flex-1 flex items-center rounded-md overflow-hidden"
               style={{
                 background: colors.surfaceMuted,
                 border: error ? `1px solid ${colors.danger}` : `1px solid ${colors.border}`,
@@ -103,7 +105,7 @@ export default function HomePage() {
             </div>
             <button
               onClick={handleGo}
-              className="px-5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.97] flex-shrink-0"
+              className="px-5 rounded-md text-sm font-bold transition-opacity hover:opacity-90 active:scale-[0.97] flex-shrink-0"
               style={{ background: colors.brand, color: colors.brandTextOnBg }}
             >
               Перейти
@@ -120,41 +122,41 @@ export default function HomePage() {
         <RecentStores />
 
         {/* Quick links */}
-        <div className="w-full flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4">
+        <div className="w-full flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3">
           <Link
             href="/orders"
-            className="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all hover:-translate-y-0.5"
+            className="flex items-center gap-3 px-4 py-3.5 rounded-md transition-all hover:-translate-y-0.5"
             style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
           >
             <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: colors.brandMuted, border: `1px solid ${colors.brandBorder}` }}
+              className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0"
+              style={{ background: colors.brandMuted }}
             >
-              <Package size={20} style={{ color: colors.brand }} />
+              <Package size={18} style={{ color: colors.brand }} />
             </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Мои заказы</p>
-              <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Статус доставки и история</p>
+            <div className="min-w-0">
+              <p className="text-sm font-bold truncate" style={{ color: colors.textStrong }}>Мои заказы</p>
+              <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>Статус доставки и история</p>
             </div>
-            <ChevronRight size={16} className="ml-auto flex-shrink-0" style={{ color: colors.textDim }} />
+            <ChevronRight size={14} className="ml-auto flex-shrink-0" style={{ color: colors.textDim }} />
           </Link>
 
           <Link
             href="/chats"
-            className="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all hover:-translate-y-0.5"
+            className="flex items-center gap-3 px-4 py-3.5 rounded-md transition-all hover:-translate-y-0.5"
             style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
           >
             <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: colors.brandMuted, border: `1px solid ${colors.brandBorder}` }}
+              className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0"
+              style={{ background: colors.brandMuted }}
             >
-              <MessageSquare size={20} style={{ color: colors.brand }} />
+              <MessageSquare size={18} style={{ color: colors.brand }} />
             </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Чаты с продавцами</p>
-              <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Вопросы по заказу или товару</p>
+            <div className="min-w-0">
+              <p className="text-sm font-bold truncate" style={{ color: colors.textStrong }}>Чаты с продавцами</p>
+              <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>Вопросы по заказу или товару</p>
             </div>
-            <ChevronRight size={16} className="ml-auto flex-shrink-0" style={{ color: colors.textDim }} />
+            <ChevronRight size={14} className="ml-auto flex-shrink-0" style={{ color: colors.textDim }} />
           </Link>
         </div>
 
