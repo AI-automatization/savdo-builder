@@ -4,6 +4,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 interface OrderItem {
@@ -114,7 +115,10 @@ export default function OrdersPage() {
         setPage(nextPage);
         setHasMore(nextPage < (res.meta?.totalPages ?? 1));
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось подгрузить заказы', 'error');
+      })
       .finally(() => setLoadingMore(false));
   };
 
@@ -128,7 +132,10 @@ export default function OrdersPage() {
       setDetailLoading(orderId);
       api<OrderDetail>(`/buyer/orders/${orderId}`)
         .then((res) => setDetails((prev) => ({ ...prev, [orderId]: res })))
-        .catch(() => {})
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name === 'AbortError') return;
+          showToast('Не удалось загрузить детали заказа', 'error');
+        })
         .finally(() => setDetailLoading(null));
     }
   };

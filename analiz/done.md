@@ -1,5 +1,18 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — TMA: showToast на silent error catches
+
+### ✅ [TMA-SILENT-ERROR-CATCHES-001] showToast на user-facing data-load fails 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — wishlist load fail.
+  - `apps/tma/src/pages/buyer/OrdersPage.tsx` — loadMore orders + order detail expand.
+  - `apps/tma/src/pages/seller/ProfilePage.tsx` — store load fail.
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` — seller profile load fail.
+- **Что сделано:** заменены `.catch(() => {})` на `.catch((err) => { if AbortError return; showToast(..., 'error') })`. Раньше юзер видел пустой UI без понимания почему — теперь явный toast.
+- **Что НЕ тронуто (намеренно):** clipboard.writeText (best-effort, юзер увидит результат сам), prefetch (фоновое), attribute create/delete (некритичные side-effects).
+
 ## 2026-05-06 (Полат) — TMA: ConfirmModal вместо window.confirm/alert
 
 ### ✅ [TMA-NATIVE-CONFIRM-001] Custom ConfirmModal 🟠
