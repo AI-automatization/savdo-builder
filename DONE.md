@@ -36,6 +36,15 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+### ✅ [FEAT-006 backend] Seller Analytics с period-фильтром
+- `GET /seller/analytics?from=&to=` — `@Roles('SELLER')`. Default период = 30 дней. Cap 90 дней (BadRequest при превышении).
+- Новый use-case `GetSellerAnalyticsUseCase` агрегирует Order + OrderItem из БД:
+  - `revenue.{total,completed,pending}` — completed = DELIVERED, pending = CONFIRMED+PROCESSING+SHIPPED.
+  - `orders.{total, byStatus}` — счётчик по всем 6 OrderStatus.
+  - `topProducts[5]` — top-5 по выручке (sum(lineTotalAmount)), исключая CANCELLED.
+  - `daily[]` — массив `{date, revenue, orderCount}` с заполнением пустых дней нулями (для графика).
+- Frontend часть — отдельная задача FEAT-006-FE (recharts + period-селектор).
+
 ### ✅ [FEAT-001 backend] Единый поиск товаров+магазинов
 - `GET /storefront/search?q=&limit=` — case-insensitive ILIKE по `name`/`title`/`description`/`slug`.
 - Защита: minimum 2 символа в `q`, throttle 30 req/min, limit clamp 1-30.

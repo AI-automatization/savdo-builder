@@ -8,6 +8,23 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-06 [AUDIT-WEB-BUYER-API-CONTRACT-2026-05-06] Web-buyer ↔ API контракт-checkup
+
+- **Статус:** 🟡 1 баг закрыт, остальной web-buyer аудит уже сделан 5 мая (4 параллельных агента, 25 проблем). Это зона Азима — не повторяю.
+- **Моя зона:** проверить что api корректно принимает данные от web-buyer.
+- **🔴 Найдено и закрыто:**
+  - **`BUG-WB-AUDIT-009-API`** ✅: `ConfirmCheckoutDto` не принимал `customerFullName`/`customerPhone`. Фронт давал юзеру редактировать contact-fields, но они терялись (ValidationPipe whitelist=true резал) → Order заполнялся данными из Buyer.firstName/lastName + User.phone, а не из формы. Фикс:
+    - `confirm-checkout.dto.ts` — добавлены optional `customerFullName` (200ch) + `customerPhone` (20ch).
+    - `checkout.controller.ts` — прокидывает в use-case.
+    - `confirm-checkout.use-case.ts` — `input.customerFullName?.trim() || profileFullName` (override > profile fallback).
+- **Контрактный анализ:**
+  - `/checkout/confirm` теперь consistent с `/orders` (CreateDirectOrderDto имеет buyerName/buyerPhone).
+  - DeliveryAddressDto имеет `country` дефолт 'UZ' — норм.
+  - `customerFullName` 200ch — широко, может быть стрес-тест на 50+ char юзера.
+- **Не покрыто моим прогоном (web-buyer внутренний — Азим):** 24 пункта из `WEB-BUYER-AUDIT-2026-05-05` (BUG-WB-AUDIT-001..025) — это всё клиентская работа.
+
+---
+
 ## 2026-05-06 [AUDIT-API-SEC-2026-05-06] API security audit (auth, RBAC, throttle, SQL, CORS, secrets)
 
 - **Статус:** 🟡 Audit-only. 19 controllers, ~250 endpoints.
