@@ -87,13 +87,9 @@
 
 ### 🔴 P0 — для Полата (apps/api + миграция данных)
 
-- [ ] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** — старые товары имеют `MediaFile.bucket='telegram'` с file_id который Telegram уже expired. На web-buyer/TMA эти фото грузятся через `/api/v1/media/proxy/:id` → TG getFile → 404 (или работают, но медленно через 1ч TTL). Решение:
-  - Скрипт миграции: пройтись по всем `MediaFile WHERE bucket='telegram'`, скачать через `getFileUrl()`, перезалить в Supabase, обновить `bucket='r2'` + `objectKey='product_image/2026/<uuid>.jpg'`.
-  - Альтернатива: помечать `MediaFile.deletedAt` для всех старых TG-файлов и заставить продавцов перезагрузить.
-  - **Файлы:** новый `apps/api/src/scripts/migrate-tg-media-to-supabase.ts` + admin endpoint для запуска.
+- [x] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** ✅ 06.05.2026 — admin endpoint `POST /admin/media/migrate-tg-to-r2?limit=50` + use-case + audit log. См. `analiz/done.md`.
 
-- [ ] **`API-SEC-TG-001-REGRESS`** — после удаления `streamToResponse` в `TelegramStorageService` (параллельная сессия), `media.controller.ts` теперь редиректит на URL содержащий bot token в pathname. **Bot token утечёт клиенту в Location header**. Восстановить streaming через axios pipe — token остаётся на сервере.
-  - **Файлы:** `apps/api/src/modules/media/services/telegram-storage.service.ts` (вернуть `streamToResponse`), `media.controller.ts` (использовать его).
+- [x] **`API-SEC-TG-001-REGRESS`** ✅ 06.05.2026 — `streamToResponse` восстановлен в `TelegramStorageService`, `media.controller.ts` снова стримит вместо redirect. Коммит `32ce2fa`.
 
 ### 🟠 P1 — для Азима (apps/web-buyer)
 
