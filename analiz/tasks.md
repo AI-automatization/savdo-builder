@@ -44,6 +44,42 @@
 - [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
 - [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
 
+## 🆕 Аудит платформы (06.05.2026, Полат) — найденные проблемы
+
+### 🔴 P0 — для Полата (apps/api + миграция данных)
+
+- [ ] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** — старые товары имеют `MediaFile.bucket='telegram'` с file_id который Telegram уже expired. На web-buyer/TMA эти фото грузятся через `/api/v1/media/proxy/:id` → TG getFile → 404 (или работают, но медленно через 1ч TTL). Решение:
+  - Скрипт миграции: пройтись по всем `MediaFile WHERE bucket='telegram'`, скачать через `getFileUrl()`, перезалить в Supabase, обновить `bucket='r2'` + `objectKey='product_image/2026/<uuid>.jpg'`.
+  - Альтернатива: помечать `MediaFile.deletedAt` для всех старых TG-файлов и заставить продавцов перезагрузить.
+  - **Файлы:** новый `apps/api/src/scripts/migrate-tg-media-to-supabase.ts` + admin endpoint для запуска.
+
+- [ ] **`API-SEC-TG-001-REGRESS`** — после удаления `streamToResponse` в `TelegramStorageService` (параллельная сессия), `media.controller.ts` теперь редиректит на URL содержащий bot token в pathname. **Bot token утечёт клиенту в Location header**. Восстановить streaming через axios pipe — token остаётся на сервере.
+  - **Файлы:** `apps/api/src/modules/media/services/telegram-storage.service.ts` (вернуть `streamToResponse`), `media.controller.ts` (использовать его).
+
+### 🟠 P1 — для Азима (apps/web-buyer)
+
+- [ ] **`WEB-BUYER-IMAGE-FALLBACK-001`** — на витрине магазина (`/<slug>`) товары без фото показывают пустой чёрный квадрат вместо placeholder'а. Скрин 06.05 — DRIPSB магазин, 6 товаров, 4 без фото. Решение: при `<img onError>` или пустом `mediaUrls` рендерить компонент-плейсхолдер (как `<ProductImage emptyVariant="no-photo">` в TMA).
+  - **Файлы:** `apps/web-buyer/src/components/store/ProductCard.tsx`.
+
+- [ ] **`WEB-BUYER-LINK-PRETTIFY-001`** — длинная ссылка на сайт магазина в TMA buyer/StorePage заменена на «↗ Перейти на сайт» (06.05 commit). Проверить что web-buyer header не показывает где-то такие же длинные railway URL — заменить на короткие.
+  - **Файлы:** `apps/web-buyer/src/components/store/StoreHeader.tsx` (если такой текст есть).
+
+### 🟡 P2 — для Полата (technical debt)
+
+- [ ] **`API-WS-PUSH-NOTIFICATIONS-001`** — сейчас `apps/tma/src/lib/notifications.ts` poll'ит unread каждые 30 сек. Перевести на WebSocket push: `OrdersGateway.emit('notification:new', { userId })` после `prisma.inAppNotification.create()` в `InAppNotificationProcessor`. На фронте — слушать event и обновлять count + показывать toast.
+
+- [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
+
+- [ ] **`TMA-MEDIA-USE-API-URL-001`** — фронт TMA в `EditProductPage.tsx` и `ProductsPage.tsx` использует `getImageUrl(objectKey)` (читает `VITE_R2_PUBLIC_URL`). Должен использовать `product.mediaUrls[0]` напрямую из API response — централизованный source of truth и работает для любого storage backend.
+
+- [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
+
+### 🟢 P3 — для Полата (cleanup)
+
+- [ ] **`API-CHAT-CONTROLLER-TS-ERROR-001`** — параллельная сессия добавила `getUnreadCountUseCase` в chat.controller.ts:61 с TS error: `Argument of type 'string' is not assignable to '"SELLER" | "BUYER"'`. Нужен type cast или Zod-валидация в guard.
+
+- [ ] **`API-DELETE-OLD-STASHES-001`** — в `git stash list` несколько старых safety-stash от прошлых сессий. После подтверждения что параллельная закончила — `git stash drop`.
+
 ---
 
 # 🆕 Очередь от Полата (через Азима, 30.04.2026 поздно вечер)
