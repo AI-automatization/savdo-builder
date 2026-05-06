@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Response } from 'express';
 import axios from 'axios';
 
 @Injectable()
@@ -61,7 +62,11 @@ export class TelegramStorageService {
     return data.result.document.file_id;
   }
 
-  /** Get a temporary download URL for a file_id (valid ~1 hour) */
+  /**
+   * Get temporary download URL для file_id (valid ~1 hour).
+   * ⚠️ URL содержит bot token — НЕ возвращать клиенту напрямую.
+   * Использовать только server-side (для streamToResponse).
+   */
   async getFileUrl(fileId: string): Promise<string> {
     const res = await axios.get<{
       ok: boolean;
@@ -78,5 +83,30 @@ export class TelegramStorageService {
     }
 
     return `https://api.telegram.org/file/bot${this.botToken}/${data.result.file_path}`;
+  }
+
+  /**
+   * SEC-TG-001: стрим Telegram-файла через сервер.
+   * Bot token остаётся server-side — не утекает в Location header клиенту.
+   * Cache-Control public 600s (Telegram URL живёт ~1ч, не immutable).
+   */
+  async streamToResponse(
+    fileId: string,
+    mimeType: string | null,
+    res: Response,
+  ): Promise<void> {
+    const url = await this.getFileUrl(fileId);
+    const upstream = await axios.get(url, { responseType: 'stream' });
+
+    if (mimeType) res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.setHeader('X-Storage-Backend', 'telegram');
+
+    upstream.data.on('error', (err: unknown) => {
+      this.logger.warn(`Stream error fileId=${fileId}: ${err instanceof Error ? err.message : String(err)}`);
+      if (!res.headersSent) res.status(502).end();
+    });
+
+    upstream.data.pipe(res);
   }
 }
