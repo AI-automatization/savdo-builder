@@ -36,6 +36,13 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+### ✅ [FEAT-001 backend] Единый поиск товаров+магазинов
+- `GET /storefront/search?q=&limit=` — case-insensitive ILIKE по `name`/`title`/`description`/`slug`.
+- Защита: minimum 2 символа в `q`, throttle 30 req/min, limit clamp 1-30.
+- Параллельный поиск stores + products в одном HTTP-запросе → один round-trip с фронта.
+- Новые методы: `StoresRepository.searchPublic()`, `ProductsRepository.searchPublic()`.
+- TODO для prod: trigram-индекс (pg_trgm) на `Store.name`/`Product.title` чтобы ILIKE не делал seq scan на больших объёмах.
+
 ### ✅ [UX-004] Admin bundle code splitting — main 903КБ → 51КБ
 - `apps/admin/src/App.tsx` — все 23 страницы (кроме LoginPage) обёрнуты в `React.lazy()` + `<Suspense fallback="Загрузка…">`.
 - `apps/admin/vite.config.ts` manualChunks расширены: `vendor-charts` (recharts/d3 — 376КБ, грузится только на /analytics), `vendor-mfa` (qrcode/otplib), `vendor-ui` (lucide + sonner + radix).

@@ -169,6 +169,30 @@ export class ProductsRepository {
     });
   }
 
+  // FEAT-001: case-insensitive поиск по публичным товарам активных магазинов.
+  // Используется в GET /storefront/search.
+  async searchPublic(query: string, limit = 10): Promise<Product[]> {
+    const q = query.trim();
+    if (!q) return [];
+    return this.prisma.product.findMany({
+      where: {
+        status: 'ACTIVE',
+        deletedAt: null,
+        store: { isPublic: true, deletedAt: null },
+        OR: [
+          { title: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        images: { orderBy: { sortOrder: 'asc' }, take: 1, include: { media: true } },
+        store: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    }) as unknown as Promise<Product[]>;
+  }
+
   async create(data: CreateProductData): Promise<Product> {
     return this.prisma.product.create({
       data: {

@@ -9,9 +9,9 @@
 
 ## 🟡 Средние — Feature Gaps
 
-- [ ] [FEAT-001] Поиск товаров и магазинов
-  - API: `GET /storefront/search?q=&type=product|store`
-  - TMA: строка поиска на BuyerStores + StoresPage
+- [ ] [FEAT-001-FE] Поиск — frontend в TMA (backend готов: `GET /storefront/search?q=&limit=`)
+  - TMA: строка поиска на BuyerStores + StoresPage с debounced fetch (300ms)
+  - Mixed-результат: stores + products в одном dropdown с разделом
 
 - [ ] [FEAT-003] Фильтры товаров (цена, категория)
   - API: query params в GET /storefront/products

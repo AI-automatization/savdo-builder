@@ -55,6 +55,35 @@ export class StoresRepository {
     });
   }
 
+  // FEAT-001: case-insensitive поиск по публичным магазинам.
+  // Используется в GET /storefront/search.
+  async searchPublic(query: string, limit = 10) {
+    const q = query.trim();
+    if (!q) return [];
+    return this.prisma.store.findMany({
+      where: {
+        isPublic: true,
+        deletedAt: null,
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { slug: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        city: true,
+        logoMediaId: true,
+        coverMediaId: true,
+      },
+      orderBy: { publishedAt: 'desc' },
+      take: limit,
+    });
+  }
+
   async existsBySlug(slug: string): Promise<boolean> {
     const count = await this.prisma.store.count({ where: { slug } });
     return count > 0;

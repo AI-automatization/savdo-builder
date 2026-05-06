@@ -569,6 +569,53 @@ export class ProductsController {
     return { ...store, logoUrl, coverUrl };
   }
 
+  // FEAT-001: единый поиск по витрине — товары + магазины одним запросом.
+  // Использует case-insensitive ILIKE по name/title/description; minimum 2 символа
+  // (короткие запросы дают слишком много результатов и грузят БД).
+  @Get('storefront/search')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  async searchStorefront(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const query = (q ?? '').trim();
+    if (query.length < 2) {
+      return { stores: [], products: [] };
+    }
+    const lim = Math.min(Math.max(Number(limit ?? 10) || 10, 1), 30);
+
+    const [stores, products] = await Promise.all([
+      this.storesRepo.searchPublic(query, lim),
+      this.productsRepo.searchPublic(query, lim),
+    ]);
+
+    const storesData = await Promise.all(stores.map(async (s) => {
+      const sx = s as typeof s & { logoMediaId?: string | null; coverMediaId?: string | null };
+      const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(sx.logoMediaId, sx.coverMediaId);
+      const { logoMediaId: _l, coverMediaId: _c, ...rest } = sx;
+      void _l; void _c;
+      return { ...rest, logoUrl, coverUrl };
+    }));
+
+    const productsData = (products as unknown as Array<Record<string, unknown> & {
+      basePrice: unknown; oldPrice: unknown; salePrice: unknown;
+      images?: Array<{ media: unknown }>;
+      store?: { id: string; name: string; slug: string };
+    }>).map((p) => {
+      const { basePrice, oldPrice, salePrice, images, store, ...rest } = p;
+      return {
+        ...rest,
+        basePrice: Number(basePrice),
+        oldPrice: this.toPrice(oldPrice),
+        salePrice: this.toPrice(salePrice),
+        images: (images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+        store: store ? { id: store.id, name: store.name, slug: store.slug } : null,
+      };
+    });
+
+    return { stores: storesData, products: productsData };
+  }
+
   @Get('stores/:slug')
   async getStoreBySlug(@Param('slug') slug: string) {
     const store = await this.storesRepo.findBySlug(slug);
