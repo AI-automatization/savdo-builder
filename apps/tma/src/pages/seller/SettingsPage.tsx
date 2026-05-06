@@ -84,7 +84,11 @@ export default function SellerSettingsPage() {
         setFullName(p.fullName ?? '');
         setSellerType(p.sellerType === 'business' ? 'business' : 'individual');
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить профиль', 'error');
+      })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     return () => ac.abort();
   }, []);

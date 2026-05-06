@@ -4,6 +4,8 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { Stars } from '@/components/ui/Stars';
+import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 interface OrderItem {
@@ -83,6 +85,33 @@ export default function OrdersPage() {
   const [details, setDetails] = useState<Record<string, OrderDetail>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  // FEAT-008-FE: review form state
+  const [reviewing, setReviewing] = useState<{ orderId: string; itemId: string; productTitle: string } | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSending, setReviewSending] = useState(false);
+  const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
+
+  const submitReview = async () => {
+    if (!reviewing || reviewSending) return;
+    setReviewSending(true);
+    try {
+      await api(`/buyer/orders/${reviewing.orderId}/items/${reviewing.itemId}/review`, {
+        method: 'POST',
+        body: { rating: reviewRating, comment: reviewComment.trim() || undefined },
+      });
+      setReviewedItems((prev) => new Set(prev).add(reviewing.itemId));
+      showToast('✅ Отзыв опубликован');
+      setReviewing(null);
+      setReviewRating(5);
+      setReviewComment('');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Не удалось опубликовать отзыв';
+      showToast(`❌ ${msg}`, 'error');
+    } finally {
+      setReviewSending(false);
+    }
+  };
 
   const fetchFirst = (signal?: AbortSignal) => {
     setError(false);
@@ -114,7 +143,10 @@ export default function OrdersPage() {
         setPage(nextPage);
         setHasMore(nextPage < (res.meta?.totalPages ?? 1));
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось подгрузить заказы', 'error');
+      })
       .finally(() => setLoadingMore(false));
   };
 
@@ -128,13 +160,16 @@ export default function OrdersPage() {
       setDetailLoading(orderId);
       api<OrderDetail>(`/buyer/orders/${orderId}`)
         .then((res) => setDetails((prev) => ({ ...prev, [orderId]: res })))
-        .catch(() => {})
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name === 'AbortError') return;
+          showToast('Не удалось загрузить детали заказа', 'error');
+        })
         .finally(() => setDetailLoading(null));
     }
   };
 
   return (
-    
+    <>
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -279,26 +314,50 @@ export default function OrdersPage() {
                   {isLoadingDetail ? (
                     <div className="flex justify-center py-3"><Spinner size={16} /></div>
                   ) : detail?.items?.length ? (
-                    detail.items.map((item) => (
-                      <div key={item.id} className="flex items-start justify-between gap-2 pt-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.80)' }}>
-                            {item.productTitleSnapshot}
-                          </p>
-                          {item.variantTitleSnapshot && (
-                            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                              {item.variantTitleSnapshot}
+                    detail.items.map((item) => {
+                      const canReview = o.status === 'DELIVERED' && !reviewedItems.has(item.id);
+                      return (
+                        <div key={item.id} className="flex flex-col gap-1.5 pt-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.80)' }}>
+                                {item.productTitleSnapshot}
+                              </p>
+                              {item.variantTitleSnapshot && (
+                                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                                  {item.variantTitleSnapshot}
+                                </p>
+                              )}
+                              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                                × {item.quantity}
+                              </p>
+                            </div>
+                            <p className="text-xs font-semibold shrink-0" style={{ color: 'rgba(255,255,255,0.70)' }}>
+                              {Number(item.lineTotalAmount).toLocaleString('ru')} сум
+                            </p>
+                          </div>
+                          {canReview && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReviewing({ orderId: o.id, itemId: item.id, productTitle: item.productTitleSnapshot });
+                                setReviewRating(5);
+                                setReviewComment('');
+                              }}
+                              className="self-start text-[11px] font-semibold py-1 px-2.5 rounded-lg"
+                              style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.30)', color: '#FBBF24' }}
+                            >
+                              ⭐ Оценить товар
+                            </button>
+                          )}
+                          {reviewedItems.has(item.id) && (
+                            <p className="text-[10px]" style={{ color: 'rgba(52,211,153,0.85)' }}>
+                              ✓ Отзыв опубликован
                             </p>
                           )}
-                          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                            × {item.quantity}
-                          </p>
                         </div>
-                        <p className="text-xs font-semibold shrink-0" style={{ color: 'rgba(255,255,255,0.70)' }}>
-                          {Number(item.lineTotalAmount).toLocaleString('ru')} сум
-                        </p>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-xs pt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       Нет данных о товарах
@@ -322,6 +381,65 @@ export default function OrdersPage() {
           </button>
         )}
       </div>
-    
+
+      {/* FEAT-008-FE review modal */}
+      {reviewing && (
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          style={{ background: 'rgba(0,0,0,0.55)' }}
+          onClick={() => !reviewSending && setReviewing(null)}
+        >
+          <div
+            className="w-full max-w-lg mx-auto rounded-t-2xl p-5 flex flex-col gap-4"
+            style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                Оцените товар
+              </p>
+              <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {reviewing.productTitle}
+              </p>
+            </div>
+            <div className="flex justify-center py-2">
+              <Stars value={reviewRating} size={16} onChange={setReviewRating} />
+            </div>
+            <textarea
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              placeholder="Поделитесь впечатлением (необязательно)…"
+              rows={4}
+              maxLength={2000}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setReviewing(null)}
+                disabled={reviewSending}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={submitReview}
+                disabled={reviewSending}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{
+                  background: 'rgba(251,191,36,0.20)',
+                  border: '1px solid rgba(251,191,36,0.40)',
+                  color: '#FBBF24',
+                  opacity: reviewSending ? 0.5 : 1,
+                }}
+              >
+                {reviewSending ? '...' : 'Опубликовать'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

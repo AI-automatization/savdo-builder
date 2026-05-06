@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
 import { webStoreUrl, webStoreLabel } from '@/lib/webUrl';
 
@@ -170,7 +171,11 @@ export default function SellerStorePage() {
   };
 
   const deleteCategory = async (cat: StoreCategory) => {
-    const confirmed = window.confirm(`Удалить «${cat.name}»?`);
+    const confirmed = await confirmDialog({
+      title: `Удалить «${cat.name}»?`,
+      confirmText: 'Удалить',
+      danger: true,
+    });
     if (!confirmed) return;
     setCatDeletingId(cat.id);
     try {

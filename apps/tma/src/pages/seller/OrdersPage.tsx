@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -113,6 +114,7 @@ function cardAccent(status: string): { border: string; glow: string; opacity: nu
 
 export default function SellerOrdersPage() {
   const { tg, viewportWidth } = useTelegram();
+  const navigate = useNavigate();
   const isWide = (viewportWidth ?? 0) >= 1024;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +126,32 @@ export default function SellerOrdersPage() {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
+  // FEAT-004-FE: «Написать покупателю» modal
+  const [chatOrderId, setChatOrderId] = useState<string | null>(null);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+
+  const startChatWithBuyer = async () => {
+    if (!chatOrderId || !chatMessage.trim() || chatSending) return;
+    setChatSending(true);
+    try {
+      const thread = await api<{ id: string }>('/seller/chat/threads', {
+        method: 'POST',
+        body: { orderId: chatOrderId, firstMessage: chatMessage.trim() },
+      });
+      setChatOrderId(null);
+      setChatMessage('');
+      setDetailId(null);
+      setDetail(null);
+      showToast('✅ Сообщение отправлено');
+      navigate(`/seller/chat/${thread.id}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Не удалось начать чат';
+      showToast(`❌ ${msg}`, 'error');
+    } finally {
+      setChatSending(false);
+    }
+  };
 
   const ordersAbortRef = useRef<AbortController | null>(null);
   const detailAbortRef = useRef<AbortController | null>(null);
@@ -463,8 +491,64 @@ export default function SellerOrdersPage() {
                   {Number(detail.totalAmount).toLocaleString('ru')} сум
                 </span>
               </div>
+
+              {/* FEAT-004-FE: написать покупателю — только если у заказа есть buyer (не guest) */}
+              {detail.buyer && (
+                <button
+                  onClick={() => { setChatOrderId(detail.id); setChatMessage(''); }}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: 'rgba(34,211,238,0.14)', border: '1px solid rgba(34,211,238,0.35)', color: '#22D3EE' }}
+                >
+                  ✉ Написать покупателю
+                </button>
+              )}
             </div>
           )}
+        </BottomSheet>
+      )}
+
+      {/* FEAT-004-FE chat-init modal */}
+      {chatOrderId && (
+        <BottomSheet
+          title="Сообщение покупателю"
+          onClose={() => { setChatOrderId(null); setChatMessage(''); }}
+        >
+          <div className="px-5 py-4 flex flex-col gap-3 pb-6">
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              Покупатель получит уведомление в Telegram и сможет ответить из своей вкладки «Чаты».
+            </p>
+            <textarea
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+              placeholder="Например: Здравствуйте! Уточните, пожалуйста, удобное время доставки."
+              rows={4}
+              maxLength={1000}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setChatOrderId(null); setChatMessage(''); }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={startChatWithBuyer}
+                disabled={!chatMessage.trim() || chatSending}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{
+                  background: 'rgba(124,58,237,0.40)',
+                  border: '1px solid rgba(124,58,237,0.50)',
+                  color: '#fff',
+                  opacity: (chatMessage.trim() && !chatSending) ? 1 : 0.4,
+                }}
+              >
+                {chatSending ? '...' : '➤ Отправить'}
+              </button>
+            </div>
+          </div>
         </BottomSheet>
       )}
     </>

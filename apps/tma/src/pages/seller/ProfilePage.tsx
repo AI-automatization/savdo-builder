@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
+import { showToast } from '@/components/ui/Toast';
 import { webStoreUrl } from '@/lib/webUrl';
 
 interface Store {
@@ -32,7 +33,11 @@ export default function SellerProfilePage() {
     abortRef.current = ac;
     api<Store>('/seller/store', { signal: ac.signal })
       .then((s) => { if (!ac.signal.aborted) setStore(s); })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить профиль магазина', 'error');
+      });
     return () => ac.abort();
   }, []);
 

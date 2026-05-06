@@ -1,5 +1,31 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — TMA: showToast на silent error catches
+
+### ✅ [TMA-SILENT-ERROR-CATCHES-001] showToast на user-facing data-load fails 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — wishlist load fail.
+  - `apps/tma/src/pages/buyer/OrdersPage.tsx` — loadMore orders + order detail expand.
+  - `apps/tma/src/pages/seller/ProfilePage.tsx` — store load fail.
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` — seller profile load fail.
+- **Что сделано:** заменены `.catch(() => {})` на `.catch((err) => { if AbortError return; showToast(..., 'error') })`. Раньше юзер видел пустой UI без понимания почему — теперь явный toast.
+- **Что НЕ тронуто (намеренно):** clipboard.writeText (best-effort, юзер увидит результат сам), prefetch (фоновое), attribute create/delete (некритичные side-effects).
+
+## 2026-05-06 (Полат) — TMA: ConfirmModal вместо window.confirm/alert
+
+### ✅ [TMA-NATIVE-CONFIRM-001] Custom ConfirmModal 🟠
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/ConfirmModal.tsx` — новый. Imperative API `confirmDialog(opts) → Promise<boolean>`. ESC/Enter, backdrop close, autoFocus на Confirm, `danger` flag для красной кнопки. Тот же паттерн что у `showToast` — глобальный `CustomEvent`.
+  - `apps/tma/src/components/layout/AppShell.tsx` — `<ConfirmContainer />` замонтирован глобально.
+  - `apps/tma/src/pages/seller/ProductsPage.tsx` — 3 замены: archive confirm, delete confirm + danger=true, archive/delete error alert → showToast.
+  - `apps/tma/src/pages/seller/StorePage.tsx` — 1 замена: deleteCategory confirm + danger=true.
+- **Что сделано:** все 5 `window.confirm/alert` устранены — на desktop Telegram WebApp нативные popup'ы не работают (нет popup window.open), теперь UI согласован.
+- **Также:** баги «нативный диалог сломал юзеру весь WebApp» больше не воспроизводятся.
+
 ## 2026-05-06 (Полат) — Media migration: TG → Supabase
 
 ### ✅ [API-MEDIA-MIGRATION-TG-TO-R2-001] Перенос старых TG-фото в Supabase 🔴
