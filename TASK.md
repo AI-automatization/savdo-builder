@@ -13,9 +13,9 @@
   - TMA: строка поиска на BuyerStores + StoresPage с debounced fetch (300ms)
   - Mixed-результат: stores + products в одном dropdown с разделом
 
-- [ ] [FEAT-003] Фильтры товаров (цена, категория)
-  - API: query params в GET /storefront/products
-  - TMA: filter sheet снизу
+- [ ] [FEAT-003-FE] Filter sheet снизу — TMA frontend
+  - Backend готов: GET /storefront/products принимает `globalCategoryId`, `priceMin`, `priceMax`, `sort=new|price_asc|price_desc`
+  - TMA: bottom-sheet с категориями (chips) + range-slider цены + sort-radio
 
 - [ ] [FEAT-004-FE] Seller инициирует чат — TMA frontend (backend готов: `POST /seller/chat/threads`)
   - TMA: кнопка «✉ Написать» на странице заказа продавца → modal с textarea

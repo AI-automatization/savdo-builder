@@ -159,12 +159,8 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // ⚠️ SEC-TG-001 REGRESS: getFileUrl возвращает URL с bot token в pathname.
-      // Был streamToResponse — параллельная сессия удалила. TODO: вернуть
-      // стрим через axios pipe, чтобы token не утекал в Location header клиенту.
-      const url = await this.tgStorage.getFileUrl(fileId);
-      res.setHeader('Cache-Control', 'private, max-age=600');
-      res.redirect(302, url);
+      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
       return;
     }
 
@@ -209,12 +205,8 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // ⚠️ SEC-TG-001 REGRESS: getFileUrl возвращает URL с bot token в pathname.
-      // Был streamToResponse — параллельная сессия удалила. TODO: вернуть
-      // стрим через axios pipe, чтобы token не утекал в Location header клиенту.
-      const url = await this.tgStorage.getFileUrl(fileId);
-      res.setHeader('Cache-Control', 'private, max-age=600');
-      res.redirect(302, url);
+      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
       return;
     }
 
