@@ -8,6 +8,111 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-06 [AUDIT-ADMIN-2026-05-06] Admin (RBAC + MFA + Refund) аудит
+
+- **Статус:** 🟡 Audit-only. 43 frontend файла, 2 controller'а (admin + super-admin), все use-cases от параллельной сессии.
+- **🟢 Что хорошо:**
+  - 0 TS errors в admin-модулях.
+  - Все 2 admin-controller'а имеют @UseGuards(JwtAuthGuard, RolesGuard).
+  - RBAC через `AdminUser.adminRole` (super_admin/admin/moderator/support/finance/read_only) + `isSuperadmin`.
+  - MFA TOTP реализован — secret/QR generation/verify через otplib v12.
+- **🔴 P0 — MFA bypass:**
+  - **`API-MFA-NOT-ENFORCED-001`**: MFA verification работает только при setup. После login admin получает обычный JWT (`/auth/verify-otp`). **Ни один admin endpoint не требует `mfaVerified` claim в токене**. Если admin включил MFA — это лишь cosmetic, реально не защищает. Атакер с украденным admin JWT может всё делать.
+  - Решение: JWT должен иметь `mfaPending: boolean` или `mfaVerifiedAt`. После login если `admin.mfaEnabled` — выдавать temporary токен (e.g. 5 мин TTL, scope=`mfa-challenge`). Полный токен — только после `/admin/auth/mfa/login` с TOTP. Все admin endpoints reject если token scope=`mfa-challenge`.
+- **🟠 P1:**
+  - `API-RBAC-MICRO-PERMISSIONS-001`: AdminAuthUseCase упоминает permissions matrix (`super_admin: ['*']`, `admin: ['user:*', ...]`), но на endpoint level проверки не видно — все admin endpoints доступны любому AdminUser с любой ролью. Должен быть decorator `@AdminPermission('user:write')` на каждом sensitive endpoint.
+- **Не аудировано (XL — отдельная сессия):**
+  - 43 frontend файла admin (кnopки/формы) — UI consistency.
+  - Audit log integrity (все action пишут в audit_log?).
+  - Impersonation flow (token swap безопасный?).
+
+---
+
+## 2026-05-06 [AUDIT-WEB-SELLER-2026-05-06] Web-seller аудит
+
+- **Статус:** 🟡 Audit-only. Зона Азима, мне записать findings.
+- **🟢 Что хорошо:**
+  - 0 `window.alert`/`window.confirm` (лучше чем TMA где 5 мест).
+  - 0 silent `.catch(() => {})` (лучше чем TMA).
+  - Большинство preview URL используют `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` (graceful fallback).
+- **🟠 P1 для Азима:**
+  - **WEB-SELLER-HARDCODED-DOMAIN-001:** 3 места с прямым хардкодом `savdo.uz` без env fallback:
+    - `app/(dashboard)/layout.tsx:127` — sidebar показывает `savdo.uz/${store.slug}`. Если домен ещё не на проде — юзер видит несуществующую ссылку.
+    - `app/(dashboard)/layout.tsx:236` — `navigator.clipboard.writeText('https://savdo.uz/${store.slug}')`. Юзер копирует мёртвую ссылку.
+    - `app/(dashboard)/profile/page.tsx:49` — `storeUrl = 'https://savdo.uz/${store.slug}'`.
+  - Решение: использовать `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` везде (как уже сделано в dashboard/products). Или вынести в общий `lib/buyer-url.ts` helper.
+
+---
+
+## 2026-05-06 [AUDIT-WEB-BUYER-API-CONTRACT-2026-05-06] Web-buyer ↔ API контракт-checkup
+
+- **Статус:** 🟡 1 баг закрыт, остальной web-buyer аудит уже сделан 5 мая (4 параллельных агента, 25 проблем). Это зона Азима — не повторяю.
+- **Моя зона:** проверить что api корректно принимает данные от web-buyer.
+- **🔴 Найдено и закрыто:**
+  - **`BUG-WB-AUDIT-009-API`** ✅: `ConfirmCheckoutDto` не принимал `customerFullName`/`customerPhone`. Фронт давал юзеру редактировать contact-fields, но они терялись (ValidationPipe whitelist=true резал) → Order заполнялся данными из Buyer.firstName/lastName + User.phone, а не из формы. Фикс:
+    - `confirm-checkout.dto.ts` — добавлены optional `customerFullName` (200ch) + `customerPhone` (20ch).
+    - `checkout.controller.ts` — прокидывает в use-case.
+    - `confirm-checkout.use-case.ts` — `input.customerFullName?.trim() || profileFullName` (override > profile fallback).
+- **Контрактный анализ:**
+  - `/checkout/confirm` теперь consistent с `/orders` (CreateDirectOrderDto имеет buyerName/buyerPhone).
+  - DeliveryAddressDto имеет `country` дефолт 'UZ' — норм.
+  - `customerFullName` 200ch — широко, может быть стрес-тест на 50+ char юзера.
+- **Не покрыто моим прогоном (web-buyer внутренний — Азим):** 24 пункта из `WEB-BUYER-AUDIT-2026-05-05` (BUG-WB-AUDIT-001..025) — это всё клиентская работа.
+
+---
+
+## 2026-05-06 [AUDIT-API-SEC-2026-05-06] API security audit (auth, RBAC, throttle, SQL, CORS, secrets)
+
+- **Статус:** 🟡 Audit-only. 19 controllers, ~250 endpoints.
+- **Метод:** grep по анти-паттернам + ручной просмотр критичных мест.
+- **🟢 Что хорошо:**
+  - CORS: regex-callback origin check + credentials:true. Production fail-fast на отсутствии ALLOWED_ORIGINS.
+  - JWT logging: 0 leak (нет log/console с token/secret/password/OTP).
+  - bcrypt rounds = 10 (стандарт, OWASP best practice).
+  - $queryRaw: 4 места, все используют template literals (Prisma escape parameters автоматически — safe).
+  - ThrottlerGuard глобально активен (после c283423). 9 critical endpoints с явным @Throttle.
+  - Helmet + CSP добавлены (через middleware).
+  - SEC-005: private media files JWT-protected.
+- **🟠 P1 (записать в backlog):**
+  - **API-WEBHOOK-SECRET-OPTIONAL-001:** `telegram-webhook.controller.ts:45-46` принимает любой запрос если env `TELEGRAM_WEBHOOK_SECRET` пуст:
+    ```ts
+    if (expected && secretToken !== expected) return { ok: true };
+    ```
+    Должен fail-closed: в production без secret вообще не запускать webhook handler. Атакер мог бы отправлять fake updates → запуск handler от лица любого chatId.
+  - **API-MISSING-THROTTLE-001:** 3 endpoints без @Throttle:
+    - `POST /orders` (orders-create.controller.ts:19) — direct order от TMA. Нужен 10/мин (как /checkout/confirm).
+    - `POST /media/upload-url` (media.controller.ts:52) — presigned URL генерация. Нужен 20/мин.
+    - `POST /seller/products` (products.controller.ts) — создание товара. Нужен 30/мин (anti-spam).
+  - **API-SEC-TG-001-REGRESS:** уже записано в analiz/tasks.md от 06.05. Bot token leak в media proxy redirect.
+- **🟢 Что НЕ найдено (хорошо):**
+  - String interpolation в raw SQL — 0.
+  - Console.log с секретами — 0.
+  - require() в production code — 0 (после otplib downgrade fix).
+  - Endpoints с @UseGuards(JwtAuthGuard) но без @Roles когда требуется — нужен отдельный pass через все controllers (записать как P3 task).
+
+---
+
+## 2026-05-06 [AUDIT-TMA-2026-05-06] TMA полный аудит (UI/UX + a11y + functional)
+
+- **Статус:** 🟡 Audit с 1 фиксом, остальное в `analiz/tasks.md`. 19 pages просканировано.
+- **Метод:** grep по анти-паттернам, ручной просмотр findings.
+- **🔴 Найдено критичное (исправлено сейчас):**
+  - **TMA-PROFILE-LINK-PRETTIFY-001** ✅: `seller/ProfilePage.tsx:98` хардкод `savdo.uz/{slug}` (тот же баг что был на buyer/StorePage). Заменён на webStoreUrl helper + кнопка «↗ Перейти на сайт».
+- **🟠 P1 в backlog (analiz/tasks.md):**
+  - **TMA-NATIVE-CONFIRM-001:** `seller/ProductsPage.tsx` использует `window.confirm/alert` (5 мест). В Telegram WebView системный popup → выглядит чужеродно, нет haptic. Заменить на кастомный `<ConfirmModal>` (новый компонент в `components/ui/`).
+    - Lines: ProductsPage:100, 113, 120, 129; StorePage seller:173.
+  - **TMA-LOADING-SKELETONS-001:** 10 pages используют только Spinner без Skeleton: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer, SettingsPage buyer, StoresPage, WishlistPage, AddProductPage, DashboardPage seller. Для каждой добавить SkeletonCard / SkeletonList.
+- **🟡 P2 (a11y, не блокеры):**
+  - **TMA-A11Y-ROLE-TABINDEX-001:** только 3 из 19 pages имеют `role="button"`/`tabIndex` на `<div onClick>`. Остальные 16 не доступны с клавиатуры. Затрагивает: ProductCard навигация на товар, GlassCard выбор магазина, etc. Не критично для Telegram (mobile-first), но важно для desktop.
+  - **TMA-SILENT-ERROR-CATCHES-001:** 10 мест с `.catch(() => {})` без showToast — silent failure если api падает (юзер не видит почему ничего не загружается). Файлы: ChatPage:146, OrdersPage buyer:117/131, StorePage:56, StoresPage:92, WishlistPage:25, AddProductPage:115/124/406, ChatPage seller:152.
+- **🟢 P3 (хорошо что нет):**
+  - `<img>` без `alt` — 0 (хорошо).
+  - `require()` или old commonjs — 0.
+  - hardcoded savdo.uz — был только 1 (исправлен).
+- **Z-index конфликты потенциальные:** 10 файлов с `position: fixed` (BottomNav, Sidebar, BottomSheet, CategoryModal, ImageCropper, FullscreenButton, AppShell, ChatPage). После fix `z-[9999]flex` (commit 20cfcec) — должно быть стабильно. Но есть вероятность конфликта BottomNav (z:50) с BottomSheet → overlay не должен под нав закрываться.
+
+---
+
 ## 2026-05-05 [WEB-BUYER-AUDIT-2026-05-05] Полный аудит web-buyer (4 параллельных code-reviewer агента)
 
 Сделан после закрытия всего Soft Color Lifestyle plan (10/10 tasks). 4 агента параллельно прошли по слоям: storefront/product, cart/checkout/orders, chat/profile/wishlist/notifications, layout/hooks/lib/api.

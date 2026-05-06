@@ -118,6 +118,7 @@ export class ProductsController {
 
   @Post('seller/products')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } }) // anti-spam при создании товаров
   async createMyProduct(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateProductDto,
@@ -568,6 +569,53 @@ export class ProductsController {
     return { ...store, logoUrl, coverUrl };
   }
 
+  // FEAT-001: единый поиск по витрине — товары + магазины одним запросом.
+  // Использует case-insensitive ILIKE по name/title/description; minimum 2 символа
+  // (короткие запросы дают слишком много результатов и грузят БД).
+  @Get('storefront/search')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  async searchStorefront(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const query = (q ?? '').trim();
+    if (query.length < 2) {
+      return { stores: [], products: [] };
+    }
+    const lim = Math.min(Math.max(Number(limit ?? 10) || 10, 1), 30);
+
+    const [stores, products] = await Promise.all([
+      this.storesRepo.searchPublic(query, lim),
+      this.productsRepo.searchPublic(query, lim),
+    ]);
+
+    const storesData = await Promise.all(stores.map(async (s) => {
+      const sx = s as typeof s & { logoMediaId?: string | null; coverMediaId?: string | null };
+      const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(sx.logoMediaId, sx.coverMediaId);
+      const { logoMediaId: _l, coverMediaId: _c, ...rest } = sx;
+      void _l; void _c;
+      return { ...rest, logoUrl, coverUrl };
+    }));
+
+    const productsData = (products as unknown as Array<Record<string, unknown> & {
+      basePrice: unknown; oldPrice: unknown; salePrice: unknown;
+      images?: Array<{ media: unknown }>;
+      store?: { id: string; name: string; slug: string };
+    }>).map((p) => {
+      const { basePrice, oldPrice, salePrice, images, store, ...rest } = p;
+      return {
+        ...rest,
+        basePrice: Number(basePrice),
+        oldPrice: this.toPrice(oldPrice),
+        salePrice: this.toPrice(salePrice),
+        images: (images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+        store: store ? { id: store.id, name: store.name, slug: store.slug } : null,
+      };
+    });
+
+    return { stores: storesData, products: productsData };
+  }
+
   @Get('stores/:slug')
   async getStoreBySlug(@Param('slug') slug: string) {
     const store = await this.storesRepo.findBySlug(slug);
@@ -645,9 +693,21 @@ export class ProductsController {
     @Query('filters') rawFilters?: Record<string, string>,
     @Query('q') q?: string,
     @Query('sort') sort?: string,
+    @Query('priceMin') priceMin?: string,
+    @Query('priceMax') priceMax?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    // FEAT-003: ценовой диапазон. Парсим из query — игнорируем NaN и
+    // отрицательные значения (Prisma басимым невалидное число выкинет
+    // P2003, лучше превратить в undefined).
+    const parsePrice = (s?: string): number | undefined => {
+      if (!s) return undefined;
+      const n = Number(s);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    };
+    const pMin = parsePrice(priceMin);
+    const pMax = parsePrice(priceMax);
     // Platform-wide feed (no storeId)
     let data: Array<Record<string, unknown> & { id: string; inWishlist?: boolean }>;
     let total: number;
@@ -658,6 +718,8 @@ export class ProductsController {
       const result = await this.productsRepo.findAllPublic({
         q,
         globalCategoryId,
+        priceMin: pMin,
+        priceMax: pMax,
         sort: validSort,
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,

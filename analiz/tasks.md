@@ -12,9 +12,7 @@
 ## 🔴 P0 — Полат
 
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
-- [ ] **`TMA-CHAT-403-WRITE-001`** — dual-role check на `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`.
-  - Файлы: `apps/api/src/modules/chat/chat.controller.ts` + 5 use-cases в `chat/use-cases/`.
-  - Паттерн: как в `getMessages` после `2b2bca7` — `resolveBothProfileIds` + `isBuyer || isSeller`.
+- [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
 - [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
   - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
   - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
@@ -44,17 +42,52 @@
 - [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
 - [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
 
+## 🆕 Аудит платформы продолжение (06.05.2026)
+
+### 🔴 P0 — Полат / параллельная сессия
+- [ ] **`API-MFA-NOT-ENFORCED-001`** — MFA TOTP реализован но НЕ enforced на admin endpoints. Любой admin JWT даёт полный доступ даже если `mfaEnabled=true`. Решение: temporary scope=`mfa-challenge` JWT после login, exchange на full token через `/admin/auth/mfa/login` с TOTP. См. `analiz/logs.md AUDIT-ADMIN-2026-05-06`.
+
+### 🟠 P1 — Полат
+- [ ] **`API-RBAC-MICRO-PERMISSIONS-001`** — admin permissions matrix (super_admin/admin/moderator/etc) объявлена в `admin-auth.use-case.ts`, но не проверяется на endpoint level. Добавить `@AdminPermission('xxx:yyy')` decorator + guard.
+
+### 🟠 P1 — Азим
+- [ ] **`WEB-SELLER-HARDCODED-DOMAIN-001`** — 3 места с прямым `https://savdo.uz/${slug}` без env fallback в web-seller. Файлы: `app/(dashboard)/layout.tsx:127,236`, `app/(dashboard)/profile/page.tsx:49`. Использовать `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` или общий helper.
+
+---
+
+## 🆕 Аудит API security (06.05.2026)
+
+### 🟠 P1 — для Полата
+- [x] **`API-WEBHOOK-SECRET-OPTIONAL-001`** ✅ 06.05.2026 — `telegram-webhook.controller.ts:50-52` fail-closed в production: если `NODE_ENV='production'` и `TELEGRAM_WEBHOOK_SECRET` пуст → возвращает `{ ok:true }` без обработки + лог error.
+- [x] **`API-MISSING-THROTTLE-001`** ✅ 06.05.2026 — `@Throttle` добавлен на: `POST /orders` (10/мин, `orders-create.controller.ts:22`), `POST /media/upload-url` (20/мин, `media.controller.ts:54`), `POST /seller/products` (30/мин, `products.controller.ts:121`).
+
+### 🟢 P3 — для будущей сессии
+- [ ] **`API-RBAC-AUDIT-001`** — пройтись по всем 19 controllers, проверить что endpoint'ы с @UseGuards(JwtAuthGuard) имеют правильный @Roles. Сейчас могут быть случаи где BUYER может звать SELLER endpoint.
+
+---
+
+## 🆕 Аудит TMA (06.05.2026) — UI/UX + functional
+
+### 🔴 P0 (исправлено)
+- [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `savdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
+
+### 🟠 P1 — для Полата
+- [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
+- [ ] **`TMA-LOADING-SKELETONS-001`** — добавить Skeleton-компоненты на 10 страниц где сейчас только Spinner: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer/seller, SettingsPage, StoresPage, WishlistPage, AddProductPage, DashboardPage seller.
+
+### 🟡 P2 — a11y
+- [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
+- [ ] **`TMA-SILENT-ERROR-CATCHES-001`** — 10 мест с `.catch(() => {})` без showToast. Юзер не понимает почему пусто. Файлы в `analiz/logs.md AUDIT-TMA-2026-05-06`.
+
+---
+
 ## 🆕 Аудит платформы (06.05.2026, Полат) — найденные проблемы
 
 ### 🔴 P0 — для Полата (apps/api + миграция данных)
 
-- [ ] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** — старые товары имеют `MediaFile.bucket='telegram'` с file_id который Telegram уже expired. На web-buyer/TMA эти фото грузятся через `/api/v1/media/proxy/:id` → TG getFile → 404 (или работают, но медленно через 1ч TTL). Решение:
-  - Скрипт миграции: пройтись по всем `MediaFile WHERE bucket='telegram'`, скачать через `getFileUrl()`, перезалить в Supabase, обновить `bucket='r2'` + `objectKey='product_image/2026/<uuid>.jpg'`.
-  - Альтернатива: помечать `MediaFile.deletedAt` для всех старых TG-файлов и заставить продавцов перезагрузить.
-  - **Файлы:** новый `apps/api/src/scripts/migrate-tg-media-to-supabase.ts` + admin endpoint для запуска.
+- [x] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** ✅ 06.05.2026 — admin endpoint `POST /admin/media/migrate-tg-to-r2?limit=50` + use-case + audit log. См. `analiz/done.md`.
 
-- [ ] **`API-SEC-TG-001-REGRESS`** — после удаления `streamToResponse` в `TelegramStorageService` (параллельная сессия), `media.controller.ts` теперь редиректит на URL содержащий bot token в pathname. **Bot token утечёт клиенту в Location header**. Восстановить streaming через axios pipe — token остаётся на сервере.
-  - **Файлы:** `apps/api/src/modules/media/services/telegram-storage.service.ts` (вернуть `streamToResponse`), `media.controller.ts` (использовать его).
+- [x] **`API-SEC-TG-001-REGRESS`** ✅ 06.05.2026 — `streamToResponse` восстановлен в `TelegramStorageService`, `media.controller.ts` снова стримит вместо redirect. Коммит `32ce2fa`.
 
 ### 🟠 P1 — для Азима (apps/web-buyer)
 

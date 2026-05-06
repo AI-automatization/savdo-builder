@@ -1,4 +1,5 @@
 import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateDirectOrderDto } from './dto/create-direct-order.dto';
@@ -18,6 +19,7 @@ export class OrdersCreateController {
   // POST /api/v1/orders — TMA direct order (items from localStorage, no backend cart required)
   @Post('orders')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // anti-spam, как /checkout/confirm
   async createOrder(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateDirectOrderDto,

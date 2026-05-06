@@ -36,6 +36,46 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+### ✅ [FEAT-003 backend] Ценовой диапазон в фильтре товаров
+- `GET /storefront/products` теперь принимает `priceMin` и `priceMax` (UZS).
+- Логика в `ProductsRepository.findAllPublic()`: добавляет `basePrice: { gte, lte }` в WHERE.
+- Парсинг защищён: NaN/отрицательные значения игнорируются (превращаются в undefined).
+- Уже было: `q`, `globalCategoryId`, `sort=new|price_asc|price_desc`. Категории + сортировка работали; не было только цены.
+- Frontend FEAT-003-FE — bottom-sheet с range slider + sort radio.
+
+### ✅ [FEAT-004 backend] Seller инициирует чат с buyer заказа
+- `POST /seller/chat/threads` — `@Roles('SELLER')`, throttle 10/min.
+- Новый use-case `CreateSellerThreadUseCase`: проверяет `order.sellerId === seller.id`, идемпотентно переиспользует существующий тред для пары (buyer, order), пропускает первое сообщение через `SendMessageUseCase` (получает socket emit + TG push покупателю).
+- 422 если order без buyerId (guest checkout) — нечего открывать.
+- Frontend FEAT-004-FE — кнопка «✉ Написать» на странице заказа продавца → modal.
+
+### ✅ [FEAT-005 backend] Typing indicator socket event
+- `chat.gateway.ts` принимает `chat:typing { threadId, isTyping }` и ретранслирует в комнату `thread:${id}` всем кроме отправителя как `chat:typing { threadId, role, isTyping }`.
+- Anti-spoof: emit игнорируется если client не в комнате (т.е. не прошёл `join-chat-room` с проверкой участника).
+- Без БД-записи — эфемерное событие, auto-stop через клиентский debounce (3s).
+
+### ✅ [FEAT-006 backend] Seller Analytics с period-фильтром
+- `GET /seller/analytics?from=&to=` — `@Roles('SELLER')`. Default период = 30 дней. Cap 90 дней (BadRequest при превышении).
+- Новый use-case `GetSellerAnalyticsUseCase` агрегирует Order + OrderItem из БД:
+  - `revenue.{total,completed,pending}` — completed = DELIVERED, pending = CONFIRMED+PROCESSING+SHIPPED.
+  - `orders.{total, byStatus}` — счётчик по всем 6 OrderStatus.
+  - `topProducts[5]` — top-5 по выручке (sum(lineTotalAmount)), исключая CANCELLED.
+  - `daily[]` — массив `{date, revenue, orderCount}` с заполнением пустых дней нулями (для графика).
+- Frontend часть — отдельная задача FEAT-006-FE (recharts + period-селектор).
+
+### ✅ [FEAT-001 backend] Единый поиск товаров+магазинов
+- `GET /storefront/search?q=&limit=` — case-insensitive ILIKE по `name`/`title`/`description`/`slug`.
+- Защита: minimum 2 символа в `q`, throttle 30 req/min, limit clamp 1-30.
+- Параллельный поиск stores + products в одном HTTP-запросе → один round-trip с фронта.
+- Новые методы: `StoresRepository.searchPublic()`, `ProductsRepository.searchPublic()`.
+- TODO для prod: trigram-индекс (pg_trgm) на `Store.name`/`Product.title` чтобы ILIKE не делал seq scan на больших объёмах.
+
+### ✅ [UX-004] Admin bundle code splitting — main 903КБ → 51КБ
+- `apps/admin/src/App.tsx` — все 23 страницы (кроме LoginPage) обёрнуты в `React.lazy()` + `<Suspense fallback="Загрузка…">`.
+- `apps/admin/vite.config.ts` manualChunks расширены: `vendor-charts` (recharts/d3 — 376КБ, грузится только на /analytics), `vendor-mfa` (qrcode/otplib), `vendor-ui` (lucide + sonner + radix).
+- Результат: initial JS = vendor-react (297КБ) + index (51КБ) + страница (4-26КБ); до этого был один монолит ~900КБ.
+- Каждая страница теперь подтягивается по требованию, vendor-charts больше не блокирует первый paint.
+
 ### ✅ [UX-008] Socket connection status badge в заголовке чата
 - Новый компонент `apps/tma/src/components/ui/SocketStatusBadge.tsx` — pill «Подключение…» / «Нет связи» (когда connected — ничего не показывает).
 - Подписка на `connect` / `disconnect` / `connect_error` события глобального socket.io клиента.

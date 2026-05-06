@@ -63,6 +63,8 @@ export class CheckoutController {
       deliveryAddress: dto.deliveryAddress,
       buyerNote: dto.buyerNote,
       deliveryFee: dto.deliveryFee,
+      customerFullName: dto.customerFullName,
+      customerPhone: dto.customerPhone,
     });
   }
 

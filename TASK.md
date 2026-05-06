@@ -5,33 +5,29 @@
 
 ## 🟠 Высокие — UX (снижают retention)
 
-- [ ] [UX-004] Admin bundle: code splitting (903KB → ~300KB)
-  - Файл: `apps/admin/vite.config.ts`
-  - Добавить manualChunks по роутам
-
 ---
 
 ## 🟡 Средние — Feature Gaps
 
-- [ ] [FEAT-001] Поиск товаров и магазинов
-  - API: `GET /storefront/search?q=&type=product|store`
-  - TMA: строка поиска на BuyerStores + StoresPage
+- [ ] [FEAT-001-FE] Поиск — frontend в TMA (backend готов: `GET /storefront/search?q=&limit=`)
+  - TMA: строка поиска на BuyerStores + StoresPage с debounced fetch (300ms)
+  - Mixed-результат: stores + products в одном dropdown с разделом
 
-- [ ] [FEAT-003] Фильтры товаров (цена, категория)
-  - API: query params в GET /storefront/products
-  - TMA: filter sheet снизу
+- [ ] [FEAT-003-FE] Filter sheet снизу — TMA frontend
+  - Backend готов: GET /storefront/products принимает `globalCategoryId`, `priceMin`, `priceMax`, `sort=new|price_asc|price_desc`
+  - TMA: bottom-sheet с категориями (chips) + range-slider цены + sort-radio
 
-- [ ] [FEAT-004] Seller: возможность инициировать чат с покупателем заказа
-  - API: POST /chat/threads с orderId + buyerId
-  - TMA: кнопка "Написать" на странице заказа продавца
+- [ ] [FEAT-004-FE] Seller инициирует чат — TMA frontend (backend готов: `POST /seller/chat/threads`)
+  - TMA: кнопка «✉ Написать» на странице заказа продавца → modal с textarea
+  - После создания → navigate на `/seller/chat/:id`
 
-- [ ] [FEAT-005] Typing indicator в чате
-  - Socket event: chat:typing { threadId, role }
-  - TMA: "печатает..." под последним сообщением
+- [ ] [FEAT-005-FE] Typing indicator — TMA frontend (backend готов: socket `chat:typing`)
+  - Композер emit'ит `socket.emit('chat:typing', { threadId, isTyping })` на debounced input
+  - В bubble под последним сообщением — «печатает…» с auto-fade 3s
 
-- [ ] [FEAT-006] Seller Analytics dashboard (выручка, заказы за период)
-  - API: GET /seller/analytics?from=&to=
-  - TMA: графики на DashboardPage
+- [ ] [FEAT-006-FE] Seller Analytics dashboard frontend (backend готов: `GET /seller/analytics?from=&to=`)
+  - TMA: графики revenue + orders на DashboardPage (recharts или sparkline)
+  - Период-селектор: 7/30/90 дней + custom from-to picker
 
 - [ ] [FEAT-008] Отзывы и рейтинг магазина / товара
   - БД: model Review { id, productId, buyerId, orderItemId, rating(1-5), comment?, createdAt }

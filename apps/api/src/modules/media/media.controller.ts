@@ -51,6 +51,7 @@ export class MediaController {
   /** Generate presigned R2 upload URL (when R2 is configured) */
   @Post('upload-url')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async getUploadUrl(
     @CurrentUser() user: JwtPayload,
     @Body() dto: RequestUploadDto,
@@ -158,11 +159,8 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // streamToResponse удалён параллельной сессией, fallback к redirect.
-      // ⚠️ SEC-TG-001 regress: bot token попадает в Location header. TODO вернуть стриминг.
-      const url = await this.tgStorage.getFileUrl(fileId);
-      res.setHeader('Cache-Control', 'private, max-age=600');
-      res.redirect(302, url);
+      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
       return;
     }
 
@@ -207,11 +205,8 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // streamToResponse удалён параллельной сессией, fallback к redirect.
-      // ⚠️ SEC-TG-001 regress: bot token попадает в Location header. TODO вернуть стриминг.
-      const url = await this.tgStorage.getFileUrl(fileId);
-      res.setHeader('Cache-Control', 'private, max-age=600');
-      res.redirect(302, url);
+      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
       return;
     }
 

@@ -42,8 +42,20 @@ export class TelegramWebhookController {
     @Body() update: TelegramUpdate,
     @Headers('x-telegram-bot-api-secret-token') secretToken?: string,
   ) {
+    // SEC: AUDIT-API-SEC-2026-05-06 → API-WEBHOOK-SECRET-OPTIONAL-001 fix.
+    // Fail-closed: в production без TELEGRAM_WEBHOOK_SECRET вообще
+    // не запускаем handler. Иначе атакер мог посылать fake updates →
+    // выполнение действий от лица любого chatId.
     const expected = this.config.get<string>('telegram.webhookSecret');
-    if (expected && secretToken !== expected) return { ok: true };
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
+    if (isProd && !expected) {
+      this.logger.error('TELEGRAM_WEBHOOK_SECRET не выставлен в production — webhook отключён');
+      return { ok: true };
+    }
+    if (expected && secretToken !== expected) {
+      this.logger.warn(`Webhook отклонён: invalid secret token (got=${secretToken ? 'present' : 'missing'})`);
+      return { ok: true };
+    }
 
     try {
       if (update.callback_query) {
