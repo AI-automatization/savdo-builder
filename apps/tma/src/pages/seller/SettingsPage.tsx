@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Spinner } from '@/components/ui/Spinner';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
@@ -144,9 +144,19 @@ export default function SellerSettingsPage() {
 
   if (loading) {
     return (
-      
-        <div className="flex justify-center py-20"><Spinner /></div>
-      
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
+        <Skeleton style={{ height: 24, width: '40%' }} />
+        <div className="flex flex-col gap-3 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <Skeleton style={{ height: 14, width: '30%' }} />
+          <Skeleton style={{ height: 40 }} />
+          <Skeleton style={{ height: 14, width: '60%' }} />
+        </div>
+        <div className="flex flex-col gap-3 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <Skeleton style={{ height: 14, width: '30%' }} />
+          <Skeleton style={{ height: 40 }} />
+          <Skeleton style={{ height: 40 }} />
+        </div>
+      </div>
     );
   }
 

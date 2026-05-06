@@ -20,8 +20,7 @@
 ## 🟠 P1 — Полат
 
 - [ ] **`TMA-SELECT-CUSTOM-001`** — портировать `apps/web-seller/src/components/select.tsx` в `apps/tma/src/components/ui/Select.tsx`. Применить везде где `<select>` (AddProductPage, EditProductPage, SettingsPage seller).
-- [ ] **`TMA-CROPPER-UX-001`** — большая видимая «✕ Отменить» в шапке кропера, `zIndex: 9999`, кнопка «➕ Добавить ещё фото» в AddProductPage / EditProductPage.
-  - Файлы: `apps/tma/src/components/ui/ImageCropper.tsx` + `apps/tma/src/pages/seller/{AddProductPage,EditProductPage}.tsx`.
+- [x] **`TMA-CROPPER-UX-001`** ✅ 06.05.2026 — `ImageCropper` имеет zIndex 9999, видимый красный «✕ Отменить» 44pt в header слева, заголовок «Кадрировать фото» по центру. AddProductPage показывает «➕ Добавить ещё фото» когда `photoPreviews.length > 0`, EditProductPage — кнопка «+ Добавить» в шапке секции «Фото товара» всегда видна.
 - [ ] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** — динамические опции товара из `CategoryFilter` по выбранной категории. Заменить хардкод-toggle «Товар с размерами».
   - Endpoint: `GET /storefront/categories/:slug/filters` (уже работает).
   - Поведение: SELECT/MULTI_SELECT с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
@@ -34,7 +33,7 @@
 - [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
 - [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
 - [x] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA. ✅ Закрыто в `WEB-TMA-SELLER-PERF-001` (8 из 9 файлов; ChatPage пропущен из-за конфликта с `TMA-DESIGN-P0P1-001`). См. `analiz/done.md` 2026-05-04.
-- [ ] **`TMA-SELLER-CHAT-PERF-001`** — после мёрджа `TMA-DESIGN-P0P1-001` добавить AbortController в `apps/tma/src/pages/seller/ChatPage.tsx` (loadThreads + load messages useEffect). Pattern — как в DashboardPage/SettingsPage.
+- [x] **`TMA-SELLER-CHAT-PERF-001`** ✅ 06.05.2026 — добавлены AbortController в loadThreads (threadsAbortRef) + load messages useEffect (messagesAbortRef) в `seller/ChatPage.tsx`. Cleanup на unmount + при смене threadId. AbortError игнорируется в catch.
 
 ## 🟢 P3 — после спринта
 
@@ -73,7 +72,7 @@
 
 ### 🟠 P1 — для Полата
 - [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
-- [ ] **`TMA-LOADING-SKELETONS-001`** — добавить Skeleton-компоненты на 10 страниц где сейчас только Spinner: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer/seller, SettingsPage, StoresPage, WishlistPage, AddProductPage, DashboardPage seller.
+- [ ] **`TMA-LOADING-SKELETONS-001`** — частично закрыто 06.05.2026: WishlistPage, ProductPage, seller/ProductsPage, seller/SettingsPage. Остаётся: CartPage, CheckoutPage, OrdersPage buyer (loadMore — уже есть, list — нет), ProfilePage buyer/seller, StoresPage, AddProductPage, DashboardPage seller (параллельная сессия трогает).
 
 ### 🟡 P2 — a11y
 - [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
@@ -364,6 +363,28 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 ## 🧊 ЗАМОРОЖЕНО — Монетизация + Payme/Click (Phase 4)
 
 > ❄️ Фриз до открытия бизнес-счёта в Click и Payme. Не брать в работу.
+>
+> **Текущая модель (06.05.2026, решение Полата):** платежей нет, продавец
+> связывается с админом → админ вручную через admin-панель открывает доступ
+> к общему рынку.
+>
+> ✅ **Закрыто 06.05.2026:** `API-MANUAL-SELLER-ACTIVATION-001` — добавлен
+> один endpoint в super-admin, объединяющий 3 шага:
+> - `POST /admin/users/:id/activate-seller-on-market`
+>   body: `{ fullName, sellerType, telegramUsername, storeName, storeCity, telegramContactLink, description?, region?, slug? }`
+>   → создаёт seller-профиль → создаёт магазин → approve → audit log `seller.activated_on_market`.
+>
+> Старые отдельные endpoints тоже работают (для случаев когда нужны шаги по отдельности):
+> - `POST /admin/users/:id/make-seller`
+> - `POST /admin/sellers/:id/create-store`
+> - `POST /admin/stores/:id/approve` / `/suspend` / `/unapprove`
+>
+> Когда придёт время монетизации — добавить subscription модель поверх
+> существующего flow. Все PAY-NNN тикеты ниже остаются как roadmap.
+>
+> **TODO для admin frontend:** добавить кнопку «Активировать продавца на рынке»
+> в `apps/admin/src/pages/UserDetailPage.tsx` (или где сейчас make-seller) —
+> модалка со всеми полями → один POST. Тикет: `ADMIN-MANUAL-ACTIVATION-UI-001`.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`

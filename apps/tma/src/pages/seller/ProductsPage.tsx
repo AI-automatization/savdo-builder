@@ -7,7 +7,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { showToast } from '@/components/ui/Toast';
@@ -225,7 +225,9 @@ export default function SellerProductsPage() {
         )}
 
         {loading && (
-          <div className="flex justify-center py-10"><Spinner size={32} /></div>
+          <div className={gridCols ? `grid ${gridCols} gap-3` : 'flex flex-col gap-2'}>
+            {Array.from({ length: gridCols ? 8 : 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+          </div>
         )}
 
         {!loading && error && (

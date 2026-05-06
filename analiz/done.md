@@ -1,5 +1,31 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — Super-admin: ручная активация продавца на рынке
+
+### ✅ [API-MANUAL-SELLER-ACTIVATION-001] One-click активация продавца 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/use-cases/activate-seller-on-market.use-case.ts` — новый use-case, композирует AdminCreateSellerUseCase + AdminCreateStoreUseCase + ApproveStoreUseCase + единая audit-запись.
+  - `apps/api/src/modules/admin/super-admin.controller.ts` — endpoint `POST /admin/users/:id/activate-seller-on-market` с валидацией обязательных полей.
+  - `apps/api/src/modules/admin/admin.module.ts` — регистрация use-case в providers.
+- **Что сделано:** до этого активация продавца требовала 3 раздельных API-вызова (make-seller → create-store → approve). Теперь — один endpoint. Audit log: `seller.activated_on_market`.
+- **Контекст:** решение Полата 06.05.2026 — монетизация заморожена до открытия бизнес-счёта в Click/Payme. Продавцы пишут в @savdo_builderBOT/админу → админ через super-admin одним кликом открывает доступ к общему рынку.
+- **TODO frontend:** `ADMIN-MANUAL-ACTIVATION-UI-001` — кнопка + модалка в admin-панели.
+
+## 2026-05-06 (Полат) — TMA: skeletons на 4 страницах
+
+### ✅ [TMA-LOADING-SKELETONS-001 / частично] Skeleton вместо Spinner 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — grid из 8 ProductCardSkeleton с тем же `cols` что финальная сетка.
+  - `apps/tma/src/pages/buyer/ProductPage.tsx` — фото-плейсхолдер + title/price/description/cta lines.
+  - `apps/tma/src/pages/seller/ProductsPage.tsx` — grid 8 ProductCardSkeleton (на mobile — flex column 4 строк).
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` — 2 GlassCard с input/button плейсхолдерами.
+- **Что сделано:** заменён `<Spinner />` на layout-aware skeleton. Юзер видит структуру страницы во время загрузки → меньше perceived latency.
+- **Что осталось (в backlog):** CartPage, CheckoutPage, OrdersPage buyer (list level), ProfilePage buyer/seller, StoresPage, AddProductPage, DashboardPage seller (последняя — параллельная сессия).
+
 ## 2026-05-06 (Полат) — TMA: showToast на silent error catches
 
 ### ✅ [TMA-SILENT-ERROR-CATCHES-001] showToast на user-facing data-load fails 🟡
