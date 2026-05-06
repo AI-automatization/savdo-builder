@@ -5,7 +5,7 @@ import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { showToast } from '@/components/ui/Toast';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Spinner } from '@/components/ui/Spinner';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductReviews } from '@/components/reviews/ProductReviews';
@@ -198,9 +198,17 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      
-        <div className="flex justify-center py-10"><Spinner size={32} /></div>
-      
+      <div className="flex flex-col gap-4">
+        <Skeleton style={{ aspectRatio: '1/1', borderRadius: 16, width: '100%' }} />
+        <Skeleton style={{ height: 24, width: '70%' }} />
+        <Skeleton style={{ height: 28, width: '40%' }} />
+        <div className="flex flex-col gap-2 mt-2">
+          <Skeleton style={{ height: 14, width: '95%' }} />
+          <Skeleton style={{ height: 14, width: '85%' }} />
+          <Skeleton style={{ height: 14, width: '60%' }} />
+        </div>
+        <Skeleton style={{ height: 48, marginTop: 8 }} />
+      </div>
     );
   }
 

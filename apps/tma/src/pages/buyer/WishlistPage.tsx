@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
@@ -69,7 +69,9 @@ export default function WishlistPage() {
       )}
 
       {authenticated && loading && (
-        <div className="flex justify-center py-10"><Spinner /></div>
+        <div className={`grid ${cols} gap-3`}>
+          {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+        </div>
       )}
 
       {authenticated && !loading && items.length === 0 && (

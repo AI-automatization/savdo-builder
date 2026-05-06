@@ -73,7 +73,7 @@
 
 ### 🟠 P1 — для Полата
 - [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
-- [ ] **`TMA-LOADING-SKELETONS-001`** — добавить Skeleton-компоненты на 10 страниц где сейчас только Spinner: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer/seller, SettingsPage, StoresPage, WishlistPage, AddProductPage, DashboardPage seller.
+- [ ] **`TMA-LOADING-SKELETONS-001`** — частично закрыто 06.05.2026: WishlistPage, ProductPage, seller/ProductsPage, seller/SettingsPage. Остаётся: CartPage, CheckoutPage, OrdersPage buyer (loadMore — уже есть, list — нет), ProfilePage buyer/seller, StoresPage, AddProductPage, DashboardPage seller (параллельная сессия трогает).
 
 ### 🟡 P2 — a11y
 - [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
