@@ -17,6 +17,22 @@
 - **0 случаев** `$queryRawUnsafe` или `$executeRawUnsafe` (которые принимают сырую строку и были бы уязвимы).
 - **0 случаев** строковой конкатенации в SQL.
 
+## 2026-05-06 [AUDIT-API-WS-2026-05-06] WebSocket gateways audit
+
+- **Статус:** 🔴→✅ Найдена + закрыта дыра в `OrdersGateway.handleJoinSellerRoom`.
+- **Что найдено:** проверка `if (user.storeId && user.storeId !== data.storeId)` пропускала SELLER'ов БЕЗ `storeId` в JWT. Из telegram-auth/verify-otp/refresh-session видно, что `storeId` в JWT optional — присутствует только когда у seller есть store. Дуальные продавцы или fresh-after-create могли join'нуться в чужие `seller:${data.storeId}` rooms и получать чужие `order:new` / `order:status_changed` / `chat:new_message` events.
+- **Что сделано:** обработчик стал async, добавлен fallback на DB-lookup `seller.findUnique({ where: { userId } }).store.id` если JWT не подтверждает владение. + валидация что `data.storeId` — string (raw socket payload). Аналогично `handleJoinBuyerRoom` теперь валидирует тип buyerId.
+- **Файл:** `apps/api/src/socket/orders.gateway.ts`.
+- **Что хорошо в Chat/Orders gateways:**
+  - JWT verify в `handleConnection` через `JwtService.verify` с правильным secret из ConfigService. На invalid → `client.disconnect(true)`.
+  - CORS origin function проверяет ALLOWED_ORIGINS + regex (`*.railway.app`, telegram.org, t.me, savdo.uz).
+  - `chat:typing` (FEAT-005) проверяет `client.rooms.has(room)` перед эмитом — anti-spoof.
+  - `join-chat-room` — DB-проверка участия (buyerId/sellerId match), + валидация типа threadId.
+  - Все emits идут на конкретные rooms (`thread:`, `seller:`, `buyer:`), не broadcast.
+- **Что НЕ покрыто (low priority):**
+  - Нет rate-limit на emit'ах (sendMessage HTTP уже throttle 30/min — достаточно для chat:typing спама).
+  - Нет лимита соединений per IP — Socket.IO defaults OK для MVP.
+
 ## 2026-05-06 [AUDIT-API-RATE-LIMIT-2026-05-06] Rate limit audit
 
 - **Статус:** 🟡 Глобально OK, добавлены целевые throttle на cart + wishlist.
