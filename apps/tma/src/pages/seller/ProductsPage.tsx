@@ -1,7 +1,6 @@
 ﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, prefetch } from '@/lib/api';
-import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -12,12 +11,6 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { showToast } from '@/components/ui/Toast';
 
-interface ProductImage {
-  id: string;
-  isPrimary: boolean;
-  media: { objectKey: string };
-}
-
 interface Product {
   id: string;
   title: string;
@@ -25,7 +18,11 @@ interface Product {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   description: string | null;
   storeCategoryId?: string | null;
-  images?: ProductImage[];
+  // TMA-MEDIA-USE-API-URL-001: backend `seller/products` мапит objectKey →
+  // absolute URL через resolveImageUrl (учитывает bucket=telegram → /media/proxy
+  // и R2 → CDN). Используем готовый массив, не вызываем getImageUrl() на
+  // фронте — иначе для tg-файлов он возвращал '' и фото не отображались.
+  mediaUrls?: string[];
   totalStock?: number;
 }
 
@@ -259,8 +256,7 @@ export default function SellerProductsPage() {
         {!loading && filtered.length > 0 && gridCols && (
           <div className={`grid ${gridCols} gap-3`}>
             {filtered.map((product) => {
-              const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
-              const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
+              const thumbUrl = product.mediaUrls?.[0] ?? '';
               return (
                 <GlassCard
                   key={product.id}
@@ -353,8 +349,7 @@ export default function SellerProductsPage() {
         )}
 
         {!loading && filtered.length > 0 && !gridCols && filtered.map((product) => {
-          const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
-          const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
+          const thumbUrl = product.mediaUrls?.[0] ?? '';
           return (
             <GlassCard
               key={product.id}

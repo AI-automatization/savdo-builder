@@ -102,7 +102,7 @@
 
 - [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
 
-- [ ] **`TMA-MEDIA-USE-API-URL-001`** — фронт TMA в `EditProductPage.tsx` и `ProductsPage.tsx` использует `getImageUrl(objectKey)` (читает `VITE_R2_PUBLIC_URL`). Должен использовать `product.mediaUrls[0]` напрямую из API response — централизованный source of truth и работает для любого storage backend.
+- [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (ProductsPage) — `seller/ProductsPage.tsx` теперь использует `product.mediaUrls[0]` напрямую от API. Раньше вызывал `getImageUrl(media.objectKey)` БЕЗ mediaId → для `bucket=telegram` возвращалась пустая строка → у продавца все товары были «НЕТ ФОТО» (см. скрин 06.05). EditProductPage уже передавал mediaId — оставлен.
 
 - [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
 
