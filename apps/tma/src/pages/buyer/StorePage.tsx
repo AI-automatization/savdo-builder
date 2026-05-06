@@ -8,7 +8,7 @@ import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
-import { webStoreUrl, webStoreLabel } from '@/lib/webUrl';
+import { webStoreUrl } from '@/lib/webUrl';
 
 interface Product {
   id: string;
@@ -163,11 +163,16 @@ export default function StorePage() {
               <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>{store.name}</h1>
               <button
                 onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
-                className="text-[11px] underline-offset-2 hover:underline"
-                style={{ color: 'rgba(167,139,250,0.80)', cursor: 'pointer' }}
-                aria-label="Открыть в браузере"
+                className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                style={{
+                  color: '#A855F7',
+                  background: 'rgba(168,85,247,0.10)',
+                  border: '1px solid rgba(168,85,247,0.25)',
+                  cursor: 'pointer',
+                }}
+                aria-label="Перейти на сайт магазина"
               >
-                {webStoreLabel(store.slug)} ↗
+                ↗ Перейти на сайт
               </button>
             </div>
           </div>
