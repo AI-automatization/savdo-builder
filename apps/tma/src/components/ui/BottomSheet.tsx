@@ -14,7 +14,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
   if (isDesktop) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center px-6"
+        className="fixed inset-0 z-[9999] flex items-center justify-center px-6"
         style={{ background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(8px)' }}
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
@@ -50,7 +50,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-end"
+      className="fixed inset-0 z-[9999] flex flex-col justify-end"
       style={{ background: 'rgba(0,0,0,0.60)', backdropFilter: 'blur(6px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >

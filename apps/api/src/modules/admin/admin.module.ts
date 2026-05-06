@@ -35,6 +35,7 @@ import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
 import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
 import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.use-case';
 import { RefundOrderUseCase } from './use-cases/refund-order.use-case';
+import { VerifySellerExtendedUseCase } from './use-cases/verify-seller-extended.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -73,6 +74,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     AdminAuthUseCase,
     AdminUsersManagementUseCase,
     RefundOrderUseCase,
+    VerifySellerExtendedUseCase,
   ],
 })
 export class AdminModule {}

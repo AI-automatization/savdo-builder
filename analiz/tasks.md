@@ -5,6 +5,109 @@
 
 ---
 
+# 🆕 Спринт TMA Quality + Platform Hardening (04-09.05.2026)
+
+> Полный план: `analiz/sprint-tma-quality-04-05-2026.md`. Здесь — короткая чек-лист.
+
+## 🔴 P0 — Полат
+
+- [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
+- [ ] **`TMA-CHAT-403-WRITE-001`** — dual-role check на `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`.
+  - Файлы: `apps/api/src/modules/chat/chat.controller.ts` + 5 use-cases в `chat/use-cases/`.
+  - Паттерн: как в `getMessages` после `2b2bca7` — `resolveBothProfileIds` + `isBuyer || isSeller`.
+- [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
+  - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
+  - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
+
+## 🟠 P1 — Полат
+
+- [ ] **`TMA-SELECT-CUSTOM-001`** — портировать `apps/web-seller/src/components/select.tsx` в `apps/tma/src/components/ui/Select.tsx`. Применить везде где `<select>` (AddProductPage, EditProductPage, SettingsPage seller).
+- [ ] **`TMA-CROPPER-UX-001`** — большая видимая «✕ Отменить» в шапке кропера, `zIndex: 9999`, кнопка «➕ Добавить ещё фото» в AddProductPage / EditProductPage.
+  - Файлы: `apps/tma/src/components/ui/ImageCropper.tsx` + `apps/tma/src/pages/seller/{AddProductPage,EditProductPage}.tsx`.
+- [ ] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** — динамические опции товара из `CategoryFilter` по выбранной категории. Заменить хардкод-toggle «Товар с размерами».
+  - Endpoint: `GET /storefront/categories/:slug/filters` (уже работает).
+  - Поведение: SELECT/MULTI_SELECT с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
+- [x] **`TMA-DESIGN-P0P1-001`** — P0+P1 из `[DESIGN-AUDIT-TMA-001]` ✅ закрыто 04.05.2026 (контраст BottomNav, hit-area Add-to-cart/back 44pt, aria-hidden на decorative emoji, OPEN/CLOSED с иконкой, text-[11px] meta → text-xs). См. `analiz/done.md`. Остаток `role/tabIndex/onKeyDown` на `<div>` — отдельным тиком если потребуется.
+- [ ] **`TMA-RESPONSIVE-DESKTOP-001`** — modals и cropper перекрывают весь экран (включая sidebar). Sidebar width дефиниция на breakpoint'ах.
+
+## 🟡 P2 — Полат + параллельная сессия
+
+- [ ] **`API-SQL-INJECTION-AUDIT-001`** — grep `$queryRaw`/`$executeRaw` в `apps/api`, проверить prepared params.
+- [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
+- [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
+- [x] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA. ✅ Закрыто в `WEB-TMA-SELLER-PERF-001` (8 из 9 файлов; ChatPage пропущен из-за конфликта с `TMA-DESIGN-P0P1-001`). См. `analiz/done.md` 2026-05-04.
+- [ ] **`TMA-SELLER-CHAT-PERF-001`** — после мёрджа `TMA-DESIGN-P0P1-001` добавить AbortController в `apps/tma/src/pages/seller/ChatPage.tsx` (loadThreads + load messages useEffect). Pattern — как в DashboardPage/SettingsPage.
+
+## 🟢 P3 — после спринта
+
+- [ ] **`NOTIF-IN-APP-001`** — in-app уведомления (Notification модель + socket emit + toast/badge).
+- [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
+- [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
+
+## 🆕 Аудит API security (06.05.2026)
+
+### 🟠 P1 — для Полата
+- [ ] **`API-WEBHOOK-SECRET-OPTIONAL-001`** — `telegram-webhook.controller.ts:45-46` принимает webhooks без secret token если env пуст. Fail-closed: в production без `TELEGRAM_WEBHOOK_SECRET` обязан throw на startup или возвращать 401.
+- [ ] **`API-MISSING-THROTTLE-001`** — добавить @Throttle на 3 endpoints: `POST /orders` (10/мин), `POST /media/upload-url` (20/мин), `POST /seller/products` (30/мин).
+
+### 🟢 P3 — для будущей сессии
+- [ ] **`API-RBAC-AUDIT-001`** — пройтись по всем 19 controllers, проверить что endpoint'ы с @UseGuards(JwtAuthGuard) имеют правильный @Roles. Сейчас могут быть случаи где BUYER может звать SELLER endpoint.
+
+---
+
+## 🆕 Аудит TMA (06.05.2026) — UI/UX + functional
+
+### 🔴 P0 (исправлено)
+- [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `savdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
+
+### 🟠 P1 — для Полата
+- [ ] **`TMA-NATIVE-CONFIRM-001`** — заменить `window.confirm/alert` на кастомный `<ConfirmModal>`. 5 мест: `seller/ProductsPage.tsx:100,113,120,129`, `seller/StorePage.tsx:173`. Создать новый `components/ui/ConfirmModal.tsx`.
+- [ ] **`TMA-LOADING-SKELETONS-001`** — добавить Skeleton-компоненты на 10 страниц где сейчас только Spinner: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer/seller, SettingsPage, StoresPage, WishlistPage, AddProductPage, DashboardPage seller.
+
+### 🟡 P2 — a11y
+- [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
+- [ ] **`TMA-SILENT-ERROR-CATCHES-001`** — 10 мест с `.catch(() => {})` без showToast. Юзер не понимает почему пусто. Файлы в `analiz/logs.md AUDIT-TMA-2026-05-06`.
+
+---
+
+## 🆕 Аудит платформы (06.05.2026, Полат) — найденные проблемы
+
+### 🔴 P0 — для Полата (apps/api + миграция данных)
+
+- [ ] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** — старые товары имеют `MediaFile.bucket='telegram'` с file_id который Telegram уже expired. На web-buyer/TMA эти фото грузятся через `/api/v1/media/proxy/:id` → TG getFile → 404 (или работают, но медленно через 1ч TTL). Решение:
+  - Скрипт миграции: пройтись по всем `MediaFile WHERE bucket='telegram'`, скачать через `getFileUrl()`, перезалить в Supabase, обновить `bucket='r2'` + `objectKey='product_image/2026/<uuid>.jpg'`.
+  - Альтернатива: помечать `MediaFile.deletedAt` для всех старых TG-файлов и заставить продавцов перезагрузить.
+  - **Файлы:** новый `apps/api/src/scripts/migrate-tg-media-to-supabase.ts` + admin endpoint для запуска.
+
+- [ ] **`API-SEC-TG-001-REGRESS`** — после удаления `streamToResponse` в `TelegramStorageService` (параллельная сессия), `media.controller.ts` теперь редиректит на URL содержащий bot token в pathname. **Bot token утечёт клиенту в Location header**. Восстановить streaming через axios pipe — token остаётся на сервере.
+  - **Файлы:** `apps/api/src/modules/media/services/telegram-storage.service.ts` (вернуть `streamToResponse`), `media.controller.ts` (использовать его).
+
+### 🟠 P1 — для Азима (apps/web-buyer)
+
+- [ ] **`WEB-BUYER-IMAGE-FALLBACK-001`** — на витрине магазина (`/<slug>`) товары без фото показывают пустой чёрный квадрат вместо placeholder'а. Скрин 06.05 — DRIPSB магазин, 6 товаров, 4 без фото. Решение: при `<img onError>` или пустом `mediaUrls` рендерить компонент-плейсхолдер (как `<ProductImage emptyVariant="no-photo">` в TMA).
+  - **Файлы:** `apps/web-buyer/src/components/store/ProductCard.tsx`.
+
+- [ ] **`WEB-BUYER-LINK-PRETTIFY-001`** — длинная ссылка на сайт магазина в TMA buyer/StorePage заменена на «↗ Перейти на сайт» (06.05 commit). Проверить что web-buyer header не показывает где-то такие же длинные railway URL — заменить на короткие.
+  - **Файлы:** `apps/web-buyer/src/components/store/StoreHeader.tsx` (если такой текст есть).
+
+### 🟡 P2 — для Полата (technical debt)
+
+- [ ] **`API-WS-PUSH-NOTIFICATIONS-001`** — сейчас `apps/tma/src/lib/notifications.ts` poll'ит unread каждые 30 сек. Перевести на WebSocket push: `OrdersGateway.emit('notification:new', { userId })` после `prisma.inAppNotification.create()` в `InAppNotificationProcessor`. На фронте — слушать event и обновлять count + показывать toast.
+
+- [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
+
+- [ ] **`TMA-MEDIA-USE-API-URL-001`** — фронт TMA в `EditProductPage.tsx` и `ProductsPage.tsx` использует `getImageUrl(objectKey)` (читает `VITE_R2_PUBLIC_URL`). Должен использовать `product.mediaUrls[0]` напрямую из API response — централизованный source of truth и работает для любого storage backend.
+
+- [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
+
+### 🟢 P3 — для Полата (cleanup)
+
+- [ ] **`API-CHAT-CONTROLLER-TS-ERROR-001`** — параллельная сессия добавила `getUnreadCountUseCase` в chat.controller.ts:61 с TS error: `Argument of type 'string' is not assignable to '"SELLER" | "BUYER"'`. Нужен type cast или Zod-валидация в guard.
+
+- [ ] **`API-DELETE-OLD-STASHES-001`** — в `git stash list` несколько старых safety-stash от прошлых сессий. После подтверждения что параллельная закончила — `git stash drop`.
+
+---
+
 # 🆕 Очередь от Полата (через Азима, 30.04.2026 поздно вечер)
 
 > ✅ 4 TMA задачи закрыты Полатом 02.05.2026, коммит `a2e1767`. См. `analiz/done.md`.
@@ -17,9 +120,14 @@
 
 > ✅ `WISHLIST-CONTRACT-001` + `TMA-BUYER-WISHLIST-001` закрыты Полатом 02.05.2026, коммиты `0f46a63` (backend) + `fd8721f` (UI). См. `analiz/done.md`.
 
-> ⏳ Открыто для Азима: `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` в web-buyer + heart на ProductCard. Бэкенд готов: `GET/POST /buyer/wishlist`, `DELETE /buyer/wishlist/:productId`, `WishlistItem` тип в `packages/types`, флаг `inWishlist?: boolean` на storefront feed для авторизованных buyer'ов. Подсмотрите паттерн в `apps/tma/src/lib/wishlist.ts` (optimistic toggle с локальным кэшем).
+> ✅ `WEB-BUYER-WISHLIST-PAGE-001` закрыт Азимом 05.05.2026 (сессия 45 — после theme system). Подробности в `analiz/done.md`.
 
 ---
+
+# ✅ Закрыто Азимом в сессии 45 (05.05.2026) — Dark/Light theme system + Wishlist UI
+
+- `WEB-THEME-SYSTEM-001` 🟡 — полная theme system для web-buyer и web-seller: ThemeProvider + no-flash inline script + ThemeToggle (Sun/Moon с rotate-анимацией + 3-state popover Light/Dark/System). Реализована через CSS-переменные в globals.css с `[data-theme]` overrides, `lib/styles.ts` отрефакторен — все `colors.X` теперь возвращают `var(--color-X)`. Все компоненты, которые уже использовали `colors`/`card`/`shell` из styles.ts, авто-темизуются. Plus migration `text-white` / `color: colors.bg` → `colors.textPrimary` / `accentTextOnBg` в 14 файлах seller (chat/onboarding/login/products/settings/orders + 2 components). Buyer ChatComposerModal полностью переписан с tokens. Onboarding background и orbs — через CSS-переменные. Подробности в `analiz/done.md`. Дефолт buyer — system preference, дефолт seller — dark (сохраняет CRM identity). Локально не запускалось.
+- `WEB-BUYER-WISHLIST-PAGE-001` 🟡 — страница `/wishlist` + сердечко на ProductCard (top-right corner) + ссылка в Header (между nav и Cart). Использует серверный флаг `product.inWishlist` (приоритет) с фолбэком на клиентский кэш `useWishlistIds()`. Optimistic toggle через TanStack Query. Unauth-юзеры по клику на heart редиректятся на `/wishlist` где кикает OtpGate. Файлы: `apps/web-buyer/src/lib/api/wishlist.api.ts`, `apps/web-buyer/src/hooks/use-wishlist.ts`, `apps/web-buyer/src/components/store/ProductCard.tsx` (+heart), `apps/web-buyer/src/app/(shop)/wishlist/page.tsx` (новая), `apps/web-buyer/src/components/layout/Header.tsx` (+heart link), `apps/web-buyer/src/components/layout/BottomNavBar.tsx` (NavActive расширен 'wishlist'). Подробности в `analiz/done.md`.
 
 # ✅ Закрыто Азимом в сессии 44 (01.05.2026, прямо сейчас, перед отбоем Азима)
 
@@ -128,6 +236,36 @@
 | ~~`WEB-CSP-HEADER-002`~~ | ✅ | CSP-директивы добавлены в оба `next.config.ts`. `script-src 'self' 'unsafe-inline' 'unsafe-eval'` (Next.js требует), но блокирует HTTP, чужие iframe, object/embed, base hijack. `814c35b` |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001] Имплементация «Soft Color Lifestyle» — ВСЕ 10 ЗАДАЧ ЗАКРЫТЫ (05.05.2026)
+
+**Spec:** `docs/superpowers/specs/2026-05-05-buyer-design-differentiation-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-05-buyer-design-soft-color-lifestyle.md`
+**Откуда стартовать:** **Task 1 — Foundation tokens + Inter font**. Через `superpowers:subagent-driven-development` (рекомендовано) или `executing-plans`.
+
+10 задач (все только в `apps/web-buyer`, бэкенд / hooks / types не трогаются):
+
+- [x] **Task 1** — Foundation: переписать `lib/styles.ts` + `app/globals.css` :root tokens + заменить Geist→Inter в `app/layout.tsx` ✅ 05.05.2026
+- [x] **Task 2** — `components/layout/Header.tsx` + `BottomNavBar.tsx` под новую палитру ✅ 05.05.2026 коммит `654f067` (минорно — оба уже мигрированы через alias после Task 1)
+- [x] **Task 3** — Storefront: `(shop)/page.tsx` + `(shop)/[slug]/page.tsx` + `components/home/RecentStores.tsx` (hero 6fr:4fr photo:color, sections с editorial labels, categories chip-row) ✅ 05.05.2026 коммит `b2884bb` (storefront уже сделан ранее, polish для homepage+RecentStores)
+- [x] **Task 4** — `components/store/ProductCard.tsx` + `ProductsWithSearch.tsx` + `CategoryAttributeFilters.tsx` (borderless карточка, ♡ overlay 32px, цена тёмная) ✅ 05.05.2026
+- [x] **Task 5** — `(shop)/[slug]/products/[id]/page.tsx` (gallery+info split desktop, sticky bottom CTA mobile, variant picker) ✅ 05.05.2026 коммит `756cf3b`
+- [x] **Task 6** — `(minimal)/cart/page.tsx` (store-strip, free-delivery progress, OOS-fallback) ✅ 05.05.2026
+- [x] **Task 7** — `(minimal)/checkout/page.tsx` (3-step single-screen, address-cards, payment с «Online · Скоро») ✅ 05.05.2026 коммит `e20a1c2`
+- [x] **Task 8** — `(shop)/chats/page.tsx` + `components/chat/ChatComposerModal.tsx` (brand-color avatars, pinned product context, bubbles) ✅ 05.05.2026 коммит `7ed9eb2`
+- [x] **Task 9** — `(shop)/orders/page.tsx` + `(shop)/orders/[id]/page.tsx` (status hero + timeline) ✅ 05.05.2026 коммит `c117723`
+- [x] **Task 10** — `(shop)/profile/page.tsx` + `wishlist/page.tsx` + `notifications/page.tsx` (stats row, editorial labels, menu sections) ✅ 05.05.2026 коммит `0ba9561`
+
+**Verification:** `pnpm build` локально ЗАПРЕЩЁН (ПК зависает). Каждая задача завершается push'ем в `web-buyer` ветку → проверка на Railway URL.
+
+**Известные ограничения:**
+- Free-delivery threshold захардкожен константой в Task 6 — реальное значение позже
+- `Store.brandColor` поля может ещё не быть в backend → Task 8 фолбэчит на терракоту через `?? colors.brand`
+- Эмодзи как иконки сейчас, замена на Lucide — postMVP
+
+---
+
+### Старое (до Session 46)
 
 | ID | Важность | Кратко |
 |----|----------|--------|

@@ -122,12 +122,16 @@ export default function EditProductPage() {
     setTimeout(() => setToast(''), 2500);
   };
 
-  const load = useCallback(async () => {
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const catsAbortRef = useRef<AbortController | null>(null);
+
+  const load = useCallback(async (signal?: AbortSignal) => {
     if (!id) return;
     setLoading(true);
     setLoadError('');
     try {
-      const p = await api<Product>(`/seller/products/${id}`);
+      const p = await api<Product>(`/seller/products/${id}`, { signal });
+      if (signal?.aborted) return;
       setProduct(p);
       setTitle(p.title);
       setDescription(p.description ?? '');
@@ -141,25 +145,38 @@ export default function EditProductPage() {
         setStockEdits(initial);
       }
       // Load attributes
-      api<ProductAttr[]>(`/seller/products/${id}/attributes`).then(setAttrs).catch(() => {});
+      api<ProductAttr[]>(`/seller/products/${id}/attributes`, { signal })
+        .then((a) => { if (!signal?.aborted) setAttrs(a); })
+        .catch(() => {});
     } catch {
-      setLoadError('Не удалось загрузить товар');
+      if (!signal?.aborted) setLoadError('Не удалось загрузить товар');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    load();
+    loadAbortRef.current?.abort();
+    const ac = new AbortController();
+    loadAbortRef.current = ac;
+    load(ac.signal);
     tg?.BackButton.show();
     const goBack = () => navigate('/seller/products');
     tg?.BackButton.onClick(goBack);
-    return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
+    return () => { ac.abort(); tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [load, navigate, tg]);
 
   useEffect(() => {
-    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    catsAbortRef.current?.abort();
+    const ac = new AbortController();
+    catsAbortRef.current = ac;
+    api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setCategories(c); })
+      .catch(() => {});
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
+      .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   // Показать ошибку фото переданную из AddProductPage
@@ -238,6 +255,81 @@ export default function EditProductPage() {
     if (!id) return;
     await api(`/seller/products/${id}/attributes/${attrId}`, { method: 'DELETE' }).catch(() => {});
     setAttrs((prev) => prev.filter((a) => a.id !== attrId));
+  };
+
+  // TMA-DYNAMIC-VARIANT-FILTERS-EDIT-001: добавить новый variant в существующую
+  // optionGroup. Если у товара одна группа (Размер) — спрашиваем значение,
+  // создаём ProductOptionValue + ProductVariant.
+  const [newVariantValue, setNewVariantValue] = useState('');
+  const [addingVariant, setAddingVariant] = useState(false);
+  const handleAddVariant = async () => {
+    if (!id || !product) return;
+    const groups = product.optionGroups ?? [];
+    if (groups.length === 0) {
+      showToast('❌ Сначала создайте группу опций (через AddProductPage)');
+      return;
+    }
+    if (groups.length > 1) {
+      showToast('❌ Несколько групп — отредактируйте через AddProductPage');
+      return;
+    }
+    const group = groups[0];
+    const value = newVariantValue.trim().toUpperCase();
+    if (!value) return;
+    if (group.values.some((v) => v.value.toUpperCase() === value)) {
+      showToast('❌ Такой вариант уже существует');
+      return;
+    }
+    setAddingVariant(true);
+    try {
+      const newVal = await api<{ id: string; value: string }>(
+        `/seller/products/${id}/option-groups/${group.id}/values`,
+        { method: 'POST', body: { value, code: value, sortOrder: group.values.length } },
+      );
+      const sku = `${product.title.replace(/[^A-ZА-ЯЁ0-9]/gi, '-').slice(0, 20).toUpperCase()}-${value}`;
+      const newVar = await api<Variant>(
+        `/seller/products/${id}/variants`,
+        { method: 'POST', body: { sku, stockQuantity: 0, optionValueIds: [newVal.id] } },
+      );
+      // Обновляем локальный state — добавляем option-value в группу + новый variant
+      setProduct((prev) =>
+        prev
+          ? {
+              ...prev,
+              optionGroups: prev.optionGroups?.map((g) =>
+                g.id === group.id ? { ...g, values: [...g.values, { id: newVal.id, value: newVal.value }] } : g,
+              ),
+              variants: [...(prev.variants ?? []), newVar],
+            }
+          : prev,
+      );
+      setNewVariantValue('');
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('✅ Вариант добавлен');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Ошибка добавления';
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast(`❌ ${msg}`);
+    } finally {
+      setAddingVariant(false);
+    }
+  };
+
+  const handleDeleteVariant = async (variantId: string) => {
+    if (!id) return;
+    if (!confirm('Удалить вариант? Существующие заказы сохранятся.')) return;
+    try {
+      await api(`/seller/products/${id}/variants/${variantId}`, { method: 'DELETE' });
+      setProduct((prev) =>
+        prev ? { ...prev, variants: prev.variants?.filter((v) => v.id !== variantId) } : prev,
+      );
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('✅ Удалён');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Ошибка удаления';
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast(`❌ ${msg}`);
+    }
   };
 
   const handleSave = async () => {
@@ -489,7 +581,16 @@ export default function EditProductPage() {
         {!loading && loadError && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{loadError}</p>
-            <Button variant="ghost" className="mt-3" onClick={load}>Повторить</Button>
+            <Button
+              variant="ghost"
+              className="mt-3"
+              onClick={() => {
+                loadAbortRef.current?.abort();
+                const ac = new AbortController();
+                loadAbortRef.current = ac;
+                load(ac.signal);
+              }}
+            >Повторить</Button>
           </GlassCard>
         )}
 
@@ -917,9 +1018,59 @@ export default function EditProductPage() {
                       >
                         {stockSaving === v.id ? '...' : '✓'}
                       </button>
+                      {/* TMA-DYNAMIC-VARIANT-FILTERS-EDIT-001: удалить вариант */}
+                      {(product.variants?.length ?? 0) > 1 && (
+                        <button
+                          onClick={() => handleDeleteVariant(v.id)}
+                          aria-label="Удалить вариант"
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 10,
+                            border: '1px solid rgba(239,68,68,0.25)',
+                            background: 'rgba(239,68,68,0.10)',
+                            color: '#fca5a5',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   );
                 })}
+
+                {/* Добавить новый вариант (только если у товара ровно 1 optionGroup) */}
+                {(product.optionGroups?.length ?? 0) === 1 && (
+                  <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                    <input
+                      value={newVariantValue}
+                      onChange={(e) => setNewVariantValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddVariant()}
+                      placeholder={`Новый ${product.optionGroups?.[0]?.name?.toLowerCase() ?? 'вариант'} (XXL, 47 и т.д.)`}
+                      style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+                    />
+                    <button
+                      onClick={handleAddVariant}
+                      disabled={addingVariant || !newVariantValue.trim()}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(167,139,250,0.30)',
+                        background: 'rgba(167,139,250,0.12)',
+                        color: '#A855F7',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: addingVariant ? 'wait' : 'pointer',
+                        opacity: !newVariantValue.trim() ? 0.4 : 1,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {addingVariant ? '...' : '➕ Добавить'}
+                    </button>
+                  </div>
+                )}
               </GlassCard>
             )}
 

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -90,26 +90,45 @@ export default function SellerStorePage() {
     }
   };
 
-  useEffect(() => {
+  const storeAbortRef = useRef<AbortController | null>(null);
+  const catsAbortRef = useRef<AbortController | null>(null);
+
+  const loadStore = useCallback((signal: AbortSignal) => {
     setLoading(true);
     setStore(null);
     setFetchError('');
-    api<Store>('/seller/store')
+    api<Store>('/seller/store', { signal })
       .then((s) => {
+        if (signal.aborted) return;
         setStore(s);
         setName(s.name);
         setDescription(s.description ?? '');
       })
       .catch((err: unknown) => {
+        if (signal.aborted) return;
         if (!(err instanceof ApiError && err.status === 404)) {
           setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.');
         }
       })
-      .finally(() => setLoading(false));
-  }, [authVersion]);
+      .finally(() => { if (!signal.aborted) setLoading(false); });
+  }, []);
 
   useEffect(() => {
-    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
+    storeAbortRef.current?.abort();
+    const ac = new AbortController();
+    storeAbortRef.current = ac;
+    loadStore(ac.signal);
+    return () => ac.abort();
+  }, [authVersion, loadStore]);
+
+  useEffect(() => {
+    catsAbortRef.current?.abort();
+    const ac = new AbortController();
+    catsAbortRef.current = ac;
+    api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
+      .then((cats) => { if (!ac.signal.aborted) setCategories(cats); })
+      .catch(() => {});
+    return () => ac.abort();
   }, [authVersion]);
 
   const save = async () => {
@@ -203,7 +222,12 @@ export default function SellerStorePage() {
           <span style={{ fontSize: 36 }}>⚠️</span>
           <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 14 }}>{fetchError}</p>
           <button
-            onClick={() => { setFetchError(''); setLoading(true); api<Store>('/seller/store').then((s) => { setStore(s); setName(s.name); setDescription(s.description ?? ''); }).catch((err: unknown) => { if (!(err instanceof ApiError && err.status === 404)) setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.'); }).finally(() => setLoading(false)); }}
+            onClick={() => {
+              storeAbortRef.current?.abort();
+              const ac = new AbortController();
+              storeAbortRef.current = ac;
+              loadStore(ac.signal);
+            }}
             style={{ padding: '8px 20px', borderRadius: 12, background: 'rgba(168,85,247,0.18)', color: '#A855F7', fontSize: 13, fontWeight: 600, border: '1px solid rgba(168,85,247,0.3)' }}
           >
             Попробовать снова

@@ -1,5 +1,78 @@
 # DONE — savdo-builder
 
+## Chat upgrade + UI polish (06.05.2026)
+
+### ✅ [UX-002] Unread badge на иконке чата (BottomNav + Sidebar)
+- Backend: `GET /chat/unread-count` (use-case `get-unread-count.use-case.ts`).
+- Frontend: `apps/tma/src/lib/chatUnread.ts` — pub/sub + polling 30s, `BottomNav`/`Sidebar` подписаны.
+- Invalidate после mark-as-read в обоих ChatPage.
+- Коммит `8bc9a61`.
+
+### ✅ [UX-003] Admin: toast после удаления треда
+- `apps/admin/src/pages/ChatsPage.tsx:72` — `toast.success('Диалог удалён')`.
+
+### ✅ [FEAT-002] Фото в чате (image messages)
+- Backend: `chat_photo` в ALLOWED_PURPOSES, `mediaId` в SendMessageDto, `mediaUrl` в socket payload.
+- Frontend: 📎 кнопка + sendPhoto в обоих ChatPage, рендер `<img>` в bubble (max-height 320px).
+
+### ✅ [Phase 1.4] Edit message + «изменено» метка
+- Backend: `PATCH /chat/threads/:threadId/messages/:msgId` (15-мин окно, author-only) → emit `chat:message:edited`.
+- Frontend: long-press menu → Edit, edit banner, метка `· изменено` в bubble.
+
+### ✅ [Phase 1.5] «Сообщение удалено» placeholder
+- Backend: `DELETE /chat/threads/:threadId/messages/:msgId` (soft-delete) → emit `chat:message:deleted`.
+- Frontend: `🗑 Сообщение удалено` italic placeholder в bubble.
+
+### ✅ [Phase 2.1] Reply (цитирование сообщений)
+- Backend: `parentMessageId` в SendMessageDto + include parent в payload.
+- Frontend: long-press → Reply → quote-banner над input → quote-block в bubble (тонкая фиолетовая полоса слева).
+
+### ✅ [Phase 1.2] Silent fail на загрузке чатов → toast
+- `loadThreads()` теперь показывает toast «❌ Не удалось загрузить чаты» + кнопка «↻ Повторить».
+
+### ✅ [Phase 1.3] Buyer profile auto-create — soft 0 вместо 422
+- `chat.controller.ts::resolveParticipant()` — soft-резолв: возвращает `undefined` для buyer/seller без профиля → `list-my-threads` отдаёт `[]`.
+
+### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
+- `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
+
+### ✅ [UX-004] Admin bundle code splitting — main 903КБ → 51КБ
+- `apps/admin/src/App.tsx` — все 23 страницы (кроме LoginPage) обёрнуты в `React.lazy()` + `<Suspense fallback="Загрузка…">`.
+- `apps/admin/vite.config.ts` manualChunks расширены: `vendor-charts` (recharts/d3 — 376КБ, грузится только на /analytics), `vendor-mfa` (qrcode/otplib), `vendor-ui` (lucide + sonner + radix).
+- Результат: initial JS = vendor-react (297КБ) + index (51КБ) + страница (4-26КБ); до этого был один монолит ~900КБ.
+- Каждая страница теперь подтягивается по требованию, vendor-charts больше не блокирует первый paint.
+
+### ✅ [UX-008] Socket connection status badge в заголовке чата
+- Новый компонент `apps/tma/src/components/ui/SocketStatusBadge.tsx` — pill «Подключение…» / «Нет связи» (когда connected — ничего не показывает).
+- Подписка на `connect` / `disconnect` / `connect_error` события глобального socket.io клиента.
+- Вставлен в header обоих ChatPage (buyer + seller) рядом со статусом «Открыт/Закрыт».
+
+---
+
+## Sprint cleanup (05.05.2026)
+
+### ✅ [SEC-005] media: защищённый /private/:id для seller_doc
+- **Файлы:** `apps/api/src/modules/media/media.controller.ts`, `apps/api/src/modules/media/use-cases/upload-direct.use-case.ts`
+- **Что сделано:**
+  - upload-direct: для `purpose=seller_doc` сохраняем `visibility=PROTECTED` (раньше всё было PUBLIC).
+  - Новый endpoint `GET /api/v1/media/private/:id` под `@UseGuards(JwtAuthGuard)` — отдаёт PROTECTED файлы только владельцу или ADMIN.
+  - URL в response upload-direct для seller_doc теперь `/api/v1/media/private/:id` (а не `/proxy/:id`).
+- **Why:** документы продавцов раньше были открыты по ID без проверки прав. Теперь даже зная media id посторонний получит 404 — нужен JWT + (owner OR admin).
+
+### ✅ [BUG-FIX] BottomSheet: `z-[9999]flex` → `z-[9999] flex`
+- Линтер съел пробел между Tailwind-utility classes — BottomSheet не рендерился. Поправлено в коммите `20cfcec`.
+
+### ✅ [UX-007] Spinner при отправке сообщения вместо ⏳ эмодзи
+- **Файлы:** `apps/tma/src/pages/buyer/ChatPage.tsx`, `apps/tma/src/pages/seller/ChatPage.tsx`
+- Кнопка ➤ при `sending=true` теперь показывает `<Spinner size={14} />` вместо ⏳ — ровный круговой crescent, без скачка размера.
+
+### ✅ Already-done (closed после re-audit TASK.md)
+- **UX-001** human-readable статусы — `Badge.tsx` уже маппит PENDING→«Обрабатывается», DELIVERED→«Доставлен» и т.д.
+- **UX-005** объяснение «Диалог закрыт» — текст уже отображается в обоих ChatPage.
+- **UX-006** Enter без текста — guard `if (text.trim()) sendMsg()` уже есть в onKeyDown.
+- **BUG-001** colSpan в ChatsPage — admin/ChatsPage.tsx уже `colSpan={6}`.
+- **BUG-002** messages.slice().reverse() — выполняется один раз в `.then()` после fetch, не на каждом рендере. Бага нет.
+
 ## Super-admin UI feature pack (03.05.2026)
 
 Реализовано P1–P7 в `apps/admin/`. Сборка проходит чисто, коммит `5eab85f`, мерж в `admin` ветку запушен на Railway.

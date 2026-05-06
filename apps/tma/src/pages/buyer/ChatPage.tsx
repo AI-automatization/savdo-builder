@@ -2,10 +2,12 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
+import { refreshChatUnread } from '@/lib/chatUnread';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
+import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
 
 interface ChatThread {
@@ -139,7 +141,9 @@ export default function BuyerChatPage() {
         }
         return [...prev, msg];
       });
-      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' }).catch(() => {});
+      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' })
+        .then(() => { void refreshChatUnread(); })
+        .catch(() => {});
     };
 
     const onEdited = (msg: { id: string; text: string; editedAt: string | null }) => {
@@ -344,14 +348,15 @@ export default function BuyerChatPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/buyer/chat', { replace: true })}
+                aria-label="Назад к диалогам"
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
                   background: 'rgba(255,255,255,0.07)',
                   border: '1px solid rgba(255,255,255,0.10)',
                   color: 'rgba(255,255,255,0.70)',
-                  fontSize: 16,
+                  fontSize: 22,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -365,11 +370,15 @@ export default function BuyerChatPage() {
                 <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                   {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
                 </h2>
-                {activeThread && (
-                  <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                    {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {activeThread && (
+                    <span className="text-xs" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
+                      <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
+                      {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                    </span>
+                  )}
+                  <SocketStatusBadge />
+                </div>
               </div>
               {activeThread?.storeSlug && (
                 <button
@@ -394,8 +403,8 @@ export default function BuyerChatPage() {
             )}
             {!msgLoading && messages.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-12">
-                <span style={{ fontSize: 36 }}>💬</span>
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Сообщений пока нет</p>
+                <span aria-hidden="true" style={{ fontSize: 36 }}>💬</span>
+                <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Сообщений пока нет</p>
               </div>
             )}
             {messages.map((m) => (
@@ -602,7 +611,7 @@ export default function BuyerChatPage() {
                     minWidth: 46,
                   }}
                 >
-                  {editingId ? '✓' : (sending ? '⏳' : '➤')}
+                  {editingId ? '✓' : (sending ? <Spinner size={14} /> : '➤')}
                 </button>
               </div>
             </div>
@@ -705,8 +714,8 @@ export default function BuyerChatPage() {
 
       {!loading && !threadsError && threads.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-16">
-          <span style={{ fontSize: 40 }}>💬</span>
-          <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: 14 }}>Диалогов пока нет</p>
+          <span aria-hidden="true" style={{ fontSize: 40 }}>💬</span>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Диалогов пока нет</p>
         </div>
       )}
 
@@ -722,6 +731,7 @@ export default function BuyerChatPage() {
           <div
             className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
             style={{ background: 'rgba(167,139,250,0.15)' }}
+            aria-hidden="true"
           >
             💬
             {(t.unreadCount ?? 0) > 0 && (
@@ -737,12 +747,17 @@ export default function BuyerChatPage() {
             <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
               {threadLabel(t)}
             </p>
-            <p className="text-[11px] truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-              {t.lastMessage ?? (t.status === 'OPEN' ? 'Открыт' : 'Закрыт')}
+            <p className="text-xs truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.50)' }}>
+              {t.lastMessage ?? (
+                <>
+                  <span aria-hidden="true">{t.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
+                  {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                </>
+              )}
             </p>
           </div>
           {t.lastMessageAt && (
-            <span className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
               {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
             </span>
           )}
@@ -768,7 +783,7 @@ export default function BuyerChatPage() {
             border: '1px dashed rgba(255,255,255,0.08)',
           }}
         >
-          <span style={{ fontSize: 56, opacity: 0.35 }}>💬</span>
+          <span aria-hidden="true" style={{ fontSize: 56, opacity: 0.35 }}>💬</span>
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
             Выберите диалог слева
           </p>

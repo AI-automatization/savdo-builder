@@ -1,18 +1,16 @@
-// build: light revamp 2026-04-29
+// build: soft-color-lifestyle 2026-05-05
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "../providers/query-provider";
 import { AuthProvider } from "../lib/auth/context";
+import { ThemeProvider } from "../lib/theme/theme-provider";
+import { ThemeScript } from "../lib/theme/theme-script";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = Inter({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-inter',
+  display: 'swap',
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz';
@@ -47,13 +45,21 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <ThemeScript defaultTheme="system" />
+      </head>
       <body className="min-h-full flex flex-col">
-          <QueryProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </QueryProvider>
-        </body>
+        <QueryProvider>
+          <AuthProvider>
+            <ThemeProvider defaultTheme="system">
+              {children}
+            </ThemeProvider>
+          </AuthProvider>
+        </QueryProvider>
+      </body>
     </html>
   );
 }

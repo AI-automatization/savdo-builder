@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ChatMessage } from '@prisma/client';
 import { JwtPayload } from '../common/decorators/current-user.decorator';
+import { PrismaService } from '../database/prisma.service';
 
 @WebSocketGateway({
   cors: {
@@ -29,6 +30,7 @@ export class ChatGateway implements OnGatewayConnection {
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   handleConnection(client: Socket): void {
@@ -49,17 +51,55 @@ export class ChatGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('join-chat-room')
-  handleJoinChatRoom(
+  async handleJoinChatRoom(
     @MessageBody() data: { threadId: string },
     @ConnectedSocket() client: Socket,
-  ): void {
-    if (!client.data.user) {
+  ): Promise<void> {
+    const user = client.data.user as JwtPayload | undefined;
+    if (!user) {
       client.disconnect(true);
       return;
     }
+    if (!data?.threadId || typeof data.threadId !== 'string') {
+      this.logger.warn(`WS join-chat-room rejected: invalid threadId from user ${user.sub}`);
+      return;
+    }
+
+    // API-WS-AUDIT-001: information leak fix — проверяем что юзер участник
+    // треда. До этого фикса любой авторизованный юзер мог join'нуться в room
+    // зная threadId и получать чужие сообщения (chat:message events).
+    try {
+      const thread = await this.prisma.chatThread.findUnique({
+        where: { id: data.threadId },
+        select: { buyerId: true, sellerId: true },
+      });
+      if (!thread) {
+        this.logger.warn(`WS join-chat-room rejected: thread ${data.threadId} not found`);
+        return;
+      }
+      const userRecord = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { buyer: { select: { id: true } }, seller: { select: { id: true } } },
+      });
+      const isBuyer = !!userRecord?.buyer && thread.buyerId === userRecord.buyer.id;
+      const isSeller = !!userRecord?.seller && thread.sellerId === userRecord.seller.id;
+      if (!isBuyer && !isSeller) {
+        this.logger.warn(
+          `WS join-chat-room rejected: user ${user.sub} not participant of thread ${data.threadId}`,
+        );
+        return;
+      }
+    } catch (err) {
+      this.logger.error(
+        `WS join-chat-room failed for user ${user.sub} thread ${data.threadId}`,
+        err instanceof Error ? err.stack : err,
+      );
+      return;
+    }
+
     const room = `thread:${data.threadId}`;
     client.join(room);
-    this.logger.debug(`Client ${client.id} joined room ${room}`);
+    this.logger.debug(`Client ${client.id} (user ${user.sub}) joined room ${room}`);
   }
 
   @SubscribeMessage('leave-chat-room')

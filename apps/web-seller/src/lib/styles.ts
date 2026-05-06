@@ -1,41 +1,45 @@
 /**
- * Savdo seller — shared visual tokens (Strategy C, Phase 2)
+ * Savdo seller — shared visual tokens.
  *
- * Seller dashboard intentionally moves away from buyer's glass-heavy storefront
- * aesthetic to a denser, scannable surface set: solid backgrounds, solid borders,
- * no blur. Optimised for fast data scanning vs. emotional purchase flow.
+ * Values resolve to CSS variables defined in `apps/web-seller/src/app/globals.css`,
+ * themed via `[data-theme="dark|light"]` on <html>. Every consumer of `colors.X`
+ * automatically reflects the active theme.
  *
- * Buyer remains glass — see apps/web-buyer/src/lib/styles.ts.
- * See docs/design/liquid-authority.md for the broader plan.
+ * Dark values (the original CRM palette) live in `[data-theme="dark"]`.
+ * Light values live in `:root` of the same file.
+ *
+ * If you add a new semantic token: add it BOTH here (as `var(--color-foo)`)
+ * AND in globals.css for both `:root` and `[data-theme="dark"]`.
  */
 
-// ── Raw colour tokens ────────────────────────────────────────────────────────
+// ── Raw colour tokens (resolve via CSS vars) ─────────────────────────────────
 
 export const colors = {
-  // Slate-900 base palette
-  bg:              '#0F172A',  // body / app shell — slate-950
-  surface:         '#1E293B',  // primary card surface — slate-800
-  surfaceMuted:    '#172033',  // sunken / nested panels
-  surfaceElevated: '#293548',  // hover / focus / active row
-  surfaceSunken:   '#0B1120',  // input wells, dim wells
-  divider:         'rgba(148,163,184,0.16)',  // slate-400 @ 16%
-  border:          'rgba(148,163,184,0.20)',  // slate-400 @ 20%
-  borderStrong:    'rgba(148,163,184,0.32)',  // hover / focused
+  // Surface palette
+  bg:              'var(--color-bg)',
+  surface:         'var(--color-surface)',
+  surfaceMuted:    'var(--color-surface-muted)',
+  surfaceElevated: 'var(--color-surface-elevated)',
+  surfaceSunken:   'var(--color-surface-sunken)',
+  divider:         'var(--color-divider)',
+  border:          'var(--color-border)',
+  borderStrong:    'var(--color-border-strong)',
   // Type
-  textPrimary:     '#F1F5F9',  // slate-100
-  textMuted:       '#94A3B8',  // slate-400
-  textDim:         '#64748B',  // slate-500
-  // Accent (used sparingly — primary actions / brand)
-  accent:          '#A78BFA',  // violet-400 — keep as the one bridge to buyer
-  accentMuted:     'rgba(167,139,250,0.14)',
-  accentBorder:    'rgba(167,139,250,0.40)',
-  // Brand wordmark — single shared violet with buyer for "Savdo" logo. Identical
-  // hex in both apps so the brand identity is unified across light & dark themes.
-  brand:           '#7C3AED',  // identical token in buyer styles.ts
+  textPrimary:     'var(--color-text-primary)',
+  textMuted:       'var(--color-text-muted)',
+  textDim:         'var(--color-text-dim)',
+  // Accent
+  accent:          'var(--color-accent)',
+  accentMuted:     'var(--color-accent-muted)',
+  accentBorder:    'var(--color-accent-border)',
+  /** Text colour to use on accent-coloured backgrounds — always white for contrast */
+  accentTextOnBg:  'var(--color-accent-text-on-bg)',
+  // Brand wordmark — single shared violet with buyer for "Savdo" logo
+  brand:           'var(--color-brand)',
   // Semantic
-  success:         '#34D399',  // emerald-400
-  warning:         '#FBBF24',  // amber-400
-  danger:          '#F87171',  // red-400
+  success:         'var(--color-success)',
+  warning:         'var(--color-warning)',
+  danger:          'var(--color-danger)',
 } as const;
 
 // ── Surface presets — drop-in style objects ──────────────────────────────────

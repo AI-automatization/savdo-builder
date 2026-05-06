@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { getCart } from '@/lib/cart';
+import { subscribeToUnread } from '@/lib/notifications';
+import { subscribeToChatUnread } from '@/lib/chatUnread';
 
 interface NavItem {
   path: string;
@@ -36,6 +39,15 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
   const navigate = useNavigate();
   const { tg } = useTelegram();
 
+  // NOTIF-IN-APP-001: общий счётчик in-app уведомлений (статусы заказов,
+  // апдейты магазина и т.п.) — отображается на любой иконке которую сочтём нужным.
+  const [unread, setUnread] = useState(0);
+  useEffect(() => subscribeToUnread(setUnread), []);
+
+  // UX-002: точный счётчик непрочитанных СООБЩЕНИЙ ЧАТА — на иконке «Чат».
+  const [chatUnread, setChatUnread] = useState(0);
+  useEffect(() => subscribeToChatUnread(setChatUnread), []);
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 flex z-50"
@@ -51,7 +63,11 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
     >
       {tabs.map((tab) => {
         const active = isActive(tab, location.pathname);
-        const badgeCount = tab.badge?.() ?? 0;
+        const tabBadge = tab.badge?.() ?? 0;
+        // UX-002: на иконке «Чат» — точный счётчик непрочитанных сообщений
+        // (chatUnread) + общие in-app notifications (unread). На остальных — только tabBadge.
+        const isChatTab = tab.path.endsWith('/chat');
+        const badgeCount = isChatTab ? tabBadge + chatUnread + unread : tabBadge;
 
         return (
           <button
@@ -68,6 +84,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             {/* Icon + badge */}
             <span style={{ position: 'relative', display: 'inline-block' }}>
               <span
+                aria-hidden="true"
                 style={{
                   fontSize: 22,
                   display: 'block',
@@ -108,7 +125,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             <span
               className="text-[10px] font-semibold truncate w-full text-center"
               style={{
-                color: active ? '#A855F7' : 'rgba(255,255,255,0.28)',
+                color: active ? '#A855F7' : 'rgba(255,255,255,0.50)',
                 transition: 'color 0.15s',
                 letterSpacing: '0.01em',
               }}

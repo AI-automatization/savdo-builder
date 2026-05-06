@@ -42,7 +42,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5"
+      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-muted)]"
       style={active ? { background: colors.accentMuted } : {}}
     >
       <div
@@ -52,7 +52,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
         <UserIcon size={16} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate" style={unread > 0 ? { fontWeight: 600 } : undefined}>
+        <p className="text-sm font-medium truncate" style={{ color: colors.textPrimary, ...(unread > 0 ? { fontWeight: 600 } : null) }}>
           {title}
         </p>
         <p className="text-xs truncate" style={{ color: unread > 0 ? colors.textPrimary : colors.textDim }}>
@@ -67,7 +67,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
         )}
         {unread > 0 && (
           <span className="min-w-[18px] h-[18px] px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: colors.accent, color: colors.bg }}>
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -180,7 +180,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
             <UserIcon size={15} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white truncate">{title}</p>
+            <p className="text-sm font-semibold truncate" style={{ color: colors.textPrimary }}>{title}</p>
             <p className="text-[11px] truncate" style={{ color: colors.textDim }}>
               {subtitle ?? (thread.threadType === 'ORDER' ? 'Заказ' : 'Товар')}
             </p>
@@ -213,7 +213,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
       {confirmDeleteMsg && (
         <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.55)' }}>
           <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
-            <p className="text-sm font-semibold text-white">Удалить сообщение?</p>
+            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Удалить сообщение?</p>
             <p className="text-xs" style={{ color: colors.textMuted }}>
               Покупатель увидит «Сообщение удалено» вместо текста.
             </p>
@@ -247,7 +247,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
       {confirmDeleteThread && (
         <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.55)' }}>
           <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
-            <p className="text-sm font-semibold text-white">Удалить этот чат?</p>
+            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Удалить этот чат?</p>
             <p className="text-xs" style={{ color: colors.textMuted }}>
               Чат исчезнет из вашего списка. Покупатель продолжит видеть историю.
             </p>
@@ -307,13 +307,13 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
             <div key={m.id} className={`flex ${isSeller ? 'justify-end' : 'justify-start'} group`}>
               <div className={`relative max-w-[70%] flex items-end gap-1 ${isSeller ? 'flex-row-reverse' : ''}`}>
                 <div
-                  className="px-3.5 py-2.5 rounded-2xl text-sm text-white"
+                  className="px-3.5 py-2.5 rounded-2xl text-sm"
                   style={
                     m.isDeleted
                       ? { background: colors.surfaceMuted, color: colors.textDim, fontStyle: 'italic', borderBottomRightRadius: isSeller ? 4 : 16, borderBottomLeftRadius: isSeller ? 16 : 4 }
                       : isSeller
-                        ? { background: colors.accent, color: colors.bg, borderBottomRightRadius: 4 }
-                        : { ...glassDim, borderBottomLeftRadius: 4 }
+                        ? { background: colors.accent, color: colors.accentTextOnBg, borderBottomRightRadius: 4 }
+                        : { ...glassDim, color: colors.textPrimary, borderBottomLeftRadius: 4 }
                   }
                 >
                   {m.isDeleted ? (
@@ -326,14 +326,14 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                         rows={2}
                         autoFocus
                         className="w-full rounded-lg p-2 text-sm outline-none resize-none"
-                        style={{ background: 'rgba(0,0,0,0.20)', color: colors.bg, border: `1px solid ${colors.bg}` }}
+                        style={{ background: 'rgba(255,255,255,0.18)', color: colors.accentTextOnBg, border: '1px solid rgba(255,255,255,0.32)' }}
                       />
                       <div className="flex gap-2 justify-end">
                         <button
                           type="button"
                           onClick={() => { setEditingId(null); setEditingText(''); }}
                           className="px-2.5 py-1 rounded-md text-[11px] font-semibold"
-                          style={{ background: 'rgba(0,0,0,0.18)', color: colors.bg }}
+                          style={{ background: 'rgba(255,255,255,0.16)', color: colors.accentTextOnBg }}
                         >
                           Отмена
                         </button>
@@ -342,13 +342,13 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                           onClick={saveEdit}
                           disabled={!editingText.trim() || editMessageMutation.isPending}
                           className="px-2.5 py-1 rounded-md text-[11px] font-semibold disabled:opacity-50"
-                          style={{ background: colors.bg, color: colors.accent }}
+                          style={{ background: colors.accentTextOnBg, color: colors.accent }}
                         >
                           {editMessageMutation.isPending ? '...' : 'Сохранить'}
                         </button>
                       </div>
                       {editingId === m.id && editMessageMutation.isError && (
-                        <p className="text-[10px] mt-0.5" style={{ color: colors.bg, opacity: 0.85 }}>
+                        <p className="text-[10px] mt-0.5" style={{ color: colors.accentTextOnBg, opacity: 0.85 }}>
                           {errorText(editMessageMutation.error, 'Не удалось сохранить')}
                         </p>
                       )}
@@ -357,7 +357,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                     <p style={{ whiteSpace: 'pre-wrap' }}>{m.text}</p>
                   )}
                   {!m.isDeleted && !isEditing && (
-                    <p className="text-[10px] mt-1 text-right" style={{ color: isSeller ? 'rgba(0,0,0,0.45)' : colors.textDim }}>
+                    <p className="text-[10px] mt-1 text-right" style={{ color: isSeller ? 'rgba(255,255,255,0.65)' : colors.textDim }}>
                       {m.editedAt && <span className="mr-1">изменено · </span>}
                       {timeLabel(m.createdAt)}
                     </p>
@@ -385,7 +385,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                           <button
                             type="button"
                             onClick={() => startEdit(m.id, m.text)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-white/5"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[var(--color-surface-muted)]"
                             style={{ color: colors.textPrimary }}
                           >
                             <Pencil size={12} /> Редактировать
@@ -395,7 +395,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                           <button
                             type="button"
                             onClick={() => { setConfirmDeleteMsg(m.id); setOpenMenuId(null); }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-white/5"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[var(--color-surface-muted)]"
                             style={{ color: colors.danger }}
                           >
                             <Trash2 size={12} /> Удалить
@@ -424,7 +424,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
           placeholder={thread.status === 'CLOSED' ? 'Чат закрыт' : 'Написать сообщение...'}
           disabled={thread.status === 'CLOSED'}
-          className="flex-1 h-10 px-4 rounded-xl text-sm text-white placeholder-white/25 outline-none disabled:opacity-40"
+          className="flex-1 h-10 px-4 rounded-xl text-sm outline-none disabled:opacity-40 placeholder:opacity-50"
           style={inputStyle}
         />
         <button
@@ -487,7 +487,7 @@ export default function ChatPage() {
       {/* Thread list */}
       <div className="w-72 flex-shrink-0 rounded-2xl overflow-hidden flex flex-col" style={glass}>
         <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
-          <p className="text-sm font-semibold text-white">Чаты</p>
+          <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Чаты</p>
         </div>
         <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: colors.divider }}>
           {isLoading && (

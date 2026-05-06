@@ -2,10 +2,12 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
+import { refreshChatUnread } from '@/lib/chatUnread';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
+import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
 
 interface ChatThread {
@@ -145,7 +147,9 @@ export default function SellerChatPage() {
         }
         return [...prev, msg];
       });
-      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' }).catch(() => {});
+      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' })
+        .then(() => { void refreshChatUnread(); })
+        .catch(() => {});
     };
 
     const onEdited = (msg: { id: string; text: string; editedAt: string | null }) => {
@@ -366,14 +370,15 @@ export default function SellerChatPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setShowBuyerInfo(false); navigate('/seller/chat', { replace: true }); }}
+                aria-label="Назад к диалогам"
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
                   background: 'rgba(255,255,255,0.07)',
                   border: '1px solid rgba(255,255,255,0.10)',
                   color: 'rgba(255,255,255,0.70)',
-                  fontSize: 16,
+                  fontSize: 22,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -390,12 +395,16 @@ export default function SellerChatPage() {
                 <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                   {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
                 </h2>
-                {activeThread && (
-                  <span className="text-[11px]" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-                    {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-                    {activeThread.productTitle && ` · ${activeThread.productTitle}`}
-                  </span>
-                )}
+                <div className="flex items-center gap-2 min-w-0">
+                  {activeThread && (
+                    <span className="text-xs truncate" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
+                      <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
+                      {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                      {activeThread.productTitle && ` · ${activeThread.productTitle}`}
+                    </span>
+                  )}
+                  <SocketStatusBadge />
+                </div>
               </button>
               {activeThread?.status === 'OPEN' && (
                 <button
@@ -421,7 +430,7 @@ export default function SellerChatPage() {
                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
               >
                 <div>
-                  <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>Покупатель</p>
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>Покупатель</p>
                   <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace' }}>
                     {activeThread.buyerPhone}
                   </p>
@@ -447,8 +456,8 @@ export default function SellerChatPage() {
             )}
             {!msgLoading && messages.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-12">
-                <span style={{ fontSize: 36 }}>💬</span>
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Сообщений пока нет</p>
+                <span aria-hidden="true" style={{ fontSize: 36 }}>💬</span>
+                <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Сообщений пока нет</p>
               </div>
             )}
             {messages.map((m) => (
@@ -583,7 +592,7 @@ export default function SellerChatPage() {
                   aria-label={editingId ? 'Сохранить' : 'Отправить'}
                   style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(124,58,237,0.40)', border: '1px solid rgba(124,58,237,0.50)', color: '#fff', fontSize: 18, cursor: 'pointer', opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4, minWidth: 46 }}
                 >
-                  {editingId ? '✓' : (sending ? '⏳' : '➤')}
+                  {editingId ? '✓' : (sending ? <Spinner size={14} /> : '➤')}
                 </button>
               </div>
             </div>
@@ -640,7 +649,7 @@ export default function SellerChatPage() {
 
       {!loading && threadsError && (
         <div className="flex flex-col items-center gap-3 py-16">
-          <span style={{ fontSize: 40 }}>⚠️</span>
+          <span aria-hidden="true" style={{ fontSize: 40 }}>⚠️</span>
           <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Не удалось загрузить чаты</p>
           <button
             onClick={loadThreads}
@@ -686,12 +695,17 @@ export default function SellerChatPage() {
             <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
               {threadLabel(t)}
             </p>
-            <p className="text-[11px] truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.35)' }}>
-              {t.lastMessage ?? (t.status === 'OPEN' ? 'Открыт' : 'Закрыт')}
+            <p className="text-xs truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.50)' }}>
+              {t.lastMessage ?? (
+                <>
+                  <span aria-hidden="true">{t.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
+                  {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                </>
+              )}
             </p>
           </div>
           {t.lastMessageAt && (
-            <span className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
               {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
             </span>
           )}
@@ -717,7 +731,7 @@ export default function SellerChatPage() {
             border: '1px dashed rgba(255,255,255,0.08)',
           }}
         >
-          <span style={{ fontSize: 56, opacity: 0.35 }}>💬</span>
+          <span aria-hidden="true" style={{ fontSize: 56, opacity: 0.35 }}>💬</span>
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
             Выберите диалог слева
           </p>

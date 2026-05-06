@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -72,15 +72,21 @@ export default function SellerSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
 
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    api<SellerProfile>('/seller/me')
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    api<SellerProfile>('/seller/me', { signal: ac.signal })
       .then((p) => {
+        if (ac.signal.aborted) return;
         setProfile(p);
         setFullName(p.fullName ?? '');
         setSellerType(p.sellerType === 'business' ? 'business' : 'individual');
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, []);
 
   const saveProfile = async () => {
