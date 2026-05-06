@@ -37,6 +37,7 @@ import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.
 import { RefundOrderUseCase } from './use-cases/refund-order.use-case';
 import { VerifySellerExtendedUseCase } from './use-cases/verify-seller-extended.use-case';
 import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
+import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-market.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -79,6 +80,7 @@ import { MediaModule } from '../media/media.module';
     RefundOrderUseCase,
     VerifySellerExtendedUseCase,
     MigrateTgMediaToR2UseCase,
+    ActivateSellerOnMarketUseCase,
   ],
 })
 export class AdminModule {}

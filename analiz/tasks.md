@@ -102,7 +102,7 @@
 
 - [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
 
-- [ ] **`TMA-MEDIA-USE-API-URL-001`** — фронт TMA в `EditProductPage.tsx` и `ProductsPage.tsx` использует `getImageUrl(objectKey)` (читает `VITE_R2_PUBLIC_URL`). Должен использовать `product.mediaUrls[0]` напрямую из API response — централизованный source of truth и работает для любого storage backend.
+- [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (ProductsPage) — `seller/ProductsPage.tsx` теперь использует `product.mediaUrls[0]` напрямую от API. Раньше вызывал `getImageUrl(media.objectKey)` БЕЗ mediaId → для `bucket=telegram` возвращалась пустая строка → у продавца все товары были «НЕТ ФОТО» (см. скрин 06.05). EditProductPage уже передавал mediaId — оставлен.
 
 - [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
 
@@ -363,6 +363,28 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 ## 🧊 ЗАМОРОЖЕНО — Монетизация + Payme/Click (Phase 4)
 
 > ❄️ Фриз до открытия бизнес-счёта в Click и Payme. Не брать в работу.
+>
+> **Текущая модель (06.05.2026, решение Полата):** платежей нет, продавец
+> связывается с админом → админ вручную через admin-панель открывает доступ
+> к общему рынку.
+>
+> ✅ **Закрыто 06.05.2026:** `API-MANUAL-SELLER-ACTIVATION-001` — добавлен
+> один endpoint в super-admin, объединяющий 3 шага:
+> - `POST /admin/users/:id/activate-seller-on-market`
+>   body: `{ fullName, sellerType, telegramUsername, storeName, storeCity, telegramContactLink, description?, region?, slug? }`
+>   → создаёт seller-профиль → создаёт магазин → approve → audit log `seller.activated_on_market`.
+>
+> Старые отдельные endpoints тоже работают (для случаев когда нужны шаги по отдельности):
+> - `POST /admin/users/:id/make-seller`
+> - `POST /admin/sellers/:id/create-store`
+> - `POST /admin/stores/:id/approve` / `/suspend` / `/unapprove`
+>
+> Когда придёт время монетизации — добавить subscription модель поверх
+> существующего flow. Все PAY-NNN тикеты ниже остаются как roadmap.
+>
+> **TODO для admin frontend:** добавить кнопку «Активировать продавца на рынке»
+> в `apps/admin/src/pages/UserDetailPage.tsx` (или где сейчас make-seller) —
+> модалка со всеми полями → один POST. Тикет: `ADMIN-MANUAL-ACTIVATION-UI-001`.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`
