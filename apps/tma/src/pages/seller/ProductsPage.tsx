@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
+import { showToast } from '@/components/ui/Toast';
 
 interface ProductImage {
   id: string;
@@ -97,7 +99,12 @@ export default function SellerProductsPage() {
   };
 
   const archiveProduct = async (product: Product) => {
-    if (!window.confirm(`Архивировать «${product.title}»?\n\nТовар исчезнет из магазина, но сохранится в истории заказов.`)) return;
+    const ok = await confirmDialog({
+      title: `Архивировать «${product.title}»?`,
+      body: 'Товар исчезнет из магазина, но сохранится в истории заказов.',
+      confirmText: 'Архивировать',
+    });
+    if (!ok) return;
     setTogglingId(product.id);
     try {
       await api(`/seller/products/${product.id}/status`, {
@@ -110,14 +117,20 @@ export default function SellerProductsPage() {
       );
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
-      window.alert('Не удалось архивировать товар');
+      showToast('Не удалось архивировать товар', 'error');
     } finally {
       setTogglingId(null);
     }
   };
 
   const deleteProduct = async (product: Product) => {
-    if (!window.confirm(`Удалить «${product.title}» навсегда?\n\nЭто действие нельзя отменить.`)) return;
+    const ok = await confirmDialog({
+      title: `Удалить «${product.title}» навсегда?`,
+      body: 'Это действие нельзя отменить.',
+      confirmText: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     setTogglingId(product.id);
     try {
       await api(`/seller/products/${product.id}`, { method: 'DELETE' });
@@ -126,7 +139,7 @@ export default function SellerProductsPage() {
     } catch (err) {
       tg?.HapticFeedback.notificationOccurred('error');
       const msg = err instanceof Error ? err.message : 'Не удалось удалить товар';
-      window.alert(msg);
+      showToast(msg, 'error');
     } finally {
       setTogglingId(null);
     }

@@ -12,9 +12,7 @@
 ## 🔴 P0 — Полат
 
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
-- [ ] **`TMA-CHAT-403-WRITE-001`** — dual-role check на `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`.
-  - Файлы: `apps/api/src/modules/chat/chat.controller.ts` + 5 use-cases в `chat/use-cases/`.
-  - Паттерн: как в `getMessages` после `2b2bca7` — `resolveBothProfileIds` + `isBuyer || isSeller`.
+- [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
 - [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
   - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
   - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
@@ -60,8 +58,8 @@
 ## 🆕 Аудит API security (06.05.2026)
 
 ### 🟠 P1 — для Полата
-- [ ] **`API-WEBHOOK-SECRET-OPTIONAL-001`** — `telegram-webhook.controller.ts:45-46` принимает webhooks без secret token если env пуст. Fail-closed: в production без `TELEGRAM_WEBHOOK_SECRET` обязан throw на startup или возвращать 401.
-- [ ] **`API-MISSING-THROTTLE-001`** — добавить @Throttle на 3 endpoints: `POST /orders` (10/мин), `POST /media/upload-url` (20/мин), `POST /seller/products` (30/мин).
+- [x] **`API-WEBHOOK-SECRET-OPTIONAL-001`** ✅ 06.05.2026 — `telegram-webhook.controller.ts:50-52` fail-closed в production: если `NODE_ENV='production'` и `TELEGRAM_WEBHOOK_SECRET` пуст → возвращает `{ ok:true }` без обработки + лог error.
+- [x] **`API-MISSING-THROTTLE-001`** ✅ 06.05.2026 — `@Throttle` добавлен на: `POST /orders` (10/мин, `orders-create.controller.ts:22`), `POST /media/upload-url` (20/мин, `media.controller.ts:54`), `POST /seller/products` (30/мин, `products.controller.ts:121`).
 
 ### 🟢 P3 — для будущей сессии
 - [ ] **`API-RBAC-AUDIT-001`** — пройтись по всем 19 controllers, проверить что endpoint'ы с @UseGuards(JwtAuthGuard) имеют правильный @Roles. Сейчас могут быть случаи где BUYER может звать SELLER endpoint.
@@ -74,7 +72,7 @@
 - [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `savdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
 
 ### 🟠 P1 — для Полата
-- [ ] **`TMA-NATIVE-CONFIRM-001`** — заменить `window.confirm/alert` на кастомный `<ConfirmModal>`. 5 мест: `seller/ProductsPage.tsx:100,113,120,129`, `seller/StorePage.tsx:173`. Создать новый `components/ui/ConfirmModal.tsx`.
+- [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
 - [ ] **`TMA-LOADING-SKELETONS-001`** — добавить Skeleton-компоненты на 10 страниц где сейчас только Spinner: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer/seller, SettingsPage, StoresPage, WishlistPage, AddProductPage, DashboardPage seller.
 
 ### 🟡 P2 — a11y

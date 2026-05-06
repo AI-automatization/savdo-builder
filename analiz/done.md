@@ -1,5 +1,18 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — TMA: ConfirmModal вместо window.confirm/alert
+
+### ✅ [TMA-NATIVE-CONFIRM-001] Custom ConfirmModal 🟠
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/ConfirmModal.tsx` — новый. Imperative API `confirmDialog(opts) → Promise<boolean>`. ESC/Enter, backdrop close, autoFocus на Confirm, `danger` flag для красной кнопки. Тот же паттерн что у `showToast` — глобальный `CustomEvent`.
+  - `apps/tma/src/components/layout/AppShell.tsx` — `<ConfirmContainer />` замонтирован глобально.
+  - `apps/tma/src/pages/seller/ProductsPage.tsx` — 3 замены: archive confirm, delete confirm + danger=true, archive/delete error alert → showToast.
+  - `apps/tma/src/pages/seller/StorePage.tsx` — 1 замена: deleteCategory confirm + danger=true.
+- **Что сделано:** все 5 `window.confirm/alert` устранены — на desktop Telegram WebApp нативные popup'ы не работают (нет popup window.open), теперь UI согласован.
+- **Также:** баги «нативный диалог сломал юзеру весь WebApp» больше не воспроизводятся.
+
 ## 2026-05-06 (Полат) — Media migration: TG → Supabase
 
 ### ✅ [API-MEDIA-MIGRATION-TG-TO-R2-001] Перенос старых TG-фото в Supabase 🔴
