@@ -17,13 +17,13 @@
   - API: query params в GET /storefront/products
   - TMA: filter sheet снизу
 
-- [ ] [FEAT-004] Seller: возможность инициировать чат с покупателем заказа
-  - API: POST /chat/threads с orderId + buyerId
-  - TMA: кнопка "Написать" на странице заказа продавца
+- [ ] [FEAT-004-FE] Seller инициирует чат — TMA frontend (backend готов: `POST /seller/chat/threads`)
+  - TMA: кнопка «✉ Написать» на странице заказа продавца → modal с textarea
+  - После создания → navigate на `/seller/chat/:id`
 
-- [ ] [FEAT-005] Typing indicator в чате
-  - Socket event: chat:typing { threadId, role }
-  - TMA: "печатает..." под последним сообщением
+- [ ] [FEAT-005-FE] Typing indicator — TMA frontend (backend готов: socket `chat:typing`)
+  - Композер emit'ит `socket.emit('chat:typing', { threadId, isTyping })` на debounced input
+  - В bubble под последним сообщением — «печатает…» с auto-fade 3s
 
 - [ ] [FEAT-006-FE] Seller Analytics dashboard frontend (backend готов: `GET /seller/analytics?from=&to=`)
   - TMA: графики revenue + orders на DashboardPage (recharts или sparkline)

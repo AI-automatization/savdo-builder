@@ -112,6 +112,27 @@ export class ChatGateway implements OnGatewayConnection {
     this.logger.debug(`Client ${client.id} left room ${room}`);
   }
 
+  // FEAT-005: typing indicator. Клиент шлёт `chat:typing` с {threadId, isTyping},
+  // сервер ретранслирует только участникам комнаты (исключая отправителя)
+  // как `chat:typing` с {threadId, role, isTyping}. Не сохраняем в БД — это
+  // эфемерное событие; auto-stop на стороне клиента (3-секундный debounce).
+  @SubscribeMessage('chat:typing')
+  handleTyping(
+    @MessageBody() data: { threadId: string; isTyping: boolean },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const user = client.data.user as JwtPayload | undefined;
+    if (!user || !data?.threadId || typeof data.threadId !== 'string') return;
+    const room = `thread:${data.threadId}`;
+    if (!client.rooms.has(room)) return; // не участник — игнорируем (anti-spoof)
+    const role: 'BUYER' | 'SELLER' = user.role === 'SELLER' ? 'SELLER' : 'BUYER';
+    client.to(room).emit('chat:typing', {
+      threadId: data.threadId,
+      role,
+      isTyping: !!data.isTyping,
+    });
+  }
+
   emitChatMessage(message: ChatMessage & { mediaUrl?: string | null; parentMessage?: unknown }, senderRole: 'BUYER' | 'SELLER'): void {
     const payload = {
       id: message.id,

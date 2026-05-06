@@ -36,6 +36,17 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+### ✅ [FEAT-004 backend] Seller инициирует чат с buyer заказа
+- `POST /seller/chat/threads` — `@Roles('SELLER')`, throttle 10/min.
+- Новый use-case `CreateSellerThreadUseCase`: проверяет `order.sellerId === seller.id`, идемпотентно переиспользует существующий тред для пары (buyer, order), пропускает первое сообщение через `SendMessageUseCase` (получает socket emit + TG push покупателю).
+- 422 если order без buyerId (guest checkout) — нечего открывать.
+- Frontend FEAT-004-FE — кнопка «✉ Написать» на странице заказа продавца → modal.
+
+### ✅ [FEAT-005 backend] Typing indicator socket event
+- `chat.gateway.ts` принимает `chat:typing { threadId, isTyping }` и ретранслирует в комнату `thread:${id}` всем кроме отправителя как `chat:typing { threadId, role, isTyping }`.
+- Anti-spoof: emit игнорируется если client не в комнате (т.е. не прошёл `join-chat-room` с проверкой участника).
+- Без БД-записи — эфемерное событие, auto-stop через клиентский debounce (3s).
+
 ### ✅ [FEAT-006 backend] Seller Analytics с period-фильтром
 - `GET /seller/analytics?from=&to=` — `@Roles('SELLER')`. Default период = 30 дней. Cap 90 дней (BadRequest при превышении).
 - Новый use-case `GetSellerAnalyticsUseCase` агрегирует Order + OrderItem из БД:

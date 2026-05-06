@@ -8,6 +8,42 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-06 [AUDIT-ADMIN-2026-05-06] Admin (RBAC + MFA + Refund) аудит
+
+- **Статус:** 🟡 Audit-only. 43 frontend файла, 2 controller'а (admin + super-admin), все use-cases от параллельной сессии.
+- **🟢 Что хорошо:**
+  - 0 TS errors в admin-модулях.
+  - Все 2 admin-controller'а имеют @UseGuards(JwtAuthGuard, RolesGuard).
+  - RBAC через `AdminUser.adminRole` (super_admin/admin/moderator/support/finance/read_only) + `isSuperadmin`.
+  - MFA TOTP реализован — secret/QR generation/verify через otplib v12.
+- **🔴 P0 — MFA bypass:**
+  - **`API-MFA-NOT-ENFORCED-001`**: MFA verification работает только при setup. После login admin получает обычный JWT (`/auth/verify-otp`). **Ни один admin endpoint не требует `mfaVerified` claim в токене**. Если admin включил MFA — это лишь cosmetic, реально не защищает. Атакер с украденным admin JWT может всё делать.
+  - Решение: JWT должен иметь `mfaPending: boolean` или `mfaVerifiedAt`. После login если `admin.mfaEnabled` — выдавать temporary токен (e.g. 5 мин TTL, scope=`mfa-challenge`). Полный токен — только после `/admin/auth/mfa/login` с TOTP. Все admin endpoints reject если token scope=`mfa-challenge`.
+- **🟠 P1:**
+  - `API-RBAC-MICRO-PERMISSIONS-001`: AdminAuthUseCase упоминает permissions matrix (`super_admin: ['*']`, `admin: ['user:*', ...]`), но на endpoint level проверки не видно — все admin endpoints доступны любому AdminUser с любой ролью. Должен быть decorator `@AdminPermission('user:write')` на каждом sensitive endpoint.
+- **Не аудировано (XL — отдельная сессия):**
+  - 43 frontend файла admin (кnopки/формы) — UI consistency.
+  - Audit log integrity (все action пишут в audit_log?).
+  - Impersonation flow (token swap безопасный?).
+
+---
+
+## 2026-05-06 [AUDIT-WEB-SELLER-2026-05-06] Web-seller аудит
+
+- **Статус:** 🟡 Audit-only. Зона Азима, мне записать findings.
+- **🟢 Что хорошо:**
+  - 0 `window.alert`/`window.confirm` (лучше чем TMA где 5 мест).
+  - 0 silent `.catch(() => {})` (лучше чем TMA).
+  - Большинство preview URL используют `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` (graceful fallback).
+- **🟠 P1 для Азима:**
+  - **WEB-SELLER-HARDCODED-DOMAIN-001:** 3 места с прямым хардкодом `savdo.uz` без env fallback:
+    - `app/(dashboard)/layout.tsx:127` — sidebar показывает `savdo.uz/${store.slug}`. Если домен ещё не на проде — юзер видит несуществующую ссылку.
+    - `app/(dashboard)/layout.tsx:236` — `navigator.clipboard.writeText('https://savdo.uz/${store.slug}')`. Юзер копирует мёртвую ссылку.
+    - `app/(dashboard)/profile/page.tsx:49` — `storeUrl = 'https://savdo.uz/${store.slug}'`.
+  - Решение: использовать `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` везде (как уже сделано в dashboard/products). Или вынести в общий `lib/buyer-url.ts` helper.
+
+---
+
 ## 2026-05-06 [AUDIT-WEB-BUYER-API-CONTRACT-2026-05-06] Web-buyer ↔ API контракт-checkup
 
 - **Статус:** 🟡 1 баг закрыт, остальной web-buyer аудит уже сделан 5 мая (4 параллельных агента, 25 проблем). Это зона Азима — не повторяю.
