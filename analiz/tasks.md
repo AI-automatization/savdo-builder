@@ -20,8 +20,7 @@
 ## 🟠 P1 — Полат
 
 - [ ] **`TMA-SELECT-CUSTOM-001`** — портировать `apps/web-seller/src/components/select.tsx` в `apps/tma/src/components/ui/Select.tsx`. Применить везде где `<select>` (AddProductPage, EditProductPage, SettingsPage seller).
-- [ ] **`TMA-CROPPER-UX-001`** — большая видимая «✕ Отменить» в шапке кропера, `zIndex: 9999`, кнопка «➕ Добавить ещё фото» в AddProductPage / EditProductPage.
-  - Файлы: `apps/tma/src/components/ui/ImageCropper.tsx` + `apps/tma/src/pages/seller/{AddProductPage,EditProductPage}.tsx`.
+- [x] **`TMA-CROPPER-UX-001`** ✅ 06.05.2026 — `ImageCropper` имеет zIndex 9999, видимый красный «✕ Отменить» 44pt в header слева, заголовок «Кадрировать фото» по центру. AddProductPage показывает «➕ Добавить ещё фото» когда `photoPreviews.length > 0`, EditProductPage — кнопка «+ Добавить» в шапке секции «Фото товара» всегда видна.
 - [ ] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** — динамические опции товара из `CategoryFilter` по выбранной категории. Заменить хардкод-toggle «Товар с размерами».
   - Endpoint: `GET /storefront/categories/:slug/filters` (уже работает).
   - Поведение: SELECT/MULTI_SELECT с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
@@ -34,7 +33,7 @@
 - [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
 - [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
 - [x] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA. ✅ Закрыто в `WEB-TMA-SELLER-PERF-001` (8 из 9 файлов; ChatPage пропущен из-за конфликта с `TMA-DESIGN-P0P1-001`). См. `analiz/done.md` 2026-05-04.
-- [ ] **`TMA-SELLER-CHAT-PERF-001`** — после мёрджа `TMA-DESIGN-P0P1-001` добавить AbortController в `apps/tma/src/pages/seller/ChatPage.tsx` (loadThreads + load messages useEffect). Pattern — как в DashboardPage/SettingsPage.
+- [x] **`TMA-SELLER-CHAT-PERF-001`** ✅ 06.05.2026 — добавлены AbortController в loadThreads (threadsAbortRef) + load messages useEffect (messagesAbortRef) в `seller/ChatPage.tsx`. Cleanup на unmount + при смене threadId. AbortError игнорируется в catch.
 
 ## 🟢 P3 — после спринта
 
