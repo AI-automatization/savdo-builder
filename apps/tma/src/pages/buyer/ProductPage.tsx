@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { WishlistButton } from '@/components/ui/WishlistButton';
+import { ProductReviews } from '@/components/reviews/ProductReviews';
 import { glass } from '@/lib/styles';
 import {
   findVariantBySelection,
@@ -41,6 +42,9 @@ interface Product {
   attributes?: ProductAttribute[];
   store?: { name: string; slug: string };
   globalCategory?: { id: string; nameRu: string } | null;
+  // FEAT-008: денормализованные агрегаты отзывов
+  avgRating?: number | string | null;
+  reviewCount?: number;
 }
 
 export default function ProductPage() {
@@ -484,6 +488,13 @@ export default function ProductPage() {
         >
           💬 {contacting ? 'Открываем чат...' : 'Задать вопрос продавцу'}
         </button>
+
+        {/* FEAT-008: отзывы */}
+        <ProductReviews
+          productId={product.id}
+          initialAvg={product.avgRating != null ? Number(product.avgRating) : null}
+          initialCount={product.reviewCount}
+        />
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Sticker } from '@/components/ui/Sticker';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { SellerAnalyticsCard } from '@/components/seller/SellerAnalyticsCard';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 function GearIcon() {
@@ -238,6 +239,9 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 28 }}>🏪</span> Мой магазин
                 </button>
               </div>
+
+              {/* FEAT-006-FE: analytics dashboard */}
+              <SellerAnalyticsCard />
             </div>
 
             {/* Right column — recent orders */}
@@ -310,6 +314,9 @@ export default function DashboardPage() {
                 <span>🏪</span> Мой магазин
               </button>
             </div>
+
+            {/* FEAT-006-FE: analytics dashboard */}
+            <SellerAnalyticsCard />
 
             {ordersList}
           </>

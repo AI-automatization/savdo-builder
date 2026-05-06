@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
 import { refreshChatUnread } from '@/lib/chatUnread';
+import { useChatTyping } from '@/lib/useChatTyping';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
@@ -76,6 +77,9 @@ export default function BuyerChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // FEAT-005-FE: typing indicator
+  const { isOtherTyping, emitTyping } = useChatTyping(threadId ?? null, 'BUYER');
 
   // ── Back button ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -487,6 +491,16 @@ export default function BuyerChatPage() {
                 </span>
               </div>
             ))}
+            {isOtherTyping && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 self-start rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.06)', maxWidth: 100 }}
+                aria-live="polite"
+              >
+                <span className="typing-dot" style={{ animationDelay: '0ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '180ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '360ms' }} />
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
 
@@ -572,13 +586,21 @@ export default function BuyerChatPage() {
                 )}
                 <input
                   value={editingId ? editText : text}
-                  onChange={(e) => editingId ? setEditText(e.target.value) : setText(e.target.value)}
+                  onChange={(e) => {
+                    if (editingId) {
+                      setEditText(e.target.value);
+                    } else {
+                      setText(e.target.value);
+                      if (e.target.value.trim()) emitTyping(true);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (editingId) {
                         if (editText.trim()) submitEdit();
                       } else if (text.trim()) {
+                        emitTyping(false);
                         sendMsg();
                       }
                     }
@@ -596,7 +618,7 @@ export default function BuyerChatPage() {
                   }}
                 />
                 <button
-                  onClick={editingId ? submitEdit : sendMsg}
+                  onClick={() => { if (!editingId) emitTyping(false); (editingId ? submitEdit : sendMsg)(); }}
                   disabled={editingId ? !editText.trim() : (!text.trim() || sending)}
                   aria-label={editingId ? 'Сохранить' : 'Отправить сообщение'}
                   style={{
