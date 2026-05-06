@@ -44,6 +44,21 @@
 - [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
 - [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
 
+## 🆕 Аудит TMA (06.05.2026) — UI/UX + functional
+
+### 🔴 P0 (исправлено)
+- [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `savdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
+
+### 🟠 P1 — для Полата
+- [ ] **`TMA-NATIVE-CONFIRM-001`** — заменить `window.confirm/alert` на кастомный `<ConfirmModal>`. 5 мест: `seller/ProductsPage.tsx:100,113,120,129`, `seller/StorePage.tsx:173`. Создать новый `components/ui/ConfirmModal.tsx`.
+- [ ] **`TMA-LOADING-SKELETONS-001`** — добавить Skeleton-компоненты на 10 страниц где сейчас только Spinner: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer/seller, SettingsPage, StoresPage, WishlistPage, AddProductPage, DashboardPage seller.
+
+### 🟡 P2 — a11y
+- [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
+- [ ] **`TMA-SILENT-ERROR-CATCHES-001`** — 10 мест с `.catch(() => {})` без showToast. Юзер не понимает почему пусто. Файлы в `analiz/logs.md AUDIT-TMA-2026-05-06`.
+
+---
+
 ## 🆕 Аудит платформы (06.05.2026, Полат) — найденные проблемы
 
 ### 🔴 P0 — для Полата (apps/api + миграция данных)

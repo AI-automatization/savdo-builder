@@ -8,6 +8,27 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-06 [AUDIT-TMA-2026-05-06] TMA полный аудит (UI/UX + a11y + functional)
+
+- **Статус:** 🟡 Audit с 1 фиксом, остальное в `analiz/tasks.md`. 19 pages просканировано.
+- **Метод:** grep по анти-паттернам, ручной просмотр findings.
+- **🔴 Найдено критичное (исправлено сейчас):**
+  - **TMA-PROFILE-LINK-PRETTIFY-001** ✅: `seller/ProfilePage.tsx:98` хардкод `savdo.uz/{slug}` (тот же баг что был на buyer/StorePage). Заменён на webStoreUrl helper + кнопка «↗ Перейти на сайт».
+- **🟠 P1 в backlog (analiz/tasks.md):**
+  - **TMA-NATIVE-CONFIRM-001:** `seller/ProductsPage.tsx` использует `window.confirm/alert` (5 мест). В Telegram WebView системный popup → выглядит чужеродно, нет haptic. Заменить на кастомный `<ConfirmModal>` (новый компонент в `components/ui/`).
+    - Lines: ProductsPage:100, 113, 120, 129; StorePage seller:173.
+  - **TMA-LOADING-SKELETONS-001:** 10 pages используют только Spinner без Skeleton: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer, SettingsPage buyer, StoresPage, WishlistPage, AddProductPage, DashboardPage seller. Для каждой добавить SkeletonCard / SkeletonList.
+- **🟡 P2 (a11y, не блокеры):**
+  - **TMA-A11Y-ROLE-TABINDEX-001:** только 3 из 19 pages имеют `role="button"`/`tabIndex` на `<div onClick>`. Остальные 16 не доступны с клавиатуры. Затрагивает: ProductCard навигация на товар, GlassCard выбор магазина, etc. Не критично для Telegram (mobile-first), но важно для desktop.
+  - **TMA-SILENT-ERROR-CATCHES-001:** 10 мест с `.catch(() => {})` без showToast — silent failure если api падает (юзер не видит почему ничего не загружается). Файлы: ChatPage:146, OrdersPage buyer:117/131, StorePage:56, StoresPage:92, WishlistPage:25, AddProductPage:115/124/406, ChatPage seller:152.
+- **🟢 P3 (хорошо что нет):**
+  - `<img>` без `alt` — 0 (хорошо).
+  - `require()` или old commonjs — 0.
+  - hardcoded savdo.uz — был только 1 (исправлен).
+- **Z-index конфликты потенциальные:** 10 файлов с `position: fixed` (BottomNav, Sidebar, BottomSheet, CategoryModal, ImageCropper, FullscreenButton, AppShell, ChatPage). После fix `z-[9999]flex` (commit 20cfcec) — должно быть стабильно. Но есть вероятность конфликта BottomNav (z:50) с BottomSheet → overlay не должен под нав закрываться.
+
+---
+
 ## 2026-05-05 [WEB-BUYER-AUDIT-2026-05-05] Полный аудит web-buyer (4 параллельных code-reviewer агента)
 
 Сделан после закрытия всего Soft Color Lifestyle plan (10/10 tasks). 4 агента параллельно прошли по слоям: storefront/product, cart/checkout/orders, chat/profile/wishlist/notifications, layout/hooks/lib/api.

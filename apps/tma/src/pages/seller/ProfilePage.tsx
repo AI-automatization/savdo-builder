@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
+import { webStoreUrl } from '@/lib/webUrl';
 
 interface Store {
   id: string;
@@ -95,7 +96,19 @@ export default function SellerProfilePage() {
               <Badge status={store.status} />
             </div>
             <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.88)' }}>{store.name}</p>
-            <p className="text-[11px]" style={{ color: 'rgba(168,85,247,0.70)' }}>savdo.uz/{store.slug}</p>
+            <button
+              onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
+              className="text-[11px] inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+              style={{
+                color: '#A855F7',
+                background: 'rgba(168,85,247,0.10)',
+                border: '1px solid rgba(168,85,247,0.25)',
+                cursor: 'pointer',
+              }}
+              aria-label="Перейти на сайт магазина"
+            >
+              ↗ Перейти на сайт
+            </button>
 
             {store.telegramChannelId ? (
               <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
