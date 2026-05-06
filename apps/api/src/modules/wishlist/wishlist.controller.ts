@@ -9,6 +9,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
@@ -36,6 +37,7 @@ export class WishlistController {
   }
 
   @Post()
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
   @HttpCode(HttpStatus.CREATED)
   async add(
     @CurrentUser() user: JwtPayload,
@@ -51,6 +53,7 @@ export class WishlistController {
   }
 
   @Delete(':productId')
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @CurrentUser() user: JwtPayload,

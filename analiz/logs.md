@@ -8,6 +8,26 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-06 [AUDIT-API-SQL-INJECTION-2026-05-06] SQL injection audit
+
+- **Статус:** ✅ Чисто.
+- **Что проверено:** все вхождения `$queryRaw`/`$executeRaw`/`*Unsafe` в `apps/api/src`.
+- **Найдено:** 4 файла используют `$queryRaw` (analytics.repository.ts, get-analytics.use-case.ts ×2 raw queries, get-system-health.use-case.ts SELECT 1, prisma.health.ts SELECT 1).
+- **Все случаи** — tagged template literals (`prisma.$queryRaw\`SELECT ... ${var}\``). Prisma автоматически параметризует значения интерполяции. Безопасно.
+- **0 случаев** `$queryRawUnsafe` или `$executeRawUnsafe` (которые принимают сырую строку и были бы уязвимы).
+- **0 случаев** строковой конкатенации в SQL.
+
+## 2026-05-06 [AUDIT-API-RATE-LIMIT-2026-05-06] Rate limit audit
+
+- **Статус:** 🟡 Глобально OK, добавлены целевые throttle на cart + wishlist.
+- **Глобальный baseline:** `ThrottlerModule.forRoot({ ttl: 60_000, limit: 120 })` + `APP_GUARD = ThrottlerGuard` в `app.module.ts`. Каждый IP — 120 req/min к любому endpoint по умолчанию.
+- **Файлы с tight @Throttle (до аудита):** auth.controller (4), checkout.controller (1), orders-create.controller (1), media.controller (2), chat.controller (3), reviews.controller (1), products.controller (3).
+- **Добавлено в этом аудите:**
+  - `cart.controller.ts` POST /cart/items, PATCH /cart/items/:id — 60/min (anti-spam, OptionalJwtAuthGuard разрешает анонимные).
+  - `wishlist.controller.ts` POST /buyer/wishlist, DELETE /buyer/wishlist/:id — 60/min.
+- **Что ОК без локального throttle:** admin/super-admin (ADMIN role), moderation (ADMIN role), notifications (auth), orders (auth, read-only mostly), categories/sellers/stores (auth+role).
+- **Что НЕ покрыто (OK для MVP):** seller endpoints без локального лимита — global 120/min достаточен; редкие операции (create/update store).
+
 ## 2026-05-06 [AUDIT-ADMIN-2026-05-06] Admin (RBAC + MFA + Refund) аудит
 
 - **Статус:** 🟡 Audit-only. 43 frontend файла, 2 controller'а (admin + super-admin), все use-cases от параллельной сессии.

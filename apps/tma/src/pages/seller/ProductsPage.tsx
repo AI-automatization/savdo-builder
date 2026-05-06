@@ -34,11 +34,13 @@ interface StoreCategory {
 export default function SellerProductsPage() {
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
+  // На мобиле — всегда 2 колонки (как Wildberries/Ozon), даёт ясную картинку,
+  // короткий список 1xN раньше казался ленточным и непонятным.
   const gridCols =
     viewportWidth >= 1536 ? 'grid-cols-5' :
     viewportWidth >= 1280 ? 'grid-cols-4' :
     viewportWidth >= 1024 ? 'grid-cols-3' :
-    viewportWidth >= 768  ? 'grid-cols-2' : '';
+    'grid-cols-2';
   const { authVersion } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -348,95 +350,7 @@ export default function SellerProductsPage() {
           </div>
         )}
 
-        {!loading && filtered.length > 0 && !gridCols && filtered.map((product) => {
-          const thumbUrl = product.mediaUrls?.[0] ?? '';
-          return (
-            <GlassCard
-              key={product.id}
-              className="p-4 flex items-center gap-3 cursor-pointer active:opacity-70"
-              onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-              onPointerEnter={() => {
-                prefetch(`/seller/products/${product.id}`);
-                prefetch(`/seller/products/${product.id}/attributes`);
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-xl shrink-0 overflow-hidden"
-                style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.20)' }}
-              >
-                <ProductImage src={thumbUrl} emptyVariant="thumbnail" hideLabel />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
-                  {product.title}
-                </p>
-                <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>
-                  {price(product)}
-                </p>
-                {typeof product.totalStock === 'number' && (
-                  <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'rgba(255,255,255,0.40)' }}>
-                    {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Badge status={product.status} />
-                {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleStatus(product); }}
-                    disabled={togglingId === product.id}
-                    title={product.status === 'ACTIVE' ? 'Снять с публикации' : 'Опубликовать'}
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: product.status === 'ACTIVE' ? 'rgba(248,113,113,0.15)' : 'rgba(52,211,153,0.15)',
-                      color: product.status === 'ACTIVE' ? '#f87171' : '#34d399',
-                      fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    {togglingId === product.id ? '…' : product.status === 'ACTIVE' ? '⏸' : '▶'}
-                  </button>
-                )}
-                {(product.status === 'ACTIVE' || product.status === 'DRAFT') && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); archiveProduct(product); }}
-                    disabled={togglingId === product.id}
-                    title="Архивировать"
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: 'rgba(251,191,36,0.15)',
-                      color: '#fbbf24', fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    📥
-                  </button>
-                )}
-                {product.status !== 'ACTIVE' && product.status !== 'HIDDEN_BY_ADMIN' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteProduct(product); }}
-                    disabled={togglingId === product.id}
-                    title="Удалить навсегда"
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: 'rgba(248,113,113,0.15)',
-                      color: '#f87171', fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    🗑
-                  </button>
-                )}
-              </div>
-            </GlassCard>
-          );
-        })}
       </div>
-    
+
   );
 }
