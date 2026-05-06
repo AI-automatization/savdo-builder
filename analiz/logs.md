@@ -8,6 +8,37 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-06 [AUDIT-API-SEC-2026-05-06] API security audit (auth, RBAC, throttle, SQL, CORS, secrets)
+
+- **Статус:** 🟡 Audit-only. 19 controllers, ~250 endpoints.
+- **Метод:** grep по анти-паттернам + ручной просмотр критичных мест.
+- **🟢 Что хорошо:**
+  - CORS: regex-callback origin check + credentials:true. Production fail-fast на отсутствии ALLOWED_ORIGINS.
+  - JWT logging: 0 leak (нет log/console с token/secret/password/OTP).
+  - bcrypt rounds = 10 (стандарт, OWASP best practice).
+  - $queryRaw: 4 места, все используют template literals (Prisma escape parameters автоматически — safe).
+  - ThrottlerGuard глобально активен (после c283423). 9 critical endpoints с явным @Throttle.
+  - Helmet + CSP добавлены (через middleware).
+  - SEC-005: private media files JWT-protected.
+- **🟠 P1 (записать в backlog):**
+  - **API-WEBHOOK-SECRET-OPTIONAL-001:** `telegram-webhook.controller.ts:45-46` принимает любой запрос если env `TELEGRAM_WEBHOOK_SECRET` пуст:
+    ```ts
+    if (expected && secretToken !== expected) return { ok: true };
+    ```
+    Должен fail-closed: в production без secret вообще не запускать webhook handler. Атакер мог бы отправлять fake updates → запуск handler от лица любого chatId.
+  - **API-MISSING-THROTTLE-001:** 3 endpoints без @Throttle:
+    - `POST /orders` (orders-create.controller.ts:19) — direct order от TMA. Нужен 10/мин (как /checkout/confirm).
+    - `POST /media/upload-url` (media.controller.ts:52) — presigned URL генерация. Нужен 20/мин.
+    - `POST /seller/products` (products.controller.ts) — создание товара. Нужен 30/мин (anti-spam).
+  - **API-SEC-TG-001-REGRESS:** уже записано в analiz/tasks.md от 06.05. Bot token leak в media proxy redirect.
+- **🟢 Что НЕ найдено (хорошо):**
+  - String interpolation в raw SQL — 0.
+  - Console.log с секретами — 0.
+  - require() в production code — 0 (после otplib downgrade fix).
+  - Endpoints с @UseGuards(JwtAuthGuard) но без @Roles когда требуется — нужен отдельный pass через все controllers (записать как P3 task).
+
+---
+
 ## 2026-05-06 [AUDIT-TMA-2026-05-06] TMA полный аудит (UI/UX + a11y + functional)
 
 - **Статус:** 🟡 Audit с 1 фиксом, остальное в `analiz/tasks.md`. 19 pages просканировано.

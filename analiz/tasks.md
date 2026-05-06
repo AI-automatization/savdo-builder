@@ -44,6 +44,17 @@
 - [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
 - [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
 
+## 🆕 Аудит API security (06.05.2026)
+
+### 🟠 P1 — для Полата
+- [ ] **`API-WEBHOOK-SECRET-OPTIONAL-001`** — `telegram-webhook.controller.ts:45-46` принимает webhooks без secret token если env пуст. Fail-closed: в production без `TELEGRAM_WEBHOOK_SECRET` обязан throw на startup или возвращать 401.
+- [ ] **`API-MISSING-THROTTLE-001`** — добавить @Throttle на 3 endpoints: `POST /orders` (10/мин), `POST /media/upload-url` (20/мин), `POST /seller/products` (30/мин).
+
+### 🟢 P3 — для будущей сессии
+- [ ] **`API-RBAC-AUDIT-001`** — пройтись по всем 19 controllers, проверить что endpoint'ы с @UseGuards(JwtAuthGuard) имеют правильный @Roles. Сейчас могут быть случаи где BUYER может звать SELLER endpoint.
+
+---
+
 ## 🆕 Аудит TMA (06.05.2026) — UI/UX + functional
 
 ### 🔴 P0 (исправлено)
