@@ -98,37 +98,53 @@ export default function SellerChatPage() {
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [navigate, tg, threadId]);
 
-  // ── Load thread list ─────────────────────────────────────────────────────────
+  // ── Load thread list (TMA-SELLER-CHAT-PERF-001: AbortController) ────────────
+  const threadsAbortRef = useRef<AbortController | null>(null);
   const loadThreads = () => {
+    threadsAbortRef.current?.abort();
+    const ac = new AbortController();
+    threadsAbortRef.current = ac;
     setLoading(true);
     setThreadsError(false);
-    api<ChatThread[]>('/chat/threads')
+    api<ChatThread[]>('/chat/threads', { signal: ac.signal })
       .then((data) => {
+        if (ac.signal.aborted) return;
         setThreads(data ?? []);
       })
       .catch((err) => {
+        if (ac.signal.aborted) return;
         setThreadsError(true);
         const msg = err instanceof Error ? err.message : 'Не удалось загрузить чаты';
         showToast(`❌ ${msg}`, 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
   };
-  useEffect(() => { loadThreads(); }, []);
+  useEffect(() => {
+    loadThreads();
+    return () => threadsAbortRef.current?.abort();
+  }, []);
 
   // ── Load messages + connect socket when threadId changes ─────────────────────
+  const messagesAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (!threadId) return;
+
+    messagesAbortRef.current?.abort();
+    const ac = new AbortController();
+    messagesAbortRef.current = ac;
 
     setMsgLoading(true);
     setMessages([]);
     setShowBuyerInfo(false);
 
-    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`)
-      .then((res) => setMessages((res.messages ?? []).slice().reverse()))
-      .catch(() => {
+    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`, { signal: ac.signal })
+      .then((res) => { if (!ac.signal.aborted) setMessages((res.messages ?? []).slice().reverse()); })
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         navigate('/seller/chat', { replace: true });
       })
-      .finally(() => setMsgLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setMsgLoading(false); });
 
     const socket = connectSocket();
     joinRoom(socket, threadId);
@@ -168,6 +184,7 @@ export default function SellerChatPage() {
     socket.on('chat:message:deleted', onDeleted);
 
     return () => {
+      ac.abort();
       socket.emit('leave-chat-room', { threadId });
       socket.off('chat:message', onMessage);
       socket.off('chat:message:edited', onEdited);
