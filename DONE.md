@@ -1,5 +1,43 @@
 # DONE — savdo-builder
 
+## Chat upgrade + UI polish (06.05.2026)
+
+### ✅ [UX-002] Unread badge на иконке чата (BottomNav + Sidebar)
+- Backend: `GET /chat/unread-count` (use-case `get-unread-count.use-case.ts`).
+- Frontend: `apps/tma/src/lib/chatUnread.ts` — pub/sub + polling 30s, `BottomNav`/`Sidebar` подписаны.
+- Invalidate после mark-as-read в обоих ChatPage.
+- Коммит `8bc9a61`.
+
+### ✅ [UX-003] Admin: toast после удаления треда
+- `apps/admin/src/pages/ChatsPage.tsx:72` — `toast.success('Диалог удалён')`.
+
+### ✅ [FEAT-002] Фото в чате (image messages)
+- Backend: `chat_photo` в ALLOWED_PURPOSES, `mediaId` в SendMessageDto, `mediaUrl` в socket payload.
+- Frontend: 📎 кнопка + sendPhoto в обоих ChatPage, рендер `<img>` в bubble (max-height 320px).
+
+### ✅ [Phase 1.4] Edit message + «изменено» метка
+- Backend: `PATCH /chat/threads/:threadId/messages/:msgId` (15-мин окно, author-only) → emit `chat:message:edited`.
+- Frontend: long-press menu → Edit, edit banner, метка `· изменено` в bubble.
+
+### ✅ [Phase 1.5] «Сообщение удалено» placeholder
+- Backend: `DELETE /chat/threads/:threadId/messages/:msgId` (soft-delete) → emit `chat:message:deleted`.
+- Frontend: `🗑 Сообщение удалено` italic placeholder в bubble.
+
+### ✅ [Phase 2.1] Reply (цитирование сообщений)
+- Backend: `parentMessageId` в SendMessageDto + include parent в payload.
+- Frontend: long-press → Reply → quote-banner над input → quote-block в bubble (тонкая фиолетовая полоса слева).
+
+### ✅ [Phase 1.2] Silent fail на загрузке чатов → toast
+- `loadThreads()` теперь показывает toast «❌ Не удалось загрузить чаты» + кнопка «↻ Повторить».
+
+### ✅ [Phase 1.3] Buyer profile auto-create — soft 0 вместо 422
+- `chat.controller.ts::resolveParticipant()` — soft-резолв: возвращает `undefined` для buyer/seller без профиля → `list-my-threads` отдаёт `[]`.
+
+### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
+- `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
+
+---
+
 ## Sprint cleanup (05.05.2026)
 
 ### ✅ [SEC-005] media: защищённый /private/:id для seller_doc
