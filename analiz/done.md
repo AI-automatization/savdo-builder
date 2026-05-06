@@ -1,5 +1,15 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — WS audit + закрытие дыры в OrdersGateway
+
+### ✅ [API-WS-AUDIT-001 / SEC-WS-002] Hardening join-seller-room 🔴
+
+- **Дата:** 06.05.2026
+- **Файл:** `apps/api/src/socket/orders.gateway.ts`
+- **Что найдено:** в `handleJoinSellerRoom` проверка `if (user.storeId && user.storeId !== data.storeId)` пропускала SELLER'ов БЕЗ `storeId` в JWT в любую seller-room. Это leak: чужие `order:new`, `order:status_changed`, `chat:new_message` events.
+- **Что сделано:** обработчик стал async, добавлен fallback на DB-lookup `seller.findUnique().store.id` для проверки владения когда JWT.storeId отсутствует. Добавлена валидация типа `data.storeId` (string). Аналогично — `handleJoinBuyerRoom` теперь валидирует `data.buyerId`.
+- **Что НЕ найдено в ChatGateway:** уже OK — JWT verify + DB-проверка участия треда + anti-spoof через `client.rooms.has(room)` для typing.
+
 ## 2026-05-06 (Полат) — Super-admin: ручная активация продавца на рынке
 
 ### ✅ [API-MANUAL-SELLER-ACTIVATION-001] One-click активация продавца 🟡
