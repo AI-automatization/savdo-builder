@@ -2,6 +2,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
+import { refreshChatUnread } from '@/lib/chatUnread';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
@@ -145,7 +146,9 @@ export default function SellerChatPage() {
         }
         return [...prev, msg];
       });
-      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' }).catch(() => {});
+      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' })
+        .then(() => { void refreshChatUnread(); })
+        .catch(() => {});
     };
 
     const onEdited = (msg: { id: string; text: string; editedAt: string | null }) => {

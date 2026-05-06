@@ -162,6 +162,7 @@ export class MediaController {
       // Был streamToResponse — параллельная сессия удалила. TODO: вернуть
       // стрим через axios pipe, чтобы token не утекал в Location header клиенту.
       const url = await this.tgStorage.getFileUrl(fileId);
+      res.setHeader('Cache-Control', 'private, max-age=600');
       res.redirect(302, url);
       return;
     }
@@ -211,6 +212,7 @@ export class MediaController {
       // Был streamToResponse — параллельная сессия удалила. TODO: вернуть
       // стрим через axios pipe, чтобы token не утекал в Location header клиенту.
       const url = await this.tgStorage.getFileUrl(fileId);
+      res.setHeader('Cache-Control', 'private, max-age=600');
       res.redirect(302, url);
       return;
     }

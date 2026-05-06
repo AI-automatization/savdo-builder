@@ -31,6 +31,7 @@ import { SendMessageUseCase } from './use-cases/send-message.use-case';
 import { GetThreadMessagesUseCase } from './use-cases/get-thread-messages.use-case';
 import { ListMyThreadsUseCase } from './use-cases/list-my-threads.use-case';
 import { ResolveThreadUseCase } from './use-cases/resolve-thread.use-case';
+import { GetUnreadCountUseCase } from './use-cases/get-unread-count.use-case';
 import { ChatGateway } from '../../socket/chat.gateway';
 
 @Controller()
@@ -48,7 +49,17 @@ export class ChatController {
     private readonly listMyThreadsUseCase: ListMyThreadsUseCase,
     private readonly resolveThreadUseCase: ResolveThreadUseCase,
     private readonly chatGateway: ChatGateway,
+    private readonly getUnreadCountUseCase: GetUnreadCountUseCase,
   ) {}
+
+  // GET /api/v1/chat/unread-count — UX-002 badge на иконке чата (polling 30s)
+  // Лёгкий endpoint: возвращает { total, threads } для бейджа на bottom-nav.
+  @Get('chat/unread-count')
+  @Roles('BUYER', 'SELLER')
+  async getUnreadCount(@CurrentUser() user: JwtPayload) {
+    const { buyerId, sellerId } = await this.resolveParticipant(user.sub, user.role);
+    return this.getUnreadCountUseCase.execute(user.role as 'BUYER' | 'SELLER', buyerId, sellerId);
+  }
 
   // GET /api/v1/chat/threads
   @Get('chat/threads')
