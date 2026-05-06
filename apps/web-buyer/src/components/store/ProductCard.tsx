@@ -50,20 +50,14 @@ export default function ProductCard({ product, storeSlug }: Props) {
 
   return (
     <Link href={`/${storeSlug}/products/${product.id}`} className="block group">
-      <div
-        className="rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-active:scale-[0.98]"
-        style={{
-          background: colors.surface,
-          border: `1px solid ${colors.border}`,
-        }}
-      >
+      <div className="overflow-hidden h-full flex flex-col transition-transform duration-150 group-hover:-translate-y-0.5 group-active:scale-[0.98]">
         {/* Image area */}
         <div
-          className="aspect-square relative flex items-center justify-center select-none overflow-hidden"
-          style={{ background: colors.surfaceMuted }}
+          className="aspect-square relative flex items-center justify-center select-none overflow-hidden rounded-md"
+          style={{ background: colors.surfaceSunken }}
         >
           {mediaUrls.length === 0 ? (
-            <ShoppingBag size={32} style={{ color: colors.textDim }} />
+            <ShoppingBag size={32} style={{ color: colors.textMuted }} />
           ) : useCollage ? (
             <CollageGrid urls={mediaUrls} alt={product.title} />
           ) : (
@@ -89,7 +83,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
                   style={{
                     width: i === 0 ? 10 : 5,
                     height: 5,
-                    background: i === 0 ? colors.accent : 'rgba(255,255,255,0.85)',
+                    background: i === 0 ? colors.brand : 'rgba(255,255,255,0.85)',
                     boxShadow: '0 0 4px rgba(0,0,0,0.20)',
                   }}
                 />
@@ -102,9 +96,9 @@ export default function ProductCard({ product, storeSlug }: Props) {
             <div
               className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
               style={{
-                background: colors.surface,
-                color: colors.accent,
-                border: `1px solid ${colors.accentBorder}`,
+                background: colors.brandTextOnBg,
+                color: colors.brand,
+                border: `1px solid ${colors.brandBorder}`,
                 zIndex: 1,
               }}
             >
@@ -121,15 +115,14 @@ export default function ProductCard({ product, storeSlug }: Props) {
             aria-pressed={inWishlist}
             className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
             style={{
-              background: colors.surface,
-              border: `1px solid ${colors.border}`,
-              color: inWishlist ? colors.accent : colors.textMuted,
+              background: 'rgba(255,255,255,0.85)',
+              color: inWishlist ? colors.brand : colors.textBody,
               zIndex: 4,
               opacity: toggleWishlist.isPending ? 0.6 : 1,
             }}
           >
             <Heart
-              size={15}
+              size={16}
               fill={inWishlist ? "currentColor" : "none"}
               strokeWidth={inWishlist ? 0 : 1.75}
             />
@@ -143,7 +136,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
             >
               <span
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
+                style={{ background: colors.brandTextOnBg, color: colors.textBody, border: `1px solid ${colors.border}` }}
               >
                 Нет в наличии
               </span>
@@ -152,15 +145,12 @@ export default function ProductCard({ product, storeSlug }: Props) {
         </div>
 
         {/* Info */}
-        <div className="p-3 flex flex-col gap-1.5 flex-1">
-          <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: colors.textPrimary }}>
+        <div className="pt-2 flex flex-col gap-0.5 flex-1">
+          <p className="text-[12px] md:text-[13px] leading-snug line-clamp-2" style={{ color: colors.textBody }}>
             {product.title}
           </p>
-          <div className="mt-auto">
-            <span className="text-base font-bold" style={{ color: colors.accent }}>
-              {Number(product.basePrice).toLocaleString("ru-RU")}
-            </span>
-            <span className="text-xs ml-1" style={{ color: colors.textMuted }}>сум</span>
+          <div className="text-[13px] font-bold mt-auto" style={{ color: colors.textStrong }}>
+            {Number(product.basePrice).toLocaleString("ru-RU")} <span className="font-normal text-[11px]" style={{ color: colors.textMuted }}>сум</span>
           </div>
         </div>
       </div>
@@ -187,7 +177,7 @@ function CollageGrid({ urls, alt }: { urls: string[]; alt: string }) {
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              <ShoppingBag size={14} style={{ color: colors.textDim }} />
+              <ShoppingBag size={14} style={{ color: colors.textMuted }} />
             </div>
           )}
         </div>

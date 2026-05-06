@@ -10,29 +10,42 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* ── Light (default) ─────────────────────────────────────────────────────── */
-  --color-bg:                #FAFAF7;
+  /* ── Light — Soft Color Lifestyle ─────────────────────────────────────── */
+  /* Neutral base */
+  --color-bg:                #FBF7F0;
   --color-surface:           #FFFFFF;
-  --color-surface-muted:     #F4F4EF;
+  --color-surface-muted:     #FBF7F0;
   --color-surface-elevated:  #FFFFFF;
-  --color-surface-sunken:    #EFEFEA;
-  --color-divider:           rgba(15,17,21,0.06);
-  --color-border:            rgba(15,17,21,0.10);
-  --color-border-strong:     rgba(15,17,21,0.18);
-  --color-text-primary:      #0F1115;
-  --color-text-muted:        #5C6470;
-  --color-text-dim:          #8A93A0;
-  --color-accent:            #7C3AED;
-  --color-accent-hover:      #6D28D9;
-  --color-accent-muted:      rgba(124,58,237,0.10);
-  --color-accent-border:     rgba(124,58,237,0.32);
-  --color-accent-text-on-bg: #FFFFFF;
-  --color-brand:             #7C3AED;
-  --color-success:           #16A34A;
-  --color-warning:           #D97706;
-  --color-danger:            #DC2626;
+  --color-surface-sunken:    #F4EEE0;
+  --color-divider:           #EFE8DA;     /* structural separators (dividers, hr) */
+  --color-border:            #EFE8DA;     /* interactive element edges (inputs, buttons, cards) */
+  --color-border-strong:     #D8CFB8;
+  --color-text-primary:      #1F1A12;
+  --color-text-muted:        #8A7D6A;
+  --color-text-dim:          #B5A88E;
+  --color-text-body:         #3D3525;
+  --color-text-strong:       #1F1A12;
+
+  /* Brand — terracotta default (per-store override planned) */
+  --color-brand:             #7C3F2E;
+  --color-brand-hover:       #6A3526;
+  --color-brand-muted:       rgba(124,63,46,0.06);
+  --color-brand-border:      rgba(124,63,46,0.15);
+  --color-brand-text-on-bg:  #FBF7F0;
+
+  /* Accent — alias for brand to keep existing components working */
+  --color-accent:            var(--color-brand);
+  --color-accent-hover:      var(--color-brand-hover);
+  --color-accent-muted:      var(--color-brand-muted);
+  --color-accent-border:     var(--color-brand-border);
+  --color-accent-text-on-bg: var(--color-brand-text-on-bg);
+
+  /* Semantic */
+  --color-success:           #4A6B45;
+  --color-warning:           #9C7A2E;
+  --color-danger:            #8B3A3A;
   --color-telegram:          #2AABEE;
-  --color-skeleton:          rgba(15,17,21,0.06);
+  --color-skeleton:          #EFE8DA;
 
   color-scheme: light;
 }
@@ -44,8 +57,8 @@
   --color-surface-muted:     #1F1F24;
   --color-surface-elevated:  #232328;
   --color-surface-sunken:    #131316;
-  --color-divider:           rgba(255,255,255,0.06);
-  --color-border:            rgba(255,255,255,0.10);
+  --color-divider:           rgba(255,255,255,0.06);  /* structural separators (dividers, hr) */
+  --color-border:            rgba(255,255,255,0.10);  /* interactive element edges (inputs, buttons, cards) */
   --color-border-strong:     rgba(255,255,255,0.18);
   --color-text-primary:      #F4F4F5;
   --color-text-muted:        #A1A1AA;
@@ -56,6 +69,13 @@
   --color-accent-border:     rgba(139,92,246,0.42);
   --color-accent-text-on-bg: #FFFFFF;
   --color-brand:             #A78BFA;
+  /* New tokens carried over from light system — dark variants */
+  --color-brand-hover:       #BFA8FA;
+  --color-brand-muted:       rgba(167,139,250,0.18);
+  --color-brand-border:      rgba(167,139,250,0.35);
+  --color-brand-text-on-bg:  #0F0F12;
+  --color-text-body:         #D1CFC9;
+  --color-text-strong:       #F4F4F5;
   --color-success:           #22C55E;
   --color-warning:           #FBBF24;
   --color-danger:            #F87171;
@@ -69,15 +89,14 @@
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text-primary);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
 }
 
 body {
   background: var(--color-bg);
-  color: var(--color-text-primary);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  /* Smooth swap when theme changes */
+  color: var(--color-text-body);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
   transition: background-color 200ms ease, color 200ms ease;
 }
 

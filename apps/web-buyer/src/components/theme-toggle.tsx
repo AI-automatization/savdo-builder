@@ -111,13 +111,13 @@ function MenuItem({ icon, label, active, onClick }: { icon: React.ReactNode; lab
       onClick={onClick}
       className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors"
       style={{
-        background: active ? colors.accentMuted : 'transparent',
-        color: active ? colors.accent : colors.textPrimary,
+        background: active ? colors.brandMuted : 'transparent',
+        color: active ? colors.brand : colors.textPrimary,
       }}
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = colors.surfaceMuted; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
     >
-      <span style={{ color: active ? colors.accent : colors.textMuted }}>{icon}</span>
+      <span style={{ color: active ? colors.brand : colors.textMuted }}>{icon}</span>
       <span className="flex-1">{label}</span>
       {active && <span className="text-[10px] font-bold uppercase tracking-wider">●</span>}
     </button>

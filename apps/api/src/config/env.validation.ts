@@ -23,13 +23,16 @@ export const envValidationSchema = Joi.object({
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
 
-  // Storage (R2)
+  // Storage (S3-compatible: Cloudflare R2 / Supabase Storage / AWS S3)
   STORAGE_ENDPOINT: Joi.string().allow('').optional(),
   STORAGE_ACCESS_KEY_ID: Joi.string().allow('').optional(),
   STORAGE_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
   STORAGE_BUCKET_PUBLIC: Joi.string().allow('').optional(),
   STORAGE_BUCKET_PRIVATE: Joi.string().allow('').optional(),
   STORAGE_PUBLIC_URL: Joi.string().allow('').optional(),
+  // SigV4 region. R2 принимает 'auto', Supabase требует реальный регион
+  // (project region из dashboard) — иначе подпись неправильная → 403.
+  STORAGE_REGION: Joi.string().default('us-east-1'),
 
   // Telegram Bot — OTP через Telegram (Eskiz ЗАПРЕЩЁН)
   TELEGRAM_BOT_TOKEN: Joi.string().required(),

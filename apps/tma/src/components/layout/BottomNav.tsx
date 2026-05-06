@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { getCart } from '@/lib/cart';
 import { subscribeToUnread } from '@/lib/notifications';
+import { subscribeToChatUnread } from '@/lib/chatUnread';
 
 interface NavItem {
   path: string;
@@ -38,10 +39,14 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
   const navigate = useNavigate();
   const { tg } = useTelegram();
 
-  // NOTIF-IN-APP-001: unread-count badge на иконку «Чат» (общий счётчик
-  // уведомлений: новые сообщения + статусы заказов + апдейты магазина).
+  // NOTIF-IN-APP-001: общий счётчик in-app уведомлений (статусы заказов,
+  // апдейты магазина и т.п.) — отображается на любой иконке которую сочтём нужным.
   const [unread, setUnread] = useState(0);
   useEffect(() => subscribeToUnread(setUnread), []);
+
+  // UX-002: точный счётчик непрочитанных СООБЩЕНИЙ ЧАТА — на иконке «Чат».
+  const [chatUnread, setChatUnread] = useState(0);
+  useEffect(() => subscribeToChatUnread(setChatUnread), []);
 
   return (
     <nav
@@ -59,9 +64,10 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
       {tabs.map((tab) => {
         const active = isActive(tab, location.pathname);
         const tabBadge = tab.badge?.() ?? 0;
-        // Уведомления добавляются к иконке «Чат» если она есть.
+        // UX-002: на иконке «Чат» — точный счётчик непрочитанных сообщений
+        // (chatUnread) + общие in-app notifications (unread). На остальных — только tabBadge.
         const isChatTab = tab.path.endsWith('/chat');
-        const badgeCount = isChatTab ? tabBadge + unread : tabBadge;
+        const badgeCount = isChatTab ? tabBadge + chatUnread + unread : tabBadge;
 
         return (
           <button

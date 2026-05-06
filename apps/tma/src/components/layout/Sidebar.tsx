@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { subscribeToChatUnread } from '@/lib/chatUnread';
 
 interface NavItem {
   path: string;
@@ -38,6 +40,10 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
   const { user: tgUser, tg } = useTelegram();
   const settingsPath = role === 'SELLER' ? '/seller/settings' : '/buyer/settings';
   const settingsActive = isActive(settingsPath, location.pathname);
+
+  // UX-002: badge unread chat
+  const [chatUnread, setChatUnread] = useState(0);
+  useEffect(() => subscribeToChatUnread(setChatUnread), []);
 
   return (
     <aside
@@ -130,7 +136,20 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
                 {item.icon}
               </span>
               <span style={{ flex: 1 }}>{item.label}</span>
-              {active && (
+              {/* UX-002: chat unread badge */}
+              {item.path.endsWith('/chat') && chatUnread > 0 && (
+                <span style={{
+                  minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
+                  background: 'linear-gradient(135deg, #A855F7, #22D3EE)',
+                  color: '#fff', fontSize: 10, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, boxShadow: '0 0 8px rgba(168,85,247,0.60)',
+                  lineHeight: 1,
+                }}>
+                  {chatUnread > 99 ? '99+' : chatUnread}
+                </span>
+              )}
+              {active && !item.path.endsWith('/chat') && (
                 <span style={{
                   width: 5, height: 5, borderRadius: '50%',
                   background: 'linear-gradient(135deg, #A855F7, #22D3EE)',
