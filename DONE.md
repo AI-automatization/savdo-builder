@@ -36,6 +36,12 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+### ✅ [UX-004] Admin bundle code splitting — main 903КБ → 51КБ
+- `apps/admin/src/App.tsx` — все 23 страницы (кроме LoginPage) обёрнуты в `React.lazy()` + `<Suspense fallback="Загрузка…">`.
+- `apps/admin/vite.config.ts` manualChunks расширены: `vendor-charts` (recharts/d3 — 376КБ, грузится только на /analytics), `vendor-mfa` (qrcode/otplib), `vendor-ui` (lucide + sonner + radix).
+- Результат: initial JS = vendor-react (297КБ) + index (51КБ) + страница (4-26КБ); до этого был один монолит ~900КБ.
+- Каждая страница теперь подтягивается по требованию, vendor-charts больше не блокирует первый paint.
+
 ### ✅ [UX-008] Socket connection status badge в заголовке чата
 - Новый компонент `apps/tma/src/components/ui/SocketStatusBadge.tsx` — pill «Подключение…» / «Нет связи» (когда connected — ничего не показывает).
 - Подписка на `connect` / `disconnect` / `connect_error` события глобального socket.io клиента.

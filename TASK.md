@@ -5,10 +5,6 @@
 
 ## 🟠 Высокие — UX (снижают retention)
 
-- [ ] [UX-004] Admin bundle: code splitting (903KB → ~300KB)
-  - Файл: `apps/admin/vite.config.ts`
-  - Добавить manualChunks по роутам
-
 ---
 
 ## 🟡 Средние — Feature Gaps
