@@ -141,7 +141,11 @@ export default function SellerProductsPage() {
   return (
     
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        {/* На мобиле paddingRight=56px чтобы кнопка «+» не попала под Telegram MainBar (крестик ✕) */}
+        <div
+          className="flex items-center justify-between"
+          style={{ paddingRight: viewportWidth < 768 ? 56 : 0 }}
+        >
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
             Товары{' '}
             {products.length > 0 && (

@@ -51,6 +51,7 @@ export class MediaController {
   /** Generate presigned R2 upload URL (when R2 is configured) */
   @Post('upload-url')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async getUploadUrl(
     @CurrentUser() user: JwtPayload,
     @Body() dto: RequestUploadDto,

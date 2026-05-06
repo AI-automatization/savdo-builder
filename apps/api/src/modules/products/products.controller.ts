@@ -118,6 +118,7 @@ export class ProductsController {
 
   @Post('seller/products')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } }) // anti-spam при создании товаров
   async createMyProduct(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateProductDto,

@@ -1,22 +1,13 @@
 # TASK — savdo-builder
-> Обновлено: 05.05.2026 | Источник: UI/UX + Security Audit
+> Обновлено: 06.05.2026 | Источник: UI/UX + Security Audit
 
 ---
 
 ## 🟠 Высокие — UX (снижают retention)
 
-- [ ] [UX-002] Unread badge на иконке чата в TMA (buyer + seller)
-  - Файл: `apps/tma/src/components/layout/AppShell.tsx` (нижний nav)
-  - Нужен: API endpoint GET /chat/threads/unread-count + socket event
-
-- [ ] [UX-003] Admin: toast после удаления треда
-  - Файл: `apps/admin/src/pages/ChatsPage.tsx:72`
-
 - [ ] [UX-004] Admin bundle: code splitting (903KB → ~300KB)
   - Файл: `apps/admin/vite.config.ts`
   - Добавить manualChunks по роутам
-
-- [ ] [UX-008] Socket connection status badge в заголовке чата
 
 ---
 
@@ -25,10 +16,6 @@
 - [ ] [FEAT-001] Поиск товаров и магазинов
   - API: `GET /storefront/search?q=&type=product|store`
   - TMA: строка поиска на BuyerStores + StoresPage
-
-- [ ] [FEAT-002] Фото в чате (image messages)
-  - API: расширить sendMessage с mediaId
-  - TMA: кнопка прикрепить файл в ChatPage
 
 - [ ] [FEAT-003] Фильтры товаров (цена, категория)
   - API: query params в GET /storefront/products

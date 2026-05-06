@@ -7,6 +7,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
+import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
 
 interface ChatThread {
@@ -394,13 +395,16 @@ export default function SellerChatPage() {
                 <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                   {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
                 </h2>
-                {activeThread && (
-                  <span className="text-xs" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
-                    <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
-                    {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-                    {activeThread.productTitle && ` · ${activeThread.productTitle}`}
-                  </span>
-                )}
+                <div className="flex items-center gap-2 min-w-0">
+                  {activeThread && (
+                    <span className="text-xs truncate" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
+                      <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
+                      {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                      {activeThread.productTitle && ` · ${activeThread.productTitle}`}
+                    </span>
+                  )}
+                  <SocketStatusBadge />
+                </div>
               </button>
               {activeThread?.status === 'OPEN' && (
                 <button
