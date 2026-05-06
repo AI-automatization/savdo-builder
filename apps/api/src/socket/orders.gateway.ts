@@ -50,24 +50,52 @@ export class OrdersGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('join-seller-room')
-  handleJoinSellerRoom(
+  async handleJoinSellerRoom(
     @MessageBody() data: { storeId: string },
     @ConnectedSocket() client: Socket,
-  ): void {
+  ): Promise<void> {
     const user = client.data.user as JwtPayload | undefined;
     if (user?.role !== 'SELLER') {
       client.disconnect(true);
       return;
     }
-    // Verify storeId from JWT matches requested room (prevents joining another seller's room)
-    if (user.storeId && user.storeId !== data.storeId) {
-      this.logger.warn(`WS blocked: seller ${user.sub} tried to join wrong room seller:${data.storeId}`);
-      client.disconnect(true);
+    if (!data?.storeId || typeof data.storeId !== 'string') {
+      this.logger.warn(`WS join-seller-room rejected: invalid storeId from user ${user.sub}`);
       return;
     }
-    const room = `seller:${data.storeId}`;
-    client.join(room);
-    this.logger.debug(`Client ${client.id} joined room ${room}`);
+
+    // API-WS-AUDIT-001: жёсткая проверка владения магазином.
+    // Раньше: `if (user.storeId && user.storeId !== data.storeId)` пропускал
+    // SELLER'ов БЕЗ storeId в JWT — они могли join'нуться в чужие room и
+    // получать events чужих заказов. Теперь — DB-lookup каждый раз.
+    if (user.storeId === data.storeId) {
+      const room = `seller:${data.storeId}`;
+      client.join(room);
+      this.logger.debug(`Client ${client.id} joined room ${room} (JWT match)`);
+      return;
+    }
+
+    // JWT.storeId нет или не совпадает → проверяем владение через DB
+    try {
+      const seller = await this.prisma.seller.findUnique({
+        where: { userId: user.sub },
+        select: { store: { select: { id: true } } },
+      });
+      if (seller?.store?.id !== data.storeId) {
+        this.logger.warn(
+          `WS blocked: user ${user.sub} not owner of store ${data.storeId} (seller.store=${seller?.store?.id ?? 'none'})`,
+        );
+        return;
+      }
+      const room = `seller:${data.storeId}`;
+      client.join(room);
+      this.logger.debug(`Client ${client.id} (user ${user.sub}) joined room ${room} (DB verified)`);
+    } catch (err) {
+      this.logger.error(
+        `WS join-seller-room failed for user ${user.sub} store ${data.storeId}`,
+        err instanceof Error ? err.stack : err,
+      );
+    }
   }
 
   @SubscribeMessage('join-buyer-room')
@@ -76,8 +104,19 @@ export class OrdersGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
   ): void {
     const user = client.data.user as JwtPayload | undefined;
-    if (!user || user.sub !== data.buyerId) {
+    if (!user) {
       client.disconnect(true);
+      return;
+    }
+    if (!data?.buyerId || typeof data.buyerId !== 'string') {
+      this.logger.warn(`WS join-buyer-room rejected: invalid buyerId from user ${user.sub}`);
+      return;
+    }
+    // buyer:{User.id} — клиент шлёт свой User.id, валидируем что совпадает.
+    // Если БЫ хоть отдалённо могли пройти Buyer.id вместо User.id — fail
+    // closed (не disconnect, чтоб не убивать переиспользование сокета).
+    if (user.sub !== data.buyerId) {
+      this.logger.warn(`WS join-buyer-room rejected: user ${user.sub} tried buyerId=${data.buyerId}`);
       return;
     }
     const room = `buyer:${data.buyerId}`;

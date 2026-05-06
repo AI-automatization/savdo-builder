@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -172,6 +172,18 @@ export default function SellerOrdersPage() {
     fetchOrders();
     return () => ordersAbortRef.current?.abort();
   }, []);
+
+  // Auto-open detail if navigated with ?openId=:id (из DashboardPage «Последние заказы»)
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const openId = searchParams.get('openId');
+    if (openId && detailId !== openId) {
+      openDetail(openId);
+      // убираем query param чтобы при back-button не открывался заново
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const openDetail = (orderId: string) => {
     detailAbortRef.current?.abort();

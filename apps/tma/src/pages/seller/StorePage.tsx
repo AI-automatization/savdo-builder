@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
-import { webStoreUrl, webStoreLabel } from '@/lib/webUrl';
+import { webStoreUrl } from '@/lib/webUrl';
 
 interface Store {
   id: string;
@@ -312,14 +312,24 @@ export default function SellerStorePage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
-              <button
-                onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
-                className="text-[11px] underline-offset-2 hover:underline"
-                style={{ color: 'rgba(168,85,247,0.80)', cursor: 'pointer' }}
-                aria-label="Открыть витрину магазина"
+              {/* Длинный URL раньше ломал layout — теперь короткая «Перейти на сайт» pill */}
+              <a
+                href={webStoreUrl(store.slug)}
+                onClick={(e) => { e.preventDefault(); tg?.openLink?.(webStoreUrl(store.slug)); }}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] mt-0.5 px-2 py-0.5 rounded-md"
+                style={{
+                  color: '#A855F7',
+                  background: 'rgba(168,85,247,0.10)',
+                  border: '1px solid rgba(168,85,247,0.25)',
+                  textDecoration: 'none',
+                  width: 'fit-content',
+                }}
+                aria-label="Перейти на сайт магазина"
               >
-                {webStoreLabel(store.slug)} ↗
-              </button>
+                ↗ Перейти на сайт
+              </a>
             </div>
             <Badge status={store.status} />
           </div>
