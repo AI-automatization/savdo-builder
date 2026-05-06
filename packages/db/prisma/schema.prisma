@@ -192,6 +192,7 @@ model Buyer {
   orders    Order[]
   threads   ChatThread[]
   wishlist  BuyerWishlistItem[]
+  reviews   ProductReview[]
 
   @@map("buyers")
 }
@@ -438,6 +439,10 @@ model Product {
   isFeatured         Boolean       @default(false)
   sku                String?
   attributesJson     Json?         // {"brand":"Apple","ram_gb":32,"color":"black"} — schema-on-write по CategoryFilter
+  // FEAT-008: денормализованный агрегат отзывов — обновляется при insert/delete Review.
+  // Хранится в таблице чтобы не делать AVG() на каждый storefront feed.
+  avgRating          Decimal?      @db.Decimal(3, 2)
+  reviewCount        Int           @default(0)
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   deletedAt          DateTime?
@@ -453,6 +458,7 @@ model Product {
   threads        ChatThread[]
   attributes     ProductAttribute[]
   wishlistItems  BuyerWishlistItem[]
+  reviews        ProductReview[]
 
   @@index([storeId])
   @@index([globalCategoryId])
@@ -709,10 +715,33 @@ model OrderItem {
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  review  ProductReview?
 
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
+}
+
+// FEAT-008: отзыв на купленный товар. 1:1 с OrderItem (review.orderItemId @unique)
+// — buyer не может оставить два отзыва на одну покупку. Allowed: только когда
+// order.status = DELIVERED. Rating 1..5 валидируется в DTO + check в DB.
+model ProductReview {
+  id          String   @id @default(uuid())
+  productId   String
+  buyerId     String
+  orderItemId String   @unique
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer     Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([buyerId])
+  @@map("product_reviews")
 }
 
 model OrderStatusHistory {
