@@ -13,6 +13,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { AddToCartDto } from './dto/add-to-cart.dto';
@@ -71,6 +72,7 @@ export class CartController {
 
   @Post('items')
   @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 60 } }) // anti-spam: anonymous может звать
   @HttpCode(HttpStatus.CREATED)
   async addItem(
     @CurrentUser() user: JwtPayload | undefined,
@@ -88,6 +90,7 @@ export class CartController {
 
   @Patch('items/:itemId')
   @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
   async updateItem(
     @CurrentUser() user: JwtPayload | undefined,
     @Headers('x-session-token') sessionToken: string | undefined,

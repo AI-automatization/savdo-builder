@@ -29,9 +29,9 @@
 
 ## 🟡 P2 — Полат + параллельная сессия
 
-- [ ] **`API-SQL-INJECTION-AUDIT-001`** — grep `$queryRaw`/`$executeRaw` в `apps/api`, проверить prepared params.
+- [x] **`API-SQL-INJECTION-AUDIT-001`** ✅ 06.05.2026 — чисто. Все `$queryRaw` через tagged templates (Prisma параметризует). 0 unsafe. См. `analiz/logs.md AUDIT-API-SQL-INJECTION`.
 - [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
-- [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
+- [x] **`API-RATE-LIMIT-AUDIT-001`** ✅ 06.05.2026 — глобальный 120 req/min baseline + локальные `@Throttle` добавлены на cart (POST/PATCH /items 60/min) и wishlist (POST/DELETE 60/min). См. `analiz/logs.md AUDIT-API-RATE-LIMIT`.
 - [x] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA. ✅ Закрыто в `WEB-TMA-SELLER-PERF-001` (8 из 9 файлов; ChatPage пропущен из-за конфликта с `TMA-DESIGN-P0P1-001`). См. `analiz/done.md` 2026-05-04.
 - [x] **`TMA-SELLER-CHAT-PERF-001`** ✅ 06.05.2026 — добавлены AbortController в loadThreads (threadsAbortRef) + load messages useEffect (messagesAbortRef) в `seller/ChatPage.tsx`. Cleanup на unmount + при смене threadId. AbortError игнорируется в catch.
 
