@@ -50,6 +50,7 @@ import { DbManagerUseCase } from './use-cases/db-manager.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
 import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
+import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -83,6 +84,7 @@ export class AdminController {
     private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
     private readonly adminCreateStoreUseCase: AdminCreateStoreUseCase,
     private readonly getSystemHealthUseCase: GetSystemHealthUseCase,
+    private readonly migrateTgMediaUseCase: MigrateTgMediaToR2UseCase,
   ) {}
 
   // ── System Health (DevOps Dashboard) ──────────────────────────────────────
@@ -631,6 +633,28 @@ export class AdminController {
       payload: {},
     });
     return this.dbManagerUseCase.deleteRow(table, id);
+  }
+
+  // ── Media migration (TG → Supabase) ───────────────────────────────────────
+  // POST /api/v1/admin/media/migrate-tg-to-r2?limit=50
+  // API-MEDIA-MIGRATION-TG-TO-R2-001: разово/батчами вытащить старые TG-фото
+  // и залить в Supabase. См. comment в use-case для контекста.
+  @Post('media/migrate-tg-to-r2')
+  async migrateTgMediaToR2(
+    @Query('limit') limit: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.resolveAdminUser(user);
+    const parsedLimit = limit ? Number(limit) : 50;
+    const result = await this.migrateTgMediaUseCase.execute(parsedLimit);
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'media.migrate.tg_to_r2',
+      entityType: 'media',
+      entityId: 'batch',
+      payload: { limit: parsedLimit, ...result },
+    });
+    return result;
   }
 
   // POST /api/v1/admin/db/tables/:table

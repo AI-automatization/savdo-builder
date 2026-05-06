@@ -1,6 +1,18 @@
 # Done — Азим + Полат
 
-## 2026-05-05 (сессия 52, Азим) — Task 10: profile + wishlist + notifications redesign
+## 2026-05-06 (Полат) — Media migration: TG → Supabase
+
+### ✅ [API-MEDIA-MIGRATION-TG-TO-R2-001] Перенос старых TG-фото в Supabase 🔴
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/use-cases/migrate-tg-media-to-r2.use-case.ts` — новый use-case. Идёт по `MediaFile WHERE bucket='telegram'` батчами, тянет через `getFileUrl` + axios arraybuffer, грузит в Supabase через `uploadObject`, обновляет `bucket+objectKey+fileSize`. 404 от TG (file expired) → `bucket='telegram-expired'` (схема не имеет `deletedAt`, поэтому маркируем bucket — повторные прогоны их пропустят и proxy перестанет дёргать мёртвый file_id). Возвращает `{ migrated, skipped, failed, errors[] }`.
+  - `apps/api/src/modules/admin/admin.module.ts` — `MediaModule` в `imports`, `MigrateTgMediaToR2UseCase` в `providers`.
+  - `apps/api/src/modules/admin/admin.controller.ts` — endpoint `POST /admin/media/migrate-tg-to-r2?limit=50` (admin only, audit log).
+- **Что сделано:** запускается админом через UI/curl батчами по `limit` (default 50, max 200) — чтобы Railway не таймаутил. Идемпотентен: при повторном прогоне уже мигрированные строки (`bucket=<supabase-bucket>`) и expired (`bucket='telegram-expired'`) фильтруются.
+- **Контекст:** до настройки `STORAGE_REGION=ap-southeast-1` upload падал в TG fallback. file_id Telegram держит ~1ч → после этого `getFile` возвращает 404 и на web-buyer пустые квадраты.
+
+
 
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 10] Profile / Wishlist / Notifications redesign 🔴
 
