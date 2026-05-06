@@ -14,6 +14,7 @@ import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
 import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.use-case';
 import { RefundOrderUseCase } from './use-cases/refund-order.use-case';
 import { VerifySellerExtendedUseCase } from './use-cases/verify-seller-extended.use-case';
+import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-market.use-case';
 
 /**
  * Super-admin endpoints — изолированы от AdminController чтобы избежать
@@ -34,6 +35,7 @@ export class SuperAdminController {
     private readonly adminUsersMgmt: AdminUsersManagementUseCase,
     private readonly refundOrder: RefundOrderUseCase,
     private readonly verifySellerExtended: VerifySellerExtendedUseCase,
+    private readonly activateSellerOnMarket: ActivateSellerOnMarketUseCase,
   ) {}
 
   // ─── Auth / Profile ────────────────────────────────────────────────────────
@@ -148,6 +150,51 @@ export class SuperAdminController {
       reason: body.reason,
       notes: body.notes,
       checkedRequirements: body.checkedRequirements,
+    });
+  }
+
+  // ─── Manual seller activation (без онлайн-оплаты) ─────────────────────────
+  // POST /api/v1/admin/users/:id/activate-seller-on-market
+  // Решение Полата 06.05.2026: монетизация заморожена. Продавец пишет в бот →
+  // админ открывает доступ к рынку одним вызовом. См. activate-seller-on-market.use-case.
+  @Post('users/:id/activate-seller-on-market')
+  async activateSellerOnMarketHandler(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') targetUserId: string,
+    @Body() body: {
+      fullName: string;
+      sellerType: 'individual' | 'business';
+      telegramUsername: string;
+      storeName: string;
+      storeCity: string;
+      telegramContactLink: string;
+      description?: string;
+      region?: string;
+      slug?: string;
+    },
+  ) {
+    if (!body?.fullName?.trim()) throw new BadRequestException('fullName is required');
+    if (!body?.sellerType) throw new BadRequestException('sellerType is required');
+    if (!body?.telegramUsername?.trim()) throw new BadRequestException('telegramUsername is required');
+    if (!body?.storeName?.trim()) throw new BadRequestException('storeName is required');
+    if (!body?.storeCity?.trim()) throw new BadRequestException('storeCity is required');
+    if (!body?.telegramContactLink?.trim()) throw new BadRequestException('telegramContactLink is required');
+    if (body.sellerType !== 'individual' && body.sellerType !== 'business') {
+      throw new BadRequestException('sellerType must be "individual" or "business"');
+    }
+
+    return this.activateSellerOnMarket.execute({
+      actorUserId: user.sub,
+      targetUserId,
+      fullName: body.fullName.trim(),
+      sellerType: body.sellerType,
+      telegramUsername: body.telegramUsername.trim(),
+      storeName: body.storeName.trim(),
+      storeCity: body.storeCity.trim(),
+      telegramContactLink: body.telegramContactLink.trim(),
+      description: body.description?.trim(),
+      region: body.region?.trim(),
+      slug: body.slug?.trim(),
     });
   }
 
