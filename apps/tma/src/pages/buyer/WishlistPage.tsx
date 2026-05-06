@@ -6,6 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { showToast } from '@/components/ui/Toast';
 import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
 
 export default function WishlistPage() {
@@ -22,7 +23,10 @@ export default function WishlistPage() {
         setItems(data);
         for (const it of data) setLocalFlag(it.productId, true);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить избранное', 'error');
+      })
       .finally(() => setLoading(false));
   }, [authenticated]);
 

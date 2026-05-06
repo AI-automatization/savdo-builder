@@ -77,7 +77,7 @@
 
 ### 🟡 P2 — a11y
 - [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
-- [ ] **`TMA-SILENT-ERROR-CATCHES-001`** — 10 мест с `.catch(() => {})` без showToast. Юзер не понимает почему пусто. Файлы в `analiz/logs.md AUDIT-TMA-2026-05-06`.
+- [x] **`TMA-SILENT-ERROR-CATCHES-001`** ✅ 06.05.2026 (частично) — добавлен `showToast` на 5 user-facing data-load fails: `buyer/WishlistPage`, `buyer/OrdersPage` (loadMore + detail), `seller/ProfilePage`, `seller/SettingsPage`. AbortError фильтруется. Остальные `.catch(() => {})` (clipboard, prefetch, attribute side-effects) намеренно тихие — best-effort fire-and-forget.
 
 ---
 
