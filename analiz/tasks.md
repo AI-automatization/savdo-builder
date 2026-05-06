@@ -29,9 +29,9 @@
 
 ## 🟡 P2 — Полат + параллельная сессия
 
-- [ ] **`API-SQL-INJECTION-AUDIT-001`** — grep `$queryRaw`/`$executeRaw` в `apps/api`, проверить prepared params.
+- [x] **`API-SQL-INJECTION-AUDIT-001`** ✅ 06.05.2026 — чисто. Все `$queryRaw` через tagged templates (Prisma параметризует). 0 unsafe. См. `analiz/logs.md AUDIT-API-SQL-INJECTION`.
 - [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
-- [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
+- [x] **`API-RATE-LIMIT-AUDIT-001`** ✅ 06.05.2026 — глобальный 120 req/min baseline + локальные `@Throttle` добавлены на cart (POST/PATCH /items 60/min) и wishlist (POST/DELETE 60/min). См. `analiz/logs.md AUDIT-API-RATE-LIMIT`.
 - [x] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA. ✅ Закрыто в `WEB-TMA-SELLER-PERF-001` (8 из 9 файлов; ChatPage пропущен из-за конфликта с `TMA-DESIGN-P0P1-001`). См. `analiz/done.md` 2026-05-04.
 - [x] **`TMA-SELLER-CHAT-PERF-001`** ✅ 06.05.2026 — добавлены AbortController в loadThreads (threadsAbortRef) + load messages useEffect (messagesAbortRef) в `seller/ChatPage.tsx`. Cleanup на unmount + при смене threadId. AbortError игнорируется в catch.
 
@@ -102,7 +102,7 @@
 
 - [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
 
-- [ ] **`TMA-MEDIA-USE-API-URL-001`** — фронт TMA в `EditProductPage.tsx` и `ProductsPage.tsx` использует `getImageUrl(objectKey)` (читает `VITE_R2_PUBLIC_URL`). Должен использовать `product.mediaUrls[0]` напрямую из API response — централизованный source of truth и работает для любого storage backend.
+- [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (ProductsPage) — `seller/ProductsPage.tsx` теперь использует `product.mediaUrls[0]` напрямую от API. Раньше вызывал `getImageUrl(media.objectKey)` БЕЗ mediaId → для `bucket=telegram` возвращалась пустая строка → у продавца все товары были «НЕТ ФОТО» (см. скрин 06.05). EditProductPage уже передавал mediaId — оставлен.
 
 - [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
 
