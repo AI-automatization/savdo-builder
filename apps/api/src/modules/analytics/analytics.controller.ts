@@ -19,6 +19,7 @@ import { QueryEventsDto } from './dto/query-events.dto';
 import { TrackEventUseCase } from './use-cases/track-event.use-case';
 import { QueryEventsUseCase } from './use-cases/query-events.use-case';
 import { GetSellerSummaryUseCase } from './use-cases/get-seller-summary.use-case';
+import { GetSellerAnalyticsUseCase } from './use-cases/get-seller-analytics.use-case';
 
 /**
  * OptionalJwtAuthGuard — lets unauthenticated requests through.
@@ -39,6 +40,7 @@ export class AnalyticsController {
     private readonly trackEventUseCase: TrackEventUseCase,
     private readonly queryEventsUseCase: QueryEventsUseCase,
     private readonly getSellerSummaryUseCase: GetSellerSummaryUseCase,
+    private readonly getSellerAnalyticsUseCase: GetSellerAnalyticsUseCase,
   ) {}
 
   // ─── POST /api/v1/analytics/track ─────────────────────────────────────────
@@ -70,6 +72,21 @@ export class AnalyticsController {
   @Roles('SELLER')
   async getSellerMetrics(@CurrentUser() user: JwtPayload) {
     return this.getSellerSummaryUseCase.execute(user);
+  }
+
+  // ─── GET /api/v1/seller/analytics?from=&to= ───────────────────────────────
+  // FEAT-006: detailed seller dashboard — revenue, orders by status, top
+  // products и daily breakdown за период (макс 90 дней). Default = последние 30.
+
+  @Get('seller/analytics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async getSellerAnalytics(
+    @CurrentUser() user: JwtPayload,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.getSellerAnalyticsUseCase.execute(user, { from, to });
   }
 
   // ─── GET /api/v1/admin/analytics/events ───────────────────────────────────

@@ -25,9 +25,9 @@
   - Socket event: chat:typing { threadId, role }
   - TMA: "печатает..." под последним сообщением
 
-- [ ] [FEAT-006] Seller Analytics dashboard (выручка, заказы за период)
-  - API: GET /seller/analytics?from=&to=
-  - TMA: графики на DashboardPage
+- [ ] [FEAT-006-FE] Seller Analytics dashboard frontend (backend готов: `GET /seller/analytics?from=&to=`)
+  - TMA: графики revenue + orders на DashboardPage (recharts или sparkline)
+  - Период-селектор: 7/30/90 дней + custom from-to picker
 
 - [ ] [FEAT-008] Отзывы и рейтинг магазина / товара
   - БД: model Review { id, productId, buyerId, orderItemId, rating(1-5), comment?, createdAt }
