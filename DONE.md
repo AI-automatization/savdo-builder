@@ -36,6 +36,11 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+### ✅ [UX-008] Socket connection status badge в заголовке чата
+- Новый компонент `apps/tma/src/components/ui/SocketStatusBadge.tsx` — pill «Подключение…» / «Нет связи» (когда connected — ничего не показывает).
+- Подписка на `connect` / `disconnect` / `connect_error` события глобального socket.io клиента.
+- Вставлен в header обоих ChatPage (buyer + seller) рядом со статусом «Открыт/Закрыт».
+
 ---
 
 ## Sprint cleanup (05.05.2026)

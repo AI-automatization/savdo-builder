@@ -9,8 +9,6 @@
   - Файл: `apps/admin/vite.config.ts`
   - Добавить manualChunks по роутам
 
-- [ ] [UX-008] Socket connection status badge в заголовке чата
-
 ---
 
 ## 🟡 Средние — Feature Gaps
