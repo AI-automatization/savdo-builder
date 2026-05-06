@@ -693,9 +693,21 @@ export class ProductsController {
     @Query('filters') rawFilters?: Record<string, string>,
     @Query('q') q?: string,
     @Query('sort') sort?: string,
+    @Query('priceMin') priceMin?: string,
+    @Query('priceMax') priceMax?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    // FEAT-003: ценовой диапазон. Парсим из query — игнорируем NaN и
+    // отрицательные значения (Prisma басимым невалидное число выкинет
+    // P2003, лучше превратить в undefined).
+    const parsePrice = (s?: string): number | undefined => {
+      if (!s) return undefined;
+      const n = Number(s);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    };
+    const pMin = parsePrice(priceMin);
+    const pMax = parsePrice(priceMax);
     // Platform-wide feed (no storeId)
     let data: Array<Record<string, unknown> & { id: string; inWishlist?: boolean }>;
     let total: number;
@@ -706,6 +718,8 @@ export class ProductsController {
       const result = await this.productsRepo.findAllPublic({
         q,
         globalCategoryId,
+        priceMin: pMin,
+        priceMax: pMax,
         sort: validSort,
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,

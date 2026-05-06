@@ -36,6 +36,13 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+### ✅ [FEAT-003 backend] Ценовой диапазон в фильтре товаров
+- `GET /storefront/products` теперь принимает `priceMin` и `priceMax` (UZS).
+- Логика в `ProductsRepository.findAllPublic()`: добавляет `basePrice: { gte, lte }` в WHERE.
+- Парсинг защищён: NaN/отрицательные значения игнорируются (превращаются в undefined).
+- Уже было: `q`, `globalCategoryId`, `sort=new|price_asc|price_desc`. Категории + сортировка работали; не было только цены.
+- Frontend FEAT-003-FE — bottom-sheet с range slider + sort radio.
+
 ### ✅ [FEAT-004 backend] Seller инициирует чат с buyer заказа
 - `POST /seller/chat/threads` — `@Roles('SELLER')`, throttle 10/min.
 - Новый use-case `CreateSellerThreadUseCase`: проверяет `order.sellerId === seller.id`, идемпотентно переиспользует существующий тред для пары (buyer, order), пропускает первое сообщение через `SendMessageUseCase` (получает socket emit + TG push покупателю).
