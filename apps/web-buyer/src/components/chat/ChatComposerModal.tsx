@@ -7,7 +7,7 @@ import { ThreadType } from "types";
 import { useCreateThread } from "@/hooks/use-chat";
 import { useAuth } from "@/lib/auth/context";
 import { OtpGate } from "@/components/auth/OtpGate";
-import { card, colors } from "@/lib/styles";
+import { colors } from "@/lib/styles";
 
 type Props = {
   contextType: ThreadType;
@@ -41,18 +41,18 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(15,17,21,0.5)" }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl p-5 flex flex-col gap-4 relative"
-        style={card}
+        className="w-full max-w-md rounded-lg p-5 flex flex-col gap-4 relative"
+        style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
           className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
-          style={{ background: colors.surfaceMuted, color: colors.textMuted }}
+          style={{ background: "transparent", color: colors.textMuted, border: "none" }}
           aria-label="Закрыть"
         >
           <X size={16} />
@@ -60,7 +60,7 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
 
         {!isAuthenticated ? (
           <OtpGate
-            icon={<MessageSquare size={22} style={{ color: colors.accent }} />}
+            icon={<MessageSquare size={22} style={{ color: colors.brand }} />}
             title="Войдите чтобы написать"
             subtitle={`Подтвердите номер телефона — после этого сможете написать продавцу про «${title}»`}
           />
@@ -100,7 +100,7 @@ function ComposerBody({
   return (
     <>
       <div>
-        <h2 className="text-base font-bold" style={{ color: colors.textPrimary }}>Написать продавцу</h2>
+        <h2 className="text-lg font-bold" style={{ color: colors.textStrong }}>Написать продавцу</h2>
         <p className="text-xs mt-0.5 truncate" style={{ color: colors.textMuted }}>{title}</p>
       </div>
 
@@ -110,11 +110,12 @@ function ComposerBody({
         placeholder="Здравствуйте! Есть вопрос..."
         maxLength={2000}
         autoFocus
-        className="w-full rounded-xl px-3.5 py-2.5 text-sm resize-none focus:outline-none placeholder:opacity-50"
+        className="w-full rounded-md resize-none focus:outline-none placeholder:opacity-50 text-sm"
         style={{
-          background: colors.surfaceSunken,
+          padding: "10px 12px",
+          background: colors.surface,
           border: `1px solid ${colors.border}`,
-          color: colors.textPrimary,
+          color: colors.textBody,
           minHeight: 100,
         }}
       />
@@ -127,16 +128,16 @@ function ComposerBody({
         <button
           onClick={onCancel}
           disabled={isPending}
-          className="px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
-          style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
+          className="px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
+          style={{ background: "transparent", color: colors.textMuted, border: "none" }}
         >
           Отмена
         </button>
         <button
           onClick={onSend}
           disabled={!text.trim() || isPending}
-          className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
-          style={{ background: colors.accent, color: colors.accentTextOnBg }}
+          className="px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-40"
+          style={{ background: colors.brand, color: colors.brandTextOnBg, border: "none" }}
         >
           {isPending ? "Отправка..." : "Отправить"}
         </button>

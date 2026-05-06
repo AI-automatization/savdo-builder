@@ -175,6 +175,36 @@
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
+### ✅ [WEB-BUYER-DESIGN-IMPL-001] Имплементация «Soft Color Lifestyle» — ВСЕ 10 ЗАДАЧ ЗАКРЫТЫ (05.05.2026)
+
+**Spec:** `docs/superpowers/specs/2026-05-05-buyer-design-differentiation-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-05-buyer-design-soft-color-lifestyle.md`
+**Откуда стартовать:** **Task 1 — Foundation tokens + Inter font**. Через `superpowers:subagent-driven-development` (рекомендовано) или `executing-plans`.
+
+10 задач (все только в `apps/web-buyer`, бэкенд / hooks / types не трогаются):
+
+- [x] **Task 1** — Foundation: переписать `lib/styles.ts` + `app/globals.css` :root tokens + заменить Geist→Inter в `app/layout.tsx` ✅ 05.05.2026
+- [x] **Task 2** — `components/layout/Header.tsx` + `BottomNavBar.tsx` под новую палитру ✅ 05.05.2026 коммит `654f067` (минорно — оба уже мигрированы через alias после Task 1)
+- [x] **Task 3** — Storefront: `(shop)/page.tsx` + `(shop)/[slug]/page.tsx` + `components/home/RecentStores.tsx` (hero 6fr:4fr photo:color, sections с editorial labels, categories chip-row) ✅ 05.05.2026 коммит `b2884bb` (storefront уже сделан ранее, polish для homepage+RecentStores)
+- [x] **Task 4** — `components/store/ProductCard.tsx` + `ProductsWithSearch.tsx` + `CategoryAttributeFilters.tsx` (borderless карточка, ♡ overlay 32px, цена тёмная) ✅ 05.05.2026
+- [x] **Task 5** — `(shop)/[slug]/products/[id]/page.tsx` (gallery+info split desktop, sticky bottom CTA mobile, variant picker) ✅ 05.05.2026 коммит `756cf3b`
+- [x] **Task 6** — `(minimal)/cart/page.tsx` (store-strip, free-delivery progress, OOS-fallback) ✅ 05.05.2026
+- [x] **Task 7** — `(minimal)/checkout/page.tsx` (3-step single-screen, address-cards, payment с «Online · Скоро») ✅ 05.05.2026 коммит `e20a1c2`
+- [x] **Task 8** — `(shop)/chats/page.tsx` + `components/chat/ChatComposerModal.tsx` (brand-color avatars, pinned product context, bubbles) ✅ 05.05.2026 коммит `7ed9eb2`
+- [x] **Task 9** — `(shop)/orders/page.tsx` + `(shop)/orders/[id]/page.tsx` (status hero + timeline) ✅ 05.05.2026 коммит `c117723`
+- [x] **Task 10** — `(shop)/profile/page.tsx` + `wishlist/page.tsx` + `notifications/page.tsx` (stats row, editorial labels, menu sections) ✅ 05.05.2026 коммит `0ba9561`
+
+**Verification:** `pnpm build` локально ЗАПРЕЩЁН (ПК зависает). Каждая задача завершается push'ем в `web-buyer` ветку → проверка на Railway URL.
+
+**Известные ограничения:**
+- Free-delivery threshold захардкожен константой в Task 6 — реальное значение позже
+- `Store.brandColor` поля может ещё не быть в backend → Task 8 фолбэчит на терракоту через `?? colors.brand`
+- Эмодзи как иконки сейчас, замена на Lucide — postMVP
+
+---
+
+### Старое (до Session 46)
+
 | ID | Важность | Кратко |
 |----|----------|--------|
 | Тест end-to-end в проде (Railway пофикшен 28-29.04, фичи сессии 36+37 раскатываются) | 🟡 | **Сессия 36 фронт (3 фичи):** (1) Seller `/profile` → загрузить аватар. (2) Чат seller — trash в шапке. (3) Чат seller — ⋯ → Редактировать → «изменено · …». (4) Чат seller — ⋯ → Удалить → «Сообщение удалено». (5) Через 15 мин «Редактировать» исчезает. (6) Те же 4 проверки в web-buyer `/chats`. (7) Edit от seller → buyer видит «изменено». (8) **DisplayType:** SLIDER → точки. COLLAGE_2X2 → 2×2 grid. **Сессия 37 (новое):** (9) Чат — отправить, подождать 35 мин (срок refresh), отправить ещё → должно работать (WS auth dynamic token). (10) `/notifications` (seller) — список отображается с записями (был пустой из-за contract-mismatch). (11) Витрина магазина с категорий-фильтром → выбрать SELECT-фильтр (например бренд) → dropdown с опциями появился (раньше показывался text input). |

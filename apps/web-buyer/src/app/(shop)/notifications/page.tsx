@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { useAuth } from "@/lib/auth/context";
@@ -8,6 +8,8 @@ import { useNotifications, useReadAll } from "@/hooks/use-notifications";
 import type { NotificationItem } from "@/lib/api/notifications.api";
 import { CheckCircle, Truck, Package, XCircle, ShoppingBag, Bell } from "lucide-react";
 import { colors } from "@/lib/styles";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -19,17 +21,37 @@ function relativeTime(iso: string): string {
   return `${Math.floor(hrs / 24)} дн`;
 }
 
+type Bucket = "today" | "yesterday" | "week" | "earlier";
+
+const BUCKET_LABEL: Record<Bucket, string> = {
+  today: "Сегодня",
+  yesterday: "Вчера",
+  week: "На прошлой неделе",
+  earlier: "Ранее",
+};
+
+function bucketFor(iso: string): Bucket {
+  const ms = Date.now() - new Date(iso).getTime();
+  const day = 24 * 60 * 60 * 1000;
+  if (ms < day) return "today";
+  if (ms < 2 * day) return "yesterday";
+  if (ms < 7 * day) return "week";
+  return "earlier";
+}
+
 function NotifIcon({ title }: { title: string }) {
   const t = title.toLowerCase();
-  if (t.includes("подтверждён") || t.includes("confirm")) return <CheckCircle size={18} style={{ color: colors.success }} />;
-  if (t.includes("отправлен") || t.includes("ship")) return <Truck size={18} style={{ color: colors.accent }} />;
-  if (t.includes("доставлен") || t.includes("deliver")) return <Package size={18} style={{ color: colors.accent }} />;
-  if (t.includes("отменён") || t.includes("cancel")) return <XCircle size={18} style={{ color: colors.danger }} />;
-  if (t.includes("заказ") || t.includes("order")) return <ShoppingBag size={18} style={{ color: colors.accent }} />;
-  return <Bell size={18} style={{ color: colors.accent }} />;
+  if (t.includes("подтверждён") || t.includes("confirm")) return <CheckCircle size={16} style={{ color: colors.success }} />;
+  if (t.includes("отправлен") || t.includes("ship")) return <Truck size={16} style={{ color: colors.brand }} />;
+  if (t.includes("доставлен") || t.includes("deliver")) return <Package size={16} style={{ color: colors.brand }} />;
+  if (t.includes("отменён") || t.includes("cancel")) return <XCircle size={16} style={{ color: colors.danger }} />;
+  if (t.includes("заказ") || t.includes("order")) return <ShoppingBag size={16} style={{ color: colors.brand }} />;
+  return <Bell size={16} style={{ color: colors.brand }} />;
 }
 
 const ORDER_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+// ── Row ──────────────────────────────────────────────────────────────────────
 
 function NotifRow({ item }: { item: NotificationItem }) {
   const router = useRouter();
@@ -42,48 +64,59 @@ function NotifRow({ item }: { item: NotificationItem }) {
   return (
     <div
       onClick={handleClick}
-      className="flex items-start gap-3 px-4 py-3.5 rounded-2xl cursor-pointer transition-all hover:-translate-y-0.5"
-      style={
-        item.isRead
-          ? { background: colors.surface, border: `1px solid ${colors.border}`, opacity: 0.78 }
-          : { background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }
-      }
+      className="flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:opacity-90"
+      style={{
+        background: item.isRead ? colors.surface : colors.brandMuted,
+        borderBottom: `1px solid ${colors.divider}`,
+      }}
     >
-      <span className="flex-shrink-0 mt-0.5"><NotifIcon title={item.title} /></span>
+      <div
+        className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
+        style={{ background: colors.surfaceSunken }}
+      >
+        <NotifIcon title={item.title} />
+      </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[13px] font-semibold leading-snug" style={{ color: colors.textPrimary }}>{item.title}</p>
-          <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: colors.textDim }}>
+          <p
+            className="text-[13px] leading-snug"
+            style={{ color: colors.textStrong, fontWeight: item.isRead ? 600 : 700 }}
+          >
+            {item.title}
+          </p>
+          <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: colors.textMuted }}>
             {relativeTime(item.createdAt)}
           </span>
         </div>
-        <p className="text-xs mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
+        <p className="text-[11px] mt-1 leading-relaxed line-clamp-2" style={{ color: colors.textBody }}>
           {item.body}
         </p>
       </div>
       {!item.isRead && (
         <div
-          className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-          style={{ background: colors.accent }}
+          className="w-2 h-2 rounded-full flex-shrink-0 mt-2"
+          style={{ background: colors.brand }}
         />
       )}
     </div>
   );
 }
 
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+
 function Skeleton() {
   return (
-    <div className="flex flex-col gap-3">
+    <div>
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="flex items-start gap-3 px-4 py-3.5 rounded-2xl animate-pulse"
-          style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+          className="flex items-start gap-3 px-4 py-3.5"
+          style={{ background: colors.surface, borderBottom: `1px solid ${colors.divider}` }}
         >
-          <div className="w-7 h-7 rounded-xl flex-shrink-0" style={{ background: colors.surfaceMuted }} />
+          <div className="w-8 h-8 rounded-md flex-shrink-0 animate-pulse" style={{ background: colors.surfaceMuted }} />
           <div className="flex-1 flex flex-col gap-2">
-            <div className="h-3.5 w-36 rounded-full" style={{ background: colors.surfaceMuted }} />
-            <div className="h-3 w-full rounded-full" style={{ background: colors.surfaceMuted }} />
+            <div className="h-3 w-36 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
+            <div className="h-2.5 w-full rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
           </div>
         </div>
       ))}
@@ -91,19 +124,25 @@ function Skeleton() {
   );
 }
 
+// ── AuthGate ─────────────────────────────────────────────────────────────────
+
 function AuthGate() {
   const router = useRouter();
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
-      <Bell size={40} style={{ color: colors.textDim }} />
-      <p className="text-base font-semibold" style={{ color: colors.textPrimary }}>Войдите, чтобы видеть уведомления</p>
-      <p className="text-sm" style={{ color: colors.textMuted }}>
+    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+      <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
+        — Уведомления
+      </div>
+      <h2 className="text-lg font-bold mb-2" style={{ color: colors.textStrong }}>
+        Войдите чтобы видеть уведомления
+      </h2>
+      <p className="text-sm mb-6 max-w-sm" style={{ color: colors.textMuted }}>
         Уведомления об изменении статуса заказов и другие важные события
       </p>
       <button
         onClick={() => router.push("/profile")}
-        className="mt-2 px-6 py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90"
-        style={{ background: colors.accent, color: colors.accentTextOnBg }}
+        className="px-6 py-3 rounded-md text-sm font-bold transition-opacity hover:opacity-90"
+        style={{ background: colors.brand, color: colors.brandTextOnBg }}
       >
         Войти
       </button>
@@ -112,6 +151,8 @@ function AuthGate() {
 }
 
 type Tab = "all" | "unread";
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuth();
@@ -124,78 +165,114 @@ export default function NotificationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  const unreadItems = items.filter((n) => !n.isRead);
+  const unreadItems = useMemo(() => items.filter((n) => !n.isRead), [items]);
   const filtered = tab === "unread" ? unreadItems : items;
 
+  // Group by bucket
+  const grouped = useMemo(() => {
+    const g: Record<Bucket, NotificationItem[]> = { today: [], yesterday: [], week: [], earlier: [] };
+    filtered.forEach((it) => g[bucketFor(it.createdAt)].push(it));
+    return g;
+  }, [filtered]);
+
+  const orderedBuckets: Bucket[] = ["today", "yesterday", "week", "earlier"];
+
   return (
-    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textPrimary }}>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-5 pb-28 md:pb-12">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold" style={{ color: colors.textPrimary }}>Уведомления</h1>
-            {isAuthenticated && items.length > 0 && (
-              <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                {items.length} уведомлений
-              </p>
-            )}
-          </div>
-          {isAuthenticated && unreadItems.length > 0 && (
-            <button
-              onClick={() => readAll.mutate()}
-              disabled={readAll.isPending}
-              className="text-xs px-3 py-1.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
-            >
-              Прочитать все
-            </button>
+    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
+      {/* Header */}
+      <div
+        className="px-4 py-3.5 border-b flex items-center justify-between gap-3"
+        style={{ background: colors.surface, borderColor: colors.divider }}
+      >
+        <div>
+          <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Уведомления</h1>
+          {isAuthenticated && items.length > 0 && (
+            <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
+              {items.length} {items.length === 1 ? "уведомление" : items.length < 5 ? "уведомления" : "уведомлений"}
+            </p>
           )}
         </div>
+        {isAuthenticated && unreadItems.length > 0 && (
+          <button
+            onClick={() => readAll.mutate()}
+            disabled={readAll.isPending}
+            className="text-[11px] font-semibold px-3 py-1.5 rounded-md transition-opacity hover:opacity-80 disabled:opacity-40"
+            style={{ background: colors.brandMuted, color: colors.brand }}
+          >
+            Прочитать все
+          </button>
+        )}
+      </div>
 
+      <div className="max-w-2xl mx-auto pb-28 md:pb-12">
         {!isAuthenticated ? (
           <AuthGate />
         ) : (
           <>
-            <div className="flex gap-2 mb-4">
-              {(["all", "unread"] as Tab[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className="text-xs px-4 py-1.5 rounded-xl transition-all"
-                  style={
-                    tab === t
-                      ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
-                      : { background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }
-                  }
-                >
-                  {t === "all" ? "Все" : `Непрочитанные${unreadItems.length > 0 ? ` (${unreadItems.length})` : ""}`}
-                </button>
-              ))}
+            {/* Filter chips */}
+            <div className="px-4 py-2.5 flex gap-1.5">
+              {(["all", "unread"] as Tab[]).map((t) => {
+                const active = tab === t;
+                const label = t === "all"
+                  ? `Все · ${items.length}`
+                  : `Непрочитанные${unreadItems.length > 0 ? ` · ${unreadItems.length}` : ""}`;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    className="flex-shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded transition"
+                    style={
+                      active
+                        ? { background: colors.textStrong, color: colors.brandTextOnBg }
+                        : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
+                    }
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
 
-            {isLoading ? (
-              <Skeleton />
-            ) : isError ? (
-              <div
-                className="rounded-2xl px-4 py-4 text-sm text-center"
-                style={{ background: 'rgba(220,38,38,0.08)', border: `1px solid rgba(220,38,38,0.30)`, color: colors.danger }}
-              >
+            {isLoading && <Skeleton />}
+
+            {isError && (
+              <p className="text-sm py-8 px-4 text-center" style={{ color: colors.danger }}>
                 Не удалось загрузить уведомления
-              </div>
-            ) : filtered.length === 0 ? (
-              <div
-                className="rounded-2xl py-14 text-center"
-                style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-              >
-                <Bell size={32} style={{ color: colors.textDim, margin: '0 auto 8px' }} />
-                <p className="text-sm" style={{ color: colors.textMuted }}>
+              </p>
+            )}
+
+            {!isLoading && !isError && filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
+                  — Пусто
+                </div>
+                <h2 className="text-lg font-bold mb-2" style={{ color: colors.textStrong }}>
                   {tab === "unread" ? "Нет непрочитанных" : "Уведомлений пока нет"}
+                </h2>
+                <p className="text-sm" style={{ color: colors.textMuted }}>
+                  Когда что-то случится с заказом — появится здесь
                 </p>
               </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {filtered.map((item) => (
-                  <NotifRow key={item.id} item={item} />
-                ))}
+            )}
+
+            {!isLoading && !isError && filtered.length > 0 && (
+              <div>
+                {orderedBuckets.map((b) => {
+                  const list = grouped[b];
+                  if (list.length === 0) return null;
+                  return (
+                    <div key={b}>
+                      <div className="px-4 pt-5 pb-2 text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
+                        — {BUCKET_LABEL[b]}
+                      </div>
+                      <div>
+                        {list.map((item) => (
+                          <NotifRow key={item.id} item={item} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>
