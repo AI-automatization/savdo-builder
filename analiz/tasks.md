@@ -44,6 +44,19 @@
 - [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
 - [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
 
+## 🆕 Аудит платформы продолжение (06.05.2026)
+
+### 🔴 P0 — Полат / параллельная сессия
+- [ ] **`API-MFA-NOT-ENFORCED-001`** — MFA TOTP реализован но НЕ enforced на admin endpoints. Любой admin JWT даёт полный доступ даже если `mfaEnabled=true`. Решение: temporary scope=`mfa-challenge` JWT после login, exchange на full token через `/admin/auth/mfa/login` с TOTP. См. `analiz/logs.md AUDIT-ADMIN-2026-05-06`.
+
+### 🟠 P1 — Полат
+- [ ] **`API-RBAC-MICRO-PERMISSIONS-001`** — admin permissions matrix (super_admin/admin/moderator/etc) объявлена в `admin-auth.use-case.ts`, но не проверяется на endpoint level. Добавить `@AdminPermission('xxx:yyy')` decorator + guard.
+
+### 🟠 P1 — Азим
+- [ ] **`WEB-SELLER-HARDCODED-DOMAIN-001`** — 3 места с прямым `https://savdo.uz/${slug}` без env fallback в web-seller. Файлы: `app/(dashboard)/layout.tsx:127,236`, `app/(dashboard)/profile/page.tsx:49`. Использовать `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` или общий helper.
+
+---
+
 ## 🆕 Аудит API security (06.05.2026)
 
 ### 🟠 P1 — для Полата
