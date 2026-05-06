@@ -1,5 +1,18 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — TMA: skeletons на 4 страницах
+
+### ✅ [TMA-LOADING-SKELETONS-001 / частично] Skeleton вместо Spinner 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — grid из 8 ProductCardSkeleton с тем же `cols` что финальная сетка.
+  - `apps/tma/src/pages/buyer/ProductPage.tsx` — фото-плейсхолдер + title/price/description/cta lines.
+  - `apps/tma/src/pages/seller/ProductsPage.tsx` — grid 8 ProductCardSkeleton (на mobile — flex column 4 строк).
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` — 2 GlassCard с input/button плейсхолдерами.
+- **Что сделано:** заменён `<Spinner />` на layout-aware skeleton. Юзер видит структуру страницы во время загрузки → меньше perceived latency.
+- **Что осталось (в backlog):** CartPage, CheckoutPage, OrdersPage buyer (list level), ProfilePage buyer/seller, StoresPage, AddProductPage, DashboardPage seller (последняя — параллельная сессия).
+
 ## 2026-05-06 (Полат) — TMA: showToast на silent error catches
 
 ### ✅ [TMA-SILENT-ERROR-CATCHES-001] showToast на user-facing data-load fails 🟡
