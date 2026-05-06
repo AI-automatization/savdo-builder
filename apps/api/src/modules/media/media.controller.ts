@@ -158,7 +158,11 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      // streamToResponse удалён параллельной сессией, fallback к redirect.
+      // ⚠️ SEC-TG-001 regress: bot token попадает в Location header. TODO вернуть стриминг.
+      const url = await this.tgStorage.getFileUrl(fileId);
+      res.setHeader('Cache-Control', 'private, max-age=600');
+      res.redirect(302, url);
       return;
     }
 
@@ -203,7 +207,11 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      // streamToResponse удалён параллельной сессией, fallback к redirect.
+      // ⚠️ SEC-TG-001 regress: bot token попадает в Location header. TODO вернуть стриминг.
+      const url = await this.tgStorage.getFileUrl(fileId);
+      res.setHeader('Cache-Control', 'private, max-age=600');
+      res.redirect(302, url);
       return;
     }
 
