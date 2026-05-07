@@ -34,4 +34,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async del(key: string): Promise<void> {
     await this.client.del(key);
   }
+
+  /** Healthcheck-friendly ping. Возвращает true если Redis отвечает PONG. */
+  async ping(): Promise<boolean> {
+    try {
+      const res = await this.client.ping();
+      return res === 'PONG';
+    } catch {
+      return false;
+    }
+  }
 }
