@@ -405,15 +405,17 @@ export default function SellerStorePage() {
           </div>
         )}
 
-        {/* Categories inline section */}
+        {/* Store categories — собственные «полки» магазина для группировки
+            товаров (Кружки, Футболки…). НЕ путать с направлениями магазина
+            выше — то глобальные категории Savdo для поиска магазина в каталоге. */}
         <GlassCard className="p-4 flex flex-col gap-3" style={isDesktop ? { gridColumn: '1 / -1' } : undefined}>
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Направление магазина
+                Разделы каталога
               </p>
               <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Помогает покупателям найти вас в поиске
+                Свои «полки» внутри магазина для группировки товаров
               </p>
             </div>
             <span
