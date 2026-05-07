@@ -232,7 +232,7 @@ export class SuperAdminController {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
   private async requireMyAdminRecord(userId: string) {
-    const admin = await (this.prisma as any).adminUser.findUnique({ where: { userId } });
+    const admin = await this.prisma.adminUser.findUnique({ where: { userId } });
     if (!admin) {
       throw new DomainException(ErrorCode.ADMIN_NOT_FOUND, 'Admin record not found', HttpStatus.FORBIDDEN);
     }
