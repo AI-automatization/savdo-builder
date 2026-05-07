@@ -8,15 +8,21 @@ import { api } from '@/lib/api';
 // Deep link formats:
 //   startapp=store_<slug>        → /buyer/store/<slug>
 //   startapp=product_<productId> → /buyer/store/<slug>/product/<id> (resolves slug via API)
+//   startapp=chat_<threadId>     → /buyer/chat/<threadId> или /seller/chat/<threadId>
+//                                  (роль определяется по user.role; используется в
+//                                  TG-уведомлениях о новом сообщении с кнопкой
+//                                  «Открыть чат»)
 type DeepLink =
   | { type: 'store'; slug: string }
   | { type: 'product'; productId: string }
+  | { type: 'chat'; threadId: string }
   | null;
 
 function parseStartParam(param: string | null): DeepLink {
   if (!param) return null;
   if (param.startsWith('store_')) return { type: 'store', slug: param.slice(6) };
   if (param.startsWith('product_')) return { type: 'product', productId: param.slice(8) };
+  if (param.startsWith('chat_')) return { type: 'chat', threadId: param.slice(5) };
   return null;
 }
 
@@ -44,6 +50,17 @@ export default function HomePage() {
           else navigate('/buyer', { replace: true });
         })
         .catch(() => navigate('/buyer', { replace: true }));
+      return;
+    }
+
+    // Chat deep-link (из TG-уведомления): открываем чат в правильной роли.
+    // Если ещё нет user (auth идёт) — ждём loading=false выше отработало,
+    // user уже должен быть resolved или null.
+    if (deepLink?.type === 'chat' && user) {
+      const route = user.role === 'BUYER'
+        ? `/buyer/chat/${deepLink.threadId}`
+        : `/seller/chat/${deepLink.threadId}`;
+      navigate(route, { replace: true });
       return;
     }
 

@@ -60,6 +60,10 @@ export interface NotifyChatMessageData {
   orderNumber?: string | null;
   /** Truncated message preview (~80 chars). */
   messagePreview: string;
+  /** ChatThread.id — для deep link на чат через TMA `?startapp=chat_<id>`. */
+  threadId: string;
+  /** Кому идёт notification — определяет какой URL чата открывать. */
+  recipientRole: 'BUYER' | 'SELLER';
 }
 
 @Injectable()
