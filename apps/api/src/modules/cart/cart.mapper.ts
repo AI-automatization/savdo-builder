@@ -2,6 +2,8 @@ import { CartWithItems } from './repositories/cart.repository';
 
 function resolveMediaUrl(media: any): string | null {
   if (!media?.objectKey) return null;
+  // API-BUCKET-NAME-CONSISTENCY-001: telegram-expired = мёртвый file_id.
+  if (media.bucket === 'telegram-expired') return null;
   const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
   if (media.bucket === 'telegram') return `${appUrl}/api/v1/media/proxy/${media.id}`;
   const storageUrl = process.env.STORAGE_PUBLIC_URL ?? '';
