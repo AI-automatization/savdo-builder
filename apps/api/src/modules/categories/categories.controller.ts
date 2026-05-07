@@ -156,14 +156,16 @@ export class CategoriesController {
   // ─── Seller ───────────────────────────────────────────────────────────────────
 
   @Get('seller/categories')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listMyStoreCategories(@CurrentUser() user: JwtPayload) {
     const storeId = await this.resolveStoreId(user.sub);
     return this.getStoreCategories.execute(storeId);
   }
 
   @Post('seller/categories')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createCategory(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateStoreCategoryDto,
@@ -173,7 +175,8 @@ export class CategoriesController {
   }
 
   @Patch('seller/categories/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateCategory(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -184,7 +187,8 @@ export class CategoriesController {
   }
 
   @Delete('seller/categories/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteCategory(
     @CurrentUser() user: JwtPayload,

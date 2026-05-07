@@ -61,7 +61,7 @@
 - [x] **`API-MISSING-THROTTLE-001`** ✅ 06.05.2026 — `@Throttle` добавлен на: `POST /orders` (10/мин, `orders-create.controller.ts:22`), `POST /media/upload-url` (20/мин, `media.controller.ts:54`), `POST /seller/products` (30/мин, `products.controller.ts:121`).
 
 ### 🟢 P3 — для будущей сессии
-- [ ] **`API-RBAC-AUDIT-001`** — пройтись по всем 19 controllers, проверить что endpoint'ы с @UseGuards(JwtAuthGuard) имеют правильный @Roles. Сейчас могут быть случаи где BUYER может звать SELLER endpoint.
+- [x] **`API-RBAC-AUDIT-001`** ✅ 06.05.2026 — найдены и закрыты дыры: 23 `/seller/products/*` endpoints без @Roles('SELLER'), 4 `/seller/categories/*` без @Roles('SELLER'), 4 `/buyer/orders/*` без @Roles('BUYER'). admin/chat/moderation/reviews — чисто. См. `analiz/logs.md AUDIT-API-RBAC`.
 
 ---
 
