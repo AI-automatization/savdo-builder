@@ -309,11 +309,30 @@ model Store {
   products         Product[]
   carts            Cart[]
   orders           Order[]
+  directions       StoreDirection[]
 
   @@index([status])
   @@index([isPublic])
   @@index([primaryGlobalCategoryId])
   @@map("stores")
+}
+
+// «Направления магазина» — many-to-many с GlobalCategory (уровень 0 = «Отрасль»:
+// Электроника, Одежда, Дом и сад…). Помогает покупателям найти магазин по
+// направлению. Polat 06.05: продавец вводит, выходит autocomplete, выбирает
+// несколько. Замена single-poля primaryGlobalCategoryId которое не покрывало
+// мультидиректные магазины.
+model StoreDirection {
+  storeId          String
+  globalCategoryId String
+  createdAt        DateTime @default(now())
+
+  store          Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  globalCategory GlobalCategory @relation(fields: [globalCategoryId], references: [id], onDelete: Cascade)
+
+  @@id([storeId, globalCategoryId])
+  @@index([globalCategoryId])
+  @@map("store_directions")
 }
 
 model StoreContact {
@@ -365,10 +384,11 @@ model GlobalCategory {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
-  parent   GlobalCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children GlobalCategory[] @relation("CategoryTree")
-  stores   Store[]
-  products Product[]
+  parent     GlobalCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children   GlobalCategory[] @relation("CategoryTree")
+  stores     Store[]
+  products   Product[]
+  directions StoreDirection[]
 
   @@index([parentId])
   @@index([isActive])

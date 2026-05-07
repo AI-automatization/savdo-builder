@@ -272,38 +272,44 @@ export default function OrdersPage() {
           const detail = details[o.id];
           const isLoadingDetail = detailLoading === o.id;
 
+          // Polat 06.05: длинный orderNumber обрезался в одной строке с датой.
+          // Теперь две строки — главное (номер + статус + сумма), мелкое (дата+время).
+          const orderShort = o.orderNumber?.replace(/^ORD-/, '') ?? o.id.slice(-6).toUpperCase();
+          const dt = new Date(o.createdAt);
+          const dateLabel = dt.toLocaleDateString('ru', { day: '2-digit', month: 'short' });
+          const timeLabel = dt.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
           return (
             <GlassCard key={o.id} className="flex flex-col gap-0 overflow-hidden">
               <button
-                className="flex items-center gap-3 px-4 py-3.5 w-full text-left"
+                className="flex items-start gap-3 px-4 py-3.5 w-full text-left"
                 onClick={() => toggleExpand(o.id)}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.88)' }}>
-                      #{o.orderNumber ?? o.id.slice(-6)}
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                      Заказ #{orderShort}
                     </p>
-                    <Badge status={o.status} />
+                    <p className="text-sm font-bold shrink-0" style={{ color: '#A855F7' }}>
+                      {Number(o.totalAmount).toLocaleString('ru')} сум
+                    </p>
                   </div>
-                  <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                    {new Date(o.createdAt).toLocaleDateString('ru')}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge status={o.status} />
+                    <p className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      {dateLabel} · {timeLabel}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <p className="text-sm font-bold" style={{ color: '#A855F7' }}>
-                    {Number(o.totalAmount).toLocaleString('ru')} сум
-                  </p>
-                  <svg
-                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-                    className="w-4 h-4 transition-transform"
-                    style={{
-                      color: 'rgba(255,255,255,0.30)',
-                      transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                    }}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
+                <svg
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+                  className="w-4 h-4 transition-transform mt-1.5 shrink-0"
+                  style={{
+                    color: 'rgba(255,255,255,0.30)',
+                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                  }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
               </button>
 
               {isExpanded && (
