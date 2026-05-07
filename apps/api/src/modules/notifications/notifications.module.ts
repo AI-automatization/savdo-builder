@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { SocketModule } from '../../socket/socket.module';
 import { NotificationRepository } from './repositories/notification.repository';
 import { NotificationService } from './services/notification.service';
 import { GetNotificationLogsUseCase } from './use-cases/get-notification-logs.use-case';
@@ -14,7 +15,9 @@ import { InAppNotificationProcessor } from '../../queues/in-app-notification.pro
 import { QUEUE_IN_APP_NOTIFICATIONS } from '../../queues/queues.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_IN_APP_NOTIFICATIONS })],
+  // SocketModule даёт InAppNotificationProcessor доступ к ChatGateway —
+  // emit'ить `notification:new` сразу после insert'а в inbox.
+  imports: [BullModule.registerQueue({ name: QUEUE_IN_APP_NOTIFICATIONS }), SocketModule],
   controllers: [NotificationsController],
   providers: [
     NotificationRepository,
