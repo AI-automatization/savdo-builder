@@ -42,6 +42,9 @@ export const ADMIN_PERMISSIONS: Record<string, string[]> = {
     'product:restore',
     'user:read',
     'audit:read',
+    'category:moderate',
+    'category:read',
+    'media:read',
   ],
   support: [
     'user:read',
@@ -50,6 +53,8 @@ export const ADMIN_PERMISSIONS: Record<string, string[]> = {
     'chat:read',
     'audit:read',
     'store:read',
+    'category:read',
+    'media:read',
   ],
   finance: [
     'order:*',
@@ -58,6 +63,7 @@ export const ADMIN_PERMISSIONS: Record<string, string[]> = {
     'audit:read',
     'store:read',
     'user:read',
+    'media:read',
   ],
   read_only: ['*:read'],
 };

@@ -20,7 +20,10 @@ import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
+import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { MediaVisibility } from '@prisma/client';
 import { RequestUploadDto } from './dto/request-upload.dto';
@@ -225,8 +228,9 @@ export class MediaController {
   // ─── Admin: list all media files ────────────────────────────────────────────
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('media:read')
   async listMedia(
     @Query('page') page = 1,
     @Query('limit') limit = 50,
