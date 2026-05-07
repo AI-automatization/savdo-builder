@@ -1,4 +1,5 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
@@ -125,7 +126,10 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
     );
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  // Polat 07.05: portal в body — backdrop-filter в GlassCard ловит fixed.
+  return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex flex-col"
       style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)', left: sidebarOffset }}
@@ -250,6 +254,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
