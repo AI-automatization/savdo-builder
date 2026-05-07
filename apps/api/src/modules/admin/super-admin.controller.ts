@@ -5,8 +5,10 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
+import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { SkipMfaCheck } from '../../common/decorators/skip-mfa.decorator';
+import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
@@ -26,7 +28,7 @@ import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-ma
  * (super_admin / moderator / etc) делается внутри use-cases по AdminUser.adminRole.
  */
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
 @Roles('ADMIN')
 export class SuperAdminController {
   private readonly logger = new Logger(SuperAdminController.name);
@@ -88,6 +90,7 @@ export class SuperAdminController {
 
   // ─── Impersonation ─────────────────────────────────────────────────────────
   @Post('auth/impersonate/:userId')
+  @AdminPermission('user:impersonate')
   async impersonate(
     @CurrentUser() user: JwtPayload,
     @Param('userId') targetUserId: string,
@@ -97,11 +100,13 @@ export class SuperAdminController {
 
   // ─── Admin users CRUD (только super_admin) ─────────────────────────────────
   @Get('admins')
+  @AdminPermission('admin:read')
   async listAdmins() {
     return this.adminUsersMgmt.list();
   }
 
   @Post('admins')
+  @AdminPermission('admin:create')
   async createAdmin(
     @CurrentUser() user: JwtPayload,
     @Body() body: { phone: string; adminRole: string },
@@ -114,6 +119,7 @@ export class SuperAdminController {
   }
 
   @Patch('admins/:id/role')
+  @AdminPermission('admin:update')
   async changeAdminRole(
     @CurrentUser() user: JwtPayload,
     @Param('id') targetId: string,
@@ -125,6 +131,7 @@ export class SuperAdminController {
   }
 
   @Delete('admins/:id')
+  @AdminPermission('admin:delete')
   async revokeAdmin(
     @CurrentUser() user: JwtPayload,
     @Param('id') targetId: string,
@@ -135,6 +142,7 @@ export class SuperAdminController {
 
   // ─── Refund order ──────────────────────────────────────────────────────────
   @Post('orders/:id/refund')
+  @AdminPermission('refund:create')
   async refund(
     @CurrentUser() user: JwtPayload,
     @Param('id') orderId: string,
@@ -154,6 +162,7 @@ export class SuperAdminController {
 
   // ─── Расширенная верификация продавца (с notes + checkedRequirements) ─────
   @Patch('sellers/:id/verify-extended')
+  @AdminPermission('seller:verify')
   async verifySellerExtendedHandler(
     @CurrentUser() user: JwtPayload,
     @Param('id') sellerId: string,
@@ -180,6 +189,7 @@ export class SuperAdminController {
   // Решение Полата 06.05.2026: монетизация заморожена. Продавец пишет в бот →
   // админ открывает доступ к рынку одним вызовом. См. activate-seller-on-market.use-case.
   @Post('users/:id/activate-seller-on-market')
+  @AdminPermission('seller:create')
   async activateSellerOnMarketHandler(
     @CurrentUser() user: JwtPayload,
     @Param('id') targetUserId: string,

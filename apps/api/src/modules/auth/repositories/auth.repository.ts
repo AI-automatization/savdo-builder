@@ -171,13 +171,21 @@ export class AuthRepository {
     });
   }
 
-  // API-MFA-NOT-ENFORCED-001: проверка нужно ли требовать MFA challenge при login.
-  // Возвращает true только если у user есть AdminUser-запись с mfaEnabled=true.
-  async isAdminMfaEnabled(userId: string): Promise<boolean> {
+  // API-MFA-NOT-ENFORCED-001 + API-RBAC-MICRO-PERMISSIONS-001:
+  // Один lookup, возвращающий и mfaEnabled и adminRole — оба нужны при login.
+  async findAdminClaims(userId: string): Promise<{ mfaEnabled: boolean; adminRole: string | null }> {
     const admin = await (this.prisma as any).adminUser.findUnique({
       where: { userId },
-      select: { mfaEnabled: true },
+      select: { mfaEnabled: true, adminRole: true },
     });
-    return Boolean(admin?.mfaEnabled);
+    return {
+      mfaEnabled: Boolean(admin?.mfaEnabled),
+      adminRole: admin?.adminRole ?? null,
+    };
+  }
+
+  // Backward-compat — оставляем для кода, который ещё не мигрирован.
+  async isAdminMfaEnabled(userId: string): Promise<boolean> {
+    return (await this.findAdminClaims(userId)).mfaEnabled;
   }
 }

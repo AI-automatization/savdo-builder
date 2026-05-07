@@ -47,7 +47,7 @@
 - [x] **`API-MFA-NOT-ENFORCED-001`** ✅ 06.05.2026 — введён `mfaPending` claim в JWT (выставляется при login если `AdminUser.mfaEnabled=true`), `MfaEnforcedGuard` блокирует все admin endpoints кроме помеченных `@SkipMfaCheck()`. POST `/admin/auth/mfa/login` обменивает mfaPending JWT → полноценный после TOTP. См. `analiz/done.md API-MFA-NOT-ENFORCED-001`.
 
 ### 🟠 P1 — Полат
-- [ ] **`API-RBAC-MICRO-PERMISSIONS-001`** — admin permissions matrix (super_admin/admin/moderator/etc) объявлена в `admin-auth.use-case.ts`, но не проверяется на endpoint level. Добавить `@AdminPermission('xxx:yyy')` decorator + guard.
+- [x] **`API-RBAC-MICRO-PERMISSIONS-001`** ✅ 06.05.2026 — `@AdminPermission(perm)` decorator + `AdminPermissionGuard` + `JwtPayload.adminRole` claim. Permissions matrix вынесена в `common/constants/admin-permissions.ts` с wildcard-логикой (`*`, `user:*`, `*:read`). Применено на 23 destructive endpoints в admin/super-admin controller'ах (suspend, approve, reject, archive, refund, impersonate, db CRUD, broadcast, migrate). См. `analiz/done.md API-RBAC-MICRO-PERMISSIONS-001`.
 
 ### 🟠 P1 — Азим
 - [ ] **`WEB-SELLER-HARDCODED-DOMAIN-001`** — 3 места с прямым `https://savdo.uz/${slug}` без env fallback в web-seller. Файлы: `app/(dashboard)/layout.tsx:127,236`, `app/(dashboard)/profile/page.tsx:49`. Использовать `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` или общий helper.

@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — RBAC micro-permissions на admin endpoints
+
+### ✅ [API-RBAC-MICRO-PERMISSIONS-001] Endpoint-level разрешения для admin-ролей 🟠
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/common/constants/admin-permissions.ts` — `ADMIN_PERMISSIONS` matrix + `hasAdminPermission()` wildcard-helper + `getAdminPermissions()`. Вынесено из `admin-auth.use-case.ts` в shared.
+  - `apps/api/src/common/decorators/admin-permission.decorator.ts` — `@AdminPermission('user:suspend')`
+  - `apps/api/src/common/guards/admin-permission.guard.ts` — гард читает metadata, проверяет роль из `JwtPayload.adminRole` (с DB fallback для legacy JWT).
+  - `apps/api/src/common/decorators/current-user.decorator.ts` — `JwtPayload.adminRole?: string`
+  - `apps/api/src/modules/auth/repositories/auth.repository.ts` — `findAdminClaims()` возвращает `{ mfaEnabled, adminRole }` одним lookup.
+  - `apps/api/src/modules/auth/use-cases/{verify-otp,telegram-auth,refresh-session}.use-case.ts` — выставляют `adminRole` в JWT.
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts` — refactor на shared constants + `mfaChallenge` сохраняет `adminRole`.
+  - `apps/api/src/modules/admin/admin.controller.ts` — `AdminPermissionGuard` в @UseGuards + `@AdminPermission()` на 17 destructive endpoints.
+  - `apps/api/src/modules/admin/super-admin.controller.ts` — то же + 8 endpoints (impersonate, refund, admin CRUD, verify-extended, activate-seller).
+- **Что сделано:** до этого matrix существовала в `admin-auth.use-case.ts` но проверялась только в одном месте (impersonate). Все остальные admin endpoints не проверяли пер-permission — `support` или `read_only` могли вызвать destructive endpoints. Теперь — endpoint-level enforcement через `@AdminPermission`.
+- **Wildcard семантика:** `*` (все), `user:*` (все над user), `*:read` (read любого).
+- **Permissions per role:** `super_admin: ['*']`, `admin` (все кроме `admin:*` mgmt), `moderator` (только moderation + read), `support` (read + cancel order), `finance` (orders + refunds), `read_only` (`*:read`).
+- **Покрытие:** 23 destructive endpoints получили `@AdminPermission`. List/read endpoints не размечены — fallback на `@Roles('ADMIN')` (любой admin читает). При необходимости — добавить ярлыки в follow-up.
+
 ## 2026-05-06 (Полат) — MFA enforcement на admin endpoints
 
 ### ✅ [API-MFA-NOT-ENFORCED-001] Real MFA gating через mfaPending JWT 🔴
