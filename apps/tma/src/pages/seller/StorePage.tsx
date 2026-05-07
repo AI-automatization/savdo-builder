@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { confirmDialog } from '@/components/ui/ConfirmModal';
+import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
 import { glass } from '@/lib/styles';
 import { webStoreUrl } from '@/lib/webUrl';
 
@@ -344,6 +345,11 @@ export default function SellerStorePage() {
               <span>{store.telegramChannelTitle ?? store.telegramChannelId}</span>
             </div>
           )}
+        </GlassCard>
+
+        {/* FEAT-002 (Polat 06.05): направления магазина — multi-select autocomplete */}
+        <GlassCard className="p-4">
+          <StoreDirectionsPicker />
         </GlassCard>
 
         {/* Edit form or actions */}
