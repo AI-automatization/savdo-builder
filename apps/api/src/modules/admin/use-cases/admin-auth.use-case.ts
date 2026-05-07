@@ -32,7 +32,7 @@ export class AdminAuthUseCase {
 
   // ── GET /admin/auth/me ───────────────────────────────────────────────
   async getMe(userId: string) {
-    const admin = await (this.prisma as any).adminUser.findUnique({
+    const admin = await this.prisma.adminUser.findUnique({
       where: { userId },
       include: { user: { select: { phone: true, telegramId: true, role: true } } },
     });
@@ -60,7 +60,7 @@ export class AdminAuthUseCase {
 
     const secret = authenticator.generateSecret(); // base32
     // Сохраняем pending secret пока не подтверждён через verify
-    await (this.prisma as any).adminUser.update({
+    await this.prisma.adminUser.update({
       where: { id: admin.id },
       data: { mfaSecret: secret },
     });
@@ -81,7 +81,7 @@ export class AdminAuthUseCase {
     if (!ok) {
       throw new DomainException(ErrorCode.OTP_INVALID, 'Invalid TOTP code', HttpStatus.BAD_REQUEST);
     }
-    await (this.prisma as any).adminUser.update({
+    await this.prisma.adminUser.update({
       where: { id: admin.id },
       data: { mfaEnabled: true, mfaEnabledAt: new Date() },
     });
@@ -112,7 +112,7 @@ export class AdminAuthUseCase {
     });
 
     // Update lastLoginAt — это эффективно «момент входа» для admin'а.
-    await (this.prisma as any).adminUser.update({
+    await this.prisma.adminUser.update({
       where: { id: admin.id },
       data: { lastLoginAt: new Date() },
     });
@@ -133,7 +133,7 @@ export class AdminAuthUseCase {
     if (!ok) {
       throw new DomainException(ErrorCode.OTP_INVALID, 'Invalid TOTP code', HttpStatus.BAD_REQUEST);
     }
-    await (this.prisma as any).adminUser.update({
+    await this.prisma.adminUser.update({
       where: { id: admin.id },
       data: { mfaEnabled: false, mfaSecret: null, mfaEnabledAt: null },
     });
@@ -190,7 +190,7 @@ export class AdminAuthUseCase {
   }
 
   private async requireAdmin(userId: string) {
-    const admin = await (this.prisma as any).adminUser.findUnique({ where: { userId } });
+    const admin = await this.prisma.adminUser.findUnique({ where: { userId } });
     if (!admin) {
       throw new DomainException(ErrorCode.ADMIN_NOT_FOUND, 'Admin record not found', HttpStatus.FORBIDDEN);
     }

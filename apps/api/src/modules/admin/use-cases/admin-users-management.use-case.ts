@@ -12,7 +12,7 @@ export class AdminUsersManagementUseCase {
 
   // ── GET /admin/admins ──────────────────────────────────────────────
   async list() {
-    const admins = await (this.prisma as any).adminUser.findMany({
+    const admins = await this.prisma.adminUser.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { id: true, phone: true, telegramId: true, createdAt: true } },
@@ -48,7 +48,7 @@ export class AdminUsersManagementUseCase {
       throw new DomainException(ErrorCode.NOT_FOUND, `User with phone ${phone} not found — they must register first`, HttpStatus.NOT_FOUND);
     }
 
-    const existing = await (this.prisma as any).adminUser.findUnique({ where: { userId: user.id } });
+    const existing = await this.prisma.adminUser.findUnique({ where: { userId: user.id } });
     if (existing) {
       throw new DomainException(ErrorCode.VALIDATION_ERROR, 'User already has admin record', HttpStatus.BAD_REQUEST);
     }
@@ -59,7 +59,7 @@ export class AdminUsersManagementUseCase {
       data: { role: 'ADMIN' },
     });
 
-    const created = await (this.prisma as any).adminUser.create({
+    const created = await this.prisma.adminUser.create({
       data: {
         userId: user.id,
         adminRole,
@@ -80,7 +80,7 @@ export class AdminUsersManagementUseCase {
       throw new DomainException(ErrorCode.VALIDATION_ERROR, 'Cannot change your own role', HttpStatus.BAD_REQUEST);
     }
 
-    const target = await (this.prisma as any).adminUser.findUnique({ where: { id: targetAdminId } });
+    const target = await this.prisma.adminUser.findUnique({ where: { id: targetAdminId } });
     if (!target) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Admin not found', HttpStatus.NOT_FOUND);
     }
@@ -90,7 +90,7 @@ export class AdminUsersManagementUseCase {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Only super_admin can manage super_admin role', HttpStatus.FORBIDDEN);
     }
 
-    const updated = await (this.prisma as any).adminUser.update({
+    const updated = await this.prisma.adminUser.update({
       where: { id: targetAdminId },
       data: { adminRole: newRole, isSuperadmin: newRole === 'super_admin' },
     });
@@ -106,7 +106,7 @@ export class AdminUsersManagementUseCase {
       throw new DomainException(ErrorCode.VALIDATION_ERROR, 'Cannot revoke yourself', HttpStatus.BAD_REQUEST);
     }
 
-    const target = await (this.prisma as any).adminUser.findUnique({ where: { id: targetAdminId } });
+    const target = await this.prisma.adminUser.findUnique({ where: { id: targetAdminId } });
     if (!target) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Admin not found', HttpStatus.NOT_FOUND);
     }
@@ -117,7 +117,7 @@ export class AdminUsersManagementUseCase {
 
     // Удаляем admin-record + понижаем User.role
     await this.prisma.$transaction([
-      (this.prisma as any).adminUser.delete({ where: { id: targetAdminId } }),
+      this.prisma.adminUser.delete({ where: { id: targetAdminId } }),
       this.prisma.user.update({ where: { id: target.userId }, data: { role: 'BUYER' } }),
     ]);
 
@@ -135,7 +135,7 @@ export class AdminUsersManagementUseCase {
   }
 
   private async requireSuperadmin(adminId: string) {
-    const admin = await (this.prisma as any).adminUser.findUnique({ where: { id: adminId } });
+    const admin = await this.prisma.adminUser.findUnique({ where: { id: adminId } });
     if (!admin) {
       throw new DomainException(ErrorCode.ADMIN_NOT_FOUND, 'Admin not found', HttpStatus.FORBIDDEN);
     }

@@ -174,7 +174,7 @@ export class AuthRepository {
   // API-MFA-NOT-ENFORCED-001 + API-RBAC-MICRO-PERMISSIONS-001:
   // Один lookup, возвращающий и mfaEnabled и adminRole — оба нужны при login.
   async findAdminClaims(userId: string): Promise<{ mfaEnabled: boolean; adminRole: string | null }> {
-    const admin = await (this.prisma as any).adminUser.findUnique({
+    const admin = await this.prisma.adminUser.findUnique({
       where: { userId },
       select: { mfaEnabled: true, adminRole: true },
     });
