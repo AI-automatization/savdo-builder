@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useTelegram } from '@/providers/TelegramProvider';
+import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
 interface ConfirmOptions {
   title: string;
@@ -31,6 +33,8 @@ export function confirmDialog(opts: ConfirmOptions): Promise<boolean> {
 
 export function ConfirmContainer() {
   const [payload, setPayload] = useState<OpenPayload | null>(null);
+  const { viewportWidth } = useTelegram();
+  const desktopOffset = (viewportWidth ?? 0) >= 768 ? { left: SIDEBAR_WIDTH } : {};
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -65,7 +69,7 @@ export function ConfirmContainer() {
   return (
     <div
       className="fixed inset-0 z-[10001] flex items-center justify-center px-4"
-      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', ...desktopOffset }}
       onClick={() => close(false)}
     >
       <div

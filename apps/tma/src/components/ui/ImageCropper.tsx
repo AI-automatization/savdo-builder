@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
+import { useTelegram } from '@/providers/TelegramProvider';
+import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
 interface Props {
   imageSrc: string;
@@ -37,6 +39,9 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
   const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const [processing, setProcessing] = useState(false);
+  // На desktop оставляем sidebar 220px видимым — cropper не перекрывает навигацию.
+  const { viewportWidth } = useTelegram();
+  const leftOffset = (viewportWidth ?? 0) >= 768 ? SIDEBAR_WIDTH : 0;
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
     setCroppedArea(croppedPixels);
@@ -57,7 +62,10 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
     <div
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: leftOffset,
         zIndex: 9999,
         background: 'rgba(0,0,0,0.95)',
         display: 'flex',
