@@ -57,7 +57,7 @@ export class AdminPermissionGuard implements CanActivate {
     let adminRole = user.adminRole;
     if (!adminRole) {
       // Fallback: legacy JWT без adminRole. Дёргаем DB.
-      const admin = await (this.prisma as any).adminUser.findUnique({
+      const admin = await this.prisma.adminUser.findUnique({
         where: { userId: user.sub },
         select: { adminRole: true },
       });
