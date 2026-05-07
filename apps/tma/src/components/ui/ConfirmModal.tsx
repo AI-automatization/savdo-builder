@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
@@ -63,10 +64,13 @@ export function ConfirmContainer() {
   };
 
   if (!payload) return null;
+  if (typeof document === 'undefined') return null;
 
   const { title, body, confirmText = 'Подтвердить', cancelText = 'Отмена', danger } = payload;
 
-  return (
+  // Polat 07.05: portal в document.body — иначе backdrop-filter в GlassCard
+  // ловит fixed-position и обрезает modal до карточки.
+  return createPortal(
     <div
       className="fixed inset-0 z-[10001] flex items-center justify-center px-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', ...desktopOffset }}
@@ -116,6 +120,7 @@ export function ConfirmContainer() {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
