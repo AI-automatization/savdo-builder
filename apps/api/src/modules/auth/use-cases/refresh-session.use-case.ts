@@ -58,19 +58,22 @@ export class RefreshSessionUseCase {
       ? await this.authRepo.findStoreIdByUserId(user.id)
       : undefined;
 
-    // API-MFA-NOT-ENFORCED-001: на refresh ВСЕГДА перепроверяем MFA. Это защищает
-    // от сценария, когда злоумышленник украл refresh token — он не сможет
-    // обойти MFA challenge при следующем refresh.
-    const mfaPending = user.role === 'ADMIN'
-      ? await this.authRepo.isAdminMfaEnabled(user.id)
-      : false;
+    // API-MFA-NOT-ENFORCED-001 + API-RBAC-MICRO-PERMISSIONS-001:
+    // На refresh ВСЕГДА перепроверяем MFA + adminRole. Это защищает от
+    // сценария когда украден refresh token (MFA challenge снова обязателен)
+    // и от случая когда у admin'а изменили роль/отозвали admin (старый
+    // adminRole в JWT не унаследуется).
+    const adminClaims = user.role === 'ADMIN'
+      ? await this.authRepo.findAdminClaims(user.id)
+      : null;
 
     const accessToken = this.tokenService.generateAccessToken({
       sub: user.id,
       role: user.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
-      ...(mfaPending && { mfaPending: true }),
+      ...(adminClaims?.mfaEnabled && { mfaPending: true }),
+      ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 
     return { accessToken, refreshToken: newRefreshToken };

@@ -14,7 +14,9 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
+import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
@@ -54,7 +56,7 @@ import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
 import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
 @Roles('ADMIN')
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
@@ -151,6 +153,7 @@ export class AdminController {
   }
 
   @Post('users/:id/suspend')
+  @AdminPermission('user:suspend')
   async suspendUser(
     @Param('id') id: string,
     @Body() dto: AdminActionDto,
@@ -161,6 +164,7 @@ export class AdminController {
   }
 
   @Post('users/:id/unsuspend')
+  @AdminPermission('user:suspend')
   async unsuspendUser(
     @Param('id') id: string,
     @Body() dto: AdminActionDto,
@@ -191,6 +195,7 @@ export class AdminController {
   }
 
   @Patch('sellers/:id/verify')
+  @AdminPermission('seller:verify')
   async verifySeller(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -210,6 +215,7 @@ export class AdminController {
 
   // POST /api/v1/admin/users/:id/make-seller
   @Post('users/:id/make-seller')
+  @AdminPermission('seller:create')
   async makeUserSeller(
     @Param('id') id: string,
     @Body() body: { fullName: string; sellerType: string; telegramUsername: string },
@@ -234,6 +240,7 @@ export class AdminController {
 
   // POST /api/v1/admin/sellers/:id/create-store
   @Post('sellers/:id/create-store')
+  @AdminPermission('store:create')
   async createStoreForSeller(
     @Param('id') id: string,
     @Body() body: { name: string; city: string; telegramContactLink: string; description?: string; region?: string; slug?: string },
@@ -275,6 +282,7 @@ export class AdminController {
   }
 
   @Post('stores/:id/suspend')
+  @AdminPermission('store:suspend')
   async suspendStore(
     @Param('id') id: string,
     @Body() dto: AdminActionDto,
@@ -285,6 +293,7 @@ export class AdminController {
   }
 
   @Post('stores/:id/unsuspend')
+  @AdminPermission('store:suspend')
   async unsuspendStore(
     @Param('id') id: string,
     @Body() dto: AdminActionDto,
@@ -295,6 +304,7 @@ export class AdminController {
   }
 
   @Post('stores/:id/reject')
+  @AdminPermission('store:moderate')
   async rejectStore(
     @Param('id') id: string,
     @Body() dto: AdminActionDto,
@@ -305,6 +315,7 @@ export class AdminController {
   }
 
   @Post('stores/:id/archive')
+  @AdminPermission('store:archive')
   async archiveStore(
     @Param('id') id: string,
     @Body() dto: AdminActionDto,
@@ -315,6 +326,7 @@ export class AdminController {
   }
 
   @Post('stores/:id/approve')
+  @AdminPermission('store:moderate')
   async approveStore(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -324,6 +336,7 @@ export class AdminController {
   }
 
   @Post('stores/:id/unapprove')
+  @AdminPermission('store:moderate')
   async unapproveStore(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -334,6 +347,7 @@ export class AdminController {
 
   // PATCH /api/v1/admin/orders/:id/status  { status: 'CANCELLED', reason: string }
   @Patch('orders/:id/status')
+  @AdminPermission('order:cancel')
   async updateOrderStatus(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -382,6 +396,7 @@ export class AdminController {
 
   // POST /api/v1/admin/broadcast
   @Post('broadcast')
+  @AdminPermission('broadcast:create')
   async broadcast(
     @Body() dto: BroadcastDto,
     @CurrentUser() user: JwtPayload,
@@ -436,6 +451,7 @@ export class AdminController {
 
   // PATCH /api/v1/admin/products/:id/hide
   @Patch('products/:id/hide')
+  @AdminPermission('product:moderate')
   async hideProduct(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -457,6 +473,7 @@ export class AdminController {
 
   // PATCH /api/v1/admin/products/:id/restore
   @Patch('products/:id/restore')
+  @AdminPermission('product:moderate')
   async restoreProduct(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -478,6 +495,7 @@ export class AdminController {
 
   // DELETE /api/v1/admin/products/:id  — принудительное удаление (soft delete, любой статус)
   @Delete('products/:id')
+  @AdminPermission('product:delete')
   async forceDeleteProduct(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -500,6 +518,7 @@ export class AdminController {
 
   // PATCH /api/v1/admin/products/:id/archive
   @Patch('products/:id/archive')
+  @AdminPermission('product:moderate')
   async archiveProduct(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -601,6 +620,7 @@ export class AdminController {
 
   // PATCH /api/v1/admin/db/tables/:table/:id
   @Patch('db/tables/:table/:id')
+  @AdminPermission('db:update')
   async dbUpdateRow(
     @Param('table') table: string,
     @Param('id')    id:    string,
@@ -620,6 +640,7 @@ export class AdminController {
 
   // DELETE /api/v1/admin/db/tables/:table/:id
   @Delete('db/tables/:table/:id')
+  @AdminPermission('db:delete')
   async dbDeleteRow(
     @Param('table') table: string,
     @Param('id')    id:    string,
@@ -641,6 +662,7 @@ export class AdminController {
   // API-MEDIA-MIGRATION-TG-TO-R2-001: разово/батчами вытащить старые TG-фото
   // и залить в Supabase. См. comment в use-case для контекста.
   @Post('media/migrate-tg-to-r2')
+  @AdminPermission('media:migrate')
   async migrateTgMediaToR2(
     @Query('limit') limit: string | undefined,
     @CurrentUser() user: JwtPayload,
@@ -660,6 +682,7 @@ export class AdminController {
 
   // POST /api/v1/admin/db/tables/:table
   @Post('db/tables/:table')
+  @AdminPermission('db:insert')
   async dbInsertRow(
     @Param('table') table: string,
     @Body()         data:  Record<string, unknown>,
