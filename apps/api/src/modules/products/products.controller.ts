@@ -872,6 +872,9 @@ export class ProductsController {
   private resolveImageUrl(media: unknown): string {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
+    // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' выставляется migration
+    // если TG getFile вернул 404 — fileId мёртв навсегда. Не показываем.
+    if (m.bucket === 'telegram-expired') return '';
     const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
     // Telegram-stored files always proxy (file URLs expire ~1h)
     if (m.bucket === 'telegram') {

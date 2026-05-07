@@ -105,7 +105,7 @@
 
 - [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (полностью закрыто) — API теперь кладёт resolved URL прямо в `image.url` для 3 product detail endpoints (seller getMyProduct, products list seller endpoint, storefront product detail). EditProductPage использует `img.url` с fallback на getImageUrl для backward-compat. ProductsPage уже на mediaUrls[0]. Frontend больше не зависит от `VITE_R2_PUBLIC_URL`.
 
-- [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
+- [x] **`API-BUCKET-NAME-CONSISTENCY-001`** ✅ 06.05.2026 — добавлен явный handling `telegram-expired` (выставляется миграцией TG→Supabase когда file_id мёртв) в 3 mappers: `media.controller proxy/private` (404 NotFoundException), `cart.mapper.resolveMediaUrl` (returns null), `products.controller.resolveImageUrl` (returns ''). Раньше эти файлы попадали в S3 redirect → broken images.
 
 ### 🟢 P3 — для Полата (cleanup)
 
