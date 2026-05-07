@@ -12,7 +12,10 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
+import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { TrackEventDto } from './dto/track-event.dto';
 import { QueryEventsDto } from './dto/query-events.dto';
@@ -92,8 +95,9 @@ export class AnalyticsController {
   // ─── GET /api/v1/admin/analytics/events ───────────────────────────────────
 
   @Get('admin/analytics/events')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('analytics:read')
   async queryEvents(@Query() dto: QueryEventsDto) {
     return this.queryEventsUseCase.execute(dto);
   }

@@ -99,6 +99,7 @@
 ### 🟡 P2 — для Полата (technical debt)
 
 - [x] **`API-WS-PUSH-NOTIFICATIONS-001`** ✅ 06.05.2026 — реализовано параллельной сессией: `chat.gateway.ts handleConnection` авто-join `user:${userId}`, `emitNotificationNew()` в `InAppNotificationProcessor` после create. Frontend `notifications.ts` слушает `notification:new`, fallback poll 5 мин на разрыв WS.
+- [x] **`API-MFA-COVERAGE-EXTRA-001`** ✅ 06.05.2026 — `MfaEnforcedGuard` + `AdminPermissionGuard` + `@AdminPermission` добавлены на admin endpoints в categories (5 endpoints), analytics (1), media (1). Permissions matrix дополнена `category:read/moderate`, `media:read` для moderator/support/finance ролей.
 
 - [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
 
