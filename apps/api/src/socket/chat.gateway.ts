@@ -47,6 +47,11 @@ export class ChatGateway implements OnGatewayConnection {
       return;
     }
     client.data.user = payload;
+    // API-WS-PUSH-NOTIFICATIONS-001: auto-join user-scoped room для in-app
+    // уведомлений. Frontend больше не poll'ит unread count каждые 30 сек —
+    // вместо этого слушает `notification:new`. Проверка JWT защищает от
+    // join'а в чужую room (sub из проверенного токена).
+    client.join(`user:${payload.sub}`);
     this.logger.debug(`WS connected: userId=${payload.sub} role=${payload.role}`);
   }
 
@@ -169,6 +174,21 @@ export class ChatGateway implements OnGatewayConnection {
   emitChatNewMessage(storeId: string, payload: { threadId: string; buyerName?: string }): void {
     this.server.to(`seller:${storeId}`).emit('chat:new_message', payload);
     this.logger.log(`Emitted chat:new_message to seller:${storeId} — threadId=${payload.threadId}`);
+  }
+
+  // API-WS-PUSH-NOTIFICATIONS-001: emit'ится из InAppNotificationProcessor
+  // после `prisma.inAppNotification.create()`. Frontend подписан на это
+  // event и обновляет badge / показывает toast. Заменяет polling каждые 30s.
+  emitNotificationNew(userId: string, payload: {
+    id: string;
+    type: string;
+    title: string;
+    body: string;
+    createdAt: string;
+    data?: unknown;
+  }): void {
+    this.server.to(`user:${userId}`).emit('notification:new', payload);
+    this.logger.log(`Emitted notification:new to user:${userId} — type=${payload.type}`);
   }
 
   private verifyToken(token: string): JwtPayload | null {
