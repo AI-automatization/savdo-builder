@@ -58,11 +58,19 @@ export class RefreshSessionUseCase {
       ? await this.authRepo.findStoreIdByUserId(user.id)
       : undefined;
 
+    // API-MFA-NOT-ENFORCED-001: на refresh ВСЕГДА перепроверяем MFA. Это защищает
+    // от сценария, когда злоумышленник украл refresh token — он не сможет
+    // обойти MFA challenge при следующем refresh.
+    const mfaPending = user.role === 'ADMIN'
+      ? await this.authRepo.isAdminMfaEnabled(user.id)
+      : false;
+
     const accessToken = this.tokenService.generateAccessToken({
       sub: user.id,
       role: user.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
+      ...(mfaPending && { mfaPending: true }),
     });
 
     return { accessToken, refreshToken: newRefreshToken };

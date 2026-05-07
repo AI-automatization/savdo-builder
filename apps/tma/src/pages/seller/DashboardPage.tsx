@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
+import { StatsCardSkeleton, OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { Sticker } from '@/components/ui/Sticker';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { SellerAnalyticsCard } from '@/components/seller/SellerAnalyticsCard';
@@ -93,6 +93,12 @@ export default function DashboardPage() {
           Все →
         </button>
       </div>
+
+      {loading && (
+        <div className="flex flex-col gap-2">
+          {[1, 2, 3].map((i) => <OrderRowSkeleton key={i} />)}
+        </div>
+      )}
 
       {!loading && orders.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-8">
@@ -186,7 +192,9 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-4">
               {/* Stats */}
               {loading ? (
-                <div className="flex justify-center py-4"><Spinner /></div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[1, 2, 3].map((i) => <StatsCardSkeleton key={i} />)}
+                </div>
               ) : (
                 <div className="grid grid-cols-3 gap-3">
                   {statsCards.map((s) => (
@@ -262,7 +270,9 @@ export default function DashboardPage() {
           /* ── Mobile: single column ── */
           <>
             {loading ? (
-              <div className="flex justify-center py-4"><Spinner /></div>
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3].map((i) => <StatsCardSkeleton key={i} />)}
+              </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 {statsCards.map((s) => (

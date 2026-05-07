@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Spinner } from '@/components/ui/Spinner';
+import { ThreadRowSkeleton, ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { Sticker } from '@/components/ui/Sticker';
 import { ProductCard, type FeedProduct } from '@/components/ui/ProductCard';
 
@@ -323,7 +323,9 @@ export default function StoresPage() {
             <div className="section-label">Магазины</div>
 
             {storesLoading && (
-              <div className="flex justify-center py-8"><Spinner /></div>
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4].map((i) => <ThreadRowSkeleton key={i} />)}
+              </div>
             )}
 
             {!storesLoading && storesError && (
@@ -404,7 +406,14 @@ export default function StoresPage() {
         {tab === 'products' && (
           <>
             {productsLoading && (
-              <div className="flex justify-center py-8"><Spinner /></div>
+              <div className={`grid gap-3 ${
+                viewportWidth >= 1280 ? 'grid-cols-6' :
+                viewportWidth >= 1024 ? 'grid-cols-5' :
+                viewportWidth >= 768  ? 'grid-cols-4' :
+                viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2'
+              }`}>
+                {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </div>
             )}
 
             {!productsLoading && products.length === 0 && (

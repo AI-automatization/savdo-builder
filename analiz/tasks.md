@@ -44,7 +44,7 @@
 ## 🆕 Аудит платформы продолжение (06.05.2026)
 
 ### 🔴 P0 — Полат / параллельная сессия
-- [ ] **`API-MFA-NOT-ENFORCED-001`** — MFA TOTP реализован но НЕ enforced на admin endpoints. Любой admin JWT даёт полный доступ даже если `mfaEnabled=true`. Решение: temporary scope=`mfa-challenge` JWT после login, exchange на full token через `/admin/auth/mfa/login` с TOTP. См. `analiz/logs.md AUDIT-ADMIN-2026-05-06`.
+- [x] **`API-MFA-NOT-ENFORCED-001`** ✅ 06.05.2026 — введён `mfaPending` claim в JWT (выставляется при login если `AdminUser.mfaEnabled=true`), `MfaEnforcedGuard` блокирует все admin endpoints кроме помеченных `@SkipMfaCheck()`. POST `/admin/auth/mfa/login` обменивает mfaPending JWT → полноценный после TOTP. См. `analiz/done.md API-MFA-NOT-ENFORCED-001`.
 
 ### 🟠 P1 — Полат
 - [ ] **`API-RBAC-MICRO-PERMISSIONS-001`** — admin permissions matrix (super_admin/admin/moderator/etc) объявлена в `admin-auth.use-case.ts`, но не проверяется на endpoint level. Добавить `@AdminPermission('xxx:yyy')` decorator + guard.

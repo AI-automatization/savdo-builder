@@ -4,7 +4,9 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { SkipMfaCheck } from '../../common/decorators/skip-mfa.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
@@ -24,7 +26,7 @@ import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-ma
  * (super_admin / moderator / etc) делается внутри use-cases по AdminUser.adminRole.
  */
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 @Roles('ADMIN')
 export class SuperAdminController {
   private readonly logger = new Logger(SuperAdminController.name);
@@ -40,12 +42,16 @@ export class SuperAdminController {
 
   // ─── Auth / Profile ────────────────────────────────────────────────────────
   @Get('auth/me')
+  @SkipMfaCheck()
   async getMe(@CurrentUser() user: JwtPayload) {
-    return this.adminAuth.getMe(user.sub);
+    // Возвращаем mfaPending в ответе чтобы фронт мог показать challenge UI.
+    const me = await this.adminAuth.getMe(user.sub);
+    return { ...me, mfaPending: !!user.mfaPending };
   }
 
   // ─── MFA (TOTP) ────────────────────────────────────────────────────────────
   @Post('auth/mfa/setup')
+  @SkipMfaCheck()
   async setupMfa(@CurrentUser() user: JwtPayload) {
     const u = await this.prisma.user.findUnique({ where: { id: user.sub }, select: { phone: true } });
     if (!u?.phone) throw new BadRequestException('User phone not found');
@@ -53,15 +59,31 @@ export class SuperAdminController {
   }
 
   @Post('auth/mfa/verify')
+  @SkipMfaCheck()
   async verifyMfa(@CurrentUser() user: JwtPayload, @Body('code') code: string) {
     if (!code) throw new BadRequestException('code is required');
     return this.adminAuth.verifyMfa(user.sub, code);
   }
 
   @Post('auth/mfa/disable')
+  @SkipMfaCheck()
   async disableMfa(@CurrentUser() user: JwtPayload, @Body('code') code: string) {
     if (!code) throw new BadRequestException('code is required');
     return this.adminAuth.disableMfa(user.sub, code);
+  }
+
+  // ─── POST /admin/auth/mfa/login ─────────────────────────────────────────
+  // API-MFA-NOT-ENFORCED-001: challenge endpoint для login flow.
+  // После telegram/otp-login admin с mfaEnabled=true получил token с mfaPending,
+  // здесь обменивает его на полноценный token (с тем же sessionId).
+  @Post('auth/mfa/login')
+  @SkipMfaCheck()
+  async mfaLogin(@CurrentUser() user: JwtPayload, @Body('code') code: string) {
+    if (!code) throw new BadRequestException('code is required');
+    if (!user.mfaPending) {
+      throw new BadRequestException('MFA challenge not required for this token');
+    }
+    return this.adminAuth.mfaChallenge(user.sub, code, user.sessionId, user.role);
   }
 
   // ─── Impersonation ─────────────────────────────────────────────────────────

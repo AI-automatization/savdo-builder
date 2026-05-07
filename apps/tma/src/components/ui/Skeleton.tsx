@@ -56,3 +56,62 @@ export function ThreadRowSkeleton() {
     </div>
   );
 }
+
+// Preset: детали товара (ProductPage)
+export function ProductDetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <Skeleton style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 18 }} />
+      <Skeleton style={{ height: 22, width: '70%' }} />
+      <Skeleton style={{ height: 16, width: '40%' }} />
+      <div className="flex flex-col gap-2 mt-2">
+        <Skeleton style={{ height: 13, width: '95%' }} />
+        <Skeleton style={{ height: 13, width: '88%' }} />
+        <Skeleton style={{ height: 13, width: '60%' }} />
+      </div>
+    </div>
+  );
+}
+
+// Preset: stats-карточка дашборда (KPI блоки)
+export function StatsCardSkeleton() {
+  return (
+    <div className="rounded-2xl p-4 flex flex-col items-center gap-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <Skeleton style={{ width: 32, height: 32, borderRadius: 8 }} />
+      <Skeleton style={{ height: 24, width: '50%' }} />
+      <Skeleton style={{ height: 11, width: '60%' }} />
+    </div>
+  );
+}
+
+// Preset: профильный блок (ProfilePage)
+export function ProfileBlockSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <Skeleton style={{ width: 64, height: 64 }} rounded />
+        <div className="flex flex-col gap-2 flex-1">
+          <Skeleton style={{ height: 15, width: '60%' }} />
+          <Skeleton style={{ height: 11, width: '40%' }} />
+        </div>
+      </div>
+      <Skeleton style={{ height: 60 }} />
+      <Skeleton style={{ height: 60 }} />
+      <Skeleton style={{ height: 60 }} />
+    </div>
+  );
+}
+
+// Preset: карточка корзины (line item)
+export function CartItemSkeleton() {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <Skeleton style={{ width: 60, height: 60, flexShrink: 0, borderRadius: 12 }} />
+      <div className="flex flex-col gap-1.5 flex-1">
+        <Skeleton style={{ height: 13, width: '70%' }} />
+        <Skeleton style={{ height: 11, width: '40%' }} />
+        <Skeleton style={{ height: 24, width: 100, borderRadius: 12 }} />
+      </div>
+    </div>
+  );
+}

@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — MFA enforcement на admin endpoints
+
+### ✅ [API-MFA-NOT-ENFORCED-001] Real MFA gating через mfaPending JWT 🔴
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/common/decorators/current-user.decorator.ts` — `JwtPayload.mfaPending?: boolean`
+  - `apps/api/src/common/decorators/skip-mfa.decorator.ts` — `@SkipMfaCheck()` decorator + SKIP_MFA_KEY metadata
+  - `apps/api/src/common/guards/mfa-enforced.guard.ts` — guard, бросает 403 `MFA_REQUIRED` если `user.mfaPending===true`
+  - `apps/api/src/modules/auth/repositories/auth.repository.ts` — `isAdminMfaEnabled(userId)` lookup
+  - `apps/api/src/modules/auth/use-cases/{verify-otp,telegram-auth,refresh-session}.use-case.ts` — выставляют `mfaPending` для ADMIN с включённым MFA при login и refresh
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts` — новый метод `mfaChallenge(userId, code, sessionId, role)` re-issues JWT без mfaPending
+  - `apps/api/src/modules/admin/super-admin.controller.ts` — `POST /admin/auth/mfa/login` + `@SkipMfaCheck()` на `auth/me`, `auth/mfa/setup/verify/disable/login`
+  - `apps/api/src/modules/admin/admin.controller.ts`, `chat.controller.ts`, `moderation/moderation.controller.ts`, `super-admin.controller.ts` — `MfaEnforcedGuard` в `@UseGuards`
+  - `apps/api/src/shared/constants/error-codes.ts` — `MFA_REQUIRED`, `MFA_INVALID`
+- **Что сделано:** до этого MFA TOTP setup/verify/disable работали, но НИ ОДИН admin endpoint не проверял `mfaVerified`. Стащенный admin JWT обходил MFA полностью.
+  - При login с включённым MFA → JWT с `mfaPending: true`
+  - `MfaEnforcedGuard` бросает 403 с кодом `MFA_REQUIRED` на любой admin endpoint
+  - `@SkipMfaCheck()` на 5 challenge endpoints (`auth/me`, `auth/mfa/{setup,verify,disable,login}`)
+  - `POST /admin/auth/mfa/login` с TOTP-кодом → re-issued JWT (тот же sessionId, без mfaPending) → полный доступ
+  - На refresh — ВСЕГДА перепроверяется MFA (защита от стащенного refresh token)
+- **Что осталось (low priority):** `categories.controller`, `analytics.controller`, `media.controller` имеют отдельные admin endpoints (read-only/seller-managed), туда MFA guard не применён — они per-endpoint @UseGuards вместо class-level. Отдельный тикет если понадобится: `API-MFA-COVERAGE-EXTRA-001`.
+
 ## 2026-05-06 (Полат) — WS audit + закрытие дыры в OrdersGateway
 
 ### ✅ [API-WS-AUDIT-001 / SEC-WS-002] Hardening join-seller-room 🔴
