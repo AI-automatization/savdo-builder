@@ -17,6 +17,26 @@
 - **0 случаев** `$queryRawUnsafe` или `$executeRawUnsafe` (которые принимают сырую строку и были бы уязвимы).
 - **0 случаев** строковой конкатенации в SQL.
 
+## 2026-05-06 [AUDIT-DB-2026-05-06] Database schema audit
+
+- **Статус:** 🟡→✅ Schema drift найден, закрыт. Добавлены 2 hot-path индекса.
+- **Schema drift (главное):**
+  - `AdminUser` в `schema.prisma` имел только `id, userId, isSuperadmin, createdAt`. Migration `20260503020000_super_admin_rbac_mfa_refunds` добавила `adminRole, mfaSecret, mfaEnabled, mfaEnabledAt, lastLoginAt, lastLoginIp` в DB, но schema.prisma не обновили.
+  - `OrderRefund` таблица создана той же миграцией, но модель в schema.prisma отсутствовала.
+  - **Эффект:** код в `admin-auth.use-case.ts`, `mfa-enforced.guard`, `admin-permission.guard`, `admin.repository` и refund use-case использовал `(prisma as any).adminUser/.orderRefund` для обхода типизации. При следующем `prisma generate` без обновления — тип-чек начал бы падать.
+  - **Fix:** добавлены поля в `AdminUser` модель + создана модель `OrderRefund` с indices + relation back-ref на `Order.refunds`. Запущен `pnpm --filter db generate`. Typecheck чист.
+- **Missing indexes (hot path):**
+  - `media_files.bucket` — используется в TG→Supabase migration WHERE filter и proxy/private endpoints. Низкая cardinality, но 4 значения (`telegram`, `telegram-expired`, supabase bucket name) → index экономит full-scan.
+  - `chat_threads.status` — admin chat list фильтрует по OPEN/CLOSED.
+  - Migration: `20260506200000_db_audit_indexes` (CREATE INDEX IF NOT EXISTS).
+- **Что НЕ делал (для отдельного follow-up):**
+  - `pg_trgm` GIN на `Product.title` для полнотекстового поиска — требует extension + raw SQL миграции, нужен replanning для multi-language. Сейчас storefront search использует ILIKE — медленно на 10k+ товаров.
+  - Composite-индекс `OrderItem(productId, orderId)` — для агрегатов в analytics. Текущие индексы достаточны для MVP.
+- **Что хорошо:**
+  - Hot paths уже покрыты composite-индексами: `Order(storeId, status, placedAt DESC)`, `Order(buyerId, status, placedAt DESC)`, `Product(status, deletedAt, createdAt DESC)`, `ChatMessage(threadId, createdAt DESC)`.
+  - FK relations на месте, ON DELETE CASCADE/RESTRICT consistent.
+  - `@@unique` на natural keys: `BuyerWishlistItem(buyerId, productId)`, `Cart(cartId, variantId)`, `Product(productId, sku)`, `ProductOption(productId, code)`, `StoreCategory(storeId, slug)`.
+
 ## 2026-05-06 [AUDIT-API-RBAC-2026-05-06] RBAC coverage audit
 
 - **Статус:** 🔴→✅ Найдены и закрыты дыры с отсутствующим @Roles на seller/buyer endpoints.

@@ -34,6 +34,9 @@ interface ProductImage {
   sortOrder: number;
   isPrimary: boolean;
   media: { id: string; objectKey: string; mimeType: string };
+  // TMA-MEDIA-USE-API-URL-001: API уже резолвит URL — не вызываем getImageUrl
+  // на фронте (зависит от VITE_R2_PUBLIC_URL который надо ставить per-env).
+  url?: string;
 }
 
 interface StoreCategory {
@@ -809,7 +812,9 @@ export default function EditProductPage() {
               {(product.images?.length ?? 0) > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {product.images!.map((img) => {
-                    const url = getImageUrl(img.media.objectKey, img.media.id);
+                    // TMA-MEDIA-USE-API-URL-001: API кладёт резолвлённый URL в img.url.
+                    // Fallback на getImageUrl только для backward-compat (старый клиент + новый API).
+                    const url = img.url ?? getImageUrl(img.media.objectKey, img.media.id);
                     return (
                       <div key={img.id} style={{ position: 'relative', width: 72, height: 72 }}>
                         {url ? (

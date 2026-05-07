@@ -39,7 +39,7 @@
 
 - [ ] **`NOTIF-IN-APP-001`** — in-app уведомления (Notification модель + socket emit + toast/badge).
 - [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
-- [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
+- [x] **`DB-AUDIT-001`** ✅ 06.05.2026 — найден и закрыт schema drift: AdminUser MFA-поля + OrderRefund модель существовали в DB (migration 20260503020000) но НЕ в schema.prisma → код использовал `(prisma as any)`. Добавлены индексы `media_files.bucket` + `chat_threads.status`. Migration `20260506200000_db_audit_indexes`. См. `analiz/logs.md AUDIT-DB`.
 
 ## 🆕 Аудит платформы продолжение (06.05.2026)
 
@@ -98,17 +98,17 @@
 
 ### 🟡 P2 — для Полата (technical debt)
 
-- [ ] **`API-WS-PUSH-NOTIFICATIONS-001`** — сейчас `apps/tma/src/lib/notifications.ts` poll'ит unread каждые 30 сек. Перевести на WebSocket push: `OrdersGateway.emit('notification:new', { userId })` после `prisma.inAppNotification.create()` в `InAppNotificationProcessor`. На фронте — слушать event и обновлять count + показывать toast.
+- [x] **`API-WS-PUSH-NOTIFICATIONS-001`** ✅ 06.05.2026 — реализовано параллельной сессией: `chat.gateway.ts handleConnection` авто-join `user:${userId}`, `emitNotificationNew()` в `InAppNotificationProcessor` после create. Frontend `notifications.ts` слушает `notification:new`, fallback poll 5 мин на разрыв WS.
 
 - [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
 
-- [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (ProductsPage) — `seller/ProductsPage.tsx` теперь использует `product.mediaUrls[0]` напрямую от API. Раньше вызывал `getImageUrl(media.objectKey)` БЕЗ mediaId → для `bucket=telegram` возвращалась пустая строка → у продавца все товары были «НЕТ ФОТО» (см. скрин 06.05). EditProductPage уже передавал mediaId — оставлен.
+- [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (полностью закрыто) — API теперь кладёт resolved URL прямо в `image.url` для 3 product detail endpoints (seller getMyProduct, products list seller endpoint, storefront product detail). EditProductPage использует `img.url` с fallback на getImageUrl для backward-compat. ProductsPage уже на mediaUrls[0]. Frontend больше не зависит от `VITE_R2_PUBLIC_URL`.
 
 - [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
 
 ### 🟢 P3 — для Полата (cleanup)
 
-- [ ] **`API-CHAT-CONTROLLER-TS-ERROR-001`** — параллельная сессия добавила `getUnreadCountUseCase` в chat.controller.ts:61 с TS error: `Argument of type 'string' is not assignable to '"SELLER" | "BUYER"'`. Нужен type cast или Zod-валидация в guard.
+- [x] **`API-CHAT-CONTROLLER-TS-ERROR-001`** ✅ 06.05.2026 — уже исправлено параллельной сессией: `user.role as 'BUYER' | 'SELLER'` cast в chat.controller.ts:64. Typecheck чист.
 
 - [ ] **`API-DELETE-OLD-STASHES-001`** — в `git stash list` несколько старых safety-stash от прошлых сессий. После подтверждения что параллельная закончила — `git stash drop`.
 

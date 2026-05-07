@@ -1,5 +1,17 @@
 # Done — Азим + Полат
 
+## 2026-05-06 (Полат) — DB-AUDIT-001: schema drift + missing indexes
+
+### ✅ [DB-AUDIT-001] Schema drift fix + 2 hot-path индекса 🔴
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `AdminUser` дополнен полями `adminRole/mfaSecret/mfaEnabled/mfaEnabledAt/lastLoginAt/lastLoginIp` (всё уже было в DB через migration 20260503020000); добавлена модель `OrderRefund` с relations на Order + AdminUser; `@@index([adminRole])` на admin_users; `@@index([bucket])` на media_files; `@@index([status])` на chat_threads.
+  - `packages/db/prisma/migrations/20260506200000_db_audit_indexes/migration.sql` — CREATE INDEX IF NOT EXISTS для `media_files.bucket` и `chat_threads.status`.
+- **Что найдено:** код в `admin-auth.use-case`, `mfa-enforced.guard`, `admin-permission.guard`, `admin.repository`, refund use-case использовал `(prisma as any).adminUser/.orderRefund` потому что schema.prisma не отражал реальную DB. Schema drift — следующий `prisma generate` мог бы поломать типы.
+- **Что сделано:** поля и модели приведены к актуальному состоянию DB. Запущен `pnpm --filter db generate`. Typecheck `apps/api` чист.
+- **Что не тронуто (отдельный тикет если понадобится):** `pg_trgm` GIN на `Product.title` для full-text search — требует extension + raw SQL миграции.
+
 ## 2026-05-06 (Полат) — RBAC micro-permissions на admin endpoints
 
 ### ✅ [API-RBAC-MICRO-PERMISSIONS-001] Endpoint-level разрешения для admin-ролей 🟠
