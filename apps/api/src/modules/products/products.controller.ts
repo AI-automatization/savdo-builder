@@ -15,6 +15,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -81,7 +83,8 @@ export class ProductsController {
   // ─── Seller routes ────────────────────────────────────────────────────────
 
   @Get('seller/products')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listMyProducts(
     @CurrentUser() user: JwtPayload,
     @Query('status') status?: ProductStatus,
@@ -117,7 +120,8 @@ export class ProductsController {
   }
 
   @Post('seller/products')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @Throttle({ default: { ttl: 60_000, limit: 30 } }) // anti-spam при создании товаров
   async createMyProduct(
     @CurrentUser() user: JwtPayload,
@@ -139,7 +143,8 @@ export class ProductsController {
   }
 
   @Get('seller/products/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async getMyProduct(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -167,7 +172,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateMyProduct(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -188,7 +194,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMyProduct(
     @CurrentUser() user: JwtPayload,
@@ -199,7 +206,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async changeMyProductStatus(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -210,7 +218,8 @@ export class ProductsController {
   }
 
   @Get('seller/products/:id/variants')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listMyVariants(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -231,7 +240,8 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/variants')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createMyVariant(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -250,7 +260,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/variants/:variantId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateMyVariant(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -269,7 +280,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/variants/:variantId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMyVariant(
     @CurrentUser() user: JwtPayload,
@@ -281,7 +293,8 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/variants/:variantId/stock')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.OK)
   async adjustVariantStock(
     @CurrentUser() user: JwtPayload,
@@ -296,7 +309,8 @@ export class ProductsController {
   // ─── Option groups ────────────────────────────────────────────────────────
 
   @Post('seller/products/:id/option-groups')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createOptionGroup(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -312,7 +326,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/option-groups/:gid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateOptionGroup(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -329,7 +344,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/option-groups/:gid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteOptionGroup(
     @CurrentUser() user: JwtPayload,
@@ -348,7 +364,8 @@ export class ProductsController {
   // ─── Option values ────────────────────────────────────────────────────────
 
   @Post('seller/products/:id/option-groups/:gid/values')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createOptionValue(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -369,7 +386,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/option-groups/:gid/values/:vid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateOptionValue(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -391,7 +409,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/option-groups/:gid/values/:vid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteOptionValue(
     @CurrentUser() user: JwtPayload,
@@ -415,7 +434,8 @@ export class ProductsController {
   // ─── Product images ───────────────────────────────────────────────────────
 
   @Post('seller/products/:id/images')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async attachProductImage(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -446,7 +466,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/images/:imageId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async detachProductImage(
     @CurrentUser() user: JwtPayload,
@@ -461,7 +482,8 @@ export class ProductsController {
   // ─── Product Attributes ──────────────────────────────────────────────────
 
   @Get('seller/products/:id/attributes')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listProductAttributes(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -475,7 +497,8 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/attributes')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async addProductAttribute(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -494,7 +517,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/attributes/:attrId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateProductAttribute(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -510,7 +534,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/attributes/:attrId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteProductAttribute(
     @CurrentUser() user: JwtPayload,

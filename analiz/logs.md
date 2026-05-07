@@ -17,6 +17,24 @@
 - **0 случаев** `$queryRawUnsafe` или `$executeRawUnsafe` (которые принимают сырую строку и были бы уязвимы).
 - **0 случаев** строковой конкатенации в SQL.
 
+## 2026-05-06 [AUDIT-API-RBAC-2026-05-06] RBAC coverage audit
+
+- **Статус:** 🔴→✅ Найдены и закрыты дыры с отсутствующим @Roles на seller/buyer endpoints.
+- **Что найдено:**
+  - **products.controller** — все 23 `/seller/products/*` endpoints имели только `@UseGuards(JwtAuthGuard)`, без `RolesGuard` + `@Roles('SELLER')`. Любой авторизованный BUYER мог создавать/редактировать/удалять товары (use-case бы упал с 422 при `resolveStoreId`, но это leak информации + race risk).
+  - **categories.controller** — 4 `/seller/categories/*` endpoints — то же самое.
+  - **orders.controller** — 4 `/buyer/orders/*` endpoints использовали class-level guards но БЕЗ method-level `@Roles('BUYER')`. SELLER мог дёргать buyer endpoints (защита через resolveBuyerId, но defense-in-depth отсутствовал).
+- **Что сделано:**
+  - products.controller: `RolesGuard` + `@Roles('SELLER')` на 23 endpoints (replace_all).
+  - categories.controller: то же на 4 seller endpoints.
+  - orders.controller: `@Roles('BUYER')` на 4 buyer endpoints.
+- **Что чисто:**
+  - admin/super-admin/moderation — Roles ADMIN на классе.
+  - chat — корректные @Roles per-endpoint.
+  - reviews — @Roles('BUYER').
+  - sellers/stores — корректно.
+- **Не issue по дизайну:** notifications (role-agnostic), cart (OptionalJwt), checkout/orders-create (любой auth), sellers POST /apply, media (через ownership в use-case).
+
 ## 2026-05-06 [AUDIT-API-WS-2026-05-06] WebSocket gateways audit
 
 - **Статус:** 🔴→✅ Найдена + закрыта дыра в `OrdersGateway.handleJoinSellerRoom`.
