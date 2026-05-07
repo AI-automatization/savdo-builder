@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
 interface Props {
   onClose: () => void;
@@ -10,12 +11,15 @@ interface Props {
 export function BottomSheet({ onClose, children, title }: Props) {
   const { viewportWidth } = useTelegram();
   const isDesktop = (viewportWidth ?? 0) >= 1024;
+  // На desktop sidebar всегда виден (220px слева) — модалки должны
+  // его уважать, иначе фон перекрывает навигацию (TMA-RESPONSIVE-DESKTOP-001).
+  const desktopOffset = (viewportWidth ?? 0) >= 768 ? { left: SIDEBAR_WIDTH } : {};
 
   if (isDesktop) {
     return (
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center px-6"
-        style={{ background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(8px)' }}
+        style={{ background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(8px)', ...desktopOffset }}
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <div
@@ -51,7 +55,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
   return (
     <div
       className="fixed inset-0 z-[9999] flex flex-col justify-end"
-      style={{ background: 'rgba(0,0,0,0.60)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgba(0,0,0,0.60)', backdropFilter: 'blur(6px)', ...desktopOffset }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
