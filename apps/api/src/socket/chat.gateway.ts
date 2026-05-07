@@ -176,6 +176,14 @@ export class ChatGateway implements OnGatewayConnection {
     this.logger.log(`Emitted chat:new_message to seller:${storeId} — threadId=${payload.threadId}`);
   }
 
+  // API-WS-PUSH-NOTIFICATIONS-001 (chat-unread): bump unread counter
+  // получателя в реалтайме. Frontend `chatUnread.ts` слушает и инкрементирует
+  // total — больше не polling каждые 30 сек.
+  emitChatUnreadBump(recipientUserId: string, threadId: string): void {
+    this.server.to(`user:${recipientUserId}`).emit('chat:unread:bump', { threadId });
+    this.logger.debug(`Emitted chat:unread:bump to user:${recipientUserId} — threadId=${threadId}`);
+  }
+
   // API-WS-PUSH-NOTIFICATIONS-001: emit'ится из InAppNotificationProcessor
   // после `prisma.inAppNotification.create()`. Frontend подписан на это
   // event и обновляет badge / показывает toast. Заменяет polling каждые 30s.
