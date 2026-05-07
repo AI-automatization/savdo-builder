@@ -160,6 +160,8 @@ export class SendMessageUseCase {
           productTitle,
           orderNumber,
           messagePreview: preview,
+          threadId: input.threadId,
+          recipientRole: 'SELLER',
         });
       }
     } else {
@@ -173,6 +175,8 @@ export class SendMessageUseCase {
           orderNumber,
           storeName,
           messagePreview: preview,
+          threadId: input.threadId,
+          recipientRole: 'BUYER',
         });
       }
     }
