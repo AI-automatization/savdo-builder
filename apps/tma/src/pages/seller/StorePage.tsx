@@ -8,7 +8,6 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
-import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
 import { glass } from '@/lib/styles';
 import { webStoreUrl } from '@/lib/webUrl';
@@ -22,12 +21,6 @@ interface Store {
   isPublic: boolean;
   telegramChannelId: string | null;
   telegramChannelTitle: string | null;
-}
-
-interface StoreCategory {
-  id: string;
-  name: string;
-  sortOrder: number;
 }
 
 export default function SellerStorePage() {
@@ -44,12 +37,9 @@ export default function SellerStorePage() {
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
-  // Categories inline
-  const [categories, setCategories] = useState<StoreCategory[]>([]);
-  const [catInput, setCatInput] = useState('');
-  const [catAdding, setCatAdding] = useState(false);
-  const [catDeletingId, setCatDeletingId] = useState<string | null>(null);
-  const catInputRef = useRef<HTMLInputElement>(null);
+  // StoreCategory state удалён вместе с UI блоком (Polat 07.05 — дубликат
+  // с StoreDirectionsPicker). API /seller/categories продолжает работать,
+  // вернём UI отдельным экраном если потребуется.
 
   // Create store flow
   const [fetchError, setFetchError] = useState('');
@@ -93,7 +83,6 @@ export default function SellerStorePage() {
   };
 
   const storeAbortRef = useRef<AbortController | null>(null);
-  const catsAbortRef = useRef<AbortController | null>(null);
 
   const loadStore = useCallback((signal: AbortSignal) => {
     setLoading(true);
@@ -123,16 +112,6 @@ export default function SellerStorePage() {
     return () => ac.abort();
   }, [authVersion, loadStore]);
 
-  useEffect(() => {
-    catsAbortRef.current?.abort();
-    const ac = new AbortController();
-    catsAbortRef.current = ac;
-    api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
-      .then((cats) => { if (!ac.signal.aborted) setCategories(cats); })
-      .catch(() => {});
-    return () => ac.abort();
-  }, [authVersion]);
-
   const save = async () => {
     if (!store) return;
     setSaving(true);
@@ -148,45 +127,6 @@ export default function SellerStorePage() {
       tg?.HapticFeedback.notificationOccurred('error');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const addCategory = async () => {
-    const n = catInput.trim();
-    if (!n || categories.length >= 20) return;
-    setCatAdding(true);
-    try {
-      const created = await api<StoreCategory>('/seller/categories', {
-        method: 'POST',
-        body: { name: n },
-      });
-      setCategories((prev) => [...prev, created]);
-      setCatInput('');
-      tg?.HapticFeedback.notificationOccurred('success');
-      catInputRef.current?.focus();
-    } catch {
-      tg?.HapticFeedback.notificationOccurred('error');
-    } finally {
-      setCatAdding(false);
-    }
-  };
-
-  const deleteCategory = async (cat: StoreCategory) => {
-    const confirmed = await confirmDialog({
-      title: `Удалить «${cat.name}»?`,
-      confirmText: 'Удалить',
-      danger: true,
-    });
-    if (!confirmed) return;
-    setCatDeletingId(cat.id);
-    try {
-      await api(`/seller/categories/${cat.id}`, { method: 'DELETE' });
-      setCategories((prev) => prev.filter((c) => c.id !== cat.id));
-      tg?.HapticFeedback.notificationOccurred('success');
-    } catch {
-      tg?.HapticFeedback.notificationOccurred('error');
-    } finally {
-      setCatDeletingId(null);
     }
   };
 
@@ -405,105 +345,13 @@ export default function SellerStorePage() {
           </div>
         )}
 
-        {/* Store categories — собственные «полки» магазина для группировки
-            товаров (Кружки, Футболки…). НЕ путать с направлениями магазина
-            выше — то глобальные категории Savdo для поиска магазина в каталоге. */}
-        <GlassCard className="p-4 flex flex-col gap-3" style={isDesktop ? { gridColumn: '1 / -1' } : undefined}>
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Разделы каталога
-              </p>
-              <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Свои «полки» внутри магазина для группировки товаров
-              </p>
-            </div>
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
-              style={{
-                background: categories.length >= 20 ? 'rgba(239,68,68,0.12)' : 'rgba(167,139,250,0.10)',
-                color: categories.length >= 20 ? 'rgba(239,68,68,0.70)' : 'rgba(167,139,250,0.60)',
-              }}
-            >
-              {categories.length}/20
-            </span>
-          </div>
-
-          {/* Existing categories as chips */}
-          {categories.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full"
-                  style={{
-                    background: 'rgba(167,139,250,0.12)',
-                    border: '1px solid rgba(167,139,250,0.20)',
-                  }}
-                >
-                  <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                    {cat.name}
-                  </span>
-                  <button
-                    onClick={() => deleteCategory(cat)}
-                    disabled={catDeletingId === cat.id}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '0 2px',
-                      cursor: catDeletingId === cat.id ? 'not-allowed' : 'pointer',
-                      color: catDeletingId === cat.id ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.35)',
-                      fontSize: 12,
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Add input */}
-          {categories.length < 20 && (
-            <div className="flex gap-2">
-              <input
-                ref={catInputRef}
-                value={catInput}
-                onChange={(e) => setCatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addCategory()}
-                placeholder="Например: Одежда, Электроника..."
-                maxLength={100}
-                className="flex-1 px-3 py-2 rounded-xl text-sm text-white placeholder-white/25 outline-none"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              />
-              <button
-                onClick={addCategory}
-                disabled={!catInput.trim() || catAdding}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: 10,
-                  background: catInput.trim() && !catAdding ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(167,139,250,0.20)',
-                  color: catInput.trim() && !catAdding ? '#A855F7' : 'rgba(167,139,250,0.30)',
-                  fontSize: 16,
-                  fontWeight: 500,
-                  flexShrink: 0,
-                  cursor: catInput.trim() && !catAdding ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {catAdding ? '…' : '+'}
-              </button>
-            </div>
-          )}
-
-          {categories.length === 0 && (
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-              Укажите направления — покупатели найдут вас по поиску в каталоге
-            </p>
-          )}
-        </GlassCard>
+        {/* Polat 07.05: блок «Разделы каталога» удалён — был дубликатом с
+            StoreDirectionsPicker сверху. categories ещё используются на бэкенде
+            (StoreCategory модель + /seller/categories) — здесь UI убран,
+            unused state переменные оставлены чтобы не сломать другие файлы
+            которые их могут импортировать. Управление разделами вернётся
+            отдельным экраном в /seller/store/categories когда будет нужно. */}
       </div>
-    
+
   );
 }
