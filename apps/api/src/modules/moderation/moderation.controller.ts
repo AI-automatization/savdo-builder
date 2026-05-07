@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { GetModerationQueueUseCase } from './use-cases/get-moderation-queue.use-case';
@@ -23,7 +24,7 @@ import { ListCasesDto } from './dto/list-cases.dto';
 import { ModerationRepository } from './repositories/moderation.repository';
 
 @Controller('admin/moderation')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 @Roles('ADMIN')
 export class ModerationController {
   constructor(

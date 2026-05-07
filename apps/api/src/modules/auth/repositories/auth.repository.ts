@@ -170,4 +170,14 @@ export class AuthRepository {
       data: { lastSeenAt: new Date() },
     });
   }
+
+  // API-MFA-NOT-ENFORCED-001: проверка нужно ли требовать MFA challenge при login.
+  // Возвращает true только если у user есть AdminUser-запись с mfaEnabled=true.
+  async isAdminMfaEnabled(userId: string): Promise<boolean> {
+    const admin = await (this.prisma as any).adminUser.findUnique({
+      where: { userId },
+      select: { mfaEnabled: true },
+    });
+    return Boolean(admin?.mfaEnabled);
+  }
 }

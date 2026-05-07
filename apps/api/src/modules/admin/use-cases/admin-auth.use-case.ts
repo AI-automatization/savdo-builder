@@ -93,6 +93,38 @@ export class AdminAuthUseCase {
     return { ok: true };
   }
 
+  // ── POST /admin/auth/mfa/login ───────────────────────────────────────
+  // API-MFA-NOT-ENFORCED-001: challenge endpoint. Принимает TOTP-код и
+  // возвращает новый access token БЕЗ mfaPending claim. SessionId сохраняется.
+  async mfaChallenge(userId: string, code: string, sessionId: string, role: string) {
+    const admin = await this.requireAdmin(userId);
+    if (!admin.mfaEnabled || !admin.mfaSecret) {
+      // Не должно случиться — guard пропустил без MFA. Но safety-check.
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'MFA not enabled', HttpStatus.BAD_REQUEST);
+    }
+    const ok = authenticator.verify({ token: code, secret: admin.mfaSecret });
+    if (!ok) {
+      throw new DomainException(ErrorCode.MFA_INVALID, 'Invalid TOTP code', HttpStatus.BAD_REQUEST);
+    }
+
+    // Re-issue access token — тот же sessionId, тот же role, но БЕЗ mfaPending.
+    const accessToken = this.tokenService.generateAccessToken({
+      sub: userId,
+      role,
+      sessionId,
+    });
+
+    // Update lastLoginAt — это эффективно «момент входа» для admin'а.
+    await (this.prisma as any).adminUser.update({
+      where: { id: admin.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    this.logger.log(`MFA challenge passed: admin=${admin.id} userId=${userId}`);
+
+    return { accessToken };
+  }
+
   // ── POST /admin/auth/mfa/disable ─────────────────────────────────────
   async disableMfa(userId: string, code: string) {
     const admin = await this.requireAdmin(userId);

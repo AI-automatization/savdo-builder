@@ -118,11 +118,17 @@ export class TelegramAuthUseCase {
       ? await this.authRepo.findStoreIdByUserId(resolvedUser.id)
       : undefined;
 
+    // API-MFA-NOT-ENFORCED-001: см. verify-otp.use-case.
+    const mfaPending = resolvedUser.role === 'ADMIN'
+      ? await this.authRepo.isAdminMfaEnabled(resolvedUser.id)
+      : false;
+
     const accessToken = this.tokenService.generateAccessToken({
       sub: resolvedUser.id,
       role: resolvedUser.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
+      ...(mfaPending && { mfaPending: true }),
     });
 
     return {

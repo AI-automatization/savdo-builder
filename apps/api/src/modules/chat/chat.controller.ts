@@ -16,6 +16,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
@@ -36,7 +37,7 @@ import { GetUnreadCountUseCase } from './use-cases/get-unread-count.use-case';
 import { ChatGateway } from '../../socket/chat.gateway';
 
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
 
