@@ -167,6 +167,12 @@ export class MediaController {
       return;
     }
 
+    // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' выставляется migration
+    // когда TG getFile вернул 404 → файл навсегда мёртв. Не пытаемся redirect.
+    if (mediaFile.bucket === 'telegram-expired') {
+      throw new NotFoundException('Media file expired (please re-upload)');
+    }
+
     if (this.r2Storage.isConfigured()) {
       const url = this.r2Storage.getPublicUrl(mediaFile.objectKey);
       res.setHeader('Cache-Control', 'public, max-age=600');
@@ -211,6 +217,11 @@ export class MediaController {
       // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
       await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
       return;
+    }
+
+    // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' = мёртвый file_id.
+    if (mediaFile.bucket === 'telegram-expired') {
+      throw new NotFoundException('Media file expired (please re-upload)');
     }
 
     if (this.r2Storage.isConfigured()) {
