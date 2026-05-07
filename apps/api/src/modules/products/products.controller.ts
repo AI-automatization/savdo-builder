@@ -160,13 +160,20 @@ export class ProductsController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
+    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
+    const images = (p.images ?? []).map((img) => ({
+      ...img,
+      url: this.resolveImageUrl(img.media),
+    }));
     return {
       ...p,
       basePrice: Number(p.basePrice),
       oldPrice: this.toPrice(p.oldPrice),
       salePrice: this.toPrice(p.salePrice),
-      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      images,
+      mediaUrls: images.map((img) => img.url),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
@@ -694,13 +701,20 @@ export class ProductsController {
     if (product.storeId !== store.id) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
+    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
+    const images = (p.images ?? []).map((img) => ({
+      ...img,
+      url: this.resolveImageUrl(img.media),
+    }));
     return {
       ...p,
       basePrice: Number(p.basePrice),
       oldPrice: this.toPrice(p.oldPrice),
       salePrice: this.toPrice(p.salePrice),
-      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      images,
+      mediaUrls: images.map((img) => img.url),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
@@ -816,13 +830,20 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
+    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
+    const images = (p.images ?? []).map((img) => ({
+      ...img,
+      url: this.resolveImageUrl(img.media),
+    }));
     return {
       ...p,
       basePrice: Number(p.basePrice),
       oldPrice: this.toPrice(p.oldPrice),
       salePrice: this.toPrice(p.salePrice),
-      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      images,
+      mediaUrls: images.map((img) => img.url),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
