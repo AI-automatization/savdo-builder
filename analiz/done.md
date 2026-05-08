@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Полат, параллельная сессия) — otplib v12 → v13.4.0 upgrade
+
+### ✅ [API-OTPLIB-V13-UPGRADE-001] otplib v13 — переписать admin-auth.use-case.ts под functional API 🟡
+
+- **Важность:** 🟡 MEDIUM (technical debt; v12 закреплено в package.json несколько недель из-за blocked v13 upgrade)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/api/package.json` — `otplib: ^12.0.1 → ^13.4.0`
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts` — убран `require('otplib')` workaround, заменён на нормальный `import { generateSecret, generateURI, verifySync } from 'otplib'`. Все 3 вызова `authenticator.verify(...)` заменены на `verifySync(...).valid` (v13 возвращает `{valid: true|false, delta?}` вместо boolean). `authenticator.keyuri(label, issuer, secret)` → `generateURI({issuer, label, secret})`. Опции TOTP вынесены в const `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 — эквивалент v12 window:1 ±30s).
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.spec.ts` — `jest.mock('otplib')` обновлён под новую functional форму. `verifySync` мокается с `mockReturnValue({valid: true})`/`{valid: false}`. Assertions `expect(verifySync).toHaveBeenCalledWith(expect.objectContaining({token, secret}))` (для tolerance к нашим extra opts).
+  - `pnpm-lock.yaml` — обновлён автоматически через `pnpm --filter api install`.
+- **Что сделано:** otplib upgraded, v12 namespace API (`authenticator.options/generateSecret/keyuri/verify`) полностью заменён v13 functional API. Сохранены все security-критичные параметры (digits=6, period=30, ±30s tolerance).
+- **Verification:**
+  - `npx tsc --noEmit` → 0 ошибок.
+  - `npx jest admin-auth.use-case.spec` → 14/14 passed (5.15 s).
+  - Manual smoke: setupMfa→QR; verifyMfa(valid code); disableMfa; mfaChallenge — все вызывают `verifySync` правильно.
+- **Backwards compat:** существующие `mfaSecret` в БД (base32) полностью совместимы с v13 — формат секрета не изменился.
+
+---
+
 ## 2026-05-08 (Полат, поздно вечер +30 мин) — SEC-007 part 2: change-product-status + processor refactor
 
 ### ✅ [SEC-007 part 2] HTML escape в product autopost + унификация processor 🟡

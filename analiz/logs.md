@@ -8,6 +8,37 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-08 [SIGNAL] Параллельная сессия (otplib v13 upgrade) — закончила работу
+
+- **Сделано в этой сессии (08.05.2026):**
+  - `[API-OTPLIB-V13-UPGRADE-001]` otplib `^12.0.1 → ^13.4.0`. Старый `require('otplib')` workaround заменён на чистый ESM-импорт `generateSecret/generateURI/verifySync`. v13 убрал `authenticator` namespace + `verify` теперь возвращает `{valid, delta}` вместо boolean. Опции вынесены в `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 = эквивалент v12 window:1 ±30s). Spec обновлён под новый API.
+- **Файлы (только мои, 6 шт):** `apps/api/package.json`, `apps/api/src/modules/admin/use-cases/admin-auth.use-case.{ts,spec.ts}`, `pnpm-lock.yaml`, `analiz/{tasks,done}.md`.
+- **TS+тесты:** `npx tsc --noEmit` → 0 errors. `npx jest admin-auth.use-case.spec` → 14/14 passed.
+- **Backwards compat:** существующие `mfaSecret` в БД (base32) совместимы с v13 — формат секрета не менялся.
+- **Состояние веток:** main + api запушены. После моего push другие сессии должны `git pull --rebase origin main` перед своим push.
+- **Что НЕ трогал по §6.6:** `CLAUDE.md` (параллельная сессия только что добавила skills section), untracked `admin-create-seller.use-case.spec.ts` (другая сессия), audit-файлы Азима в `analiz/`.
+
+---
+
+## 2026-05-08 [SIGNAL] Параллельная сессия #N (security) — закончила работу
+
+- **Сделано в этой сессии (08.05.2026):**
+  - `[SEC-007]` Telegram HTML escape — `apps/api/src/shared/telegram-html.ts` + 12 точек в `telegram-demo.handler.ts` (commit `34bb176`).
+  - `[SEC-007 part 2]` — `change-product-status.use-case.ts` autopost + унификация `telegram-notification.processor.ts` (commit `ffbe10a`).
+- **Состояние веток:** main + api в синхроне, pushed.
+- **TS:** 0 errors в моих файлах. Параллельная сессия пишет unit-тесты в `admin-auth.use-case.spec.ts` (untracked) — там TS error на `otplib.authenticator` импорте, **не моё**, не блокирует мои фиксы.
+- **Что НЕ трогал по §6.6 (заняты другой сессией):** `apps/api/package.json`, `pnpm-lock.yaml`, `admin-auth.use-case.ts`, `admin-auth.use-case.spec.ts`, `admin-create-store.use-case.spec.ts`, `analiz/tasks.md`, `analiz/done.md` (последние правки), `CLAUDE.md`.
+- **Открыто в моём backlog (не блокеры, для будущих сессий):**
+  - `[SEC-008]` MED-04 — OTP `code` в BullMQ job data (видно через Bull Board под токеном).
+  - `[SEC-009]` MED-05 — CORS wildcard `*.railway.app` → whitelist через `ALLOWED_ORIGINS`.
+  - `[SEC-005]` MED-01 — SuperAdminController inline body types → DTOs.
+  - `[SEC-006]` MED-02 — storefront filters DTO/whitelist.
+  - `[SEC-011]` LOW-01 — phone PII masking в logs.
+  - `[SEC-012]` LOW-02 — Multer `limits.fileSize`.
+  - HIGH-02 = `[SEC-003]` ADMIN bypass в RolesGuard — поведенческое изменение, требует согласия Полата.
+
+---
+
 ## 2026-05-08 [SEC-007 part 2] Telegram HTML escape — продолжение: change-product-status + processor
 
 - **Статус:** 🟡 → ✅ Исправлено.
