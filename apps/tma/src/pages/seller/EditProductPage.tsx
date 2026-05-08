@@ -175,10 +175,18 @@ export default function EditProductPage() {
     catsAbortRef.current = ac;
     api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setCategories(c); })
-      .catch(() => {});
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить разделы магазина');
+      });
     api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
-      .catch(() => {});
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить категории каталога');
+      });
     return () => ac.abort();
   }, []);
 
@@ -256,8 +264,15 @@ export default function EditProductPage() {
 
   const deleteAttr = async (attrId: string) => {
     if (!id) return;
-    await api(`/seller/products/${id}/attributes/${attrId}`, { method: 'DELETE' }).catch(() => {});
-    setAttrs((prev) => prev.filter((a) => a.id !== attrId));
+    const prev = attrs;
+    setAttrs((p) => p.filter((a) => a.id !== attrId));
+    try {
+      await api(`/seller/products/${id}/attributes/${attrId}`, { method: 'DELETE' });
+    } catch (err) {
+      setAttrs(prev);
+      const msg = err instanceof Error ? err.message : 'Не удалось удалить характеристику';
+      showToast(`❌ ${msg}`);
+    }
   };
 
   // TMA-DYNAMIC-VARIANT-FILTERS-EDIT-001: добавить новый variant в существующую

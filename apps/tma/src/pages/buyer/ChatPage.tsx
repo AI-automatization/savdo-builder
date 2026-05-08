@@ -93,21 +93,31 @@ export default function BuyerChatPage() {
   }, [navigate, tg, threadId]);
 
   // ── Load thread list ─────────────────────────────────────────────────────────
+  const threadsAbortRef = useRef<AbortController | null>(null);
   const loadThreads = () => {
+    threadsAbortRef.current?.abort();
+    const ac = new AbortController();
+    threadsAbortRef.current = ac;
     setLoading(true);
     setThreadsError(false);
-    api<ChatThread[]>('/chat/threads')
+    api<ChatThread[]>('/chat/threads', { signal: ac.signal })
       .then((data) => {
+        if (ac.signal.aborted) return;
         setThreads(data ?? []);
       })
       .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         setThreadsError(true);
         const msg = err instanceof Error ? err.message : 'Не удалось загрузить чаты';
         showToast(`❌ ${msg}`, 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
   };
-  useEffect(() => { loadThreads(); }, []);
+  useEffect(() => {
+    loadThreads();
+    return () => threadsAbortRef.current?.abort();
+  }, []);
 
   // ── Load messages + connect socket when threadId changes ─────────────────────
   useEffect(() => {
@@ -116,12 +126,15 @@ export default function BuyerChatPage() {
     setMsgLoading(true);
     setMessages([]);
 
-    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`)
-      .then((res) => setMessages((res.messages ?? []).slice().reverse()))
-      .catch(() => {
+    const msgAc = new AbortController();
+    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`, { signal: msgAc.signal })
+      .then((res) => { if (!msgAc.signal.aborted) setMessages((res.messages ?? []).slice().reverse()); })
+      .catch((err) => {
+        if (msgAc.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         navigate('/buyer/chat', { replace: true });
       })
-      .finally(() => setMsgLoading(false));
+      .finally(() => { if (!msgAc.signal.aborted) setMsgLoading(false); });
 
     const socket = connectSocket();
     joinRoom(socket, threadId);
@@ -162,6 +175,7 @@ export default function BuyerChatPage() {
     socket.on('chat:message:deleted', onDeleted);
 
     return () => {
+      msgAc.abort();
       socket.emit('leave-chat-room', { threadId });
       socket.off('chat:message', onMessage);
       socket.off('chat:message:edited', onEdited);

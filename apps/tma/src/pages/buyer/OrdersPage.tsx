@@ -122,7 +122,11 @@ export default function OrdersPage() {
         setPage(1);
         setHasMore((res.meta?.page ?? 1) < (res.meta?.totalPages ?? 1));
       })
-      .catch(() => { if (!signal?.aborted) setError(true); })
+      .catch((err: unknown) => {
+        if (signal?.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        setError(true);
+      })
       .finally(() => { if (!signal?.aborted) setLoading(false); });
   };
 
