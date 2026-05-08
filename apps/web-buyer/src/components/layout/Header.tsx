@@ -17,7 +17,7 @@ export default function Header() {
   const { isAuthenticated } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
   const unreadChatCount = useUnreadChatCount(isAuthenticated);
-  const { data: cart } = useCart();
+  const { data: cart } = useCart({ enabled: isAuthenticated });
   const cartCount = cart?.items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
 
   return (

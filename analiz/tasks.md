@@ -5,6 +5,17 @@
 
 ---
 
+# 🆕 Web-buyer аудит 05.05 — закрыты 7 critical 08.05 (Азим)
+
+✅ **BUG-WB-AUDIT-001..007 + 009-FE** — 7 critical из `analiz/logs.md WEB-BUYER-AUDIT-2026-05-05` закрыты в одном проходе:
+- 001 (`useCart` enabled) · 002 (`useBuyerSocket` leave-room + destroySocket в logout) · 003 (`useChatSocket` leave-room) · 004 (`useOrders` enabled) · 005 (`chats handleSend` try/catch) · 006 (orders/[id] z-index 51) · 007 (product detail useEffect reset on id) · 009-FE (checkout `customerFullName`/`customerPhone` шлёт + расширил `CheckoutConfirmRequest` в `packages/types`).
+
+Подробности и список изменённых файлов — `analiz/done.md`.
+
+**Остаются 12 major (008-019) и 7 minor (020-026) из того же аудита** — отдельным проходом.
+
+---
+
 # 🆕 Спринт TMA Quality + Platform Hardening (04-09.05.2026)
 
 > Полный план: `analiz/sprint-tma-quality-04-05-2026.md`. Здесь — короткая чек-лист.
@@ -50,7 +61,7 @@
 - [x] **`API-RBAC-MICRO-PERMISSIONS-001`** ✅ 06.05.2026 — `@AdminPermission(perm)` decorator + `AdminPermissionGuard` + `JwtPayload.adminRole` claim. Permissions matrix вынесена в `common/constants/admin-permissions.ts` с wildcard-логикой (`*`, `user:*`, `*:read`). Применено на 23 destructive endpoints в admin/super-admin controller'ах (suspend, approve, reject, archive, refund, impersonate, db CRUD, broadcast, migrate). См. `analiz/done.md API-RBAC-MICRO-PERMISSIONS-001`.
 
 ### 🟠 P1 — Азим
-- [ ] **`WEB-SELLER-HARDCODED-DOMAIN-001`** — 3 места с прямым `https://savdo.uz/${slug}` без env fallback в web-seller. Файлы: `app/(dashboard)/layout.tsx:127,236`, `app/(dashboard)/profile/page.tsx:49`. Использовать `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` или общий helper.
+- [x] **`WEB-SELLER-HARDCODED-DOMAIN-001`** ✅ 08.05.2026 — введён helper `apps/web-seller/src/lib/buyer-url.ts` (`buyerOrigin`/`buyerStoreUrl`/`buyerStoreDisplay`). 3 места хардкода заменены: layout.tsx (sidebar label + clipboard) и profile/page.tsx (storeUrl). Подробности в `analiz/done.md`.
 
 ---
 
@@ -90,11 +101,9 @@
 
 ### 🟠 P1 — для Азима (apps/web-buyer)
 
-- [ ] **`WEB-BUYER-IMAGE-FALLBACK-001`** — на витрине магазина (`/<slug>`) товары без фото показывают пустой чёрный квадрат вместо placeholder'а. Скрин 06.05 — DRIPSB магазин, 6 товаров, 4 без фото. Решение: при `<img onError>` или пустом `mediaUrls` рендерить компонент-плейсхолдер (как `<ProductImage emptyVariant="no-photo">` в TMA).
-  - **Файлы:** `apps/web-buyer/src/components/store/ProductCard.tsx`.
+- [x] **`WEB-BUYER-IMAGE-FALLBACK-001`** ✅ 08.05.2026 — `ProductCard.tsx`: пустые/null `images[].url` фильтруются, placeholder при `mediaUrls.length === 0` теперь иконка + текст «Без фото» (вместо одинокого silhouette на тёмном surfaceSunken).
 
-- [ ] **`WEB-BUYER-LINK-PRETTIFY-001`** — длинная ссылка на сайт магазина в TMA buyer/StorePage заменена на «↗ Перейти на сайт» (06.05 commit). Проверить что web-buyer header не показывает где-то такие же длинные railway URL — заменить на короткие.
-  - **Файлы:** `apps/web-buyer/src/components/store/StoreHeader.tsx` (если такой текст есть).
+- [x] **`WEB-BUYER-LINK-PRETTIFY-001`** ✅ 08.05.2026 — no-op после проверки. Длинных railway URL в web-buyer UI нет, `app/layout.tsx:16` уже на env-helper. Подробности в `analiz/done.md`.
 
 ### 🟡 P2 — для Полата (technical debt)
 

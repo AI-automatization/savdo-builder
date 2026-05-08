@@ -381,6 +381,8 @@ export default function CheckoutPage() {
     if (!canSubmit) return;
     setApiError(undefined);
     try {
+      const trimmedName = contactName.trim();
+      const trimmedPhone = contactPhone.trim();
       const order = await confirm.mutateAsync({
         deliveryAddress:
           mode === "pickup"
@@ -388,6 +390,8 @@ export default function CheckoutPage() {
             : { street, city },
         buyerNote: comment || undefined,
         deliveryFee,
+        customerFullName: trimmedName || undefined,
+        customerPhone: trimmedPhone || undefined,
       });
       const storeId = previewData?.storeId ?? cart?.storeId ?? "";
       if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, "COD");

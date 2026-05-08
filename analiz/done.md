@@ -1,5 +1,83 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 7 critical + 3 P1 от Полата
+
+### ✅ [BUG-WB-AUDIT-001] `useCart` без `enabled: isAuthenticated` → 401-loop для гостя 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-cart.ts` — добавлен `opts?: { enabled?: boolean }` параметр (default true).
+  - `apps/web-buyer/src/components/layout/Header.tsx` — `useCart({ enabled: isAuthenticated })`.
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — то же.
+- **Что сделано:** на каждый рендер Header/BottomNavBar для гостя `useCart` стрелял на `/cart`, при 401 refresh-interceptor тащил `null`-токен → `savdo:auth:expired` → `localLogout` + `queryClient.clear` цикл. Эндпойнт под `OptionalJwtAuthGuard`, так что в современном бэке 401 не приходит, но `enabled` guard убирает race и SSR-холостые запросы. Cart/Checkout страницы под OtpGate — у них `enabled` дефолт `true`, поведение не меняется.
+
+### ✅ [BUG-WB-AUDIT-002] `useBuyerSocket` cleanup не emit'ит `leave-buyer-room` 🔴
+### ✅ [BUG-WB-AUDIT-003] `useChatSocket` cleanup не emit'ит `leave-chat-room` 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-buyer-socket.ts` — в cleanup `socket.emit('leave-buyer-room', { buyerId })` если `socket.connected`.
+  - `apps/web-buyer/src/hooks/use-chat.ts` — то же для `leave-chat-room`.
+  - `apps/web-buyer/src/lib/auth/context.tsx` — `destroySocket()` в `localLogout` и `logout` (полный cleanup при logout/expired-cycle).
+- **Что сделано:** при logout/смене юзера сервер продолжал слать `order:status_changed`/`chat:new_message` в комнату экс-пользователя. Аналогично переключение чатов накапливало активные комнаты на сервере. Теперь явный leave-emit + destroySocket() при logout.
+
+### ✅ [BUG-WB-AUDIT-004] `useOrders` без `enabled` → 401 при гонке 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-orders.ts` — в `useOrders` добавлен опциональный `enabled` параметр (через destructure из params, чтобы не попасть в queryKey).
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — `useOrders({ page: 1, limit: 1, enabled: isAuthenticated })`.
+- **Что сделано:** в Strict Mode / token-refresh race profile показывал «0 заказов» на 1 frame пока `useAuth` не догонял. `enabled` guard блокирует фетч до подтверждённой авторизации.
+
+### ✅ [BUG-WB-AUDIT-005] `chats handleSend` — unhandled rejection + потеря текста 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/chats/page.tsx` — `handleSend` обернут в try/catch с `setText(trimmed)` восстановлением при ошибке. Раньше текст очищался до `mutateAsync` — при сетевом сбое юзер терял сообщение без возможности повтора.
+
+### ✅ [BUG-WB-AUDIT-006] orders/[id] sticky CTA bar перекрыт BottomNavBar (z-index) 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:425` — `zIndex: 50 → 51`. Sticky CTA «Чат по заказу» / «Отменить» теперь всегда поверх BottomNavBar (z-50).
+
+### ✅ [BUG-WB-AUDIT-007] Product detail useEffect deps mismatch → race на стейле variants 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:148-167`. useEffect инициализации selection переписан так, чтобы при смене `product.id` гарантированно сбрасывать `selection` и `selectedVariantId` в актуальные значения. Раньше после back/forward с TanStack-кэша и других переходов остаточный state мог соответствовать предыдущему продукту.
+
+### ✅ [BUG-WB-AUDIT-009-FE] checkout не передавал `customerFullName`/`customerPhone` 🟡
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `packages/types/src/api/cart.ts` — `CheckoutConfirmRequest` расширен опциональными `customerFullName`/`customerPhone` (контракт-патч после `1f2f486` Полата, который добавил поля в DTO но не в types).
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — `handleConfirm` теперь передаёт trimmed contact-fields в `confirm.mutateAsync`. Backend (`confirm-checkout.use-case.ts:212`) делает `input.customerFullName?.trim() || profileFullName` — overrides поверх Buyer-профиля, fallback на User.phone когда оба пусты.
+
+### ✅ [WEB-SELLER-HARDCODED-DOMAIN-001] 🟠
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/buyer-url.ts` (новый) — `buyerOrigin()`/`buyerStoreUrl(slug)`/`buyerStoreDisplay(slug)` читают `process.env.NEXT_PUBLIC_BUYER_URL` с fallback на `https://savdo.uz`.
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx:127,236` — sidebar label + clipboard заменены на helper.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx:49` — `storeUrl` через helper.
+- **Что сделано:** до этого 3 места хардкодили `https://savdo.uz/${slug}` — на dev/staging юзеры видели/копировали мёртвую прод-ссылку. Теперь dev = `localhost:3001/slug`, prod = `savdo.uz/slug`.
+
+### ✅ [WEB-BUYER-IMAGE-FALLBACK-001] товары без фото на витрине показывали пустой квадрат 🟠
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/components/store/ProductCard.tsx`
+  - `mediaUrls` теперь `.filter(Boolean)` — пустые `images[].url` или `mediaUrls[]` элементы режутся.
+  - Placeholder при `mediaUrls.length === 0` теперь — иконка ShoppingBag + текст «Без фото» (вместо одинокой иконки на тёмном surfaceSunken-квадрате).
+
+### 🟢 [WEB-BUYER-LINK-PRETTIFY-001] no-op после проверки
+
+- **Дата:** 08.05.2026
+- **Что сделано:** grep по `web-buyer/src` подтвердил: длинных railway URL в UI нет. `app/layout.tsx:16` уже на `process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz'`. `app/(shop)/page.tsx:94,116` — короткий label `savdo.uz/` как фасад на homepage (не URL). Закрываю задачу без изменений.
+
+### ⚠️ Заметка для Полата
+
+`packages/types/src/api/cart.ts CheckoutConfirmRequest` дополнен мной — Полат добавил `customerFullName`/`customerPhone` в `confirm-checkout.dto.ts` (`1f2f486`), но `packages/types` не обновил, что блокировало мой фронт-фикс BUG-WB-AUDIT-009. Сверь, что определение совпадает с DTO (200ch / 20ch length).
+
+---
+
 ## 2026-05-06 (Полат) — DB-AUDIT-001: schema drift + missing indexes
 
 ### ✅ [DB-AUDIT-001] Schema drift fix + 2 hot-path индекса 🔴

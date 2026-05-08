@@ -151,7 +151,12 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
     const trimmed = text.trim();
     if (!trimmed || sendMutation.isPending) return;
     setText("");
-    await sendMutation.mutateAsync({ text: trimmed });
+    try {
+      await sendMutation.mutateAsync({ text: trimmed });
+    } catch {
+      // Restore text so the user can retry — clearing on error loses their message.
+      setText(trimmed);
+    }
   }
 
   function startEdit(msgId: string, currentText: string) {
