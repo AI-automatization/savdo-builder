@@ -58,6 +58,7 @@ interface ApiOptions {
   ttl?: number;               // переопределить TTL для GET
   forceFresh?: boolean;       // обойти кэш (но запись после успеха обновится)
   noCache?: boolean;          // вообще не трогать кэш (write-only ответы)
+  timeout?: number;           // ms; default 20_000 (ApiError(408) при истечении)
 }
 
 export class ApiError extends Error {
@@ -70,6 +71,20 @@ function cacheKey(path: string): string {
   return `${_token ?? ''}:${path}`;
 }
 
+// Combine user-provided AbortSignal с timeout-AbortSignal так, чтобы ABORT
+// от любого из них прервал fetch.
+function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal {
+  const ac = new AbortController();
+  for (const s of signals) {
+    if (!s) continue;
+    if (s.aborted) { ac.abort(); break; }
+    s.addEventListener('abort', () => ac.abort(), { once: true });
+  }
+  return ac.signal;
+}
+
+const DEFAULT_TIMEOUT_MS = 20_000;
+
 async function doFetch<T>(path: string, opts: ApiOptions, method: string): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -77,12 +92,29 @@ async function doFetch<T>(path: string, opts: ApiOptions, method: string): Promi
   };
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
 
-  const res = await fetch(`${BASE}/api/v1${path}`, {
-    method,
-    headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    signal: opts.signal,
-  });
+  // Timeout 20с (можно перебить через opts.timeout). Раньше fetch висел вечно
+  // при slow backend / DB lock, юзер видел вечный skeleton.
+  const timeoutAc = new AbortController();
+  const timeoutMs = opts.timeout ?? DEFAULT_TIMEOUT_MS;
+  const tid = setTimeout(() => timeoutAc.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api/v1${path}`, {
+      method,
+      headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      signal: combineSignals([opts.signal, timeoutAc.signal]),
+    });
+  } catch (err) {
+    clearTimeout(tid);
+    // Если timeout сработал, а user-signal не abort'нут — кидаем понятную ошибку.
+    if (timeoutAc.signal.aborted && !opts.signal?.aborted) {
+      throw new ApiError(408, `Превышено время ожидания (${timeoutMs / 1000}с) — попробуйте ещё раз`);
+    }
+    throw err;
+  }
+  clearTimeout(tid);
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -91,6 +123,16 @@ async function doFetch<T>(path: string, opts: ApiOptions, method: string): Promi
     }
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new ApiError(res.status, err.message ?? `API error ${res.status}`);
+  }
+
+  // Auto-bust cache на успешный non-GET ответ. Раньше после POST /seller/products
+  // старый GET /seller/products оставался в cache 30с → новый товар не появлялся.
+  // Bust по path-prefix: /seller/products/abc/status → /seller/products + /seller/products/abc.
+  if (method !== 'GET') {
+    const cleanPath = path.split('?')[0];
+    bustCache(cleanPath);                                  // exact + всё с этим префиксом
+    const parent = cleanPath.replace(/\/[^/]+$/, '');
+    if (parent && parent !== cleanPath) bustCache(parent);
   }
 
   if (res.status === 204) return undefined as unknown as T;
