@@ -131,3 +131,42 @@ cd apps/web-buyer && pnpm dev   # запустить buyer web
 ## Worktrees
 
 Используй `.worktrees/` для git worktrees.
+
+## Skills и Commands (claude-skills, установлено 08.05.2026)
+
+Источник: `https://github.com/alirezarezvani/coude-skills` (клон в `../claude-skills/`).
+Установлены в `.claude/skills/` и `.claude/commands/`. **`.claude/` в .gitignore** — это локальная конфигурация Claude.
+
+**Skills (35, в `.claude/skills/<name>/SKILL.md`)** — domain knowledge packs. Активируются автоматически когда Claude видит подходящий контекст. Применимые для savdo-builder:
+
+| Skill | Когда полезен |
+|-------|---------------|
+| `api-design-reviewer` | Перед merge нового NestJS endpoint'а |
+| `api-test-suite-builder` | Сгенерировать Jest тесты для модуля |
+| `database-schema-designer` | Новая Prisma модель / migration |
+| `monorepo-navigator` | Ориентация в Turborepo apps/packages |
+| `dependency-auditor` | `pnpm audit` + анализ результатов |
+| `env-secrets-manager` | Railway env vars / .env hygiene |
+| `migration-architect` | Большие data migrations (TG→Supabase pattern) |
+| `pr-review-expert` | Финальное ревью перед push |
+| `skill-security-auditor` | Аудит изменений на security |
+| `sql-database-assistant` | Сложные Postgres-запросы / индексы |
+| `tech-debt-tracker` | Каталогизация TODO/FIXME |
+| `performance-profiler` | Backend latency / N+1 |
+| `codebase-onboarding` | Onboarding новых разработчиков |
+| `release-manager` | Генерация changelog / release notes |
+| `git-worktree-manager` | Параллельные сессии Claude |
+| `runbook-generator` | Operational runbooks из кода |
+
+**Commands (29, в `.claude/commands/<name>.md`)** — slash-команды. Вызываются через `/<name>`. Полезные для savdo-builder:
+
+- `/a11y-audit` — accessibility аудит (TMA-A11Y use case)
+- `/changelog` — сгенерировать CHANGELOG.md из коммитов
+- `/focused-fix` — узкий bugfix без побочных изменений
+- `/sprint-plan`, `/sprint-health` — планирование спринтов
+- `/tech-debt`, `/retro` — backlog и retro
+- `/tdd` — test-driven workflow
+- `/plugin-audit`, `/project-health`, `/saas-health` — аудиты
+- `/wiki-init`, `/wiki-ingest`, `/wiki-query` — wiki workflow
+
+**Index в Obsidian:** `D:\Obsidian Vault\PROJECTS\savdo-builder\skills-index.md`.
