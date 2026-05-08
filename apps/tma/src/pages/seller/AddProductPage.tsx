@@ -264,12 +264,20 @@ export default function AddProductPage() {
     setPhotoUploading(true);
     try {
       for (let i = 0; i < photoFiles.length; i++) {
-        const mediaId = await uploadPhoto(photoFiles[i], i);
-        // POST в /seller/products/:id/images — первое фото primary.
-        await api(`/seller/products/${pid}/images`, {
-          method: 'POST',
-          body: { mediaId, isPrimary: i === 0, sortOrder: i },
-        });
+        try {
+          const mediaId = await uploadPhoto(photoFiles[i], i);
+          // POST в /seller/products/:id/images — первое фото primary.
+          await api(`/seller/products/${pid}/images`, {
+            method: 'POST',
+            body: { mediaId, isPrimary: i === 0, sortOrder: i },
+          });
+        } catch (err) {
+          // TMA-PHOTO-UPLOAD-DIAG-001: показываем конкретную причину фейла
+          // (storage unavailable / mime not allowed / size too big / 502).
+          // Раньше генерик «Не удалось» — продавец не знал что делать.
+          const reason = err instanceof Error ? err.message : 'неизвестная ошибка';
+          throw new Error(`Фото #${i + 1}: ${reason}`);
+        }
       }
     } finally {
       setPhotoUploading(false);
@@ -414,12 +422,15 @@ export default function AddProductPage() {
           await uploadPhotosForProduct(pid);
         } catch (photoErr: unknown) {
           const isStorageDown = photoErr instanceof ApiError && photoErr.status === 503;
+          // TMA-PHOTO-UPLOAD-DIAG-001: настоящий error.message теперь
+          // включает причину (см. uploadPhotosForProduct).
+          const detail = photoErr instanceof Error ? photoErr.message : 'часть фото не загружена';
           tg?.HapticFeedback.notificationOccurred('warning');
           navigate(`/seller/products/${pid}/edit`, {
             state: {
               photoError: isStorageDown
                 ? 'Загрузка фото временно недоступна — попробуйте позже'
-                : 'Часть фото не загружена — попробуйте добавить остальные здесь',
+                : `${detail}. Попробуйте добавить здесь.`,
             },
           });
           return;

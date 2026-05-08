@@ -169,6 +169,30 @@ export class ProductsRepository {
     });
   }
 
+  // FEAT-001: case-insensitive поиск по публичным товарам активных магазинов.
+  // Используется в GET /storefront/search.
+  async searchPublic(query: string, limit = 10): Promise<Product[]> {
+    const q = query.trim();
+    if (!q) return [];
+    return this.prisma.product.findMany({
+      where: {
+        status: 'ACTIVE',
+        deletedAt: null,
+        store: { isPublic: true, deletedAt: null },
+        OR: [
+          { title: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        images: { orderBy: { sortOrder: 'asc' }, take: 1, include: { media: true } },
+        store: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    }) as unknown as Promise<Product[]>;
+  }
+
   async create(data: CreateProductData): Promise<Product> {
     return this.prisma.product.create({
       data: {
@@ -236,6 +260,8 @@ export class ProductsRepository {
   async findAllPublic(filters?: {
     q?: string;
     globalCategoryId?: string;
+    priceMin?: number;
+    priceMax?: number;
     sort?: 'new' | 'price_asc' | 'price_desc';
     page?: number;
     limit?: number;
@@ -244,11 +270,23 @@ export class ProductsRepository {
     const limit = Math.min(filters?.limit ?? 20, 50);
     const skip  = (page - 1) * limit;
 
+    // FEAT-003: priceMin/priceMax — диапазон цены, чтобы на storefront можно
+    // было фильтровать товары по бюджету. Если оба указаны и min > max —
+    // возвращаем пустой результат через невозможный where (count() = 0).
+    const priceFilter: Record<string, number> = {};
+    if (typeof filters?.priceMin === 'number' && filters.priceMin > 0) {
+      priceFilter.gte = filters.priceMin;
+    }
+    if (typeof filters?.priceMax === 'number' && filters.priceMax > 0) {
+      priceFilter.lte = filters.priceMax;
+    }
+
     const where: Record<string, unknown> = {
       status: 'ACTIVE',
       deletedAt: null,
       store: { status: 'APPROVED', isPublic: true },
       ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
+      ...(Object.keys(priceFilter).length > 0 && { basePrice: priceFilter }),
       ...(filters?.q?.trim() && {
         OR: [
           { title: { contains: filters.q.trim(), mode: 'insensitive' } },

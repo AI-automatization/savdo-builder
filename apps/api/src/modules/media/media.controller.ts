@@ -20,7 +20,10 @@ import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
+import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { MediaVisibility } from '@prisma/client';
 import { RequestUploadDto } from './dto/request-upload.dto';
@@ -51,6 +54,7 @@ export class MediaController {
   /** Generate presigned R2 upload URL (when R2 is configured) */
   @Post('upload-url')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async getUploadUrl(
     @CurrentUser() user: JwtPayload,
     @Body() dto: RequestUploadDto,
@@ -158,8 +162,15 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
+      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
       await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
       return;
+    }
+
+    // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' выставляется migration
+    // когда TG getFile вернул 404 → файл навсегда мёртв. Не пытаемся redirect.
+    if (mediaFile.bucket === 'telegram-expired') {
+      throw new NotFoundException('Media file expired (please re-upload)');
     }
 
     if (this.r2Storage.isConfigured()) {
@@ -203,8 +214,14 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
+      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
       await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
       return;
+    }
+
+    // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' = мёртвый file_id.
+    if (mediaFile.bucket === 'telegram-expired') {
+      throw new NotFoundException('Media file expired (please re-upload)');
     }
 
     if (this.r2Storage.isConfigured()) {
@@ -222,8 +239,9 @@ export class MediaController {
   // ─── Admin: list all media files ────────────────────────────────────────────
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('media:read')
   async listMedia(
     @Query('page') page = 1,
     @Query('limit') limit = 50,

@@ -30,17 +30,24 @@ export class R2StorageService {
     }
 
     if (this.configured) {
+      // STORAGE_REGION:
+      //   - Cloudflare R2 принимает 'auto'
+      //   - Supabase требует project_region (us-east-1, eu-west-1 etc)
+      //   - AWS S3 — bucket region
+      // SigV4 подпись зависит от region. Несовпадение → 403 SignatureDoesNotMatch.
+      const region = this.configService.get<string>('storage.region') ?? 'us-east-1';
       this.s3Client = new S3Client({
         endpoint,
-        region: 'auto',
+        region,
         credentials: {
           accessKeyId: accessKeyId!,
           secretAccessKey: secretAccessKey!,
         },
         forcePathStyle: true,
       });
+      this.logger.log(`S3 storage configured: endpoint=${endpoint} region=${region}`);
     } else {
-      this.logger.warn('R2 Storage not configured (STORAGE_ENDPOINT missing or invalid) — media upload disabled');
+      this.logger.warn('S3 Storage not configured (STORAGE_ENDPOINT missing or invalid) — media upload disabled');
     }
   }
 
@@ -88,16 +95,34 @@ export class R2StorageService {
     body: Buffer,
     mimeType: string,
   ): Promise<void> {
-    if (!this.s3Client) throw new Error('R2 Storage is not configured');
+    if (!this.s3Client) throw new Error('S3 Storage is not configured');
 
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: objectKey,
-        Body: body,
-        ContentType: mimeType,
-      }),
-    );
+    try {
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: objectKey,
+          Body: body,
+          ContentType: mimeType,
+        }),
+      );
+    } catch (err) {
+      // Без этих логов в prod невозможно диагностировать почему upload падает в TG fallback.
+      // Типовые причины:
+      //   InvalidAccessKeyId   — STORAGE_ACCESS_KEY_ID опечатка/неактивный
+      //   SignatureDoesNotMatch — STORAGE_REGION или SECRET_ACCESS_KEY неверны
+      //   NoSuchBucket          — STORAGE_BUCKET_PUBLIC не создан в Supabase
+      //   AccessDenied          — RLS policy на storage.objects (для anon/authenticated; service-role bypass'ит)
+      //   ENOTFOUND/CONNREFUSED — STORAGE_ENDPOINT неверный URL
+      const e = err as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number }; message?: string };
+      this.logger.error(
+        `S3 uploadObject failed: bucket=${bucket} key=${objectKey} ` +
+        `errorCode=${e?.Code ?? e?.name ?? 'unknown'} ` +
+        `httpStatus=${e?.$metadata?.httpStatusCode ?? 'unknown'} ` +
+        `message=${e?.message ?? String(err)}`,
+      );
+      throw err;
+    }
   }
 
   getDefaultBucket(): string {

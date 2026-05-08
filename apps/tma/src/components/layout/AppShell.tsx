@@ -5,6 +5,7 @@ import { FullscreenButton } from './FullscreenButton';
 import { InAppBackBar } from './InAppBackBar';
 import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
 import { ToastContainer } from '@/components/ui/Toast';
+import { ConfirmContainer } from '@/components/ui/ConfirmModal';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 interface Props {
@@ -38,6 +39,7 @@ export function AppShell({ children, role }: Props) {
       </div>
 
       <ToastContainer />
+      <ConfirmContainer />
       <BackButton />
 
       {isDesktop ? (

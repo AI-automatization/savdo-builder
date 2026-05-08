@@ -149,15 +149,23 @@ export default function ProductPage() {
     if (product) track.productViewed(product.storeId, product.id);
   }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset & re-initialize variant selection on product change. Triggering only on
+  // product.id (not optionGroups/activeVariants) is intentional — those derive from
+  // product itself, so we always read the freshest value via the closure that fires
+  // for THIS render of THIS product. Back/forward cache used to leave stale selection
+  // because we read snapshot inputs without resetting first.
   useEffect(() => {
     if (!product) return;
     if (hasGroups) {
-      if (Object.keys(selection).length === 0) {
-        setSelection(initialSelectionFromVariants(activeVariants, optionGroups));
-      }
-    } else if (!selectedVariantId && activeVariants.length > 0) {
+      setSelection(initialSelectionFromVariants(activeVariants, optionGroups));
+      setSelectedVariantId(null);
+    } else if (activeVariants.length > 0) {
       const firstInStock = activeVariants.find((v) => v.stockQuantity > 0);
-      if (firstInStock) setSelectedVariantId(firstInStock.id);
+      setSelectedVariantId(firstInStock?.id ?? null);
+      setSelection({});
+    } else {
+      setSelection({});
+      setSelectedVariantId(null);
     }
   }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

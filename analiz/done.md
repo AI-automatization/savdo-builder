@@ -1,5 +1,247 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 7 critical + 3 P1 от Полата
+
+### ✅ [BUG-WB-AUDIT-001] `useCart` без `enabled: isAuthenticated` → 401-loop для гостя 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-cart.ts` — добавлен `opts?: { enabled?: boolean }` параметр (default true).
+  - `apps/web-buyer/src/components/layout/Header.tsx` — `useCart({ enabled: isAuthenticated })`.
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — то же.
+- **Что сделано:** на каждый рендер Header/BottomNavBar для гостя `useCart` стрелял на `/cart`, при 401 refresh-interceptor тащил `null`-токен → `savdo:auth:expired` → `localLogout` + `queryClient.clear` цикл. Эндпойнт под `OptionalJwtAuthGuard`, так что в современном бэке 401 не приходит, но `enabled` guard убирает race и SSR-холостые запросы. Cart/Checkout страницы под OtpGate — у них `enabled` дефолт `true`, поведение не меняется.
+
+### ✅ [BUG-WB-AUDIT-002] `useBuyerSocket` cleanup не emit'ит `leave-buyer-room` 🔴
+### ✅ [BUG-WB-AUDIT-003] `useChatSocket` cleanup не emit'ит `leave-chat-room` 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-buyer-socket.ts` — в cleanup `socket.emit('leave-buyer-room', { buyerId })` если `socket.connected`.
+  - `apps/web-buyer/src/hooks/use-chat.ts` — то же для `leave-chat-room`.
+  - `apps/web-buyer/src/lib/auth/context.tsx` — `destroySocket()` в `localLogout` и `logout` (полный cleanup при logout/expired-cycle).
+- **Что сделано:** при logout/смене юзера сервер продолжал слать `order:status_changed`/`chat:new_message` в комнату экс-пользователя. Аналогично переключение чатов накапливало активные комнаты на сервере. Теперь явный leave-emit + destroySocket() при logout.
+
+### ✅ [BUG-WB-AUDIT-004] `useOrders` без `enabled` → 401 при гонке 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-orders.ts` — в `useOrders` добавлен опциональный `enabled` параметр (через destructure из params, чтобы не попасть в queryKey).
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — `useOrders({ page: 1, limit: 1, enabled: isAuthenticated })`.
+- **Что сделано:** в Strict Mode / token-refresh race profile показывал «0 заказов» на 1 frame пока `useAuth` не догонял. `enabled` guard блокирует фетч до подтверждённой авторизации.
+
+### ✅ [BUG-WB-AUDIT-005] `chats handleSend` — unhandled rejection + потеря текста 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/chats/page.tsx` — `handleSend` обернут в try/catch с `setText(trimmed)` восстановлением при ошибке. Раньше текст очищался до `mutateAsync` — при сетевом сбое юзер терял сообщение без возможности повтора.
+
+### ✅ [BUG-WB-AUDIT-006] orders/[id] sticky CTA bar перекрыт BottomNavBar (z-index) 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:425` — `zIndex: 50 → 51`. Sticky CTA «Чат по заказу» / «Отменить» теперь всегда поверх BottomNavBar (z-50).
+
+### ✅ [BUG-WB-AUDIT-007] Product detail useEffect deps mismatch → race на стейле variants 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:148-167`. useEffect инициализации selection переписан так, чтобы при смене `product.id` гарантированно сбрасывать `selection` и `selectedVariantId` в актуальные значения. Раньше после back/forward с TanStack-кэша и других переходов остаточный state мог соответствовать предыдущему продукту.
+
+### ✅ [BUG-WB-AUDIT-009-FE] checkout не передавал `customerFullName`/`customerPhone` 🟡
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `packages/types/src/api/cart.ts` — `CheckoutConfirmRequest` расширен опциональными `customerFullName`/`customerPhone` (контракт-патч после `1f2f486` Полата, который добавил поля в DTO но не в types).
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — `handleConfirm` теперь передаёт trimmed contact-fields в `confirm.mutateAsync`. Backend (`confirm-checkout.use-case.ts:212`) делает `input.customerFullName?.trim() || profileFullName` — overrides поверх Buyer-профиля, fallback на User.phone когда оба пусты.
+
+### ✅ [WEB-SELLER-HARDCODED-DOMAIN-001] 🟠
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/buyer-url.ts` (новый) — `buyerOrigin()`/`buyerStoreUrl(slug)`/`buyerStoreDisplay(slug)` читают `process.env.NEXT_PUBLIC_BUYER_URL` с fallback на `https://savdo.uz`.
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx:127,236` — sidebar label + clipboard заменены на helper.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx:49` — `storeUrl` через helper.
+- **Что сделано:** до этого 3 места хардкодили `https://savdo.uz/${slug}` — на dev/staging юзеры видели/копировали мёртвую прод-ссылку. Теперь dev = `localhost:3001/slug`, prod = `savdo.uz/slug`.
+
+### ✅ [WEB-BUYER-IMAGE-FALLBACK-001] товары без фото на витрине показывали пустой квадрат 🟠
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/components/store/ProductCard.tsx`
+  - `mediaUrls` теперь `.filter(Boolean)` — пустые `images[].url` или `mediaUrls[]` элементы режутся.
+  - Placeholder при `mediaUrls.length === 0` теперь — иконка ShoppingBag + текст «Без фото» (вместо одинокой иконки на тёмном surfaceSunken-квадрате).
+
+### 🟢 [WEB-BUYER-LINK-PRETTIFY-001] no-op после проверки
+
+- **Дата:** 08.05.2026
+- **Что сделано:** grep по `web-buyer/src` подтвердил: длинных railway URL в UI нет. `app/layout.tsx:16` уже на `process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz'`. `app/(shop)/page.tsx:94,116` — короткий label `savdo.uz/` как фасад на homepage (не URL). Закрываю задачу без изменений.
+
+### ⚠️ Заметка для Полата
+
+`packages/types/src/api/cart.ts CheckoutConfirmRequest` дополнен мной — Полат добавил `customerFullName`/`customerPhone` в `confirm-checkout.dto.ts` (`1f2f486`), но `packages/types` не обновил, что блокировало мой фронт-фикс BUG-WB-AUDIT-009. Сверь, что определение совпадает с DTO (200ch / 20ch length).
+
+---
+
+## 2026-05-06 (Полат) — DB-AUDIT-001: schema drift + missing indexes
+
+### ✅ [DB-AUDIT-001] Schema drift fix + 2 hot-path индекса 🔴
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `AdminUser` дополнен полями `adminRole/mfaSecret/mfaEnabled/mfaEnabledAt/lastLoginAt/lastLoginIp` (всё уже было в DB через migration 20260503020000); добавлена модель `OrderRefund` с relations на Order + AdminUser; `@@index([adminRole])` на admin_users; `@@index([bucket])` на media_files; `@@index([status])` на chat_threads.
+  - `packages/db/prisma/migrations/20260506200000_db_audit_indexes/migration.sql` — CREATE INDEX IF NOT EXISTS для `media_files.bucket` и `chat_threads.status`.
+- **Что найдено:** код в `admin-auth.use-case`, `mfa-enforced.guard`, `admin-permission.guard`, `admin.repository`, refund use-case использовал `(prisma as any).adminUser/.orderRefund` потому что schema.prisma не отражал реальную DB. Schema drift — следующий `prisma generate` мог бы поломать типы.
+- **Что сделано:** поля и модели приведены к актуальному состоянию DB. Запущен `pnpm --filter db generate`. Typecheck `apps/api` чист.
+- **Что не тронуто (отдельный тикет если понадобится):** `pg_trgm` GIN на `Product.title` для full-text search — требует extension + raw SQL миграции.
+
+## 2026-05-06 (Полат) — RBAC micro-permissions на admin endpoints
+
+### ✅ [API-RBAC-MICRO-PERMISSIONS-001] Endpoint-level разрешения для admin-ролей 🟠
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/common/constants/admin-permissions.ts` — `ADMIN_PERMISSIONS` matrix + `hasAdminPermission()` wildcard-helper + `getAdminPermissions()`. Вынесено из `admin-auth.use-case.ts` в shared.
+  - `apps/api/src/common/decorators/admin-permission.decorator.ts` — `@AdminPermission('user:suspend')`
+  - `apps/api/src/common/guards/admin-permission.guard.ts` — гард читает metadata, проверяет роль из `JwtPayload.adminRole` (с DB fallback для legacy JWT).
+  - `apps/api/src/common/decorators/current-user.decorator.ts` — `JwtPayload.adminRole?: string`
+  - `apps/api/src/modules/auth/repositories/auth.repository.ts` — `findAdminClaims()` возвращает `{ mfaEnabled, adminRole }` одним lookup.
+  - `apps/api/src/modules/auth/use-cases/{verify-otp,telegram-auth,refresh-session}.use-case.ts` — выставляют `adminRole` в JWT.
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts` — refactor на shared constants + `mfaChallenge` сохраняет `adminRole`.
+  - `apps/api/src/modules/admin/admin.controller.ts` — `AdminPermissionGuard` в @UseGuards + `@AdminPermission()` на 17 destructive endpoints.
+  - `apps/api/src/modules/admin/super-admin.controller.ts` — то же + 8 endpoints (impersonate, refund, admin CRUD, verify-extended, activate-seller).
+- **Что сделано:** до этого matrix существовала в `admin-auth.use-case.ts` но проверялась только в одном месте (impersonate). Все остальные admin endpoints не проверяли пер-permission — `support` или `read_only` могли вызвать destructive endpoints. Теперь — endpoint-level enforcement через `@AdminPermission`.
+- **Wildcard семантика:** `*` (все), `user:*` (все над user), `*:read` (read любого).
+- **Permissions per role:** `super_admin: ['*']`, `admin` (все кроме `admin:*` mgmt), `moderator` (только moderation + read), `support` (read + cancel order), `finance` (orders + refunds), `read_only` (`*:read`).
+- **Покрытие:** 23 destructive endpoints получили `@AdminPermission`. List/read endpoints не размечены — fallback на `@Roles('ADMIN')` (любой admin читает). При необходимости — добавить ярлыки в follow-up.
+
+## 2026-05-06 (Полат) — MFA enforcement на admin endpoints
+
+### ✅ [API-MFA-NOT-ENFORCED-001] Real MFA gating через mfaPending JWT 🔴
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/common/decorators/current-user.decorator.ts` — `JwtPayload.mfaPending?: boolean`
+  - `apps/api/src/common/decorators/skip-mfa.decorator.ts` — `@SkipMfaCheck()` decorator + SKIP_MFA_KEY metadata
+  - `apps/api/src/common/guards/mfa-enforced.guard.ts` — guard, бросает 403 `MFA_REQUIRED` если `user.mfaPending===true`
+  - `apps/api/src/modules/auth/repositories/auth.repository.ts` — `isAdminMfaEnabled(userId)` lookup
+  - `apps/api/src/modules/auth/use-cases/{verify-otp,telegram-auth,refresh-session}.use-case.ts` — выставляют `mfaPending` для ADMIN с включённым MFA при login и refresh
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts` — новый метод `mfaChallenge(userId, code, sessionId, role)` re-issues JWT без mfaPending
+  - `apps/api/src/modules/admin/super-admin.controller.ts` — `POST /admin/auth/mfa/login` + `@SkipMfaCheck()` на `auth/me`, `auth/mfa/setup/verify/disable/login`
+  - `apps/api/src/modules/admin/admin.controller.ts`, `chat.controller.ts`, `moderation/moderation.controller.ts`, `super-admin.controller.ts` — `MfaEnforcedGuard` в `@UseGuards`
+  - `apps/api/src/shared/constants/error-codes.ts` — `MFA_REQUIRED`, `MFA_INVALID`
+- **Что сделано:** до этого MFA TOTP setup/verify/disable работали, но НИ ОДИН admin endpoint не проверял `mfaVerified`. Стащенный admin JWT обходил MFA полностью.
+  - При login с включённым MFA → JWT с `mfaPending: true`
+  - `MfaEnforcedGuard` бросает 403 с кодом `MFA_REQUIRED` на любой admin endpoint
+  - `@SkipMfaCheck()` на 5 challenge endpoints (`auth/me`, `auth/mfa/{setup,verify,disable,login}`)
+  - `POST /admin/auth/mfa/login` с TOTP-кодом → re-issued JWT (тот же sessionId, без mfaPending) → полный доступ
+  - На refresh — ВСЕГДА перепроверяется MFA (защита от стащенного refresh token)
+- **Что осталось (low priority):** `categories.controller`, `analytics.controller`, `media.controller` имеют отдельные admin endpoints (read-only/seller-managed), туда MFA guard не применён — они per-endpoint @UseGuards вместо class-level. Отдельный тикет если понадобится: `API-MFA-COVERAGE-EXTRA-001`.
+
+## 2026-05-06 (Полат) — WS audit + закрытие дыры в OrdersGateway
+
+### ✅ [API-WS-AUDIT-001 / SEC-WS-002] Hardening join-seller-room 🔴
+
+- **Дата:** 06.05.2026
+- **Файл:** `apps/api/src/socket/orders.gateway.ts`
+- **Что найдено:** в `handleJoinSellerRoom` проверка `if (user.storeId && user.storeId !== data.storeId)` пропускала SELLER'ов БЕЗ `storeId` в JWT в любую seller-room. Это leak: чужие `order:new`, `order:status_changed`, `chat:new_message` events.
+- **Что сделано:** обработчик стал async, добавлен fallback на DB-lookup `seller.findUnique().store.id` для проверки владения когда JWT.storeId отсутствует. Добавлена валидация типа `data.storeId` (string). Аналогично — `handleJoinBuyerRoom` теперь валидирует `data.buyerId`.
+- **Что НЕ найдено в ChatGateway:** уже OK — JWT verify + DB-проверка участия треда + anti-spoof через `client.rooms.has(room)` для typing.
+
+## 2026-05-06 (Полат) — Super-admin: ручная активация продавца на рынке
+
+### ✅ [API-MANUAL-SELLER-ACTIVATION-001] One-click активация продавца 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/use-cases/activate-seller-on-market.use-case.ts` — новый use-case, композирует AdminCreateSellerUseCase + AdminCreateStoreUseCase + ApproveStoreUseCase + единая audit-запись.
+  - `apps/api/src/modules/admin/super-admin.controller.ts` — endpoint `POST /admin/users/:id/activate-seller-on-market` с валидацией обязательных полей.
+  - `apps/api/src/modules/admin/admin.module.ts` — регистрация use-case в providers.
+- **Что сделано:** до этого активация продавца требовала 3 раздельных API-вызова (make-seller → create-store → approve). Теперь — один endpoint. Audit log: `seller.activated_on_market`.
+- **Контекст:** решение Полата 06.05.2026 — монетизация заморожена до открытия бизнес-счёта в Click/Payme. Продавцы пишут в @savdo_builderBOT/админу → админ через super-admin одним кликом открывает доступ к общему рынку.
+- **TODO frontend:** `ADMIN-MANUAL-ACTIVATION-UI-001` — кнопка + модалка в admin-панели.
+
+## 2026-05-06 (Полат) — TMA: skeletons на 4 страницах
+
+### ✅ [TMA-LOADING-SKELETONS-001 / частично] Skeleton вместо Spinner 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — grid из 8 ProductCardSkeleton с тем же `cols` что финальная сетка.
+  - `apps/tma/src/pages/buyer/ProductPage.tsx` — фото-плейсхолдер + title/price/description/cta lines.
+  - `apps/tma/src/pages/seller/ProductsPage.tsx` — grid 8 ProductCardSkeleton (на mobile — flex column 4 строк).
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` — 2 GlassCard с input/button плейсхолдерами.
+- **Что сделано:** заменён `<Spinner />` на layout-aware skeleton. Юзер видит структуру страницы во время загрузки → меньше perceived latency.
+- **Что осталось (в backlog):** CartPage, CheckoutPage, OrdersPage buyer (list level), ProfilePage buyer/seller, StoresPage, AddProductPage, DashboardPage seller (последняя — параллельная сессия).
+
+## 2026-05-06 (Полат) — TMA: showToast на silent error catches
+
+### ✅ [TMA-SILENT-ERROR-CATCHES-001] showToast на user-facing data-load fails 🟡
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — wishlist load fail.
+  - `apps/tma/src/pages/buyer/OrdersPage.tsx` — loadMore orders + order detail expand.
+  - `apps/tma/src/pages/seller/ProfilePage.tsx` — store load fail.
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` — seller profile load fail.
+- **Что сделано:** заменены `.catch(() => {})` на `.catch((err) => { if AbortError return; showToast(..., 'error') })`. Раньше юзер видел пустой UI без понимания почему — теперь явный toast.
+- **Что НЕ тронуто (намеренно):** clipboard.writeText (best-effort, юзер увидит результат сам), prefetch (фоновое), attribute create/delete (некритичные side-effects).
+
+## 2026-05-06 (Полат) — TMA: ConfirmModal вместо window.confirm/alert
+
+### ✅ [TMA-NATIVE-CONFIRM-001] Custom ConfirmModal 🟠
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/ConfirmModal.tsx` — новый. Imperative API `confirmDialog(opts) → Promise<boolean>`. ESC/Enter, backdrop close, autoFocus на Confirm, `danger` flag для красной кнопки. Тот же паттерн что у `showToast` — глобальный `CustomEvent`.
+  - `apps/tma/src/components/layout/AppShell.tsx` — `<ConfirmContainer />` замонтирован глобально.
+  - `apps/tma/src/pages/seller/ProductsPage.tsx` — 3 замены: archive confirm, delete confirm + danger=true, archive/delete error alert → showToast.
+  - `apps/tma/src/pages/seller/StorePage.tsx` — 1 замена: deleteCategory confirm + danger=true.
+- **Что сделано:** все 5 `window.confirm/alert` устранены — на desktop Telegram WebApp нативные popup'ы не работают (нет popup window.open), теперь UI согласован.
+- **Также:** баги «нативный диалог сломал юзеру весь WebApp» больше не воспроизводятся.
+
+## 2026-05-06 (Полат) — Media migration: TG → Supabase
+
+### ✅ [API-MEDIA-MIGRATION-TG-TO-R2-001] Перенос старых TG-фото в Supabase 🔴
+
+- **Дата:** 06.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/use-cases/migrate-tg-media-to-r2.use-case.ts` — новый use-case. Идёт по `MediaFile WHERE bucket='telegram'` батчами, тянет через `getFileUrl` + axios arraybuffer, грузит в Supabase через `uploadObject`, обновляет `bucket+objectKey+fileSize`. 404 от TG (file expired) → `bucket='telegram-expired'` (схема не имеет `deletedAt`, поэтому маркируем bucket — повторные прогоны их пропустят и proxy перестанет дёргать мёртвый file_id). Возвращает `{ migrated, skipped, failed, errors[] }`.
+  - `apps/api/src/modules/admin/admin.module.ts` — `MediaModule` в `imports`, `MigrateTgMediaToR2UseCase` в `providers`.
+  - `apps/api/src/modules/admin/admin.controller.ts` — endpoint `POST /admin/media/migrate-tg-to-r2?limit=50` (admin only, audit log).
+- **Что сделано:** запускается админом через UI/curl батчами по `limit` (default 50, max 200) — чтобы Railway не таймаутил. Идемпотентен: при повторном прогоне уже мигрированные строки (`bucket=<supabase-bucket>`) и expired (`bucket='telegram-expired'`) фильтруются.
+- **Контекст:** до настройки `STORAGE_REGION=ap-southeast-1` upload падал в TG fallback. file_id Telegram держит ~1ч → после этого `getFile` возвращает 404 и на web-buyer пустые квадраты.
+
+
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 10] Profile / Wishlist / Notifications redesign 🔴
+
+- **Дата:** 05.05.2026
+- **Commit:** `0ba9561`
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — borderless user card с brand-fill avatar, Stats row 3-col (Заказов / В избранном / Корзина-link) на 1px-divider grid, editorial section label «— Активность», MenuRow компонент (brandMuted icon + label + sub + chevron) для Заказы/Избранное/Уведомления, outline-danger logout с confirm-card. `useOrders({page:1,limit:1})` + `useWishlist()` для best-effort counts. `accent*` → `brand*`, `rounded-2xl` → `rounded-md`, `textPrimary` → `textStrong`. Avatar upload, logout, OtpGate сохранены.
+  - `apps/web-buyer/src/app/(shop)/wishlist/page.tsx` — editorial sub-header «— Избранное · {count}», borderless card grid 2/4 cols (как ProductCard в Task 4), rounded-md image + ♡ overlay 32px (filled brand для удаления), store eyebrow + title в textBody, цена в textStrong, OOS overlay (white 78% + pill), editorial empty state «— Пока пусто» + brand CTA. Hover scale-105 image zoom. `useWishlist`/`useToggleWishlist` сохранены.
+  - `apps/web-buyer/src/app/(shop)/notifications/page.tsx` — borderless rows с background brandMuted на unread / surface на read, brand dot 8px справа для unread, brand-tinted icon container surfaceSunken, editorial group labels по дате (Сегодня/Вчера/Прошлая неделя/Ранее), filter chips с textStrong fill активного, header c brandMuted «Прочитать все», editorial empty state + auth gate. `useNotifications`/`useReadAll`/`router.push('/orders/{id}')` сохранены.
+- **🎉 ИТОГ:** Все 10 задач Soft Color Lifestyle implementation plan'а закрыты. Web-buyer полностью переведён на тёплую terracotta-палитру с editorial labels, brand-color CTAs, borderless минимализмом и dark-fill активными элементами.
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
+## 2026-05-05 (сессия 52, Азим) — Task 3: homepage + RecentStores polish
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 3] Homepage + RecentStores polish 🟡
+
+- **Дата:** 05.05.2026
+- **Commit:** `b2884bb`
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — Logo container `rounded-3xl` → `rounded-2xl`, slug-card `rounded-2xl` → `rounded-lg` (8px), inner row `rounded-xl` → `rounded-md`, «Перейти в магазин» → editorial label «— Перейти в магазин», quick links `rounded-2xl` → `rounded-md` + brandMuted icon container без border + tighter spacing (gap-3, w-10 h-10, size 18), CTA button `rounded-md` + font-bold для consistency с Tasks 4-9.
+  - `apps/web-buyer/src/components/home/RecentStores.tsx` — borderless карточки (per spec), убран background+border контейнера, avatar 48px → 56px, без brandBorder (минималистично), remove button hidden by default + on group-hover.
+- **Что не сделано (намеренно):** Storefront `(shop)/[slug]/page.tsx` уже полностью под новый дизайн — hero 6fr:4fr photo+brand-color split, editorial labels (— Магазин · {city} / — По категориям / — Товары · {N}), categories chip-row с textStrong fill активного, brand-color column со всеми правильными tokens. Никаких правок не потребовалось.
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
+## 2026-05-05 (сессия 52, Азим) — Task 2: Header/Nav refinements
+
+### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 2] Header + BottomNavBar refinements 🟢
+
+- **Дата:** 05.05.2026
+- **Commit:** `654f067`
+- **Файлы:** `apps/web-buyer/src/components/layout/Header.tsx`, `apps/web-buyer/src/components/theme-toggle.tsx`
+- **Что сделано:** Header и BottomNavBar уже использовали canonical brand-tokens после Task 1 alias-миграции (`colors.brand`, `colors.brandTextOnBg`, `colors.textBody`, `colors.divider`, `colors.surface*` — никаких `accent*` ссылок не осталось). Финальные правки: Header padding `py-3` → `py-3.5` (12→14px vertical, per spec). ThemeToggle MenuItem — `accent*` → `brand*` rename для консистентности (CSS-var alias, no-op runtime). BottomNavBar — без изменений.
+- **Push:** main → Railway autodeploy; merged → `web-buyer`
+
 ## 2026-05-05 (сессия 52, Азим) — Task 9: Orders list + detail redesign
 
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001 / Task 9] Orders redesign — list rows + status hero + timeline 🔴

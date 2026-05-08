@@ -422,7 +422,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {order && (
         <div
           className="fixed left-0 right-0 px-4 md:bottom-6 md:left-auto md:right-6 md:max-w-md"
-          style={{ bottom: 76, zIndex: 50 }}
+          style={{ bottom: 76, zIndex: 51 }}
         >
           <div className="max-w-md mx-auto flex flex-col gap-2">
             {!isCancelled && (

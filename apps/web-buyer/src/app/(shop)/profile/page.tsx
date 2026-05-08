@@ -78,7 +78,7 @@ function MenuRow({
 // ── ProfileView ──────────────────────────────────────────────────────────────
 
 function ProfileView() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const logoutMutation = useLogout();
   const uploadAvatar = useUploadAvatar();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,8 +87,8 @@ function ProfileView() {
 
   const avatarUrl = user?.buyer?.avatarUrl ?? null;
 
-  // Stats — best-effort
-  const { data: ordersData } = useOrders({ page: 1, limit: 1 });
+  // Stats — best-effort, skip while auth is still rehydrating to avoid Strict Mode 401 races.
+  const { data: ordersData } = useOrders({ page: 1, limit: 1, enabled: isAuthenticated });
   const { data: wishlist } = useWishlist();
   const ordersCount = ordersData?.meta?.total ?? 0;
   const wishlistCount = wishlist?.length ?? 0;

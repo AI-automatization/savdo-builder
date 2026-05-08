@@ -2,10 +2,13 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
+import { refreshChatUnread } from '@/lib/chatUnread';
+import { useChatTyping } from '@/lib/useChatTyping';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
+import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
 
 interface ChatThread {
@@ -77,6 +80,9 @@ export default function SellerChatPage() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // FEAT-005-FE: typing indicator
+  const { isOtherTyping, emitTyping } = useChatTyping(threadId ?? null, 'SELLER');
+
   // ── Back button ──────────────────────────────────────────────────────────────
   useEffect(() => {
     tg?.BackButton.show();
@@ -92,37 +98,53 @@ export default function SellerChatPage() {
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [navigate, tg, threadId]);
 
-  // ── Load thread list ─────────────────────────────────────────────────────────
+  // ── Load thread list (TMA-SELLER-CHAT-PERF-001: AbortController) ────────────
+  const threadsAbortRef = useRef<AbortController | null>(null);
   const loadThreads = () => {
+    threadsAbortRef.current?.abort();
+    const ac = new AbortController();
+    threadsAbortRef.current = ac;
     setLoading(true);
     setThreadsError(false);
-    api<ChatThread[]>('/chat/threads')
+    api<ChatThread[]>('/chat/threads', { signal: ac.signal })
       .then((data) => {
+        if (ac.signal.aborted) return;
         setThreads(data ?? []);
       })
       .catch((err) => {
+        if (ac.signal.aborted) return;
         setThreadsError(true);
         const msg = err instanceof Error ? err.message : 'Не удалось загрузить чаты';
         showToast(`❌ ${msg}`, 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
   };
-  useEffect(() => { loadThreads(); }, []);
+  useEffect(() => {
+    loadThreads();
+    return () => threadsAbortRef.current?.abort();
+  }, []);
 
   // ── Load messages + connect socket when threadId changes ─────────────────────
+  const messagesAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (!threadId) return;
+
+    messagesAbortRef.current?.abort();
+    const ac = new AbortController();
+    messagesAbortRef.current = ac;
 
     setMsgLoading(true);
     setMessages([]);
     setShowBuyerInfo(false);
 
-    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`)
-      .then((res) => setMessages((res.messages ?? []).slice().reverse()))
-      .catch(() => {
+    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`, { signal: ac.signal })
+      .then((res) => { if (!ac.signal.aborted) setMessages((res.messages ?? []).slice().reverse()); })
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         navigate('/seller/chat', { replace: true });
       })
-      .finally(() => setMsgLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setMsgLoading(false); });
 
     const socket = connectSocket();
     joinRoom(socket, threadId);
@@ -145,7 +167,9 @@ export default function SellerChatPage() {
         }
         return [...prev, msg];
       });
-      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' }).catch(() => {});
+      api(`/chat/threads/${threadId}/read`, { method: 'PATCH' })
+        .then(() => { void refreshChatUnread(); })
+        .catch(() => {});
     };
 
     const onEdited = (msg: { id: string; text: string; editedAt: string | null }) => {
@@ -160,6 +184,7 @@ export default function SellerChatPage() {
     socket.on('chat:message:deleted', onDeleted);
 
     return () => {
+      ac.abort();
       socket.emit('leave-chat-room', { threadId });
       socket.off('chat:message', onMessage);
       socket.off('chat:message:edited', onEdited);
@@ -309,6 +334,29 @@ export default function SellerChatPage() {
     return 'Покупатель';
   };
 
+  // Контекст thread'а: показываем мелким шрифтом подзаголовок если у нас есть
+  // товар или номер заказа. Помогает различать несколько диалогов с одного
+  // покупателя — раньше две строки `+998904840748` было неотличимо.
+  const threadContext = (t: ChatThread): string | null => {
+    if (t.productTitle) return `📦 ${t.productTitle}`;
+    if (t.orderNumber) return `🧾 Заказ #${t.orderNumber.replace(/^ORD-/, '')}`;
+    return null;
+  };
+
+  // Мелкая «аватарка» — последние 2 цифры телефона, цвет hash'ируется по id треда.
+  const avatarColors = [
+    { bg: 'rgba(168,85,247,0.20)', fg: '#A855F7' },
+    { bg: 'rgba(34,211,238,0.20)', fg: '#22D3EE' },
+    { bg: 'rgba(52,211,153,0.20)', fg: '#34D399' },
+    { bg: 'rgba(251,191,36,0.20)', fg: '#FBBF24' },
+    { bg: 'rgba(248,113,113,0.20)', fg: '#F87171' },
+  ];
+  const avatarStyle = (id: string) => avatarColors[id.charCodeAt(0) % avatarColors.length];
+  const avatarLabel = (t: ChatThread): string => {
+    if (t.buyerPhone) return t.buyerPhone.slice(-2);
+    return '💬';
+  };
+
   const activeThread = threads.find((t) => t.id === threadId) ?? null;
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -391,13 +439,16 @@ export default function SellerChatPage() {
                 <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
                   {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
                 </h2>
-                {activeThread && (
-                  <span className="text-xs" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
-                    <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
-                    {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-                    {activeThread.productTitle && ` · ${activeThread.productTitle}`}
-                  </span>
-                )}
+                <div className="flex items-center gap-2 min-w-0">
+                  {activeThread && (
+                    <span className="text-xs truncate" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
+                      <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
+                      {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                      {activeThread.productTitle && ` · ${activeThread.productTitle}`}
+                    </span>
+                  )}
+                  <SocketStatusBadge />
+                </div>
               </button>
               {activeThread?.status === 'OPEN' && (
                 <button
@@ -516,6 +567,16 @@ export default function SellerChatPage() {
                 </span>
               </div>
             ))}
+            {isOtherTyping && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 self-start rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.06)', maxWidth: 100 }}
+                aria-live="polite"
+              >
+                <span className="typing-dot" style={{ animationDelay: '0ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '180ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '360ms' }} />
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
 
@@ -567,20 +628,30 @@ export default function SellerChatPage() {
                 )}
                 <input
                   value={editingId ? editText : text}
-                  onChange={(e) => editingId ? setEditText(e.target.value) : setText(e.target.value)}
+                  onChange={(e) => {
+                    if (editingId) {
+                      setEditText(e.target.value);
+                    } else {
+                      setText(e.target.value);
+                      if (e.target.value.trim()) emitTyping(true);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (editingId) {
                         if (editText.trim()) submitEdit();
-                      } else if (text.trim()) sendMsg();
+                      } else if (text.trim()) {
+                        emitTyping(false);
+                        sendMsg();
+                      }
                     }
                   }}
                   placeholder={editingId ? 'Изменить сообщение... (Enter ↵)' : 'Сообщение... (Enter ↵)'}
                   style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#fff', fontSize: 14, padding: '10px 14px', outline: 'none' }}
                 />
                 <button
-                  onClick={editingId ? submitEdit : sendMsg}
+                  onClick={() => { if (!editingId) emitTyping(false); (editingId ? submitEdit : sendMsg)(); }}
                   disabled={editingId ? !editText.trim() : (!text.trim() || sending)}
                   aria-label={editingId ? 'Сохранить' : 'Отправить'}
                   style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(124,58,237,0.40)', border: '1px solid rgba(124,58,237,0.50)', color: '#fff', fontSize: 18, cursor: 'pointer', opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4, minWidth: 46 }}
@@ -661,49 +732,58 @@ export default function SellerChatPage() {
         </div>
       )}
 
-      {threads.map((t) => (
-        <div
-          key={t.id}
-          role="button"
-          tabIndex={0}
-          onClick={() => navigate(`/seller/chat/${t.id}`)}
-          className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer active:opacity-70 transition-all"
-          style={glass}
-        >
+      {threads.map((t) => {
+        const ctx = threadContext(t);
+        const ac = avatarStyle(t.id);
+        const unread = t.unreadCount ?? 0;
+        return (
           <div
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-            style={{ background: 'rgba(167,139,250,0.15)' }}
+            key={t.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate(`/seller/chat/${t.id}`)}
+            className="flex items-start gap-3 p-3.5 rounded-2xl cursor-pointer active:opacity-70 transition-all"
+            style={glass}
           >
-            💬
-            {(t.unreadCount ?? 0) > 0 && (
-              <span
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
-                style={{ background: '#A855F7', color: '#fff' }}
-              >
-                {t.unreadCount! > 9 ? '9+' : t.unreadCount}
+            <div
+              className="relative w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: ac.bg, border: `1px solid ${ac.fg}33` }}
+            >
+              <span style={{ color: ac.fg, fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>
+                {avatarLabel(t)}
               </span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              {threadLabel(t)}
-            </p>
-            <p className="text-xs truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.50)' }}>
-              {t.lastMessage ?? (
-                <>
-                  <span aria-hidden="true">{t.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
-                  {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-                </>
+              {unread > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: '#A855F7', color: '#fff' }}
+                >
+                  {unread > 9 ? '9+' : unread}
+                </span>
               )}
-            </p>
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold truncate" style={{ color: unread > 0 ? '#fff' : 'rgba(255,255,255,0.88)' }}>
+                  {threadLabel(t)}
+                </p>
+                {t.lastMessageAt && (
+                  <span className="text-[10px] shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                    {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
+                  </span>
+                )}
+              </div>
+              {ctx && (
+                <p className="text-[11px] truncate" style={{ color: 'rgba(168,85,247,0.85)' }}>
+                  {ctx}
+                </p>
+              )}
+              <p className="text-xs truncate" style={{ color: unread > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.50)', fontWeight: unread > 0 ? 500 : 400 }}>
+                {t.lastMessage ?? (t.status === 'OPEN' ? 'Диалог открыт' : '🔒 Закрыт')}
+              </p>
+            </div>
           </div>
-          {t.lastMessageAt && (
-            <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
-              {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
-            </span>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 

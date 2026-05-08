@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { showToast } from '@/components/ui/Toast';
 import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
 
 export default function WishlistPage() {
@@ -22,7 +23,10 @@ export default function WishlistPage() {
         setItems(data);
         for (const it of data) setLocalFlag(it.productId, true);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить избранное', 'error');
+      })
       .finally(() => setLoading(false));
   }, [authenticated]);
 
@@ -65,7 +69,9 @@ export default function WishlistPage() {
       )}
 
       {authenticated && loading && (
-        <div className="flex justify-center py-10"><Spinner /></div>
+        <div className={`grid ${cols} gap-3`}>
+          {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+        </div>
       )}
 
       {authenticated && !loading && items.length === 0 && (

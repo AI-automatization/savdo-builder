@@ -133,6 +133,16 @@ export class SendMessageUseCase {
       this.chatGateway.emitChatNewMessage(storeId, { threadId: input.threadId });
     }
 
+    // API-WS-PUSH-NOTIFICATIONS-001 (chat-unread): bump получателю чтобы
+    // его chatUnread badge обновился без polling каждые 30 сек.
+    // thread.buyer.userId / thread.seller.userId резолвят profile-id → User.id
+    // (сами FK column'ы, не relation, доступны без extra include).
+    const recipientUserId =
+      senderRole === 'BUYER' ? thread.seller.userId : thread.buyer?.userId ?? null;
+    if (recipientUserId) {
+      this.chatGateway.emitChatUnreadBump(recipientUserId, input.threadId);
+    }
+
     // TG notification → recipient (the other party)
     const preview = makePreview(input.text ?? (input.mediaId ? '📷 Фото' : ''));
     const productTitle = thread.product?.title ?? null;
@@ -150,6 +160,8 @@ export class SendMessageUseCase {
           productTitle,
           orderNumber,
           messagePreview: preview,
+          threadId: input.threadId,
+          recipientRole: 'SELLER',
         });
       }
     } else {
@@ -163,6 +175,8 @@ export class SendMessageUseCase {
           orderNumber,
           storeName,
           messagePreview: preview,
+          threadId: input.threadId,
+          recipientRole: 'BUYER',
         });
       }
     }

@@ -108,19 +108,40 @@ export class TelegramNotificationProcessor extends WorkerHost {
         }
 
         case TELEGRAM_JOB_CHAT_MESSAGE: {
+          // Polat 07.05: формат как нормальный мессенджер — bold заголовок,
+          // понятный context, кнопка «Открыть чат» one-tap в TMA.
           const d = job.data as NotifyChatMessageData;
-          const contextParts: string[] = [];
-          if (d.productTitle) contextParts.push(`«${d.productTitle}»`);
-          else if (d.orderNumber) contextParts.push(`заказ #${d.orderNumber}`);
-          const subjectLine = d.storeName
-            ? `🏪 ${d.storeName}`
-            : `👤 ${d.senderName}`;
-          const contextLine = contextParts.length ? `📌 ${contextParts.join(' · ')}\n` : '';
+          const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+          const senderLine = d.recipientRole === 'SELLER'
+            ? `от <b>${escape(d.senderName)}</b>` // продавцу: «от +99890...»
+            : `от <b>${escape(d.senderName)}</b>${d.storeName && d.storeName !== d.senderName ? ` · ${escape(d.storeName)}` : ''}`; // покупателю: «от Магазин»
+
+          const contextLine = d.productTitle
+            ? `\n📦 <i>${escape(d.productTitle)}</i>`
+            : d.orderNumber
+              ? `\n🧾 <i>Заказ #${escape(d.orderNumber.replace(/^ORD-/, ''))}</i>`
+              : '';
+
           const text =
-            `${subjectLine}\n` +
-            contextLine +
-            `💬 ${d.messagePreview}`;
-          await this.telegramBot.sendMessage(d.recipientChatId, text);
+            `💬 <b>Новое сообщение</b>\n` +
+            `${senderLine}` +
+            `${contextLine}\n\n` +
+            `«${escape(d.messagePreview)}»`;
+
+          // Кнопка-ссылка «Открыть чат» — глубокий линк через TMA startapp.
+          // Telegram при клике откроет наш Mini App с параметром chat_<threadId>.
+          const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'savdo_builderBOT';
+          const startapp = `chat_${d.threadId}`;
+
+          await this.telegramBot.sendMessage(d.recipientChatId, text, {
+            parseMode: 'HTML',
+            replyMarkup: {
+              inline_keyboard: [[
+                { text: '✉️ Открыть чат', url: `https://t.me/${botUsername}?startapp=${startapp}` },
+              ]],
+            },
+          });
           break;
         }
 

@@ -10,11 +10,13 @@ export const orderKeys = {
   detail: (id: string) => ['orders', id] as const,
 };
 
-export function useOrders(params?: { status?: OrderStatus; page?: number; limit?: number }) {
+export function useOrders(params?: { status?: OrderStatus; page?: number; limit?: number; enabled?: boolean }) {
+  const { enabled, ...listParams } = params ?? {};
   return useQuery({
-    queryKey: orderKeys.list(params),
-    queryFn: () => getBuyerOrders(params),
+    queryKey: orderKeys.list(listParams),
+    queryFn: () => getBuyerOrders(listParams),
     staleTime: 2 * 60 * 1000,
+    enabled: enabled ?? true,
   });
 }
 

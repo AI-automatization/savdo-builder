@@ -47,6 +47,11 @@ export class ChatGateway implements OnGatewayConnection {
       return;
     }
     client.data.user = payload;
+    // API-WS-PUSH-NOTIFICATIONS-001: auto-join user-scoped room для in-app
+    // уведомлений. Frontend больше не poll'ит unread count каждые 30 сек —
+    // вместо этого слушает `notification:new`. Проверка JWT защищает от
+    // join'а в чужую room (sub из проверенного токена).
+    client.join(`user:${payload.sub}`);
     this.logger.debug(`WS connected: userId=${payload.sub} role=${payload.role}`);
   }
 
@@ -112,6 +117,27 @@ export class ChatGateway implements OnGatewayConnection {
     this.logger.debug(`Client ${client.id} left room ${room}`);
   }
 
+  // FEAT-005: typing indicator. Клиент шлёт `chat:typing` с {threadId, isTyping},
+  // сервер ретранслирует только участникам комнаты (исключая отправителя)
+  // как `chat:typing` с {threadId, role, isTyping}. Не сохраняем в БД — это
+  // эфемерное событие; auto-stop на стороне клиента (3-секундный debounce).
+  @SubscribeMessage('chat:typing')
+  handleTyping(
+    @MessageBody() data: { threadId: string; isTyping: boolean },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const user = client.data.user as JwtPayload | undefined;
+    if (!user || !data?.threadId || typeof data.threadId !== 'string') return;
+    const room = `thread:${data.threadId}`;
+    if (!client.rooms.has(room)) return; // не участник — игнорируем (anti-spoof)
+    const role: 'BUYER' | 'SELLER' = user.role === 'SELLER' ? 'SELLER' : 'BUYER';
+    client.to(room).emit('chat:typing', {
+      threadId: data.threadId,
+      role,
+      isTyping: !!data.isTyping,
+    });
+  }
+
   emitChatMessage(message: ChatMessage & { mediaUrl?: string | null; parentMessage?: unknown }, senderRole: 'BUYER' | 'SELLER'): void {
     const payload = {
       id: message.id,
@@ -148,6 +174,29 @@ export class ChatGateway implements OnGatewayConnection {
   emitChatNewMessage(storeId: string, payload: { threadId: string; buyerName?: string }): void {
     this.server.to(`seller:${storeId}`).emit('chat:new_message', payload);
     this.logger.log(`Emitted chat:new_message to seller:${storeId} — threadId=${payload.threadId}`);
+  }
+
+  // API-WS-PUSH-NOTIFICATIONS-001 (chat-unread): bump unread counter
+  // получателя в реалтайме. Frontend `chatUnread.ts` слушает и инкрементирует
+  // total — больше не polling каждые 30 сек.
+  emitChatUnreadBump(recipientUserId: string, threadId: string): void {
+    this.server.to(`user:${recipientUserId}`).emit('chat:unread:bump', { threadId });
+    this.logger.debug(`Emitted chat:unread:bump to user:${recipientUserId} — threadId=${threadId}`);
+  }
+
+  // API-WS-PUSH-NOTIFICATIONS-001: emit'ится из InAppNotificationProcessor
+  // после `prisma.inAppNotification.create()`. Frontend подписан на это
+  // event и обновляет badge / показывает toast. Заменяет polling каждые 30s.
+  emitNotificationNew(userId: string, payload: {
+    id: string;
+    type: string;
+    title: string;
+    body: string;
+    createdAt: string;
+    data?: unknown;
+  }): void {
+    this.server.to(`user:${userId}`).emit('notification:new', payload);
+    this.logger.log(`Emitted notification:new to user:${userId} — type=${payload.type}`);
   }
 
   private verifyToken(token: string): JwtPayload | null {

@@ -19,6 +19,9 @@ export interface ConfirmCheckoutInput {
   deliveryAddress: DeliveryAddressDto;
   buyerNote?: string;
   deliveryFee?: number;
+  // BUG-WB-AUDIT-009: optional override от фронта (контактное лицо).
+  customerFullName?: string;
+  customerPhone?: string;
 }
 
 function generateOrderNumber(): string {
@@ -203,7 +206,11 @@ export class ConfirmCheckoutUseCase {
 
     const firstName = buyerWithUser.firstName ?? '';
     const lastName = buyerWithUser.lastName ?? '';
-    const customerFullName = [firstName, lastName].filter(Boolean).join(' ') || buyerWithUser.user.phone;
+    const profileFullName = [firstName, lastName].filter(Boolean).join(' ') || buyerWithUser.user.phone;
+    // BUG-WB-AUDIT-009: фронт может передать override (юзер ввёл другое имя/тел
+    // получателя). Иначе fallback на профиль.
+    const customerFullName = input.customerFullName?.trim() || profileFullName;
+    const customerPhone = input.customerPhone?.trim() || buyerWithUser.user.phone;
 
     const order = await this.checkoutRepo.createOrder({
       buyerId: input.buyerId,
@@ -216,7 +223,7 @@ export class ConfirmCheckoutUseCase {
       totalAmount,
       currencyCode: cart.currencyCode,
       customerFullName,
-      customerPhone: buyerWithUser.user.phone,
+      customerPhone,
       customerComment: input.buyerNote,
       city: input.deliveryAddress.city,
       region: input.deliveryAddress.region,

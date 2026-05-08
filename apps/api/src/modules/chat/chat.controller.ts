@@ -16,6 +16,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
@@ -27,14 +28,16 @@ import { CreateThreadDto } from './dto/create-thread.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ListMessagesDto } from './dto/list-messages.dto';
 import { CreateThreadUseCase } from './use-cases/create-thread.use-case';
+import { CreateSellerThreadUseCase } from './use-cases/create-seller-thread.use-case';
 import { SendMessageUseCase } from './use-cases/send-message.use-case';
 import { GetThreadMessagesUseCase } from './use-cases/get-thread-messages.use-case';
 import { ListMyThreadsUseCase } from './use-cases/list-my-threads.use-case';
 import { ResolveThreadUseCase } from './use-cases/resolve-thread.use-case';
+import { GetUnreadCountUseCase } from './use-cases/get-unread-count.use-case';
 import { ChatGateway } from '../../socket/chat.gateway';
 
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
 
@@ -43,12 +46,23 @@ export class ChatController {
     private readonly sellersRepo: SellersRepository,
     private readonly prisma: PrismaService,
     private readonly createThreadUseCase: CreateThreadUseCase,
+    private readonly createSellerThreadUseCase: CreateSellerThreadUseCase,
     private readonly sendMessageUseCase: SendMessageUseCase,
     private readonly getThreadMessagesUseCase: GetThreadMessagesUseCase,
     private readonly listMyThreadsUseCase: ListMyThreadsUseCase,
     private readonly resolveThreadUseCase: ResolveThreadUseCase,
     private readonly chatGateway: ChatGateway,
+    private readonly getUnreadCountUseCase: GetUnreadCountUseCase,
   ) {}
+
+  // GET /api/v1/chat/unread-count — UX-002 badge на иконке чата (polling 30s)
+  // Лёгкий endpoint: возвращает { total, threads } для бейджа на bottom-nav.
+  @Get('chat/unread-count')
+  @Roles('BUYER', 'SELLER')
+  async getUnreadCount(@CurrentUser() user: JwtPayload) {
+    const { buyerId, sellerId } = await this.resolveParticipant(user.sub, user.role);
+    return this.getUnreadCountUseCase.execute(user.role as 'BUYER' | 'SELLER', buyerId, sellerId);
+  }
 
   // GET /api/v1/chat/threads
   @Get('chat/threads')
@@ -77,6 +91,31 @@ export class ChatController {
       buyerId,
       contextType: dto.contextType,
       contextId: dto.contextId,
+      firstMessage: dto.firstMessage,
+    });
+  }
+
+  // POST /api/v1/seller/chat/threads
+  // FEAT-004: продавец инициирует чат с покупателем по своему заказу.
+  // Idempotent: если тред уже существует — переиспользуется. Сообщение
+  // обязательно (без него тред не создаётся, иначе спам-вектор).
+  @Post('seller/chat/threads')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Roles('SELLER')
+  async createSellerThread(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { orderId: string; firstMessage: string },
+  ) {
+    if (!dto?.orderId || typeof dto.orderId !== 'string') {
+      throw new BadRequestException('orderId is required');
+    }
+    if (!dto?.firstMessage || typeof dto.firstMessage !== 'string') {
+      throw new BadRequestException('firstMessage is required');
+    }
+    const sellerProfileId = await this.resolveSellerProfileId(user.sub);
+    return this.createSellerThreadUseCase.execute({
+      sellerProfileId,
+      orderId: dto.orderId,
       firstMessage: dto.firstMessage,
     });
   }

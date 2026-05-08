@@ -45,4 +45,18 @@ export class ConfirmCheckoutDto {
   @IsNumber()
   @Min(0)
   deliveryFee?: number;
+
+  // BUG-WB-AUDIT-009: фронт checkout даёт юзеру редактировать contact-fields
+  // (имя/телефон получателя). Раньше они терялись потому что DTO их не
+  // принимал → Order.customerFullName/Phone заполнялись из Buyer profile.
+  // Теперь optional override: если переданы — используются, иначе fallback.
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  customerFullName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  customerPhone?: string;
 }

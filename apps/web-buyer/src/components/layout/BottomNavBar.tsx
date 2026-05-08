@@ -24,7 +24,7 @@ export function BottomNavBar({
   const { isAuthenticated } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
   const unreadChatCount = useUnreadChatCount(isAuthenticated);
-  const { data: cart } = useCart();
+  const { data: cart } = useCart({ enabled: isAuthenticated });
   const cartCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
 
   useEffect(() => {
