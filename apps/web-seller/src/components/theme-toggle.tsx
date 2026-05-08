@@ -76,11 +76,11 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
       {withMenu && open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[160px] rounded-xl p-1 text-sm shadow-lg"
+          className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[160px] rounded-xl p-1 text-sm"
           style={{
             background: colors.surface,
             border: `1px solid ${colors.border}`,
-            boxShadow: '0 10px 28px rgba(0,0,0,0.45)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
           }}
         >
           <MenuItem icon={<Sun size={14} />}     label="Светлая"      active={theme === 'light'}  onClick={() => { setTheme('light');  setOpen(false); }} />

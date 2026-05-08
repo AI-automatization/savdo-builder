@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 7 (частично)
+
+### ✅ [WS-DESIGN-WAVE-7-BACKLOG] 8 из 14 backlog nit'ов 🟢
+
+- **Важность:** 🟢 LOW (косметика + accessibility)
+- **Дата:** 08.05.2026
+- **Файлы (6):**
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — toast shadow `0 12px 28px` → `0 4px 12px` (P2-006a). Notification badge: `minWidth 14 / fontSize 9` → `minWidth 16 / fontSize 10` (P3-001).
+  - `apps/web-seller/src/components/select.tsx` — dropdown shadow `0 16px 40px` → `0 6px 16px` (P2-006b).
+  - `apps/web-seller/src/components/emoji-picker.tsx` — popover shadow same fix (P2-006c). Emoji-cell `hover:bg-white/5` → `row-hoverable` (P3-004).
+  - `apps/web-seller/src/components/theme-toggle.tsx` — убран redundant `shadow-lg` Tailwind, inline `0 10px 28px` → `0 4px 12px` (P3-003).
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — 3 хардкоженных hex → tokens: Rocket icon `color="#fff"` → `colors.accentTextOnBg`, store-name span `#A78BFA` → `colors.accent`, ShoppingCart logo `color="#fff"` → `colors.accentTextOnBg` (P2-009). Progress connector incomplete state `colors.surfaceElevated` → `colors.border` — видно на light theme (P3-005).
+  - `apps/web-seller/src/app/(dashboard)/notifications/page.tsx` — hover semantics для unread fixed: на hover теперь `color-mix(in srgb, ${colors.accent} 22%, transparent)` (stronger accent), а не `surfaceElevated` (нейтральный). Read items как раньше — surfaceMuted ↔ surfaceElevated (P2-012).
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx` — ASCII «— Просмотры и конверсия» divider → реальный `<hr>` через `colors.divider`. Тире из текста удалено (P3-007).
+- **Что сделано:** все «easy wins» из Wave 7 закрыты в одном проходе. Все shadows < 8px (соответствует Liquid Authority). Все хардкоженные hex'ы в onboarding устранены. Notifications hover больше не «теряет» унред-состояние. Theme-toggle/emoji-picker/onboarding прогрессбар всё корректно отображаются в обеих темах.
+- **Skipped (с обоснованием):** P2-007 (sidebar 14%→15% accentMuted в пределах rounding tolerance), P2-008 (onboarding `rounded-3xl` — sanctioned «scene» в спеке), P2-011 + P3-009 (chat off-grid layout + не-responsive — реальный user impact, но это полноценный mobile-first рефактор chat layout, отложено отдельным тикетом WS-CHAT-RESPONSIVE-001), P3-002 (chat thread skeletons beyond 3 — нужно более глубокое skeleton component change), P3-006 (settings native `<select>` Firefox chevron — нужен переход на custom Select для всех селектов в settings, отдельный wave), P3-008 (analytics text-3xl — внутри spec range, audit acknowledged).
+- **Verification:** локально не запускал. Push'нётся через web-seller ветку → Railway сборка подтвердит.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 6
 
 ### ✅ [WS-DESIGN-WAVE-6] Products edit dragons: radius + native select + extract examples 🟡
