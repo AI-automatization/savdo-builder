@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, apiUpload } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
 import { refreshChatUnread } from '@/lib/chatUnread';
 import { useChatTyping } from '@/lib/useChatTyping';
@@ -220,6 +220,9 @@ export default function BuyerChatPage() {
     }
   };
 
+  // TMA-PHOTO-UPLOAD-DIAG-001: было 2 бага — (1) `api()` JSON.stringify'ил FormData,
+  // файл терялся; (2) destructure `uploadRes.id` — API возвращает `mediaFileId`.
+  // Перешёл на `apiUpload` (XHR с правильным multipart).
   const sendPhoto = async (file: File) => {
     if (!threadId || uploadingPhoto) return;
     setUploadingPhoto(true);
@@ -227,10 +230,13 @@ export default function BuyerChatPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('purpose', 'chat_photo');
-      const uploadRes = await api<{ id: string; url: string }>('/media/upload', { method: 'POST', body: formData });
+      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+        '/media/upload',
+        formData,
+      );
       await api(`/chat/threads/${threadId}/messages`, {
         method: 'POST',
-        body: { mediaId: uploadRes.id, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
+        body: { mediaId: mediaFileId, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
       });
       setReplyTo(null);
       tg?.HapticFeedback.notificationOccurred('success');

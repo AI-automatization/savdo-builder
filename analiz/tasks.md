@@ -33,9 +33,7 @@
 - [x] **`AUDIT-NETWORK-LOADING-P0-FIXES`** ✅ 08.05.2026 — закрыты P0 из `analiz/audit-network-loading-2026-05-07.md`: (1) `lib/api.ts` уже имеет auto-bust cache на не-GET (parallel session) + добавил `timeout?: number` в ApiOptions interface (был implicit, TS would complain on opts.timeout). (2) Race condition fix в `buyer/OrdersPage.tsx`: AbortController на loadMore + toggleExpand detail + loadingMore guard от double-tap.
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
 - [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
-- [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
-  - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
-  - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
+- [x] **`TMA-PHOTO-UPLOAD-DIAG-001`** ✅ 08.05.2026 — root cause найден через code review (без логов): `buyer/ChatPage.sendPhoto` + `seller/ChatPage.sendPhoto` использовали `api()` с `body: FormData`, но `api()` делал `JSON.stringify(opts.body)` → формдата сериализовалась в `"{}"`, файл терялся целиком. Дополнительно: destructure `uploadRes.id` — API возвращает `mediaFileId`. Чинено через `apiUpload()` (XHR multipart) + preventive guard в `lib/api.ts:doFetch` бросает error «Use apiUpload() for FormData» если кто-то снова попробует. Подробности в `analiz/done.md`.
 
 ## 🟠 P1 — Полат
 
