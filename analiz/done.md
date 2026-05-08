@@ -1,5 +1,26 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller design audit
+
+### ✅ [WEB-DESIGN-AUDIT-001] Аудит web-seller под Liquid Authority — 30 findings 🟢
+
+- **Важность:** 🟢 LOW (read-only, ничего не сломано — только backlog для будущих волн)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `analiz/audit-web-seller-design-2026-05-08.md` (новый) — полный отчёт.
+  - `analiz/tasks.md` — добавлена секция `WS-DESIGN-FIX-WAVES` с 7 волнами фиксов.
+- **Что сделано:** Систематический обход 15 страниц + 7 компонентов `apps/web-seller` против `docs/design/liquid-authority.md`. Делегировано feature-dev:code-explorer subagent'у. Категоризация: P1 (видимые UX-баги/контраст/accessibility) — 7, P2 (drift/inconsistency/off-grid) — 14, P3 (polish) — 9. Health 6.5/10.
+- **Ключевые находки:**
+  - **Phase 2/3 cleanup держится:** 0 `backdrop-blur`, 0 `dark:` Tailwind classes — token discipline сохранён.
+  - **Кластер хардкоженного hex'a в edit-product** (`#f87171`, `#A78BFA`, native `<select>` с `#1a1d2e`) — light theme там фактически сломан.
+  - **3 места native `confirm()`** (edit-product, option-groups, variants) — не следуют app theme, на mobile WebView часто silently заблокированы.
+  - **5 page headings ниже spec** (`text-xl` 20px вместо 24-32px Headline range).
+  - **SMS-copy в login OTP** — нарушение project rule №0 (Telegram-only).
+  - **Sidebar logo gradient + glow** хардкожен dark-only — в light theme выглядит чужеродно.
+- **Backlog:** см. `analiz/tasks.md` секция `WS-DESIGN-FIX-WAVES` — 7 волн упорядочены по value/effort. Wave 1-2 — P1 critical, Wave 3-6 — P2 systemic, Wave 7 — backlog.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — Cleanup контракт-хвостов после Полата
 
 ### ✅ [WEB-BUYER-CONTRACT-CLEANUP-001] search type из `packages/types` + убран defensive cast в ProductCard 🟢

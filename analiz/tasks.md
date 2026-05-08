@@ -89,7 +89,7 @@
 ## 🟢 P3 — после спринта
 
 - [x] **`NOTIF-IN-APP-001`** ✅ 06.05.2026 — реализовано: `InAppNotification` модель в схеме, `InAppNotificationProcessor` создаёт записи + `chatGateway.emitNotificationNew()` WS push. Frontend `notifications.ts` слушает event + badge через `subscribeToUnread()`. Toast — через showToast при event'е (UI work осталось).
-- [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
+- [x] **`WEB-DESIGN-AUDIT-001`** ✅ 08.05.2026 (web-seller часть) — полный отчёт: `analiz/audit-web-seller-design-2026-05-08.md`. Найдено 7 P1 (light-theme contrast killers + `confirm()` native dialogs + sidebar logo glow), 14 P2 (хардкоженный hex для order status, SMS-copy в login OTP, page heading typography sub-spec, native `<select>` regression в edit-product), 9 P3. Health 6.5/10. См. ниже секцию `WS-DESIGN-FIX-WAVES` для backlog'а исправлений.
 - [x] **`DB-AUDIT-001`** ✅ 06.05.2026 — найден и закрыт schema drift: AdminUser MFA-поля + OrderRefund модель существовали в DB (migration 20260503020000) но НЕ в schema.prisma → код использовал `(prisma as any)`. Добавлены индексы `media_files.bucket` + `chat_threads.status`. Migration `20260506200000_db_audit_indexes`. См. `analiz/logs.md AUDIT-DB`.
 
 ## 🆕 Аудит платформы продолжение (06.05.2026)
@@ -292,6 +292,22 @@
 | ~~`WEB-CSP-HEADER-002`~~ | ✅ | CSP-директивы добавлены в оба `next.config.ts`. `script-src 'self' 'unsafe-inline' 'unsafe-eval'` (Next.js требует), но блокирует HTTP, чужие iframe, object/embed, base hijack. `814c35b` |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
+
+### 🆕 [WS-DESIGN-FIX-WAVES] Backlog по аудиту web-seller (08.05.2026)
+
+> Полный отчёт: `analiz/audit-web-seller-design-2026-05-08.md` (7 P1 / 14 P2 / 9 P3).
+> Грубо упорядочено по value/effort. Каждая волна — отдельный коммит, безопасно
+> мерджить в `web-seller` ветку независимо.
+
+- [ ] **`WS-DESIGN-WAVE-1` 🔴** — light-theme contrast killers. 6 P1: хардкоженный hex (`#f87171`/`#A78BFA` в edit-product, `rgba(255,255,255,X)` в chat edit, `text-white` spinner в profile, `after:bg-white` toggle в edit-product, sidebar logo gradient+glow в layout, `hover:bg-white/[0.03]` ×3 в profile/layout). Один проход, ~4 файла. Audit IDs: P1-002, P1-003, P1-004, P1-005, P1-006, P1-007.
+- [ ] **`WS-DESIGN-WAVE-2` 🔴** — `confirm()` native dialogs → `CancelModal` (3 места: edit-product:197, product-option-groups:136,205, product-variants:344). Audit ID: P1-001.
+- [ ] **`WS-DESIGN-WAVE-3` 🟡** — page heading typography. 5 файлов с `text-xl` на page title → `text-2xl` (analytics/orders/products/notifications/settings). Audit ID: P2-014.
+- [ ] **`WS-DESIGN-WAVE-4` 🟡** — login OTP copy «Код из SMS» / «Отправили SMS» → «Код из Telegram бота» / «Отправили в @savdo_builderBOT». Project rule №0 violation. Audit ID: P2-010.
+- [ ] **`WS-DESIGN-WAVE-5` 🟡** — добавить semantic info-blue token (`colors.info`/`infoMuted`) в styles.ts + globals.css; заменить ×8 хардкоженных мест (`#60A5FA` для CONFIRMED status и TG-link icons, `#818CF8` для SHIPPED, `#7dd3fc` в profile TG-chip). Audit IDs: P2-002, P2-003, P2-013.
+- [ ] **`WS-DESIGN-WAVE-6` 🟡** — products edit dragons: радиус-выравнивание create↔edit (`rounded-lg` vs `rounded-2xl` → `rounded-xl` 12px per spec); native `<select>` в edit → custom `<Select>` (как в create); вынести TITLE/DESCRIPTION_EXAMPLES_BY_SLUG в `lib/product-examples.ts`. Audit IDs: P2-001, P2-004, P2-005.
+- [ ] **`WS-DESIGN-WAVE-7-BACKLOG` 🟢** — оставшиеся P2 (toast/popover shadow > 8px ×3, sidebar 15%-vs-14% accentMuted nit, onboarding `rounded-3xl` + хардкоженные hex, chat layout off-grid + non-responsive, notifications hover semantics inverted) + все 9 P3 polish. Брать когда нечего делать. Audit IDs: P2-006, P2-007, P2-008, P2-009, P2-011, P2-012, всё P3.
+
+---
 
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001] Имплементация «Soft Color Lifestyle» — ВСЕ 10 ЗАДАЧ ЗАКРЫТЫ (05.05.2026)
 
