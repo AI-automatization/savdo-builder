@@ -236,11 +236,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="max-w-xl">
         <div className="rounded-2xl px-6 py-10 text-center" style={glass}>
-          <p className="text-sm" style={{ color: "#f87171" }}>Товар не найден.</p>
+          <p className="text-sm" style={{ color: colors.danger }}>Товар не найден.</p>
           <button
             onClick={() => router.push('/products')}
             className="mt-4 text-sm underline"
-            style={{ color: "#A78BFA" }}
+            style={{ color: colors.accent }}
           >
             Вернуться к списку
           </button>
@@ -355,7 +355,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
           {/* Title */}
           <div>
-            <Label>Название <span style={{ color: "#f87171" }}>*</span></Label>
+            <Label>Название <span style={{ color: colors.danger }}>*</span></Label>
             <input
               className={focusCls}
               style={inputStyle}
@@ -379,7 +379,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {/* Price + SKU */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Цена (сум) <span style={{ color: "#f87171" }}>*</span></Label>
+              <Label>Цена (сум) <span style={{ color: colors.danger }}>*</span></Label>
               <input
                 type="number"
                 min={0}
@@ -416,10 +416,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" disabled={isHiddenByAdmin} {...register('isVisible')} />
               <div
-                className="w-11 h-6 rounded-full transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-5 after:w-5 after:transition-all after:bg-white"
+                className="w-11 h-6 rounded-full transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-5 after:w-5 after:transition-all"
                 style={{ background: colors.surfaceElevated, border: `1px solid ${colors.border}` }}
               >
-                <style>{`input:checked + div { background: ${colors.accent}; border-color: ${colors.accentBorder}; }`}</style>
+                <style>{`
+                  input:checked + div { background: ${colors.accent}; border-color: ${colors.accentBorder}; }
+                  input + div::after { background: ${colors.textMuted}; }
+                  input:checked + div::after { background: ${colors.bg}; }
+                `}</style>
               </div>
             </label>
           </div>
@@ -511,7 +515,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               onClick={handleDelete}
               disabled={remove.isPending}
               className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
-              style={{ color: "#f87171" }}
+              style={{ color: colors.danger }}
             >
               {remove.isPending ? 'Удаление...' : 'Удалить товар'}
             </button>
