@@ -1,5 +1,56 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 8 major + role-guard
+
+### ✅ [BUG-WB-AUDIT-008] orders/page.tsx — `accOrders` race при смене фильтра 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/page.tsx`
+- **Что сделано:** при смене `activeFilter` теперь явно `setPage(1) + setAccOrders([])` через отдельный useEffect. Раньше TanStack-stale data могла перезаписать accOrders заказами от старого фильтра.
+
+### ✅ [BUG-WB-AUDIT-010] checkout — мигание OTP-gate при гидрации 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** `pageStep` инициализируется через lazy `useState(() => ...)` — читает `localStorage.savdo_access_token` и сразу выставляет `'form'` если токен есть. Раньше первый paint у залогиненного давал OTP-форму на 1 frame пока `useAuth` не догонит.
+
+### ✅ [BUG-WB-AUDIT-011] ThemeProvider — flash иконки ThemeToggle 🟡
+
+- **Файл:** `apps/web-buyer/src/lib/theme/theme-provider.tsx`
+- **Что сделано:** `useState<Theme>(() => readStored(defaultTheme))` lazy init вместо useEffect post-hydration sync. ThemeToggle теперь сразу рендерит правильную иконку.
+
+### ✅ [BUG-WB-AUDIT-012] BottomNavBar — `last_store_slug` мёртвый ключ 🟡
+
+- **Файлы:** `apps/web-buyer/src/components/layout/BottomNavBar.tsx`
+- **Что сделано:** заменил чтение неиспользуемого `localStorage.last_store_slug` на `getRecentStores()[0]?.slug` из `lib/recent-stores.ts` — `RegisterRecentStore` пишет туда при visit'е витрины, теперь «Магазин» таб ведёт на последний посещённый магазин.
+
+### ✅ [BUG-WB-AUDIT-013] AuthContext — cross-tab token desync 🟡
+
+- **Файл:** `apps/web-buyer/src/lib/auth/context.tsx`
+- **Что сделано:** добавлен `window.addEventListener('storage', ...)` listener — когда другая вкладка чистит `savdo_access_token`, эта тоже делает `localLogout()`, вместо ожидания первого 401 на следующей операции.
+
+### ✅ [BUG-WB-AUDIT-014] notifications — `readAll.mutate()` на каждый mount 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/notifications/page.tsx`
+- **Что сделано:** добавлены guards — `!isLoading && !readAll.isPending && unreadItems.length > 0`. Раньше Strict Mode + back/forward cache трижды дёргали `POST /notifications/read-all` даже при 0 unread.
+
+### ✅ [BUG-WB-AUDIT-017] storefront `[slug]/page.tsx` — двойной fetch storeBySlug 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx`
+- **Что сделано:** обернул `serverGetStoreBySlug` в `react.cache()` — `generateMetadata` и `StorePage` теперь делят один fetch вместо двух одинаковых HTTP-запросов на каждый SSR.
+
+### ✅ [BUG-WB-AUDIT-019] notifications — `BottomNavBar active="profile"` 🟡
+
+- **Файлы:**
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `NavActive` тип расширен значением `'notifications'`, prop `active` теперь optional.
+  - `apps/web-buyer/src/app/(shop)/notifications/page.tsx` — `<BottomNavBar active="notifications" />` (раньше «profile», подсвечивая чужой таб).
+
+### 🟢 Skipped — обоснованные не-фиксы
+
+- **BUG-WB-AUDIT-015** (chats menuRef shared): реального race нет — одновременно открыто только одно меню (`openMenuId === m.id`), useEffect listener пере-вешивается на каждое открытие через `[openMenuId]` deps. Рефактор row → отдельный компонент ради edge-case не оправдан.
+- **BUG-WB-AUDIT-016** (OtpGate `purpose: 'checkout'`): `purpose='checkout'` в backend `verify-otp.use-case.ts` создаёт BUYER, любое другое значение — SELLER (см. CLAUDE.md WEB-010). Default 'checkout' — единственный безопасный вариант для buyer-страниц. Менять = регрессия [WEB-010] на /chats /wishlist /profile.
+- **BUG-WB-AUDIT-018** (ProductCard `as unknown as` cast): API на `GET /storefront/products` отдаёт `images: [{url}]` (products.controller.ts:774,793), а тип `ProductListItem` в packages/types говорит `mediaUrls: string[]`. Cast — defensive layer пока контракт не выровнен. Тикет для Полата: согласовать ProductListItem shape с реальным storefront response.
+
+---
+
 ## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 7 critical + 3 P1 от Полата
 
 ### ✅ [BUG-WB-AUDIT-001] `useCart` без `enabled: isAuthenticated` → 401-loop для гостя 🔴
