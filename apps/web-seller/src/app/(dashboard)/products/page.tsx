@@ -263,7 +263,7 @@ export default function ProductsPage() {
                     onClick={() => copyTelegramLink(p.id)}
                     aria-label="Скопировать Telegram-ссылку"
                     className="p-1.5 -m-1.5 transition-opacity hover:opacity-80"
-                    style={{ color: tgCopiedId === p.id ? colors.success : "#60A5FA" }}
+                    style={{ color: tgCopiedId === p.id ? colors.success : colors.info }}
                   >
                     {tgCopiedId === p.id ? <Check size={16} /> : <Send size={16} />}
                   </button>
@@ -345,7 +345,7 @@ export default function ProductsPage() {
                     onClick={() => copyTelegramLink(p.id)}
                     title="Скопировать Telegram-ссылку (открывает TMA)"
                     className="text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ color: tgCopiedId === p.id ? colors.success : "#60A5FA" }}
+                    style={{ color: tgCopiedId === p.id ? colors.success : colors.info }}
                   >
                     {tgCopiedId === p.id ? <Check size={14} /> : <Send size={14} />}
                   </button>

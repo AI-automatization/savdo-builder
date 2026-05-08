@@ -185,7 +185,7 @@ function TopByViewsCard({
         <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
           Самый просматриваемый · 30 дней
         </span>
-        <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: 'rgba(96,165,250,0.15)', color: '#60A5FA' }}>
+        <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: `color-mix(in srgb, ${colors.info} 15%, transparent)`, color: colors.info }}>
           <Star size={16} />
         </span>
       </div>
