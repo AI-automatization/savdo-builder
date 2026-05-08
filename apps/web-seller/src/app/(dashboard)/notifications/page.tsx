@@ -107,7 +107,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Уведомления</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Уведомления</h1>
           <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
             Последние {items.length} уведомлений
           </p>

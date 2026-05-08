@@ -326,7 +326,7 @@ export default function OrdersPage() {
     <div className="flex flex-col gap-5 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Заказы</h1>
+        <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Заказы</h1>
         <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
           {isLoading
             ? 'Загрузка...'

@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 3
+
+### ✅ [WS-DESIGN-WAVE-3] Page heading typography — 5 файлов 🟡
+
+- **Важность:** 🟡 MEDIUM (visible inconsistency, spec deviation)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx:223`
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx:329`
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx:91`
+  - `apps/web-seller/src/app/(dashboard)/notifications/page.tsx:110`
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx:792`
+- **Что сделано:** все 5 page-title `<h1>` `text-xl` (20px) → `text-2xl` (24px). Liquid Authority spec: Headline 24-32px / 700. Раньше только `dashboard/page.tsx:90` соответствовал, остальные 5 — на 4px ниже минимума. Теперь все 6 dashboard-страниц консистентны на `text-2xl font-bold`. Audit ID: P2-014.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 2
 
 ### ✅ [WS-DESIGN-WAVE-2] Native `confirm()` → reusable `ConfirmModal` 🔴
