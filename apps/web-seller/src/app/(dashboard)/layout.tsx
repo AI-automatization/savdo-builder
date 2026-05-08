@@ -15,6 +15,7 @@ import { OrderStatus } from "types";
 import { ShoppingCart } from "lucide-react";
 import { colors, shell, shellTop } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { buyerStoreDisplay, buyerStoreUrl } from "@/lib/buyer-url";
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 
@@ -124,7 +125,7 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
           <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: colors.textDim }}>Ваш магазин</p>
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs truncate" style={{ color: colors.textMuted }}>
-              {store ? `savdo.uz/${store.slug}` : 'savdo.uz/...'}
+              {store ? buyerStoreDisplay(store.slug) : 'savdo.uz/...'}
             </span>
             <button
               className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0 transition-opacity hover:opacity-80"
@@ -233,7 +234,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     onLogout: handleLogout,
     onCopyLink: () => {
       if (!store) return;
-      navigator.clipboard.writeText(`https://savdo.uz/${store.slug}`);
+      navigator.clipboard.writeText(buyerStoreUrl(store.slug));
       track.storeLinkCopied(store.id);
     },
   };

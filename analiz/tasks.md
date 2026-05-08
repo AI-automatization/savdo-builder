@@ -5,12 +5,32 @@
 
 ---
 
+# 🆕 Web-buyer аудит 05.05 — закрыты 7 critical 08.05 (Азим)
+
+✅ **BUG-WB-AUDIT-001..007 + 009-FE** — 7 critical из `analiz/logs.md WEB-BUYER-AUDIT-2026-05-05` закрыты в одном проходе:
+- 001 (`useCart` enabled) · 002 (`useBuyerSocket` leave-room + destroySocket в logout) · 003 (`useChatSocket` leave-room) · 004 (`useOrders` enabled) · 005 (`chats handleSend` try/catch) · 006 (orders/[id] z-index 51) · 007 (product detail useEffect reset on id) · 009-FE (checkout `customerFullName`/`customerPhone` шлёт + расширил `CheckoutConfirmRequest` в `packages/types`).
+
+Подробности и список изменённых файлов — `analiz/done.md`.
+
+**Major-волна закрыта 08.05** (BUG-008, 010, 011, 012, 013, 014, 017, 019). Skipped с обоснованием в `analiz/done.md`: 015 (chat menu — нет реального race), 016 (OTP purpose — единственный безопасный default), 018 (defensive cast пока Полат не выровнял `ProductListItem` shape).
+
+**Minor-волна закрыта 08.05** (BUG-020..025). 026 принят как negligible.
+
+**Весь аудит 05.05 (BUG-WB-AUDIT-001..026) закрыт в одну сессию.** Подробности в `analiz/done.md`.
+
+**Контракт-задача для Полата:**
+- `API-PRODUCT-LIST-IMAGES-CONTRACT-001` — storefront отдаёт `images: [{url}]`, тип `ProductListItem` декларирует `mediaUrls: string[]`. Решить: либо обновить тип под реальность, либо переделать API под mediaUrls.
+- `API-STOREFRONT-SEARCH-CONTRACT-001` — `/storefront/search` shape (`{ stores, products }`) не описан в `packages/types`. Web-buyer держит локальный тип `StorefrontSearchResponse` в `lib/api/search.api.ts`. Перенести в `packages/types/src/api/search.ts` когда руки дойдут.
+
+---
+
 # 🆕 Спринт TMA Quality + Platform Hardening (04-09.05.2026)
 
 > Полный план: `analiz/sprint-tma-quality-04-05-2026.md`. Здесь — короткая чек-лист.
 
 ## 🔴 P0 — Полат
 
+- [x] **`AUDIT-NETWORK-LOADING-P0-FIXES`** ✅ 08.05.2026 — закрыты P0 из `analiz/audit-network-loading-2026-05-07.md`: (1) `lib/api.ts` уже имеет auto-bust cache на не-GET (parallel session) + добавил `timeout?: number` в ApiOptions interface (был implicit, TS would complain on opts.timeout). (2) Race condition fix в `buyer/OrdersPage.tsx`: AbortController на loadMore + toggleExpand detail + loadingMore guard от double-tap.
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
 - [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
 - [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
@@ -50,7 +70,7 @@
 - [x] **`API-RBAC-MICRO-PERMISSIONS-001`** ✅ 06.05.2026 — `@AdminPermission(perm)` decorator + `AdminPermissionGuard` + `JwtPayload.adminRole` claim. Permissions matrix вынесена в `common/constants/admin-permissions.ts` с wildcard-логикой (`*`, `user:*`, `*:read`). Применено на 23 destructive endpoints в admin/super-admin controller'ах (suspend, approve, reject, archive, refund, impersonate, db CRUD, broadcast, migrate). См. `analiz/done.md API-RBAC-MICRO-PERMISSIONS-001`.
 
 ### 🟠 P1 — Азим
-- [ ] **`WEB-SELLER-HARDCODED-DOMAIN-001`** — 3 места с прямым `https://savdo.uz/${slug}` без env fallback в web-seller. Файлы: `app/(dashboard)/layout.tsx:127,236`, `app/(dashboard)/profile/page.tsx:49`. Использовать `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` или общий helper.
+- [x] **`WEB-SELLER-HARDCODED-DOMAIN-001`** ✅ 08.05.2026 — введён helper `apps/web-seller/src/lib/buyer-url.ts` (`buyerOrigin`/`buyerStoreUrl`/`buyerStoreDisplay`). 3 места хардкода заменены: layout.tsx (sidebar label + clipboard) и profile/page.tsx (storeUrl). Подробности в `analiz/done.md`.
 
 ---
 
@@ -90,11 +110,9 @@
 
 ### 🟠 P1 — для Азима (apps/web-buyer)
 
-- [ ] **`WEB-BUYER-IMAGE-FALLBACK-001`** — на витрине магазина (`/<slug>`) товары без фото показывают пустой чёрный квадрат вместо placeholder'а. Скрин 06.05 — DRIPSB магазин, 6 товаров, 4 без фото. Решение: при `<img onError>` или пустом `mediaUrls` рендерить компонент-плейсхолдер (как `<ProductImage emptyVariant="no-photo">` в TMA).
-  - **Файлы:** `apps/web-buyer/src/components/store/ProductCard.tsx`.
+- [x] **`WEB-BUYER-IMAGE-FALLBACK-001`** ✅ 08.05.2026 — `ProductCard.tsx`: пустые/null `images[].url` фильтруются, placeholder при `mediaUrls.length === 0` теперь иконка + текст «Без фото» (вместо одинокого silhouette на тёмном surfaceSunken).
 
-- [ ] **`WEB-BUYER-LINK-PRETTIFY-001`** — длинная ссылка на сайт магазина в TMA buyer/StorePage заменена на «↗ Перейти на сайт» (06.05 commit). Проверить что web-buyer header не показывает где-то такие же длинные railway URL — заменить на короткие.
-  - **Файлы:** `apps/web-buyer/src/components/store/StoreHeader.tsx` (если такой текст есть).
+- [x] **`WEB-BUYER-LINK-PRETTIFY-001`** ✅ 08.05.2026 — no-op после проверки. Длинных railway URL в web-buyer UI нет, `app/layout.tsx:16` уже на env-helper. Подробности в `analiz/done.md`.
 
 ### 🟡 P2 — для Полата (technical debt)
 

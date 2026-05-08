@@ -300,7 +300,13 @@ export default function CheckoutPage() {
   const { user } = useAuth();
 
   const isAuthed = !!user?.isPhoneVerified;
-  const [pageStep, setPageStep] = useState<PageStep>(isAuthed ? "form" : "otp-phone");
+  // Lazy init avoids a 1-frame flash of the OTP form on hydration:
+  // we already know we have a session if there's a token in storage, even if
+  // the AuthContext hasn't populated `user` yet.
+  const [pageStep, setPageStep] = useState<PageStep>(() => {
+    if (typeof window === "undefined") return "otp-phone";
+    return localStorage.getItem("savdo_access_token") ? "form" : "otp-phone";
+  });
 
   useEffect(() => {
     if (user?.isPhoneVerified && pageStep !== "form") setPageStep("form");
@@ -381,6 +387,8 @@ export default function CheckoutPage() {
     if (!canSubmit) return;
     setApiError(undefined);
     try {
+      const trimmedName = contactName.trim();
+      const trimmedPhone = contactPhone.trim();
       const order = await confirm.mutateAsync({
         deliveryAddress:
           mode === "pickup"
@@ -388,6 +396,8 @@ export default function CheckoutPage() {
             : { street, city },
         buyerNote: comment || undefined,
         deliveryFee,
+        customerFullName: trimmedName || undefined,
+        customerPhone: trimmedPhone || undefined,
       });
       const storeId = previewData?.storeId ?? cart?.storeId ?? "";
       if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, "COD");

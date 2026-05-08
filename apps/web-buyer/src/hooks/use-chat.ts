@@ -72,6 +72,7 @@ export function useChatSocket(threadId: string | null) {
 
     return () => {
       socket.off('chat:message', onMessage);
+      if (socket.connected) socket.emit('leave-chat-room', { threadId });
     };
   }, [threadId, queryClient]);
 }

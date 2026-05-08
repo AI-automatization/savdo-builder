@@ -48,17 +48,11 @@ export function ThemeProvider({
   /** Initial theme if nothing stored. Buyer defaults to `'system'`; seller may override to `'dark'`. */
   defaultTheme?: Theme;
 }) {
-  // Initial state matches what the inline ThemeScript already wrote on <html>,
-  // so React's first paint won't fight it.
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  // Lazy init from localStorage so the ThemeToggle icon doesn't flash to the
+  // default before the post-hydration effect runs. The inline ThemeScript
+  // already painted <html data-theme>, this just keeps React state aligned.
+  const [theme, setThemeState] = useState<Theme>(() => readStored(defaultTheme));
   const [resolvedTheme, setResolved] = useState<ResolvedTheme>('light');
-
-  // After hydration, sync from localStorage (the inline script also reads this,
-  // but keeping React state in sync lets the toggle UI reflect reality).
-  useEffect(() => {
-    const stored = readStored(defaultTheme);
-    setThemeState(stored);
-  }, [defaultTheme]);
 
   // React to theme changes — apply to <html> and update resolved.
   useEffect(() => {
