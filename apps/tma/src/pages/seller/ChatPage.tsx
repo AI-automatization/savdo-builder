@@ -10,6 +10,7 @@ import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
 
 interface ChatThread {
   id: string;
@@ -739,9 +740,8 @@ export default function SellerChatPage() {
         return (
           <div
             key={t.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate(`/seller/chat/${t.id}`)}
+            {...clickableA11y(() => navigate(`/seller/chat/${t.id}`))}
+            aria-label={`Чат с покупателем${unread > 0 ? `, ${unread} непрочитанных` : ''}`}
             className="flex items-start gap-3 p-3.5 rounded-2xl cursor-pointer active:opacity-70 transition-all"
             style={glass}
           >

@@ -93,7 +93,7 @@
 - [x] **`TMA-LOADING-SKELETONS-001`** ✅ 08.05.2026 — добавлены skeletons на OrdersPage buyer (initial list, 4 OrderRowSkeleton) и seller/ProfilePage (skeleton-блок магазина пока store === null). Остальные страницы списка skip'нуты обоснованно: CartPage/CheckoutPage синхронны (localStorage), buyer/ProfilePage из useAuth, AddProductPage не имеет блокирующего initial fetch'а, StoresPage уже имел оба skeleton'а, DashboardPage — параллельная сессия. Подробности в `analiz/done.md`.
 
 ### 🟡 P2 — a11y
-- [x] **`TMA-A11Y-ROLE-TABINDEX-001`** ✅ 08.05.2026 — закрыты 3 оставшихся: `ui/ProductCard` (нельзя сделать `<button>` из-за nested add-to-cart кнопки → role+tabIndex+onKeyDown+aria-label), `buyer/ProductPage` collage 2x2 gallery, `buyer/WishlistPage` карточка. Остальные клики уже на `<button>`/`<a>`/`GlassCard` (рендерится `<button>`), либо modal-backdrop (ESC уже есть). Подробности в `analiz/done.md`.
+- [x] **`TMA-A11Y-ROLE-TABINDEX-001`** ✅ 08.05.2026 — создан `lib/a11y.ts` с `clickableA11y(handler)` helper'ом (role+tabIndex+onClick+onKeyDown). Применён к: `buyer/ChatPage` + `seller/ChatPage` thread rows, `buyer/StorePage` product grid, `ProductCard`, `buyer/WishlistPage` row, `buyer/ProductPage` collage gallery. Остальные клики на `<button>`/`<a>`/`GlassCard` (рендерится `<button>`) или modal-backdrop (intentional — клик-outside, не keyboard).
 - [x] **`TMA-SILENT-ERROR-CATCHES-001`** ✅ 06.05.2026 (частично) — добавлен `showToast` на 5 user-facing data-load fails: `buyer/WishlistPage`, `buyer/OrdersPage` (loadMore + detail), `seller/ProfilePage`, `seller/SettingsPage`. AbortError фильтруется. Остальные `.catch(() => {})` (clipboard, prefetch, attribute side-effects) намеренно тихие — best-effort fire-and-forget.
 
 ---
