@@ -1,5 +1,33 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фиксы Wave 1+4
+
+### ✅ [WS-DESIGN-WAVE-1] light-theme contrast killers — 5 P1 из 6 🔴
+
+- **Важность:** 🔴 HIGH (light theme был фактически сломан в 4-5 точках)
+- **Дата:** 08.05.2026
+- **Коммит:** `1ad0e69`
+- **Файлы:**
+  - `apps/web-seller/src/app/globals.css` — добавлен класс `.row-hoverable { :hover background var(--color-surface-elevated) }` для theme-aware row hover вместо `bg-white/[0.03]` Tailwind.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — 5 хардкоженных hex заменены: `#f87171` ×4 (error text, ×2 required asterisks, удалить-кнопка) → `colors.danger`; `#A78BFA` ×1 (back-link) → `colors.accent`. Visibility toggle thumb `after:bg-white` → внутри `<style>` блока через `colors.textMuted` (off) и `colors.bg` (on) — паттерн совпадает с create page.
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — 3× `rgba(255,255,255,X)` → `color-mix(in srgb, ${colors.accentTextOnBg} N%, transparent)`. Theme-adaptive overlay: в light theme overlay белый поверх dark-violet accent (как раньше), в dark theme overlay тёмный поверх light-violet accent (стало читабельным). Применено к textarea bg/border, кнопке «Отмена» в edit mode, и timestamp text seller-bubble.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx` — 2× `transition-colors hover:bg-white/[0.03]` → `transition-colors row-hoverable` (Settings link + Logout button rows).
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — sidebar logo: `linear-gradient(135deg, #7C3AED, #A78BFA)` + `boxShadow rgba(167,139,250,0.40)` → solid `colors.accent` + `colors.accentTextOnBg` для иконки. Совпадает с onboarding logo и спекой Liquid Authority «no glow gradients». Logout-button hover класс заменён на `row-hoverable`.
+- **Что сделано:** systematic fix всех light-theme контраст-багов из аудита 08.05. Все хардкоженные hex (`#f87171`, `#A78BFA`) и `*-white/X` Tailwind классы заменены theme-aware токенами или `color-mix()` поверх существующих токенов. Никаких новых CSS variables не понадобилось.
+- **Skipped (с обоснованием):** P1-004 (avatar spinner `text-white` в `profile/page.tsx:116`) — overlay поверх spinner'а это `rgba(0,0,0,0.45)`, тёмный в обеих темах. White spinner читается всегда, аудит overcautious. Обновлено в audit doc.
+- **Verification:** локально не запускал (запрещено). Push'нётся через ветку `web-seller` → Railway сборка подтвердит.
+
+### ✅ [WS-DESIGN-WAVE-4] Login OTP copy: SMS → Telegram 🟡
+
+- **Важность:** 🟡 MEDIUM (project rule №0 violation, копи-баг в первом окне seller'а)
+- **Дата:** 08.05.2026
+- **Коммит:** `a818720`
+- **Файлы:**
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — «Отправили SMS на +998 …» → «Код отправлен в Telegram-бот @savdo_builderBOT»; «Код из SMS» → «Код из Telegram».
+- **Что сделано:** OTP step seller login больше не противоречит project rule №0 (ESKIZ.UZ ЗАПРЕЩЁН, OTP только Telegram bot). Реальность UX: после ввода телефона seller получает код именно от @savdo_builderBOT в Telegram.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller design audit
 
 ### ✅ [WEB-DESIGN-AUDIT-001] Аудит web-seller под Liquid Authority — 30 findings 🟢

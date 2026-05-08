@@ -299,10 +299,10 @@
 > Грубо упорядочено по value/effort. Каждая волна — отдельный коммит, безопасно
 > мерджить в `web-seller` ветку независимо.
 
-- [ ] **`WS-DESIGN-WAVE-1` 🔴** — light-theme contrast killers. 6 P1: хардкоженный hex (`#f87171`/`#A78BFA` в edit-product, `rgba(255,255,255,X)` в chat edit, `text-white` spinner в profile, `after:bg-white` toggle в edit-product, sidebar logo gradient+glow в layout, `hover:bg-white/[0.03]` ×3 в profile/layout). Один проход, ~4 файла. Audit IDs: P1-002, P1-003, P1-004, P1-005, P1-006, P1-007.
+- [x] **`WS-DESIGN-WAVE-1` 🔴** ✅ 08.05.2026 — закрыты 5 P1 из 6 (P1-002, P1-003, P1-005, P1-006, P1-007). Коммит `1ad0e69`. P1-004 (avatar spinner text-white) пропущен — overlay rgba(0,0,0,0.45) тёмный в обеих темах, white spinner читается. Подробности в `analiz/done.md`.
 - [ ] **`WS-DESIGN-WAVE-2` 🔴** — `confirm()` native dialogs → `CancelModal` (3 места: edit-product:197, product-option-groups:136,205, product-variants:344). Audit ID: P1-001.
 - [ ] **`WS-DESIGN-WAVE-3` 🟡** — page heading typography. 5 файлов с `text-xl` на page title → `text-2xl` (analytics/orders/products/notifications/settings). Audit ID: P2-014.
-- [ ] **`WS-DESIGN-WAVE-4` 🟡** — login OTP copy «Код из SMS» / «Отправили SMS» → «Код из Telegram бота» / «Отправили в @savdo_builderBOT». Project rule №0 violation. Audit ID: P2-010.
+- [x] **`WS-DESIGN-WAVE-4` 🟡** ✅ 08.05.2026 — login OTP copy исправлен (P2-010). Коммит `a818720`. Подробности в `analiz/done.md`.
 - [ ] **`WS-DESIGN-WAVE-5` 🟡** — добавить semantic info-blue token (`colors.info`/`infoMuted`) в styles.ts + globals.css; заменить ×8 хардкоженных мест (`#60A5FA` для CONFIRMED status и TG-link icons, `#818CF8` для SHIPPED, `#7dd3fc` в profile TG-chip). Audit IDs: P2-002, P2-003, P2-013.
 - [ ] **`WS-DESIGN-WAVE-6` 🟡** — products edit dragons: радиус-выравнивание create↔edit (`rounded-lg` vs `rounded-2xl` → `rounded-xl` 12px per spec); native `<select>` в edit → custom `<Select>` (как в create); вынести TITLE/DESCRIPTION_EXAMPLES_BY_SLUG в `lib/product-examples.ts`. Audit IDs: P2-001, P2-004, P2-005.
 - [ ] **`WS-DESIGN-WAVE-7-BACKLOG` 🟢** — оставшиеся P2 (toast/popover shadow > 8px ×3, sidebar 15%-vs-14% accentMuted nit, onboarding `rounded-3xl` + хардкоженные hex, chat layout off-grid + non-responsive, notifications hover semantics inverted) + все 9 P3 polish. Брать когда нечего делать. Audit IDs: P2-006, P2-007, P2-008, P2-009, P2-011, P2-012, всё P3.
