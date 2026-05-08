@@ -8,6 +8,22 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-08 [SEC-007] Telegram HTML escape для user-controlled полей в `telegram-demo.handler.ts`
+
+- **Статус:** 🟡 → ✅ Исправлено.
+- **Что случилось:** В `telegram-demo.handler.ts` user-controlled данные (`firstName` от Telegram, `product.title`, `product.description`, `store.name`, `store.slug`, `store.description`, `store.telegramChannelTitle`, `storeName` от seller registration) интерполировались в строки, отправляемые с `parseMode: 'HTML'`, без экранирования `<`/`>`/`&`. Сценарий: продавец называет товар `<test>` или `&Co` → Telegram `sendMessage` либо отвергает сообщение (silent drop, пост в канал не появляется), либо рендерит непредвиденную разметку; в худшем случае seller может вписать `<a href="https://evil">текст</a>` и получить рабочую ссылку в собственном автопостинге.
+- **Что сделано:**
+  - Добавлен `apps/api/src/shared/telegram-html.ts` — `escapeTgHtml(value: string): string` (заменяет `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;` в указанном Telegram Bot API порядке).
+  - Применено в 12 точках интерполяции в `telegram-demo.handler.ts`: `handleStart` приветствие (×2), `finishSellerRegistration` подтверждение, `handleCreateStoreName` подтверждение, `postProductToChannel` caption (title + description + name), `handleSellerProductsInTma` заголовок, `showSellerMenu` приветствие, `handleSellerStore` (name + slug + channel title), `handleSellerStats` заголовок, `showBuyerMenu` приветствие, `handleStoreSlugInput` (slug + name + description + product titles).
+- **Что НЕ покрыто (отдельным тиком):**
+  - `telegram-webhook.controller.ts:118` — статичный текст без user input, escape не нужен.
+  - `telegram-notification.processor.ts` — большинство сообщений шлются без `parseMode`, plain text safe; `TELEGRAM_JOB_BROADCAST` (line 131) использует HTML, но `d.message` приходит от ADMIN через `BroadcastDto` — admin-controlled, низкий риск.
+  - `seller-notification.service.ts` — нужен отдельный проход (5 типов уведомлений), много полей идёт в `parseMode: 'HTML'`. Backlog.
+- **TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → exit 0.
+- **Файлы:** `apps/api/src/shared/telegram-html.ts` (new), `apps/api/src/modules/telegram/telegram-demo.handler.ts` (12 правок).
+
+---
+
 ## 2026-05-06 [AUDIT-API-SQL-INJECTION-2026-05-06] SQL injection audit
 
 - **Статус:** ✅ Чисто.
