@@ -1,5 +1,19 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — Cleanup контракт-хвостов после Полата
+
+### ✅ [WEB-BUYER-CONTRACT-CLEANUP-001] search type из `packages/types` + убран defensive cast в ProductCard 🟢
+
+- **Важность:** 🟢 LOW (technical debt cleanup; функционально без изменений)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/search.api.ts` — удалены локальные `SearchStoreHit`/`SearchProductHit`/`StorefrontSearchResponse`. Теперь `import type { StorefrontSearchResponse } from 'types'`. Файл сократился до одной API-функции + import.
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — убран `(product as unknown as { images?: ... }).images` cast (BUG-WB-AUDIT-018, ранее skipped пока контракт не был выровнен). Теперь `product.images?.length ? product.images.map(i=>i.url) : product.mediaUrls ?? []`. Поведение идентично — оба поля гарантированы контрактом, fallback на mediaUrls для не-storefront callsite'ов.
+- **Что сделано:** Полат сегодня ночью закрыл оба контракта (`API-STOREFRONT-SEARCH-CONTRACT-001` + `API-PRODUCT-LIST-IMAGES-CONTRACT-001`) — `ProductListItem` теперь декларирует и `mediaUrls: string[]`, и `images: { url }[]`; `StorefrontSearchResponse` живёт в `packages/types/src/api/search.ts`. Удалил локальные дубли в web-buyer.
+- **Verification:** локально не запускал (запрещено). Push'нётся через ветку `web-buyer` → Railway сборкa подтвердит.
+
+---
+
 ## 2026-05-08 (Полат, параллельная сессия) — otplib v12 → v13.4.0 upgrade
 
 ### ✅ [API-OTPLIB-V13-UPGRADE-001] otplib v13 — переписать admin-auth.use-case.ts под functional API 🟡
