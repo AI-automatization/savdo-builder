@@ -8,6 +8,7 @@ import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
 import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
+import { clickableA11y } from '@/lib/a11y';
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -90,11 +91,8 @@ export default function WishlistPage() {
             return (
               <div
                 key={it.id}
-                role="button"
-                tabIndex={0}
+                {...clickableA11y(() => navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`))}
                 aria-label={`Открыть товар ${p.title}`}
-                onClick={() => navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`); } }}
                 style={{
                   borderRadius: 14,
                   overflow: 'hidden',
