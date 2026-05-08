@@ -11,6 +11,7 @@ import type { ProductDisplayType } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
 import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';
 import { DisplayTypeSelector } from '../../../../../components/display-type-selector';
+import { ConfirmModal } from '../../../../../components/confirm-modal';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 
 // Keep these in sync with create/page.tsx. When this list grows, extract to
@@ -193,9 +194,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     router.push('/products');
   }
 
-  async function handleDelete() {
-    if (!confirm('Удалить товар? Это действие нельзя отменить.')) return;
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  async function performDelete() {
     await remove.mutateAsync(id);
+    setConfirmDelete(false);
     router.push('/products');
   }
 
@@ -512,7 +515,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
           <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: "0.75rem" }}>
             <button
-              onClick={handleDelete}
+              onClick={() => setConfirmDelete(true)}
               disabled={remove.isPending}
               className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
               style={{ color: colors.danger }}
@@ -522,6 +525,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Удалить товар?"
+        message="Это действие нельзя отменить."
+        confirmLabel="Удалить"
+        danger
+        loading={remove.isPending}
+        onConfirm={performDelete}
+        onClose={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

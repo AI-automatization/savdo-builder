@@ -300,7 +300,7 @@
 > мерджить в `web-seller` ветку независимо.
 
 - [x] **`WS-DESIGN-WAVE-1` 🔴** ✅ 08.05.2026 — закрыты 5 P1 из 6 (P1-002, P1-003, P1-005, P1-006, P1-007). Коммит `1ad0e69`. P1-004 (avatar spinner text-white) пропущен — overlay rgba(0,0,0,0.45) тёмный в обеих темах, white spinner читается. Подробности в `analiz/done.md`.
-- [ ] **`WS-DESIGN-WAVE-2` 🔴** — `confirm()` native dialogs → `CancelModal` (3 места: edit-product:197, product-option-groups:136,205, product-variants:344). Audit ID: P1-001.
+- [x] **`WS-DESIGN-WAVE-2` 🔴** ✅ 08.05.2026 — все 4 native `confirm()` заменены на reusable `ConfirmModal` (новый компонент `apps/web-seller/src/components/confirm-modal.tsx`). Покрыто: edit-product handleDelete, option-groups ValueRow (Удалить значение), option-groups GroupRow (Удалить группу), variants section handleDelete. ESC/Enter keyboard support, danger flag, click-outside для close. P1-001.
 - [ ] **`WS-DESIGN-WAVE-3` 🟡** — page heading typography. 5 файлов с `text-xl` на page title → `text-2xl` (analytics/orders/products/notifications/settings). Audit ID: P2-014.
 - [x] **`WS-DESIGN-WAVE-4` 🟡** ✅ 08.05.2026 — login OTP copy исправлен (P2-010). Коммит `a818720`. Подробности в `analiz/done.md`.
 - [ ] **`WS-DESIGN-WAVE-5` 🟡** — добавить semantic info-blue token (`colors.info`/`infoMuted`) в styles.ts + globals.css; заменить ×8 хардкоженных мест (`#60A5FA` для CONFIRMED status и TG-link icons, `#818CF8` для SHIPPED, `#7dd3fc` в profile TG-chip). Audit IDs: P2-002, P2-003, P2-013.

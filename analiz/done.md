@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 2
+
+### ✅ [WS-DESIGN-WAVE-2] Native `confirm()` → reusable `ConfirmModal` 🔴
+
+- **Важность:** 🔴 HIGH (native confirm не следует app theme + silently блокируется на mobile WebView)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/components/confirm-modal.tsx` (новый) — generic компонент. Props: `open/title/message?/confirmLabel?/cancelLabel?/danger?/loading?/onConfirm/onClose`. ESC/Enter keyboard handlers, click-outside для close, autoFocus на confirm-button, ARIA `role=dialog` + `aria-modal=true`, danger flag отдаёт `color-mix()` поверх `colors.danger` для red destructive button.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — `handleDelete` (Удалить товар) → `setConfirmDelete(true)` + `<ConfirmModal>` с danger.
+  - `apps/web-seller/src/components/product-option-groups-section.tsx` — 2 места: ValueRow «Удалить значение», GroupRow «Удалить группу» (msg меняется в зависимости от `hasValues`). Каждое — отдельный modal state в своём scope.
+  - `apps/web-seller/src/components/product-variants-section.tsx` — `handleDelete(variantId)` → `setConfirmId(variantId)` + единый `<ConfirmModal>` с `confirmId !== null` как open.
+- **Что сделано:** все 4 native browser `confirm()` заменены на theme-aware in-app dialogs. Соответствует UX-паттерну существующего `CancelModal` в orders pages (но generic, с поддержкой не-destructive подтверждений). Mobile WebView больше не блокирует destructive actions silently. Light/dark theme подхватывается автоматически.
+- **Verification:** локально не запускал. Push'нётся через web-seller ветку → Railway сборка подтвердит. `grep -rn "confirm(" apps/web-seller/src/` → 0 матчей нативных confirm.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фиксы Wave 1+4
 
 ### ✅ [WS-DESIGN-WAVE-1] light-theme contrast killers — 5 P1 из 6 🔴
