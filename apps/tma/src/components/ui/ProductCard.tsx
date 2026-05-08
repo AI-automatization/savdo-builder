@@ -5,6 +5,7 @@ import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { clickableA11y } from '@/lib/a11y';
 
 export interface FeedProduct {
   id: string;
@@ -50,11 +51,8 @@ export function ProductCard({ product }: { product: FeedProduct }) {
   const openProduct = () => navigate(`/buyer/store/${product.store.slug}/product/${product.id}`);
   return (
     <div
-      role="button"
-      tabIndex={0}
+      {...clickableA11y(openProduct)}
       aria-label={`Открыть товар ${product.title}`}
-      onClick={openProduct}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProduct(); } }}
       onPointerEnter={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       onTouchStart={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       style={{
