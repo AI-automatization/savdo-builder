@@ -5,6 +5,41 @@
 
 ---
 
+# 🆕 Design Audit (08.05.2026) — Admin / API / TMA
+
+> Полный отчёт: `analiz/design-audit-2026-05-08.md` (51 findings: 11 P0, 14 P1, 14 P2, 12 P3).
+> Использованы claude-skills: ui-design-system, apple-hig-expert, api-design-reviewer, senior-backend.
+
+## Sprint A — cross-platform polish (P0 only) — 10 тикетов
+
+- [ ] **`TMA-DESIGN-HIT-AREA-001`** (P0, T1) — qty buttons `w-7 h-7` (28px) → `w-10 h-10` (40px). Файлы: CartPage:97-121, OrdersPage, ChatPage qty.
+- [ ] **`TMA-DESIGN-FG-TOKENS-001`** (P0, T2) — 100+ inline `rgba(255,255,255,X)` → `FG.strong/muted/dim` в `styles.ts`. Миграция CartPage / OrdersPage / ProductPage.
+- [ ] **`TMA-DESIGN-A11Y-LEFTOVERS-001`** (P0, T3) — применить `clickableA11y()` helper из `lib/a11y.ts` на seller/ChatPage:205, buyer/ProductPage:252-256.
+- [ ] **`TMA-DESIGN-ROLE-DIFF-001`** (P0, T4) — buyer (orchid) vs seller (cyan) визуальная дифференциация через `data-role` + scoped CSS-переменные.
+- [ ] **`TMA-DESIGN-SPINNER-CLEANUP-001`** (P0, T5) — `<Spinner>` остатки (OrdersPage:347, ChatPage:6, EditProductPage:6) → Skeleton presets.
+- [ ] **`ADMIN-A11Y-MODAL-001`** (P0, A1+A2) — DashboardLayout aria-* + ModerationPage modal на Radix Dialog.
+- [ ] **`ADMIN-DESIGN-TOKENS-SURFACE-001`** (P0, A3) — `--surface-error/-warning/-success` CSS-переменные + миграция hardcoded `rgba(239,68,68,...)`.
+- [ ] **`API-WS-EVENTS-NAMING-001`** (P0, B1) — единый стиль `<namespace>:<action>` для всех Socket.IO events.
+- [ ] **`API-HTTP-201-CREATED-001`** (P0, B2) — `@HttpCode(HttpStatus.CREATED)` на 5+ POST endpoints (products/variants/option-groups/images/attributes).
+- [ ] **`API-ORDERS-ALIAS-REMOVE-001`** (P0, B3) — удалить `GET /orders/:id` alias, оставить `/buyer/orders/:id`.
+
+## Sprint B — design system hardening (P1) — 8 тикетов
+
+- [ ] **`ADMIN-THEME-VARS-MIGRATE-001`** (P1, A4+A5+A12) — Button/Badge/Dialog → CSS-переменные.
+- [ ] **`TMA-TYPOGRAPHY-SCALE-001`** (P1, T6) — 280 hardcoded `text-[11px]/xs/sm` → enum + CSS-vars с desktop scale.
+- [ ] **`API-SWAGGER-001`** (P1, B4) — `@nestjs/swagger` + `/api/docs` + `@ApiOperation` на топ-20.
+- [ ] **`API-PRODUCTS-CTRL-SPLIT-001`** (P1, B5) — products.controller.ts (942 LOC) → 3 controllers.
+- [ ] **`ADMIN-A11Y-TABS-OTP-001`** (P1, A7+A8) — Tabs primitive + LoginPage OTP `<fieldset>`.
+- [ ] **`ADMIN-PAGINATION-DISABLED-001`** (P1, A6) — `disabled={page === 1}` на pagination buttons.
+- [ ] **`API-IDEMPOTENCY-KEY-001`** (P1, B7) — `Idempotency-Key` header на /checkout/confirm + /orders.
+- [ ] **`API-PAGINATION-ENVELOPE-001`** (P1, B8) — единый `{ data, meta: { total, page, limit, totalPages } }`.
+
+## Sprint C — long tail (P2/P3) — 26 тикетов
+
+См. `analiz/design-audit-2026-05-08.md` секции P2/P3.
+
+---
+
 # 🆕 Web-buyer аудит 05.05 — закрыты 7 critical 08.05 (Азим)
 
 ✅ **BUG-WB-AUDIT-001..007 + 009-FE** — 7 critical из `analiz/logs.md WEB-BUYER-AUDIT-2026-05-05` закрыты в одном проходе:
