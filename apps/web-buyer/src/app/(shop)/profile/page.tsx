@@ -7,14 +7,78 @@ import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
 import { useAuth } from "@/lib/auth/context";
 import { useLogout, useUploadAvatar } from "@/hooks/use-auth";
-import { Camera, Loader2, User as UserIcon, ShoppingCart, Package, ChevronRight } from "lucide-react";
+import { useOrders } from "@/hooks/use-orders";
+import { useWishlist } from "@/hooks/use-wishlist";
+import {
+  Camera,
+  Loader2,
+  User as UserIcon,
+  ShoppingCart,
+  Package,
+  Heart,
+  Bell,
+  ChevronRight,
+} from "lucide-react";
 import { colors } from "@/lib/styles";
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-3.5" style={{ background: colors.surface }}>
+      <div className="text-base font-bold" style={{ color: colors.textStrong }}>{value}</div>
+      <div className="text-[10px] mt-0.5 tracking-wide uppercase" style={{ color: colors.textMuted }}>{label}</div>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-4 pt-5 pb-2 text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
+      — {children}
+    </div>
+  );
+}
+
+function MenuRow({
+  icon,
+  label,
+  sub,
+  href,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sub?: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:opacity-80"
+      style={{ background: colors.surface }}
+    >
+      <div
+        className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0"
+        style={{ background: colors.brandMuted, color: colors.brand }}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold truncate" style={{ color: colors.textStrong }}>{label}</div>
+        {sub && <div className="text-[11px] mt-0.5 truncate" style={{ color: colors.textMuted }}>{sub}</div>}
+      </div>
+      <ChevronRight size={14} className="flex-shrink-0" style={{ color: colors.textDim }} />
+    </Link>
+  );
+}
+
+// ── ProfileView ──────────────────────────────────────────────────────────────
+
 function ProfileView() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const logoutMutation = useLogout();
   const uploadAvatar = useUploadAvatar();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,6 +86,12 @@ function ProfileView() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const avatarUrl = user?.buyer?.avatarUrl ?? null;
+
+  // Stats — best-effort, skip while auth is still rehydrating to avoid Strict Mode 401 races.
+  const { data: ordersData } = useOrders({ page: 1, limit: 1, enabled: isAuthenticated });
+  const { data: wishlist } = useWishlist();
+  const ordersCount = ordersData?.meta?.total ?? 0;
+  const wishlistCount = wishlist?.length ?? 0;
 
   async function handleLogout() {
     await logoutMutation.mutateAsync();
@@ -52,17 +122,15 @@ function ProfileView() {
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-2xl">
-      <div
-        className="flex items-center gap-4 px-4 py-4 rounded-2xl"
-        style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-      >
+    <div className="flex flex-col">
+      {/* User card */}
+      <div className="flex items-center gap-3.5 px-4 py-4" style={{ background: colors.surface }}>
         <button
           type="button"
           onClick={handlePickAvatar}
           disabled={uploadAvatar.isPending}
           className="relative w-14 h-14 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center transition-opacity hover:opacity-90 disabled:opacity-60"
-          style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }}
+          style={{ background: colors.brand, color: colors.brandTextOnBg }}
           aria-label="Изменить фото профиля"
         >
           {avatarUrl ? (
@@ -75,7 +143,7 @@ function ProfileView() {
               unoptimized
             />
           ) : (
-            <UserIcon size={20} style={{ color: colors.accent }} />
+            <UserIcon size={22} />
           )}
           <span
             className="absolute inset-0 flex items-center justify-center"
@@ -89,15 +157,15 @@ function ProfileView() {
           </span>
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold truncate" style={{ color: colors.textPrimary }}>{user?.phone}</p>
+          <p className="text-[15px] font-bold truncate" style={{ color: colors.textStrong }}>{user?.phone}</p>
           <button
             type="button"
             onClick={handlePickAvatar}
             disabled={uploadAvatar.isPending}
-            className="mt-0.5 inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
-            style={{ color: colors.accent }}
+            className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{ color: colors.brand }}
           >
-            <Camera size={12} />
+            <Camera size={11} />
             {avatarUrl ? "Изменить фото" : "Добавить фото"}
           </button>
           {avatarError && (
@@ -113,78 +181,86 @@ function ProfileView() {
         />
       </div>
 
+      {/* Stats row */}
       <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+        className="grid grid-cols-3"
+        style={{ background: colors.divider, gap: "1px", borderTop: `1px solid ${colors.divider}`, borderBottom: `1px solid ${colors.divider}` }}
       >
-        <Link
-          href="/orders"
-          className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-black/5"
-          style={{ borderBottom: `1px solid ${colors.divider}` }}
-        >
-          <span style={{ color: colors.accent }}><Package size={18} /></span>
-          <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>Мои заказы</span>
-          <ChevronRight size={16} className="ml-auto" style={{ color: colors.textDim }} />
-        </Link>
-        <Link
-          href="/cart"
-          className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-black/5"
-        >
-          <span style={{ color: colors.accent }}><ShoppingCart size={18} /></span>
-          <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>Корзина</span>
-          <ChevronRight size={16} className="ml-auto" style={{ color: colors.textDim }} />
+        <Stat label="Заказов" value={ordersCount} />
+        <Stat label="В избранном" value={wishlistCount} />
+        <Link href="/cart" className="flex flex-col items-center justify-center py-3.5 transition-opacity hover:opacity-80" style={{ background: colors.surface }}>
+          <ShoppingCart size={18} style={{ color: colors.textStrong }} />
+          <div className="text-[10px] mt-1 tracking-wide uppercase" style={{ color: colors.textMuted }}>Корзина</div>
         </Link>
       </div>
 
-      {!confirming ? (
-        <button
-          onClick={() => setConfirming(true)}
-          className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: 'rgba(220,38,38,0.08)', color: colors.danger, border: `1px solid rgba(220,38,38,0.30)` }}
-        >
-          Выйти из аккаунта
-        </button>
-      ) : (
-        <div
-          className="rounded-2xl p-4 flex flex-col gap-3"
-          style={{ background: 'rgba(220,38,38,0.06)', border: `1px solid rgba(220,38,38,0.30)` }}
-        >
-          <p className="text-sm text-center" style={{ color: colors.textPrimary }}>Выйти из аккаунта?</p>
-          <div className="flex gap-2.5">
-            <button
-              onClick={() => setConfirming(false)}
-              className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-              style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
-            >
-              Отмена
-            </button>
-            <button
-              onClick={handleLogout}
-              disabled={logoutMutation.isPending}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
-              style={{ background: colors.danger, color: "#FFFFFF" }}
-            >
-              {logoutMutation.isPending ? "..." : "Выйти"}
-            </button>
+      {/* My activity */}
+      <SectionLabel>Активность</SectionLabel>
+      <MenuRow icon={<Package size={16} />} label="Мои заказы" sub={ordersCount > 0 ? `${ordersCount} ${ordersCount === 1 ? "заказ" : ordersCount < 5 ? "заказа" : "заказов"}` : "Пусто"} href="/orders" />
+      <div style={{ height: 1, background: colors.divider }} className="mx-4" />
+      <MenuRow icon={<Heart size={16} />} label="Избранное" sub={wishlistCount > 0 ? `${wishlistCount} ${wishlistCount === 1 ? "товар" : wishlistCount < 5 ? "товара" : "товаров"}` : "Пусто"} href="/wishlist" />
+      <div style={{ height: 1, background: colors.divider }} className="mx-4" />
+      <MenuRow icon={<Bell size={16} />} label="Уведомления" sub="История событий" href="/notifications" />
+
+      {/* Logout */}
+      <div className="px-4 py-6 mt-2">
+        {!confirming ? (
+          <button
+            onClick={() => setConfirming(true)}
+            className="w-full py-3 rounded-md text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{ background: "transparent", color: colors.danger, border: `1px solid ${colors.danger}` }}
+          >
+            Выйти из аккаунта
+          </button>
+        ) : (
+          <div
+            className="rounded-md p-3.5 flex flex-col gap-2.5"
+            style={{ background: colors.surface, border: `1px solid ${colors.danger}` }}
+          >
+            <p className="text-xs text-center" style={{ color: colors.textStrong }}>Выйти из аккаунта?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirming(false)}
+                className="flex-1 py-2 rounded-md text-[11px] font-semibold"
+                style={{ background: colors.surfaceSunken, color: colors.textBody }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+                className="flex-1 py-2 rounded-md text-[11px] font-semibold disabled:opacity-40"
+                style={{ background: colors.danger, color: "#FFFFFF" }}
+              >
+                {logoutMutation.isPending ? "..." : "Выйти"}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textPrimary }}>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-28 md:pb-12">
-        <h1 className="text-xl sm:text-2xl font-bold mb-5" style={{ color: colors.textPrimary }}>Профиль</h1>
-        {isAuthenticated ? <ProfileView /> : (
-          <OtpGate
-            icon={<UserIcon size={22} />}
-            title="Войдите в аккаунт"
-          />
+    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
+      {/* Header */}
+      <div className="px-4 py-3.5 border-b" style={{ background: colors.surface, borderColor: colors.divider }}>
+        <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Профиль</h1>
+      </div>
+
+      <div className="max-w-2xl mx-auto pb-28 md:pb-12">
+        {isAuthenticated ? (
+          <ProfileView />
+        ) : (
+          <div className="px-4 pt-6">
+            <OtpGate icon={<UserIcon size={22} />} title="Войдите в аккаунт" />
+          </div>
         )}
       </div>
 

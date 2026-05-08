@@ -14,6 +14,7 @@ import {
 } from './storage';
 import { getMe, logout as logoutApi } from '../api/auth.api';
 import { mergeCart } from '../api/cart.api';
+import { destroySocket } from '../socket';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTokens();
       setUser(null);
       queryClient.clear();
+      destroySocket();
     }
   }, [queryClient]);
 
@@ -72,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearTokens();
     setUser(null);
     queryClient.clear();
+    destroySocket();
   }, [queryClient]);
 
   const refreshUser = useCallback(async () => {

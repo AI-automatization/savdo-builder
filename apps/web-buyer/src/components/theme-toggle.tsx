@@ -4,6 +4,7 @@ import { Moon, Sun, Monitor } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTheme, type Theme } from '@/lib/theme/theme-provider';
 import { colors } from '@/lib/styles';
+import { Tooltip } from '@/components/tooltip';
 
 interface Props {
   className?: string;
@@ -46,12 +47,12 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
 
   return (
     <div ref={ref} className={`relative inline-flex ${className}`}>
+      <Tooltip label={label}>
       <button
         type="button"
         onClick={toggleTheme}
         onContextMenu={withMenu ? (e) => { e.preventDefault(); setOpen(v => !v); } : undefined}
         aria-label={label}
-        title={label}
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors"
         style={{
           border: bordered ? `1px solid ${colors.border}` : 'none',
@@ -80,6 +81,7 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
           }}
         />
       </button>
+      </Tooltip>
 
       {withMenu && open && (
         <div
@@ -109,13 +111,13 @@ function MenuItem({ icon, label, active, onClick }: { icon: React.ReactNode; lab
       onClick={onClick}
       className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors"
       style={{
-        background: active ? colors.accentMuted : 'transparent',
-        color: active ? colors.accent : colors.textPrimary,
+        background: active ? colors.brandMuted : 'transparent',
+        color: active ? colors.brand : colors.textPrimary,
       }}
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = colors.surfaceMuted; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
     >
-      <span style={{ color: active ? colors.accent : colors.textMuted }}>{icon}</span>
+      <span style={{ color: active ? colors.brand : colors.textMuted }}>{icon}</span>
       <span className="flex-1">{label}</span>
       {active && <span className="text-[10px] font-bold uppercase tracking-wider">●</span>}
     </button>

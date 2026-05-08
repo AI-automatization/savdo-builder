@@ -1,20 +1,15 @@
 ﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, prefetch } from '@/lib/api';
-import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
-
-interface ProductImage {
-  id: string;
-  isPrimary: boolean;
-  media: { objectKey: string };
-}
+import { confirmDialog } from '@/components/ui/ConfirmModal';
+import { showToast } from '@/components/ui/Toast';
 
 interface Product {
   id: string;
@@ -23,7 +18,11 @@ interface Product {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   description: string | null;
   storeCategoryId?: string | null;
-  images?: ProductImage[];
+  // TMA-MEDIA-USE-API-URL-001: backend `seller/products` мапит objectKey →
+  // absolute URL через resolveImageUrl (учитывает bucket=telegram → /media/proxy
+  // и R2 → CDN). Используем готовый массив, не вызываем getImageUrl() на
+  // фронте — иначе для tg-файлов он возвращал '' и фото не отображались.
+  mediaUrls?: string[];
   totalStock?: number;
 }
 
@@ -35,11 +34,13 @@ interface StoreCategory {
 export default function SellerProductsPage() {
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
+  // На мобиле — всегда 2 колонки (как Wildberries/Ozon), даёт ясную картинку,
+  // короткий список 1xN раньше казался ленточным и непонятным.
   const gridCols =
     viewportWidth >= 1536 ? 'grid-cols-5' :
     viewportWidth >= 1280 ? 'grid-cols-4' :
     viewportWidth >= 1024 ? 'grid-cols-3' :
-    viewportWidth >= 768  ? 'grid-cols-2' : '';
+    'grid-cols-2';
   const { authVersion } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -97,7 +98,12 @@ export default function SellerProductsPage() {
   };
 
   const archiveProduct = async (product: Product) => {
-    if (!window.confirm(`Архивировать «${product.title}»?\n\nТовар исчезнет из магазина, но сохранится в истории заказов.`)) return;
+    const ok = await confirmDialog({
+      title: `Архивировать «${product.title}»?`,
+      body: 'Товар исчезнет из магазина, но сохранится в истории заказов.',
+      confirmText: 'Архивировать',
+    });
+    if (!ok) return;
     setTogglingId(product.id);
     try {
       await api(`/seller/products/${product.id}/status`, {
@@ -110,14 +116,20 @@ export default function SellerProductsPage() {
       );
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
-      window.alert('Не удалось архивировать товар');
+      showToast('Не удалось архивировать товар', 'error');
     } finally {
       setTogglingId(null);
     }
   };
 
   const deleteProduct = async (product: Product) => {
-    if (!window.confirm(`Удалить «${product.title}» навсегда?\n\nЭто действие нельзя отменить.`)) return;
+    const ok = await confirmDialog({
+      title: `Удалить «${product.title}» навсегда?`,
+      body: 'Это действие нельзя отменить.',
+      confirmText: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     setTogglingId(product.id);
     try {
       await api(`/seller/products/${product.id}`, { method: 'DELETE' });
@@ -126,7 +138,7 @@ export default function SellerProductsPage() {
     } catch (err) {
       tg?.HapticFeedback.notificationOccurred('error');
       const msg = err instanceof Error ? err.message : 'Не удалось удалить товар';
-      window.alert(msg);
+      showToast(msg, 'error');
     } finally {
       setTogglingId(null);
     }
@@ -141,7 +153,11 @@ export default function SellerProductsPage() {
   return (
     
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        {/* На мобиле paddingRight=56px чтобы кнопка «+» не попала под Telegram MainBar (крестик ✕) */}
+        <div
+          className="flex items-center justify-between"
+          style={{ paddingRight: viewportWidth < 768 ? 56 : 0 }}
+        >
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
             Товары{' '}
             {products.length > 0 && (
@@ -208,7 +224,9 @@ export default function SellerProductsPage() {
         )}
 
         {loading && (
-          <div className="flex justify-center py-10"><Spinner size={32} /></div>
+          <div className={gridCols ? `grid ${gridCols} gap-3` : 'flex flex-col gap-2'}>
+            {Array.from({ length: gridCols ? 8 : 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+          </div>
         )}
 
         {!loading && error && (
@@ -240,8 +258,7 @@ export default function SellerProductsPage() {
         {!loading && filtered.length > 0 && gridCols && (
           <div className={`grid ${gridCols} gap-3`}>
             {filtered.map((product) => {
-              const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
-              const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
+              const thumbUrl = product.mediaUrls?.[0] ?? '';
               return (
                 <GlassCard
                   key={product.id}
@@ -333,96 +350,7 @@ export default function SellerProductsPage() {
           </div>
         )}
 
-        {!loading && filtered.length > 0 && !gridCols && filtered.map((product) => {
-          const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
-          const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
-          return (
-            <GlassCard
-              key={product.id}
-              className="p-4 flex items-center gap-3 cursor-pointer active:opacity-70"
-              onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-              onPointerEnter={() => {
-                prefetch(`/seller/products/${product.id}`);
-                prefetch(`/seller/products/${product.id}/attributes`);
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-xl shrink-0 overflow-hidden"
-                style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.20)' }}
-              >
-                <ProductImage src={thumbUrl} emptyVariant="thumbnail" hideLabel />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
-                  {product.title}
-                </p>
-                <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>
-                  {price(product)}
-                </p>
-                {typeof product.totalStock === 'number' && (
-                  <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'rgba(255,255,255,0.40)' }}>
-                    {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Badge status={product.status} />
-                {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleStatus(product); }}
-                    disabled={togglingId === product.id}
-                    title={product.status === 'ACTIVE' ? 'Снять с публикации' : 'Опубликовать'}
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: product.status === 'ACTIVE' ? 'rgba(248,113,113,0.15)' : 'rgba(52,211,153,0.15)',
-                      color: product.status === 'ACTIVE' ? '#f87171' : '#34d399',
-                      fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    {togglingId === product.id ? '…' : product.status === 'ACTIVE' ? '⏸' : '▶'}
-                  </button>
-                )}
-                {(product.status === 'ACTIVE' || product.status === 'DRAFT') && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); archiveProduct(product); }}
-                    disabled={togglingId === product.id}
-                    title="Архивировать"
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: 'rgba(251,191,36,0.15)',
-                      color: '#fbbf24', fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    📥
-                  </button>
-                )}
-                {product.status !== 'ACTIVE' && product.status !== 'HIDDEN_BY_ADMIN' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteProduct(product); }}
-                    disabled={togglingId === product.id}
-                    title="Удалить навсегда"
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: 'rgba(248,113,113,0.15)',
-                      color: '#f87171', fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    🗑
-                  </button>
-                )}
-              </div>
-            </GlassCard>
-          );
-        })}
       </div>
-    
+
   );
 }

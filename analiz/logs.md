@@ -8,6 +8,358 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-06 [AUDIT-API-SQL-INJECTION-2026-05-06] SQL injection audit
+
+- **Статус:** ✅ Чисто.
+- **Что проверено:** все вхождения `$queryRaw`/`$executeRaw`/`*Unsafe` в `apps/api/src`.
+- **Найдено:** 4 файла используют `$queryRaw` (analytics.repository.ts, get-analytics.use-case.ts ×2 raw queries, get-system-health.use-case.ts SELECT 1, prisma.health.ts SELECT 1).
+- **Все случаи** — tagged template literals (`prisma.$queryRaw\`SELECT ... ${var}\``). Prisma автоматически параметризует значения интерполяции. Безопасно.
+- **0 случаев** `$queryRawUnsafe` или `$executeRawUnsafe` (которые принимают сырую строку и были бы уязвимы).
+- **0 случаев** строковой конкатенации в SQL.
+
+## 2026-05-06 [AUDIT-DB-2026-05-06] Database schema audit
+
+- **Статус:** 🟡→✅ Schema drift найден, закрыт. Добавлены 2 hot-path индекса.
+- **Schema drift (главное):**
+  - `AdminUser` в `schema.prisma` имел только `id, userId, isSuperadmin, createdAt`. Migration `20260503020000_super_admin_rbac_mfa_refunds` добавила `adminRole, mfaSecret, mfaEnabled, mfaEnabledAt, lastLoginAt, lastLoginIp` в DB, но schema.prisma не обновили.
+  - `OrderRefund` таблица создана той же миграцией, но модель в schema.prisma отсутствовала.
+  - **Эффект:** код в `admin-auth.use-case.ts`, `mfa-enforced.guard`, `admin-permission.guard`, `admin.repository` и refund use-case использовал `(prisma as any).adminUser/.orderRefund` для обхода типизации. При следующем `prisma generate` без обновления — тип-чек начал бы падать.
+  - **Fix:** добавлены поля в `AdminUser` модель + создана модель `OrderRefund` с indices + relation back-ref на `Order.refunds`. Запущен `pnpm --filter db generate`. Typecheck чист.
+- **Missing indexes (hot path):**
+  - `media_files.bucket` — используется в TG→Supabase migration WHERE filter и proxy/private endpoints. Низкая cardinality, но 4 значения (`telegram`, `telegram-expired`, supabase bucket name) → index экономит full-scan.
+  - `chat_threads.status` — admin chat list фильтрует по OPEN/CLOSED.
+  - Migration: `20260506200000_db_audit_indexes` (CREATE INDEX IF NOT EXISTS).
+- **Что НЕ делал (для отдельного follow-up):**
+  - `pg_trgm` GIN на `Product.title` для полнотекстового поиска — требует extension + raw SQL миграции, нужен replanning для multi-language. Сейчас storefront search использует ILIKE — медленно на 10k+ товаров.
+  - Composite-индекс `OrderItem(productId, orderId)` — для агрегатов в analytics. Текущие индексы достаточны для MVP.
+- **Что хорошо:**
+  - Hot paths уже покрыты composite-индексами: `Order(storeId, status, placedAt DESC)`, `Order(buyerId, status, placedAt DESC)`, `Product(status, deletedAt, createdAt DESC)`, `ChatMessage(threadId, createdAt DESC)`.
+  - FK relations на месте, ON DELETE CASCADE/RESTRICT consistent.
+  - `@@unique` на natural keys: `BuyerWishlistItem(buyerId, productId)`, `Cart(cartId, variantId)`, `Product(productId, sku)`, `ProductOption(productId, code)`, `StoreCategory(storeId, slug)`.
+
+## 2026-05-06 [AUDIT-API-RBAC-2026-05-06] RBAC coverage audit
+
+- **Статус:** 🔴→✅ Найдены и закрыты дыры с отсутствующим @Roles на seller/buyer endpoints.
+- **Что найдено:**
+  - **products.controller** — все 23 `/seller/products/*` endpoints имели только `@UseGuards(JwtAuthGuard)`, без `RolesGuard` + `@Roles('SELLER')`. Любой авторизованный BUYER мог создавать/редактировать/удалять товары (use-case бы упал с 422 при `resolveStoreId`, но это leak информации + race risk).
+  - **categories.controller** — 4 `/seller/categories/*` endpoints — то же самое.
+  - **orders.controller** — 4 `/buyer/orders/*` endpoints использовали class-level guards но БЕЗ method-level `@Roles('BUYER')`. SELLER мог дёргать buyer endpoints (защита через resolveBuyerId, но defense-in-depth отсутствовал).
+- **Что сделано:**
+  - products.controller: `RolesGuard` + `@Roles('SELLER')` на 23 endpoints (replace_all).
+  - categories.controller: то же на 4 seller endpoints.
+  - orders.controller: `@Roles('BUYER')` на 4 buyer endpoints.
+- **Что чисто:**
+  - admin/super-admin/moderation — Roles ADMIN на классе.
+  - chat — корректные @Roles per-endpoint.
+  - reviews — @Roles('BUYER').
+  - sellers/stores — корректно.
+- **Не issue по дизайну:** notifications (role-agnostic), cart (OptionalJwt), checkout/orders-create (любой auth), sellers POST /apply, media (через ownership в use-case).
+
+## 2026-05-06 [AUDIT-API-WS-2026-05-06] WebSocket gateways audit
+
+- **Статус:** 🔴→✅ Найдена + закрыта дыра в `OrdersGateway.handleJoinSellerRoom`.
+- **Что найдено:** проверка `if (user.storeId && user.storeId !== data.storeId)` пропускала SELLER'ов БЕЗ `storeId` в JWT. Из telegram-auth/verify-otp/refresh-session видно, что `storeId` в JWT optional — присутствует только когда у seller есть store. Дуальные продавцы или fresh-after-create могли join'нуться в чужие `seller:${data.storeId}` rooms и получать чужие `order:new` / `order:status_changed` / `chat:new_message` events.
+- **Что сделано:** обработчик стал async, добавлен fallback на DB-lookup `seller.findUnique({ where: { userId } }).store.id` если JWT не подтверждает владение. + валидация что `data.storeId` — string (raw socket payload). Аналогично `handleJoinBuyerRoom` теперь валидирует тип buyerId.
+- **Файл:** `apps/api/src/socket/orders.gateway.ts`.
+- **Что хорошо в Chat/Orders gateways:**
+  - JWT verify в `handleConnection` через `JwtService.verify` с правильным secret из ConfigService. На invalid → `client.disconnect(true)`.
+  - CORS origin function проверяет ALLOWED_ORIGINS + regex (`*.railway.app`, telegram.org, t.me, savdo.uz).
+  - `chat:typing` (FEAT-005) проверяет `client.rooms.has(room)` перед эмитом — anti-spoof.
+  - `join-chat-room` — DB-проверка участия (buyerId/sellerId match), + валидация типа threadId.
+  - Все emits идут на конкретные rooms (`thread:`, `seller:`, `buyer:`), не broadcast.
+- **Что НЕ покрыто (low priority):**
+  - Нет rate-limit на emit'ах (sendMessage HTTP уже throttle 30/min — достаточно для chat:typing спама).
+  - Нет лимита соединений per IP — Socket.IO defaults OK для MVP.
+
+## 2026-05-06 [AUDIT-API-RATE-LIMIT-2026-05-06] Rate limit audit
+
+- **Статус:** 🟡 Глобально OK, добавлены целевые throttle на cart + wishlist.
+- **Глобальный baseline:** `ThrottlerModule.forRoot({ ttl: 60_000, limit: 120 })` + `APP_GUARD = ThrottlerGuard` в `app.module.ts`. Каждый IP — 120 req/min к любому endpoint по умолчанию.
+- **Файлы с tight @Throttle (до аудита):** auth.controller (4), checkout.controller (1), orders-create.controller (1), media.controller (2), chat.controller (3), reviews.controller (1), products.controller (3).
+- **Добавлено в этом аудите:**
+  - `cart.controller.ts` POST /cart/items, PATCH /cart/items/:id — 60/min (anti-spam, OptionalJwtAuthGuard разрешает анонимные).
+  - `wishlist.controller.ts` POST /buyer/wishlist, DELETE /buyer/wishlist/:id — 60/min.
+- **Что ОК без локального throttle:** admin/super-admin (ADMIN role), moderation (ADMIN role), notifications (auth), orders (auth, read-only mostly), categories/sellers/stores (auth+role).
+- **Что НЕ покрыто (OK для MVP):** seller endpoints без локального лимита — global 120/min достаточен; редкие операции (create/update store).
+
+## 2026-05-06 [AUDIT-ADMIN-2026-05-06] Admin (RBAC + MFA + Refund) аудит
+
+- **Статус:** 🟡 Audit-only. 43 frontend файла, 2 controller'а (admin + super-admin), все use-cases от параллельной сессии.
+- **🟢 Что хорошо:**
+  - 0 TS errors в admin-модулях.
+  - Все 2 admin-controller'а имеют @UseGuards(JwtAuthGuard, RolesGuard).
+  - RBAC через `AdminUser.adminRole` (super_admin/admin/moderator/support/finance/read_only) + `isSuperadmin`.
+  - MFA TOTP реализован — secret/QR generation/verify через otplib v12.
+- **🔴 P0 — MFA bypass:**
+  - **`API-MFA-NOT-ENFORCED-001`**: MFA verification работает только при setup. После login admin получает обычный JWT (`/auth/verify-otp`). **Ни один admin endpoint не требует `mfaVerified` claim в токене**. Если admin включил MFA — это лишь cosmetic, реально не защищает. Атакер с украденным admin JWT может всё делать.
+  - Решение: JWT должен иметь `mfaPending: boolean` или `mfaVerifiedAt`. После login если `admin.mfaEnabled` — выдавать temporary токен (e.g. 5 мин TTL, scope=`mfa-challenge`). Полный токен — только после `/admin/auth/mfa/login` с TOTP. Все admin endpoints reject если token scope=`mfa-challenge`.
+- **🟠 P1:**
+  - `API-RBAC-MICRO-PERMISSIONS-001`: AdminAuthUseCase упоминает permissions matrix (`super_admin: ['*']`, `admin: ['user:*', ...]`), но на endpoint level проверки не видно — все admin endpoints доступны любому AdminUser с любой ролью. Должен быть decorator `@AdminPermission('user:write')` на каждом sensitive endpoint.
+- **Не аудировано (XL — отдельная сессия):**
+  - 43 frontend файла admin (кnopки/формы) — UI consistency.
+  - Audit log integrity (все action пишут в audit_log?).
+  - Impersonation flow (token swap безопасный?).
+
+---
+
+## 2026-05-06 [AUDIT-WEB-SELLER-2026-05-06] Web-seller аудит
+
+- **Статус:** 🟡 Audit-only. Зона Азима, мне записать findings.
+- **🟢 Что хорошо:**
+  - 0 `window.alert`/`window.confirm` (лучше чем TMA где 5 мест).
+  - 0 silent `.catch(() => {})` (лучше чем TMA).
+  - Большинство preview URL используют `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` (graceful fallback).
+- **🟠 P1 для Азима:**
+  - **WEB-SELLER-HARDCODED-DOMAIN-001:** 3 места с прямым хардкодом `savdo.uz` без env fallback:
+    - `app/(dashboard)/layout.tsx:127` — sidebar показывает `savdo.uz/${store.slug}`. Если домен ещё не на проде — юзер видит несуществующую ссылку.
+    - `app/(dashboard)/layout.tsx:236` — `navigator.clipboard.writeText('https://savdo.uz/${store.slug}')`. Юзер копирует мёртвую ссылку.
+    - `app/(dashboard)/profile/page.tsx:49` — `storeUrl = 'https://savdo.uz/${store.slug}'`.
+  - Решение: использовать `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` везде (как уже сделано в dashboard/products). Или вынести в общий `lib/buyer-url.ts` helper.
+
+---
+
+## 2026-05-06 [AUDIT-WEB-BUYER-API-CONTRACT-2026-05-06] Web-buyer ↔ API контракт-checkup
+
+- **Статус:** 🟡 1 баг закрыт, остальной web-buyer аудит уже сделан 5 мая (4 параллельных агента, 25 проблем). Это зона Азима — не повторяю.
+- **Моя зона:** проверить что api корректно принимает данные от web-buyer.
+- **🔴 Найдено и закрыто:**
+  - **`BUG-WB-AUDIT-009-API`** ✅: `ConfirmCheckoutDto` не принимал `customerFullName`/`customerPhone`. Фронт давал юзеру редактировать contact-fields, но они терялись (ValidationPipe whitelist=true резал) → Order заполнялся данными из Buyer.firstName/lastName + User.phone, а не из формы. Фикс:
+    - `confirm-checkout.dto.ts` — добавлены optional `customerFullName` (200ch) + `customerPhone` (20ch).
+    - `checkout.controller.ts` — прокидывает в use-case.
+    - `confirm-checkout.use-case.ts` — `input.customerFullName?.trim() || profileFullName` (override > profile fallback).
+- **Контрактный анализ:**
+  - `/checkout/confirm` теперь consistent с `/orders` (CreateDirectOrderDto имеет buyerName/buyerPhone).
+  - DeliveryAddressDto имеет `country` дефолт 'UZ' — норм.
+  - `customerFullName` 200ch — широко, может быть стрес-тест на 50+ char юзера.
+- **Не покрыто моим прогоном (web-buyer внутренний — Азим):** 24 пункта из `WEB-BUYER-AUDIT-2026-05-05` (BUG-WB-AUDIT-001..025) — это всё клиентская работа.
+
+---
+
+## 2026-05-06 [AUDIT-API-SEC-2026-05-06] API security audit (auth, RBAC, throttle, SQL, CORS, secrets)
+
+- **Статус:** 🟡 Audit-only. 19 controllers, ~250 endpoints.
+- **Метод:** grep по анти-паттернам + ручной просмотр критичных мест.
+- **🟢 Что хорошо:**
+  - CORS: regex-callback origin check + credentials:true. Production fail-fast на отсутствии ALLOWED_ORIGINS.
+  - JWT logging: 0 leak (нет log/console с token/secret/password/OTP).
+  - bcrypt rounds = 10 (стандарт, OWASP best practice).
+  - $queryRaw: 4 места, все используют template literals (Prisma escape parameters автоматически — safe).
+  - ThrottlerGuard глобально активен (после c283423). 9 critical endpoints с явным @Throttle.
+  - Helmet + CSP добавлены (через middleware).
+  - SEC-005: private media files JWT-protected.
+- **🟠 P1 (записать в backlog):**
+  - **API-WEBHOOK-SECRET-OPTIONAL-001:** `telegram-webhook.controller.ts:45-46` принимает любой запрос если env `TELEGRAM_WEBHOOK_SECRET` пуст:
+    ```ts
+    if (expected && secretToken !== expected) return { ok: true };
+    ```
+    Должен fail-closed: в production без secret вообще не запускать webhook handler. Атакер мог бы отправлять fake updates → запуск handler от лица любого chatId.
+  - **API-MISSING-THROTTLE-001:** 3 endpoints без @Throttle:
+    - `POST /orders` (orders-create.controller.ts:19) — direct order от TMA. Нужен 10/мин (как /checkout/confirm).
+    - `POST /media/upload-url` (media.controller.ts:52) — presigned URL генерация. Нужен 20/мин.
+    - `POST /seller/products` (products.controller.ts) — создание товара. Нужен 30/мин (anti-spam).
+  - **API-SEC-TG-001-REGRESS:** уже записано в analiz/tasks.md от 06.05. Bot token leak в media proxy redirect.
+- **🟢 Что НЕ найдено (хорошо):**
+  - String interpolation в raw SQL — 0.
+  - Console.log с секретами — 0.
+  - require() в production code — 0 (после otplib downgrade fix).
+  - Endpoints с @UseGuards(JwtAuthGuard) но без @Roles когда требуется — нужен отдельный pass через все controllers (записать как P3 task).
+
+---
+
+## 2026-05-06 [AUDIT-TMA-2026-05-06] TMA полный аудит (UI/UX + a11y + functional)
+
+- **Статус:** 🟡 Audit с 1 фиксом, остальное в `analiz/tasks.md`. 19 pages просканировано.
+- **Метод:** grep по анти-паттернам, ручной просмотр findings.
+- **🔴 Найдено критичное (исправлено сейчас):**
+  - **TMA-PROFILE-LINK-PRETTIFY-001** ✅: `seller/ProfilePage.tsx:98` хардкод `savdo.uz/{slug}` (тот же баг что был на buyer/StorePage). Заменён на webStoreUrl helper + кнопка «↗ Перейти на сайт».
+- **🟠 P1 в backlog (analiz/tasks.md):**
+  - **TMA-NATIVE-CONFIRM-001:** `seller/ProductsPage.tsx` использует `window.confirm/alert` (5 мест). В Telegram WebView системный popup → выглядит чужеродно, нет haptic. Заменить на кастомный `<ConfirmModal>` (новый компонент в `components/ui/`).
+    - Lines: ProductsPage:100, 113, 120, 129; StorePage seller:173.
+  - **TMA-LOADING-SKELETONS-001:** 10 pages используют только Spinner без Skeleton: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer, SettingsPage buyer, StoresPage, WishlistPage, AddProductPage, DashboardPage seller. Для каждой добавить SkeletonCard / SkeletonList.
+- **🟡 P2 (a11y, не блокеры):**
+  - **TMA-A11Y-ROLE-TABINDEX-001:** только 3 из 19 pages имеют `role="button"`/`tabIndex` на `<div onClick>`. Остальные 16 не доступны с клавиатуры. Затрагивает: ProductCard навигация на товар, GlassCard выбор магазина, etc. Не критично для Telegram (mobile-first), но важно для desktop.
+  - **TMA-SILENT-ERROR-CATCHES-001:** 10 мест с `.catch(() => {})` без showToast — silent failure если api падает (юзер не видит почему ничего не загружается). Файлы: ChatPage:146, OrdersPage buyer:117/131, StorePage:56, StoresPage:92, WishlistPage:25, AddProductPage:115/124/406, ChatPage seller:152.
+- **🟢 P3 (хорошо что нет):**
+  - `<img>` без `alt` — 0 (хорошо).
+  - `require()` или old commonjs — 0.
+  - hardcoded savdo.uz — был только 1 (исправлен).
+- **Z-index конфликты потенциальные:** 10 файлов с `position: fixed` (BottomNav, Sidebar, BottomSheet, CategoryModal, ImageCropper, FullscreenButton, AppShell, ChatPage). После fix `z-[9999]flex` (commit 20cfcec) — должно быть стабильно. Но есть вероятность конфликта BottomNav (z:50) с BottomSheet → overlay не должен под нав закрываться.
+
+---
+
+## 2026-05-05 [WEB-BUYER-AUDIT-2026-05-05] Полный аудит web-buyer (4 параллельных code-reviewer агента)
+
+Сделан после закрытия всего Soft Color Lifestyle plan (10/10 tasks). 4 агента параллельно прошли по слоям: storefront/product, cart/checkout/orders, chat/profile/wishlist/notifications, layout/hooks/lib/api.
+
+### 🔴 CRITICAL (must-fix перед prod testing)
+
+**[BUG-WB-AUDIT-001] `useCart()` без `enabled: isAuthenticated` → 401-loop для гостей**
+- Файл: `apps/web-buyer/src/hooks/use-cart.ts` + использование в `components/layout/Header.tsx:20`
+- Гостевой посетитель: `useCart` стреляет на `/cart`, ловит 401 (если endpoint требует auth), refresh-interceptor пытается рефрешить с `null` токеном, диспатчит `savdo:auth:expired`, `localLogout` + `queryClient.clear` — на каждый рендер Header.
+- Фикс: добавить `enabled: isAuthenticated` в `useCart` или передавать флаг снаружи. Либо подтвердить, что `/cart` принимает `X-Session-Token` без JWT.
+
+**[BUG-WB-AUDIT-002] `useBuyerSocket` cleanup не emit'ит `leave-buyer-room`**
+- Файл: `apps/web-buyer/src/hooks/use-buyer-socket.ts:38-41`
+- При logout / переключении user'а сокет-комната не покидается. Сервер продолжает слать `order:status_changed` в комнату экс-пользователя. `destroySocket()` существует в `lib/socket.ts`, но не вызывается из `AuthContext.logout`.
+- Фикс: в cleanup `socket.emit('leave-buyer-room', { buyerId })` + `socket.off(...)`. Либо `destroySocket()` в `localLogout`.
+
+**[BUG-WB-AUDIT-003] `useChatSocket` cleanup не emit'ит `leave-chat-room`**
+- Файл: `apps/web-buyer/src/hooks/use-chat.ts:73-76`
+- Переключение между чатами накапливает активные комнаты на сервере. Каждое новое сообщение в любом ранее открытом чате инвалидирует кэш текущего треда.
+- Фикс: `socket.emit('leave-chat-room', { threadId })` в return useEffect.
+
+**[BUG-WB-AUDIT-004] `useOrders` без `enabled: isAuthenticated` → 401 при гонке**
+- Файлы: `apps/web-buyer/src/hooks/use-orders.ts:13-19`, `app/(shop)/profile/page.tsx:91`, `app/(shop)/orders/page.tsx`
+- Хук вызывается в profile (best-effort counts) даже когда `isAuthenticated` ещё `false` (Strict Mode / token-refresh race). Возвращает 401, на секунду показывает «0 заказов».
+- Фикс: добавить опциональный `enabled` параметр в `useOrders`, передавать `isAuthenticated` из profile/orders.
+
+**[BUG-WB-AUDIT-005] `chats/page.tsx handleSend` — unhandled rejection + потеря текста**
+- Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx:150-154`
+- `handleSend` вызывает `mutateAsync` без try/catch. При ошибке сети promise rejects → unhandled. Текст уже очищен в input через `setText("")` — пользователь теряет своё сообщение без возможности повтора.
+- Фикс: try/catch + restore text при ошибке.
+
+**[BUG-WB-AUDIT-006] `orders/[id]/page.tsx` Sticky CTA bar перекрыт BottomNavBar (z-index)**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:343` (zIndex: 50) vs `BottomNavBar` (zIndex: 50)
+- Оба на z-50. CTA bar в DOM рендерится РАНЬШЕ `<BottomNavBar />` → BottomNavBar поверх. Кнопка «Чат по заказу» / «Отменить» может ловить тапы по BottomNav.
+- Фикс: поднять zIndex CTA до 51 или поменять порядок в DOM.
+
+**[BUG-WB-AUDIT-007] Product detail useEffect deps mismatch → race на стейле variants**
+- Файл: `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:148-162`
+- Оба useEffect зависят только от `[product?.id]`, но читают `optionGroups`, `selection`, `activeVariants`, `selectedVariantId`. После TanStack-кэша (back→forward) initialSelectionFromVariants использует старый optionGroups.
+- Фикс: вынести инициализацию в `useState(initializer)` или `useMemo`, добавить полные deps.
+
+### 🟡 MAJOR
+
+**[BUG-WB-AUDIT-008] `accOrders` race при смене фильтра (orders list)**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/page.tsx:114-118`
+- При смене фильтра: `setPage(1)` + `setAccOrders([])` синхронно, но `useEffect` срабатывает на старом `data?.data` (TanStack stale 2min) → перезаписывает accOrders заказами от старого фильтра.
+- Фикс: добавить `activeFilter` (или `page`) в deps, либо явный if внутри.
+
+**[BUG-WB-AUDIT-009] checkout: `contactName`/`contactPhone` редактируются, но НЕ отправляются в `confirm.mutateAsync`**
+- Файл: `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:380-404`
+- Step 1 «Контакты» позволяет редактировать имя/телефон, но `handleConfirm` шлёт только `deliveryAddress`/`buyerNote`/`deliveryFee`. Если backend ожидает `customerPhone`/`customerFullName` в теле — данные теряются.
+- Фикс: проверить контракт `POST /buyer/orders` и либо передавать поля, либо удалить редактирование из UI.
+
+**[BUG-WB-AUDIT-010] checkout: мигание OTP-gate для уже залогиненных при гидрации**
+- Файл: `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:303-307`
+- `pageStep` инициализируется при первом рендере как `isAuthed ? "form" : "otp-phone"`. Если `useAuth` загружает асинхронно — первый рендер показывает OTP даже залогиненному пользователю на 1 frame.
+- Фикс: использовать `isAuthLoading` из useAuth + skeleton.
+
+**[BUG-WB-AUDIT-011] ThemeProvider: state init не lazy → flash иконки ThemeToggle**
+- Файл: `apps/web-buyer/src/lib/theme/theme-provider.tsx:53-61`
+- `useState(defaultTheme)` инициализируется как `'system'`, потом useEffect синхронизируется с localStorage. Между ними — Sun-иконка вместо Moon на 1 frame для пользователя со сохранённым `dark`.
+- Фикс: lazy init `useState(() => readStored(defaultTheme))`.
+
+**[BUG-WB-AUDIT-012] `BottomNavBar` `last_store_slug` читается из localStorage, но НИГДЕ не пишется**
+- Файл: `apps/web-buyer/src/components/layout/BottomNavBar.tsx:30-34`
+- Ключ читается, fallback всегда `''`, ссылка «Магазин» всегда ведёт на `/`. Mert-код или забытый writer.
+- Фикс: либо найти/добавить writer (видимо в storefront page при visit), либо удалить и хранить через URL/params.
+
+**[BUG-WB-AUDIT-013] Cross-tab token desync: нет `storage` event listener в AuthContext**
+- Файл: `apps/web-buyer/src/lib/auth/storage.ts` + AuthContext
+- Логаут в табе B — таб A остаётся с `isAuthenticated: true` и устаревшим `user` до первого 401. Refresh пытается с null-токеном, дергает `savdo:auth:expired` — но юзер видит сломанные API-запросы между.
+- Фикс: `window.addEventListener('storage', e => { if (e.key === ACCESS_TOKEN_KEY && !e.newValue) localLogout(); })`.
+
+**[BUG-WB-AUDIT-014] `notifications/page.tsx` `readAll.mutate()` на каждый mount без guard**
+- Файл: `apps/web-buyer/src/app/(shop)/notifications/page.tsx:163-166`
+- Дёргает `POST /notifications/read-all` на каждый mount. В Strict Mode — два раза. При ремаунте по back/forward — снова, даже если unread=0.
+- Фикс: `if (isAuthenticated && !readAll.isPending && unreadItems.length > 0)`.
+
+**[BUG-WB-AUDIT-015] chats `menuRef` переназначается между сообщениями**
+- Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx:421`
+- `<div ref={showMenu ? menuRef : undefined}>` — один useRef на все message rows. Click-outside может закрыть не то меню.
+- Фикс: вынести row в отдельный компонент с локальным ref, или единый overlay.
+
+**[BUG-WB-AUDIT-016] `OtpGate.tsx` hardcoded `purpose: 'checkout'` для всех вызывающих экранов**
+- Файл: `apps/web-buyer/src/components/auth/OtpGate.tsx:27,37`
+- `OtpGate` используется на /chats, /wishlist, /profile — все они отправляют OTP с purpose=checkout. Если backend разделяет TTL/rate-limit/audit по purpose — будут странные записи.
+- Фикс: `purpose?: 'auth' | 'checkout'` props с default `'auth'`.
+
+**[BUG-WB-AUDIT-017] storefront `[slug]/page.tsx` — двойной fetch storeBySlug**
+- Файл: `apps/web-buyer/src/app/(shop)/[slug]/page.tsx:80-87` + `generateMetadata`
+- `serverGetStoreBySlug` вызывается в `generateMetadata` И в `StorePage` независимо. Если кастомный HTTP-клиент без `cache` — два HTTP-запроса на render.
+- Фикс: обернуть `serverGetStoreBySlug` в React `cache()` или Next.js `unstable_cache`.
+
+**[BUG-WB-AUDIT-018] ProductCard images: `as unknown as` cast скрывает shape mismatch**
+- Файл: `apps/web-buyer/src/components/store/ProductCard.tsx:41-44`
+- `(product as unknown as { images?: Array<{url}> }).images?.map(...)`. Это либо контракт API не совпадает с типом ProductListItem (mediaUrls vs images), либо мёртвый код. При изменении API — silently сломается.
+- Фикс: проверить актуальный shape ответа, исправить тип в packages/types, убрать cast.
+
+**[BUG-WB-AUDIT-019] notifications: `BottomNavBar active="profile"` на странице /notifications**
+- Файл: `apps/web-buyer/src/app/(shop)/notifications/page.tsx:282`
+- Тип `NavActive` не содержит `'notifications'` — нет соответствующего таба. Это design choice (notifications в Header через Bell icon), но active="profile" путает.
+- Фикс: либо удалить prop, либо рендерить BottomNavBar без `active` (если возможно), либо расширить тип.
+
+### 🟢 MINOR
+
+**[BUG-WB-AUDIT-020] `IcoSend` hardcoded `stroke="white"` → невидим в light-теме**
+- Файл: `apps/web-buyer/src/components/icons.tsx:10`
+- Все остальные иконки используют `currentColor`. Bell на white-кнопке невидима.
+- Фикс: `stroke="currentColor"`.
+
+**[BUG-WB-AUDIT-021] cart sticky CTA `z-30` < BottomNavBar `z-50`**
+- Файл: `apps/web-buyer/src/app/(minimal)/cart/page.tsx:491-504`
+- BottomNav поверх кнопки «Оформить заказ». Тапы могут попадать на BottomNav.
+- Фикс: поднять z до 51 или сменить позиционирование.
+
+**[BUG-WB-AUDIT-022] `normalizeOrder` — `id: raw.id` без fallback**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:58`
+- Если backend вернёт без `id` (edge), `shortId(undefined)` → TypeError на `.slice`.
+- Фикс: `id: raw.id ?? ''`.
+
+**[BUG-WB-AUDIT-023] orders/[id] Timeline: PROCESSING маппится на индекс 1 (CONFIRMED), визуально совпадает**
+- Файл: `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:108-114`
+- `STATUS_INDEX[PROCESSING]=1` и `TIMELINE[1]=CONFIRMED`. Когда статус PROCESSING, timeline показывает CONFIRMED как current. Логически PROCESSING — отдельный этап.
+- Фикс: добавить PROCESSING в TIMELINE между CONFIRMED и SHIPPED, или принять как design decision.
+
+**[BUG-WB-AUDIT-024] product detail `navigator.clipboard.writeText` без catch**
+- Файл: `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:110`
+- На HTTP / в WebView без permissions clipboard кидает DOMException → unhandled rejection.
+- Фикс: `.catch(() => {})`.
+
+**[BUG-WB-AUDIT-025] RecentStores: `<button>` внутри `<Link>` — невалидный HTML**
+- Файл: `apps/web-buyer/src/components/home/RecentStores.tsx:36-45`
+- Интерактивный контент внутри интерактивного. Tab-навигация и AT работают непредсказуемо.
+- Фикс: заменить Link обёртку на div с onClick, или вынести button через position:absolute.
+
+**[BUG-WB-AUDIT-026] notifications `bucketFor` использует `Date.now()` без подписки на смену суток**
+- Файл: `apps/web-buyer/src/app/(shop)/notifications/page.tsx:172-176`
+- При долгом mount (открыто на ночь) buckets не пересчитываются — события вчера остаются в «Сегодня».
+- Фикс: setInterval каждый час пересчитывать. Или принять как negligible.
+
+### Сводная таблица по приоритетам
+
+| ID | Severity | Файл | Что |
+|----|----------|------|-----|
+| 001 | 🔴 | hooks/use-cart.ts | useCart без enabled → 401-loop для гостей |
+| 002 | 🔴 | hooks/use-buyer-socket.ts | leave-buyer-room cleanup отсутствует |
+| 003 | 🔴 | hooks/use-chat.ts | leave-chat-room cleanup отсутствует |
+| 004 | 🔴 | hooks/use-orders.ts | enabled guard отсутствует |
+| 005 | 🔴 | chats/page.tsx | handleSend без catch + потеря текста |
+| 006 | 🔴 | orders/[id]/page.tsx | Sticky CTA z-50 vs BottomNav z-50 |
+| 007 | 🔴 | products/[id]/page.tsx | useEffect deps incomplete → race |
+| 008 | 🟡 | orders/page.tsx | accOrders race при смене фильтра |
+| 009 | 🟡 | checkout/page.tsx | contactName/Phone не отправляется |
+| 010 | 🟡 | checkout/page.tsx | OTP-gate flash для авторизованных |
+| 011 | 🟡 | theme-provider.tsx | non-lazy state init → flash icon |
+| 012 | 🟡 | BottomNavBar.tsx | last_store_slug never written |
+| 013 | 🟡 | lib/auth/storage.ts | Cross-tab logout desync |
+| 014 | 🟡 | notifications/page.tsx | readAll mutate без guard |
+| 015 | 🟡 | chats/page.tsx | menuRef shared между сообщениями |
+| 016 | 🟡 | OtpGate.tsx | purpose hardcoded |
+| 017 | 🟡 | [slug]/page.tsx | двойной fetch storeBySlug |
+| 018 | 🟡 | ProductCard.tsx | as-cast на mediaUrls/images |
+| 019 | 🟡 | notifications/page.tsx | BottomNavBar active="profile" |
+| 020 | 🟢 | icons.tsx | IcoSend stroke="white" |
+| 021 | 🟢 | cart/page.tsx | z-30 sticky CTA vs z-50 BottomNav |
+| 022 | 🟢 | orders/[id]/page.tsx | normalizeOrder id без fallback |
+| 023 | 🟢 | orders/[id]/page.tsx | PROCESSING == CONFIRMED в timeline |
+| 024 | 🟢 | products/[id]/page.tsx | clipboard без catch |
+| 025 | 🟢 | RecentStores.tsx | button в Link невалидный HTML |
+| 026 | 🟢 | notifications/page.tsx | bucketFor без интервала |
+
+---
+
 ## 2026-05-04 [API-WS-AUDIT-001] WebSocket gateways audit: information leak в chat.gateway
 
 - **Статус:** ✅ Исправлено (chat join-room participant check + DatabaseModule в SocketModule).

@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/context';
 import { useStore, useSellerProfile, useUploadSellerAvatar } from '@/hooks/use-seller';
 import { useLogout } from '@/hooks/use-auth';
 import { card, cardMuted, colors } from '@/lib/styles';
+import { buyerStoreUrl } from '@/lib/buyer-url';
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -46,7 +47,7 @@ export default function ProfilePage() {
   const letter = avatarLetter(profile?.fullName || user?.phone);
   const avatarUrl = profile?.avatarUrl ?? null;
   const statusInfo = store?.status ? STATUS_LABEL[store.status] ?? { text: store.status, color: colors.textDim } : null;
-  const storeUrl = store ? `https://savdo.uz/${store.slug}` : null;
+  const storeUrl = store ? buyerStoreUrl(store.slug) : null;
 
   async function handleCopy() {
     if (!storeUrl) return;

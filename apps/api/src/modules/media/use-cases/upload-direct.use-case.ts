@@ -71,18 +71,26 @@ export class UploadDirectUseCase {
         const objectKey = `${purpose}/${new Date().getFullYear()}/${randomUUID()}.${ext}`;
         await this.r2Storage.uploadObject(bucket, objectKey, file.buffer, file.mimetype);
 
+        const isPrivate = purpose === 'seller_doc';
         const mediaFile = await this.mediaRepo.create({
           ownerUserId: userId,
           bucket,
           objectKey,
           mimeType: file.mimetype,
           fileSize: BigInt(file.size),
-          visibility: MediaVisibility.PUBLIC,
+          // SEC-005: документы продавцов приватны, не отдаются через public proxy.
+          visibility: isPrivate ? MediaVisibility.PROTECTED : MediaVisibility.PUBLIC,
         });
 
+        // Public Supabase: отдаём direct CDN URL (без 302 через /proxy/:id).
+        // Раньше клиент делал GET /proxy → 302 → CDN — лишний round-trip.
+        // PRIVATE/seller_doc остаются за /private/:id (там auth + RLS check).
+        const publicUrl = !isPrivate ? this.r2Storage.getPublicUrl(objectKey) : '';
         return {
           mediaFileId: mediaFile.id,
-          url: `/api/v1/media/proxy/${mediaFile.id}`,
+          url: isPrivate
+            ? `/api/v1/media/private/${mediaFile.id}`
+            : (publicUrl || `/api/v1/media/proxy/${mediaFile.id}`),
         };
       } catch (err) {
         this.logger.error('R2/Supabase upload failed — falling back to Telegram', err instanceof Error ? err.stack : err);
@@ -122,7 +130,9 @@ export class UploadDirectUseCase {
 
     return {
       mediaFileId: mediaFile.id,
-      url: `/api/v1/media/proxy/${mediaFile.id}`,
+      url: purpose === 'seller_doc'
+        ? `/api/v1/media/private/${mediaFile.id}`
+        : `/api/v1/media/proxy/${mediaFile.id}`,
     };
   }
 }

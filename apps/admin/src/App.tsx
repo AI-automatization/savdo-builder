@@ -1,33 +1,44 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Toaster } from 'sonner'
 import { auth } from './lib/api'
 import { ImpersonationProvider } from './lib/impersonation'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
-import DashboardPage from './pages/DashboardPage'
-import SellersPage from './pages/SellersPage'
-import SellerDetailPage from './pages/SellerDetailPage'
-import StoresPage from './pages/StoresPage'
-import StoreDetailPage from './pages/StoreDetailPage'
-import OrdersPage from './pages/OrdersPage'
-import ProductsPage from './pages/ProductsPage'
-import ModerationPage from './pages/ModerationPage'
-import ModerationDetailPage from './pages/ModerationDetailPage'
-import AuditLogsPage from './pages/AuditLogsPage'
-import UsersPage from './pages/UsersPage'
-import UserDetailPage from './pages/UserDetailPage'
-import DatabasePage from './pages/DatabasePage'
-import BroadcastPage from './pages/BroadcastPage'
-import ChatsPage from './pages/ChatsPage'
-import AnalyticsDashboardPage from './pages/AnalyticsDashboardPage'
-import AnalyticsEventsPage from './pages/AnalyticsEventsPage'
-import CategoriesPage from './pages/CategoriesPage'
-import ReportsPage from './pages/ReportsPage'
-import SystemHealthPage from './pages/SystemHealthPage'
-import FeatureFlagsPage from './pages/FeatureFlagsPage'
-import AdminUsersPage from './pages/AdminUsersPage'
-import MfaSetupPage from './pages/MfaSetupPage'
+
+// UX-004: lazy-load всех роутов чтобы main bundle уменьшился с ~900КБ до ~300КБ.
+// LoginPage оставлен eager — первый экран без сети должен открываться мгновенно.
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const SellersPage = lazy(() => import('./pages/SellersPage'))
+const SellerDetailPage = lazy(() => import('./pages/SellerDetailPage'))
+const StoresPage = lazy(() => import('./pages/StoresPage'))
+const StoreDetailPage = lazy(() => import('./pages/StoreDetailPage'))
+const OrdersPage = lazy(() => import('./pages/OrdersPage'))
+const ProductsPage = lazy(() => import('./pages/ProductsPage'))
+const ModerationPage = lazy(() => import('./pages/ModerationPage'))
+const ModerationDetailPage = lazy(() => import('./pages/ModerationDetailPage'))
+const AuditLogsPage = lazy(() => import('./pages/AuditLogsPage'))
+const UsersPage = lazy(() => import('./pages/UsersPage'))
+const UserDetailPage = lazy(() => import('./pages/UserDetailPage'))
+const DatabasePage = lazy(() => import('./pages/DatabasePage'))
+const BroadcastPage = lazy(() => import('./pages/BroadcastPage'))
+const ChatsPage = lazy(() => import('./pages/ChatsPage'))
+const AnalyticsDashboardPage = lazy(() => import('./pages/AnalyticsDashboardPage'))
+const AnalyticsEventsPage = lazy(() => import('./pages/AnalyticsEventsPage'))
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage'))
+const FeatureFlagsPage = lazy(() => import('./pages/FeatureFlagsPage'))
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
+const MfaSetupPage = lazy(() => import('./pages/MfaSetupPage'))
+
+function PageFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 240, color: 'var(--text-muted)', fontSize: 13 }}>
+      Загрузка…
+    </div>
+  )
+}
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hasAccess  = !!auth.getAccess()
@@ -69,37 +80,39 @@ export default function App() {
           closeButton
           toastOptions={{ style: { fontSize: '13px' } }}
         />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="sellers" element={<SellersPage />} />
-            <Route path="sellers/:id" element={<SellerDetailPage />} />
-            <Route path="stores" element={<StoresPage />} />
-            <Route path="stores/:id" element={<StoreDetailPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="moderation" element={<ModerationPage />} />
-            <Route path="moderation/:id" element={<ModerationDetailPage />} />
-            <Route path="audit-logs" element={<AuditLogsPage />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="users/:id" element={<UserDetailPage />} />
-            <Route path="database" element={<DatabasePage />} />
-            <Route path="broadcast" element={<BroadcastPage />} />
-            <Route path="chats" element={<ChatsPage />} />
-            <Route path="analytics" element={<AnalyticsDashboardPage />} />
-            <Route path="analytics/events" element={<AnalyticsEventsPage />} />
-            <Route path="categories" element={<CategoriesPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="system/health" element={<SystemHealthPage />} />
-            <Route path="system/feature-flags" element={<FeatureFlagsPage />} />
-            <Route path="admins" element={<AdminUsersPage />} />
-            <Route path="security/mfa" element={<MfaSetupPage />} />
-            <Route path="queues" element={<QueuesRedirect />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="sellers" element={<SellersPage />} />
+              <Route path="sellers/:id" element={<SellerDetailPage />} />
+              <Route path="stores" element={<StoresPage />} />
+              <Route path="stores/:id" element={<StoreDetailPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="moderation" element={<ModerationPage />} />
+              <Route path="moderation/:id" element={<ModerationDetailPage />} />
+              <Route path="audit-logs" element={<AuditLogsPage />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="users/:id" element={<UserDetailPage />} />
+              <Route path="database" element={<DatabasePage />} />
+              <Route path="broadcast" element={<BroadcastPage />} />
+              <Route path="chats" element={<ChatsPage />} />
+              <Route path="analytics" element={<AnalyticsDashboardPage />} />
+              <Route path="analytics/events" element={<AnalyticsEventsPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="system/health" element={<SystemHealthPage />} />
+              <Route path="system/feature-flags" element={<FeatureFlagsPage />} />
+              <Route path="admins" element={<AdminUsersPage />} />
+              <Route path="security/mfa" element={<MfaSetupPage />} />
+              <Route path="queues" element={<QueuesRedirect />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
       </ImpersonationProvider>
     </BrowserRouter>
   )

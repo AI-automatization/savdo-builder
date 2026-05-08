@@ -19,6 +19,24 @@ export class TelegramAuthUseCase {
   ) {}
 
   async execute(initData: string) {
+    try {
+      return await this.executeUnsafe(initData);
+    } catch (err) {
+      // Diagnostic: 06.05 был 500 без stacktrace в Railway logs — buyer не мог
+      // войти в TMA. Log стейдж/тип ошибки чтобы быстрее находить root cause.
+      if (err instanceof DomainException) throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(`/auth/telegram unhandled: ${msg}`, stack);
+      throw new DomainException(
+        ErrorCode.INTERNAL_ERROR,
+        `Telegram auth failed: ${msg.slice(0, 200)}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  private async executeUnsafe(initData: string) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
       throw new DomainException(ErrorCode.INTERNAL_ERROR, 'Telegram bot not configured', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -118,11 +136,18 @@ export class TelegramAuthUseCase {
       ? await this.authRepo.findStoreIdByUserId(resolvedUser.id)
       : undefined;
 
+    // API-MFA-NOT-ENFORCED-001 + API-RBAC-MICRO-PERMISSIONS-001
+    const adminClaims = resolvedUser.role === 'ADMIN'
+      ? await this.authRepo.findAdminClaims(resolvedUser.id)
+      : null;
+
     const accessToken = this.tokenService.generateAccessToken({
       sub: resolvedUser.id,
       role: resolvedUser.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
+      ...(adminClaims?.mfaEnabled && { mfaPending: true }),
+      ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 
     return {
