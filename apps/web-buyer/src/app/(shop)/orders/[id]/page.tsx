@@ -55,10 +55,10 @@ function normalizeOrder(raw: any): NormalizedOrder {
       ? { street: raw.addressLine1 ?? '', city: raw.city ?? '', region: raw.region ?? undefined }
       : undefined);
   return {
-    id: raw.id,
-    orderNumber: raw.orderNumber,
+    id: raw.id ?? '',
+    orderNumber: raw.orderNumber ?? '',
     status: raw.status,
-    storeId: raw.storeId,
+    storeId: raw.storeId ?? '',
     store: raw.store ?? null,
     items: rawItems.map((it: any): NormalizedItem => ({
       id: it.id,
@@ -99,18 +99,19 @@ const TONE_COLORS: Record<StatusTone, { bg: string; fg: string }> = {
 // ── Timeline ─────────────────────────────────────────────────────────────────
 
 const TIMELINE: { key: OrderStatus; label: string }[] = [
-  { key: OrderStatus.PENDING,   label: "Заказ оформлен"    },
-  { key: OrderStatus.CONFIRMED, label: "Подтверждён продавцом" },
-  { key: OrderStatus.SHIPPED,   label: "Передан курьеру"   },
-  { key: OrderStatus.DELIVERED, label: "Доставлен"          },
+  { key: OrderStatus.PENDING,    label: "Заказ оформлен"          },
+  { key: OrderStatus.CONFIRMED,  label: "Подтверждён продавцом"   },
+  { key: OrderStatus.PROCESSING, label: "Сборка заказа"           },
+  { key: OrderStatus.SHIPPED,    label: "Передан курьеру"         },
+  { key: OrderStatus.DELIVERED,  label: "Доставлен"               },
 ];
 
 const STATUS_INDEX: Record<string, number> = {
   [OrderStatus.PENDING]: 0,
   [OrderStatus.CONFIRMED]: 1,
-  [OrderStatus.PROCESSING]: 1,
-  [OrderStatus.SHIPPED]: 2,
-  [OrderStatus.DELIVERED]: 3,
+  [OrderStatus.PROCESSING]: 2,
+  [OrderStatus.SHIPPED]: 3,
+  [OrderStatus.DELIVERED]: 4,
 };
 
 function StatusPill({ status }: { status: OrderStatus }) {
@@ -422,7 +423,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {order && (
         <div
           className="fixed left-0 right-0 px-4 md:bottom-6 md:left-auto md:right-6 md:max-w-md"
-          style={{ bottom: 76, zIndex: 50 }}
+          style={{ bottom: 76, zIndex: 51 }}
         >
           <div className="max-w-md mx-auto flex flex-col gap-2">
             {!isCancelled && (

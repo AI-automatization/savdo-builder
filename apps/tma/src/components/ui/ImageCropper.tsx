@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -58,7 +59,10 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  // Polat 07.05: portal в body — backdrop-filter в GlassCard ломает fixed.
+  return createPortal(
     <div
       style={{
         position: 'fixed',
@@ -171,6 +175,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
           {processing ? 'Обработка...' : '✂️ Применить кадрирование'}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

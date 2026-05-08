@@ -5,12 +5,32 @@
 
 ---
 
+# 🆕 Web-buyer аудит 05.05 — закрыты 7 critical 08.05 (Азим)
+
+✅ **BUG-WB-AUDIT-001..007 + 009-FE** — 7 critical из `analiz/logs.md WEB-BUYER-AUDIT-2026-05-05` закрыты в одном проходе:
+- 001 (`useCart` enabled) · 002 (`useBuyerSocket` leave-room + destroySocket в logout) · 003 (`useChatSocket` leave-room) · 004 (`useOrders` enabled) · 005 (`chats handleSend` try/catch) · 006 (orders/[id] z-index 51) · 007 (product detail useEffect reset on id) · 009-FE (checkout `customerFullName`/`customerPhone` шлёт + расширил `CheckoutConfirmRequest` в `packages/types`).
+
+Подробности и список изменённых файлов — `analiz/done.md`.
+
+**Major-волна закрыта 08.05** (BUG-008, 010, 011, 012, 013, 014, 017, 019). Skipped с обоснованием в `analiz/done.md`: 015 (chat menu — нет реального race), 016 (OTP purpose — единственный безопасный default), 018 (defensive cast пока Полат не выровнял `ProductListItem` shape).
+
+**Minor-волна закрыта 08.05** (BUG-020..025). 026 принят как negligible.
+
+**Весь аудит 05.05 (BUG-WB-AUDIT-001..026) закрыт в одну сессию.** Подробности в `analiz/done.md`.
+
+**Контракт-задачи Полата (закрыты 08.05.2026):**
+- [x] `API-PRODUCT-LIST-IMAGES-CONTRACT-001` ✅ — `ProductListItem` теперь декларирует ОБА поля: `mediaUrls: string[]` (convenience) + `images: { url }[]` (canonical). API заполняет оба на storefront/products list (platform-wide + store-specific). Backward compat сохранён.
+- [x] `API-STOREFRONT-SEARCH-CONTRACT-001` ✅ — создан `packages/types/src/api/search.ts` с `SearchStoreHit/SearchProductHit/StorefrontSearchResponse`. Экспортирован из `packages/types/src/index.ts`. Азим может удалить локальный тип из `web-buyer/src/lib/api/search.api.ts` и импортировать из `@savdo-builder/types`.
+
+---
+
 # 🆕 Спринт TMA Quality + Platform Hardening (04-09.05.2026)
 
 > Полный план: `analiz/sprint-tma-quality-04-05-2026.md`. Здесь — короткая чек-лист.
 
 ## 🔴 P0 — Полат
 
+- [x] **`AUDIT-NETWORK-LOADING-P0-FIXES`** ✅ 08.05.2026 — закрыты P0 из `analiz/audit-network-loading-2026-05-07.md`: (1) `lib/api.ts` уже имеет auto-bust cache на не-GET (parallel session) + добавил `timeout?: number` в ApiOptions interface (был implicit, TS would complain on opts.timeout). (2) Race condition fix в `buyer/OrdersPage.tsx`: AbortController на loadMore + toggleExpand detail + loadingMore guard от double-tap.
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
 - [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
 - [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
@@ -21,9 +41,7 @@
 
 - [x] **`TMA-SELECT-CUSTOM-001`** ✅ 06.05.2026 — `Select.tsx` уже в TMA (порт от web-seller с TMA-стайлами + inline SVG icons). Native `<select>` удалён из TMA — AddProductPage использует Select. EditProductPage/SettingsPage не имеют selects (используют кнопки/toggle-группы).
 - [x] **`TMA-CROPPER-UX-001`** ✅ 06.05.2026 — `ImageCropper` имеет zIndex 9999, видимый красный «✕ Отменить» 44pt в header слева, заголовок «Кадрировать фото» по центру. AddProductPage показывает «➕ Добавить ещё фото» когда `photoPreviews.length > 0`, EditProductPage — кнопка «+ Добавить» в шапке секции «Фото товара» всегда видна.
-- [ ] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** — динамические опции товара из `CategoryFilter` по выбранной категории. Заменить хардкод-toggle «Товар с размерами».
-  - Endpoint: `GET /storefront/categories/:slug/filters` (уже работает).
-  - Поведение: SELECT/MULTI_SELECT с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
+- [x] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** ✅ 08.05.2026 — `AddProductPage.tsx`: динамическая загрузка `CategoryFilter` по slug категории через `GET /storefront/categories/:slug/filters` с AbortController; рендерит select/boolean/number/multi_select. `multi_select` с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
 - [x] **`TMA-DESIGN-P0P1-001`** — P0+P1 из `[DESIGN-AUDIT-TMA-001]` ✅ закрыто 04.05.2026 (контраст BottomNav, hit-area Add-to-cart/back 44pt, aria-hidden на decorative emoji, OPEN/CLOSED с иконкой, text-[11px] meta → text-xs). См. `analiz/done.md`. Остаток `role/tabIndex/onKeyDown` на `<div>` — отдельным тиком если потребуется.
 - [x] **`TMA-RESPONSIVE-DESKTOP-001`** ✅ 06.05.2026 — все 4 fixed-position модалки теперь учитывают sidebar 220px на desktop ≥768px: `BottomSheet`, `ConfirmModal`, `ImageCropper` (уже имели), `CategoryModal` (добавил `left: SIDEBAR_WIDTH`). Sidebar остаётся видимым во время modal'ов.
 
@@ -50,7 +68,7 @@
 - [x] **`API-RBAC-MICRO-PERMISSIONS-001`** ✅ 06.05.2026 — `@AdminPermission(perm)` decorator + `AdminPermissionGuard` + `JwtPayload.adminRole` claim. Permissions matrix вынесена в `common/constants/admin-permissions.ts` с wildcard-логикой (`*`, `user:*`, `*:read`). Применено на 23 destructive endpoints в admin/super-admin controller'ах (suspend, approve, reject, archive, refund, impersonate, db CRUD, broadcast, migrate). См. `analiz/done.md API-RBAC-MICRO-PERMISSIONS-001`.
 
 ### 🟠 P1 — Азим
-- [ ] **`WEB-SELLER-HARDCODED-DOMAIN-001`** — 3 места с прямым `https://savdo.uz/${slug}` без env fallback в web-seller. Файлы: `app/(dashboard)/layout.tsx:127,236`, `app/(dashboard)/profile/page.tsx:49`. Использовать `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` или общий helper.
+- [x] **`WEB-SELLER-HARDCODED-DOMAIN-001`** ✅ 08.05.2026 — введён helper `apps/web-seller/src/lib/buyer-url.ts` (`buyerOrigin`/`buyerStoreUrl`/`buyerStoreDisplay`). 3 места хардкода заменены: layout.tsx (sidebar label + clipboard) и profile/page.tsx (storeUrl). Подробности в `analiz/done.md`.
 
 ---
 
@@ -90,11 +108,9 @@
 
 ### 🟠 P1 — для Азима (apps/web-buyer)
 
-- [ ] **`WEB-BUYER-IMAGE-FALLBACK-001`** — на витрине магазина (`/<slug>`) товары без фото показывают пустой чёрный квадрат вместо placeholder'а. Скрин 06.05 — DRIPSB магазин, 6 товаров, 4 без фото. Решение: при `<img onError>` или пустом `mediaUrls` рендерить компонент-плейсхолдер (как `<ProductImage emptyVariant="no-photo">` в TMA).
-  - **Файлы:** `apps/web-buyer/src/components/store/ProductCard.tsx`.
+- [x] **`WEB-BUYER-IMAGE-FALLBACK-001`** ✅ 08.05.2026 — `ProductCard.tsx`: пустые/null `images[].url` фильтруются, placeholder при `mediaUrls.length === 0` теперь иконка + текст «Без фото» (вместо одинокого silhouette на тёмном surfaceSunken).
 
-- [ ] **`WEB-BUYER-LINK-PRETTIFY-001`** — длинная ссылка на сайт магазина в TMA buyer/StorePage заменена на «↗ Перейти на сайт» (06.05 commit). Проверить что web-buyer header не показывает где-то такие же длинные railway URL — заменить на короткие.
-  - **Файлы:** `apps/web-buyer/src/components/store/StoreHeader.tsx` (если такой текст есть).
+- [x] **`WEB-BUYER-LINK-PRETTIFY-001`** ✅ 08.05.2026 — no-op после проверки. Длинных railway URL в web-buyer UI нет, `app/layout.tsx:16` уже на env-helper. Подробности в `analiz/done.md`.
 
 ### 🟡 P2 — для Полата (technical debt)
 

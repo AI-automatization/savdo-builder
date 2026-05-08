@@ -78,7 +78,7 @@ function MenuRow({
 // ── ProfileView ──────────────────────────────────────────────────────────────
 
 function ProfileView() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const logoutMutation = useLogout();
   const uploadAvatar = useUploadAvatar();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,8 +87,10 @@ function ProfileView() {
 
   const avatarUrl = user?.buyer?.avatarUrl ?? null;
 
-  // Stats — best-effort
-  const { data: ordersData } = useOrders({ page: 1, limit: 1 });
+  // Stats — best-effort. Skip when auth is still rehydrating (Strict Mode 401 race) AND when
+  // the user signed in as SELLER — buyer/orders is BUYER-gated and would 403.
+  const isBuyer = user?.role === 'BUYER';
+  const { data: ordersData } = useOrders({ page: 1, limit: 1, enabled: isAuthenticated && isBuyer });
   const { data: wishlist } = useWishlist();
   const ordersCount = ordersData?.meta?.total ?? 0;
   const wishlistCount = wishlist?.length ?? 0;

@@ -1,5 +1,215 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим) — FEAT-006-FE seller analytics page
+
+### ✅ [FEAT-006-FE] `/analytics` под новый `/seller/analytics?from=&to=` 🟡
+
+- **Дата:** 08.05.2026
+- **Backend:** `GET /seller/analytics?from=&to=` (Полат, `7a3ca26`) → `{ range, revenue: { total, completed, pending }, orders: { total, byStatus }, topProducts, daily }`. Default = 30 дней, max = 90 дней (BadRequest при превышении).
+- **Файлы (web-seller):**
+  - `src/lib/api/analytics.api.ts` — добавлены типы `DailyPoint`/`AnalyticsTopProduct`/`SellerAnalytics` и `getSellerAnalytics({ from, to })`. Старый `getSellerSummary` оставлен без изменений (используется на `/dashboard`).
+  - `src/hooks/use-analytics.ts` — добавлен `useSellerAnalytics(period: 7 | 30 | 90)` с `useMemo` для стабильного `from/to` и `staleTime: 60s`, `retry: false`.
+  - `src/app/(dashboard)/analytics/page.tsx` — переписана страница:
+    - Period selector (7/30/90 дней) в шапке.
+    - 3 KPI: Выручка (completed) · Заказы (total + delivered subtitle) · В работе (revenue.pending).
+    - Custom SVG sparkline по `daily.revenue` (без recharts — лёгкий бандл, ~3 КБ).
+    - Top-5 товаров по выручке (отдельная карточка).
+    - Empty state «За {период} ещё нет заказов».
+    - Legacy секция «Просмотры и конверсия за 30 дней» (старый `useSellerSummary`) оставлена ниже как secondary, с пометкой периода.
+
+---
+
+## 2026-05-08 (Азим) — FEAT-001-FE search + FEAT-003-FE price filter
+
+### ✅ [FEAT-001-FE] Глобальный поиск магазинов и товаров в Header 🟢
+
+- **Дата:** 08.05.2026
+- **Backend:** `GET /storefront/search?q=&limit=` (Полат, коммит `a837c13`) — возвращает `{ stores, products }`. Min 2 chars, throttle 30/min.
+- **Файлы (web-buyer):**
+  - `src/lib/api/search.api.ts` (новый) — `searchStorefront(q, limit)` + локальные типы `SearchStoreHit`/`SearchProductHit`/`StorefrontSearchResponse` (packages/types пока не описывает endpoint).
+  - `src/hooks/use-search.ts` (новый) — `useDebouncedValue<T>` (250ms) + `useStorefrontSearch(query)` (TanStack `useQuery`, `enabled` при ≥2 char, `staleTime: 30s`, `retry: false`).
+  - `src/components/layout/HeaderSearch.tsx` (новый) — popover dropdown с двумя секциями («Магазины · N» / «Товары · N»), click-outside и Escape закрывают, Link на каждый item, состояния «Ищем…» / «Ничего не нашли» / «Введите минимум 2 символа».
+  - `src/components/layout/Header.tsx` — заглушка `<input>` заменена на `<HeaderSearch />`. Убран лишний `Search` импорт из lucide.
+- **UX:** input всегда в шапке, dropdown появляется при focus + ≥2 символа. Клик по магазину — `/[slug]`, клик по товару — `/[slug]/products/[id]`.
+
+### ✅ [FEAT-003-FE] Price range filter на витрине магазина 🟢
+
+- **Дата:** 08.05.2026
+- **Backend:** `GET /storefront/products?priceMin=&priceMax=` (Полат, `27221eb`) — числовые границы, parse в `parsePrice` use-case'а.
+- **Файлы (web-buyer):**
+  - `src/lib/api/storefront-server.ts` — `serverGetProducts` теперь принимает `priceMin?: number` / `priceMax?: number`, прокидывает в URL (с `Number.isFinite` guard).
+  - `src/app/(shop)/[slug]/page.tsx` — extract `priceMin`/`priceMax` из searchParams (`parsePrice` helper, sanity-check `>= 0`), pass в `serverGetProducts` + `CategoryAttributeFilters`. `persistentParams` сохраняет цену через клики по storeCategory chips.
+  - `src/components/store/CategoryAttributeFilters.tsx` — props расширены `priceMin: number | null` / `priceMax: number | null`. Локальные `minInput`/`maxInput` строки + `useEffect` re-sync на смену URL. `commitPrice(kind, raw)` срабатывает на blur/Enter (без spam'a refetch на каждый keystroke). `handleClearAll` чистит `priceMin`/`priceMax`. `activeCount` бэйдж учитывает оба поля.
+
+---
+
+## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 6 minor
+
+### ✅ [BUG-WB-AUDIT-020] IcoSend hardcoded `stroke="white"` 🟢
+
+- **Файл:** `apps/web-buyer/src/components/icons.tsx:10`
+- **Что сделано:** `stroke="white"` → `stroke="currentColor"`. Иконка теперь видна на любом фоне (раньше на white-кнопке была невидимой).
+
+### ✅ [BUG-WB-AUDIT-021] cart sticky CTA `z-30` < BottomNav `z-50` 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx:493`
+- **Что сделано:** `z-30` → `z-[51]`. Кнопка «Оформить заказ» теперь над BottomNavBar (как orders/[id] sticky CTA, fix BUG-006).
+
+### ✅ [BUG-WB-AUDIT-022] `normalizeOrder` — id/orderNumber/storeId без fallback 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:58`
+- **Что сделано:** добавлены `?? ''` fallback на `id`, `orderNumber`, `storeId`. `shortId(undefined).slice` больше не упадёт TypeError если backend пришлёт неполный объект.
+
+### ✅ [BUG-WB-AUDIT-023] Timeline PROCESSING == CONFIRMED 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:101-114`
+- **Что сделано:** добавил `PROCESSING` отдельным шагом в `TIMELINE` («Сборка заказа») между `CONFIRMED` и `SHIPPED`. `STATUS_INDEX` сдвинут (PENDING=0, CONFIRMED=1, PROCESSING=2, SHIPPED=3, DELIVERED=4). Когда заказ в статусе PROCESSING, теперь подсвечивается свой шаг, а не CONFIRMED.
+
+### ✅ [BUG-WB-AUDIT-024] product detail clipboard без catch 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:108-117`
+- **Что сделано:** `navigator.clipboard.writeText(...).then(...)` теперь имеет `.catch(() => {})`. На HTTP / Telegram WebView без permissions clipboard кидает DOMException — раньше получали unhandled rejection. Шаринг — best-effort, тихий fallback ОК.
+
+### ✅ [BUG-WB-AUDIT-025] RecentStores `<button>` внутри `<Link>` 🟢
+
+- **Файл:** `apps/web-buyer/src/components/home/RecentStores.tsx`
+- **Что сделано:** переписана структура: `<div class="relative">` контейнер, внутри `<Link>` (визуальная карточка) и `<button>` (remove) — теперь sibling'и, не вложены. Невалидный HTML устранён, tab-навигация и AT работают корректно.
+
+### 🟢 Принято как negligible
+
+- **BUG-WB-AUDIT-026** (`bucketFor` без обновления при смене суток): audit сам предложил «или принять как negligible». Edge-case при mount > 24 часов; пользователи на нормальных мобильных сессиях этим не задеты.
+
+---
+
+## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 8 major + role-guard
+
+### ✅ [BUG-WB-AUDIT-008] orders/page.tsx — `accOrders` race при смене фильтра 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/page.tsx`
+- **Что сделано:** при смене `activeFilter` теперь явно `setPage(1) + setAccOrders([])` через отдельный useEffect. Раньше TanStack-stale data могла перезаписать accOrders заказами от старого фильтра.
+
+### ✅ [BUG-WB-AUDIT-010] checkout — мигание OTP-gate при гидрации 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** `pageStep` инициализируется через lazy `useState(() => ...)` — читает `localStorage.savdo_access_token` и сразу выставляет `'form'` если токен есть. Раньше первый paint у залогиненного давал OTP-форму на 1 frame пока `useAuth` не догонит.
+
+### ✅ [BUG-WB-AUDIT-011] ThemeProvider — flash иконки ThemeToggle 🟡
+
+- **Файл:** `apps/web-buyer/src/lib/theme/theme-provider.tsx`
+- **Что сделано:** `useState<Theme>(() => readStored(defaultTheme))` lazy init вместо useEffect post-hydration sync. ThemeToggle теперь сразу рендерит правильную иконку.
+
+### ✅ [BUG-WB-AUDIT-012] BottomNavBar — `last_store_slug` мёртвый ключ 🟡
+
+- **Файлы:** `apps/web-buyer/src/components/layout/BottomNavBar.tsx`
+- **Что сделано:** заменил чтение неиспользуемого `localStorage.last_store_slug` на `getRecentStores()[0]?.slug` из `lib/recent-stores.ts` — `RegisterRecentStore` пишет туда при visit'е витрины, теперь «Магазин» таб ведёт на последний посещённый магазин.
+
+### ✅ [BUG-WB-AUDIT-013] AuthContext — cross-tab token desync 🟡
+
+- **Файл:** `apps/web-buyer/src/lib/auth/context.tsx`
+- **Что сделано:** добавлен `window.addEventListener('storage', ...)` listener — когда другая вкладка чистит `savdo_access_token`, эта тоже делает `localLogout()`, вместо ожидания первого 401 на следующей операции.
+
+### ✅ [BUG-WB-AUDIT-014] notifications — `readAll.mutate()` на каждый mount 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/notifications/page.tsx`
+- **Что сделано:** добавлены guards — `!isLoading && !readAll.isPending && unreadItems.length > 0`. Раньше Strict Mode + back/forward cache трижды дёргали `POST /notifications/read-all` даже при 0 unread.
+
+### ✅ [BUG-WB-AUDIT-017] storefront `[slug]/page.tsx` — двойной fetch storeBySlug 🟡
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx`
+- **Что сделано:** обернул `serverGetStoreBySlug` в `react.cache()` — `generateMetadata` и `StorePage` теперь делят один fetch вместо двух одинаковых HTTP-запросов на каждый SSR.
+
+### ✅ [BUG-WB-AUDIT-019] notifications — `BottomNavBar active="profile"` 🟡
+
+- **Файлы:**
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `NavActive` тип расширен значением `'notifications'`, prop `active` теперь optional.
+  - `apps/web-buyer/src/app/(shop)/notifications/page.tsx` — `<BottomNavBar active="notifications" />` (раньше «profile», подсвечивая чужой таб).
+
+### 🟢 Skipped — обоснованные не-фиксы
+
+- **BUG-WB-AUDIT-015** (chats menuRef shared): реального race нет — одновременно открыто только одно меню (`openMenuId === m.id`), useEffect listener пере-вешивается на каждое открытие через `[openMenuId]` deps. Рефактор row → отдельный компонент ради edge-case не оправдан.
+- **BUG-WB-AUDIT-016** (OtpGate `purpose: 'checkout'`): `purpose='checkout'` в backend `verify-otp.use-case.ts` создаёт BUYER, любое другое значение — SELLER (см. CLAUDE.md WEB-010). Default 'checkout' — единственный безопасный вариант для buyer-страниц. Менять = регрессия [WEB-010] на /chats /wishlist /profile.
+- **BUG-WB-AUDIT-018** (ProductCard `as unknown as` cast): API на `GET /storefront/products` отдаёт `images: [{url}]` (products.controller.ts:774,793), а тип `ProductListItem` в packages/types говорит `mediaUrls: string[]`. Cast — defensive layer пока контракт не выровнен. Тикет для Полата: согласовать ProductListItem shape с реальным storefront response.
+
+---
+
+## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 7 critical + 3 P1 от Полата
+
+### ✅ [BUG-WB-AUDIT-001] `useCart` без `enabled: isAuthenticated` → 401-loop для гостя 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-cart.ts` — добавлен `opts?: { enabled?: boolean }` параметр (default true).
+  - `apps/web-buyer/src/components/layout/Header.tsx` — `useCart({ enabled: isAuthenticated })`.
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — то же.
+- **Что сделано:** на каждый рендер Header/BottomNavBar для гостя `useCart` стрелял на `/cart`, при 401 refresh-interceptor тащил `null`-токен → `savdo:auth:expired` → `localLogout` + `queryClient.clear` цикл. Эндпойнт под `OptionalJwtAuthGuard`, так что в современном бэке 401 не приходит, но `enabled` guard убирает race и SSR-холостые запросы. Cart/Checkout страницы под OtpGate — у них `enabled` дефолт `true`, поведение не меняется.
+
+### ✅ [BUG-WB-AUDIT-002] `useBuyerSocket` cleanup не emit'ит `leave-buyer-room` 🔴
+### ✅ [BUG-WB-AUDIT-003] `useChatSocket` cleanup не emit'ит `leave-chat-room` 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-buyer-socket.ts` — в cleanup `socket.emit('leave-buyer-room', { buyerId })` если `socket.connected`.
+  - `apps/web-buyer/src/hooks/use-chat.ts` — то же для `leave-chat-room`.
+  - `apps/web-buyer/src/lib/auth/context.tsx` — `destroySocket()` в `localLogout` и `logout` (полный cleanup при logout/expired-cycle).
+- **Что сделано:** при logout/смене юзера сервер продолжал слать `order:status_changed`/`chat:new_message` в комнату экс-пользователя. Аналогично переключение чатов накапливало активные комнаты на сервере. Теперь явный leave-emit + destroySocket() при logout.
+
+### ✅ [BUG-WB-AUDIT-004] `useOrders` без `enabled` → 401 при гонке 🔴
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/hooks/use-orders.ts` — в `useOrders` добавлен опциональный `enabled` параметр (через destructure из params, чтобы не попасть в queryKey).
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — `useOrders({ page: 1, limit: 1, enabled: isAuthenticated })`.
+- **Что сделано:** в Strict Mode / token-refresh race profile показывал «0 заказов» на 1 frame пока `useAuth` не догонял. `enabled` guard блокирует фетч до подтверждённой авторизации.
+
+### ✅ [BUG-WB-AUDIT-005] `chats handleSend` — unhandled rejection + потеря текста 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/chats/page.tsx` — `handleSend` обернут в try/catch с `setText(trimmed)` восстановлением при ошибке. Раньше текст очищался до `mutateAsync` — при сетевом сбое юзер терял сообщение без возможности повтора.
+
+### ✅ [BUG-WB-AUDIT-006] orders/[id] sticky CTA bar перекрыт BottomNavBar (z-index) 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:425` — `zIndex: 50 → 51`. Sticky CTA «Чат по заказу» / «Отменить» теперь всегда поверх BottomNavBar (z-50).
+
+### ✅ [BUG-WB-AUDIT-007] Product detail useEffect deps mismatch → race на стейле variants 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:148-167`. useEffect инициализации selection переписан так, чтобы при смене `product.id` гарантированно сбрасывать `selection` и `selectedVariantId` в актуальные значения. Раньше после back/forward с TanStack-кэша и других переходов остаточный state мог соответствовать предыдущему продукту.
+
+### ✅ [BUG-WB-AUDIT-009-FE] checkout не передавал `customerFullName`/`customerPhone` 🟡
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `packages/types/src/api/cart.ts` — `CheckoutConfirmRequest` расширен опциональными `customerFullName`/`customerPhone` (контракт-патч после `1f2f486` Полата, который добавил поля в DTO но не в types).
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — `handleConfirm` теперь передаёт trimmed contact-fields в `confirm.mutateAsync`. Backend (`confirm-checkout.use-case.ts:212`) делает `input.customerFullName?.trim() || profileFullName` — overrides поверх Buyer-профиля, fallback на User.phone когда оба пусты.
+
+### ✅ [WEB-SELLER-HARDCODED-DOMAIN-001] 🟠
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/buyer-url.ts` (новый) — `buyerOrigin()`/`buyerStoreUrl(slug)`/`buyerStoreDisplay(slug)` читают `process.env.NEXT_PUBLIC_BUYER_URL` с fallback на `https://savdo.uz`.
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx:127,236` — sidebar label + clipboard заменены на helper.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx:49` — `storeUrl` через helper.
+- **Что сделано:** до этого 3 места хардкодили `https://savdo.uz/${slug}` — на dev/staging юзеры видели/копировали мёртвую прод-ссылку. Теперь dev = `localhost:3001/slug`, prod = `savdo.uz/slug`.
+
+### ✅ [WEB-BUYER-IMAGE-FALLBACK-001] товары без фото на витрине показывали пустой квадрат 🟠
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/web-buyer/src/components/store/ProductCard.tsx`
+  - `mediaUrls` теперь `.filter(Boolean)` — пустые `images[].url` или `mediaUrls[]` элементы режутся.
+  - Placeholder при `mediaUrls.length === 0` теперь — иконка ShoppingBag + текст «Без фото» (вместо одинокой иконки на тёмном surfaceSunken-квадрате).
+
+### 🟢 [WEB-BUYER-LINK-PRETTIFY-001] no-op после проверки
+
+- **Дата:** 08.05.2026
+- **Что сделано:** grep по `web-buyer/src` подтвердил: длинных railway URL в UI нет. `app/layout.tsx:16` уже на `process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz'`. `app/(shop)/page.tsx:94,116` — короткий label `savdo.uz/` как фасад на homepage (не URL). Закрываю задачу без изменений.
+
+### ⚠️ Заметка для Полата
+
+`packages/types/src/api/cart.ts CheckoutConfirmRequest` дополнен мной — Полат добавил `customerFullName`/`customerPhone` в `confirm-checkout.dto.ts` (`1f2f486`), но `packages/types` не обновил, что блокировало мой фронт-фикс BUG-WB-AUDIT-009. Сверь, что определение совпадает с DTO (200ch / 20ch length).
+
+---
+
 ## 2026-05-06 (Полат) — DB-AUDIT-001: schema drift + missing indexes
 
 ### ✅ [DB-AUDIT-001] Schema drift fix + 2 hot-path индекса 🔴

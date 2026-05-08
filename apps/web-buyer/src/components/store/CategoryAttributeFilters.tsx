@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronDown, Filter as FilterIcon, X } from "lucide-react";
 import type { GlobalCategory } from "types";
@@ -16,6 +16,9 @@ type Props = {
   attributeFilters: StorefrontCategoryFilter[];
   /** Active attribute values from URL ?f.<key>=<value>. */
   activeAttributes: Record<string, string>;
+  /** Active price range from URL ?priceMin=&priceMax= (FEAT-003). */
+  priceMin: number | null;
+  priceMax: number | null;
 };
 
 export default function CategoryAttributeFilters({
@@ -23,6 +26,8 @@ export default function CategoryAttributeFilters({
   activeGlobalSlug,
   attributeFilters,
   activeAttributes,
+  priceMin,
+  priceMax,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -30,8 +35,19 @@ export default function CategoryAttributeFilters({
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Local input state — submitted on blur / Enter so each keystroke doesn't
+  // refetch the storefront. Synced with URL on prop change.
+  const [minInput, setMinInput] = useState<string>(priceMin != null ? String(priceMin) : '');
+  const [maxInput, setMaxInput] = useState<string>(priceMax != null ? String(priceMax) : '');
+  // Re-sync when URL changes (e.g. clear-all, navigation).
+  useEffect(() => { setMinInput(priceMin != null ? String(priceMin) : ''); }, [priceMin]);
+  useEffect(() => { setMaxInput(priceMax != null ? String(priceMax) : ''); }, [priceMax]);
+
   const activeCount =
-    (activeGlobalSlug ? 1 : 0) + Object.values(activeAttributes).filter(Boolean).length;
+    (activeGlobalSlug ? 1 : 0)
+    + Object.values(activeAttributes).filter(Boolean).length
+    + (priceMin != null ? 1 : 0)
+    + (priceMax != null ? 1 : 0);
 
   function pushParams(updater: (params: URLSearchParams) => void) {
     const next = new URLSearchParams(searchParams.toString());
@@ -63,8 +79,24 @@ export default function CategoryAttributeFilters({
   function handleClearAll() {
     pushParams((p) => {
       Array.from(p.keys())
-        .filter((k) => k === "gcat" || k.startsWith("f."))
+        .filter((k) => k === "gcat" || k === "priceMin" || k === "priceMax" || k.startsWith("f."))
         .forEach((k) => p.delete(k));
+    });
+  }
+
+  function commitPrice(kind: "priceMin" | "priceMax", raw: string) {
+    const trimmed = raw.trim();
+    pushParams((p) => {
+      if (!trimmed) {
+        p.delete(kind);
+        return;
+      }
+      const n = Number(trimmed);
+      if (!Number.isFinite(n) || n < 0) {
+        p.delete(kind);
+      } else {
+        p.set(kind, String(Math.round(n)));
+      }
     });
   }
 
@@ -147,6 +179,40 @@ export default function CategoryAttributeFilters({
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Price range — always available, no category required. */}
+          <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: '12px' }}>
+            <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: colors.textStrong }}>
+              Цена, сум
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={minInput}
+                onChange={(e) => setMinInput(e.target.value)}
+                onBlur={() => commitPrice("priceMin", minInput)}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                placeholder="от"
+                className="w-1/2 px-3 py-2 text-sm outline-none"
+                style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textBody, borderRadius: 6 }}
+              />
+              <span style={{ color: colors.textDim }}>—</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={maxInput}
+                onChange={(e) => setMaxInput(e.target.value)}
+                onBlur={() => commitPrice("priceMax", maxInput)}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                placeholder="до"
+                className="w-1/2 px-3 py-2 text-sm outline-none"
+                style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textBody, borderRadius: 6 }}
+              />
             </div>
           </div>
 

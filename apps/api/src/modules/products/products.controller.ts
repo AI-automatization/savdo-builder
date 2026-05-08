@@ -771,7 +771,9 @@ export class ProductsController {
           basePrice: Number(basePrice),
           oldPrice: this.toPrice(oldPrice),
           salePrice: this.toPrice(salePrice),
+          // API-PRODUCT-LIST-IMAGES-CONTRACT-001: оба поля.
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
+          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
           variantCount: _count?.variants ?? 0,
           totalStock,
         };
@@ -790,7 +792,11 @@ export class ProductsController {
           basePrice: Number(basePrice),
           oldPrice: this.toPrice(oldPrice),
           salePrice: this.toPrice(salePrice),
+          // API-PRODUCT-LIST-IMAGES-CONTRACT-001: возвращаем оба поля для backward
+          // compat. `mediaUrls: string[]` — convenience, `images: [{url}]` — canonical
+          // (per-image metadata можно расширять).
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
+          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
           variantCount: _count?.variants ?? 0,
           totalStock,
         };

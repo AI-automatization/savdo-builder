@@ -178,9 +178,13 @@ export function StoreDirectionsPicker() {
           onClose={() => { setPickerOpen(false); setSearch(''); }}
         >
           <div className="px-4 py-3 flex flex-col gap-3 pb-6">
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.50)' }}>
-              Тапни чтобы добавить или убрать. Можно выбрать до {MAX_DIRECTIONS}.
-            </p>
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg"
+              style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}>
+              <span aria-hidden>💡</span>
+              <p className="text-xs flex-1" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                Тапай чтобы добавить или убрать. <b style={{ color: '#22D3EE' }}>Сохраняется автоматически</b> — отдельная кнопка не нужна. Можно выбрать до {MAX_DIRECTIONS}.
+              </p>
+            </div>
             <input
               type="text"
               value={search}
@@ -234,14 +238,24 @@ export function StoreDirectionsPicker() {
             <button
               type="button"
               onClick={() => { setPickerOpen(false); setSearch(''); }}
-              className="w-full py-3 rounded-xl text-sm font-semibold mt-2"
+              disabled={saving}
+              className="w-full py-3 rounded-xl text-sm font-semibold mt-2 flex items-center justify-center gap-2"
               style={{
-                background: 'rgba(168,85,247,0.25)',
-                border: '1px solid rgba(168,85,247,0.45)',
-                color: '#fff',
+                background: saving ? 'rgba(168,85,247,0.18)' : 'rgba(52,211,153,0.20)',
+                border: `1px solid ${saving ? 'rgba(168,85,247,0.40)' : 'rgba(52,211,153,0.45)'}`,
+                color: saving ? '#A855F7' : '#34D399',
+                cursor: saving ? 'wait' : 'pointer',
               }}
             >
-              Готово
+              {saving ? (
+                <>
+                  <span className="w-3.5 h-3.5 rounded-full border-2 animate-spin"
+                    style={{ borderColor: 'rgba(168,85,247,0.30)', borderTopColor: '#A855F7' }} />
+                  Сохранение…
+                </>
+              ) : (
+                <>✓ Сохранено · Готово</>
+              )}
             </button>
           </div>
         </BottomSheet>

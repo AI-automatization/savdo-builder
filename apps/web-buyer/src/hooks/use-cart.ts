@@ -12,11 +12,12 @@ import {
 
 const CART_KEY = ['cart'] as const;
 
-export function useCart() {
+export function useCart(opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: CART_KEY,
     queryFn: getCart,
     staleTime: 60 * 1000,
+    enabled: opts?.enabled ?? true,
   });
 }
 

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -6,11 +7,15 @@ import ProductsWithSearch from "@/components/store/ProductsWithSearch";
 import CategoryAttributeFilters from "@/components/store/CategoryAttributeFilters";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import {
-  serverGetStoreBySlug,
+  serverGetStoreBySlug as rawGetStoreBySlug,
   serverGetProducts,
   serverGetGlobalCategories,
   serverGetCategoryFilters,
 } from "@/lib/api/storefront-server";
+
+// generateMetadata + StorePage both fetch the same store — wrap in React.cache
+// so the request runs once per render, not twice.
+const serverGetStoreBySlug = cache(rawGetStoreBySlug);
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
 import { colors } from "@/lib/styles";
@@ -70,6 +75,14 @@ export default async function StorePage({
   const categoryId = typeof sp.categoryId === "string" ? sp.categoryId : undefined;
   const gcat = typeof sp.gcat === "string" ? sp.gcat : null;
 
+  const parsePrice = (v: unknown): number | undefined => {
+    if (typeof v !== "string" || !v) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
+  const priceMin = parsePrice(sp.priceMin);
+  const priceMax = parsePrice(sp.priceMax);
+
   const activeAttributes: Record<string, string> = {};
   for (const [k, v] of Object.entries(sp)) {
     if (k.startsWith("f.") && typeof v === "string" && v) {
@@ -100,11 +113,15 @@ export default async function StorePage({
     storeCategoryId: categoryId,
     globalCategoryId,
     attributeFilters: Object.keys(activeAttributes).length > 0 ? activeAttributes : undefined,
+    priceMin,
+    priceMax,
   });
 
   // Preserve global category + attribute filter state across storeCategory chip clicks.
   const persistentParams = new URLSearchParams();
   if (gcat) persistentParams.set("gcat", gcat);
+  if (priceMin != null) persistentParams.set("priceMin", String(priceMin));
+  if (priceMax != null) persistentParams.set("priceMax", String(priceMax));
   for (const [k, v] of Object.entries(activeAttributes)) {
     persistentParams.append(`f.${k}`, v);
   }
@@ -239,6 +256,8 @@ export default async function StorePage({
                 activeGlobalSlug={gcat}
                 attributeFilters={attributeFilters}
                 activeAttributes={activeAttributes}
+                priceMin={priceMin ?? null}
+                priceMax={priceMax ?? null}
               />
             </aside>
             <main>
