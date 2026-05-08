@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { Stars } from '@/components/ui/Stars';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -122,7 +123,11 @@ export default function OrdersPage() {
         setPage(1);
         setHasMore((res.meta?.page ?? 1) < (res.meta?.totalPages ?? 1));
       })
-      .catch(() => { if (!signal?.aborted) setError(true); })
+      .catch((err: unknown) => {
+        if (signal?.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        setError(true);
+      })
       .finally(() => { if (!signal?.aborted) setLoading(false); });
   };
 
@@ -134,20 +139,35 @@ export default function OrdersPage() {
     return () => ac.abort();
   }, [authenticated]);
 
+  // AUDIT-NETWORK-LOADING-2026-05-07 P0#2: AbortController на pagination — иначе
+  // при unmount или быстром переключении вкладок stale-ответ срабатывает setOrders.
+  const loadMoreAbortRef = useRef<AbortController | null>(null);
+  const detailAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    loadMoreAbortRef.current?.abort();
+    detailAbortRef.current?.abort();
+  }, []);
+
   const loadMore = () => {
+    if (loadingMore) return; // guard от double-tap
+    loadMoreAbortRef.current?.abort();
+    const ac = new AbortController();
+    loadMoreAbortRef.current = ac;
     const nextPage = page + 1;
     setLoadingMore(true);
-    api<PagedResponse>(`/buyer/orders?limit=10&page=${nextPage}`)
+    api<PagedResponse>(`/buyer/orders?limit=10&page=${nextPage}`, { signal: ac.signal })
       .then((res) => {
+        if (ac.signal.aborted) return;
         setOrders((prev) => [...prev, ...(res.data ?? [])]);
         setPage(nextPage);
         setHasMore(nextPage < (res.meta?.totalPages ?? 1));
       })
       .catch((err: unknown) => {
+        if (ac.signal.aborted) return;
         if (err instanceof Error && err.name === 'AbortError') return;
         showToast('Не удалось подгрузить заказы', 'error');
       })
-      .finally(() => setLoadingMore(false));
+      .finally(() => { if (!ac.signal.aborted) setLoadingMore(false); });
   };
 
   const toggleExpand = (orderId: string) => {
@@ -157,14 +177,18 @@ export default function OrdersPage() {
     }
     setExpandedId(orderId);
     if (!details[orderId]) {
+      detailAbortRef.current?.abort();
+      const ac = new AbortController();
+      detailAbortRef.current = ac;
       setDetailLoading(orderId);
-      api<OrderDetail>(`/buyer/orders/${orderId}`)
-        .then((res) => setDetails((prev) => ({ ...prev, [orderId]: res })))
+      api<OrderDetail>(`/buyer/orders/${orderId}`, { signal: ac.signal })
+        .then((res) => { if (!ac.signal.aborted) setDetails((prev) => ({ ...prev, [orderId]: res })); })
         .catch((err: unknown) => {
+          if (ac.signal.aborted) return;
           if (err instanceof Error && err.name === 'AbortError') return;
           showToast('Не удалось загрузить детали заказа', 'error');
         })
-        .finally(() => setDetailLoading(null));
+        .finally(() => { if (!ac.signal.aborted) setDetailLoading(null); });
     }
   };
 
@@ -235,7 +259,9 @@ export default function OrdersPage() {
         )}
 
         {authenticated && loading && (
-          <div className="flex justify-center py-8"><Spinner /></div>
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 4 }).map((_, i) => <OrderRowSkeleton key={i} />)}
+          </div>
         )}
 
         {authenticated && !loading && error && (

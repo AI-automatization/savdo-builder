@@ -1,10 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
-// otplib v12 API (authenticator.options/generateSecret/keyuri/verify).
-// В package.json downgrade с ^13.4.0 на ^12.0.1 — v13 убрал
-// `authenticator` namespace и сломал production старт api.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const otplib = require('otplib') as { authenticator: { options: any; generateSecret: () => string; keyuri: (a: string, i: string, s: string) => string; verify: (o: { token: string; secret: string }) => boolean } };
-const authenticator = otplib.authenticator;
+import { generateSecret, generateURI, verifySync } from 'otplib';
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../../../database/prisma.service';
 import { TokenService } from '../../auth/services/token.service';
@@ -16,8 +11,14 @@ import {
   hasAdminPermission,
 } from '../../../common/constants/admin-permissions';
 
-// RFC 6238 TOTP: 6 цифр, 30 сек шаг — стандарт для Google Authenticator/Authy
-authenticator.options = { digits: 6, step: 30, window: 1 };
+// RFC 6238 TOTP: 6 цифр, 30 сек шаг — стандарт для Google Authenticator/Authy.
+// epochTolerance: 30s = ±1 шаг (эквивалент window:1 из otplib v12) для часовой
+// дрифт пользователя (~30 сек в обе стороны). Apply on every verifySync call.
+const TOTP_VERIFY_OPTIONS = {
+  digits: 6,
+  period: 30,
+  epochTolerance: 30,
+} as const;
 
 @Injectable()
 export class AdminAuthUseCase {
@@ -58,14 +59,14 @@ export class AdminAuthUseCase {
       throw new DomainException(ErrorCode.VALIDATION_ERROR, 'MFA already enabled — disable first to re-setup', HttpStatus.BAD_REQUEST);
     }
 
-    const secret = authenticator.generateSecret(); // base32
+    const secret = generateSecret(); // base32, 20 bytes default
     // Сохраняем pending secret пока не подтверждён через verify
     await this.prisma.adminUser.update({
       where: { id: admin.id },
       data: { mfaSecret: secret },
     });
 
-    const otpauthUrl = authenticator.keyuri(phone, this.issuer, secret);
+    const otpauthUrl = generateURI({ issuer: this.issuer, label: phone, secret });
     const qrDataUrl = await QRCode.toDataURL(otpauthUrl, { errorCorrectionLevel: 'M', margin: 2 });
 
     return { secret, otpauthUrl, qrDataUrl };
@@ -77,8 +78,8 @@ export class AdminAuthUseCase {
     if (!admin.mfaSecret) {
       throw new DomainException(ErrorCode.VALIDATION_ERROR, 'No MFA setup pending — call /setup first', HttpStatus.BAD_REQUEST);
     }
-    const ok = authenticator.verify({ token: code, secret: admin.mfaSecret });
-    if (!ok) {
+    const result = verifySync({ token: code, secret: admin.mfaSecret, ...TOTP_VERIFY_OPTIONS });
+    if (!result.valid) {
       throw new DomainException(ErrorCode.OTP_INVALID, 'Invalid TOTP code', HttpStatus.BAD_REQUEST);
     }
     await this.prisma.adminUser.update({
@@ -97,8 +98,8 @@ export class AdminAuthUseCase {
       // Не должно случиться — guard пропустил без MFA. Но safety-check.
       throw new DomainException(ErrorCode.VALIDATION_ERROR, 'MFA not enabled', HttpStatus.BAD_REQUEST);
     }
-    const ok = authenticator.verify({ token: code, secret: admin.mfaSecret });
-    if (!ok) {
+    const result = verifySync({ token: code, secret: admin.mfaSecret, ...TOTP_VERIFY_OPTIONS });
+    if (!result.valid) {
       throw new DomainException(ErrorCode.MFA_INVALID, 'Invalid TOTP code', HttpStatus.BAD_REQUEST);
     }
 
@@ -129,8 +130,8 @@ export class AdminAuthUseCase {
       throw new DomainException(ErrorCode.VALIDATION_ERROR, 'MFA not enabled', HttpStatus.BAD_REQUEST);
     }
     // Требуем валидный код для отключения (защита от atak'и через украденный JWT)
-    const ok = authenticator.verify({ token: code, secret: admin.mfaSecret });
-    if (!ok) {
+    const result = verifySync({ token: code, secret: admin.mfaSecret, ...TOTP_VERIFY_OPTIONS });
+    if (!result.valid) {
       throw new DomainException(ErrorCode.OTP_INVALID, 'Invalid TOTP code', HttpStatus.BAD_REQUEST);
     }
     await this.prisma.adminUser.update({

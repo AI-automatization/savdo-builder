@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, apiUpload } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
 import { refreshChatUnread } from '@/lib/chatUnread';
 import { useChatTyping } from '@/lib/useChatTyping';
@@ -10,6 +10,7 @@ import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
 
 interface ChatThread {
   id: string;
@@ -93,21 +94,31 @@ export default function BuyerChatPage() {
   }, [navigate, tg, threadId]);
 
   // ── Load thread list ─────────────────────────────────────────────────────────
+  const threadsAbortRef = useRef<AbortController | null>(null);
   const loadThreads = () => {
+    threadsAbortRef.current?.abort();
+    const ac = new AbortController();
+    threadsAbortRef.current = ac;
     setLoading(true);
     setThreadsError(false);
-    api<ChatThread[]>('/chat/threads')
+    api<ChatThread[]>('/chat/threads', { signal: ac.signal })
       .then((data) => {
+        if (ac.signal.aborted) return;
         setThreads(data ?? []);
       })
       .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         setThreadsError(true);
         const msg = err instanceof Error ? err.message : 'Не удалось загрузить чаты';
         showToast(`❌ ${msg}`, 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
   };
-  useEffect(() => { loadThreads(); }, []);
+  useEffect(() => {
+    loadThreads();
+    return () => threadsAbortRef.current?.abort();
+  }, []);
 
   // ── Load messages + connect socket when threadId changes ─────────────────────
   useEffect(() => {
@@ -116,12 +127,15 @@ export default function BuyerChatPage() {
     setMsgLoading(true);
     setMessages([]);
 
-    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`)
-      .then((res) => setMessages((res.messages ?? []).slice().reverse()))
-      .catch(() => {
+    const msgAc = new AbortController();
+    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`, { signal: msgAc.signal })
+      .then((res) => { if (!msgAc.signal.aborted) setMessages((res.messages ?? []).slice().reverse()); })
+      .catch((err) => {
+        if (msgAc.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         navigate('/buyer/chat', { replace: true });
       })
-      .finally(() => setMsgLoading(false));
+      .finally(() => { if (!msgAc.signal.aborted) setMsgLoading(false); });
 
     const socket = connectSocket();
     joinRoom(socket, threadId);
@@ -162,6 +176,7 @@ export default function BuyerChatPage() {
     socket.on('chat:message:deleted', onDeleted);
 
     return () => {
+      msgAc.abort();
       socket.emit('leave-chat-room', { threadId });
       socket.off('chat:message', onMessage);
       socket.off('chat:message:edited', onEdited);
@@ -205,6 +220,9 @@ export default function BuyerChatPage() {
     }
   };
 
+  // TMA-PHOTO-UPLOAD-DIAG-001: было 2 бага — (1) `api()` JSON.stringify'ил FormData,
+  // файл терялся; (2) destructure `uploadRes.id` — API возвращает `mediaFileId`.
+  // Перешёл на `apiUpload` (XHR с правильным multipart).
   const sendPhoto = async (file: File) => {
     if (!threadId || uploadingPhoto) return;
     setUploadingPhoto(true);
@@ -212,10 +230,13 @@ export default function BuyerChatPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('purpose', 'chat_photo');
-      const uploadRes = await api<{ id: string; url: string }>('/media/upload', { method: 'POST', body: formData });
+      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+        '/media/upload',
+        formData,
+      );
       await api(`/chat/threads/${threadId}/messages`, {
         method: 'POST',
-        body: { mediaId: uploadRes.id, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
+        body: { mediaId: mediaFileId, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
       });
       setReplyTo(null);
       tg?.HapticFeedback.notificationOccurred('success');
@@ -764,9 +785,8 @@ export default function BuyerChatPage() {
         return (
           <div
             key={t.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate(`/buyer/chat/${t.id}`)}
+            {...clickableA11y(() => navigate(`/buyer/chat/${t.id}`))}
+            aria-label={`Чат: ${threadLabel(t)}${unread > 0 ? `, ${unread} непрочитанных` : ''}`}
             className="flex items-start gap-3 p-3.5 rounded-2xl cursor-pointer active:opacity-70 transition-all"
             style={glass}
           >
