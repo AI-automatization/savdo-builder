@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 5
+
+### ✅ [WS-DESIGN-WAVE-5] Semantic `colors.info` token + 9 хардкоженных hex заменены 🟡
+
+- **Важность:** 🟡 MEDIUM (token discipline + theme correctness)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/globals.css` — добавлены `--color-info: #2563EB` (light) и `#60A5FA` (dark). Соответствует паттерну `success`/`danger`/`warning`: light = более тёмный shade (600-700), dark = более светлый (400-500).
+  - `apps/web-seller/src/lib/styles.ts` — добавлено `info: 'var(--color-info)'` в `colors` const.
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — STATUS_COLORS: CONFIRMED `#60A5FA` → `colors.info`, SHIPPED тоже на `colors.info` (был `colors.accent`).
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx` — STATUS_CONFIG: CONFIRMED `#60A5FA` → `colors.info`, SHIPPED `#818CF8` → `colors.info`.
+  - `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx` — STATUS_CONFIG: то же.
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx` — TG-link icon ×2: `#60A5FA` → `colors.info`.
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx:188` — analytics block bg/color: `rgba(96,165,250,0.15)` + `#60A5FA` → `color-mix(in srgb, ${colors.info} 15%, transparent)` + `colors.info`.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx:169` — TG chip: 3 хардкоженных hex (`rgba(56,189,248,0.13)` / `#7dd3fc` / `rgba(125,211,252,0.30)`) → `color-mix()` + `colors.info`.
+- **Что сделано:** все 9 хардкоженных info-blue hex'ов заменены на единый semantic token. SHIPPED унифицирован с CONFIRMED через `colors.info` — оба = «in-flight» status, distinct от PROCESSING (которое остаётся на `colors.accent`). Token адаптируется к теме: на light получается читаемый dark blue, на dark — мягкий light blue.
+- **Verification:** `grep -rn "#60A5FA\|#818CF8\|#7dd3fc"` → 0 матчей в коде (только определение токена в globals.css). Audit IDs: P2-002, P2-003, P2-013.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 3
 
 ### ✅ [WS-DESIGN-WAVE-3] Page heading typography — 5 файлов 🟡

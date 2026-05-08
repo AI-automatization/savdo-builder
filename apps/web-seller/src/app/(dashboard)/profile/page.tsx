@@ -166,7 +166,11 @@ export default function ProfilePage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md transition-opacity hover:opacity-80"
-                  style={{ background: 'rgba(56,189,248,0.13)', color: '#7dd3fc', border: '1px solid rgba(125,211,252,0.30)' }}
+                  style={{
+                    background: `color-mix(in srgb, ${colors.info} 13%, transparent)`,
+                    color: colors.info,
+                    border: `1px solid color-mix(in srgb, ${colors.info} 30%, transparent)`,
+                  }}
                 >
                   <MessageCircle size={11} /> @{profile.telegramUsername.replace(/^@/, '')}
                 </a>

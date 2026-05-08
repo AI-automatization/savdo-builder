@@ -30,6 +30,7 @@
   --color-success:           #16A34A;
   --color-warning:           #D97706;
   --color-danger:            #DC2626;
+  --color-info:              #2563EB;
   --color-skeleton:          rgba(15,23,42,0.06);
 
   /* App-shell background — light mode is solid */
@@ -68,6 +69,7 @@
   --color-success:           #34D399;
   --color-warning:           #FBBF24;
   --color-danger:            #F87171;
+  --color-info:              #60A5FA;
   --color-skeleton:          rgba(255,255,255,0.06);
 
   /* Restore the signature gradient body background — only in dark mode */

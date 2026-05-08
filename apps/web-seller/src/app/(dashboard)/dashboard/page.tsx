@@ -14,9 +14,9 @@ import { card, cardMuted, colors } from '@/lib/styles';
 
 const STATUS_COLORS: Record<string, string> = {
   [OrderStatus.PENDING]:    colors.warning,
-  [OrderStatus.CONFIRMED]:  "#60A5FA",
+  [OrderStatus.CONFIRMED]:  colors.info,
   [OrderStatus.PROCESSING]: colors.accent,
-  [OrderStatus.SHIPPED]:    colors.accent,
+  [OrderStatus.SHIPPED]:    colors.info,
   [OrderStatus.DELIVERED]:  colors.success,
   [OrderStatus.CANCELLED]:  colors.danger,
 };
