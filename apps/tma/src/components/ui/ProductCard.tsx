@@ -47,9 +47,14 @@ export function ProductCard({ product }: { product: FeedProduct }) {
     showToast('✅ Добавлено в корзину');
   };
 
+  const openProduct = () => navigate(`/buyer/store/${product.store.slug}/product/${product.id}`);
   return (
     <div
-      onClick={() => navigate(`/buyer/store/${product.store.slug}/product/${product.id}`)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Открыть товар ${product.title}`}
+      onClick={openProduct}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProduct(); } }}
       onPointerEnter={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       onTouchStart={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       style={{

@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { webStoreUrl } from '@/lib/webUrl';
 
@@ -90,6 +91,19 @@ export default function SellerProfilePage() {
             Продавец
           </span>
         </GlassCard>
+
+        {/* Магазин — skeleton до прихода ответа */}
+        {!store && (
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <Skeleton style={{ height: 12, width: 100 }} />
+              <Skeleton style={{ height: 18, width: 60, borderRadius: 9999 }} />
+            </div>
+            <Skeleton style={{ height: 16, width: '50%' }} />
+            <Skeleton style={{ height: 22, width: 130 }} />
+            <Skeleton style={{ height: 12, width: '70%' }} />
+          </GlassCard>
+        )}
 
         {/* Магазин */}
         {store && (

@@ -90,7 +90,11 @@ export default function WishlistPage() {
             return (
               <div
                 key={it.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Открыть товар ${p.title}`}
                 onClick={() => navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`); } }}
                 style={{
                   borderRadius: 14,
                   overflow: 'hidden',

@@ -4,6 +4,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { Stars } from '@/components/ui/Stars';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -258,7 +259,9 @@ export default function OrdersPage() {
         )}
 
         {authenticated && loading && (
-          <div className="flex justify-center py-8"><Spinner /></div>
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 4 }).map((_, i) => <OrderRowSkeleton key={i} />)}
+          </div>
         )}
 
         {authenticated && !loading && error && (

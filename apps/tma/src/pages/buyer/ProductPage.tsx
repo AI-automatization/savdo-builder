@@ -249,9 +249,13 @@ export default function ProductPage() {
   const galleryNode = (
     displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Открыть фото товара"
         className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
         style={{ aspectRatio: '1' }}
         onClick={() => setActiveImage(0)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveImage(0); } }}
       >
         {images.slice(0, 4).map((url, idx) => (
           <div key={idx} className="relative overflow-hidden bg-white/5">
