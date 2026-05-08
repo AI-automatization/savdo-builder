@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -6,11 +7,15 @@ import ProductsWithSearch from "@/components/store/ProductsWithSearch";
 import CategoryAttributeFilters from "@/components/store/CategoryAttributeFilters";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import {
-  serverGetStoreBySlug,
+  serverGetStoreBySlug as rawGetStoreBySlug,
   serverGetProducts,
   serverGetGlobalCategories,
   serverGetCategoryFilters,
 } from "@/lib/api/storefront-server";
+
+// generateMetadata + StorePage both fetch the same store — wrap in React.cache
+// so the request runs once per render, not twice.
+const serverGetStoreBySlug = cache(rawGetStoreBySlug);
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
 import { colors } from "@/lib/styles";

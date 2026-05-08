@@ -117,6 +117,14 @@ function OrdersList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.data]);
 
+  // Reset pagination + accumulator when the filter changes — otherwise stale
+  // page state lets the next fetch return page-3 of the new filter and append
+  // it to old-filter rows.
+  useEffect(() => {
+    setPage(1);
+    setAccOrders([]);
+  }, [activeFilter]);
+
   const q = searchQuery.trim().toLowerCase().replace(/^#/, "");
   const orders = q
     ? accOrders.filter((o) =>
