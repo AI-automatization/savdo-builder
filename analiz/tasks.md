@@ -14,7 +14,11 @@
 
 **Major-волна закрыта 08.05** (BUG-008, 010, 011, 012, 013, 014, 017, 019). Skipped с обоснованием в `analiz/done.md`: 015 (chat menu — нет реального race), 016 (OTP purpose — единственный безопасный default), 018 (defensive cast пока Полат не выровнял `ProductListItem` shape).
 
-**Остаются 7 minor (BUG-WB-AUDIT-020..026)** + контракт-задача для Полата:
+**Minor-волна закрыта 08.05** (BUG-020..025). 026 принят как negligible.
+
+**Весь аудит 05.05 (BUG-WB-AUDIT-001..026) закрыт в одну сессию.** Подробности в `analiz/done.md`.
+
+**Контракт-задача для Полата:**
 - `API-PRODUCT-LIST-IMAGES-CONTRACT-001` — storefront отдаёт `images: [{url}]`, тип `ProductListItem` декларирует `mediaUrls: string[]`. Решить: либо обновить тип под реальность, либо переделать API под mediaUrls.
 
 ---

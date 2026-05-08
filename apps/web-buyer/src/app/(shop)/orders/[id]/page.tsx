@@ -55,10 +55,10 @@ function normalizeOrder(raw: any): NormalizedOrder {
       ? { street: raw.addressLine1 ?? '', city: raw.city ?? '', region: raw.region ?? undefined }
       : undefined);
   return {
-    id: raw.id,
-    orderNumber: raw.orderNumber,
+    id: raw.id ?? '',
+    orderNumber: raw.orderNumber ?? '',
     status: raw.status,
-    storeId: raw.storeId,
+    storeId: raw.storeId ?? '',
     store: raw.store ?? null,
     items: rawItems.map((it: any): NormalizedItem => ({
       id: it.id,
@@ -99,18 +99,19 @@ const TONE_COLORS: Record<StatusTone, { bg: string; fg: string }> = {
 // ── Timeline ─────────────────────────────────────────────────────────────────
 
 const TIMELINE: { key: OrderStatus; label: string }[] = [
-  { key: OrderStatus.PENDING,   label: "Заказ оформлен"    },
-  { key: OrderStatus.CONFIRMED, label: "Подтверждён продавцом" },
-  { key: OrderStatus.SHIPPED,   label: "Передан курьеру"   },
-  { key: OrderStatus.DELIVERED, label: "Доставлен"          },
+  { key: OrderStatus.PENDING,    label: "Заказ оформлен"          },
+  { key: OrderStatus.CONFIRMED,  label: "Подтверждён продавцом"   },
+  { key: OrderStatus.PROCESSING, label: "Сборка заказа"           },
+  { key: OrderStatus.SHIPPED,    label: "Передан курьеру"         },
+  { key: OrderStatus.DELIVERED,  label: "Доставлен"               },
 ];
 
 const STATUS_INDEX: Record<string, number> = {
   [OrderStatus.PENDING]: 0,
   [OrderStatus.CONFIRMED]: 1,
-  [OrderStatus.PROCESSING]: 1,
-  [OrderStatus.SHIPPED]: 2,
-  [OrderStatus.DELIVERED]: 3,
+  [OrderStatus.PROCESSING]: 2,
+  [OrderStatus.SHIPPED]: 3,
+  [OrderStatus.DELIVERED]: 4,
 };
 
 function StatusPill({ status }: { status: OrderStatus }) {

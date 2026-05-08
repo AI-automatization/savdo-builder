@@ -110,6 +110,9 @@ export default function ProductPage() {
     navigator.clipboard.writeText(url).then(() => {
       setShared(true);
       setTimeout(() => setShared(false), 2000);
+    }).catch(() => {
+      // Clipboard API may reject on HTTP / Telegram WebView with no permission.
+      // Silent best-effort — sharing is a nice-to-have, not a critical path.
     });
   }
 
