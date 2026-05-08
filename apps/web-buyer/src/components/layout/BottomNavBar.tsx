@@ -8,15 +8,16 @@ import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/lib/auth/context';
 import { IcoShop, IcoCart, IcoChat, IcoOrders, IcoProfile } from '@/components/icons';
 import { colors } from '@/lib/styles';
+import { getRecentStores } from '@/lib/recent-stores';
 
-export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile' | 'wishlist';
+export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile' | 'wishlist' | 'notifications';
 
 export function BottomNavBar({
   active,
   cartBadge,
   storeSlug: propSlug,
 }: {
-  active: NavActive;
+  active?: NavActive;
   cartBadge?: number;
   storeSlug?: string;
 }) {
@@ -27,9 +28,11 @@ export function BottomNavBar({
   const { data: cart } = useCart({ enabled: isAuthenticated });
   const cartCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
 
+  // Use the most recently visited store as the "Магазин" tab target.
+  // (Older code read a `last_store_slug` key that nothing wrote — dead read.)
   useEffect(() => {
     if (!propSlug) {
-      setStoredSlug(localStorage.getItem('last_store_slug') ?? '');
+      setStoredSlug(getRecentStores()[0]?.slug ?? '');
     }
   }, [propSlug]);
 

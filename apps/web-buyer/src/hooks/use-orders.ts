@@ -10,6 +10,14 @@ export const orderKeys = {
   detail: (id: string) => ['orders', id] as const,
 };
 
+// 401 = expired token (refresh-interceptor handles), 403 = wrong role (BUYER-only endpoint).
+// Either way retry is pointless and just spams the console.
+function noRetryOnAuth(failureCount: number, error: unknown): boolean {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  if (status === 401 || status === 403) return false;
+  return failureCount < 3;
+}
+
 export function useOrders(params?: { status?: OrderStatus; page?: number; limit?: number; enabled?: boolean }) {
   const { enabled, ...listParams } = params ?? {};
   return useQuery({
@@ -17,6 +25,7 @@ export function useOrders(params?: { status?: OrderStatus; page?: number; limit?
     queryFn: () => getBuyerOrders(listParams),
     staleTime: 2 * 60 * 1000,
     enabled: enabled ?? true,
+    retry: noRetryOnAuth,
   });
 }
 
@@ -26,6 +35,7 @@ export function useOrder(id: string) {
     queryFn: () => getBuyerOrder(id),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
+    retry: noRetryOnAuth,
   });
 }
 

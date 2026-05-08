@@ -35,11 +35,19 @@ export async function serverGetProducts(params: {
   globalCategoryId?: string;
   storeCategoryId?: string;
   attributeFilters?: Record<string, string>;
+  priceMin?: number;
+  priceMax?: number;
 }): Promise<ProductListItem[]> {
   const search = new URLSearchParams();
   search.set('storeId', params.storeId);
   if (params.globalCategoryId) search.set('globalCategoryId', params.globalCategoryId);
   if (params.storeCategoryId) search.set('storeCategoryId', params.storeCategoryId);
+  if (params.priceMin != null && Number.isFinite(params.priceMin)) {
+    search.set('priceMin', String(params.priceMin));
+  }
+  if (params.priceMax != null && Number.isFinite(params.priceMax)) {
+    search.set('priceMax', String(params.priceMax));
+  }
   if (params.attributeFilters) {
     for (const [k, v] of Object.entries(params.attributeFilters)) {
       if (v) search.append(`filters[${k}]`, v);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Search, ShoppingCart, Bell, MessageSquare, User as UserIcon, Package, Heart } from "lucide-react";
+import { ShoppingCart, Bell, MessageSquare, User as UserIcon, Package, Heart } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-notifications";
 import { useUnreadChatCount } from "@/hooks/use-chat";
 import { useCart } from "@/hooks/use-cart";
@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth/context";
 import { colors } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Tooltip } from "@/components/tooltip";
+import HeaderSearch from "@/components/layout/HeaderSearch";
 
 export default function Header() {
   const params = useParams();
@@ -39,18 +40,7 @@ export default function Header() {
         </Link>
 
         {/* Search — grows */}
-        <div
-          className="flex-1 flex items-center gap-2 px-3 h-9"
-          style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '6px' }}
-        >
-          <Search size={14} style={{ color: colors.textDim }} className="flex-shrink-0" />
-          <input
-            type="text"
-            placeholder="Поиск магазинов..."
-            className="grow bg-transparent text-sm outline-none placeholder:opacity-60"
-            style={{ color: colors.textBody }}
-          />
-        </div>
+        <HeaderSearch />
 
         {/* Desktop nav links — visible md+ */}
         <nav className="hidden md:flex items-center gap-1">
