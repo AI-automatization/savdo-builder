@@ -75,6 +75,14 @@ export default async function StorePage({
   const categoryId = typeof sp.categoryId === "string" ? sp.categoryId : undefined;
   const gcat = typeof sp.gcat === "string" ? sp.gcat : null;
 
+  const parsePrice = (v: unknown): number | undefined => {
+    if (typeof v !== "string" || !v) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
+  const priceMin = parsePrice(sp.priceMin);
+  const priceMax = parsePrice(sp.priceMax);
+
   const activeAttributes: Record<string, string> = {};
   for (const [k, v] of Object.entries(sp)) {
     if (k.startsWith("f.") && typeof v === "string" && v) {
@@ -105,11 +113,15 @@ export default async function StorePage({
     storeCategoryId: categoryId,
     globalCategoryId,
     attributeFilters: Object.keys(activeAttributes).length > 0 ? activeAttributes : undefined,
+    priceMin,
+    priceMax,
   });
 
   // Preserve global category + attribute filter state across storeCategory chip clicks.
   const persistentParams = new URLSearchParams();
   if (gcat) persistentParams.set("gcat", gcat);
+  if (priceMin != null) persistentParams.set("priceMin", String(priceMin));
+  if (priceMax != null) persistentParams.set("priceMax", String(priceMax));
   for (const [k, v] of Object.entries(activeAttributes)) {
     persistentParams.append(`f.${k}`, v);
   }
@@ -244,6 +256,8 @@ export default async function StorePage({
                 activeGlobalSlug={gcat}
                 attributeFilters={attributeFilters}
                 activeAttributes={activeAttributes}
+                priceMin={priceMin ?? null}
+                priceMax={priceMax ?? null}
               />
             </aside>
             <main>

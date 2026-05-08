@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим) — FEAT-001-FE search + FEAT-003-FE price filter
+
+### ✅ [FEAT-001-FE] Глобальный поиск магазинов и товаров в Header 🟢
+
+- **Дата:** 08.05.2026
+- **Backend:** `GET /storefront/search?q=&limit=` (Полат, коммит `a837c13`) — возвращает `{ stores, products }`. Min 2 chars, throttle 30/min.
+- **Файлы (web-buyer):**
+  - `src/lib/api/search.api.ts` (новый) — `searchStorefront(q, limit)` + локальные типы `SearchStoreHit`/`SearchProductHit`/`StorefrontSearchResponse` (packages/types пока не описывает endpoint).
+  - `src/hooks/use-search.ts` (новый) — `useDebouncedValue<T>` (250ms) + `useStorefrontSearch(query)` (TanStack `useQuery`, `enabled` при ≥2 char, `staleTime: 30s`, `retry: false`).
+  - `src/components/layout/HeaderSearch.tsx` (новый) — popover dropdown с двумя секциями («Магазины · N» / «Товары · N»), click-outside и Escape закрывают, Link на каждый item, состояния «Ищем…» / «Ничего не нашли» / «Введите минимум 2 символа».
+  - `src/components/layout/Header.tsx` — заглушка `<input>` заменена на `<HeaderSearch />`. Убран лишний `Search` импорт из lucide.
+- **UX:** input всегда в шапке, dropdown появляется при focus + ≥2 символа. Клик по магазину — `/[slug]`, клик по товару — `/[slug]/products/[id]`.
+
+### ✅ [FEAT-003-FE] Price range filter на витрине магазина 🟢
+
+- **Дата:** 08.05.2026
+- **Backend:** `GET /storefront/products?priceMin=&priceMax=` (Полат, `27221eb`) — числовые границы, parse в `parsePrice` use-case'а.
+- **Файлы (web-buyer):**
+  - `src/lib/api/storefront-server.ts` — `serverGetProducts` теперь принимает `priceMin?: number` / `priceMax?: number`, прокидывает в URL (с `Number.isFinite` guard).
+  - `src/app/(shop)/[slug]/page.tsx` — extract `priceMin`/`priceMax` из searchParams (`parsePrice` helper, sanity-check `>= 0`), pass в `serverGetProducts` + `CategoryAttributeFilters`. `persistentParams` сохраняет цену через клики по storeCategory chips.
+  - `src/components/store/CategoryAttributeFilters.tsx` — props расширены `priceMin: number | null` / `priceMax: number | null`. Локальные `minInput`/`maxInput` строки + `useEffect` re-sync на смену URL. `commitPrice(kind, raw)` срабатывает на blur/Enter (без spam'a refetch на каждый keystroke). `handleClearAll` чистит `priceMin`/`priceMax`. `activeCount` бэйдж учитывает оба поля.
+
+---
+
 ## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 6 minor
 
 ### ✅ [BUG-WB-AUDIT-020] IcoSend hardcoded `stroke="white"` 🟢

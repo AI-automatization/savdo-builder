@@ -20,6 +20,7 @@
 
 **Контракт-задача для Полата:**
 - `API-PRODUCT-LIST-IMAGES-CONTRACT-001` — storefront отдаёт `images: [{url}]`, тип `ProductListItem` декларирует `mediaUrls: string[]`. Решить: либо обновить тип под реальность, либо переделать API под mediaUrls.
+- `API-STOREFRONT-SEARCH-CONTRACT-001` — `/storefront/search` shape (`{ stores, products }`) не описан в `packages/types`. Web-buyer держит локальный тип `StorefrontSearchResponse` в `lib/api/search.api.ts`. Перенести в `packages/types/src/api/search.ts` когда руки дойдут.
 
 ---
 
