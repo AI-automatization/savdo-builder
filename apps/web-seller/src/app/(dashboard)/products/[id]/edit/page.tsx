@@ -12,42 +12,9 @@ import { ProductVariantsSection } from '../../../../../components/product-varian
 import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';
 import { DisplayTypeSelector } from '../../../../../components/display-type-selector';
 import { ConfirmModal } from '../../../../../components/confirm-modal';
+import { Select } from '../../../../../components/select';
+import { titlePlaceholder, descriptionPlaceholder } from '../../../../../lib/product-examples';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
-
-// Keep these in sync with create/page.tsx. When this list grows, extract to
-// lib/product-examples.ts and import in both pages.
-const TITLE_EXAMPLES_BY_SLUG: Record<string, string> = {
-  'electronics':   'Например: iPhone 15 Pro 128 GB',
-  'phones':        'Например: iPhone 15 Pro 128 GB',
-  'smartphones':   'Например: Samsung Galaxy S24',
-  'laptops':       'Например: MacBook Pro 14 M3',
-  'computers':     'Например: ПК i7 / 32GB RAM / RTX 4070',
-  'tv':            'Например: Samsung Smart TV 55"',
-  'audio':         'Например: AirPods Pro 2',
-  'cameras':       'Например: Canon EOS R50',
-  'appliances':    'Например: Стиральная машина Bosch 7кг',
-  'clothing':      'Например: Футболка Nike, размер M',
-  'shoes':         'Например: Кроссовки Nike Air Max 90',
-  'bags':          'Например: Сумка через плечо, кожа',
-  'accessories':   'Например: Часы Casio G-Shock',
-  'furniture':     'Например: Офисное кресло с сеткой',
-  'beds':          'Например: Кровать двуспальная 160×200',
-  'books':         'Например: Мастер и Маргарита, Булгаков',
-  'bicycles':      'Например: Велосипед Trek Marlin 7',
-  'outdoor':       'Например: Палатка 3-местная',
-  'toys':          'Например: LEGO Classic 11019',
-  'beauty':        'Например: Крем для лица Nivea 50ml',
-};
-
-const DESCRIPTION_EXAMPLES_BY_SLUG: Record<string, string> = {
-  'clothing':    'Материал, состав, размерная сетка, страна производства...',
-  'shoes':       'Материал верха и подошвы, сезон, страна производства...',
-  'electronics': 'Характеристики, комплектация, гарантия...',
-  'phones':      'Объём памяти, цвет, состояние, комплектация, гарантия...',
-  'laptops':     'Процессор, ОЗУ, диск, экран, состояние...',
-  'furniture':   'Материал, размеры, цвет, сборка...',
-  'books':       'Автор, жанр, год, язык, состояние...',
-};
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
 // до тех пор, пока Полат не уберёт их из seed'а на бэке
@@ -60,17 +27,6 @@ const HIDDEN_CATEGORY_SLUGS = new Set([
 const HIDDEN_CATEGORY_NAME_RE = /(авто|мотоц|avtomo|mototsik)/i;
 function isHiddenCategory(cat: { slug: string; nameRu: string }): boolean {
   return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.nameRu);
-}
-
-function titlePlaceholder(categoryName?: string | null, slug?: string | null): string {
-  if (slug && TITLE_EXAMPLES_BY_SLUG[slug]) return TITLE_EXAMPLES_BY_SLUG[slug];
-  if (categoryName) return `Например: товар из категории «${categoryName}»`;
-  return 'Название товара';
-}
-
-function descriptionPlaceholder(slug?: string | null): string {
-  if (slug && DESCRIPTION_EXAMPLES_BY_SLUG[slug]) return DESCRIPTION_EXAMPLES_BY_SLUG[slug];
-  return 'Подробное описание товара...';
 }
 
 const glass = card;
@@ -223,7 +179,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <Skeleton className="h-3 w-24" />
           </div>
         </div>
-        <div className="rounded-2xl p-6 flex flex-col gap-5" style={glass}>
+        <div className="rounded-xl p-6 flex flex-col gap-5" style={glass}>
           <Skeleton className="h-28" />
           <Skeleton className="h-24" />
           <Skeleton className="h-11" />
@@ -238,7 +194,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   if (isError || !product) {
     return (
       <div className="max-w-xl">
-        <div className="rounded-2xl px-6 py-10 text-center" style={glass}>
+        <div className="rounded-xl px-6 py-10 text-center" style={glass}>
           <p className="text-sm" style={{ color: colors.danger }}>Товар не найден.</p>
           <button
             onClick={() => router.push('/products')}
@@ -288,7 +244,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="rounded-2xl p-6 flex flex-col gap-5" style={glass}>
+        <div className="rounded-xl p-6 flex flex-col gap-5" style={glass}>
 
           {/* Photo */}
           <div>
@@ -316,18 +272,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {globalCategories.length > 0 && (
             <div>
               <Label>Категория товара</Label>
-              <select
-                className={focusCls}
-                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
-                {...register('globalCategoryId')}
-              >
-                <option value="" style={{ background: '#1a1d2e' }}>— Выберите категорию —</option>
-                {globalCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
-                    {cat.nameRu}
-                  </option>
-                ))}
-              </select>
+              <input type="hidden" {...register('globalCategoryId')} />
+              <Select
+                value={watchedCategoryId ?? ''}
+                onChange={(v) => setValue('globalCategoryId', v, { shouldValidate: true, shouldDirty: true })}
+                options={globalCategories.map((c) => ({ value: c.id, label: c.nameRu }))}
+                placeholder="— Выберите категорию —"
+                searchPlaceholder="Поиск категории…"
+                clearable
+                ariaLabel="Категория товара"
+              />
               <p className="mt-1.5 text-[11px]" style={{ color: colors.textDim }}>
                 {pickedCategory
                   ? 'Товар покажется в этой категории и попадёт под её фильтры.'
@@ -340,19 +294,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {categories.length > 0 && (
             <div>
               <Label>Раздел магазина</Label>
-              <select
+              <Select
                 value={storeCategoryId ?? ''}
-                onChange={(e) => setStoreCategoryId(e.target.value || null)}
-                className={focusCls}
-                style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
-              >
-                <option value="" style={{ background: '#1a1d2e' }}>— Без раздела —</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id} style={{ background: '#1a1d2e' }}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setStoreCategoryId(v || null)}
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="— Без раздела —"
+                searchPlaceholder="Поиск раздела…"
+                clearable
+                searchable={categories.length > 6}
+                ariaLabel="Раздел магазина"
+              />
             </div>
           )}
 
@@ -475,7 +426,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       {/* Status & danger actions */}
       {!isHiddenByAdmin && (
-        <div className="mt-4 rounded-2xl p-5 flex flex-col gap-3" style={glass}>
+        <div className="mt-4 rounded-xl p-5 flex flex-col gap-3" style={glass}>
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
             Статус товара
           </p>
