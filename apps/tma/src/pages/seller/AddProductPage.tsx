@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { Select } from '@/components/ui/Select';
+import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
 interface SizeRow {
@@ -404,15 +405,24 @@ export default function AddProductPage() {
         });
       }
 
-      // 3. Сохранить атрибуты
+      // 3. Сохранить атрибуты. Если часть упала — товар уже создан,
+      // не блокируем UX, переводим в редактор для retry.
+      const failedAttrs: string[] = [];
       for (let i = 0; i < attrs.length; i++) {
         const a = attrs[i];
         if (a.name.trim() && a.value.trim()) {
-          await api(`/seller/products/${pid}/attributes`, {
-            method: 'POST',
-            body: { name: a.name.trim(), value: a.value.trim(), sortOrder: i },
-          }).catch(() => {});
+          try {
+            await api(`/seller/products/${pid}/attributes`, {
+              method: 'POST',
+              body: { name: a.name.trim(), value: a.value.trim(), sortOrder: i },
+            });
+          } catch {
+            failedAttrs.push(a.name.trim());
+          }
         }
+      }
+      if (failedAttrs.length > 0) {
+        showToast(`⚠️ Не сохранились характеристики: ${failedAttrs.join(', ')}. Добавьте в редакторе.`);
       }
 
       // 4. Загрузить фото (TMA-MULTI-PHOTO-001: массив, не одно). Ошибка
