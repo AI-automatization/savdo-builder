@@ -137,26 +137,57 @@ cd apps/web-buyer && pnpm dev   # запустить buyer web
 Источник: `https://github.com/alirezarezvani/coude-skills` (клон в `../claude-skills/`).
 Установлены в `.claude/skills/` и `.claude/commands/`. **`.claude/` в .gitignore** — это локальная конфигурация Claude.
 
-**Skills (35, в `.claude/skills/<name>/SKILL.md`)** — domain knowledge packs. Активируются автоматически когда Claude видит подходящий контекст. Применимые для savdo-builder:
+**Skills (53, в `.claude/skills/<name>/SKILL.md`)** — domain knowledge packs. Активируются автоматически когда Claude видит подходящий контекст. Применимые для savdo-builder:
+
+### Engineering / API / DB
 
 | Skill | Когда полезен |
 |-------|---------------|
 | `api-design-reviewer` | Перед merge нового NestJS endpoint'а |
 | `api-test-suite-builder` | Сгенерировать Jest тесты для модуля |
 | `database-schema-designer` | Новая Prisma модель / migration |
+| `sql-database-assistant` | Сложные Postgres-запросы / индексы |
+| `migration-architect` | Большие data migrations (TG→Supabase pattern) |
 | `monorepo-navigator` | Ориентация в Turborepo apps/packages |
 | `dependency-auditor` | `pnpm audit` + анализ результатов |
 | `env-secrets-manager` | Railway env vars / .env hygiene |
-| `migration-architect` | Большие data migrations (TG→Supabase pattern) |
 | `pr-review-expert` | Финальное ревью перед push |
 | `skill-security-auditor` | Аудит изменений на security |
-| `sql-database-assistant` | Сложные Postgres-запросы / индексы |
 | `tech-debt-tracker` | Каталогизация TODO/FIXME |
 | `performance-profiler` | Backend latency / N+1 |
 | `codebase-onboarding` | Onboarding новых разработчиков |
 | `release-manager` | Генерация changelog / release notes |
 | `git-worktree-manager` | Параллельные сессии Claude |
 | `runbook-generator` | Operational runbooks из кода |
+
+### Design / UI / UX (новое 08.05.2026)
+
+| Skill | Когда полезен |
+|-------|---------------|
+| `ui-design-system` | Design tokens / component docs / dev handoff (savdo Liquid Authority) |
+| `ux-researcher-designer` | Persona / journey map / usability testing |
+| `apple-hig-expert` | iOS/macOS HIG, accessibility-first, Liquid Glass aesthetics 2026 |
+| `landing-page-generator` | Landing pages (web-buyer storefront SEO) |
+
+### Security / Pentest (новое 08.05.2026)
+
+| Skill | Когда полезен |
+|-------|---------------|
+| `senior-security` | Security review больших фич, threat modeling |
+| `senior-secops` | SecOps процессы, monitoring, alerting |
+| `security-pen-testing` | OWASP-аудит endpoints, обход auth, RBAC bypass проверки |
+| `cloud-security` | Railway/Supabase security, IAM, secret rotation |
+| `adversarial-reviewer` | Adversarial code review (что сломает злоумышленник) |
+| `incident-response` | После инцидента: containment, postmortem, audit log |
+| `code-reviewer` | Security-aware код-ревью |
+
+### Backend / Network / Data (новое 08.05.2026)
+
+| Skill | Когда полезен |
+|-------|---------------|
+| `senior-backend` | NestJS архитектура, REST/WebSocket/HTTP-клиенты (axios/fetch), retries, timeouts |
+| `senior-fullstack` | Backend ↔ frontend integration, type-safe contracts (packages/types) |
+| `senior-data-engineer` | ETL, data pipelines, complex SQL, batch jobs |
 
 **Commands (29, в `.claude/commands/<name>.md`)** — slash-команды. Вызываются через `/<name>`. Полезные для savdo-builder:
 
