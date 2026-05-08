@@ -307,8 +307,9 @@ export default function AnalyticsPage() {
 
       {/* Legacy: views & conversion + top by views — show as secondary section */}
       <div className="flex flex-col gap-3 mt-4">
+        <hr style={{ border: 0, borderTop: `1px solid ${colors.divider}` }} />
         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          — Просмотры и конверсия (за 30 дней)
+          Просмотры и конверсия (за 30 дней)
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <KpiCard

@@ -50,7 +50,11 @@ function NotifRow({ item }: { item: NotificationItem }) {
           ? cardMuted
           : { background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }
       }
-      onMouseEnter={(e) => { e.currentTarget.style.background = colors.surfaceElevated; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = item.isRead
+          ? colors.surfaceElevated
+          : `color-mix(in srgb, ${colors.accent} 22%, transparent)`;
+      }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = item.isRead ? colors.surfaceMuted : colors.accentMuted;
       }}

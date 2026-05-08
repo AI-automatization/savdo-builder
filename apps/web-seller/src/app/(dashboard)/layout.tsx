@@ -313,7 +313,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {unreadCount > 0 && (
                 <span
                   className="absolute -top-1 -right-1.5 flex items-center justify-center rounded-full font-bold"
-                  style={{ minWidth: 14, height: 14, padding: '0 3px', fontSize: 9, background: colors.accent, color: colors.accentTextOnBg, borderRadius: 7 }}
+                  style={{ minWidth: 16, height: 16, padding: '0 4px', fontSize: 10, background: colors.accent, color: colors.accentTextOnBg, borderRadius: 8 }}
                 >
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
@@ -339,7 +339,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 background: colors.surfaceElevated,
                 color: colors.textPrimary,
                 border: `1px solid ${colors.accentBorder}`,
-                boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
                 animation: 'fadeSlideIn 0.25s ease',
               }}
             >
