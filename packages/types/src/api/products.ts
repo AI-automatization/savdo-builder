@@ -57,7 +57,18 @@ export interface ProductListItem {
   isVisible: boolean;
   globalCategoryId: string | null;
   storeCategoryId: string | null;
+  /**
+   * Convenience: плоский массив URL-ов в порядке sortOrder. Для UI которому
+   * нужен только URL (карточка товара).
+   * API-PRODUCT-LIST-IMAGES-CONTRACT-001 (08.05.2026): оба поля заполняются
+   * на API всегда — клиент выбирает удобное.
+   */
   mediaUrls: string[];
+  /**
+   * Canonical: каждый объект может расширяться (id, isPrimary etc).
+   * Для search/storefront feed.
+   */
+  images: { url: string }[];
   variantCount: number;
   displayType: ProductDisplayType;
   /**
