@@ -8,6 +8,18 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-08 [SIGNAL] Параллельная сессия (otplib v13 upgrade) — закончила работу
+
+- **Сделано в этой сессии (08.05.2026):**
+  - `[API-OTPLIB-V13-UPGRADE-001]` otplib `^12.0.1 → ^13.4.0`. Старый `require('otplib')` workaround заменён на чистый ESM-импорт `generateSecret/generateURI/verifySync`. v13 убрал `authenticator` namespace + `verify` теперь возвращает `{valid, delta}` вместо boolean. Опции вынесены в `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 = эквивалент v12 window:1 ±30s). Spec обновлён под новый API.
+- **Файлы (только мои, 6 шт):** `apps/api/package.json`, `apps/api/src/modules/admin/use-cases/admin-auth.use-case.{ts,spec.ts}`, `pnpm-lock.yaml`, `analiz/{tasks,done}.md`.
+- **TS+тесты:** `npx tsc --noEmit` → 0 errors. `npx jest admin-auth.use-case.spec` → 14/14 passed.
+- **Backwards compat:** существующие `mfaSecret` в БД (base32) совместимы с v13 — формат секрета не менялся.
+- **Состояние веток:** main + api запушены. После моего push другие сессии должны `git pull --rebase origin main` перед своим push.
+- **Что НЕ трогал по §6.6:** `CLAUDE.md` (параллельная сессия только что добавила skills section), untracked `admin-create-seller.use-case.spec.ts` (другая сессия), audit-файлы Азима в `analiz/`.
+
+---
+
 ## 2026-05-08 [SIGNAL] Параллельная сессия #N (security) — закончила работу
 
 - **Сделано в этой сессии (08.05.2026):**

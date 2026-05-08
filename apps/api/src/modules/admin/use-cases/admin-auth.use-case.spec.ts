@@ -7,16 +7,15 @@ import { PrismaService } from '../../../database/prisma.service';
 import { TokenService } from '../../auth/services/token.service';
 import { AuthRepository } from '../../auth/repositories/auth.repository';
 
-// Мокаем otplib чтобы тесты были детерминированными.
+// Мокаем otplib (v13 functional API) чтобы тесты были детерминированными.
 jest.mock('otplib', () => ({
-  authenticator: {
-    options: {},
-    generateSecret: jest.fn(() => 'TEST_SECRET_BASE32'),
-    keyuri: jest.fn((label: string, issuer: string, secret: string) => `otpauth://totp/${issuer}:${label}?secret=${secret}`),
-    verify: jest.fn(),
-  },
+  generateSecret: jest.fn(() => 'TEST_SECRET_BASE32'),
+  generateURI: jest.fn((opts: { issuer: string; label: string; secret: string }) =>
+    `otpauth://totp/${opts.issuer}:${opts.label}?secret=${opts.secret}`,
+  ),
+  verifySync: jest.fn(),
 }));
-import { authenticator } from 'otplib';
+import { generateSecret, verifySync } from 'otplib';
 
 jest.mock('qrcode', () => ({
   toDataURL: jest.fn().mockResolvedValue('data:image/png;base64,FAKEQR'),
@@ -53,8 +52,8 @@ describe('AdminAuthUseCase', () => {
       createSession: jest.fn(),
     } as unknown as jest.Mocked<AuthRepository>;
     useCase = new AdminAuthUseCase(prisma as unknown as PrismaService, tokenService, authRepo);
-    (authenticator.verify as jest.Mock).mockReset();
-    (authenticator.generateSecret as jest.Mock).mockClear();
+    (verifySync as jest.Mock).mockReset();
+    (generateSecret as jest.Mock).mockClear();
   });
 
   describe('getMe', () => {
@@ -78,7 +77,7 @@ describe('AdminAuthUseCase', () => {
   describe('setupMfa', () => {
     it('генерирует secret + сохраняет + возвращает QR', async () => {
       const result = await useCase.setupMfa('u-1', '+998900000000');
-      expect(authenticator.generateSecret).toHaveBeenCalled();
+      expect(generateSecret).toHaveBeenCalled();
       expect(prisma.adminUser.update).toHaveBeenCalledWith({
         where: { id: 'admin-1' },
         data: { mfaSecret: 'TEST_SECRET_BASE32' },
@@ -99,9 +98,9 @@ describe('AdminAuthUseCase', () => {
   describe('verifyMfa', () => {
     it('успешный код → mfaEnabled=true', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaSecret: 'PENDING' });
-      (authenticator.verify as jest.Mock).mockReturnValue(true);
+      (verifySync as jest.Mock).mockReturnValue({ valid: true, delta: 0 });
       const result = await useCase.verifyMfa('u-1', '123456');
-      expect(authenticator.verify).toHaveBeenCalledWith({ token: '123456', secret: 'PENDING' });
+      expect(verifySync).toHaveBeenCalledWith(expect.objectContaining({ token: '123456', secret: 'PENDING' }));
       expect(prisma.adminUser.update).toHaveBeenCalledWith({
         where: { id: 'admin-1' },
         data: expect.objectContaining({ mfaEnabled: true }),
@@ -111,7 +110,7 @@ describe('AdminAuthUseCase', () => {
 
     it('БРОСАЕТ если код неверный', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaSecret: 'X' });
-      (authenticator.verify as jest.Mock).mockReturnValue(false);
+      (verifySync as jest.Mock).mockReturnValue({ valid: false });
       await expect(useCase.verifyMfa('u-1', '000000')).rejects.toThrow(/Invalid TOTP/);
       expect(prisma.adminUser.update).not.toHaveBeenCalled();
     });
@@ -125,14 +124,14 @@ describe('AdminAuthUseCase', () => {
   describe('disableMfa', () => {
     it('требует валидный TOTP код для отключения (защита от стащенного JWT)', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaEnabled: true, mfaSecret: 'X' });
-      (authenticator.verify as jest.Mock).mockReturnValue(false);
+      (verifySync as jest.Mock).mockReturnValue({ valid: false });
       await expect(useCase.disableMfa('u-1', '000000')).rejects.toThrow(/Invalid TOTP/);
       expect(prisma.adminUser.update).not.toHaveBeenCalled();
     });
 
     it('успех с валидным кодом → mfaEnabled=false + secret=null', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaEnabled: true, mfaSecret: 'X' });
-      (authenticator.verify as jest.Mock).mockReturnValue(true);
+      (verifySync as jest.Mock).mockReturnValue({ valid: true, delta: 0 });
       await useCase.disableMfa('u-1', '123456');
       expect(prisma.adminUser.update).toHaveBeenCalledWith({
         where: { id: 'admin-1' },
@@ -149,7 +148,7 @@ describe('AdminAuthUseCase', () => {
   describe('mfaChallenge — критичный flow для login', () => {
     it('успешный код → re-issue JWT БЕЗ mfaPending, тот же sessionId', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaEnabled: true, mfaSecret: 'X', adminRole: 'super_admin' });
-      (authenticator.verify as jest.Mock).mockReturnValue(true);
+      (verifySync as jest.Mock).mockReturnValue({ valid: true, delta: 0 });
       const res = await useCase.mfaChallenge('u-1', '123456', 'session-abc', 'ADMIN');
       expect(tokenService.generateAccessToken).toHaveBeenCalledWith({
         sub: 'u-1',
@@ -162,7 +161,7 @@ describe('AdminAuthUseCase', () => {
 
     it('updateLastLoginAt записывается при успехе', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaEnabled: true, mfaSecret: 'X' });
-      (authenticator.verify as jest.Mock).mockReturnValue(true);
+      (verifySync as jest.Mock).mockReturnValue({ valid: true, delta: 0 });
       await useCase.mfaChallenge('u-1', '123456', 'sid', 'ADMIN');
       expect(prisma.adminUser.update).toHaveBeenCalledWith({
         where: { id: 'admin-1' },
@@ -172,7 +171,7 @@ describe('AdminAuthUseCase', () => {
 
     it('БРОСАЕТ MFA_INVALID при неверном коде', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaEnabled: true, mfaSecret: 'X' });
-      (authenticator.verify as jest.Mock).mockReturnValue(false);
+      (verifySync as jest.Mock).mockReturnValue({ valid: false });
       await expect(useCase.mfaChallenge('u-1', '000000', 'sid', 'ADMIN')).rejects.toThrow(/Invalid TOTP/);
       expect(tokenService.generateAccessToken).not.toHaveBeenCalled();
     });
