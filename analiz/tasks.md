@@ -90,10 +90,10 @@
 
 ### 🟠 P1 — для Полата
 - [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
-- [ ] **`TMA-LOADING-SKELETONS-001`** — частично закрыто 06.05.2026: WishlistPage, ProductPage, seller/ProductsPage, seller/SettingsPage. Остаётся: CartPage, CheckoutPage, OrdersPage buyer (loadMore — уже есть, list — нет), ProfilePage buyer/seller, StoresPage, AddProductPage, DashboardPage seller (параллельная сессия трогает).
+- [x] **`TMA-LOADING-SKELETONS-001`** ✅ 08.05.2026 — добавлены skeletons на OrdersPage buyer (initial list, 4 OrderRowSkeleton) и seller/ProfilePage (skeleton-блок магазина пока store === null). Остальные страницы списка skip'нуты обоснованно: CartPage/CheckoutPage синхронны (localStorage), buyer/ProfilePage из useAuth, AddProductPage не имеет блокирующего initial fetch'а, StoresPage уже имел оба skeleton'а, DashboardPage — параллельная сессия. Подробности в `analiz/done.md`.
 
 ### 🟡 P2 — a11y
-- [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
+- [x] **`TMA-A11Y-ROLE-TABINDEX-001`** ✅ 08.05.2026 — закрыты 3 оставшихся: `ui/ProductCard` (нельзя сделать `<button>` из-за nested add-to-cart кнопки → role+tabIndex+onKeyDown+aria-label), `buyer/ProductPage` collage 2x2 gallery, `buyer/WishlistPage` карточка. Остальные клики уже на `<button>`/`<a>`/`GlassCard` (рендерится `<button>`), либо modal-backdrop (ESC уже есть). Подробности в `analiz/done.md`.
 - [x] **`TMA-SILENT-ERROR-CATCHES-001`** ✅ 06.05.2026 (частично) — добавлен `showToast` на 5 user-facing data-load fails: `buyer/WishlistPage`, `buyer/OrdersPage` (loadMore + detail), `seller/ProfilePage`, `seller/SettingsPage`. AbortError фильтруется. Остальные `.catch(() => {})` (clipboard, prefetch, attribute side-effects) намеренно тихие — best-effort fire-and-forget.
 
 ---

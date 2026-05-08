@@ -1,5 +1,35 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Полат, вечер) — TMA polish: skeletons + a11y
+
+### ✅ [TMA-LOADING-SKELETONS-001] Скелетоны на оставшихся страницах 🟠
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/OrdersPage.tsx` — initial-list `<Spinner />` заменён на 4 `OrderRowSkeleton` (placeholder совпадает по высоте с реальной карточкой → нет layout shift).
+  - `apps/tma/src/pages/seller/ProfilePage.tsx` — пока `store === null` рендерится skeleton-блок магазина (header chip + name + URL pill + meta) поверх существующего `{store && (...)}`. Раньше блок просто отсутствовал, плотность скакала.
+- **Что НЕ нужно (выяснено в ходе аудита):**
+  - `CartPage` / `CheckoutPage` — синхронно читают `getCart()` (localStorage), нет блокирующего fetch'а → loading state физически отсутствует.
+  - `buyer/ProfilePage` — все данные из `useAuth()` синхронно.
+  - `AddProductPage` — create-страница без блокирующего initial fetch'а; категории грузятся для модала, форма уже доступна.
+  - `StoresPage` — оба таба уже имели `ThreadRowSkeleton` / `ProductCardSkeleton`.
+- **Тикет помечается полностью закрытым:** все страницы с реальным loading state теперь имеют skeleton.
+
+### ✅ [TMA-A11Y-ROLE-TABINDEX-001] role/tabIndex/onKeyDown на clickable div 🟡
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/ProductCard.tsx` — внешний `<div onClick>` обёрнут в `role="button" tabIndex={0} aria-label={…} onKeyDown={Enter|Space}`. Не сделан настоящим `<button>` потому что внутри nested `<button>` (add-to-cart, wishlist) — было бы invalid HTML.
+  - `apps/tma/src/pages/buyer/ProductPage.tsx` — collage 2x2 gallery (открывает первое фото) теперь с role/tabIndex/onKeyDown.
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — карточка товара аналогично.
+- **Что НЕ нужно править:**
+  - `GlassCard` — уже рендерит `<button>` когда есть `onClick`.
+  - Buyer/seller `ChatPage` thread row, `StorePage` product card — уже имели role/tabIndex.
+  - Modal backdrops (`onClick={() => close()}`) — invisible click target, ESC-handler уже есть в `ConfirmModal`/`ImageCropper`/`BottomSheet`. Backdrop click — secondary path, не a11y violation.
+- **Why:** на desktop Telegram (web/macOS) есть keyboard, пользователи без мыши не могли открывать товары через Tab+Enter.
+
+---
+
 ## 2026-05-08 (Азим) — FEAT-006-FE seller analytics page
 
 ### ✅ [FEAT-006-FE] `/analytics` под новый `/seller/analytics?from=&to=` 🟡
