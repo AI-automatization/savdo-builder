@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 6
+
+### ✅ [WS-DESIGN-WAVE-6] Products edit dragons: radius + native select + extract examples 🟡
+
+- **Важность:** 🟡 MEDIUM (largest refactor wave, fixes both visible drift и underlying maintenance trap)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/product-examples.ts` (новый) — `TITLE_EXAMPLES_BY_SLUG` + `DESCRIPTION_EXAMPLES_BY_SLUG` (по 20+7 ключей) + 2 helper'а `titlePlaceholder()` / `descriptionPlaceholder()`. Раньше дублировалось verbatim в обоих файлах create/edit.
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — удалены 32 строки локального дублирования (consts + helpers); импорт из `lib/product-examples`. Form card `rounded-lg` (8px) → `rounded-xl` (12px) per spec Liquid Authority.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — то же удаление дублей. ×4 `rounded-2xl` (16px) → `rounded-xl` (form card, error state, status section, error banner). Native `<select>` ×2 (Категория товара + Раздел магазина) заменены на custom `<Select>` (как в create) — устранено хардкоженное `background: '#1a1d2e'` на 4 `<option>` элементах + получили search/keyboard nav/clearable. Form integration: `<input type="hidden" {...register('globalCategoryId')} />` + `setValue(..., { shouldValidate: true, shouldDirty: true })` для сохранения react-hook-form behavior; storeCategoryId как раньше через local state.
+- **Что сделано:** все 3 P2 (P2-001 radius drift, P2-004 native select regression, P2-005 EXAMPLES duplicate) закрыты одним рефактором. Edit-страница теперь UX-эквивалентна create — те же search'абельные dropdown'ы, тот же радиус карточек, тот же placeholder-движок. Maintenance trap (sync создаваемых дубликатов) устранён.
+- **Verification:** `grep -rn "TITLE_EXAMPLES_BY_SLUG\|<select\|background: '#1a1d2e'"` → 0 матчей в обоих файлах. Локально не запускал. Push'нётся через ветку web-seller → Railway сборка подтвердит.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 5
 
 ### ✅ [WS-DESIGN-WAVE-5] Semantic `colors.info` token + 9 хардкоженных hex заменены 🟡
