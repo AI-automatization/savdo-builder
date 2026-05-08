@@ -289,8 +289,10 @@ function OrdersList() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   useBuyerSocket();
+
+  const isBuyer = user?.role === 'BUYER';
 
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
@@ -300,15 +302,27 @@ export default function OrdersPage() {
       </div>
 
       <div className="max-w-4xl mx-auto pb-28 md:pb-12">
-        {isAuthenticated ? (
-          <OrdersList />
-        ) : (
+        {!isAuthenticated ? (
           <div className="px-4 pt-6">
             <OtpGate
               icon={<Package size={22} />}
               title="Войдите чтобы видеть заказы"
             />
           </div>
+        ) : !isBuyer ? (
+          <div className="px-4 pt-10 max-w-md mx-auto text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ background: colors.brandMuted, color: colors.brand }}>
+              <Package size={20} />
+            </div>
+            <h2 className="text-base font-bold mb-2" style={{ color: colors.textStrong }}>
+              Это аккаунт продавца
+            </h2>
+            <p className="text-[13px]" style={{ color: colors.textMuted }}>
+              История покупок доступна только покупателям. Войдите с другим номером, чтобы делать заказы здесь.
+            </p>
+          </div>
+        ) : (
+          <OrdersList />
         )}
       </div>
 

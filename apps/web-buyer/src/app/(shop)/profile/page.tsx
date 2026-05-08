@@ -87,8 +87,10 @@ function ProfileView() {
 
   const avatarUrl = user?.buyer?.avatarUrl ?? null;
 
-  // Stats — best-effort, skip while auth is still rehydrating to avoid Strict Mode 401 races.
-  const { data: ordersData } = useOrders({ page: 1, limit: 1, enabled: isAuthenticated });
+  // Stats — best-effort. Skip when auth is still rehydrating (Strict Mode 401 race) AND when
+  // the user signed in as SELLER — buyer/orders is BUYER-gated and would 403.
+  const isBuyer = user?.role === 'BUYER';
+  const { data: ordersData } = useOrders({ page: 1, limit: 1, enabled: isAuthenticated && isBuyer });
   const { data: wishlist } = useWishlist();
   const ordersCount = ordersData?.meta?.total ?? 0;
   const wishlistCount = wishlist?.length ?? 0;
