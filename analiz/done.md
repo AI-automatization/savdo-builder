@@ -1,5 +1,22 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Полат, поздно вечер +30 мин) — SEC-007 part 2: change-product-status + processor refactor
+
+### ✅ [SEC-007 part 2] HTML escape в product autopost + унификация processor 🟡
+
+- **Важность:** 🟡 MEDIUM (тот же класс уязвимости что SEC-007 — content injection / silent drop через TG parser)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts` — `<b>${product.title}</b>...${product.description}...🏪 ${store.name}` обёрнуты в `escapeTgHtml`. Это автопостинг при переходе товара → ACTIVE.
+  - `apps/api/src/queues/telegram-notification.processor.ts` — inline `escape` lambda заменена на shared `escapeTgHtml` (5 точек в TELEGRAM_JOB_CHAT_MESSAGE).
+- **Что сделано:**
+  - До: продавец делает `pnpm publish` товара с `<test>` → Telegram parser отвергал авто-пост в канале. Также `<a href="evil">x</a>` в описании создавал рабочую ссылку в собственном канале продавца.
+  - После: 8 интерполяций (3 в use-case + 5 в processor) защищены через единый shared helper.
+- **Что НЕ нужно:** plain-text job'ы (NEW_ORDER, STORE_APPROVED, STORE_REJECTED, VERIFICATION_APPROVED, ORDER_STATUS_CHANGED) — без `parseMode`, Telegram не интерпретирует HTML.
+- **TS:** мои файлы 0 errors. `admin-auth.use-case.spec.ts` от параллельной сессии имеет error (`otplib.authenticator` import) — не моё, untracked spec.
+
+---
+
 ## 2026-05-08 (Полат, поздно вечер) — Telegram HTML escape для user-controlled полей
 
 ### ✅ [SEC-007] HTML escape в `telegram-demo.handler.ts` 🟡

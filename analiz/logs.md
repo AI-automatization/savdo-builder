@@ -8,6 +8,21 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-08 [SEC-007 part 2] Telegram HTML escape — продолжение: change-product-status + processor
+
+- **Статус:** 🟡 → ✅ Исправлено.
+- **Что случилось:** При расширении SEC-007 нашёл ещё одно место с теми же симптомами:
+  - `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts:85` — автопостинг товара в TG-канал при переходе `→ ACTIVE`. `<b>${product.title}</b>` + `${product.description}` + `🏪 ${store.name}` шли с `parseMode: 'HTML'` без escape.
+  - `apps/api/src/queues/telegram-notification.processor.ts:114` — TELEGRAM_JOB_CHAT_MESSAGE имел inline `escape` lambda, дублирующий новый shared `escapeTgHtml`. Хорошо что user input уже escape'ился, но при добавлении ещё одного HTML-job легко забыть переиспользовать lambda.
+- **Что сделано:**
+  - `change-product-status.use-case.ts` — импорт `escapeTgHtml` + 3 интерполяции (title, description, store.name). При `parseMode: 'HTML'` через `sendMediaGroupToChannel`/`sendPhotoToChannel`/`sendToChannel` теперь безопасно для любых `<`/`>`/`&` в названии товара или магазина.
+  - `telegram-notification.processor.ts` — inline lambda `escape` удалена, заменена на shared `escapeTgHtml` из `apps/api/src/shared/telegram-html.ts`. 5 точек интерполяции в TELEGRAM_JOB_CHAT_MESSAGE используют один источник правды.
+- **Что НЕ нужно (проверил):** TELEGRAM_JOB_NEW_ORDER / STORE_APPROVED / STORE_REJECTED / VERIFICATION_APPROVED / ORDER_STATUS_CHANGED — отправляются БЕЗ `parseMode`, plain text. Telegram игнорирует HTML-теги в plain mode → escape не нужен. TELEGRAM_JOB_BROADCAST шлёт admin-controlled `d.message` в HTML — admin trusted (для broadcast Polat пишет вручную через admin UI), не пользовательский input.
+- **TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → 0 errors в моих файлах. (Один error в `admin-auth.use-case.spec.ts` от параллельной сессии — untracked + spec pending.)
+- **Файлы:** `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts`, `apps/api/src/queues/telegram-notification.processor.ts`.
+
+---
+
 ## 2026-05-08 [SEC-007] Telegram HTML escape для user-controlled полей в `telegram-demo.handler.ts`
 
 - **Статус:** 🟡 → ✅ Исправлено.
