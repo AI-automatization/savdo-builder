@@ -1,5 +1,24 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим) — FEAT-006-FE seller analytics page
+
+### ✅ [FEAT-006-FE] `/analytics` под новый `/seller/analytics?from=&to=` 🟡
+
+- **Дата:** 08.05.2026
+- **Backend:** `GET /seller/analytics?from=&to=` (Полат, `7a3ca26`) → `{ range, revenue: { total, completed, pending }, orders: { total, byStatus }, topProducts, daily }`. Default = 30 дней, max = 90 дней (BadRequest при превышении).
+- **Файлы (web-seller):**
+  - `src/lib/api/analytics.api.ts` — добавлены типы `DailyPoint`/`AnalyticsTopProduct`/`SellerAnalytics` и `getSellerAnalytics({ from, to })`. Старый `getSellerSummary` оставлен без изменений (используется на `/dashboard`).
+  - `src/hooks/use-analytics.ts` — добавлен `useSellerAnalytics(period: 7 | 30 | 90)` с `useMemo` для стабильного `from/to` и `staleTime: 60s`, `retry: false`.
+  - `src/app/(dashboard)/analytics/page.tsx` — переписана страница:
+    - Period selector (7/30/90 дней) в шапке.
+    - 3 KPI: Выручка (completed) · Заказы (total + delivered subtitle) · В работе (revenue.pending).
+    - Custom SVG sparkline по `daily.revenue` (без recharts — лёгкий бандл, ~3 КБ).
+    - Top-5 товаров по выручке (отдельная карточка).
+    - Empty state «За {период} ещё нет заказов».
+    - Legacy секция «Просмотры и конверсия за 30 дней» (старый `useSellerSummary`) оставлена ниже как secondary, с пометкой периода.
+
+---
+
 ## 2026-05-08 (Азим) — FEAT-001-FE search + FEAT-003-FE price filter
 
 ### ✅ [FEAT-001-FE] Глобальный поиск магазинов и товаров в Header 🟢
