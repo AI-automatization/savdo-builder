@@ -490,7 +490,7 @@ export default function CartPage() {
       {/* ── Mobile sticky CTA ─────────────────────────────────────────────── */}
       {items.length > 0 && (
         <div
-          className="md:hidden sticky bottom-0 z-30 p-3 border-t"
+          className="md:hidden sticky bottom-0 z-[51] p-3 border-t"
           style={{ background: colors.surfaceMuted, borderColor: colors.divider }}
         >
           <Link

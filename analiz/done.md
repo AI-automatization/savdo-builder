@@ -1,5 +1,43 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 6 minor
+
+### ✅ [BUG-WB-AUDIT-020] IcoSend hardcoded `stroke="white"` 🟢
+
+- **Файл:** `apps/web-buyer/src/components/icons.tsx:10`
+- **Что сделано:** `stroke="white"` → `stroke="currentColor"`. Иконка теперь видна на любом фоне (раньше на white-кнопке была невидимой).
+
+### ✅ [BUG-WB-AUDIT-021] cart sticky CTA `z-30` < BottomNav `z-50` 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx:493`
+- **Что сделано:** `z-30` → `z-[51]`. Кнопка «Оформить заказ» теперь над BottomNavBar (как orders/[id] sticky CTA, fix BUG-006).
+
+### ✅ [BUG-WB-AUDIT-022] `normalizeOrder` — id/orderNumber/storeId без fallback 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:58`
+- **Что сделано:** добавлены `?? ''` fallback на `id`, `orderNumber`, `storeId`. `shortId(undefined).slice` больше не упадёт TypeError если backend пришлёт неполный объект.
+
+### ✅ [BUG-WB-AUDIT-023] Timeline PROCESSING == CONFIRMED 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:101-114`
+- **Что сделано:** добавил `PROCESSING` отдельным шагом в `TIMELINE` («Сборка заказа») между `CONFIRMED` и `SHIPPED`. `STATUS_INDEX` сдвинут (PENDING=0, CONFIRMED=1, PROCESSING=2, SHIPPED=3, DELIVERED=4). Когда заказ в статусе PROCESSING, теперь подсвечивается свой шаг, а не CONFIRMED.
+
+### ✅ [BUG-WB-AUDIT-024] product detail clipboard без catch 🟢
+
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:108-117`
+- **Что сделано:** `navigator.clipboard.writeText(...).then(...)` теперь имеет `.catch(() => {})`. На HTTP / Telegram WebView без permissions clipboard кидает DOMException — раньше получали unhandled rejection. Шаринг — best-effort, тихий fallback ОК.
+
+### ✅ [BUG-WB-AUDIT-025] RecentStores `<button>` внутри `<Link>` 🟢
+
+- **Файл:** `apps/web-buyer/src/components/home/RecentStores.tsx`
+- **Что сделано:** переписана структура: `<div class="relative">` контейнер, внутри `<Link>` (визуальная карточка) и `<button>` (remove) — теперь sibling'и, не вложены. Невалидный HTML устранён, tab-навигация и AT работают корректно.
+
+### 🟢 Принято как negligible
+
+- **BUG-WB-AUDIT-026** (`bucketFor` без обновления при смене суток): audit сам предложил «или принять как negligible». Edge-case при mount > 24 часов; пользователи на нормальных мобильных сессиях этим не задеты.
+
+---
+
 ## 2026-05-08 (Азим) — Аудит web-buyer 05.05: 8 major + role-guard
 
 ### ✅ [BUG-WB-AUDIT-008] orders/page.tsx — `accOrders` race при смене фильтра 🟡
