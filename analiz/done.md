@@ -1,5 +1,42 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Полат, параллельная сессия) — otplib v12 → v13.4.0 upgrade
+
+### ✅ [API-OTPLIB-V13-UPGRADE-001] otplib v13 — переписать admin-auth.use-case.ts под functional API 🟡
+
+- **Важность:** 🟡 MEDIUM (technical debt; v12 закреплено в package.json несколько недель из-за blocked v13 upgrade)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/api/package.json` — `otplib: ^12.0.1 → ^13.4.0`
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts` — убран `require('otplib')` workaround, заменён на нормальный `import { generateSecret, generateURI, verifySync } from 'otplib'`. Все 3 вызова `authenticator.verify(...)` заменены на `verifySync(...).valid` (v13 возвращает `{valid: true|false, delta?}` вместо boolean). `authenticator.keyuri(label, issuer, secret)` → `generateURI({issuer, label, secret})`. Опции TOTP вынесены в const `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 — эквивалент v12 window:1 ±30s).
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.spec.ts` — `jest.mock('otplib')` обновлён под новую functional форму. `verifySync` мокается с `mockReturnValue({valid: true})`/`{valid: false}`. Assertions `expect(verifySync).toHaveBeenCalledWith(expect.objectContaining({token, secret}))` (для tolerance к нашим extra opts).
+  - `pnpm-lock.yaml` — обновлён автоматически через `pnpm --filter api install`.
+- **Что сделано:** otplib upgraded, v12 namespace API (`authenticator.options/generateSecret/keyuri/verify`) полностью заменён v13 functional API. Сохранены все security-критичные параметры (digits=6, period=30, ±30s tolerance).
+- **Verification:**
+  - `npx tsc --noEmit` → 0 ошибок.
+  - `npx jest admin-auth.use-case.spec` → 14/14 passed (5.15 s).
+  - Manual smoke: setupMfa→QR; verifyMfa(valid code); disableMfa; mfaChallenge — все вызывают `verifySync` правильно.
+- **Backwards compat:** существующие `mfaSecret` в БД (base32) полностью совместимы с v13 — формат секрета не изменился.
+
+---
+
+## 2026-05-08 (Полат, поздно вечер +30 мин) — SEC-007 part 2: change-product-status + processor refactor
+
+### ✅ [SEC-007 part 2] HTML escape в product autopost + унификация processor 🟡
+
+- **Важность:** 🟡 MEDIUM (тот же класс уязвимости что SEC-007 — content injection / silent drop через TG parser)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts` — `<b>${product.title}</b>...${product.description}...🏪 ${store.name}` обёрнуты в `escapeTgHtml`. Это автопостинг при переходе товара → ACTIVE.
+  - `apps/api/src/queues/telegram-notification.processor.ts` — inline `escape` lambda заменена на shared `escapeTgHtml` (5 точек в TELEGRAM_JOB_CHAT_MESSAGE).
+- **Что сделано:**
+  - До: продавец делает `pnpm publish` товара с `<test>` → Telegram parser отвергал авто-пост в канале. Также `<a href="evil">x</a>` в описании создавал рабочую ссылку в собственном канале продавца.
+  - После: 8 интерполяций (3 в use-case + 5 в processor) защищены через единый shared helper.
+- **Что НЕ нужно:** plain-text job'ы (NEW_ORDER, STORE_APPROVED, STORE_REJECTED, VERIFICATION_APPROVED, ORDER_STATUS_CHANGED) — без `parseMode`, Telegram не интерпретирует HTML.
+- **TS:** мои файлы 0 errors. `admin-auth.use-case.spec.ts` от параллельной сессии имеет error (`otplib.authenticator` import) — не моё, untracked spec.
+
+---
+
 ## 2026-05-08 (Полат, поздно вечер) — Telegram HTML escape для user-controlled полей
 
 ### ✅ [SEC-007] HTML escape в `telegram-demo.handler.ts` 🟡

@@ -33,9 +33,7 @@
 - [x] **`AUDIT-NETWORK-LOADING-P0-FIXES`** ✅ 08.05.2026 — закрыты P0 из `analiz/audit-network-loading-2026-05-07.md`: (1) `lib/api.ts` уже имеет auto-bust cache на не-GET (parallel session) + добавил `timeout?: number` в ApiOptions interface (был implicit, TS would complain on opts.timeout). (2) Race condition fix в `buyer/OrdersPage.tsx`: AbortController на loadMore + toggleExpand detail + loadingMore guard от double-tap.
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
 - [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
-- [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
-  - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
-  - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
+- [x] **`TMA-PHOTO-UPLOAD-DIAG-001`** ✅ 08.05.2026 — root cause найден через code review (без логов): `buyer/ChatPage.sendPhoto` + `seller/ChatPage.sendPhoto` использовали `api()` с `body: FormData`, но `api()` делал `JSON.stringify(opts.body)` → формдата сериализовалась в `"{}"`, файл терялся целиком. Дополнительно: destructure `uploadRes.id` — API возвращает `mediaFileId`. Чинено через `apiUpload()` (XHR multipart) + preventive guard в `lib/api.ts:doFetch` бросает error «Use apiUpload() for FormData» если кто-то снова попробует. Подробности в `analiz/done.md`.
 
 ## 🟠 P1 — Полат
 
@@ -117,7 +115,7 @@
 - [x] **`API-WS-PUSH-NOTIFICATIONS-001`** ✅ 06.05.2026 — реализовано параллельной сессией: `chat.gateway.ts handleConnection` авто-join `user:${userId}`, `emitNotificationNew()` в `InAppNotificationProcessor` после create. Frontend `notifications.ts` слушает `notification:new`, fallback poll 5 мин на разрыв WS.
 - [x] **`API-MFA-COVERAGE-EXTRA-001`** ✅ 06.05.2026 — `MfaEnforcedGuard` + `AdminPermissionGuard` + `@AdminPermission` добавлены на admin endpoints в categories (5 endpoints), analytics (1), media (1). Permissions matrix дополнена `category:read/moderate`, `media:read` для moderator/support/finance ролей.
 
-- [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
+- [x] **`API-OTPLIB-V13-UPGRADE-001`** ✅ 08.05.2026 — bump `otplib` `^12.0.1 → ^13.4.0`. `admin-auth.use-case.ts` переписан под v13 functional API (`generateSecret`, `generateURI`, `verifySync`). Опции TOTP вынесены в `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 = эквивалент v12 window:1 ±30s). Spec обновлён под новый API. 14/14 тестов passed, `npx tsc --noEmit` чист. Подробности в `analiz/done.md`.
 
 - [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (полностью закрыто) — API теперь кладёт resolved URL прямо в `image.url` для 3 product detail endpoints (seller getMyProduct, products list seller endpoint, storefront product detail). EditProductPage использует `img.url` с fallback на getImageUrl для backward-compat. ProductsPage уже на mediaUrls[0]. Frontend больше не зависит от `VITE_R2_PUBLIC_URL`.
 

@@ -8,6 +8,52 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-08 [SIGNAL] Параллельная сессия (otplib v13 upgrade) — закончила работу
+
+- **Сделано в этой сессии (08.05.2026):**
+  - `[API-OTPLIB-V13-UPGRADE-001]` otplib `^12.0.1 → ^13.4.0`. Старый `require('otplib')` workaround заменён на чистый ESM-импорт `generateSecret/generateURI/verifySync`. v13 убрал `authenticator` namespace + `verify` теперь возвращает `{valid, delta}` вместо boolean. Опции вынесены в `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 = эквивалент v12 window:1 ±30s). Spec обновлён под новый API.
+- **Файлы (только мои, 6 шт):** `apps/api/package.json`, `apps/api/src/modules/admin/use-cases/admin-auth.use-case.{ts,spec.ts}`, `pnpm-lock.yaml`, `analiz/{tasks,done}.md`.
+- **TS+тесты:** `npx tsc --noEmit` → 0 errors. `npx jest admin-auth.use-case.spec` → 14/14 passed.
+- **Backwards compat:** существующие `mfaSecret` в БД (base32) совместимы с v13 — формат секрета не менялся.
+- **Состояние веток:** main + api запушены. После моего push другие сессии должны `git pull --rebase origin main` перед своим push.
+- **Что НЕ трогал по §6.6:** `CLAUDE.md` (параллельная сессия только что добавила skills section), untracked `admin-create-seller.use-case.spec.ts` (другая сессия), audit-файлы Азима в `analiz/`.
+
+---
+
+## 2026-05-08 [SIGNAL] Параллельная сессия #N (security) — закончила работу
+
+- **Сделано в этой сессии (08.05.2026):**
+  - `[SEC-007]` Telegram HTML escape — `apps/api/src/shared/telegram-html.ts` + 12 точек в `telegram-demo.handler.ts` (commit `34bb176`).
+  - `[SEC-007 part 2]` — `change-product-status.use-case.ts` autopost + унификация `telegram-notification.processor.ts` (commit `ffbe10a`).
+- **Состояние веток:** main + api в синхроне, pushed.
+- **TS:** 0 errors в моих файлах. Параллельная сессия пишет unit-тесты в `admin-auth.use-case.spec.ts` (untracked) — там TS error на `otplib.authenticator` импорте, **не моё**, не блокирует мои фиксы.
+- **Что НЕ трогал по §6.6 (заняты другой сессией):** `apps/api/package.json`, `pnpm-lock.yaml`, `admin-auth.use-case.ts`, `admin-auth.use-case.spec.ts`, `admin-create-store.use-case.spec.ts`, `analiz/tasks.md`, `analiz/done.md` (последние правки), `CLAUDE.md`.
+- **Открыто в моём backlog (не блокеры, для будущих сессий):**
+  - `[SEC-008]` MED-04 — OTP `code` в BullMQ job data (видно через Bull Board под токеном).
+  - `[SEC-009]` MED-05 — CORS wildcard `*.railway.app` → whitelist через `ALLOWED_ORIGINS`.
+  - `[SEC-005]` MED-01 — SuperAdminController inline body types → DTOs.
+  - `[SEC-006]` MED-02 — storefront filters DTO/whitelist.
+  - `[SEC-011]` LOW-01 — phone PII masking в logs.
+  - `[SEC-012]` LOW-02 — Multer `limits.fileSize`.
+  - HIGH-02 = `[SEC-003]` ADMIN bypass в RolesGuard — поведенческое изменение, требует согласия Полата.
+
+---
+
+## 2026-05-08 [SEC-007 part 2] Telegram HTML escape — продолжение: change-product-status + processor
+
+- **Статус:** 🟡 → ✅ Исправлено.
+- **Что случилось:** При расширении SEC-007 нашёл ещё одно место с теми же симптомами:
+  - `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts:85` — автопостинг товара в TG-канал при переходе `→ ACTIVE`. `<b>${product.title}</b>` + `${product.description}` + `🏪 ${store.name}` шли с `parseMode: 'HTML'` без escape.
+  - `apps/api/src/queues/telegram-notification.processor.ts:114` — TELEGRAM_JOB_CHAT_MESSAGE имел inline `escape` lambda, дублирующий новый shared `escapeTgHtml`. Хорошо что user input уже escape'ился, но при добавлении ещё одного HTML-job легко забыть переиспользовать lambda.
+- **Что сделано:**
+  - `change-product-status.use-case.ts` — импорт `escapeTgHtml` + 3 интерполяции (title, description, store.name). При `parseMode: 'HTML'` через `sendMediaGroupToChannel`/`sendPhotoToChannel`/`sendToChannel` теперь безопасно для любых `<`/`>`/`&` в названии товара или магазина.
+  - `telegram-notification.processor.ts` — inline lambda `escape` удалена, заменена на shared `escapeTgHtml` из `apps/api/src/shared/telegram-html.ts`. 5 точек интерполяции в TELEGRAM_JOB_CHAT_MESSAGE используют один источник правды.
+- **Что НЕ нужно (проверил):** TELEGRAM_JOB_NEW_ORDER / STORE_APPROVED / STORE_REJECTED / VERIFICATION_APPROVED / ORDER_STATUS_CHANGED — отправляются БЕЗ `parseMode`, plain text. Telegram игнорирует HTML-теги в plain mode → escape не нужен. TELEGRAM_JOB_BROADCAST шлёт admin-controlled `d.message` в HTML — admin trusted (для broadcast Polat пишет вручную через admin UI), не пользовательский input.
+- **TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → 0 errors в моих файлах. (Один error в `admin-auth.use-case.spec.ts` от параллельной сессии — untracked + spec pending.)
+- **Файлы:** `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts`, `apps/api/src/queues/telegram-notification.processor.ts`.
+
+---
+
 ## 2026-05-08 [SEC-007] Telegram HTML escape для user-controlled полей в `telegram-demo.handler.ts`
 
 - **Статус:** 🟡 → ✅ Исправлено.
