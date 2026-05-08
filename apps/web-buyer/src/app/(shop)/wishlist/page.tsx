@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import type { WishlistItem } from "types";
 import { Heart, ShoppingBag } from "lucide-react";
-import Header from "@/components/layout/Header";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
 import { useAuth } from "@/lib/auth/context";
@@ -18,8 +17,6 @@ export default function WishlistPage() {
 
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
-      <Header />
-
       <div className="max-w-7xl mx-auto pb-28 md:pb-12">
         {isAuthenticated ? <WishlistContent /> : (
           <div className="px-4 pt-6">
