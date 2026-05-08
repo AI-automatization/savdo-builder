@@ -194,7 +194,13 @@ export default function SellerOrdersPage() {
     setDetailLoading(true);
     api<OrderDetail>(`/seller/orders/${orderId}`, { signal: ac.signal, forceFresh: true })
       .then((d) => { if (!ac.signal.aborted) setDetail(d); })
-      .catch(() => {})
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        const msg = err instanceof Error ? err.message : 'Не удалось загрузить заказ';
+        showToast(`❌ ${msg}`, 'error');
+        setDetailId(null);
+      })
       .finally(() => { if (!ac.signal.aborted) setDetailLoading(false); });
   };
 

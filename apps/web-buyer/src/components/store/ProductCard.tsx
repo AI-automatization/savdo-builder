@@ -38,11 +38,14 @@ export default function ProductCard({ product, storeSlug }: Props) {
     toggleWishlist.mutate({ productId: product.id, inWishlist });
   }
 
-  const mediaUrls = (
-    (product as unknown as { images?: Array<{ url: string | null | undefined }> }).images?.map((i) => i.url ?? '')
-    ?? product.mediaUrls
-    ?? []
-  ).filter((u): u is string => typeof u === 'string' && u.length > 0);
+  // ProductListItem декларирует оба поля (API-PRODUCT-LIST-IMAGES-CONTRACT-001,
+  // закрыто Полатом 08.05.2026). Берём images когда есть — это canonical shape
+  // на storefront feed; mediaUrls — fallback для callsite'ов, которые могут
+  // строить ProductListItem из других источников (не storefront).
+  const mediaUrls = (product.images?.length
+    ? product.images.map((i) => i.url)
+    : product.mediaUrls ?? []
+  ).filter((u) => u.length > 0);
   const isUnavailable = product.status !== ProductStatus.ACTIVE || !product.isVisible;
   const displayType = product.displayType ?? 'SINGLE';
 

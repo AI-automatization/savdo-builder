@@ -1,5 +1,154 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фиксы Wave 1+4
+
+### ✅ [WS-DESIGN-WAVE-1] light-theme contrast killers — 5 P1 из 6 🔴
+
+- **Важность:** 🔴 HIGH (light theme был фактически сломан в 4-5 точках)
+- **Дата:** 08.05.2026
+- **Коммит:** `1ad0e69`
+- **Файлы:**
+  - `apps/web-seller/src/app/globals.css` — добавлен класс `.row-hoverable { :hover background var(--color-surface-elevated) }` для theme-aware row hover вместо `bg-white/[0.03]` Tailwind.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — 5 хардкоженных hex заменены: `#f87171` ×4 (error text, ×2 required asterisks, удалить-кнопка) → `colors.danger`; `#A78BFA` ×1 (back-link) → `colors.accent`. Visibility toggle thumb `after:bg-white` → внутри `<style>` блока через `colors.textMuted` (off) и `colors.bg` (on) — паттерн совпадает с create page.
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — 3× `rgba(255,255,255,X)` → `color-mix(in srgb, ${colors.accentTextOnBg} N%, transparent)`. Theme-adaptive overlay: в light theme overlay белый поверх dark-violet accent (как раньше), в dark theme overlay тёмный поверх light-violet accent (стало читабельным). Применено к textarea bg/border, кнопке «Отмена» в edit mode, и timestamp text seller-bubble.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx` — 2× `transition-colors hover:bg-white/[0.03]` → `transition-colors row-hoverable` (Settings link + Logout button rows).
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — sidebar logo: `linear-gradient(135deg, #7C3AED, #A78BFA)` + `boxShadow rgba(167,139,250,0.40)` → solid `colors.accent` + `colors.accentTextOnBg` для иконки. Совпадает с onboarding logo и спекой Liquid Authority «no glow gradients». Logout-button hover класс заменён на `row-hoverable`.
+- **Что сделано:** systematic fix всех light-theme контраст-багов из аудита 08.05. Все хардкоженные hex (`#f87171`, `#A78BFA`) и `*-white/X` Tailwind классы заменены theme-aware токенами или `color-mix()` поверх существующих токенов. Никаких новых CSS variables не понадобилось.
+- **Skipped (с обоснованием):** P1-004 (avatar spinner `text-white` в `profile/page.tsx:116`) — overlay поверх spinner'а это `rgba(0,0,0,0.45)`, тёмный в обеих темах. White spinner читается всегда, аудит overcautious. Обновлено в audit doc.
+- **Verification:** локально не запускал (запрещено). Push'нётся через ветку `web-seller` → Railway сборка подтвердит.
+
+### ✅ [WS-DESIGN-WAVE-4] Login OTP copy: SMS → Telegram 🟡
+
+- **Важность:** 🟡 MEDIUM (project rule №0 violation, копи-баг в первом окне seller'а)
+- **Дата:** 08.05.2026
+- **Коммит:** `a818720`
+- **Файлы:**
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — «Отправили SMS на +998 …» → «Код отправлен в Telegram-бот @savdo_builderBOT»; «Код из SMS» → «Код из Telegram».
+- **Что сделано:** OTP step seller login больше не противоречит project rule №0 (ESKIZ.UZ ЗАПРЕЩЁН, OTP только Telegram bot). Реальность UX: после ввода телефона seller получает код именно от @savdo_builderBOT в Telegram.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller design audit
+
+### ✅ [WEB-DESIGN-AUDIT-001] Аудит web-seller под Liquid Authority — 30 findings 🟢
+
+- **Важность:** 🟢 LOW (read-only, ничего не сломано — только backlog для будущих волн)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `analiz/audit-web-seller-design-2026-05-08.md` (новый) — полный отчёт.
+  - `analiz/tasks.md` — добавлена секция `WS-DESIGN-FIX-WAVES` с 7 волнами фиксов.
+- **Что сделано:** Систематический обход 15 страниц + 7 компонентов `apps/web-seller` против `docs/design/liquid-authority.md`. Делегировано feature-dev:code-explorer subagent'у. Категоризация: P1 (видимые UX-баги/контраст/accessibility) — 7, P2 (drift/inconsistency/off-grid) — 14, P3 (polish) — 9. Health 6.5/10.
+- **Ключевые находки:**
+  - **Phase 2/3 cleanup держится:** 0 `backdrop-blur`, 0 `dark:` Tailwind classes — token discipline сохранён.
+  - **Кластер хардкоженного hex'a в edit-product** (`#f87171`, `#A78BFA`, native `<select>` с `#1a1d2e`) — light theme там фактически сломан.
+  - **3 места native `confirm()`** (edit-product, option-groups, variants) — не следуют app theme, на mobile WebView часто silently заблокированы.
+  - **5 page headings ниже spec** (`text-xl` 20px вместо 24-32px Headline range).
+  - **SMS-copy в login OTP** — нарушение project rule №0 (Telegram-only).
+  - **Sidebar logo gradient + glow** хардкожен dark-only — в light theme выглядит чужеродно.
+- **Backlog:** см. `analiz/tasks.md` секция `WS-DESIGN-FIX-WAVES` — 7 волн упорядочены по value/effort. Wave 1-2 — P1 critical, Wave 3-6 — P2 systemic, Wave 7 — backlog.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — Cleanup контракт-хвостов после Полата
+
+### ✅ [WEB-BUYER-CONTRACT-CLEANUP-001] search type из `packages/types` + убран defensive cast в ProductCard 🟢
+
+- **Важность:** 🟢 LOW (technical debt cleanup; функционально без изменений)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/search.api.ts` — удалены локальные `SearchStoreHit`/`SearchProductHit`/`StorefrontSearchResponse`. Теперь `import type { StorefrontSearchResponse } from 'types'`. Файл сократился до одной API-функции + import.
+  - `apps/web-buyer/src/components/store/ProductCard.tsx` — убран `(product as unknown as { images?: ... }).images` cast (BUG-WB-AUDIT-018, ранее skipped пока контракт не был выровнен). Теперь `product.images?.length ? product.images.map(i=>i.url) : product.mediaUrls ?? []`. Поведение идентично — оба поля гарантированы контрактом, fallback на mediaUrls для не-storefront callsite'ов.
+- **Что сделано:** Полат сегодня ночью закрыл оба контракта (`API-STOREFRONT-SEARCH-CONTRACT-001` + `API-PRODUCT-LIST-IMAGES-CONTRACT-001`) — `ProductListItem` теперь декларирует и `mediaUrls: string[]`, и `images: { url }[]`; `StorefrontSearchResponse` живёт в `packages/types/src/api/search.ts`. Удалил локальные дубли в web-buyer.
+- **Verification:** локально не запускал (запрещено). Push'нётся через ветку `web-buyer` → Railway сборкa подтвердит.
+
+---
+
+## 2026-05-08 (Полат, параллельная сессия) — otplib v12 → v13.4.0 upgrade
+
+### ✅ [API-OTPLIB-V13-UPGRADE-001] otplib v13 — переписать admin-auth.use-case.ts под functional API 🟡
+
+- **Важность:** 🟡 MEDIUM (technical debt; v12 закреплено в package.json несколько недель из-за blocked v13 upgrade)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/api/package.json` — `otplib: ^12.0.1 → ^13.4.0`
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts` — убран `require('otplib')` workaround, заменён на нормальный `import { generateSecret, generateURI, verifySync } from 'otplib'`. Все 3 вызова `authenticator.verify(...)` заменены на `verifySync(...).valid` (v13 возвращает `{valid: true|false, delta?}` вместо boolean). `authenticator.keyuri(label, issuer, secret)` → `generateURI({issuer, label, secret})`. Опции TOTP вынесены в const `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 — эквивалент v12 window:1 ±30s).
+  - `apps/api/src/modules/admin/use-cases/admin-auth.use-case.spec.ts` — `jest.mock('otplib')` обновлён под новую functional форму. `verifySync` мокается с `mockReturnValue({valid: true})`/`{valid: false}`. Assertions `expect(verifySync).toHaveBeenCalledWith(expect.objectContaining({token, secret}))` (для tolerance к нашим extra opts).
+  - `pnpm-lock.yaml` — обновлён автоматически через `pnpm --filter api install`.
+- **Что сделано:** otplib upgraded, v12 namespace API (`authenticator.options/generateSecret/keyuri/verify`) полностью заменён v13 functional API. Сохранены все security-критичные параметры (digits=6, period=30, ±30s tolerance).
+- **Verification:**
+  - `npx tsc --noEmit` → 0 ошибок.
+  - `npx jest admin-auth.use-case.spec` → 14/14 passed (5.15 s).
+  - Manual smoke: setupMfa→QR; verifyMfa(valid code); disableMfa; mfaChallenge — все вызывают `verifySync` правильно.
+- **Backwards compat:** существующие `mfaSecret` в БД (base32) полностью совместимы с v13 — формат секрета не изменился.
+
+---
+
+## 2026-05-08 (Полат, поздно вечер +30 мин) — SEC-007 part 2: change-product-status + processor refactor
+
+### ✅ [SEC-007 part 2] HTML escape в product autopost + унификация processor 🟡
+
+- **Важность:** 🟡 MEDIUM (тот же класс уязвимости что SEC-007 — content injection / silent drop через TG parser)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts` — `<b>${product.title}</b>...${product.description}...🏪 ${store.name}` обёрнуты в `escapeTgHtml`. Это автопостинг при переходе товара → ACTIVE.
+  - `apps/api/src/queues/telegram-notification.processor.ts` — inline `escape` lambda заменена на shared `escapeTgHtml` (5 точек в TELEGRAM_JOB_CHAT_MESSAGE).
+- **Что сделано:**
+  - До: продавец делает `pnpm publish` товара с `<test>` → Telegram parser отвергал авто-пост в канале. Также `<a href="evil">x</a>` в описании создавал рабочую ссылку в собственном канале продавца.
+  - После: 8 интерполяций (3 в use-case + 5 в processor) защищены через единый shared helper.
+- **Что НЕ нужно:** plain-text job'ы (NEW_ORDER, STORE_APPROVED, STORE_REJECTED, VERIFICATION_APPROVED, ORDER_STATUS_CHANGED) — без `parseMode`, Telegram не интерпретирует HTML.
+- **TS:** мои файлы 0 errors. `admin-auth.use-case.spec.ts` от параллельной сессии имеет error (`otplib.authenticator` import) — не моё, untracked spec.
+
+---
+
+## 2026-05-08 (Полат, поздно вечер) — Telegram HTML escape для user-controlled полей
+
+### ✅ [SEC-007] HTML escape в `telegram-demo.handler.ts` 🟡
+
+- **Важность:** 🟡 MEDIUM (content injection в собственный канал продавца + parser-error silent drops)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/api/src/shared/telegram-html.ts` (new) — `escapeTgHtml(s)` заменяет `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;` в порядке Telegram Bot API spec.
+  - `apps/api/src/modules/telegram/telegram-demo.handler.ts` — 12 точек интерполяции user-controlled данных (`firstName`, `product.title`, `product.description`, `store.name`, `store.slug`, `store.description`, `store.telegramChannelTitle`, `storeName`) обёрнуты в `escapeTgHtml`.
+- **Что сделано:**
+  - До фикса: `<b>${product.title}</b>` ломался при `<` в названии (Telegram парсер отказывал, пост не появлялся в канале); `<a href="https://evil">текст</a>` от seller рендерился как рабочая ссылка в его автопостинге.
+  - После: все 12 точек защищены, безопасно интерполируется любой UTF-8 + спецсимволы. Telegram теперь рендерит их как видимый текст (`&lt;test&gt;`).
+- **Backlog (отдельные тикеты):**
+  - `seller-notification.service.ts` — 5 типов уведомлений с `parseMode: 'HTML'`, аналогичные интерполяции `d.storeName`/`d.productTitle`. Не правил в этой сессии (узкий scope).
+  - `telegram-webhook.controller.ts` — статичные строки, escape не нужен.
+- **TS:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → exit 0.
+
+---
+
+## 2026-05-08 (Полат, вечер) — TMA polish: skeletons + a11y
+
+### ✅ [TMA-LOADING-SKELETONS-001] Скелетоны на оставшихся страницах 🟠
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/OrdersPage.tsx` — initial-list `<Spinner />` заменён на 4 `OrderRowSkeleton` (placeholder совпадает по высоте с реальной карточкой → нет layout shift).
+  - `apps/tma/src/pages/seller/ProfilePage.tsx` — пока `store === null` рендерится skeleton-блок магазина (header chip + name + URL pill + meta) поверх существующего `{store && (...)}`. Раньше блок просто отсутствовал, плотность скакала.
+- **Что НЕ нужно (выяснено в ходе аудита):**
+  - `CartPage` / `CheckoutPage` — синхронно читают `getCart()` (localStorage), нет блокирующего fetch'а → loading state физически отсутствует.
+  - `buyer/ProfilePage` — все данные из `useAuth()` синхронно.
+  - `AddProductPage` — create-страница без блокирующего initial fetch'а; категории грузятся для модала, форма уже доступна.
+  - `StoresPage` — оба таба уже имели `ThreadRowSkeleton` / `ProductCardSkeleton`.
+- **Тикет помечается полностью закрытым:** все страницы с реальным loading state теперь имеют skeleton.
+
+### ✅ [TMA-A11Y-ROLE-TABINDEX-001] role/tabIndex/onKeyDown на clickable div 🟡
+
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/tma/src/components/ui/ProductCard.tsx` — внешний `<div onClick>` обёрнут в `role="button" tabIndex={0} aria-label={…} onKeyDown={Enter|Space}`. Не сделан настоящим `<button>` потому что внутри nested `<button>` (add-to-cart, wishlist) — было бы invalid HTML.
+  - `apps/tma/src/pages/buyer/ProductPage.tsx` — collage 2x2 gallery (открывает первое фото) теперь с role/tabIndex/onKeyDown.
+  - `apps/tma/src/pages/buyer/WishlistPage.tsx` — карточка товара аналогично.
+- **Что НЕ нужно править:**
+  - `GlassCard` — уже рендерит `<button>` когда есть `onClick`.
+  - Buyer/seller `ChatPage` thread row, `StorePage` product card — уже имели role/tabIndex.
+  - Modal backdrops (`onClick={() => close()}`) — invisible click target, ESC-handler уже есть в `ConfirmModal`/`ImageCropper`/`BottomSheet`. Backdrop click — secondary path, не a11y violation.
+- **Why:** на desktop Telegram (web/macOS) есть keyboard, пользователи без мыши не могли открывать товары через Tab+Enter.
+
+---
+
 ## 2026-05-08 (Азим) — FEAT-006-FE seller analytics page
 
 ### ✅ [FEAT-006-FE] `/analytics` под новый `/seller/analytics?from=&to=` 🟡

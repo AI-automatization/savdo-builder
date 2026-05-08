@@ -73,9 +73,9 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
         <Link href="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
+            style={{ background: colors.accent }}
           >
-            <ShoppingCart size={16} color="#fff" />
+            <ShoppingCart size={16} color={colors.accentTextOnBg} />
           </div>
           <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
         </Link>
@@ -168,7 +168,7 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
           disabled={logoutPending}
           title="Выйти"
           style={{ color: colors.textDim }}
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-40 hover:opacity-80 hover:bg-white/[0.03] transition-opacity"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-40 hover:opacity-80 row-hoverable transition-opacity"
           aria-label="Выйти"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">

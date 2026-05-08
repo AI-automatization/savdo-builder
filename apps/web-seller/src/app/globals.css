@@ -106,3 +106,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   body { transition: none; }
 }
+
+/* Row hover — theme-aware highlight for clickable rows / icon buttons.
+   Replaces `hover:bg-white/[0.03]` Tailwind which only reads in dark theme. */
+.row-hoverable:hover {
+  background-color: var(--color-surface-elevated);
+}

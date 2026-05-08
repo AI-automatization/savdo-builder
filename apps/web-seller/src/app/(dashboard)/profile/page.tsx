@@ -240,7 +240,7 @@ export default function ProfilePage() {
       <section className="rounded-xl overflow-hidden" style={cardMuted}>
         <Link
           href="/settings"
-          className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-white/[0.03]"
+          className="flex items-center gap-3 px-5 py-4 transition-colors row-hoverable"
           style={{ borderBottom: `1px solid ${colors.divider}` }}
         >
           <Settings size={16} style={{ color: colors.textMuted }} />
@@ -254,7 +254,7 @@ export default function ProfilePage() {
           type="button"
           onClick={handleLogout}
           disabled={logoutMutation.isPending}
-          className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.03] disabled:opacity-60"
+          className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors row-hoverable disabled:opacity-60"
         >
           <LogOut size={16} style={{ color: colors.danger }} />
           <div className="flex-1 min-w-0">

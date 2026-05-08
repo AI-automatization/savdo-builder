@@ -10,6 +10,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductReviews } from '@/components/reviews/ProductReviews';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
 import {
   findVariantBySelection,
   initialSelectionFromVariants,
@@ -249,9 +250,10 @@ export default function ProductPage() {
   const galleryNode = (
     displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
       <div
+        {...clickableA11y(() => setActiveImage(0))}
+        aria-label="Открыть фото товара"
         className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
         style={{ aspectRatio: '1' }}
-        onClick={() => setActiveImage(0)}
       >
         {images.slice(0, 4).map((url, idx) => (
           <div key={idx} className="relative overflow-hidden bg-white/5">

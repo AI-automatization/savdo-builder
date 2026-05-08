@@ -13,6 +13,7 @@ import {
   NotifyChatMessageData,
 } from '../modules/telegram/services/seller-notification.service';
 import { TELEGRAM_JOB_BROADCAST } from '../modules/admin/use-cases/broadcast.use-case';
+import { escapeTgHtml } from '../shared/telegram-html';
 
 export const TELEGRAM_JOB_NEW_ORDER = 'new-order';
 export const TELEGRAM_JOB_STORE_APPROVED = 'store-approved';
@@ -111,23 +112,22 @@ export class TelegramNotificationProcessor extends WorkerHost {
           // Polat 07.05: формат как нормальный мессенджер — bold заголовок,
           // понятный context, кнопка «Открыть чат» one-tap в TMA.
           const d = job.data as NotifyChatMessageData;
-          const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
           const senderLine = d.recipientRole === 'SELLER'
-            ? `от <b>${escape(d.senderName)}</b>` // продавцу: «от +99890...»
-            : `от <b>${escape(d.senderName)}</b>${d.storeName && d.storeName !== d.senderName ? ` · ${escape(d.storeName)}` : ''}`; // покупателю: «от Магазин»
+            ? `от <b>${escapeTgHtml(d.senderName)}</b>` // продавцу: «от +99890...»
+            : `от <b>${escapeTgHtml(d.senderName)}</b>${d.storeName && d.storeName !== d.senderName ? ` · ${escapeTgHtml(d.storeName)}` : ''}`; // покупателю: «от Магазин»
 
           const contextLine = d.productTitle
-            ? `\n📦 <i>${escape(d.productTitle)}</i>`
+            ? `\n📦 <i>${escapeTgHtml(d.productTitle)}</i>`
             : d.orderNumber
-              ? `\n🧾 <i>Заказ #${escape(d.orderNumber.replace(/^ORD-/, ''))}</i>`
+              ? `\n🧾 <i>Заказ #${escapeTgHtml(d.orderNumber.replace(/^ORD-/, ''))}</i>`
               : '';
 
           const text =
             `💬 <b>Новое сообщение</b>\n` +
             `${senderLine}` +
             `${contextLine}\n\n` +
-            `«${escape(d.messagePreview)}»`;
+            `«${escapeTgHtml(d.messagePreview)}»`;
 
           // Кнопка-ссылка «Открыть чат» — глубокий линк через TMA startapp.
           // Telegram при клике откроет наш Mini App с параметром chat_<threadId>.
