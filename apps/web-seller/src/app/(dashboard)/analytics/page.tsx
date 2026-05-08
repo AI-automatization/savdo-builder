@@ -220,7 +220,7 @@ export default function AnalyticsPage() {
       {/* Header + period selector */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Аналитика</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Аналитика</h1>
           <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
             Заказы и выручка магазина
           </p>

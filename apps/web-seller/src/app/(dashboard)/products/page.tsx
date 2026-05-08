@@ -88,7 +88,7 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Товары</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Товары</h1>
           <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
             {isLoading ? "Загрузка..." : `${products?.length ?? 0} товаров`}
           </p>
