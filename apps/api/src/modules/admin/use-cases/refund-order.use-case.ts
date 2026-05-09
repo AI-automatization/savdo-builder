@@ -1,4 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { RefundStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
@@ -54,7 +55,7 @@ export class RefundOrderUseCase {
 
     // Проверка: не было ли уже refund'ов на эту сумму
     const existingRefunds = await this.prisma.orderRefund.findMany({
-      where: { orderId: input.orderId, status: 'completed' },
+      where: { orderId: input.orderId, status: RefundStatus.COMPLETED },
       select: { amount: true },
     });
     const alreadyRefunded = existingRefunds.reduce((s, r) => s + Number(r.amount), 0);
@@ -81,7 +82,7 @@ export class RefundOrderUseCase {
           reason: input.reason.trim(),
           notes: input.notes?.trim() ?? null,
           returnedToWallet: Boolean(input.returnedToWallet),
-          status: 'completed',
+          status: RefundStatus.COMPLETED,
         },
       });
 
