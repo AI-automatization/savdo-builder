@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './socket/redis-io.adapter';
@@ -88,21 +90,40 @@ async function bootstrap() {
         serverAdapter: bullAdapter,
       });
 
-      // Простая защита: проверяем что в заголовке/cookie есть admin JWT.
-      // Полноценный JwtAuthGuard здесь сложно подключить (express middleware),
-      // поэтому Bull Board прячем за header-токеном который admin UI шлёт.
+      // Auth: либо BULL_BOARD_TOKEN env (legacy fallback), либо валидный admin
+      // access JWT (предпочтительно — admin SPA автоматически подставляет
+      // свой access token в ?token query). JwtAuthGuard через guard здесь не
+      // подключить — Bull Board сам ставит express middleware. Поэтому ручная
+      // jwt.verify через @nestjs/jwt токен.
+      const jwtService = app.get(JwtService);
+      const jwtSecret = app.get(ConfigService).get<string>('jwt.accessSecret');
       const httpAdapter = app.getHttpAdapter() as any;
       httpAdapter.use('/api/v1/admin/queues', (req: any, res: any, next: any) => {
         const auth = req.headers.authorization || '';
-        const token = req.query?.token || (auth.startsWith('Bearer ') ? auth.slice(7) : '');
-        const expected = process.env.BULL_BOARD_TOKEN;
-        if (!expected) {
-          // Если не задано — Bull Board выключен в проде
-          if (isProd) return res.status(404).send('Bull Board disabled (set BULL_BOARD_TOKEN)');
-        } else if (token !== expected) {
-          return res.status(401).send('Unauthorized — set ?token=BULL_BOARD_TOKEN');
+        const rawToken = (req.query?.token as string | undefined)
+          || (auth.startsWith('Bearer ') ? auth.slice(7) : '');
+
+        if (!rawToken) {
+          return res.status(401).send('Unauthorized — pass ?token=<admin-access-jwt>');
         }
-        next();
+
+        // Старый fallback: статический BULL_BOARD_TOKEN — оставлен на случай
+        // если кто-то ходит curl'ом без полноценного admin login.
+        const legacyToken = process.env.BULL_BOARD_TOKEN;
+        if (legacyToken && rawToken === legacyToken) {
+          return next();
+        }
+
+        // Основной путь: JWT с role=ADMIN
+        try {
+          const decoded = jwtService.verify<{ role?: string }>(rawToken, { secret: jwtSecret });
+          if (decoded.role !== 'ADMIN') {
+            return res.status(403).send('Forbidden — admin role required');
+          }
+          return next();
+        } catch {
+          return res.status(401).send('Invalid or expired token');
+        }
       });
       httpAdapter.use('/api/v1/admin/queues', bullAdapter.getRouter());
 
