@@ -1585,3 +1585,74 @@ P2: остальное.
 - **Что сделано:**
   - `apps/api/Dockerfile`: добавлен `RUN apk add --no-cache openssl`
   - `packages/db/prisma/schema.prisma`: добавлен `binaryTargets = ["native", "linux-musl-openssl-3.0.x"]`
+
+---
+
+## [2026-05-09] AUDIT-POLAT-ZONE-2026-05-09 — Полный аудит зоны Полата (api/admin/db)
+
+- **Статус:** 🟡 Предупреждение (backlog)
+- **Контекст:** Пользователь попросил расширить кругозор, увидеть всё что не так в зоне. Запущены 3 параллельных Explore-агента: admin UI/UX, api code/architecture, db schema.
+
+### ADMIN UI/UX — 20 findings
+
+**P0 (4):**
+- `apps/admin/src/pages/AdminUsersPage.tsx:407-420` — `ModalShell` без `role="dialog"`/`aria-modal`/focus-trap
+- `apps/admin/src/pages/LoginPage.tsx:210-229` — 6 OTP-inputs без `<fieldset><legend>`
+- `apps/admin/src/pages/LoginPage.tsx:138` — theme toggle `w-8 h-8` (32px < 44 WCAG)
+- icon-only без `aria-label`: `ModerationPage.tsx:152`, `SellersPage.tsx:69`, `DashboardLayout.tsx:135,223,232`
+
+**P1 (6):** `var(--text-dim)` контраст не проверен на light, `AddAdminDialog` без autoFocus, form validation без `aria-invalid`/`aria-describedby`, `DashboardPage.tsx:73-77` показывает `—` вместо skeleton, pagination disabled слабо видим, `ModerationPage.tsx:412` Close-X без явных размеров.
+
+**P2 (6):** hardcoded `rgba(245,158,11,0.08)`/`rgba(239,68,68,0.08)` (`AdminUsersPage:71,78`), `padding: 32px 32px 48px` нестандарт (`AdminUsersPage:48`,`UsersPage:55`), grid `minmax(320px, 1fr)` без mobile breakpoint, `opacity: 0.5` в disabled может не достигать contrast.
+
+**P3 (4):** нет skip-link, main wrapped в `<main>` (OK), inconsistent icon sizes (12/14/15), light-theme-specific tokens.
+
+### API — 30 findings
+
+**P0 (5):**
+- `products.controller.ts:106,638,679,793` — масса `as unknown as Array<Record<string,unknown> & ...>` casts (schema drift)
+- `admin.controller.ts:445` — `productsRepo.updateStatus(id, "HIDDEN_BY_ADMIN" as any)` обходит Prisma enum
+- `stores.controller.ts:112-119` — `@Body() body: { ids?: unknown }` runtime-validation вместо class-validator DTO
+- `admin/admin-create-seller.use-case.ts:50` — `data: { role: "SELLER" as any }`
+- Inconsistent pagination shapes: storefront `{data, meta}` vs seller `{products, total}`
+
+**P1 (15):**
+- `products.controller.ts` 947 LOC + 16 inject → split на ProductsSellerController + StorefrontController
+- `admin.controller.ts` 702 LOC + 29 inject → split на AdminUsersController/AdminProductsController/AdminOrdersController/AdminBroadcastController/AdminDbController
+- N+1: `products.controller.ts:630-636` resolveStoreImageUrls в `Promise.all(stores.map(...))` — каждый store findMany отдельно
+- `chat/send-message.use-case.ts:115-124` — `findMessageById(parentMessageId)` вызывается дважды
+- `confirm-checkout.use-case.ts` 254 LOC — split на validate-cart, check-stock, create-order sub-use-cases
+- Swagger полностью отсутствует (`@nestjs/swagger`, `@ApiOperation`, `@ApiResponse`)
+- Structured logging отсутствует — везде string-concat в `Logger.log()`
+- `refund-order.use-case.ts:70` TODO — refund пишет в ledger, но НЕ вызывает Click/Payme reverse-tx (financial mismatch)
+- `chat/send-message.use-case.ts:127` — `{ ...message, mediaUrl, parentMessage } as any` для socket emit
+- `orders.controller.ts:66` — `(result as any).orders ?? []` runtime cast
+- Inconsistent error responses: ErrorCode + message vs только message
+- Admin JWT expiresIn хардкод 3600 — ✅ ИСПРАВЛЕНО в этой сессии (jwt.accessExpiresIn config + token.service.getAccessTokenTtlSeconds)
+
+**P2 (10):** только 10 `.spec.ts` на 100+ use-cases, нет e2e для checkout/payment/chat/OTP, дубль `Number(basePrice)` в 3 местах, `void _l; void _c;` suppression, redundant type assertions.
+
+### DB SCHEMA — 32 findings
+
+**P0 (4):**
+- `schema.prisma:121` `User.referredBy` — нет `@relation` self-FK, нет индекса (orphan referrer)
+- `schema.prisma:833` `ChatMessage.senderUserId` — полиморфный (Buyer | Seller), не задокументировано в schema (только комментарий DB-AUDIT-001-01)
+- `schema.prisma:597` `InventoryMovement.productId` — нет `@relation` FK (orphan productId)
+- `schema.prisma:1066` `AuditLog.actor SetNull` — спорно для append-only лога
+
+**P1 (11):** 9 String-полей, должны быть Enum:
+- `SellerVerificationDocument.status` (271), `ModerationCase.status` (1023), `ModerationCase.caseType` (1022), `ModerationAction.actionType` (1042), `OrderRefund.status` (1006), `Cart.status` (622), `SellerVerificationDocument.documentType` (269), `InAppNotification.type` (896), `ChatMessage.messageType` (834)
+Плюс: `Store.telegramChannelId` (296) без индекса, `GlobalCategory(level, isLeaf)` (380-381) без composite-индекса.
+
+**P2 (10):** `BuyerAddress.phone` (220) без `@db.VarChar(20)`, `Decimal(12,2)` (450-452) без CHECK (basePrice > 0), `CategoryFilter.options` (407) JSON без schema-validation, `Seller.telegramUsername` (246) без уникального индекса, `StoreContact.contactType` (342) строка, `InventoryMovement.referenceType` (601) String, не задокументировано какие таблицы пишут в AuditLog.
+
+### Что закрыто в этой сессии (Полат-зона)
+- ✅ `API-ADMIN-JWT-EXPIRES-001` — `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts:189` хардкод `expiresIn: 3600` → `tokenService.getAccessTokenTtlSeconds()`. Добавлен `getAccessTokenTtlSeconds()` в `apps/api/src/modules/auth/services/token.service.ts` (парсит `15m`/`1h`/`3600s`).
+
+### Следующие шаги (приоритет для запуска)
+- P0 admin a11y (focus trap + OTP fieldset + aria-label на icon-only) — быстро, безопасно, daily UX продавцов-админов.
+- P0 api type safety (убрать `as any` / `as unknown as` касты) — рискованный refactor, тесты обязательны.
+- P0 db FK на `User.referredBy` / `InventoryMovement.productId` — миграция + код проверка.
+- P1 split `products.controller.ts` и `admin.controller.ts` — большой, в отдельную сессию.
+- P1 Swagger setup — `API-SWAGGER-001` уже в tasks.md.
+
