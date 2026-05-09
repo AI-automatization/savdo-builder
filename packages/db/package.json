@@ -7,7 +7,7 @@
   "scripts": {
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
+    "migrate:deploy": "prisma migrate resolve --rolled-back 20260509233000_cart_refund_status_enums || true && prisma migrate deploy",
     "studio": "prisma studio",
     "seed": "ts-node --project tsconfig.json prisma/seed.ts",
     "seed:categories": "ts-node --project tsconfig.json prisma/seed-categories.ts",
