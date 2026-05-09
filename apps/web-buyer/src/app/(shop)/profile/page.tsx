@@ -29,8 +29,8 @@ const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex flex-col items-center justify-center py-3.5" style={{ background: colors.surface }}>
-      <div className="text-base font-bold" style={{ color: colors.textStrong }}>{value}</div>
-      <div className="text-[10px] mt-0.5 tracking-wide uppercase" style={{ color: colors.textMuted }}>{label}</div>
+      <div className="text-2xl font-bold tracking-tight" style={{ color: colors.brand }}>{value}</div>
+      <div className="text-[10px] mt-1 tracking-wide uppercase" style={{ color: colors.textMuted }}>{label}</div>
     </div>
   );
 }
@@ -253,7 +253,7 @@ export default function ProfilePage() {
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
       {/* Header */}
       <div className="px-4 py-3.5 border-b" style={{ background: colors.surface, borderColor: colors.divider }}>
-        <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Профиль</h1>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Профиль</h1>
       </div>
 
       <div className="max-w-2xl mx-auto pb-28 md:pb-12">

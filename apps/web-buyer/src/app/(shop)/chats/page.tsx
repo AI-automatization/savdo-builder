@@ -381,8 +381,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                           autoFocus
                           className="w-full rounded-md p-2 text-sm outline-none resize-none"
                           style={{
-                            background: "rgba(255,255,255,0.95)",
-                            border: `1px solid rgba(255,255,255,0.5)`,
+                            background: colors.brandTextOnBg,
+                            border: `1px solid ${colors.brandHover}`,
                             color: colors.textStrong,
                           }}
                         />
@@ -391,7 +391,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             type="button"
                             onClick={() => { setEditingId(null); setEditingText(""); }}
                             className="px-2.5 py-1 rounded-md text-[11px] font-semibold"
-                            style={{ background: "rgba(255,255,255,0.18)", color: colors.brandTextOnBg }}
+                            style={{ background: "transparent", border: `1px solid ${colors.brandTextOnBg}`, color: colors.brandTextOnBg }}
                           >
                             Отмена
                           </button>
@@ -400,7 +400,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             onClick={saveEdit}
                             disabled={!editingText.trim() || editMessageMutation.isPending}
                             className="px-2.5 py-1 rounded-md text-[11px] font-semibold disabled:opacity-50"
-                            style={{ background: "#FFFFFF", color: colors.brand }}
+                            style={{ background: colors.brandTextOnBg, color: colors.brand }}
                           >
                             {editMessageMutation.isPending ? "..." : "Сохранить"}
                           </button>
@@ -545,7 +545,7 @@ function ChatsView() {
 
   return (
     <div
-      className="flex h-[calc(100vh-9rem)] md:h-[calc(100vh-7rem)] rounded-2xl overflow-hidden"
+      className="flex h-[calc(100vh-9rem)] md:h-[calc(100vh-7rem)] rounded-lg overflow-hidden"
       style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
     >
       {/* Thread list panel */}
@@ -555,7 +555,7 @@ function ChatsView() {
       >
         {/* Header */}
         <div className="px-4 py-3.5 flex-shrink-0 border-b" style={{ borderColor: colors.divider }}>
-          <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Чаты</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Чаты</h1>
         </div>
 
         {/* Search */}

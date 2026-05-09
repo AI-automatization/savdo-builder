@@ -179,7 +179,7 @@ function Timeline({ status }: { status: OrderStatus }) {
           <div key={step.key} className="flex items-start gap-3">
             <div className="flex flex-col items-center" style={{ minHeight: i === TIMELINE.length - 1 ? "auto" : 36 }}>
               <div
-                className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0${current ? " animate-pulse" : ""}`}
                 style={{
                   background: completed || current ? colors.brand : colors.divider,
                   color: colors.brandTextOnBg,

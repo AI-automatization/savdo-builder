@@ -192,7 +192,7 @@ export default function NotificationsPage() {
         style={{ background: colors.surface, borderColor: colors.divider }}
       >
         <div>
-          <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Уведомления</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Уведомления</h1>
           {isAuthenticated && items.length > 0 && (
             <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
               {items.length} {items.length === 1 ? "уведомление" : items.length < 5 ? "уведомления" : "уведомлений"}

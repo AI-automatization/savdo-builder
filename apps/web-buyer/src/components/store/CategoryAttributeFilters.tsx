@@ -140,7 +140,7 @@ export default function CategoryAttributeFilters({
 
       {open && (
         <div
-          className="mt-3 p-4 rounded-2xl flex flex-col gap-4"
+          className="mt-3 p-4 rounded-lg flex flex-col gap-4"
           style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         >
           {/* Global category select */}
