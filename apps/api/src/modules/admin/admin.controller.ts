@@ -50,7 +50,7 @@ import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
 import { BroadcastUseCase } from './use-cases/broadcast.use-case';
-import { DbManagerUseCase } from './use-cases/db-manager.use-case';
+// DbManagerUseCase инжектится в AdminDbController, не здесь.
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
 import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
@@ -84,7 +84,6 @@ export class AdminController {
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
     private readonly getAnalyticsUseCase: GetAnalyticsUseCase,
     private readonly broadcastUseCase: BroadcastUseCase,
-    private readonly dbManagerUseCase: DbManagerUseCase,
     private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
     private readonly adminCreateStoreUseCase: AdminCreateStoreUseCase,
     private readonly getSystemHealthUseCase: GetSystemHealthUseCase,
@@ -586,81 +585,8 @@ export class AdminController {
     });
   }
 
-  // ── Database Manager ───────────────────────────────────────────────────────
-
-  // GET /api/v1/admin/db/tables
-  @Get('db/tables')
-  async dbListTables(@CurrentUser() user: JwtPayload) {
-    await this.resolveAdminUser(user);
-    return this.dbManagerUseCase.listTables();
-  }
-
-  // GET /api/v1/admin/db/tables/:table/:id
-  @Get('db/tables/:table/:id')
-  async dbGetRow(
-    @Param('table') table: string,
-    @Param('id')    id:    string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.dbManagerUseCase.getRow(table, id);
-  }
-
-  // GET /api/v1/admin/db/tables/:table?page=&limit=&search=
-  @Get('db/tables/:table')
-  async dbGetRows(
-    @Param('table') table: string,
-    @Query('page')   page:   string | undefined,
-    @Query('limit')  limit:  string | undefined,
-    @Query('search') search: string | undefined,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.dbManagerUseCase.getRows(table, {
-      page:  page  ? Number(page)  : 1,
-      limit: limit ? Math.min(Number(limit), 100) : 25,
-      search: search?.trim() || undefined,
-    });
-  }
-
-  // PATCH /api/v1/admin/db/tables/:table/:id
-  @Patch('db/tables/:table/:id')
-  @AdminPermission('db:update')
-  async dbUpdateRow(
-    @Param('table') table: string,
-    @Param('id')    id:    string,
-    @Body()         data:  Record<string, unknown>,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: `db.update.${table}`,
-      entityType: table,
-      entityId: id,
-      payload: { fields: Object.keys(data) },
-    });
-    return this.dbManagerUseCase.updateRow(table, id, data);
-  }
-
-  // DELETE /api/v1/admin/db/tables/:table/:id
-  @Delete('db/tables/:table/:id')
-  @AdminPermission('db:delete')
-  async dbDeleteRow(
-    @Param('table') table: string,
-    @Param('id')    id:    string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: `db.delete.${table}`,
-      entityType: table,
-      entityId: id,
-      payload: {},
-    });
-    return this.dbManagerUseCase.deleteRow(table, id);
-  }
+  // ── Database Manager эндпоинты вынесены в `AdminDbController`
+  //    (apps/api/src/modules/admin/admin-db.controller.ts).
 
   // ── Media migration (TG → Supabase) ───────────────────────────────────────
   // POST /api/v1/admin/media/migrate-tg-to-r2?limit=50
@@ -685,23 +611,5 @@ export class AdminController {
     return result;
   }
 
-  // POST /api/v1/admin/db/tables/:table
-  @Post('db/tables/:table')
-  @AdminPermission('db:insert')
-  async dbInsertRow(
-    @Param('table') table: string,
-    @Body()         data:  Record<string, unknown>,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const result = await this.dbManagerUseCase.insertRow(table, data);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: `db.insert.${table}`,
-      entityType: table,
-      entityId: (result as Record<string, unknown>).id as string ?? 'unknown',
-      payload: { fields: Object.keys(data) },
-    });
-    return result;
-  }
+  // db/tables/:table POST вынесен в AdminDbController
 }
