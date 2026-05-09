@@ -566,33 +566,9 @@ export class ProductsController {
   async listStorefrontStores() {
     const stores = await this.storesRepo.findAllPublished();
     if (!stores.length) return { data: [] };
-
-    // Batch: один findMany на все магазины вместо N запросов
-    const ids = stores
-      .flatMap((s) => [s.logoMediaId, s.coverMediaId])
-      .filter((id): id is string => Boolean(id));
-
-    const mediaMap = new Map<string, { id: string; bucket: string; objectKey: string }>();
-    if (ids.length) {
-      const files = await this.prisma.mediaFile.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, bucket: true, objectKey: true },
-      });
-      for (const f of files) mediaMap.set(f.id, f);
-    }
-
-    const resolveOne = (id: string | null | undefined): string | null => {
-      if (!id) return null;
-      const m = mediaMap.get(id);
-      if (!m) return null;
-      return this.resolveImageUrl(m) || null;
-    };
-
-    const data = stores.map((s) => ({
-      ...s,
-      logoUrl: resolveOne(s.logoMediaId),
-      coverUrl: resolveOne(s.coverMediaId),
-    }));
+    // Тот же helper что и в /storefront/search — batch findMany на все
+    // logo/cover IDs (1 запрос вместо N+1).
+    const data = await this.attachStoreImageUrls(stores);
     return { data };
   }
 
@@ -627,13 +603,9 @@ export class ProductsController {
       this.productsRepo.searchPublic(query, lim),
     ]);
 
-    const storesData = await Promise.all(stores.map(async (s) => {
-      const sx = s as typeof s & { logoMediaId?: string | null; coverMediaId?: string | null };
-      const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(sx.logoMediaId, sx.coverMediaId);
-      const { logoMediaId: _l, coverMediaId: _c, ...rest } = sx;
-      void _l; void _c;
-      return { ...rest, logoUrl, coverUrl };
-    }));
+    // Batch lookup: один findMany для всех logo+cover, потом map локально.
+    // Раньше resolveStoreImageUrls вызывался per-store -> N запросов на 30 stores.
+    const storesData = await this.attachStoreImageUrls(stores);
 
     const productsData = (products as unknown as Array<Record<string, unknown> & {
       basePrice: unknown; oldPrice: unknown; salePrice: unknown;
@@ -919,6 +891,48 @@ export class ProductsController {
     };
 
     return { logoUrl: resolve(logoMediaId), coverUrl: resolve(coverMediaId) };
+  }
+
+  /**
+   * Batch-вариант resolveStoreImageUrls для списка магазинов.
+   * Один SELECT на все logoMediaId/coverMediaId вместо per-store вызова
+   * (раньше: N stores -> N+1 запросов; теперь: всегда 1 запрос).
+   * Возвращает копии объектов с logoUrl/coverUrl, без logoMediaId/coverMediaId
+   * (последние внутренние, не должны утекать клиенту).
+   */
+  private async attachStoreImageUrls<T extends { logoMediaId?: string | null; coverMediaId?: string | null }>(
+    stores: T[],
+  ): Promise<Array<Omit<T, 'logoMediaId' | 'coverMediaId'> & { logoUrl: string | null; coverUrl: string | null }>> {
+    const ids = new Set<string>();
+    for (const s of stores) {
+      if (s.logoMediaId) ids.add(s.logoMediaId);
+      if (s.coverMediaId) ids.add(s.coverMediaId);
+    }
+
+    const map = new Map<string, { id: string; bucket: string; objectKey: string }>();
+    if (ids.size > 0) {
+      const files = await this.prisma.mediaFile.findMany({
+        where: { id: { in: [...ids] } },
+        select: { id: true, bucket: true, objectKey: true },
+      });
+      for (const f of files) map.set(f.id, f);
+    }
+
+    const resolveOne = (id: string | null | undefined): string | null => {
+      if (!id) return null;
+      const m = map.get(id);
+      if (!m) return null;
+      return this.resolveImageUrl(m) || null;
+    };
+
+    return stores.map((s) => {
+      const { logoMediaId, coverMediaId, ...rest } = s;
+      return {
+        ...(rest as Omit<T, 'logoMediaId' | 'coverMediaId'>),
+        logoUrl: resolveOne(logoMediaId),
+        coverUrl: resolveOne(coverMediaId),
+      };
+    });
   }
 
   private async ensureProductOwnership(productId: string, storeId: string): Promise<void> {

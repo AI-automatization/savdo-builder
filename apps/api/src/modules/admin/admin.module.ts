@@ -8,6 +8,11 @@ import { AuthModule } from '../auth/auth.module';
 
 import { AdminRepository } from './repositories/admin.repository';
 import { AdminController } from './admin.controller';
+import { AdminDbController } from './admin-db.controller';
+import { AdminBroadcastController } from './admin-broadcast.controller';
+import { AdminAnalyticsController } from './admin-analytics.controller';
+import { AdminOpsController } from './admin-ops.controller';
+import { AdminProductsController } from './admin-products.controller';
 import { SuperAdminController } from './super-admin.controller';
 
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
@@ -50,7 +55,15 @@ import { MediaModule } from '../media/media.module';
     MediaModule,
     BullModule.registerQueue({ name: QUEUE_TELEGRAM_NOTIFICATIONS }),
   ],
-  controllers: [AdminController, SuperAdminController],
+  controllers: [
+    AdminController,
+    AdminDbController,
+    AdminBroadcastController,
+    AdminAnalyticsController,
+    AdminOpsController,
+    AdminProductsController,
+    SuperAdminController,
+  ],
   providers: [
     AdminRepository,
     ListUsersUseCase,
