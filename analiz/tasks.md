@@ -5,6 +5,26 @@
 
 ---
 
+# 🆕 Web-buyer Design Audit (09.05.2026) — Soft Color Lifestyle
+
+> Полный отчёт: `analiz/audit-web-buyer-design-2026-05-09.md` (25 findings: 3 P1 / 14 P2 / 8 P3, health 7.5/10).
+
+## WB-DESIGN-FIX-WAVES (Азим)
+
+- [ ] **`WB-DESIGN-WAVE-1`** (P1) — emoji-picker полностью на чужой dark/violet/glassmorphism теме → перекрасить на токены, убрать `backdrop-blur`. Файл: `apps/web-buyer/src/components/emoji-picker.tsx:84-133`. Closes P1-001.
+- [ ] **`WB-DESIGN-WAVE-2`** (P1) — chat edit-bubble white-on-white в light: 4 rgba/hex → tokens (brandTextOnBg-совместимые). Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx:384-403`. Closes P1-002.
+- [ ] **`WB-DESIGN-WAVE-3`** (P2) — page headings `text-lg` (18px) → `text-2xl` (24px) на 4 страницах: orders/profile/notifications/chats. Closes P2-001.
+- [ ] **`WB-DESIGN-WAVE-4`** (P2) — Stats row числа в `colors.brand` (profile) + timeline current dot `animate-pulse` (orders/[id]). Closes P2-002 + P2-003.
+- [ ] **`WB-DESIGN-WAVE-5`** (P2) — radius cleanup: checkout OTP `rounded-2xl` → `rounded`, OtpGate `rounded-xl/2xl` → 4/8px, CategoryAttributeFilters panel + chats outer `rounded-2xl` → `rounded-lg`. Closes P2-005, P2-006, P2-007, P2-008.
+- [ ] **`WB-DESIGN-WAVE-6`** (P1, отдельной сессией) — pinned product context strip в chat thread: `rgba(brand,0.06)` полоса с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Файл: `chats/page.tsx ChatView`. Closes P1-003.
+- [ ] **`WB-DESIGN-WAVE-7`** (P2 + P3 backlog) — оставшиеся: HeaderSearch dropdown shadow → shadow-hover, CategoryAttributeFilters toggle `bg-white` → token, ProductsWithSearch md breakpoint 3→4 col, hardcoded `#FFFFFF` в danger buttons → `colors.brandTextOnBg` (4 места), profile spinner `text-white` → token, storefront sections «Все NN →» link + dividers, ThemeToggle/homepage/chats shadows excess, OtpGate icon container радиус, ProductsWithSearch search input `rounded-xl` → `rounded-md`, chat unread badge `text-white` → token, buyer message timestamp rgba → token, chats message context-menu shadow. Closes P2-004, P2-009..014, P3-001..003, P3-005..008.
+
+**Skipped / requires API work:**
+- P3-004 (sale chip) — нужен `isSale` flag в категориях API.
+- P2-014 (Повторить заказ button) — нужен batch add-to-cart endpoint от Полата.
+
+---
+
 # 🆕 Design Audit (08.05.2026) — Admin / API / TMA
 
 > Полный отчёт: `analiz/design-audit-2026-05-08.md` (51 findings: 11 P0, 14 P1, 14 P2, 12 P3).
