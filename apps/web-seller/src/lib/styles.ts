@@ -40,6 +40,8 @@ export const colors = {
   success:         'var(--color-success)',
   warning:         'var(--color-warning)',
   danger:          'var(--color-danger)',
+  /** Info / in-flight status / Telegram-action (blue) */
+  info:            'var(--color-info)',
 } as const;
 
 // ── Surface presets — drop-in style objects ──────────────────────────────────

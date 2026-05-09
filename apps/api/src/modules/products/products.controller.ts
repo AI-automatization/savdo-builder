@@ -120,6 +120,7 @@ export class ProductsController {
   }
 
   @Post('seller/products')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   @Throttle({ default: { ttl: 60_000, limit: 30 } }) // anti-spam при создании товаров
@@ -247,6 +248,7 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/variants')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   async createMyVariant(
@@ -316,6 +318,7 @@ export class ProductsController {
   // ─── Option groups ────────────────────────────────────────────────────────
 
   @Post('seller/products/:id/option-groups')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   async createOptionGroup(
@@ -371,6 +374,7 @@ export class ProductsController {
   // ─── Option values ────────────────────────────────────────────────────────
 
   @Post('seller/products/:id/option-groups/:gid/values')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   async createOptionValue(
@@ -441,6 +445,7 @@ export class ProductsController {
   // ─── Product images ───────────────────────────────────────────────────────
 
   @Post('seller/products/:id/images')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   async attachProductImage(
@@ -504,6 +509,7 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/attributes')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   async addProductAttribute(

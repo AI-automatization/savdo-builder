@@ -789,7 +789,7 @@ function NotifPreferencesSection() {
 export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-5 max-w-5xl">
-      <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
+      <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <div className="flex flex-col gap-5 min-w-0">
           <StoreSettingsSection />

@@ -86,6 +86,15 @@ function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal {
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 async function doFetch<T>(path: string, opts: ApiOptions, method: string): Promise<T> {
+  // TMA-PHOTO-UPLOAD-DIAG-001: детектим FormData отдельно. Раньше `api()` слепо
+  // делал JSON.stringify(formData) → "{}" и файл терялся. Теперь подсказываем
+  // разработчику использовать apiUpload и НЕ ставим Content-Type (браузер сам
+  // выставит multipart/form-data с boundary).
+  const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  if (isFormData) {
+    throw new Error('Use apiUpload() for FormData uploads, not api(). FormData cannot be JSON-stringified.');
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...opts.headers,

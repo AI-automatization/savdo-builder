@@ -5,6 +5,41 @@
 
 ---
 
+# 🆕 Design Audit (08.05.2026) — Admin / API / TMA
+
+> Полный отчёт: `analiz/design-audit-2026-05-08.md` (51 findings: 11 P0, 14 P1, 14 P2, 12 P3).
+> Использованы claude-skills: ui-design-system, apple-hig-expert, api-design-reviewer, senior-backend.
+
+## Sprint A — cross-platform polish (P0 only) — 10 тикетов (3 закрыто)
+
+- [ ] **`TMA-DESIGN-HIT-AREA-001`** (P0, T1) — qty buttons `w-7 h-7` (28px) → `w-10 h-10` (40px). Файлы: CartPage:97-121, OrdersPage, ChatPage qty.
+- [ ] **`TMA-DESIGN-FG-TOKENS-001`** (P0, T2) — 100+ inline `rgba(255,255,255,X)` → `FG.strong/muted/dim` в `styles.ts`. Миграция CartPage / OrdersPage / ProductPage.
+- [x] **`TMA-DESIGN-A11Y-LEFTOVERS-001`** ✅ 08.05.2026 — verified: упомянутые в аудите места (seller/ChatPage:205) — modal backdrop с stopPropagation + ESC, acceptable per ADR. buyer/ProductPage:252-256 уже закрыто `3400ecc`. Реальных нарушений не осталось.
+- [ ] **`TMA-DESIGN-ROLE-DIFF-001`** (P0, T4) — buyer (orchid) vs seller (cyan) визуальная дифференциация через `data-role` + scoped CSS-переменные.
+- [x] **`TMA-DESIGN-SPINNER-CLEANUP-001`** ✅ 08.05.2026 — заменены 3 initial-load `<Spinner>` → Skeleton: buyer/ChatPage:442 (4× message Skeleton), seller/ChatPage:506 (то же), seller/EditProductPage:597 (`ProductDetailSkeleton`). Inline Spinner на send-button и loadMore оставлены — они приемлемы.
+- [ ] **`ADMIN-A11Y-MODAL-001`** (P0, A1+A2) — DashboardLayout aria-* + ModerationPage modal на Radix Dialog.
+- [ ] **`ADMIN-DESIGN-TOKENS-SURFACE-001`** (P0, A3) — `--surface-error/-warning/-success` CSS-переменные + миграция hardcoded `rgba(239,68,68,...)`.
+- [ ] **`API-WS-EVENTS-NAMING-001`** (P0, B1) — единый стиль `<namespace>:<action>` для всех Socket.IO events. **⚠️ требует sync с frontend (TMA, web-buyer, web-seller) — не делать в отдельной сессии.**
+- [x] **`API-HTTP-201-CREATED-001`** ✅ 08.05.2026 — `@HttpCode(HttpStatus.CREATED)` добавлен на 6 POST endpoints в `products.controller.ts`: seller/products, /variants, /option-groups, /option-groups/:gid/values, /images, /attributes. NestJS уже отдавал 201 неявно для @Post — теперь explicit для consistency с cart/checkout.
+- [ ] **`API-ORDERS-ALIAS-REMOVE-001`** (P0, B3) — удалить `GET /orders/:id` alias. **⚠️ потенциально breaking для web-buyer — проверить вызовы перед удалением.**
+
+## Sprint B — design system hardening (P1) — 8 тикетов
+
+- [ ] **`ADMIN-THEME-VARS-MIGRATE-001`** (P1, A4+A5+A12) — Button/Badge/Dialog → CSS-переменные.
+- [ ] **`TMA-TYPOGRAPHY-SCALE-001`** (P1, T6) — 280 hardcoded `text-[11px]/xs/sm` → enum + CSS-vars с desktop scale.
+- [ ] **`API-SWAGGER-001`** (P1, B4) — `@nestjs/swagger` + `/api/docs` + `@ApiOperation` на топ-20.
+- [ ] **`API-PRODUCTS-CTRL-SPLIT-001`** (P1, B5) — products.controller.ts (942 LOC) → 3 controllers.
+- [ ] **`ADMIN-A11Y-TABS-OTP-001`** (P1, A7+A8) — Tabs primitive + LoginPage OTP `<fieldset>`.
+- [ ] **`ADMIN-PAGINATION-DISABLED-001`** (P1, A6) — `disabled={page === 1}` на pagination buttons.
+- [ ] **`API-IDEMPOTENCY-KEY-001`** (P1, B7) — `Idempotency-Key` header на /checkout/confirm + /orders.
+- [ ] **`API-PAGINATION-ENVELOPE-001`** (P1, B8) — единый `{ data, meta: { total, page, limit, totalPages } }`.
+
+## Sprint C — long tail (P2/P3) — 26 тикетов
+
+См. `analiz/design-audit-2026-05-08.md` секции P2/P3.
+
+---
+
 # 🆕 Web-buyer аудит 05.05 — закрыты 7 critical 08.05 (Азим)
 
 ✅ **BUG-WB-AUDIT-001..007 + 009-FE** — 7 critical из `analiz/logs.md WEB-BUYER-AUDIT-2026-05-05` закрыты в одном проходе:
@@ -33,9 +68,7 @@
 - [x] **`AUDIT-NETWORK-LOADING-P0-FIXES`** ✅ 08.05.2026 — закрыты P0 из `analiz/audit-network-loading-2026-05-07.md`: (1) `lib/api.ts` уже имеет auto-bust cache на не-GET (parallel session) + добавил `timeout?: number` в ApiOptions interface (был implicit, TS would complain on opts.timeout). (2) Race condition fix в `buyer/OrdersPage.tsx`: AbortController на loadMore + toggleExpand detail + loadingMore guard от double-tap.
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
 - [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
-- [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
-  - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
-  - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
+- [x] **`TMA-PHOTO-UPLOAD-DIAG-001`** ✅ 08.05.2026 — root cause найден через code review (без логов): `buyer/ChatPage.sendPhoto` + `seller/ChatPage.sendPhoto` использовали `api()` с `body: FormData`, но `api()` делал `JSON.stringify(opts.body)` → формдата сериализовалась в `"{}"`, файл терялся целиком. Дополнительно: destructure `uploadRes.id` — API возвращает `mediaFileId`. Чинено через `apiUpload()` (XHR multipart) + preventive guard в `lib/api.ts:doFetch` бросает error «Use apiUpload() for FormData» если кто-то снова попробует. Подробности в `analiz/done.md`.
 
 ## 🟠 P1 — Полат
 
@@ -56,7 +89,7 @@
 ## 🟢 P3 — после спринта
 
 - [x] **`NOTIF-IN-APP-001`** ✅ 06.05.2026 — реализовано: `InAppNotification` модель в схеме, `InAppNotificationProcessor` создаёт записи + `chatGateway.emitNotificationNew()` WS push. Frontend `notifications.ts` слушает event + badge через `subscribeToUnread()`. Toast — через showToast при event'е (UI work осталось).
-- [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
+- [x] **`WEB-DESIGN-AUDIT-001`** ✅ 08.05.2026 (web-seller часть) — полный отчёт: `analiz/audit-web-seller-design-2026-05-08.md`. Найдено 7 P1 (light-theme contrast killers + `confirm()` native dialogs + sidebar logo glow), 14 P2 (хардкоженный hex для order status, SMS-copy в login OTP, page heading typography sub-spec, native `<select>` regression в edit-product), 9 P3. Health 6.5/10. См. ниже секцию `WS-DESIGN-FIX-WAVES` для backlog'а исправлений.
 - [x] **`DB-AUDIT-001`** ✅ 06.05.2026 — найден и закрыт schema drift: AdminUser MFA-поля + OrderRefund модель существовали в DB (migration 20260503020000) но НЕ в schema.prisma → код использовал `(prisma as any)`. Добавлены индексы `media_files.bucket` + `chat_threads.status`. Migration `20260506200000_db_audit_indexes`. См. `analiz/logs.md AUDIT-DB`.
 
 ## 🆕 Аудит платформы продолжение (06.05.2026)
@@ -259,6 +292,23 @@
 | ~~`WEB-CSP-HEADER-002`~~ | ✅ | CSP-директивы добавлены в оба `next.config.ts`. `script-src 'self' 'unsafe-inline' 'unsafe-eval'` (Next.js требует), но блокирует HTTP, чужие iframe, object/embed, base hijack. `814c35b` |
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
+
+### 🆕 [WS-DESIGN-FIX-WAVES] Backlog по аудиту web-seller (08.05.2026)
+
+> Полный отчёт: `analiz/audit-web-seller-design-2026-05-08.md` (7 P1 / 14 P2 / 9 P3).
+> Грубо упорядочено по value/effort. Каждая волна — отдельный коммит, безопасно
+> мерджить в `web-seller` ветку независимо.
+
+- [x] **`WS-DESIGN-WAVE-1` 🔴** ✅ 08.05.2026 — закрыты 5 P1 из 6 (P1-002, P1-003, P1-005, P1-006, P1-007). Коммит `1ad0e69`. P1-004 (avatar spinner text-white) пропущен — overlay rgba(0,0,0,0.45) тёмный в обеих темах, white spinner читается. Подробности в `analiz/done.md`.
+- [x] **`WS-DESIGN-WAVE-2` 🔴** ✅ 08.05.2026 — все 4 native `confirm()` заменены на reusable `ConfirmModal` (новый компонент `apps/web-seller/src/components/confirm-modal.tsx`). Покрыто: edit-product handleDelete, option-groups ValueRow (Удалить значение), option-groups GroupRow (Удалить группу), variants section handleDelete. ESC/Enter keyboard support, danger flag, click-outside для close. P1-001.
+- [x] **`WS-DESIGN-WAVE-3` 🟡** ✅ 08.05.2026 — page heading typography (P2-014). 5 `<h1>` page titles `text-xl` (20px) → `text-2xl` (24px, нижняя граница Headline range). Файлы: analytics, orders, products, notifications, settings. Все 6 dashboard-страниц теперь консистентны.
+- [x] **`WS-DESIGN-WAVE-4` 🟡** ✅ 08.05.2026 — login OTP copy исправлен (P2-010). Коммит `a818720`. Подробности в `analiz/done.md`.
+- [x] **`WS-DESIGN-WAVE-5` 🟡** ✅ 08.05.2026 — добавлен semantic `colors.info` token в styles.ts + globals.css (light `#2563EB`, dark `#60A5FA`). Заменены 9 хардкоженных мест: CONFIRMED + SHIPPED status (×4 в dashboard/orders×2/orders-detail), TG-link icons в products list (×2), analytics block, profile TG chip (3 hex). SHIPPED унифицирован с CONFIRMED через `colors.info` (оба = «in-flight», PROCESSING остался на `accent`). Audit IDs: P2-002, P2-003, P2-013.
+- [x] **`WS-DESIGN-WAVE-6` 🟡** ✅ 08.05.2026 — products edit dragons закрыты: (a) radius выровнен create↔edit на `rounded-xl` (12px per spec) — раньше `rounded-lg` (8px) в create vs `rounded-2xl` (16px) ×4 в edit. (b) native `<select>` ×2 в edit заменены на custom `<Select>` с поиском/keyboard nav/clearable — устранено хардкоженное `background: '#1a1d2e'` на `<option>` (сломан в light theme). (c) `TITLE_EXAMPLES_BY_SLUG` + `DESCRIPTION_EXAMPLES_BY_SLUG` + 2 placeholder helper функции вынесены в новый `apps/web-seller/src/lib/product-examples.ts`. Audit IDs: P2-001, P2-004, P2-005.
+- [x] **`WS-DESIGN-WAVE-7-BACKLOG` 🟢** ✅ 08.05.2026 (частично) — закрыто 8 из 14 nit'ов: shadow > 8px ×3 (layout toast / select dropdown / emoji-picker popover) → soft 4-6px depth; onboarding 3 хардкоженных hex (#A78BFA + 2× #fff) → tokens; notifications hover-leave inverted semantics → unread bg color-mix(accent 22%) при hover; notification badge fontSize 9 → 10 (хорошо читается без потери компактности); theme-toggle redundant shadow-lg + soft inline; emoji-picker hover:bg-white/5 → row-hoverable; onboarding progress connector surfaceElevated → border (видно в light); analytics ASCII «— » divider → реальный `<hr>`. Audit IDs: P2-006, P2-009, P2-012, P3-001, P3-003, P3-004, P3-005, P3-007.
+- [ ] **`WS-DESIGN-WAVE-7-DEFERRED` 🟢** — оставшиеся 6 nit'ов отложены: P2-007 (sidebar 14%→15% accentMuted, в пределах rounding), P2-008 (onboarding `rounded-3xl` — sanctioned scene), P2-011+P3-009 (chat off-grid + non-responsive — нужен mobile-first рефактор chat layout, отдельным заходом), P3-002 (chat thread skeletons beyond 3), P3-006 (settings native `<select>` Firefox chevron — нужен custom Select для всех селектов в settings), P3-008 (analytics text-3xl — в пределах spec).
+
+---
 
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001] Имплементация «Soft Color Lifestyle» — ВСЕ 10 ЗАДАЧ ЗАКРЫТЫ (05.05.2026)
 

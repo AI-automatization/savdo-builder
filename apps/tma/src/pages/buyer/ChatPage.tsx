@@ -1,12 +1,12 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, apiUpload } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
 import { refreshChatUnread } from '@/lib/chatUnread';
 import { useChatTyping } from '@/lib/useChatTyping';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
-import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
+import { Skeleton, ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
@@ -220,6 +220,9 @@ export default function BuyerChatPage() {
     }
   };
 
+  // TMA-PHOTO-UPLOAD-DIAG-001: было 2 бага — (1) `api()` JSON.stringify'ил FormData,
+  // файл терялся; (2) destructure `uploadRes.id` — API возвращает `mediaFileId`.
+  // Перешёл на `apiUpload` (XHR с правильным multipart).
   const sendPhoto = async (file: File) => {
     if (!threadId || uploadingPhoto) return;
     setUploadingPhoto(true);
@@ -227,10 +230,13 @@ export default function BuyerChatPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('purpose', 'chat_photo');
-      const uploadRes = await api<{ id: string; url: string }>('/media/upload', { method: 'POST', body: formData });
+      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+        '/media/upload',
+        formData,
+      );
       await api(`/chat/threads/${threadId}/messages`, {
         method: 'POST',
-        body: { mediaId: uploadRes.id, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
+        body: { mediaId: mediaFileId, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
       });
       setReplyTo(null);
       tg?.HapticFeedback.notificationOccurred('success');
@@ -433,7 +439,12 @@ export default function BuyerChatPage() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto flex flex-col gap-2 pb-2 min-h-0">
             {msgLoading && (
-              <div className="flex justify-center py-8"><Spinner size={24} /></div>
+              <div className="flex flex-col gap-3 py-4">
+                <Skeleton style={{ height: 40, width: '60%', alignSelf: 'flex-start' }} />
+                <Skeleton style={{ height: 40, width: '70%', alignSelf: 'flex-end' }} />
+                <Skeleton style={{ height: 40, width: '50%', alignSelf: 'flex-start' }} />
+                <Skeleton style={{ height: 40, width: '65%', alignSelf: 'flex-end' }} />
+              </div>
             )}
             {!msgLoading && messages.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-12">
