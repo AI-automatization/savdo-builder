@@ -11,9 +11,9 @@ import { card, colors, inputStyle } from '@/lib/styles';
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }> = {
   [OrderStatus.PENDING]:    { label: 'Ожидает',      color: colors.warning },
-  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён',  color: '#60A5FA' },
+  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён',  color: colors.info },
   [OrderStatus.PROCESSING]: { label: 'Обработка',    color: colors.accent },
-  [OrderStatus.SHIPPED]:    { label: 'В пути',        color: '#818CF8' },
+  [OrderStatus.SHIPPED]:    { label: 'В пути',        color: colors.info },
   [OrderStatus.DELIVERED]:  { label: 'Доставлен',    color: colors.success },
   [OrderStatus.CANCELLED]:  { label: 'Отменён',      color: colors.danger },
 };
@@ -326,7 +326,7 @@ export default function OrdersPage() {
     <div className="flex flex-col gap-5 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Заказы</h1>
+        <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Заказы</h1>
         <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
           {isLoading
             ? 'Загрузка...'

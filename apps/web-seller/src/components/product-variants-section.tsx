@@ -10,6 +10,7 @@ import {
 } from '../hooks/use-products';
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
+import { ConfirmModal } from './confirm-modal';
 
 const glass = card;
 
@@ -284,6 +285,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding]       = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const hasOptions = optionGroups.length > 0;
 
@@ -340,13 +342,15 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
     setEditingId(null);
   }
 
-  async function handleDelete(variantId: string) {
-    if (!confirm('Удалить вариант?')) return;
+  async function performDelete() {
+    const variantId = confirmId;
+    if (!variantId) return;
     setDeletingId(variantId);
     try {
       await remove.mutateAsync({ productId, variantId });
     } finally {
       setDeletingId(null);
+      setConfirmId(null);
     }
   }
 
@@ -424,7 +428,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                     className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
                     style={{ color: colors.danger }}
                     disabled={deletingId === v.id}
-                    onClick={() => handleDelete(v.id)}
+                    onClick={() => setConfirmId(v.id)}
                   >
                     {deletingId === v.id ? '…' : <Trash2 size={14} />}
                   </button>
@@ -471,6 +475,16 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
           + Добавить вариант
         </button>
       )}
+
+      <ConfirmModal
+        open={confirmId !== null}
+        title="Удалить вариант?"
+        confirmLabel="Удалить"
+        danger
+        loading={confirmId !== null && deletingId === confirmId}
+        onConfirm={performDelete}
+        onClose={() => setConfirmId(null)}
+      />
     </div>
   );
 }

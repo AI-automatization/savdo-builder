@@ -104,7 +104,7 @@ function ProgressBar({ step }: { step: number }) {
             {i < STEPS.length - 1 && (
               <div
                 className="flex-1 h-px mx-1"
-                style={{ background: done ? colors.accent : colors.surfaceElevated }}
+                style={{ background: done ? colors.accent : colors.border }}
               />
             )}
           </div>
@@ -419,11 +419,11 @@ function Step4({
           className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4"
           style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
-          <Rocket size={28} color="#fff" />
+          <Rocket size={28} color={colors.accentTextOnBg} />
         </div>
         <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Почти готово!</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
-          Отправьте магазин <span style={{ color: "#A78BFA" }}>{storeName}</span> на проверку — после одобрения он станет доступен покупателям
+          Отправьте магазин <span style={{ color: colors.accent }}>{storeName}</span> на проверку — после одобрения он станет доступен покупателям
         </p>
       </div>
 
@@ -585,7 +585,7 @@ export default function OnboardingPage() {
           className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
           style={{ background: colors.accent }}
         >
-          <ShoppingCart size={16} color="#fff" />
+          <ShoppingCart size={16} color={colors.accentTextOnBg} />
         </div>
         <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
       </div>

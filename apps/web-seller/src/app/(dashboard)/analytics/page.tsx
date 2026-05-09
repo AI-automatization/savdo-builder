@@ -185,7 +185,7 @@ function TopByViewsCard({
         <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
           Самый просматриваемый · 30 дней
         </span>
-        <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: 'rgba(96,165,250,0.15)', color: '#60A5FA' }}>
+        <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: `color-mix(in srgb, ${colors.info} 15%, transparent)`, color: colors.info }}>
           <Star size={16} />
         </span>
       </div>
@@ -220,7 +220,7 @@ export default function AnalyticsPage() {
       {/* Header + period selector */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Аналитика</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Аналитика</h1>
           <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
             Заказы и выручка магазина
           </p>
@@ -307,8 +307,9 @@ export default function AnalyticsPage() {
 
       {/* Legacy: views & conversion + top by views — show as secondary section */}
       <div className="flex flex-col gap-3 mt-4">
+        <hr style={{ border: 0, borderTop: `1px solid ${colors.divider}` }} />
         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          — Просмотры и конверсия (за 30 дней)
+          Просмотры и конверсия (за 30 дней)
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <KpiCard

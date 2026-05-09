@@ -167,7 +167,7 @@ export function Select({
             zIndex: 60,
             background: colors.surface,
             border: `1px solid ${colors.borderStrong}`,
-            boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
+            boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
             maxHeight: 320,
           }}
         >

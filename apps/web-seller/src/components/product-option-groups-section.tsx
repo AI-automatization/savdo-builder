@@ -12,6 +12,7 @@ import {
 } from '../hooks/use-product-options';
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
+import { ConfirmModal } from './confirm-modal';
 
 const glass = card;
 
@@ -124,6 +125,7 @@ interface ValueRowProps {
 
 function ValueRow({ productId, groupId, value }: ValueRowProps) {
   const [editing, setEditing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const update = useUpdateOptionValue(productId);
   const remove = useDeleteOptionValue(productId);
 
@@ -132,9 +134,9 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
     setEditing(false);
   }
 
-  async function handleDelete() {
-    if (!confirm(`Удалить значение «${value.value}»? Варианты, использующие его, будут деактивированы.`)) return;
+  async function performDelete() {
     await remove.mutateAsync({ groupId, valueId: value.id });
+    setConfirmOpen(false);
   }
 
   if (editing) {
@@ -150,31 +152,43 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
   }
 
   return (
-    <div
-      className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-0.5 rounded-full text-xs"
-      style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textPrimary }}
-    >
-      <span>{value.value}</span>
-      <button
-        type="button"
-        className="transition-opacity opacity-40 hover:opacity-80"
-        style={{ color: colors.accent }}
-        onClick={() => setEditing(true)}
-        title="Редактировать"
+    <>
+      <div
+        className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-0.5 rounded-full text-xs"
+        style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textPrimary }}
       >
-        <Pencil size={12} />
-      </button>
-      <button
-        type="button"
-        className="transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
-        style={{ color: colors.danger }}
-        disabled={remove.isPending}
-        onClick={handleDelete}
-        title="Удалить"
-      >
-        <X size={12} />
-      </button>
-    </div>
+        <span>{value.value}</span>
+        <button
+          type="button"
+          className="transition-opacity opacity-40 hover:opacity-80"
+          style={{ color: colors.accent }}
+          onClick={() => setEditing(true)}
+          title="Редактировать"
+        >
+          <Pencil size={12} />
+        </button>
+        <button
+          type="button"
+          className="transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
+          style={{ color: colors.danger }}
+          disabled={remove.isPending}
+          onClick={() => setConfirmOpen(true)}
+          title="Удалить"
+        >
+          <X size={12} />
+        </button>
+      </div>
+      <ConfirmModal
+        open={confirmOpen}
+        title={`Удалить значение «${value.value}»?`}
+        message="Варианты, использующие его, будут деактивированы."
+        confirmLabel="Удалить"
+        danger
+        loading={remove.isPending}
+        onConfirm={performDelete}
+        onClose={() => setConfirmOpen(false)}
+      />
+    </>
   );
 }
 
@@ -188,22 +202,21 @@ interface GroupRowProps {
 function GroupRow({ productId, group }: GroupRowProps) {
   const [editingName, setEditingName] = useState(false);
   const [addingValue, setAddingValue] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const updateGroup = useUpdateOptionGroup(productId);
   const removeGroup = useDeleteOptionGroup(productId);
   const createValue = useCreateOptionValue(productId);
+
+  const hasValues = group.values.length > 0;
 
   async function handleRename(text: string) {
     await updateGroup.mutateAsync({ groupId: group.id, name: text });
     setEditingName(false);
   }
 
-  async function handleRemove() {
-    const hasValues = group.values.length > 0;
-    const msg = hasValues
-      ? `Удалить группу «${group.name}»? Все её значения будут удалены, а связанные варианты деактивированы.`
-      : `Удалить группу «${group.name}»?`;
-    if (!confirm(msg)) return;
+  async function performRemove() {
     await removeGroup.mutateAsync(group.id);
+    setConfirmOpen(false);
   }
 
   async function handleAddValue(text: string) {
@@ -247,7 +260,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
               className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
               style={{ color: colors.danger }}
               disabled={removeGroup.isPending}
-              onClick={handleRemove}
+              onClick={() => setConfirmOpen(true)}
               title="Удалить группу"
             >
               <Trash2 size={14} />
@@ -282,6 +295,16 @@ function GroupRow({ productId, group }: GroupRowProps) {
           </button>
         )}
       </div>
+      <ConfirmModal
+        open={confirmOpen}
+        title={`Удалить группу «${group.name}»?`}
+        message={hasValues ? 'Все её значения будут удалены, а связанные варианты деактивированы.' : undefined}
+        confirmLabel="Удалить"
+        danger
+        loading={removeGroup.isPending}
+        onConfirm={performRemove}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
