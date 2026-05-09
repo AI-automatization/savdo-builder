@@ -56,11 +56,34 @@
 - **Что:** добавить под header'ом ChatView полосу `rgba(brand,0.06)` с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Спека называет это «★ key differentiator vs Qlay».
 - **Почему отдельно:** требует API fetch product preview по `thread.contextId`, новый API call, optimistic loading state. Полноценная feature, не однострочный фикс.
 
+### ✅ [WEB-BUYER-DARK-THEME-001] Dark theme — Soft Color Lifestyle warm equivalents 🟡
+
+- **Дата:** 09.05.2026
+- **Контекст:** аудит явно отметил dark drift как out-of-scope ("темная тема — отдельной итерацией" по спеке), но `[data-theme="dark"]` держал legacy violet-палитру с сессии 45. Пользователь с system-preference dark переключался и видел light в терракоте + dark в violet = inconsistent брэнд.
+- **Что:** переписан весь dark блок в `apps/web-buyer/src/app/globals.css` под warm terracotta-aware палитру. Имена CSS-vars сохранены — все компоненты автоматически адаптируются.
+  - bg `#0F0F12` (cool slate) → `#16120D` (warm near-black, brown-tinted)
+  - surface chain warmed up (`#221C16 / #2A231C / #100E09 sunken`)
+  - text-primary `#F4F4F5` → `#F5EFE3` (warm off-white), text-muted `#A1A1AA` → `#A89B85` (warm tan-grey), новый text-body `#D9CEB9`
+  - divider/border переведены на `rgba(245,239,227, X)` (warm white с low alpha)
+  - **brand violet `#A78BFA` → terracotta lifted `#A05A45`** (h=14° same as light, lightness +11% для dark contrast — preserves brand identity across themes)
+  - brand-text-on-bg `#0F0F12` → `#FFFFFF` (white читается чисто на lifted terracotta, контраст ~5:1)
+  - success/warning/danger lifted in lightness для dark visibility
+  - accent-* теперь alias `var(--color-brand-*)` для consistency с light `:root`
+- **Theme-aware hover utility:** добавлен `.hover-soft` в globals.css (`color-mix(text-primary 8%, transparent)`) — заменяет `hover:bg-black/X` который был невидим на dark surface. Migrated 6 places: cart back-link, CategoryAttributeFilters clear-button, HeaderSearch dropdown rows, emoji-picker buttons, chats context-menu items.
+- **`text-white` → `colors.brandTextOnBg`** на brand-bg avatars/badges (5 мест): chats list/header/message avatars + send button + cart store-strip avatar + product detail seller-card avatar. Light = `#FBF7F0`, dark = `#FFFFFF` — автоматическая адаптация.
+- **Skipped (intentional cross-theme):**
+  - ProductCard / wishlist heart overlays `rgba(255,255,255,0.85)` — спека specifically требует белый pill на user photos.
+  - Product detail image counter pill — `text-white` на `rgba(0,0,0,0.45)` intentional photo overlay.
+  - ChatComposerModal / chat confirm backdrops `rgba(15,17,21,0.5)` — работает в обеих темах как content-dim layer.
+- **Файлы (7):** globals.css, cart/page.tsx, [slug]/products/[id]/page.tsx, chats/page.tsx, emoji-picker.tsx, HeaderSearch.tsx, CategoryAttributeFilters.tsx.
+- **Commit:** `b894589`. Push: main → b894589, web-buyer → 71b6797.
+
 ### Итог сессии
 
-- **Закрыто:** 22 из 25 findings (3 P1 + 11 P2 + 8 P3). 3 deferred (P1-003 wave 6, P2-004/P2-014 нужны решения, P3-004 нужен API).
-- **Коммиты:** `50f04e3` (audit doc + backlog), `9a16999` (Wave 1), `c5b6163` (Waves 2-5), `7ad5063` (Wave 7).
-- **Файлов изменено:** 12 (1 новый — audit doc).
+- **Закрыто:** 22 из 25 audit findings + dark theme buyer. 3 deferred (P1-003 wave 6, P2-004/P2-014 нужны решения, P3-004 нужен API).
+- **Коммиты на main (6):** `50f04e3` (audit doc + backlog), `9a16999` (Wave 1), `c5b6163` (Waves 2-5), `7ad5063` (Wave 7), `c48321e` (docs), `b894589` (dark theme).
+- **Файлов изменено:** 14 (1 новый — audit doc).
+- **Push:** main → `b894589`, web-buyer → `71b6797` (Railway деплой запущен).
 - **Локально не запускалось** (per memory feedback).
 
 ---
