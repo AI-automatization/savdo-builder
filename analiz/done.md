@@ -1,5 +1,125 @@
 # Done — Азим + Полат
 
+## 2026-05-09 (Азим) — Web-buyer Design Audit + 6 fix waves (22 из 25 findings закрыты)
+
+### ✅ [WB-DESIGN-AUDIT-001] Read-only audit web-buyer vs Soft Color Lifestyle 🟡
+
+- **Дата:** 09.05.2026
+- **Артефакт:** `analiz/audit-web-buyer-design-2026-05-09.md` (~230 строк, 25 findings: 3 P1 / 14 P2 / 8 P3, health 7.5/10).
+- **Что:** полный read-only аудит buyer'а под спеку `docs/superpowers/specs/2026-05-05-buyer-design-differentiation-design.md`. Делегирован code-explorer агенту, отчёт + backlog в tasks.md секция WB-DESIGN-FIX-WAVES (7 волн).
+- **Top findings:** emoji-picker на чужой dark/violet/glassmorphism теме, chat edit-bubble white-on-white в light, отсутствие pinned product context strip (★ key differentiator vs Qlay).
+- **Health 7.5/10:** token discipline существенно лучше seller'а — 0 legacy-violet hardcodes в основных страницах, 0 backdrop-blur (кроме emoji-picker), zero `dark:` Tailwind, всё через CSS-vars. Снижают: один сломанный компонент + radius drift в OTP/checkout/filters.
+- **Commit:** `50f04e3`.
+
+### ✅ [WB-DESIGN-WAVE-1] emoji-picker на Soft Color Lifestyle токенах 🔴
+
+- **Дата:** 09.05.2026
+- **Файл:** `apps/web-buyer/src/components/emoji-picker.tsx`
+- **Что:** перекрашен с dark/violet/glassmorphism на light tokens. `backdropFilter: blur(18px)` удалён (spec §Foundation: «❌ glassmorphism»), `rgba(15,23,42,0.96)` → `colors.surface`, `rgba(167,139,250,0.30)` → `colors.border`, тяжёлая тень `0 16px 40px rgba(0,0,0,0.55)` → spec shadow-hover. Trigger color `#A78BFA`/`rgba(255,255,255,0.55)` → `colors.brand`/`colors.textMuted`. Tab active → `colors.brandMuted`. Panel radius `rounded-xl` → `rounded-lg` (spec large surface = 8px). `hover:bg-white/5` → `hover:bg-black/5` (на белом фоне первое было невидимо).
+- **Closes:** P1-001.
+- **Commit:** `9a16999`.
+
+### ✅ [WB-DESIGN-WAVES-2-5] chat edit + headings + stats + timeline + radius 🟡
+
+- **Дата:** 09.05.2026
+- **Файлы (8):** chats/page.tsx, orders/page.tsx, profile/page.tsx, notifications/page.tsx, orders/[id]/page.tsx, checkout/page.tsx, OtpGate.tsx, CategoryAttributeFilters.tsx.
+- **Wave 2 (P1-002):** chat edit-bubble — textarea/cancel/save кнопки переведены на `colors.brandTextOnBg`/`colors.brandHover`. Cancel сделан outline (border + transparent), save сменил `#FFFFFF` → token.
+- **Wave 3 (P2-001):** page headings `text-lg` (18px) → `text-2xl tracking-tight` (24px) на 4 страницах: orders, profile, notifications, chats. Spec §Типография range 22-30px / 700 / -0.01em.
+- **Wave 4 (P2-002, P2-003):** Stat() числа `text-base textStrong` → `text-2xl tracking-tight colors.brand` (per spec «большие числа в brand-color»). Timeline current dot + `animate-pulse` (per spec «pulsing brand-color on current step»).
+- **Wave 5 (P2-005..008):** radius cleanup per spec §Border radius (4/6/8/999, никаких 14-16): checkout OTP buttons `rounded-2xl` → `rounded`, OtpGate icon+card `rounded-2xl` → `rounded-lg`, OtpGate inputs+buttons `rounded-xl` → `rounded`, CategoryAttributeFilters panel `rounded-2xl` → `rounded-lg`, ChatsView outer `rounded-2xl` → `rounded-lg`.
+- **Closes:** P1-002, P2-001, P2-002, P2-003, P2-005, P2-006, P2-007, P2-008.
+- **Commit:** `c5b6163`.
+
+### ✅ [WB-DESIGN-WAVE-7] Backlog cleanup — 12 P2/P3 findings 🟢
+
+- **Дата:** 09.05.2026
+- **Файлы (8):** chats/page.tsx, orders/[id]/page.tsx, profile/page.tsx, page.tsx (homepage), HeaderSearch.tsx, CategoryAttributeFilters.tsx, ProductsWithSearch.tsx, theme-toggle.tsx.
+- **Что:**
+  - `#FFFFFF` literal в danger buttons (P2-012, 4 места) → `colors.brandTextOnBg`.
+  - `text-white` className на brand backgrounds (P2-013, P3-008) → inline `colors.brandTextOnBg`.
+  - Excess shadows (P2-009, P3-001, P3-002, P3-005) → spec shadow-hover `0 4px 12px rgba(31,26,18,0.08)`. Homepage logo container 16px spread → 12px.
+  - CategoryAttributeFilters toggle thumb `bg-white` → `colors.surface` (P2-010).
+  - ProductsWithSearch md grid `grid-cols-3` → `grid-cols-4` (P2-011).
+  - ProductsWithSearch search input `rounded-xl` → `rounded-md` (P3-007).
+  - Buyer message timestamp `rgba(255,255,255,0.70)` → `rgba(251,247,240,0.7)` (brandTextOnBg @ 70%, P3-003).
+  - Homepage logo container `rounded-2xl` → `rounded-lg`, ShoppingCart icon `#FFFFFF` → token.
+- **Skipped с обоснованием:**
+  - **P2-004** (sections «Все NN →» link + dividers) — требует content decision: storefront сейчас имеет одну секцию «Товары», pattern вступает в силу при множественных секциях (Новые / Категории / Все). Без них link дублирует counter.
+  - **P2-014** («Повторить заказ» button) — требует batch add-to-cart endpoint от Полата.
+  - **P3-004** («Распродажа» chip) — требует `isSale` flag в API категорий.
+- **Closes:** P2-009, P2-010, P2-011, P2-012, P2-013, P3-001, P3-002, P3-003, P3-005, P3-007, P3-008.
+- **Commit:** `7ad5063`.
+
+### ⏸ [WB-DESIGN-WAVE-6] Pinned product context strip — отдельной сессией
+
+- **Закрывает (когда сделается):** P1-003.
+- **Что:** добавить под header'ом ChatView полосу `rgba(brand,0.06)` с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Спека называет это «★ key differentiator vs Qlay».
+- **Почему отдельно:** требует API fetch product preview по `thread.contextId`, новый API call, optimistic loading state. Полноценная feature, не однострочный фикс.
+
+### ✅ [WEB-BUYER-DARK-THEME-001] Dark theme — Soft Color Lifestyle warm equivalents 🟡
+
+- **Дата:** 09.05.2026
+- **Контекст:** аудит явно отметил dark drift как out-of-scope ("темная тема — отдельной итерацией" по спеке), но `[data-theme="dark"]` держал legacy violet-палитру с сессии 45. Пользователь с system-preference dark переключался и видел light в терракоте + dark в violet = inconsistent брэнд.
+- **Что:** переписан весь dark блок в `apps/web-buyer/src/app/globals.css` под warm terracotta-aware палитру. Имена CSS-vars сохранены — все компоненты автоматически адаптируются.
+  - bg `#0F0F12` (cool slate) → `#16120D` (warm near-black, brown-tinted)
+  - surface chain warmed up (`#221C16 / #2A231C / #100E09 sunken`)
+  - text-primary `#F4F4F5` → `#F5EFE3` (warm off-white), text-muted `#A1A1AA` → `#A89B85` (warm tan-grey), новый text-body `#D9CEB9`
+  - divider/border переведены на `rgba(245,239,227, X)` (warm white с low alpha)
+  - **brand violet `#A78BFA` → terracotta lifted `#A05A45`** (h=14° same as light, lightness +11% для dark contrast — preserves brand identity across themes)
+  - brand-text-on-bg `#0F0F12` → `#FFFFFF` (white читается чисто на lifted terracotta, контраст ~5:1)
+  - success/warning/danger lifted in lightness для dark visibility
+  - accent-* теперь alias `var(--color-brand-*)` для consistency с light `:root`
+- **Theme-aware hover utility:** добавлен `.hover-soft` в globals.css (`color-mix(text-primary 8%, transparent)`) — заменяет `hover:bg-black/X` который был невидим на dark surface. Migrated 6 places: cart back-link, CategoryAttributeFilters clear-button, HeaderSearch dropdown rows, emoji-picker buttons, chats context-menu items.
+- **`text-white` → `colors.brandTextOnBg`** на brand-bg avatars/badges (5 мест): chats list/header/message avatars + send button + cart store-strip avatar + product detail seller-card avatar. Light = `#FBF7F0`, dark = `#FFFFFF` — автоматическая адаптация.
+- **Skipped (intentional cross-theme):**
+  - ProductCard / wishlist heart overlays `rgba(255,255,255,0.85)` — спека specifically требует белый pill на user photos.
+  - Product detail image counter pill — `text-white` на `rgba(0,0,0,0.45)` intentional photo overlay.
+  - ChatComposerModal / chat confirm backdrops `rgba(15,17,21,0.5)` — работает в обеих темах как content-dim layer.
+- **Файлы (7):** globals.css, cart/page.tsx, [slug]/products/[id]/page.tsx, chats/page.tsx, emoji-picker.tsx, HeaderSearch.tsx, CategoryAttributeFilters.tsx.
+- **Commit:** `b894589`. Push: main → b894589, web-buyer → 71b6797.
+
+### Итог сессии
+
+- **Закрыто:** 22 из 25 audit findings + dark theme buyer. 3 deferred (P1-003 wave 6, P2-004/P2-014 нужны решения, P3-004 нужен API).
+- **Коммиты на main (6):** `50f04e3` (audit doc + backlog), `9a16999` (Wave 1), `c5b6163` (Waves 2-5), `7ad5063` (Wave 7), `c48321e` (docs), `b894589` (dark theme).
+- **Файлов изменено:** 14 (1 новый — audit doc).
+- **Push:** main → `b894589`, web-buyer → `71b6797` (Railway деплой запущен).
+- **Локально не запускалось** (per memory feedback).
+
+---
+
+## 2026-05-08 (Полат, поздний вечер) — Design audit P0 fixes (3 закрыто)
+
+### ✅ [API-HTTP-201-CREATED-001] @HttpCode(CREATED) explicit на 6 POST creators 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/api/src/modules/products/products.controller.ts`
+- **Skill criteria:** api-design-reviewer — "Status Code Compliance: ensure appropriate HTTP status codes are explicitly used"
+- **Что:** добавлен `@HttpCode(HttpStatus.CREATED)` на 6 POST endpoints (seller/products + /variants + /option-groups + /option-groups/:gid/values + /images + /attributes). NestJS уже возвращал 201 неявно для @Post() — теперь explicit для symmetry с cart/checkout (которые имели explicit раньше).
+- **Why:** consistency + Swagger generation friendly + intent ясно.
+
+### ✅ [TMA-DESIGN-SPINNER-CLEANUP-001] Initial-load Spinner → Skeleton 🔴
+
+- **Дата:** 08.05.2026
+- **Skill criteria:** ui-design-system "Loading state hierarchy: skeleton placeholders for known shape; spinner for indeterminate progress"
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/ChatPage.tsx:442` — initial-messages `<Spinner>` → 4× `Skeleton` блоки (alternating left/right alignment imitating message bubbles).
+  - `apps/tma/src/pages/seller/ChatPage.tsx:506` — то же.
+  - `apps/tma/src/pages/seller/EditProductPage.tsx:597` — full-page `<Spinner>` → `<ProductDetailSkeleton />`.
+- **Что НЕ заменено:** inline Spinner на send-button (sending indicator), loadMore button (pagination), expand-detail (small inline) — они correctly indeterminate-progress.
+
+### ✅ [TMA-DESIGN-A11Y-LEFTOVERS-001] Verification: реальных нарушений не осталось 🔴
+
+- **Дата:** 08.05.2026
+- **Что проверено:** упомянутые в design-audit T3 места (seller/ChatPage:205, buyer/ProductPage:252-256).
+- **Findings:**
+  - `seller/ChatPage` line 205 — это код функции `sendMsg`, не div onClick. Audit ошибся.
+  - Все `<div onClick>` в seller/ChatPage (lines 377, 383, 683, 684) — modal backdrops с `stopPropagation` + ESC handler в ConfirmModal/ImageCropper. Acceptable per ADR `2026-05-08-tma-a11y-roletabindex-vs-button.md`.
+  - `buyer/ProductPage:252-256` (collage 2x2) уже фикшено в коммите `3400ecc`.
+- **Решение:** тикет закрыт без изменений.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 7 (частично)
 
 ### ✅ [WS-DESIGN-WAVE-7-BACKLOG] 8 из 14 backlog nit'ов 🟢

@@ -5,23 +5,53 @@
 
 ---
 
+# 🆕 Web-buyer Design Audit (09.05.2026) — Soft Color Lifestyle
+
+> Полный отчёт: `analiz/audit-web-buyer-design-2026-05-09.md` (25 findings: 3 P1 / 14 P2 / 8 P3, health 7.5/10).
+
+## WB-DESIGN-FIX-WAVES (Азим)
+
+- [x] **`WB-DESIGN-WAVE-1`** ✅ 09.05.2026 — emoji-picker на токенах. Commit `9a16999`.
+- [x] **`WB-DESIGN-WAVE-2`** ✅ 09.05.2026 — chat edit-bubble token cleanup. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-3`** ✅ 09.05.2026 — page headings text-2xl tracking-tight ×4. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-4`** ✅ 09.05.2026 — Stats brand + timeline pulse. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-5`** ✅ 09.05.2026 — radius cleanup (5 файлов). Commit `c5b6163`.
+- [ ] **`WB-DESIGN-WAVE-6`** (P1, **блокируется API**) — pinned product context strip в chat thread: `rgba(brand,0.06)` полоса с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx ChatView`. Closes P1-003.
+  - **Блокер**: `ChatThread` response (`packages/types/src/api/chat.ts`) содержит только `productTitle`, без `productId/productImageUrl/productPrice`. Фронт не может построить полноценный strip без них.
+
+### 🔵 Контракт-задача для Полата (web-buyer Wave 6 unblock)
+
+- [ ] **`API-CHAT-THREAD-PRODUCT-PREVIEW-001`** (P2, для Полата) — расширить `ChatThread` response (use-case `list-my-threads.use-case.ts` + type `packages/types/src/api/chat.ts`) для PRODUCT-threads:
+  - Добавить поля: `productId: string | null`, `productImageUrl: string | null` (resolved CDN URL — первая картинка из media), `productPriceMinor: number | null` (для рендера через formatPrice).
+  - Альтернатива: отдельный endpoint `GET /chat/threads/:id/context-preview` если list-response не хочется bloating. Но первый вариант проще — данные уже в Prisma `t.product` JOIN'е, нужно просто map'нуть в response.
+  - Use-case `list-my-threads.use-case.ts:30-44` уже подключает `t.product` через relation — расширение mapBuyerThread на 3 поля без extra query'ёв.
+  - Симметрично — для seller-side: `mapSellerThread` те же 3 поля (полезно для `WS-CHAT-PINNED-CONTEXT-001` в будущем).
+  - Когда готово → азим раскроет фронт за один проход.
+- [x] **`WB-DESIGN-WAVE-7`** ✅ 09.05.2026 — backlog cleanup (12 P2/P3). Commit `7ad5063`. **Skipped** P2-004 (sections «Все NN →» — нужно решение о множественных секциях; одиночная «Товары» сейчас не требует pattern), P2-014 (нужен batch add-to-cart API), P3-004 (нужен `isSale` flag в API).
+
+**Skipped / requires API work:**
+- P3-004 (sale chip) — нужен `isSale` flag в категориях API.
+- P2-014 (Повторить заказ button) — нужен batch add-to-cart endpoint от Полата.
+
+---
+
 # 🆕 Design Audit (08.05.2026) — Admin / API / TMA
 
 > Полный отчёт: `analiz/design-audit-2026-05-08.md` (51 findings: 11 P0, 14 P1, 14 P2, 12 P3).
 > Использованы claude-skills: ui-design-system, apple-hig-expert, api-design-reviewer, senior-backend.
 
-## Sprint A — cross-platform polish (P0 only) — 10 тикетов
+## Sprint A — cross-platform polish (P0 only) — 10 тикетов (3 закрыто)
 
 - [ ] **`TMA-DESIGN-HIT-AREA-001`** (P0, T1) — qty buttons `w-7 h-7` (28px) → `w-10 h-10` (40px). Файлы: CartPage:97-121, OrdersPage, ChatPage qty.
 - [ ] **`TMA-DESIGN-FG-TOKENS-001`** (P0, T2) — 100+ inline `rgba(255,255,255,X)` → `FG.strong/muted/dim` в `styles.ts`. Миграция CartPage / OrdersPage / ProductPage.
-- [ ] **`TMA-DESIGN-A11Y-LEFTOVERS-001`** (P0, T3) — применить `clickableA11y()` helper из `lib/a11y.ts` на seller/ChatPage:205, buyer/ProductPage:252-256.
+- [x] **`TMA-DESIGN-A11Y-LEFTOVERS-001`** ✅ 08.05.2026 — verified: упомянутые в аудите места (seller/ChatPage:205) — modal backdrop с stopPropagation + ESC, acceptable per ADR. buyer/ProductPage:252-256 уже закрыто `3400ecc`. Реальных нарушений не осталось.
 - [ ] **`TMA-DESIGN-ROLE-DIFF-001`** (P0, T4) — buyer (orchid) vs seller (cyan) визуальная дифференциация через `data-role` + scoped CSS-переменные.
-- [ ] **`TMA-DESIGN-SPINNER-CLEANUP-001`** (P0, T5) — `<Spinner>` остатки (OrdersPage:347, ChatPage:6, EditProductPage:6) → Skeleton presets.
+- [x] **`TMA-DESIGN-SPINNER-CLEANUP-001`** ✅ 08.05.2026 — заменены 3 initial-load `<Spinner>` → Skeleton: buyer/ChatPage:442 (4× message Skeleton), seller/ChatPage:506 (то же), seller/EditProductPage:597 (`ProductDetailSkeleton`). Inline Spinner на send-button и loadMore оставлены — они приемлемы.
 - [ ] **`ADMIN-A11Y-MODAL-001`** (P0, A1+A2) — DashboardLayout aria-* + ModerationPage modal на Radix Dialog.
 - [ ] **`ADMIN-DESIGN-TOKENS-SURFACE-001`** (P0, A3) — `--surface-error/-warning/-success` CSS-переменные + миграция hardcoded `rgba(239,68,68,...)`.
-- [ ] **`API-WS-EVENTS-NAMING-001`** (P0, B1) — единый стиль `<namespace>:<action>` для всех Socket.IO events.
-- [ ] **`API-HTTP-201-CREATED-001`** (P0, B2) — `@HttpCode(HttpStatus.CREATED)` на 5+ POST endpoints (products/variants/option-groups/images/attributes).
-- [ ] **`API-ORDERS-ALIAS-REMOVE-001`** (P0, B3) — удалить `GET /orders/:id` alias, оставить `/buyer/orders/:id`.
+- [ ] **`API-WS-EVENTS-NAMING-001`** (P0, B1) — единый стиль `<namespace>:<action>` для всех Socket.IO events. **⚠️ требует sync с frontend (TMA, web-buyer, web-seller) — не делать в отдельной сессии.**
+- [x] **`API-HTTP-201-CREATED-001`** ✅ 08.05.2026 — `@HttpCode(HttpStatus.CREATED)` добавлен на 6 POST endpoints в `products.controller.ts`: seller/products, /variants, /option-groups, /option-groups/:gid/values, /images, /attributes. NestJS уже отдавал 201 неявно для @Post — теперь explicit для consistency с cart/checkout.
+- [ ] **`API-ORDERS-ALIAS-REMOVE-001`** (P0, B3) — удалить `GET /orders/:id` alias. **⚠️ потенциально breaking для web-buyer — проверить вызовы перед удалением.**
 
 ## Sprint B — design system hardening (P1) — 8 тикетов
 

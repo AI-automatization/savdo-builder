@@ -7,6 +7,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
+import { ProductDetailSkeleton } from '@/components/ui/Skeleton';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { glass } from '@/lib/styles';
 
@@ -594,7 +595,7 @@ export default function EditProductPage() {
           Редактировать товар
         </h1>
 
-        {loading && <div className="flex justify-center py-10"><Spinner size={32} /></div>}
+        {loading && <ProductDetailSkeleton />}
 
         {!loading && loadError && (
           <GlassCard className="p-4 text-center">

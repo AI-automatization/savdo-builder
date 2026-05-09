@@ -90,7 +90,7 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
           style={{
             background: colors.surface,
             border: `1px solid ${colors.border}`,
-            boxShadow: '0 10px 24px rgba(0,0,0,0.12)',
+            boxShadow: '0 4px 12px rgba(31,26,18,0.08)',
           }}
         >
           <MenuItem icon={<Sun size={14} />} label="Светлая"   active={theme === 'light'}  onClick={() => { setTheme('light');  setOpen(false); }} />
