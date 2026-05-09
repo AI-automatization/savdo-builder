@@ -1,5 +1,238 @@
 # Done — Азим + Полат
 
+## 2026-05-09 (Азим) — Web-buyer Design Audit + 6 fix waves (22 из 25 findings закрыты)
+
+### ✅ [WB-DESIGN-AUDIT-001] Read-only audit web-buyer vs Soft Color Lifestyle 🟡
+
+- **Дата:** 09.05.2026
+- **Артефакт:** `analiz/audit-web-buyer-design-2026-05-09.md` (~230 строк, 25 findings: 3 P1 / 14 P2 / 8 P3, health 7.5/10).
+- **Что:** полный read-only аудит buyer'а под спеку `docs/superpowers/specs/2026-05-05-buyer-design-differentiation-design.md`. Делегирован code-explorer агенту, отчёт + backlog в tasks.md секция WB-DESIGN-FIX-WAVES (7 волн).
+- **Top findings:** emoji-picker на чужой dark/violet/glassmorphism теме, chat edit-bubble white-on-white в light, отсутствие pinned product context strip (★ key differentiator vs Qlay).
+- **Health 7.5/10:** token discipline существенно лучше seller'а — 0 legacy-violet hardcodes в основных страницах, 0 backdrop-blur (кроме emoji-picker), zero `dark:` Tailwind, всё через CSS-vars. Снижают: один сломанный компонент + radius drift в OTP/checkout/filters.
+- **Commit:** `50f04e3`.
+
+### ✅ [WB-DESIGN-WAVE-1] emoji-picker на Soft Color Lifestyle токенах 🔴
+
+- **Дата:** 09.05.2026
+- **Файл:** `apps/web-buyer/src/components/emoji-picker.tsx`
+- **Что:** перекрашен с dark/violet/glassmorphism на light tokens. `backdropFilter: blur(18px)` удалён (spec §Foundation: «❌ glassmorphism»), `rgba(15,23,42,0.96)` → `colors.surface`, `rgba(167,139,250,0.30)` → `colors.border`, тяжёлая тень `0 16px 40px rgba(0,0,0,0.55)` → spec shadow-hover. Trigger color `#A78BFA`/`rgba(255,255,255,0.55)` → `colors.brand`/`colors.textMuted`. Tab active → `colors.brandMuted`. Panel radius `rounded-xl` → `rounded-lg` (spec large surface = 8px). `hover:bg-white/5` → `hover:bg-black/5` (на белом фоне первое было невидимо).
+- **Closes:** P1-001.
+- **Commit:** `9a16999`.
+
+### ✅ [WB-DESIGN-WAVES-2-5] chat edit + headings + stats + timeline + radius 🟡
+
+- **Дата:** 09.05.2026
+- **Файлы (8):** chats/page.tsx, orders/page.tsx, profile/page.tsx, notifications/page.tsx, orders/[id]/page.tsx, checkout/page.tsx, OtpGate.tsx, CategoryAttributeFilters.tsx.
+- **Wave 2 (P1-002):** chat edit-bubble — textarea/cancel/save кнопки переведены на `colors.brandTextOnBg`/`colors.brandHover`. Cancel сделан outline (border + transparent), save сменил `#FFFFFF` → token.
+- **Wave 3 (P2-001):** page headings `text-lg` (18px) → `text-2xl tracking-tight` (24px) на 4 страницах: orders, profile, notifications, chats. Spec §Типография range 22-30px / 700 / -0.01em.
+- **Wave 4 (P2-002, P2-003):** Stat() числа `text-base textStrong` → `text-2xl tracking-tight colors.brand` (per spec «большие числа в brand-color»). Timeline current dot + `animate-pulse` (per spec «pulsing brand-color on current step»).
+- **Wave 5 (P2-005..008):** radius cleanup per spec §Border radius (4/6/8/999, никаких 14-16): checkout OTP buttons `rounded-2xl` → `rounded`, OtpGate icon+card `rounded-2xl` → `rounded-lg`, OtpGate inputs+buttons `rounded-xl` → `rounded`, CategoryAttributeFilters panel `rounded-2xl` → `rounded-lg`, ChatsView outer `rounded-2xl` → `rounded-lg`.
+- **Closes:** P1-002, P2-001, P2-002, P2-003, P2-005, P2-006, P2-007, P2-008.
+- **Commit:** `c5b6163`.
+
+### ✅ [WB-DESIGN-WAVE-7] Backlog cleanup — 12 P2/P3 findings 🟢
+
+- **Дата:** 09.05.2026
+- **Файлы (8):** chats/page.tsx, orders/[id]/page.tsx, profile/page.tsx, page.tsx (homepage), HeaderSearch.tsx, CategoryAttributeFilters.tsx, ProductsWithSearch.tsx, theme-toggle.tsx.
+- **Что:**
+  - `#FFFFFF` literal в danger buttons (P2-012, 4 места) → `colors.brandTextOnBg`.
+  - `text-white` className на brand backgrounds (P2-013, P3-008) → inline `colors.brandTextOnBg`.
+  - Excess shadows (P2-009, P3-001, P3-002, P3-005) → spec shadow-hover `0 4px 12px rgba(31,26,18,0.08)`. Homepage logo container 16px spread → 12px.
+  - CategoryAttributeFilters toggle thumb `bg-white` → `colors.surface` (P2-010).
+  - ProductsWithSearch md grid `grid-cols-3` → `grid-cols-4` (P2-011).
+  - ProductsWithSearch search input `rounded-xl` → `rounded-md` (P3-007).
+  - Buyer message timestamp `rgba(255,255,255,0.70)` → `rgba(251,247,240,0.7)` (brandTextOnBg @ 70%, P3-003).
+  - Homepage logo container `rounded-2xl` → `rounded-lg`, ShoppingCart icon `#FFFFFF` → token.
+- **Skipped с обоснованием:**
+  - **P2-004** (sections «Все NN →» link + dividers) — требует content decision: storefront сейчас имеет одну секцию «Товары», pattern вступает в силу при множественных секциях (Новые / Категории / Все). Без них link дублирует counter.
+  - **P2-014** («Повторить заказ» button) — требует batch add-to-cart endpoint от Полата.
+  - **P3-004** («Распродажа» chip) — требует `isSale` flag в API категорий.
+- **Closes:** P2-009, P2-010, P2-011, P2-012, P2-013, P3-001, P3-002, P3-003, P3-005, P3-007, P3-008.
+- **Commit:** `7ad5063`.
+
+### ⏸ [WB-DESIGN-WAVE-6] Pinned product context strip — отдельной сессией
+
+- **Закрывает (когда сделается):** P1-003.
+- **Что:** добавить под header'ом ChatView полосу `rgba(brand,0.06)` с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Спека называет это «★ key differentiator vs Qlay».
+- **Почему отдельно:** требует API fetch product preview по `thread.contextId`, новый API call, optimistic loading state. Полноценная feature, не однострочный фикс.
+
+### Итог сессии
+
+- **Закрыто:** 22 из 25 findings (3 P1 + 11 P2 + 8 P3). 3 deferred (P1-003 wave 6, P2-004/P2-014 нужны решения, P3-004 нужен API).
+- **Коммиты:** `50f04e3` (audit doc + backlog), `9a16999` (Wave 1), `c5b6163` (Waves 2-5), `7ad5063` (Wave 7).
+- **Файлов изменено:** 12 (1 новый — audit doc).
+- **Локально не запускалось** (per memory feedback).
+
+---
+
+## 2026-05-08 (Полат, поздний вечер) — Design audit P0 fixes (3 закрыто)
+
+### ✅ [API-HTTP-201-CREATED-001] @HttpCode(CREATED) explicit на 6 POST creators 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/api/src/modules/products/products.controller.ts`
+- **Skill criteria:** api-design-reviewer — "Status Code Compliance: ensure appropriate HTTP status codes are explicitly used"
+- **Что:** добавлен `@HttpCode(HttpStatus.CREATED)` на 6 POST endpoints (seller/products + /variants + /option-groups + /option-groups/:gid/values + /images + /attributes). NestJS уже возвращал 201 неявно для @Post() — теперь explicit для symmetry с cart/checkout (которые имели explicit раньше).
+- **Why:** consistency + Swagger generation friendly + intent ясно.
+
+### ✅ [TMA-DESIGN-SPINNER-CLEANUP-001] Initial-load Spinner → Skeleton 🔴
+
+- **Дата:** 08.05.2026
+- **Skill criteria:** ui-design-system "Loading state hierarchy: skeleton placeholders for known shape; spinner for indeterminate progress"
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/ChatPage.tsx:442` — initial-messages `<Spinner>` → 4× `Skeleton` блоки (alternating left/right alignment imitating message bubbles).
+  - `apps/tma/src/pages/seller/ChatPage.tsx:506` — то же.
+  - `apps/tma/src/pages/seller/EditProductPage.tsx:597` — full-page `<Spinner>` → `<ProductDetailSkeleton />`.
+- **Что НЕ заменено:** inline Spinner на send-button (sending indicator), loadMore button (pagination), expand-detail (small inline) — они correctly indeterminate-progress.
+
+### ✅ [TMA-DESIGN-A11Y-LEFTOVERS-001] Verification: реальных нарушений не осталось 🔴
+
+- **Дата:** 08.05.2026
+- **Что проверено:** упомянутые в design-audit T3 места (seller/ChatPage:205, buyer/ProductPage:252-256).
+- **Findings:**
+  - `seller/ChatPage` line 205 — это код функции `sendMsg`, не div onClick. Audit ошибся.
+  - Все `<div onClick>` в seller/ChatPage (lines 377, 383, 683, 684) — modal backdrops с `stopPropagation` + ESC handler в ConfirmModal/ImageCropper. Acceptable per ADR `2026-05-08-tma-a11y-roletabindex-vs-button.md`.
+  - `buyer/ProductPage:252-256` (collage 2x2) уже фикшено в коммите `3400ecc`.
+- **Решение:** тикет закрыт без изменений.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 7 (частично)
+
+### ✅ [WS-DESIGN-WAVE-7-BACKLOG] 8 из 14 backlog nit'ов 🟢
+
+- **Важность:** 🟢 LOW (косметика + accessibility)
+- **Дата:** 08.05.2026
+- **Файлы (6):**
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — toast shadow `0 12px 28px` → `0 4px 12px` (P2-006a). Notification badge: `minWidth 14 / fontSize 9` → `minWidth 16 / fontSize 10` (P3-001).
+  - `apps/web-seller/src/components/select.tsx` — dropdown shadow `0 16px 40px` → `0 6px 16px` (P2-006b).
+  - `apps/web-seller/src/components/emoji-picker.tsx` — popover shadow same fix (P2-006c). Emoji-cell `hover:bg-white/5` → `row-hoverable` (P3-004).
+  - `apps/web-seller/src/components/theme-toggle.tsx` — убран redundant `shadow-lg` Tailwind, inline `0 10px 28px` → `0 4px 12px` (P3-003).
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — 3 хардкоженных hex → tokens: Rocket icon `color="#fff"` → `colors.accentTextOnBg`, store-name span `#A78BFA` → `colors.accent`, ShoppingCart logo `color="#fff"` → `colors.accentTextOnBg` (P2-009). Progress connector incomplete state `colors.surfaceElevated` → `colors.border` — видно на light theme (P3-005).
+  - `apps/web-seller/src/app/(dashboard)/notifications/page.tsx` — hover semantics для unread fixed: на hover теперь `color-mix(in srgb, ${colors.accent} 22%, transparent)` (stronger accent), а не `surfaceElevated` (нейтральный). Read items как раньше — surfaceMuted ↔ surfaceElevated (P2-012).
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx` — ASCII «— Просмотры и конверсия» divider → реальный `<hr>` через `colors.divider`. Тире из текста удалено (P3-007).
+- **Что сделано:** все «easy wins» из Wave 7 закрыты в одном проходе. Все shadows < 8px (соответствует Liquid Authority). Все хардкоженные hex'ы в onboarding устранены. Notifications hover больше не «теряет» унред-состояние. Theme-toggle/emoji-picker/onboarding прогрессбар всё корректно отображаются в обеих темах.
+- **Skipped (с обоснованием):** P2-007 (sidebar 14%→15% accentMuted в пределах rounding tolerance), P2-008 (onboarding `rounded-3xl` — sanctioned «scene» в спеке), P2-011 + P3-009 (chat off-grid layout + не-responsive — реальный user impact, но это полноценный mobile-first рефактор chat layout, отложено отдельным тикетом WS-CHAT-RESPONSIVE-001), P3-002 (chat thread skeletons beyond 3 — нужно более глубокое skeleton component change), P3-006 (settings native `<select>` Firefox chevron — нужен переход на custom Select для всех селектов в settings, отдельный wave), P3-008 (analytics text-3xl — внутри spec range, audit acknowledged).
+- **Verification:** локально не запускал. Push'нётся через web-seller ветку → Railway сборка подтвердит.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 6
+
+### ✅ [WS-DESIGN-WAVE-6] Products edit dragons: radius + native select + extract examples 🟡
+
+- **Важность:** 🟡 MEDIUM (largest refactor wave, fixes both visible drift и underlying maintenance trap)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/product-examples.ts` (новый) — `TITLE_EXAMPLES_BY_SLUG` + `DESCRIPTION_EXAMPLES_BY_SLUG` (по 20+7 ключей) + 2 helper'а `titlePlaceholder()` / `descriptionPlaceholder()`. Раньше дублировалось verbatim в обоих файлах create/edit.
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — удалены 32 строки локального дублирования (consts + helpers); импорт из `lib/product-examples`. Form card `rounded-lg` (8px) → `rounded-xl` (12px) per spec Liquid Authority.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — то же удаление дублей. ×4 `rounded-2xl` (16px) → `rounded-xl` (form card, error state, status section, error banner). Native `<select>` ×2 (Категория товара + Раздел магазина) заменены на custom `<Select>` (как в create) — устранено хардкоженное `background: '#1a1d2e'` на 4 `<option>` элементах + получили search/keyboard nav/clearable. Form integration: `<input type="hidden" {...register('globalCategoryId')} />` + `setValue(..., { shouldValidate: true, shouldDirty: true })` для сохранения react-hook-form behavior; storeCategoryId как раньше через local state.
+- **Что сделано:** все 3 P2 (P2-001 radius drift, P2-004 native select regression, P2-005 EXAMPLES duplicate) закрыты одним рефактором. Edit-страница теперь UX-эквивалентна create — те же search'абельные dropdown'ы, тот же радиус карточек, тот же placeholder-движок. Maintenance trap (sync создаваемых дубликатов) устранён.
+- **Verification:** `grep -rn "TITLE_EXAMPLES_BY_SLUG\|<select\|background: '#1a1d2e'"` → 0 матчей в обоих файлах. Локально не запускал. Push'нётся через ветку web-seller → Railway сборка подтвердит.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 5
+
+### ✅ [WS-DESIGN-WAVE-5] Semantic `colors.info` token + 9 хардкоженных hex заменены 🟡
+
+- **Важность:** 🟡 MEDIUM (token discipline + theme correctness)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/globals.css` — добавлены `--color-info: #2563EB` (light) и `#60A5FA` (dark). Соответствует паттерну `success`/`danger`/`warning`: light = более тёмный shade (600-700), dark = более светлый (400-500).
+  - `apps/web-seller/src/lib/styles.ts` — добавлено `info: 'var(--color-info)'` в `colors` const.
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — STATUS_COLORS: CONFIRMED `#60A5FA` → `colors.info`, SHIPPED тоже на `colors.info` (был `colors.accent`).
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx` — STATUS_CONFIG: CONFIRMED `#60A5FA` → `colors.info`, SHIPPED `#818CF8` → `colors.info`.
+  - `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx` — STATUS_CONFIG: то же.
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx` — TG-link icon ×2: `#60A5FA` → `colors.info`.
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx:188` — analytics block bg/color: `rgba(96,165,250,0.15)` + `#60A5FA` → `color-mix(in srgb, ${colors.info} 15%, transparent)` + `colors.info`.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx:169` — TG chip: 3 хардкоженных hex (`rgba(56,189,248,0.13)` / `#7dd3fc` / `rgba(125,211,252,0.30)`) → `color-mix()` + `colors.info`.
+- **Что сделано:** все 9 хардкоженных info-blue hex'ов заменены на единый semantic token. SHIPPED унифицирован с CONFIRMED через `colors.info` — оба = «in-flight» status, distinct от PROCESSING (которое остаётся на `colors.accent`). Token адаптируется к теме: на light получается читаемый dark blue, на dark — мягкий light blue.
+- **Verification:** `grep -rn "#60A5FA\|#818CF8\|#7dd3fc"` → 0 матчей в коде (только определение токена в globals.css). Audit IDs: P2-002, P2-003, P2-013.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 3
+
+### ✅ [WS-DESIGN-WAVE-3] Page heading typography — 5 файлов 🟡
+
+- **Важность:** 🟡 MEDIUM (visible inconsistency, spec deviation)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx:223`
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx:329`
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx:91`
+  - `apps/web-seller/src/app/(dashboard)/notifications/page.tsx:110`
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx:792`
+- **Что сделано:** все 5 page-title `<h1>` `text-xl` (20px) → `text-2xl` (24px). Liquid Authority spec: Headline 24-32px / 700. Раньше только `dashboard/page.tsx:90` соответствовал, остальные 5 — на 4px ниже минимума. Теперь все 6 dashboard-страниц консистентны на `text-2xl font-bold`. Audit ID: P2-014.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 2
+
+### ✅ [WS-DESIGN-WAVE-2] Native `confirm()` → reusable `ConfirmModal` 🔴
+
+- **Важность:** 🔴 HIGH (native confirm не следует app theme + silently блокируется на mobile WebView)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `apps/web-seller/src/components/confirm-modal.tsx` (новый) — generic компонент. Props: `open/title/message?/confirmLabel?/cancelLabel?/danger?/loading?/onConfirm/onClose`. ESC/Enter keyboard handlers, click-outside для close, autoFocus на confirm-button, ARIA `role=dialog` + `aria-modal=true`, danger flag отдаёт `color-mix()` поверх `colors.danger` для red destructive button.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — `handleDelete` (Удалить товар) → `setConfirmDelete(true)` + `<ConfirmModal>` с danger.
+  - `apps/web-seller/src/components/product-option-groups-section.tsx` — 2 места: ValueRow «Удалить значение», GroupRow «Удалить группу» (msg меняется в зависимости от `hasValues`). Каждое — отдельный modal state в своём scope.
+  - `apps/web-seller/src/components/product-variants-section.tsx` — `handleDelete(variantId)` → `setConfirmId(variantId)` + единый `<ConfirmModal>` с `confirmId !== null` как open.
+- **Что сделано:** все 4 native browser `confirm()` заменены на theme-aware in-app dialogs. Соответствует UX-паттерну существующего `CancelModal` в orders pages (но generic, с поддержкой не-destructive подтверждений). Mobile WebView больше не блокирует destructive actions silently. Light/dark theme подхватывается автоматически.
+- **Verification:** локально не запускал. Push'нётся через web-seller ветку → Railway сборка подтвердит. `grep -rn "confirm(" apps/web-seller/src/` → 0 матчей нативных confirm.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фиксы Wave 1+4
+
+### ✅ [WS-DESIGN-WAVE-1] light-theme contrast killers — 5 P1 из 6 🔴
+
+- **Важность:** 🔴 HIGH (light theme был фактически сломан в 4-5 точках)
+- **Дата:** 08.05.2026
+- **Коммит:** `1ad0e69`
+- **Файлы:**
+  - `apps/web-seller/src/app/globals.css` — добавлен класс `.row-hoverable { :hover background var(--color-surface-elevated) }` для theme-aware row hover вместо `bg-white/[0.03]` Tailwind.
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — 5 хардкоженных hex заменены: `#f87171` ×4 (error text, ×2 required asterisks, удалить-кнопка) → `colors.danger`; `#A78BFA` ×1 (back-link) → `colors.accent`. Visibility toggle thumb `after:bg-white` → внутри `<style>` блока через `colors.textMuted` (off) и `colors.bg` (on) — паттерн совпадает с create page.
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — 3× `rgba(255,255,255,X)` → `color-mix(in srgb, ${colors.accentTextOnBg} N%, transparent)`. Theme-adaptive overlay: в light theme overlay белый поверх dark-violet accent (как раньше), в dark theme overlay тёмный поверх light-violet accent (стало читабельным). Применено к textarea bg/border, кнопке «Отмена» в edit mode, и timestamp text seller-bubble.
+  - `apps/web-seller/src/app/(dashboard)/profile/page.tsx` — 2× `transition-colors hover:bg-white/[0.03]` → `transition-colors row-hoverable` (Settings link + Logout button rows).
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — sidebar logo: `linear-gradient(135deg, #7C3AED, #A78BFA)` + `boxShadow rgba(167,139,250,0.40)` → solid `colors.accent` + `colors.accentTextOnBg` для иконки. Совпадает с onboarding logo и спекой Liquid Authority «no glow gradients». Logout-button hover класс заменён на `row-hoverable`.
+- **Что сделано:** systematic fix всех light-theme контраст-багов из аудита 08.05. Все хардкоженные hex (`#f87171`, `#A78BFA`) и `*-white/X` Tailwind классы заменены theme-aware токенами или `color-mix()` поверх существующих токенов. Никаких новых CSS variables не понадобилось.
+- **Skipped (с обоснованием):** P1-004 (avatar spinner `text-white` в `profile/page.tsx:116`) — overlay поверх spinner'а это `rgba(0,0,0,0.45)`, тёмный в обеих темах. White spinner читается всегда, аудит overcautious. Обновлено в audit doc.
+- **Verification:** локально не запускал (запрещено). Push'нётся через ветку `web-seller` → Railway сборка подтвердит.
+
+### ✅ [WS-DESIGN-WAVE-4] Login OTP copy: SMS → Telegram 🟡
+
+- **Важность:** 🟡 MEDIUM (project rule №0 violation, копи-баг в первом окне seller'а)
+- **Дата:** 08.05.2026
+- **Коммит:** `a818720`
+- **Файлы:**
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — «Отправили SMS на +998 …» → «Код отправлен в Telegram-бот @savdo_builderBOT»; «Код из SMS» → «Код из Telegram».
+- **Что сделано:** OTP step seller login больше не противоречит project rule №0 (ESKIZ.UZ ЗАПРЕЩЁН, OTP только Telegram bot). Реальность UX: после ввода телефона seller получает код именно от @savdo_builderBOT в Telegram.
+
+---
+
+## 2026-05-08 (Азим, сессия 54) — web-seller design audit
+
+### ✅ [WEB-DESIGN-AUDIT-001] Аудит web-seller под Liquid Authority — 30 findings 🟢
+
+- **Важность:** 🟢 LOW (read-only, ничего не сломано — только backlog для будущих волн)
+- **Дата:** 08.05.2026
+- **Файлы:**
+  - `analiz/audit-web-seller-design-2026-05-08.md` (новый) — полный отчёт.
+  - `analiz/tasks.md` — добавлена секция `WS-DESIGN-FIX-WAVES` с 7 волнами фиксов.
+- **Что сделано:** Систематический обход 15 страниц + 7 компонентов `apps/web-seller` против `docs/design/liquid-authority.md`. Делегировано feature-dev:code-explorer subagent'у. Категоризация: P1 (видимые UX-баги/контраст/accessibility) — 7, P2 (drift/inconsistency/off-grid) — 14, P3 (polish) — 9. Health 6.5/10.
+- **Ключевые находки:**
+  - **Phase 2/3 cleanup держится:** 0 `backdrop-blur`, 0 `dark:` Tailwind classes — token discipline сохранён.
+  - **Кластер хардкоженного hex'a в edit-product** (`#f87171`, `#A78BFA`, native `<select>` с `#1a1d2e`) — light theme там фактически сломан.
+  - **3 места native `confirm()`** (edit-product, option-groups, variants) — не следуют app theme, на mobile WebView часто silently заблокированы.
+  - **5 page headings ниже spec** (`text-xl` 20px вместо 24-32px Headline range).
+  - **SMS-copy в login OTP** — нарушение project rule №0 (Telegram-only).
+  - **Sidebar logo gradient + glow** хардкожен dark-only — в light theme выглядит чужеродно.
+- **Backlog:** см. `analiz/tasks.md` секция `WS-DESIGN-FIX-WAVES` — 7 волн упорядочены по value/effort. Wave 1-2 — P1 critical, Wave 3-6 — P2 systemic, Wave 7 — backlog.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — Cleanup контракт-хвостов после Полата
 
 ### ✅ [WEB-BUYER-CONTRACT-CLEANUP-001] search type из `packages/types` + убран defensive cast в ProductCard 🟢

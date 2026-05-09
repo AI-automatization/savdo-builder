@@ -140,7 +140,7 @@ export default function CategoryAttributeFilters({
 
       {open && (
         <div
-          className="mt-3 p-4 rounded-2xl flex flex-col gap-4"
+          className="mt-3 p-4 rounded-lg flex flex-col gap-4"
           style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         >
           {/* Global category select */}
@@ -306,8 +306,8 @@ function AttributeControl({
           style={{ background: isActive ? colors.brand : colors.borderStrong }}
         >
           <span
-            className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm"
-            style={{ transform: isActive ? "translateX(18px)" : "translateX(2px)" }}
+            className="absolute top-0.5 w-5 h-5 rounded-full transition-transform shadow-sm"
+            style={{ background: colors.surface, transform: isActive ? "translateX(18px)" : "translateX(2px)" }}
           />
         </button>
       </label>

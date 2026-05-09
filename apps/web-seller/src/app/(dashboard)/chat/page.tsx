@@ -326,14 +326,21 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                         rows={2}
                         autoFocus
                         className="w-full rounded-lg p-2 text-sm outline-none resize-none"
-                        style={{ background: 'rgba(255,255,255,0.18)', color: colors.accentTextOnBg, border: '1px solid rgba(255,255,255,0.32)' }}
+                        style={{
+                          background: `color-mix(in srgb, ${colors.accentTextOnBg} 18%, transparent)`,
+                          color: colors.accentTextOnBg,
+                          border: `1px solid color-mix(in srgb, ${colors.accentTextOnBg} 32%, transparent)`,
+                        }}
                       />
                       <div className="flex gap-2 justify-end">
                         <button
                           type="button"
                           onClick={() => { setEditingId(null); setEditingText(''); }}
                           className="px-2.5 py-1 rounded-md text-[11px] font-semibold"
-                          style={{ background: 'rgba(255,255,255,0.16)', color: colors.accentTextOnBg }}
+                          style={{
+                            background: `color-mix(in srgb, ${colors.accentTextOnBg} 16%, transparent)`,
+                            color: colors.accentTextOnBg,
+                          }}
                         >
                           Отмена
                         </button>
@@ -357,7 +364,7 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
                     <p style={{ whiteSpace: 'pre-wrap' }}>{m.text}</p>
                   )}
                   {!m.isDeleted && !isEditing && (
-                    <p className="text-[10px] mt-1 text-right" style={{ color: isSeller ? 'rgba(255,255,255,0.65)' : colors.textDim }}>
+                    <p className="text-[10px] mt-1 text-right" style={{ color: isSeller ? `color-mix(in srgb, ${colors.accentTextOnBg} 65%, transparent)` : colors.textDim }}>
                       {m.editedAt && <span className="mr-1">изменено · </span>}
                       {timeLabel(m.createdAt)}
                     </p>

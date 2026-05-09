@@ -214,7 +214,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
           <button
             disabled={phone.trim().length < 9 || requestOtp.isPending}
             onClick={handleSendOtp}
-            className="w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
+            className="w-full py-3.5 rounded text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
             {requestOtp.isPending ? "Отправка..." : "Получить код"}
@@ -245,7 +245,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
           <button
             disabled={code.trim().length < 6 || verifyOtp.isPending}
             onClick={handleVerify}
-            className="w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
+            className="w-full py-3.5 rounded text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
             {verifyOtp.isPending ? "Проверка..." : "Подтвердить"}
