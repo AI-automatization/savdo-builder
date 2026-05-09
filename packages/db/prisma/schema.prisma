@@ -95,6 +95,20 @@ enum MediaVisibility {
   PRIVATE
 }
 
+enum CartStatus {
+  ACTIVE
+  CONVERTED  // checkout прошёл — корзина превращена в Order
+  MERGED     // anonymous-cart смержен в buyer-cart при логине
+  EXPIRED
+}
+
+enum RefundStatus {
+  PENDING    // создан, ждёт обработки (Click/Payme reverse-tx)
+  COMPLETED  // средства вернулись
+  FAILED     // payment provider отказал
+  REVERSED   // отменён администратором
+}
+
 enum InventoryMovementType {
   ORDER_DEDUCTED
   ORDER_RELEASED
@@ -632,7 +646,7 @@ model Cart {
   buyerId      String?
   sessionKey   String?
   storeId      String
-  status       String   @default("active") // active | converted | merged | expired
+  status       CartStatus @default(ACTIVE)
   currencyCode String   @default("UZS")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1016,7 +1030,7 @@ model OrderRefund {
   reason           String
   notes            String?
   returnedToWallet Boolean  @default(false)
-  status           String   @default("completed")
+  status           RefundStatus @default(COMPLETED)
   createdAt        DateTime @default(now())
 
   order Order      @relation(fields: [orderId], references: [id])
