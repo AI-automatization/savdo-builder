@@ -3543,3 +3543,46 @@ Deep links, OG-превью, buyer+seller flow в настоящем Telegram. �
 
 - **Не сделано (вне P0):** split products.controller.ts (947 LOC) + admin.controller.ts (702 LOC), Swagger setup (API-SWAGGER-001), Enum-конверсия 9 String-полей (P1), N+1 в storefront (P1), refund→Click/Payme reverse-tx (P0 финансовая интеграция, отложено до Phase 4).
 
+
+### POLAT-ZONE-WAVE3-4 (09.05.2026) — pagination + perf + enums + controller split
+
+- **Важность:** P1 (UX consistency + performance + maintainability)
+- **Дата:** 09.05.2026
+- **Файлы:**
+  ADMIN UX:
+  - `apps/admin/src/components/admin/PaginationBar.tsx` (NEW) — общий компонент с opacity 0.4 на disabled, aria-label на prev/next.
+  - `apps/admin/src/pages/DatabasePage.tsx` / `UsersPage.tsx` / `AnalyticsEventsPage.tsx` / `AuditLogsPage.tsx` — мигрированы на PaginationBar.
+  - `apps/admin/src/pages/DashboardPage.tsx` — `—` placeholder заменён на анимированный skeleton.
+  - `apps/admin/src/pages/SellerDetailPage.tsx` — inline audit-log (~70 LOC) заменён на shared `<ActivityLogPanel entityType="User"/>`.
+
+  API perf:
+  - `apps/api/src/modules/products/products.controller.ts` — `attachStoreImageUrls(stores[])` helper делает один `findMany` на все logoMediaId/coverMediaId. `searchStorefront` (был N+1: per-store вызов resolveStoreImageUrls) и `listStorefrontStores` теперь батчатся через общий метод.
+
+  API arch split:
+  - `apps/api/src/modules/admin/admin-db.controller.ts` (NEW) — выделен subdomain DB Manager (6 endpoints: list/get/getRows/update/delete/insert). AdminController -=1 inject (DbManagerUseCase) и -97 LOC.
+  - `apps/api/src/modules/admin/admin.controller.ts` — DB endpoints удалены.
+  - `apps/api/src/modules/admin/admin.module.ts` — AdminDbController зарегистрирован.
+
+  DB enums:
+  - `packages/db/prisma/schema.prisma` — CartStatus enum (ACTIVE/CONVERTED/MERGED/EXPIRED), RefundStatus enum (PENDING/COMPLETED/FAILED/REVERSED).
+  - `packages/db/prisma/migrations/20260509233000_cart_refund_status_enums/migration.sql` (NEW) — CREATE TYPE + ALTER COLUMN с CASE-конверсией lowercase→UPPERCASE.
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts` (×8 touchpoints) / `apps/api/src/modules/checkout/repositories/checkout.repository.ts` (×1) / `apps/api/src/modules/admin/use-cases/refund-order.use-case.ts` (×2) — переведены на enum constants из @prisma/client.
+
+  TMA build fix:
+  - `apps/tma/src/pages/seller/EditProductPage.tsx` — удалён unused `Spinner` import (Railway TMA build падал на TS6133).
+
+- **Что сделано:**
+  - **UX:** disabled pagination теперь визуально читается, dashboard не показывает `—` как «значение», SellerDetail/UserDetail/StoreDetail используют один и тот же ActivityLogPanel.
+  - **Perf:** N+1 fix в storefront search (на 30 stores было 31 query → 2 query).
+  - **Maintainability:** AdminController -97 LOC, выделен чистый subdomain.
+  - **Type safety:** Cart.status и OrderRefund.status валидируются Prisma enum.
+  - **Critical:** TMA Railway build снова работает.
+
+- **Деплой:**
+  - `main` push → 6 коммитов (a18a9c6...d848f0b)
+  - `tma` ветка → telegram-app redeploy
+  - `api` ветка → savdo-api redeploy + 3 миграции (User.referredBy FK, InventoryMovement.productId FK, Cart/Refund enums)
+  - `admin` ветка → admin redeploy (PaginationBar, DialogShell, ActivityLogPanel, DB Manager FieldInput, DashboardPage skeleton)
+
+- **Verified:** `tsc --noEmit` зелёный для apps/api и apps/admin после каждой волны.
+
