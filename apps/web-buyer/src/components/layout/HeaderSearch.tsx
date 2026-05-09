@@ -116,7 +116,7 @@ export default function HeaderSearch() {
                     key={s.id}
                     type="button"
                     onClick={() => handleNavigate(`/${s.slug}`)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-black/[0.03]"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover-soft"
                   >
                     <div
                       className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
@@ -151,7 +151,7 @@ export default function HeaderSearch() {
                       key={p.id}
                       href={`/${slug}/products/${p.id}`}
                       onClick={() => { setOpen(false); setQuery(''); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-black/[0.03]"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover-soft"
                     >
                       <div
                         className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"

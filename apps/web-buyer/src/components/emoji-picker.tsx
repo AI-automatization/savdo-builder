@@ -129,7 +129,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
                   key={e}
                   type="button"
                   onClick={() => onPick(e)}
-                  className="w-9 h-9 flex items-center justify-center rounded-md text-xl transition-colors hover:bg-black/5"
+                  className="w-9 h-9 flex items-center justify-center rounded-md text-xl hover-soft"
                   style={{ background: 'transparent' }}
                   aria-label={e}
                 >

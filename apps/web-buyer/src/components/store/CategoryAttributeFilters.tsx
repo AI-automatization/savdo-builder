@@ -283,7 +283,7 @@ function AttributeControl({
             <button
               type="button"
               onClick={() => onChange(null)}
-              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full transition-colors hover:bg-black/5"
+              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover-soft"
               aria-label="Очистить"
             >
               <X size={12} style={{ color: colors.textMuted }} />

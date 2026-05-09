@@ -51,36 +51,44 @@
 }
 
 [data-theme="dark"] {
-  /* ── Dark — warm near-black (#0F0F12) with violet accent kept for brand ──── */
-  --color-bg:                #0F0F12;
-  --color-surface:           #18181C;
-  --color-surface-muted:     #1F1F24;
-  --color-surface-elevated:  #232328;
-  --color-surface-sunken:    #131316;
-  --color-divider:           rgba(255,255,255,0.06);  /* structural separators (dividers, hr) */
-  --color-border:            rgba(255,255,255,0.10);  /* interactive element edges (inputs, buttons, cards) */
-  --color-border-strong:     rgba(255,255,255,0.18);
-  --color-text-primary:      #F4F4F5;
-  --color-text-muted:        #A1A1AA;
-  --color-text-dim:          #71717A;
-  --color-accent:            #8B5CF6;
-  --color-accent-hover:      #A78BFA;
-  --color-accent-muted:      rgba(139,92,246,0.18);
-  --color-accent-border:     rgba(139,92,246,0.42);
-  --color-accent-text-on-bg: #FFFFFF;
-  --color-brand:             #A78BFA;
-  /* New tokens carried over from light system — dark variants */
-  --color-brand-hover:       #BFA8FA;
-  --color-brand-muted:       rgba(167,139,250,0.18);
-  --color-brand-border:      rgba(167,139,250,0.35);
-  --color-brand-text-on-bg:  #0F0F12;
-  --color-text-body:         #D1CFC9;
-  --color-text-strong:       #F4F4F5;
-  --color-success:           #22C55E;
-  --color-warning:           #FBBF24;
-  --color-danger:            #F87171;
+  /* ── Dark — Soft Color Lifestyle (warm near-black + lifted terracotta) ──── */
+  /* Inverted lightness, warmth preserved (no cold slate). Brand lifted in
+     lightness for visibility on dark surface; brand-text-on-bg flips to white. */
+  /* Neutral base */
+  --color-bg:                #16120D;     /* warm near-black, deep brown-tinted */
+  --color-surface:           #221C16;     /* one step lighter than bg */
+  --color-surface-muted:     #1E1812;     /* between bg and surface */
+  --color-surface-elevated:  #2A231C;     /* popovers, modals — elevated */
+  --color-surface-sunken:    #100E09;     /* deeper than bg, inset cards */
+  --color-divider:           rgba(245,239,227,0.08);
+  --color-border:            rgba(245,239,227,0.12);
+  --color-border-strong:     rgba(245,239,227,0.22);
+  --color-text-primary:      #F5EFE3;     /* warm off-white */
+  --color-text-muted:        #A89B85;     /* warm tan-grey */
+  --color-text-dim:          #7A6F5E;
+  --color-text-body:         #D9CEB9;     /* lighter cream for body */
+  --color-text-strong:       #F5EFE3;
+
+  /* Brand — terracotta lifted for dark contrast (5:1 vs white text) */
+  --color-brand:             #A05A45;
+  --color-brand-hover:       #B36850;
+  --color-brand-muted:       rgba(160,90,69,0.18);
+  --color-brand-border:      rgba(160,90,69,0.42);
+  --color-brand-text-on-bg:  #FFFFFF;
+
+  /* Accent — alias for brand to keep existing components working */
+  --color-accent:            var(--color-brand);
+  --color-accent-hover:      var(--color-brand-hover);
+  --color-accent-muted:      var(--color-brand-muted);
+  --color-accent-border:     var(--color-brand-border);
+  --color-accent-text-on-bg: var(--color-brand-text-on-bg);
+
+  /* Semantic — lifted lightness for dark visibility */
+  --color-success:           #7A9B72;
+  --color-warning:           #D9A95C;
+  --color-danger:            #C56666;
   --color-telegram:          #38BDF8;
-  --color-skeleton:          rgba(255,255,255,0.06);
+  --color-skeleton:          rgba(245,239,227,0.06);
 
   color-scheme: dark;
 }
@@ -103,6 +111,11 @@ body {
 /* Hide horizontal-scroll scrollbars on category chip rows */
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Theme-aware soft hover — slight contrast against current surface in either
+   theme. Use for icon buttons / row hovers / emoji-tab items. */
+.hover-soft { transition: background-color 150ms; }
+.hover-soft:hover { background-color: color-mix(in srgb, var(--color-text-primary) 8%, transparent); }
 
 /* Honor reduced-motion */
 @media (prefers-reduced-motion: reduce) {

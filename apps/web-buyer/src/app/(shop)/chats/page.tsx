@@ -65,8 +65,8 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
       }}
     >
       <div
-        className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm"
-        style={{ background: storeBrand }}
+        className="w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm"
+        style={{ background: storeBrand, color: colors.brandTextOnBg }}
       >
         {initial}
       </div>
@@ -212,8 +212,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           ←
         </button>
         <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-          style={{ background: storeBrand }}
+          className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+          style={{ background: storeBrand, color: colors.brandTextOnBg }}
         >
           {storeInitial}
         </div>
@@ -338,8 +338,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
               <div className={`flex ${isBuyer ? "justify-end" : "justify-start"} group`}>
                 {!isBuyer && (
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 self-end text-white font-bold text-xs"
-                    style={{ background: storeBrand }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 self-end font-bold text-xs"
+                    style={{ background: storeBrand, color: colors.brandTextOnBg }}
                   >
                     {storeInitial}
                   </div>
@@ -443,7 +443,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             <button
                               type="button"
                               onClick={() => startEdit(m.id, m.text)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-black/5"
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover-soft"
                               style={{ color: colors.textStrong }}
                             >
                               <Pencil size={12} /> Редактировать
@@ -453,7 +453,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             <button
                               type="button"
                               onClick={() => { setConfirmDeleteMsg(m.id); setOpenMenuId(null); }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-black/5"
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover-soft"
                               style={{ color: colors.danger }}
                             >
                               <Trash2 size={12} /> Удалить
@@ -490,8 +490,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           <button
             onClick={handleSend}
             disabled={!text.trim() || sendMutation.isPending}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-base disabled:opacity-50 flex-shrink-0 transition-opacity hover:opacity-90"
-            style={{ background: colors.brand, border: "none" }}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-base disabled:opacity-50 flex-shrink-0 transition-opacity hover:opacity-90"
+            style={{ background: colors.brand, color: colors.brandTextOnBg, border: "none" }}
             aria-label="Отправить"
           >
             <Send size={15} />
