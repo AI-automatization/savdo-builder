@@ -10,6 +10,8 @@ import { Panel } from '../components/admin/Panel'
 import { InfoRow } from '../components/admin/InfoRow'
 import { ActionPanel } from '../components/admin/ActionPanel'
 import { StatusBadge } from '../components/admin/StatusBadge'
+import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
+import { DialogShell } from '../components/admin/DialogShell'
 
 interface Seller {
   id: string
@@ -172,7 +174,7 @@ export default function UserDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 280px', alignItems: 'start' }}>
+      <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 320px', alignItems: 'start' }}>
         {/* Left column */}
         <div className="flex flex-col gap-5">
           <Panel title="Основная информация">
@@ -276,6 +278,7 @@ export default function UserDetailPage() {
         </div>
 
         {/* Right column */}
+        <div className="flex flex-col gap-4">
         <ActionPanel>
           {user.admin ? (
             <p className="m-0 text-[13px]" style={{ color: 'var(--text-muted)' }}>
@@ -329,25 +332,20 @@ export default function UserDetailPage() {
             </button>
           )}
         </ActionPanel>
+
+        {/* История действий с этим пользователем (suspend/unsuspend, верификации и т.д.) */}
+        <ActivityLogPanel
+          entityType="User"
+          entityId={user.id}
+          emptyText="С этим пользователем ещё не было админ-действий"
+        />
+        </div>
       </div>
 
       {/* Suspend Modal */}
       {suspendModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[200]"
-          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setSuspendModal(false)}
-        >
-          <div
-            className="rounded-2xl p-7 w-[420px] max-w-[90vw]"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+        <DialogShell onClose={() => setSuspendModal(false)} width={420} ariaLabelledBy="suspend-modal-title">
+            <h3 id="suspend-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
               Заблокировать пользователя
             </h3>
             <p className="m-0 mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>
@@ -358,6 +356,9 @@ export default function UserDetailPage() {
               onChange={e => setReason(e.target.value)}
               placeholder="Причина блокировки (обязательно)..."
               rows={3}
+              aria-label="Причина блокировки"
+              aria-invalid={reason.trim().length > 0 && reason.trim().length < 5 || undefined}
+              aria-describedby={actionError ? 'suspend-error' : undefined}
               className="w-full px-3.5 py-3 rounded-xl text-[14px] resize-y outline-none"
               style={{
                 background: 'var(--surface2)',
@@ -368,7 +369,7 @@ export default function UserDetailPage() {
               }}
             />
             {actionError && (
-              <div className="mt-2 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
+              <div id="suspend-error" role="alert" className="mt-2 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
             )}
             <div className="flex gap-2.5 justify-end mt-4">
               <button
@@ -397,27 +398,19 @@ export default function UserDetailPage() {
                 {actionLoading ? 'Загрузка...' : 'Заблокировать'}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
 
       {/* Impersonate Confirm */}
       {impersonateConfirm && (
-        <div
-          className="fixed inset-0 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 200 }}
-          onClick={() => !impersonating && setImpersonateConfirm(false)}
+        <DialogShell
+          onClose={() => !impersonating && setImpersonateConfirm(false)}
+          width={480}
+          ariaLabelledBy="impersonate-modal-title"
+          closeOnBackdrop={!impersonating}
+          closeOnEscape={!impersonating}
         >
-          <div
-            className="rounded-2xl p-7 w-[480px] max-w-[92vw]"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+            <h3 id="impersonate-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
               Войти как {user.phone}?
             </h3>
             <p className="m-0 mb-3 text-[13px]" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
@@ -448,8 +441,7 @@ export default function UserDetailPage() {
                 {impersonating ? 'Переключение...' : 'Войти как пользователь'}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   )
