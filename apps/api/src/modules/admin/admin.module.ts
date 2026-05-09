@@ -12,6 +12,7 @@ import { AdminDbController } from './admin-db.controller';
 import { AdminBroadcastController } from './admin-broadcast.controller';
 import { AdminAnalyticsController } from './admin-analytics.controller';
 import { AdminOpsController } from './admin-ops.controller';
+import { AdminProductsController } from './admin-products.controller';
 import { SuperAdminController } from './super-admin.controller';
 
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
@@ -60,6 +61,7 @@ import { MediaModule } from '../media/media.module';
     AdminBroadcastController,
     AdminAnalyticsController,
     AdminOpsController,
+    AdminProductsController,
     SuperAdminController,
   ],
   providers: [

@@ -22,8 +22,7 @@ import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 
 import { AdminRepository } from './repositories/admin.repository';
-import { ProductsRepository } from '../products/repositories/products.repository';
-import { ProductStatus } from '@prisma/client';
+// ProductsRepository / ProductStatus инжектятся в AdminProductsController, не здесь.
 import { OrdersRepository } from '../orders/repositories/orders.repository';
 import { ListUsersDto } from './dto/list-users.dto';
 import { ListSellersDto } from './dto/list-sellers.dto';
@@ -64,7 +63,6 @@ export class AdminController {
 
   constructor(
     private readonly adminRepo: AdminRepository,
-    private readonly productsRepo: ProductsRepository,
     private readonly ordersRepo: OrdersRepository,
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly getUserDetailUseCase: GetUserDetailUseCase,
@@ -355,119 +353,9 @@ export class AdminController {
     return this.getAuditLogUseCase.execute(dto);
   }
 
-  // ── Products ───────────────────────────────────────────────────────────────
-
-  // GET /api/v1/admin/products?storeId=&status=&page=&limit=
-  @Get('products')
-  async listProducts(
-    @Query('storeId') storeId: string | undefined,
-    @Query('status') status: string | undefined,
-    @Query('page') page: string | undefined,
-    @Query('limit') limit: string | undefined,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    // Узкая валидация: разрешаем только реальные значения ProductStatus.
-    const validStatus = status && (Object.values(ProductStatus) as string[]).includes(status)
-      ? (status as ProductStatus)
-      : undefined;
-    const products = await this.productsRepo.findAll({
-      storeId,
-      status: validStatus,
-      page: page ? Number(page) : 1,
-      limit: limit ? Math.min(Number(limit), 100) : 20,
-    });
-    return products;
-  }
-
-  // PATCH /api/v1/admin/products/:id/hide
-  @Patch('products/:id/hide')
-  @AdminPermission('product:moderate')
-  async hideProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_HIDDEN',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status },
-    });
-    return this.productsRepo.updateStatus(id, ProductStatus.HIDDEN_BY_ADMIN);
-  }
-
-  // PATCH /api/v1/admin/products/:id/restore
-  @Patch('products/:id/restore')
-  @AdminPermission('product:moderate')
-  async restoreProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_RESTORED',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status },
-    });
-    return this.productsRepo.updateStatus(id, ProductStatus.ACTIVE);
-  }
-
-  // DELETE /api/v1/admin/products/:id  — принудительное удаление (soft delete, любой статус)
-  @Delete('products/:id')
-  @AdminPermission('product:delete')
-  async forceDeleteProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_FORCE_DELETED',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status, title: product.title },
-    });
-    await this.productsRepo.delete(id);
-    return { success: true };
-  }
-
-  // PATCH /api/v1/admin/products/:id/archive
-  @Patch('products/:id/archive')
-  @AdminPermission('product:moderate')
-  async archiveProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_ARCHIVED',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status },
-    });
-    return this.productsRepo.updateStatus(id, 'ARCHIVED' as any);
-  }
+  // ── Products эндпоинты вынесены в `AdminProductsController`
+  //    (apps/api/src/modules/admin/admin-products.controller.ts).
+  //    Заодно убран последний `'ARCHIVED' as any` каст -> `ProductStatus.ARCHIVED`.
 
   // ── Global search ──────────────────────────────────────────────────────────
 
