@@ -306,8 +306,8 @@ function AttributeControl({
           style={{ background: isActive ? colors.brand : colors.borderStrong }}
         >
           <span
-            className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm"
-            style={{ transform: isActive ? "translateX(18px)" : "translateX(2px)" }}
+            className="absolute top-0.5 w-5 h-5 rounded-full transition-transform shadow-sm"
+            style={{ background: colors.surface, transform: isActive ? "translateX(18px)" : "translateX(2px)" }}
           />
         </button>
       </label>

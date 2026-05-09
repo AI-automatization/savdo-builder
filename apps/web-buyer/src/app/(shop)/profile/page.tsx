@@ -155,7 +155,7 @@ function ProfileView() {
               transition: "opacity 150ms",
             }}
           >
-            {uploadAvatar.isPending && <Loader2 size={18} className="animate-spin text-white" />}
+            {uploadAvatar.isPending && <Loader2 size={18} className="animate-spin" style={{ color: colors.brandTextOnBg }} />}
           </span>
         </button>
         <div className="flex-1 min-w-0">
@@ -232,7 +232,7 @@ function ProfileView() {
                 onClick={handleLogout}
                 disabled={logoutMutation.isPending}
                 className="flex-1 py-2 rounded-md text-[11px] font-semibold disabled:opacity-40"
-                style={{ background: colors.danger, color: "#FFFFFF" }}
+                style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
                 {logoutMutation.isPending ? "..." : "Выйти"}
               </button>

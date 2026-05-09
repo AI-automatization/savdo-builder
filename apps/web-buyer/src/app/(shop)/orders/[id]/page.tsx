@@ -494,7 +494,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     onClick={() => cancelOrder.mutate({ id: order.id })}
                     disabled={cancelOrder.isPending}
                     className="flex-1 py-2 rounded-md text-[11px] font-semibold disabled:opacity-40"
-                    style={{ background: colors.danger, color: "#FFFFFF" }}
+                    style={{ background: colors.danger, color: colors.brandTextOnBg }}
                   >
                     {cancelOrder.isPending ? "..." : "Да, отменить"}
                   </button>

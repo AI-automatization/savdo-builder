@@ -96,8 +96,8 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
           </div>
           {unread > 0 && (
             <div
-              className="ml-2 min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold text-white flex items-center justify-center flex-shrink-0"
-              style={{ background: storeBrand }}
+              className="ml-2 min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0"
+              style={{ background: storeBrand, color: colors.brandTextOnBg }}
             >
               {unread > 9 ? "9+" : unread}
             </div>
@@ -259,7 +259,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 onClick={() => handleDeleteMessage(confirmDeleteMsg)}
                 disabled={deleteMessageMutation.isPending}
                 className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.danger, color: "#FFFFFF" }}
+                style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
                 {deleteMessageMutation.isPending ? "..." : "Удалить"}
               </button>
@@ -291,7 +291,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 onClick={handleDeleteThread}
                 disabled={deleteThreadMutation.isPending}
                 className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.danger, color: "#FFFFFF" }}
+                style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
                 {deleteThreadMutation.isPending ? "..." : "Удалить"}
               </button>
@@ -413,7 +413,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                       <p
                         className="text-[9px] mt-1"
                         style={{
-                          color: isBuyer ? "rgba(255,255,255,0.70)" : colors.textMuted,
+                          color: isBuyer ? "rgba(251,247,240,0.7)" : colors.textMuted,
                           textAlign: isBuyer ? "right" : "left",
                         }}
                       >
@@ -437,7 +437,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                       {showMenu && (
                         <div
                           className={`absolute z-10 top-full mt-1 ${isBuyer ? "right-0" : "left-0"} rounded-md overflow-hidden min-w-[140px]`}
-                          style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}
+                          style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: "0 4px 12px rgba(31,26,18,0.08)" }}
                         >
                           {canEdit && (
                             <button
