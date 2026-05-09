@@ -5,6 +5,36 @@
 
 ---
 
+# 🆕 Web-buyer Design Audit (09.05.2026) — Soft Color Lifestyle
+
+> Полный отчёт: `analiz/audit-web-buyer-design-2026-05-09.md` (25 findings: 3 P1 / 14 P2 / 8 P3, health 7.5/10).
+
+## WB-DESIGN-FIX-WAVES (Азим)
+
+- [x] **`WB-DESIGN-WAVE-1`** ✅ 09.05.2026 — emoji-picker на токенах. Commit `9a16999`.
+- [x] **`WB-DESIGN-WAVE-2`** ✅ 09.05.2026 — chat edit-bubble token cleanup. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-3`** ✅ 09.05.2026 — page headings text-2xl tracking-tight ×4. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-4`** ✅ 09.05.2026 — Stats brand + timeline pulse. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-5`** ✅ 09.05.2026 — radius cleanup (5 файлов). Commit `c5b6163`.
+- [ ] **`WB-DESIGN-WAVE-6`** (P1, **блокируется API**) — pinned product context strip в chat thread: `rgba(brand,0.06)` полоса с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx ChatView`. Closes P1-003.
+  - **Блокер**: `ChatThread` response (`packages/types/src/api/chat.ts`) содержит только `productTitle`, без `productId/productImageUrl/productPrice`. Фронт не может построить полноценный strip без них.
+
+### 🔵 Контракт-задача для Полата (web-buyer Wave 6 unblock)
+
+- [ ] **`API-CHAT-THREAD-PRODUCT-PREVIEW-001`** (P2, для Полата) — расширить `ChatThread` response (use-case `list-my-threads.use-case.ts` + type `packages/types/src/api/chat.ts`) для PRODUCT-threads:
+  - Добавить поля: `productId: string | null`, `productImageUrl: string | null` (resolved CDN URL — первая картинка из media), `productPriceMinor: number | null` (для рендера через formatPrice).
+  - Альтернатива: отдельный endpoint `GET /chat/threads/:id/context-preview` если list-response не хочется bloating. Но первый вариант проще — данные уже в Prisma `t.product` JOIN'е, нужно просто map'нуть в response.
+  - Use-case `list-my-threads.use-case.ts:30-44` уже подключает `t.product` через relation — расширение mapBuyerThread на 3 поля без extra query'ёв.
+  - Симметрично — для seller-side: `mapSellerThread` те же 3 поля (полезно для `WS-CHAT-PINNED-CONTEXT-001` в будущем).
+  - Когда готово → азим раскроет фронт за один проход.
+- [x] **`WB-DESIGN-WAVE-7`** ✅ 09.05.2026 — backlog cleanup (12 P2/P3). Commit `7ad5063`. **Skipped** P2-004 (sections «Все NN →» — нужно решение о множественных секциях; одиночная «Товары» сейчас не требует pattern), P2-014 (нужен batch add-to-cart API), P3-004 (нужен `isSale` flag в API).
+
+**Skipped / requires API work:**
+- P3-004 (sale chip) — нужен `isSale` flag в категориях API.
+- P2-014 (Повторить заказ button) — нужен batch add-to-cart endpoint от Полата.
+
+---
+
 # 🆕 Design Audit (08.05.2026) — Admin / API / TMA
 
 > Полный отчёт: `analiz/design-audit-2026-05-08.md` (51 findings: 11 P0, 14 P1, 14 P2, 12 P3).

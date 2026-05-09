@@ -120,6 +120,12 @@ model User {
 
   referredBy String?
 
+  // Self-FK для referral-программы (DB-AUDIT-002 09.05.2026): раньше referredBy
+  // был просто String? без FK — orphan-данные не валидировались. SetNull —
+  // если пригласившего удалят, ссылка на него очищается, но реферал остаётся.
+  referrer  User?  @relation("UserReferrals", fields: [referredBy], references: [id], onDelete: SetNull)
+  referrals User[] @relation("UserReferrals")
+
   buyer    Buyer?
   seller   Seller?
   admin         AdminUser?
@@ -136,6 +142,7 @@ model User {
 
   @@index([role])
   @@index([status])
+  @@index([referredBy])
   @@map("users")
 }
 
@@ -479,6 +486,10 @@ model Product {
   attributes     ProductAttribute[]
   wishlistItems  BuyerWishlistItem[]
   reviews        ProductReview[]
+  // DB-AUDIT-002 09.05.2026: ранее InventoryMovement.productId был просто String
+  // без FK — orphan-движения возможны. Restrict — нельзя удалить product
+  // пока есть движения склада (используем soft-delete через deletedAt).
+  inventoryMovements InventoryMovement[]
 
   @@index([storeId])
   @@index([globalCategoryId])
@@ -603,8 +614,10 @@ model InventoryMovement {
   note          String?
   createdAt     DateTime              @default(now())
 
+  product Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
   variant ProductVariant? @relation(fields: [variantId], references: [id])
 
+  @@index([productId])
   @@index([variantId])
   @@index([referenceId])
   @@map("inventory_movements")

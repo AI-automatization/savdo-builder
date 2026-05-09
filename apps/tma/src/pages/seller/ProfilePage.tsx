@@ -55,8 +55,9 @@ export default function SellerProfilePage() {
   const copyStoreLink = () => {
     if (!store) return;
     const link = `https://t.me/${BOT_USERNAME}?startapp=store_${store.slug}`;
-    navigator.clipboard.writeText(link).catch(() => {});
-    tg?.HapticFeedback.notificationOccurred('success');
+    navigator.clipboard.writeText(link)
+      .then(() => { tg?.HapticFeedback.notificationOccurred('success'); })
+      .catch(() => { showToast('Не удалось скопировать ссылку', 'error'); });
     track.storeLinkCopied(store.id);
   };
 

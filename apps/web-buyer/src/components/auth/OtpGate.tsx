@@ -45,7 +45,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
       <div className="w-full max-w-sm flex flex-col gap-4">
         <div className="text-center">
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+            className="w-14 h-14 rounded-lg flex items-center justify-center mx-auto mb-3"
             style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}`, color: colors.accent }}
           >
             {icon}
@@ -59,7 +59,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
         </div>
 
         <div
-          className="rounded-2xl p-4 flex flex-col gap-3"
+          className="rounded-lg p-4 flex flex-col gap-3"
           style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         >
           {step === 'phone' ? (
@@ -69,7 +69,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+998 90 000 00 00"
-                className="h-11 px-4 rounded-xl text-sm w-full focus:outline-none focus:ring-2"
+                className="h-11 px-4 rounded text-sm w-full focus:outline-none focus:ring-2"
                 style={{
                   background: colors.surfaceMuted,
                   border: `1px solid ${colors.border}`,
@@ -81,7 +81,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
               <button
                 onClick={handleSend}
                 disabled={!phone.trim() || requestOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+                className="h-11 rounded text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
                 style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
                 {requestOtp.isPending ? 'Отправка...' : 'Получить код'}
@@ -96,7 +96,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="000000"
                 maxLength={6}
-                className="h-11 px-4 rounded-xl text-sm text-center tracking-widest w-full focus:outline-none focus:ring-2"
+                className="h-11 px-4 rounded text-sm text-center tracking-widest w-full focus:outline-none focus:ring-2"
                 style={{
                   background: colors.surfaceMuted,
                   border: `1px solid ${colors.border}`,
@@ -109,7 +109,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
               <button
                 onClick={handleVerify}
                 disabled={code.length < 6 || verifyOtp.isPending}
-                className="h-11 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+                className="h-11 rounded text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
                 style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
                 {verifyOtp.isPending ? 'Проверка...' : 'Войти'}

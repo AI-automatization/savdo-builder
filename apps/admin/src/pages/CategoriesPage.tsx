@@ -261,7 +261,7 @@ export default function CategoriesPage() {
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
                 {modal === 'create' ? 'Новая категория' : 'Редактировать категорию'}
               </h3>
-              <button onClick={closeModal}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
+              <button onClick={closeModal} aria-label="Закрыть"><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
             </div>
 
             <div className="px-5 py-4 flex flex-col gap-3">

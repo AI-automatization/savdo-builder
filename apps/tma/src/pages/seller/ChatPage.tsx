@@ -488,8 +488,9 @@ export default function SellerChatPage() {
                 </div>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(activeThread.buyerPhone!).catch(() => {});
-                    showToast('✅ Скопировано');
+                    navigator.clipboard.writeText(activeThread.buyerPhone!)
+                      .then(() => showToast('✅ Скопировано'))
+                      .catch(() => showToast('❌ Не удалось скопировать', 'error'));
                   }}
                   className="text-[11px] px-2 py-1 rounded-lg"
                   style={{ background: 'rgba(124,58,237,0.20)', border: '1px solid rgba(124,58,237,0.30)', color: '#a78bfa' }}

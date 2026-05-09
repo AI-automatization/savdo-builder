@@ -135,10 +135,11 @@ export default function LoginPage() {
       {/* Theme toggle — top right */}
       <button
         onClick={toggleTheme}
-        className="fixed top-4 right-4 z-20 w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+        aria-label={dark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+        className="fixed top-4 right-4 z-20 w-11 h-11 rounded-lg flex items-center justify-center transition-colors"
         style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
       >
-        {dark ? <Sun size={14} /> : <Moon size={14} />}
+        {dark ? <Sun size={16} /> : <Moon size={16} />}
       </button>
 
       {/* Card */}
@@ -205,28 +206,34 @@ export default function LoginPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>Введите 6-значный код из Telegram</p>
+            <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+              <legend className="text-xs text-center w-full" style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
+                Введите 6-значный код из Telegram
+              </legend>
 
-            {/* OTP inputs */}
-            <div className="flex gap-2 justify-center">
-              {otp.map((d, i) => (
-                <input
-                  key={i}
-                  ref={el => { inputRefs.current[i] = el }}
-                  value={d}
-                  onChange={e => handleOtpInput(i, e.target.value)}
-                  onKeyDown={e => handleOtpKey(i, e)}
-                  maxLength={6}
-                  inputMode="numeric"
-                  className={cn(
-                    'w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border',
-                    'focus:outline-none transition-colors',
-                    d ? 'border-indigo-500/60 bg-indigo-500/5' : 'focus:border-white/20',
-                  )}
-                  style={{ background: 'var(--surface2)', color: 'var(--text)', borderColor: d ? undefined : 'var(--border)' }}
-                />
-              ))}
-            </div>
+              {/* OTP inputs */}
+              <div className="flex gap-2 justify-center" role="group" aria-label="Код подтверждения">
+                {otp.map((d, i) => (
+                  <input
+                    key={i}
+                    ref={el => { inputRefs.current[i] = el }}
+                    value={d}
+                    onChange={e => handleOtpInput(i, e.target.value)}
+                    onKeyDown={e => handleOtpKey(i, e)}
+                    maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    aria-label={`Цифра ${i + 1} из 6`}
+                    className={cn(
+                      'w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border',
+                      'focus:outline-none transition-colors',
+                      d ? 'border-indigo-500/60 bg-indigo-500/5' : 'focus:border-white/20',
+                    )}
+                    style={{ background: 'var(--surface2)', color: 'var(--text)', borderColor: d ? undefined : 'var(--border)' }}
+                  />
+                ))}
+              </div>
+            </fieldset>
 
             {timer > 0 ? (
               <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
