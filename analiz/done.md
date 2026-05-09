@@ -78,12 +78,28 @@
 - **Файлы (7):** globals.css, cart/page.tsx, [slug]/products/[id]/page.tsx, chats/page.tsx, emoji-picker.tsx, HeaderSearch.tsx, CategoryAttributeFilters.tsx.
 - **Commit:** `b894589`. Push: main → b894589, web-buyer → 71b6797.
 
+### ✅ [WS-CHAT-RESPONSIVE-001] Mobile-first chat layout (web-seller) 🟡
+
+- **Дата:** 09.05.2026
+- **Контекст:** P2-011 + P3-009 из seller-аудита (08.05) — chat off-grid и non-responsive. Был deferred с сессии 54 как «нужен полноценный wave».
+- **Файл:** `apps/web-seller/src/app/(dashboard)/chat/page.tsx` (~551 строка).
+- **Что сделано:**
+  - Root layout `flex flex-col md:flex-row md:gap-5` — на mobile single-panel toggle (либо thread list, либо chat window), на desktop two-panel side-by-side как раньше.
+  - Удалён `max-w-4xl` — chat теперь растягивается на full container width на desktop, вместо off-grid look рядом с wider sidebar.
+  - Thread list: `${activeThread ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 flex-shrink-0` — full-width на mobile когда нет active thread, fixed sidebar (288px) на desktop.
+  - Chat panel: `${activeThread ? 'flex' : 'hidden md:flex'} flex-1 min-h-0` — hidden на mobile когда нет thread'а (entry point = thread list), full-width при выборе.
+  - **ChatWindow header:** добавлена mobile-only кнопка ← back (`md:hidden`) перед avatar, очищает `activeId` чтобы вернуться на список. Desktop header unchanged. Padding tightened на mobile: `px-3 md:px-5`, `gap-2 md:gap-3`.
+  - Auto-select first thread restricted to desktop через `window.matchMedia('(min-width: 768px)')` — на mobile thread list должен быть видимой entry point, не moментально замещён первым чатом.
+- **Closes:** P2-011 (chat off-grid), P3-009 (non-responsive).
+- **Commit:** `04c1cca`. Push: main → `04c1cca`, web-seller → `6a5a4d4`.
+
 ### Итог сессии
 
-- **Закрыто:** 22 из 25 audit findings + dark theme buyer. 3 deferred (P1-003 wave 6, P2-004/P2-014 нужны решения, P3-004 нужен API).
-- **Коммиты на main (6):** `50f04e3` (audit doc + backlog), `9a16999` (Wave 1), `c5b6163` (Waves 2-5), `7ad5063` (Wave 7), `c48321e` (docs), `b894589` (dark theme).
-- **Файлов изменено:** 14 (1 новый — audit doc).
-- **Push:** main → `b894589`, web-buyer → `71b6797` (Railway деплой запущен).
+- **Закрыто:** 22 из 25 buyer audit findings + dark theme buyer + WS-CHAT-RESPONSIVE-001 (seller).
+- **Коммиты на main (8):** `50f04e3` (audit doc + backlog), `9a16999` (Wave 1), `c5b6163` (Waves 2-5), `7ad5063` (Wave 7), `c48321e` (docs), `b894589` (dark theme), `6c81cd8` (docs), `04c1cca` (seller chat responsive).
+- **Файлов изменено:** 15 (1 новый — audit doc).
+- **Push:** main → `04c1cca`, web-buyer → `894c204`, web-seller → `6a5a4d4` (оба Railway деплоя запущены).
+- **Контракт-задача для Полата:** `API-CHAT-THREAD-PRODUCT-PREVIEW-001` — расширить `ChatThread` response полями `productId/productImageUrl/productPriceMinor` для unblock'а Wave 6 (buyer pinned product context strip).
 - **Локально не запускалось** (per memory feedback).
 
 ---
