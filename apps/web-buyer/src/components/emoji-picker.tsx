@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Smile } from 'lucide-react';
+import { colors } from '@/lib/styles';
 
 const EMOJI: { name: string; icon: string; items: string[] }[] = [
   {
@@ -81,8 +82,8 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
         aria-label="Эмодзи"
         className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors hover:opacity-80"
         style={{
-          color: open ? '#A78BFA' : 'rgba(255,255,255,0.55)',
-          background: open ? 'rgba(167,139,250,.18)' : 'transparent',
+          color: open ? colors.brand : colors.textMuted,
+          background: open ? colors.brandMuted : 'transparent',
         }}
       >
         <Smile size={18} />
@@ -90,20 +91,19 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
 
       {open && (
         <div
-          className="absolute bottom-full left-0 mb-2 rounded-xl overflow-hidden flex flex-col"
+          className="absolute bottom-full left-0 mb-2 rounded-lg overflow-hidden flex flex-col"
           style={{
             zIndex: 60,
             width: 320,
-            background: 'rgba(15,23,42,0.96)',
-            backdropFilter: 'blur(18px)',
-            border: '1px solid rgba(167,139,250,0.30)',
-            boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            boxShadow: '0 4px 12px rgba(31,26,18,0.08)',
           }}
         >
           {/* Tabs */}
           <div
             className="flex items-center gap-0.5 px-1.5 py-1.5 overflow-x-auto flex-shrink-0"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+            style={{ borderBottom: `1px solid ${colors.divider}` }}
           >
             {EMOJI.map((g, i) => (
               <button
@@ -113,8 +113,8 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
                 title={g.name}
                 className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-base transition-colors"
                 style={{
-                  background: tab === i ? 'rgba(167,139,250,0.22)' : 'transparent',
-                  border: tab === i ? '1px solid rgba(167,139,250,0.40)' : '1px solid transparent',
+                  background: tab === i ? colors.brandMuted : 'transparent',
+                  border: tab === i ? `1px solid ${colors.brandBorder}` : '1px solid transparent',
                 }}
               >
                 {g.icon}
@@ -129,7 +129,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
                   key={e}
                   type="button"
                   onClick={() => onPick(e)}
-                  className="w-9 h-9 flex items-center justify-center rounded-md text-xl transition-colors hover:bg-white/5"
+                  className="w-9 h-9 flex items-center justify-center rounded-md text-xl hover-soft"
                   style={{ background: 'transparent' }}
                   aria-label={e}
                 >

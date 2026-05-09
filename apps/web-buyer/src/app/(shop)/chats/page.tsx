@@ -65,8 +65,8 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
       }}
     >
       <div
-        className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm"
-        style={{ background: storeBrand }}
+        className="w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm"
+        style={{ background: storeBrand, color: colors.brandTextOnBg }}
       >
         {initial}
       </div>
@@ -96,8 +96,8 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
           </div>
           {unread > 0 && (
             <div
-              className="ml-2 min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold text-white flex items-center justify-center flex-shrink-0"
-              style={{ background: storeBrand }}
+              className="ml-2 min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0"
+              style={{ background: storeBrand, color: colors.brandTextOnBg }}
             >
               {unread > 9 ? "9+" : unread}
             </div>
@@ -212,8 +212,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           ←
         </button>
         <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-          style={{ background: storeBrand }}
+          className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+          style={{ background: storeBrand, color: colors.brandTextOnBg }}
         >
           {storeInitial}
         </div>
@@ -259,7 +259,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 onClick={() => handleDeleteMessage(confirmDeleteMsg)}
                 disabled={deleteMessageMutation.isPending}
                 className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.danger, color: "#FFFFFF" }}
+                style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
                 {deleteMessageMutation.isPending ? "..." : "Удалить"}
               </button>
@@ -291,7 +291,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 onClick={handleDeleteThread}
                 disabled={deleteThreadMutation.isPending}
                 className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.danger, color: "#FFFFFF" }}
+                style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
                 {deleteThreadMutation.isPending ? "..." : "Удалить"}
               </button>
@@ -338,8 +338,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
               <div className={`flex ${isBuyer ? "justify-end" : "justify-start"} group`}>
                 {!isBuyer && (
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 self-end text-white font-bold text-xs"
-                    style={{ background: storeBrand }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 self-end font-bold text-xs"
+                    style={{ background: storeBrand, color: colors.brandTextOnBg }}
                   >
                     {storeInitial}
                   </div>
@@ -381,8 +381,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                           autoFocus
                           className="w-full rounded-md p-2 text-sm outline-none resize-none"
                           style={{
-                            background: "rgba(255,255,255,0.95)",
-                            border: `1px solid rgba(255,255,255,0.5)`,
+                            background: colors.brandTextOnBg,
+                            border: `1px solid ${colors.brandHover}`,
                             color: colors.textStrong,
                           }}
                         />
@@ -391,7 +391,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             type="button"
                             onClick={() => { setEditingId(null); setEditingText(""); }}
                             className="px-2.5 py-1 rounded-md text-[11px] font-semibold"
-                            style={{ background: "rgba(255,255,255,0.18)", color: colors.brandTextOnBg }}
+                            style={{ background: "transparent", border: `1px solid ${colors.brandTextOnBg}`, color: colors.brandTextOnBg }}
                           >
                             Отмена
                           </button>
@@ -400,7 +400,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             onClick={saveEdit}
                             disabled={!editingText.trim() || editMessageMutation.isPending}
                             className="px-2.5 py-1 rounded-md text-[11px] font-semibold disabled:opacity-50"
-                            style={{ background: "#FFFFFF", color: colors.brand }}
+                            style={{ background: colors.brandTextOnBg, color: colors.brand }}
                           >
                             {editMessageMutation.isPending ? "..." : "Сохранить"}
                           </button>
@@ -413,7 +413,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                       <p
                         className="text-[9px] mt-1"
                         style={{
-                          color: isBuyer ? "rgba(255,255,255,0.70)" : colors.textMuted,
+                          color: isBuyer ? "rgba(251,247,240,0.7)" : colors.textMuted,
                           textAlign: isBuyer ? "right" : "left",
                         }}
                       >
@@ -437,13 +437,13 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                       {showMenu && (
                         <div
                           className={`absolute z-10 top-full mt-1 ${isBuyer ? "right-0" : "left-0"} rounded-md overflow-hidden min-w-[140px]`}
-                          style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}
+                          style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: "0 4px 12px rgba(31,26,18,0.08)" }}
                         >
                           {canEdit && (
                             <button
                               type="button"
                               onClick={() => startEdit(m.id, m.text)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-black/5"
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover-soft"
                               style={{ color: colors.textStrong }}
                             >
                               <Pencil size={12} /> Редактировать
@@ -453,7 +453,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             <button
                               type="button"
                               onClick={() => { setConfirmDeleteMsg(m.id); setOpenMenuId(null); }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-black/5"
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover-soft"
                               style={{ color: colors.danger }}
                             >
                               <Trash2 size={12} /> Удалить
@@ -490,8 +490,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           <button
             onClick={handleSend}
             disabled={!text.trim() || sendMutation.isPending}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-base disabled:opacity-50 flex-shrink-0 transition-opacity hover:opacity-90"
-            style={{ background: colors.brand, border: "none" }}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-base disabled:opacity-50 flex-shrink-0 transition-opacity hover:opacity-90"
+            style={{ background: colors.brand, color: colors.brandTextOnBg, border: "none" }}
             aria-label="Отправить"
           >
             <Send size={15} />
@@ -545,7 +545,7 @@ function ChatsView() {
 
   return (
     <div
-      className="flex h-[calc(100vh-9rem)] md:h-[calc(100vh-7rem)] rounded-2xl overflow-hidden"
+      className="flex h-[calc(100vh-9rem)] md:h-[calc(100vh-7rem)] rounded-lg overflow-hidden"
       style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
     >
       {/* Thread list panel */}
@@ -555,7 +555,7 @@ function ChatsView() {
       >
         {/* Header */}
         <div className="px-4 py-3.5 flex-shrink-0 border-b" style={{ borderColor: colors.divider }}>
-          <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Чаты</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Чаты</h1>
         </div>
 
         {/* Search */}

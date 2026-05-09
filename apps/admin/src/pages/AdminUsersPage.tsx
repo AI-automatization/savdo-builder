@@ -3,6 +3,7 @@ import { Shield, Plus, UserCog, Trash2, AlertCircle, Phone, Search } from 'lucid
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { useFocusTrap } from '../lib/use-focus-trap'
 import { ROLE_OPTIONS, ROLE_BADGE, type AdminRole } from '../lib/admin-roles'
 
 interface AdminRow {
@@ -404,15 +405,21 @@ function ConfirmDialog({ title, description, actionLabel, actionColor, onConfirm
   )
 }
 
-function ModalShell({ children, onClose, width }: { children: React.ReactNode; onClose: () => void; width: number }) {
+function ModalShell({ children, onClose, width, labelledBy }: { children: React.ReactNode; onClose: () => void; width: number; labelledBy?: string }) {
+  const dialogRef = useFocusTrap<HTMLDivElement>(onClose)
   return (
     <div
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
         onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', outline: 'none' }}
       >
         {children}
       </div>

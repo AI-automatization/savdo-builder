@@ -306,7 +306,7 @@ export default function OrdersPage() {
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
       {/* Header */}
       <div className="px-4 py-3.5 border-b" style={{ borderColor: colors.divider }}>
-        <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Заказы</h1>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Заказы</h1>
       </div>
 
       <div className="max-w-4xl mx-auto pb-28 md:pb-12">

@@ -6,7 +6,6 @@ import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
-import { Spinner } from '@/components/ui/Spinner';
 import { ProductDetailSkeleton } from '@/components/ui/Skeleton';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { glass } from '@/lib/styles';
@@ -148,10 +147,13 @@ export default function EditProductPage() {
         for (const v of p.variants) initial[v.id] = v.stockQuantity === 0 ? '' : String(v.stockQuantity);
         setStockEdits(initial);
       }
-      // Load attributes
+      // Load attributes — non-fatal, product still editable without them
       api<ProductAttr[]>(`/seller/products/${id}/attributes`, { signal })
         .then((a) => { if (!signal?.aborted) setAttrs(a); })
-        .catch(() => {});
+        .catch((err: unknown) => {
+          if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+          showToast('Не удалось загрузить характеристики товара');
+        });
     } catch {
       if (!signal?.aborted) setLoadError('Не удалось загрузить товар');
     } finally {

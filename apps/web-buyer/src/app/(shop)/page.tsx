@@ -47,10 +47,10 @@ export default function HomePage() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center"
-            style={{ background: colors.brand, boxShadow: `0 4px 16px rgba(124,63,46,0.18)` }}
+            className="w-20 h-20 rounded-lg flex items-center justify-center"
+            style={{ background: colors.brand, boxShadow: `0 4px 12px rgba(124,63,46,0.15)` }}
           >
-            <ShoppingCart size={36} style={{ color: "#FFFFFF" }} />
+            <ShoppingCart size={36} style={{ color: colors.brandTextOnBg }} />
           </div>
           <span className="text-2xl font-bold tracking-tight" style={{ color: colors.brand }}>
             Savdo

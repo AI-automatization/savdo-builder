@@ -660,8 +660,8 @@ export default function ProductPage() {
                     style={{ background: colors.surface }}
                   >
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
-                      style={{ background: colors.brand }}
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0"
+                      style={{ background: colors.brand, color: colors.brandTextOnBg }}
                     >
                       {storeName.charAt(0).toUpperCase()}
                     </div>

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Send, Eye, AlertCircle, CheckCircle, RefreshCw, Megaphone } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
@@ -19,18 +19,40 @@ function formatDate(iso: string) {
   })
 }
 
-function TelegramPreview({ text }: { text: string }) {
-  const html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/&lt;b&gt;(.*?)&lt;\/b&gt;/gs, '<b>$1</b>')
-    .replace(/&lt;i&gt;(.*?)&lt;\/i&gt;/gs, '<i>$1</i>')
-    .replace(/&lt;a href="([^"]*)"&gt;(.*?)&lt;\/a&gt;/gs, (_, href: string, label: string) => {
-      const safe = /^https?:\/\//i.test(href) || /^tg:\/\//i.test(href) ? href : '#';
-      return `<a href="${safe}" style="color:#5BC8F5">${label}</a>`;
-    })
+// TOKEN_RE splits text into: plain segments and recognised Telegram markup tokens.
+// React renders plain segments as escaped text — no XSS possible.
+const TOKEN_RE = /(<b>[\s\S]*?<\/b>|<i>[\s\S]*?<\/i>|<a href="[^"]*">[\s\S]*?<\/a>)/g;
 
+function parseTelegram(text: string): ReactNode[] {
+  const parts = text.split(TOKEN_RE);
+  const nodes: ReactNode[] = [];
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!part) continue;
+
+    const boldM = part.match(/^<b>([\s\S]*?)<\/b>$/);
+    const italicM = part.match(/^<i>([\s\S]*?)<\/i>$/);
+    const linkM = part.match(/^<a href="([^"]*)">([\s\S]*?)<\/a>$/);
+
+    if (boldM) {
+      nodes.push(<strong key={i}>{boldM[1]}</strong>);
+    } else if (italicM) {
+      nodes.push(<em key={i}>{italicM[1]}</em>);
+    } else if (linkM) {
+      const rawHref = linkM[1];
+      const href = /^https?:\/\//i.test(rawHref) || /^tg:\/\//i.test(rawHref) ? rawHref : '#';
+      nodes.push(<a key={i} href={href} style={{ color: '#5BC8F5' }}>{linkM[2]}</a>);
+    } else {
+      // React escapes this automatically — safe plain text
+      nodes.push(part);
+    }
+  }
+
+  return nodes;
+}
+
+function TelegramPreview({ text }: { text: string }) {
   return (
     <div style={{ background: '#1a2133', borderRadius: 12, padding: '16px 20px' }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: '#818CF8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -40,9 +62,10 @@ function TelegramPreview({ text }: { text: string }) {
         display: 'inline-block', maxWidth: 320,
         background: '#2b3a5c', borderRadius: '4px 14px 14px 14px',
         padding: '10px 14px', fontSize: 14, lineHeight: 1.5, color: '#E2E8F0',
-      }}
-        dangerouslySetInnerHTML={{ __html: html || '<span style="opacity:0.4">Введите текст...</span>' }}
-      />
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+      }}>
+        {text ? parseTelegram(text) : <span style={{ opacity: 0.4 }}>Введите текст...</span>}
+      </div>
     </div>
   )
 }
