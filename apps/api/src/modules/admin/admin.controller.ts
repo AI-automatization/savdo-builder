@@ -23,6 +23,7 @@ import { ErrorCode } from '../../shared/constants/error-codes';
 
 import { AdminRepository } from './repositories/admin.repository';
 import { ProductsRepository } from '../products/repositories/products.repository';
+import { ProductStatus } from '@prisma/client';
 import { OrdersRepository } from '../orders/repositories/orders.repository';
 import { ListUsersDto } from './dto/list-users.dto';
 import { ListSellersDto } from './dto/list-sellers.dto';
@@ -440,9 +441,13 @@ export class AdminController {
     @CurrentUser() user: JwtPayload,
   ) {
     await this.resolveAdminUser(user);
+    // Узкая валидация: разрешаем только реальные значения ProductStatus.
+    const validStatus = status && (Object.values(ProductStatus) as string[]).includes(status)
+      ? (status as ProductStatus)
+      : undefined;
     const products = await this.productsRepo.findAll({
       storeId,
-      status: status as any,
+      status: validStatus,
       page: page ? Number(page) : 1,
       limit: limit ? Math.min(Number(limit), 100) : 20,
     });
@@ -468,7 +473,7 @@ export class AdminController {
       entityId: id,
       payload: { previousStatus: product.status },
     });
-    return this.productsRepo.updateStatus(id, 'HIDDEN_BY_ADMIN' as any);
+    return this.productsRepo.updateStatus(id, ProductStatus.HIDDEN_BY_ADMIN);
   }
 
   // PATCH /api/v1/admin/products/:id/restore
@@ -490,7 +495,7 @@ export class AdminController {
       entityId: id,
       payload: { previousStatus: product.status },
     });
-    return this.productsRepo.updateStatus(id, 'ACTIVE' as any);
+    return this.productsRepo.updateStatus(id, ProductStatus.ACTIVE);
   }
 
   // DELETE /api/v1/admin/products/:id  — принудительное удаление (soft delete, любой статус)
