@@ -211,7 +211,7 @@ describe('RefundOrderUseCase', () => {
             reason: 'fraud',
             notes: 'some notes',
             adminId: 'a1',
-            status: 'completed',
+            status: 'COMPLETED',
           }),
         }),
       );

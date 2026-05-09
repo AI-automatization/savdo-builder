@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { Order, OrderStatus, InventoryMovementType, DeliveryType, PaymentMethod } from '@prisma/client';
+import { Order, OrderStatus, InventoryMovementType, DeliveryType, PaymentMethod, CartStatus } from '@prisma/client';
 
 export interface CheckoutOrderItemInput {
   productId: string;
@@ -174,7 +174,7 @@ export class CheckoutRepository {
   async markCartConverted(cartId: string): Promise<void> {
     await this.prisma.cart.update({
       where: { id: cartId },
-      data: { status: 'converted' },
+      data: { status: CartStatus.CONVERTED },
     });
   }
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Database, Search, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, X, Check, AlertTriangle, RefreshCw, Lock, Eye, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Database, Search, Edit2, Trash2, Plus, X, Check, AlertTriangle, RefreshCw, Lock, Eye, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { PaginationBar } from '../components/admin/PaginationBar'
 
 type DbFieldType = 'string' | 'text' | 'number' | 'boolean' | 'datetime' | 'json' | 'enum'
 
@@ -729,18 +730,15 @@ export default function DatabasePage() {
 
             {/* Pagination */}
             {rowsData && rowsData.totalPages > 1 && (
-              <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Стр. {rowsData.page} из {rowsData.totalPages} · {rowsData.total} записей</span>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === 1 ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 12, cursor: page === 1 ? 'default' : 'pointer' }}>
-                    <ChevronLeft size={13} /> Назад
-                  </button>
-                  <button onClick={() => setPage(p => Math.min(rowsData.totalPages, p + 1))} disabled={page === rowsData.totalPages}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === rowsData.totalPages ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 12, cursor: page === rowsData.totalPages ? 'default' : 'pointer' }}>
-                    Вперёд <ChevronRight size={13} />
-                  </button>
-                </div>
+              <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+                <PaginationBar
+                  page={rowsData.page}
+                  totalPages={rowsData.totalPages}
+                  total={rowsData.total}
+                  itemsLabel="записей"
+                  compact
+                  onPageChange={setPage}
+                />
               </div>
             )}
           </>

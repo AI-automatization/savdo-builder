@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { BarChart2, Search, X, ChevronLeft, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react'
+import { BarChart2, Search, X, RefreshCw, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { PageHeader } from '../components/admin/PageHeader'
 import { Panel } from '../components/admin/Panel'
+import { PaginationBar } from '../components/admin/PaginationBar'
 import { EmptyState } from '../components/admin/EmptyState'
 
 interface AnalyticsEvent {
@@ -342,38 +343,8 @@ export default function AnalyticsEventsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
-            Стр. {page} из {totalPages} · {total} событий
-          </span>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px]"
-              style={{
-                border: '1px solid var(--border)',
-                background: 'var(--surface2)',
-                color: page === 1 ? 'var(--text-dim)' : 'var(--text-muted)',
-                cursor: page === 1 ? 'default' : 'pointer',
-              }}
-            >
-              <ChevronLeft size={14} /> Назад
-            </button>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px]"
-              style={{
-                border: '1px solid var(--border)',
-                background: 'var(--surface2)',
-                color: page === totalPages ? 'var(--text-dim)' : 'var(--text-muted)',
-                cursor: page === totalPages ? 'default' : 'pointer',
-              }}
-            >
-              Вперёд <ChevronRight size={14} />
-            </button>
-          </div>
+        <div className="mt-4">
+          <PaginationBar page={page} totalPages={totalPages} total={total} itemsLabel="событий" onPageChange={setPage} />
         </div>
       )}
     </div>
