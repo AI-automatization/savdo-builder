@@ -30,7 +30,7 @@ import { ListSellersDto } from './dto/list-sellers.dto';
 import { ListStoresDto } from './dto/list-stores.dto';
 import { AdminActionDto } from './dto/admin-action.dto';
 import { ListAuditLogDto } from './dto/list-audit-log.dto';
-import { BroadcastDto } from './dto/broadcast.dto';
+// BroadcastDto импортируется в AdminBroadcastController
 
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
 import { GetUserDetailUseCase } from './use-cases/get-user-detail.use-case';
@@ -48,13 +48,13 @@ import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
 import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
-import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
-import { BroadcastUseCase } from './use-cases/broadcast.use-case';
+// GetAnalyticsUseCase инжектится в AdminAnalyticsController, не здесь.
+// BroadcastUseCase инжектится в AdminBroadcastController, не здесь.
 // DbManagerUseCase инжектится в AdminDbController, не здесь.
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
-import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
-import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
+// GetSystemHealthUseCase и MigrateTgMediaToR2UseCase инжектятся
+// в AdminOpsController, не здесь.
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
@@ -82,41 +82,12 @@ export class AdminController {
     private readonly unapproveStoreUseCase: UnapproveStoreUseCase,
     private readonly adminCancelOrderUseCase: AdminCancelOrderUseCase,
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
-    private readonly getAnalyticsUseCase: GetAnalyticsUseCase,
-    private readonly broadcastUseCase: BroadcastUseCase,
     private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
     private readonly adminCreateStoreUseCase: AdminCreateStoreUseCase,
-    private readonly getSystemHealthUseCase: GetSystemHealthUseCase,
-    private readonly migrateTgMediaUseCase: MigrateTgMediaToR2UseCase,
   ) {}
 
-  // ── System Health (DevOps Dashboard) ──────────────────────────────────────
-  @Get('system/health')
-  async getSystemHealth() {
-    return this.getSystemHealthUseCase.execute();
-  }
-
-  // ── Feature flags (read-only view of process.env) ─────────────────────────
-  @Get('system/feature-flags')
-  async getFeatureFlags() {
-    return {
-      flags: [
-        { key: 'CHAT_ENABLED',                  label: 'Чат',                     value: process.env.CHAT_ENABLED !== 'false',                  envOverridable: true },
-        { key: 'STORE_APPROVAL_REQUIRED',       label: 'Модерация магазинов',     value: process.env.STORE_APPROVAL_REQUIRED !== 'false',       envOverridable: true },
-        { key: 'TELEGRAM_NOTIFICATIONS_ENABLED',label: 'Уведомления Telegram',    value: process.env.TELEGRAM_NOTIFICATIONS_ENABLED !== 'false', envOverridable: true },
-        { key: 'DEV_OTP_ENABLED',               label: 'DEV OTP (код в логах)',   value: process.env.DEV_OTP_ENABLED === 'true',                envOverridable: true },
-        { key: 'OTP_REQUIRED_FOR_CHECKOUT',     label: 'OTP при оформлении',      value: process.env.OTP_REQUIRED_FOR_CHECKOUT === 'true',      envOverridable: true },
-        { key: 'PAYMENT_ONLINE_ENABLED',        label: 'Онлайн-платежи',          value: process.env.PAYMENT_ONLINE_ENABLED === 'true',         envOverridable: true },
-        { key: 'ANALYTICS_ENABLED',             label: 'Аналитика',                value: process.env.ANALYTICS_ENABLED !== 'false',             envOverridable: true },
-        { key: 'WEB_PUSH_ENABLED',              label: 'Web Push',                value: process.env.WEB_PUSH_ENABLED === 'true',               envOverridable: true },
-        { key: 'MOBILE_PUSH_ENABLED',           label: 'Mobile Push',             value: process.env.MOBILE_PUSH_ENABLED === 'true',            envOverridable: true },
-        { key: 'SMS_FALLBACK_ENABLED',          label: 'SMS Fallback (запрещён)', value: false, envOverridable: false, locked: true, reason: 'SMS/Eskiz запрещены законом РУз' },
-        { key: 'SELLER_INSIGHTS_ENABLED',       label: 'Seller Insights',         value: process.env.SELLER_INSIGHTS_ENABLED === 'true',        envOverridable: true },
-        { key: 'PRODUCT_IMAGE_ATTACHMENT_ENABLED', label: 'Фото к товарам',        value: process.env.PRODUCT_IMAGE_ATTACHMENT_ENABLED !== 'false', envOverridable: true },
-      ],
-      note: 'Изменение feature flag требует перезапуска api. Через UI пока read-only — переменные задаются в Railway → Variables.',
-    };
-  }
+  // ── System Health + Feature Flags + Media Migration вынесены в
+  //    `AdminOpsController` (apps/api/src/modules/admin/admin-ops.controller.ts).
 
   // Resolve AdminUser record from JWT payload.
   // Throws ADMIN_NOT_FOUND if the caller has role=ADMIN in JWT but no AdminUser row.
@@ -367,55 +338,11 @@ export class AdminController {
 
   // ── Analytics ─────────────────────────────────────────────────────────────
 
-  // GET /api/v1/admin/analytics/summary
-  @Get('analytics/summary')
-  async getAnalyticsSummary(@CurrentUser() user: JwtPayload) {
-    await this.resolveAdminUser(user);
-    return this.getAnalyticsUseCase.execute();
-  }
+  // ── Analytics эндпоинты вынесены в AdminAnalyticsController
+  //    (apps/api/src/modules/admin/admin-analytics.controller.ts).
 
-  // GET /api/v1/admin/analytics/events?page=&limit=&eventName=&storeId=
-  @Get('analytics/events')
-  async getAnalyticsEvents(
-    @CurrentUser() user: JwtPayload,
-    @Query('page')      page      = '1',
-    @Query('limit')     limit     = '50',
-    @Query('eventName') eventName?: string,
-    @Query('storeId')   storeId?: string,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.getAnalyticsUseCase.getEvents({
-      page:      Math.max(Number(page)  || 1,  1),
-      limit:     Math.min(Number(limit) || 50, 100),
-      eventName: eventName || undefined,
-      storeId:   storeId   || undefined,
-    });
-  }
-
-  // ── Broadcast ─────────────────────────────────────────────────────────────
-
-  // POST /api/v1/admin/broadcast
-  @Post('broadcast')
-  @AdminPermission('broadcast:create')
-  async broadcast(
-    @Body() dto: BroadcastDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.broadcastUseCase.execute({
-      message: dto.message,
-      previewMode: dto.preview_mode ?? false,
-      adminUserId: user.sub,
-      audience: dto.audience,
-    });
-  }
-
-  // GET /api/v1/admin/broadcast
-  @Get('broadcast')
-  async getBroadcastHistory(@CurrentUser() user: JwtPayload) {
-    await this.resolveAdminUser(user);
-    return this.broadcastUseCase.getHistory();
-  }
+  // ── Broadcast эндпоинты вынесены в AdminBroadcastController
+  //    (apps/api/src/modules/admin/admin-broadcast.controller.ts).
 
   // ── Audit Log ─────────────────────────────────────────────────────────────
 
@@ -587,29 +514,6 @@ export class AdminController {
 
   // ── Database Manager эндпоинты вынесены в `AdminDbController`
   //    (apps/api/src/modules/admin/admin-db.controller.ts).
-
-  // ── Media migration (TG → Supabase) ───────────────────────────────────────
-  // POST /api/v1/admin/media/migrate-tg-to-r2?limit=50
-  // API-MEDIA-MIGRATION-TG-TO-R2-001: разово/батчами вытащить старые TG-фото
-  // и залить в Supabase. См. comment в use-case для контекста.
-  @Post('media/migrate-tg-to-r2')
-  @AdminPermission('media:migrate')
-  async migrateTgMediaToR2(
-    @Query('limit') limit: string | undefined,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const parsedLimit = limit ? Number(limit) : 50;
-    const result = await this.migrateTgMediaUseCase.execute(parsedLimit);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'media.migrate.tg_to_r2',
-      entityType: 'media',
-      entityId: 'batch',
-      payload: { limit: parsedLimit, ...result },
-    });
-    return result;
-  }
 
   // db/tables/:table POST вынесен в AdminDbController
 }
