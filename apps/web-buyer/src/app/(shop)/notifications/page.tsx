@@ -160,12 +160,19 @@ export default function NotificationsPage() {
   const { data: items = [], isLoading, isError } = useNotifications();
   const readAll = useReadAll();
 
-  useEffect(() => {
-    if (isAuthenticated) readAll.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
-
   const unreadItems = useMemo(() => items.filter((n) => !n.isRead), [items]);
+
+  // Mark-all-as-read once items have loaded and there's something unread.
+  // Without this guard Strict Mode + back/forward fired the mutation on every
+  // mount, even with 0 unread.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (isLoading) return;
+    if (readAll.isPending) return;
+    if (unreadItems.length === 0) return;
+    readAll.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isLoading, unreadItems.length]);
   const filtered = tab === "unread" ? unreadItems : items;
 
   // Group by bucket
@@ -185,7 +192,7 @@ export default function NotificationsPage() {
         style={{ background: colors.surface, borderColor: colors.divider }}
       >
         <div>
-          <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Уведомления</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Уведомления</h1>
           {isAuthenticated && items.length > 0 && (
             <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
               {items.length} {items.length === 1 ? "уведомление" : items.length < 5 ? "уведомления" : "уведомлений"}
@@ -279,7 +286,7 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      <BottomNavBar active="profile" />
+      <BottomNavBar active="notifications" />
     </div>
   );
 }

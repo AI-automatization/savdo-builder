@@ -8,6 +8,195 @@
 - **Что сделано:** ...
 ```
 
+## 2026-05-08 [SIGNAL] Параллельная сессия (otplib v13 upgrade) — закончила работу
+
+- **Сделано в этой сессии (08.05.2026):**
+  - `[API-OTPLIB-V13-UPGRADE-001]` otplib `^12.0.1 → ^13.4.0`. Старый `require('otplib')` workaround заменён на чистый ESM-импорт `generateSecret/generateURI/verifySync`. v13 убрал `authenticator` namespace + `verify` теперь возвращает `{valid, delta}` вместо boolean. Опции вынесены в `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 = эквивалент v12 window:1 ±30s). Spec обновлён под новый API.
+- **Файлы (только мои, 6 шт):** `apps/api/package.json`, `apps/api/src/modules/admin/use-cases/admin-auth.use-case.{ts,spec.ts}`, `pnpm-lock.yaml`, `analiz/{tasks,done}.md`.
+- **TS+тесты:** `npx tsc --noEmit` → 0 errors. `npx jest admin-auth.use-case.spec` → 14/14 passed.
+- **Backwards compat:** существующие `mfaSecret` в БД (base32) совместимы с v13 — формат секрета не менялся.
+- **Состояние веток:** main + api запушены. После моего push другие сессии должны `git pull --rebase origin main` перед своим push.
+- **Что НЕ трогал по §6.6:** `CLAUDE.md` (параллельная сессия только что добавила skills section), untracked `admin-create-seller.use-case.spec.ts` (другая сессия), audit-файлы Азима в `analiz/`.
+
+---
+
+## 2026-05-08 [SIGNAL] Параллельная сессия #N (security) — закончила работу
+
+- **Сделано в этой сессии (08.05.2026):**
+  - `[SEC-007]` Telegram HTML escape — `apps/api/src/shared/telegram-html.ts` + 12 точек в `telegram-demo.handler.ts` (commit `34bb176`).
+  - `[SEC-007 part 2]` — `change-product-status.use-case.ts` autopost + унификация `telegram-notification.processor.ts` (commit `ffbe10a`).
+- **Состояние веток:** main + api в синхроне, pushed.
+- **TS:** 0 errors в моих файлах. Параллельная сессия пишет unit-тесты в `admin-auth.use-case.spec.ts` (untracked) — там TS error на `otplib.authenticator` импорте, **не моё**, не блокирует мои фиксы.
+- **Что НЕ трогал по §6.6 (заняты другой сессией):** `apps/api/package.json`, `pnpm-lock.yaml`, `admin-auth.use-case.ts`, `admin-auth.use-case.spec.ts`, `admin-create-store.use-case.spec.ts`, `analiz/tasks.md`, `analiz/done.md` (последние правки), `CLAUDE.md`.
+- **Открыто в моём backlog (не блокеры, для будущих сессий):**
+  - `[SEC-008]` MED-04 — OTP `code` в BullMQ job data (видно через Bull Board под токеном).
+  - `[SEC-009]` MED-05 — CORS wildcard `*.railway.app` → whitelist через `ALLOWED_ORIGINS`.
+  - `[SEC-005]` MED-01 — SuperAdminController inline body types → DTOs.
+  - `[SEC-006]` MED-02 — storefront filters DTO/whitelist.
+  - `[SEC-011]` LOW-01 — phone PII masking в logs.
+  - `[SEC-012]` LOW-02 — Multer `limits.fileSize`.
+  - HIGH-02 = `[SEC-003]` ADMIN bypass в RolesGuard — поведенческое изменение, требует согласия Полата.
+
+---
+
+## 2026-05-08 [SEC-007 part 2] Telegram HTML escape — продолжение: change-product-status + processor
+
+- **Статус:** 🟡 → ✅ Исправлено.
+- **Что случилось:** При расширении SEC-007 нашёл ещё одно место с теми же симптомами:
+  - `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts:85` — автопостинг товара в TG-канал при переходе `→ ACTIVE`. `<b>${product.title}</b>` + `${product.description}` + `🏪 ${store.name}` шли с `parseMode: 'HTML'` без escape.
+  - `apps/api/src/queues/telegram-notification.processor.ts:114` — TELEGRAM_JOB_CHAT_MESSAGE имел inline `escape` lambda, дублирующий новый shared `escapeTgHtml`. Хорошо что user input уже escape'ился, но при добавлении ещё одного HTML-job легко забыть переиспользовать lambda.
+- **Что сделано:**
+  - `change-product-status.use-case.ts` — импорт `escapeTgHtml` + 3 интерполяции (title, description, store.name). При `parseMode: 'HTML'` через `sendMediaGroupToChannel`/`sendPhotoToChannel`/`sendToChannel` теперь безопасно для любых `<`/`>`/`&` в названии товара или магазина.
+  - `telegram-notification.processor.ts` — inline lambda `escape` удалена, заменена на shared `escapeTgHtml` из `apps/api/src/shared/telegram-html.ts`. 5 точек интерполяции в TELEGRAM_JOB_CHAT_MESSAGE используют один источник правды.
+- **Что НЕ нужно (проверил):** TELEGRAM_JOB_NEW_ORDER / STORE_APPROVED / STORE_REJECTED / VERIFICATION_APPROVED / ORDER_STATUS_CHANGED — отправляются БЕЗ `parseMode`, plain text. Telegram игнорирует HTML-теги в plain mode → escape не нужен. TELEGRAM_JOB_BROADCAST шлёт admin-controlled `d.message` в HTML — admin trusted (для broadcast Polat пишет вручную через admin UI), не пользовательский input.
+- **TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → 0 errors в моих файлах. (Один error в `admin-auth.use-case.spec.ts` от параллельной сессии — untracked + spec pending.)
+- **Файлы:** `apps/api/src/modules/products/use-cases/change-product-status.use-case.ts`, `apps/api/src/queues/telegram-notification.processor.ts`.
+
+---
+
+## 2026-05-08 [SEC-007] Telegram HTML escape для user-controlled полей в `telegram-demo.handler.ts`
+
+- **Статус:** 🟡 → ✅ Исправлено.
+- **Что случилось:** В `telegram-demo.handler.ts` user-controlled данные (`firstName` от Telegram, `product.title`, `product.description`, `store.name`, `store.slug`, `store.description`, `store.telegramChannelTitle`, `storeName` от seller registration) интерполировались в строки, отправляемые с `parseMode: 'HTML'`, без экранирования `<`/`>`/`&`. Сценарий: продавец называет товар `<test>` или `&Co` → Telegram `sendMessage` либо отвергает сообщение (silent drop, пост в канал не появляется), либо рендерит непредвиденную разметку; в худшем случае seller может вписать `<a href="https://evil">текст</a>` и получить рабочую ссылку в собственном автопостинге.
+- **Что сделано:**
+  - Добавлен `apps/api/src/shared/telegram-html.ts` — `escapeTgHtml(value: string): string` (заменяет `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;` в указанном Telegram Bot API порядке).
+  - Применено в 12 точках интерполяции в `telegram-demo.handler.ts`: `handleStart` приветствие (×2), `finishSellerRegistration` подтверждение, `handleCreateStoreName` подтверждение, `postProductToChannel` caption (title + description + name), `handleSellerProductsInTma` заголовок, `showSellerMenu` приветствие, `handleSellerStore` (name + slug + channel title), `handleSellerStats` заголовок, `showBuyerMenu` приветствие, `handleStoreSlugInput` (slug + name + description + product titles).
+- **Что НЕ покрыто (отдельным тиком):**
+  - `telegram-webhook.controller.ts:118` — статичный текст без user input, escape не нужен.
+  - `telegram-notification.processor.ts` — большинство сообщений шлются без `parseMode`, plain text safe; `TELEGRAM_JOB_BROADCAST` (line 131) использует HTML, но `d.message` приходит от ADMIN через `BroadcastDto` — admin-controlled, низкий риск.
+  - `seller-notification.service.ts` — нужен отдельный проход (5 типов уведомлений), много полей идёт в `parseMode: 'HTML'`. Backlog.
+- **TS check:** `pnpm exec tsc -p apps/api/tsconfig.json --noEmit` → exit 0.
+- **Файлы:** `apps/api/src/shared/telegram-html.ts` (new), `apps/api/src/modules/telegram/telegram-demo.handler.ts` (12 правок).
+
+---
+
+## 2026-05-06 [AUDIT-API-SQL-INJECTION-2026-05-06] SQL injection audit
+
+- **Статус:** ✅ Чисто.
+- **Что проверено:** все вхождения `$queryRaw`/`$executeRaw`/`*Unsafe` в `apps/api/src`.
+- **Найдено:** 4 файла используют `$queryRaw` (analytics.repository.ts, get-analytics.use-case.ts ×2 raw queries, get-system-health.use-case.ts SELECT 1, prisma.health.ts SELECT 1).
+- **Все случаи** — tagged template literals (`prisma.$queryRaw\`SELECT ... ${var}\``). Prisma автоматически параметризует значения интерполяции. Безопасно.
+- **0 случаев** `$queryRawUnsafe` или `$executeRawUnsafe` (которые принимают сырую строку и были бы уязвимы).
+- **0 случаев** строковой конкатенации в SQL.
+
+## 2026-05-06 [AUDIT-DB-2026-05-06] Database schema audit
+
+- **Статус:** 🟡→✅ Schema drift найден, закрыт. Добавлены 2 hot-path индекса.
+- **Schema drift (главное):**
+  - `AdminUser` в `schema.prisma` имел только `id, userId, isSuperadmin, createdAt`. Migration `20260503020000_super_admin_rbac_mfa_refunds` добавила `adminRole, mfaSecret, mfaEnabled, mfaEnabledAt, lastLoginAt, lastLoginIp` в DB, но schema.prisma не обновили.
+  - `OrderRefund` таблица создана той же миграцией, но модель в schema.prisma отсутствовала.
+  - **Эффект:** код в `admin-auth.use-case.ts`, `mfa-enforced.guard`, `admin-permission.guard`, `admin.repository` и refund use-case использовал `(prisma as any).adminUser/.orderRefund` для обхода типизации. При следующем `prisma generate` без обновления — тип-чек начал бы падать.
+  - **Fix:** добавлены поля в `AdminUser` модель + создана модель `OrderRefund` с indices + relation back-ref на `Order.refunds`. Запущен `pnpm --filter db generate`. Typecheck чист.
+- **Missing indexes (hot path):**
+  - `media_files.bucket` — используется в TG→Supabase migration WHERE filter и proxy/private endpoints. Низкая cardinality, но 4 значения (`telegram`, `telegram-expired`, supabase bucket name) → index экономит full-scan.
+  - `chat_threads.status` — admin chat list фильтрует по OPEN/CLOSED.
+  - Migration: `20260506200000_db_audit_indexes` (CREATE INDEX IF NOT EXISTS).
+- **Что НЕ делал (для отдельного follow-up):**
+  - `pg_trgm` GIN на `Product.title` для полнотекстового поиска — требует extension + raw SQL миграции, нужен replanning для multi-language. Сейчас storefront search использует ILIKE — медленно на 10k+ товаров.
+  - Composite-индекс `OrderItem(productId, orderId)` — для агрегатов в analytics. Текущие индексы достаточны для MVP.
+- **Что хорошо:**
+  - Hot paths уже покрыты composite-индексами: `Order(storeId, status, placedAt DESC)`, `Order(buyerId, status, placedAt DESC)`, `Product(status, deletedAt, createdAt DESC)`, `ChatMessage(threadId, createdAt DESC)`.
+  - FK relations на месте, ON DELETE CASCADE/RESTRICT consistent.
+  - `@@unique` на natural keys: `BuyerWishlistItem(buyerId, productId)`, `Cart(cartId, variantId)`, `Product(productId, sku)`, `ProductOption(productId, code)`, `StoreCategory(storeId, slug)`.
+
+## 2026-05-06 [AUDIT-API-RBAC-2026-05-06] RBAC coverage audit
+
+- **Статус:** 🔴→✅ Найдены и закрыты дыры с отсутствующим @Roles на seller/buyer endpoints.
+- **Что найдено:**
+  - **products.controller** — все 23 `/seller/products/*` endpoints имели только `@UseGuards(JwtAuthGuard)`, без `RolesGuard` + `@Roles('SELLER')`. Любой авторизованный BUYER мог создавать/редактировать/удалять товары (use-case бы упал с 422 при `resolveStoreId`, но это leak информации + race risk).
+  - **categories.controller** — 4 `/seller/categories/*` endpoints — то же самое.
+  - **orders.controller** — 4 `/buyer/orders/*` endpoints использовали class-level guards но БЕЗ method-level `@Roles('BUYER')`. SELLER мог дёргать buyer endpoints (защита через resolveBuyerId, но defense-in-depth отсутствовал).
+- **Что сделано:**
+  - products.controller: `RolesGuard` + `@Roles('SELLER')` на 23 endpoints (replace_all).
+  - categories.controller: то же на 4 seller endpoints.
+  - orders.controller: `@Roles('BUYER')` на 4 buyer endpoints.
+- **Что чисто:**
+  - admin/super-admin/moderation — Roles ADMIN на классе.
+  - chat — корректные @Roles per-endpoint.
+  - reviews — @Roles('BUYER').
+  - sellers/stores — корректно.
+- **Не issue по дизайну:** notifications (role-agnostic), cart (OptionalJwt), checkout/orders-create (любой auth), sellers POST /apply, media (через ownership в use-case).
+
+## 2026-05-06 [AUDIT-API-WS-2026-05-06] WebSocket gateways audit
+
+- **Статус:** 🔴→✅ Найдена + закрыта дыра в `OrdersGateway.handleJoinSellerRoom`.
+- **Что найдено:** проверка `if (user.storeId && user.storeId !== data.storeId)` пропускала SELLER'ов БЕЗ `storeId` в JWT. Из telegram-auth/verify-otp/refresh-session видно, что `storeId` в JWT optional — присутствует только когда у seller есть store. Дуальные продавцы или fresh-after-create могли join'нуться в чужие `seller:${data.storeId}` rooms и получать чужие `order:new` / `order:status_changed` / `chat:new_message` events.
+- **Что сделано:** обработчик стал async, добавлен fallback на DB-lookup `seller.findUnique({ where: { userId } }).store.id` если JWT не подтверждает владение. + валидация что `data.storeId` — string (raw socket payload). Аналогично `handleJoinBuyerRoom` теперь валидирует тип buyerId.
+- **Файл:** `apps/api/src/socket/orders.gateway.ts`.
+- **Что хорошо в Chat/Orders gateways:**
+  - JWT verify в `handleConnection` через `JwtService.verify` с правильным secret из ConfigService. На invalid → `client.disconnect(true)`.
+  - CORS origin function проверяет ALLOWED_ORIGINS + regex (`*.railway.app`, telegram.org, t.me, savdo.uz).
+  - `chat:typing` (FEAT-005) проверяет `client.rooms.has(room)` перед эмитом — anti-spoof.
+  - `join-chat-room` — DB-проверка участия (buyerId/sellerId match), + валидация типа threadId.
+  - Все emits идут на конкретные rooms (`thread:`, `seller:`, `buyer:`), не broadcast.
+- **Что НЕ покрыто (low priority):**
+  - Нет rate-limit на emit'ах (sendMessage HTTP уже throttle 30/min — достаточно для chat:typing спама).
+  - Нет лимита соединений per IP — Socket.IO defaults OK для MVP.
+
+## 2026-05-06 [AUDIT-API-RATE-LIMIT-2026-05-06] Rate limit audit
+
+- **Статус:** 🟡 Глобально OK, добавлены целевые throttle на cart + wishlist.
+- **Глобальный baseline:** `ThrottlerModule.forRoot({ ttl: 60_000, limit: 120 })` + `APP_GUARD = ThrottlerGuard` в `app.module.ts`. Каждый IP — 120 req/min к любому endpoint по умолчанию.
+- **Файлы с tight @Throttle (до аудита):** auth.controller (4), checkout.controller (1), orders-create.controller (1), media.controller (2), chat.controller (3), reviews.controller (1), products.controller (3).
+- **Добавлено в этом аудите:**
+  - `cart.controller.ts` POST /cart/items, PATCH /cart/items/:id — 60/min (anti-spam, OptionalJwtAuthGuard разрешает анонимные).
+  - `wishlist.controller.ts` POST /buyer/wishlist, DELETE /buyer/wishlist/:id — 60/min.
+- **Что ОК без локального throttle:** admin/super-admin (ADMIN role), moderation (ADMIN role), notifications (auth), orders (auth, read-only mostly), categories/sellers/stores (auth+role).
+- **Что НЕ покрыто (OK для MVP):** seller endpoints без локального лимита — global 120/min достаточен; редкие операции (create/update store).
+
+## 2026-05-06 [AUDIT-ADMIN-2026-05-06] Admin (RBAC + MFA + Refund) аудит
+
+- **Статус:** 🟡 Audit-only. 43 frontend файла, 2 controller'а (admin + super-admin), все use-cases от параллельной сессии.
+- **🟢 Что хорошо:**
+  - 0 TS errors в admin-модулях.
+  - Все 2 admin-controller'а имеют @UseGuards(JwtAuthGuard, RolesGuard).
+  - RBAC через `AdminUser.adminRole` (super_admin/admin/moderator/support/finance/read_only) + `isSuperadmin`.
+  - MFA TOTP реализован — secret/QR generation/verify через otplib v12.
+- **🔴 P0 — MFA bypass:**
+  - **`API-MFA-NOT-ENFORCED-001`**: MFA verification работает только при setup. После login admin получает обычный JWT (`/auth/verify-otp`). **Ни один admin endpoint не требует `mfaVerified` claim в токене**. Если admin включил MFA — это лишь cosmetic, реально не защищает. Атакер с украденным admin JWT может всё делать.
+  - Решение: JWT должен иметь `mfaPending: boolean` или `mfaVerifiedAt`. После login если `admin.mfaEnabled` — выдавать temporary токен (e.g. 5 мин TTL, scope=`mfa-challenge`). Полный токен — только после `/admin/auth/mfa/login` с TOTP. Все admin endpoints reject если token scope=`mfa-challenge`.
+- **🟠 P1:**
+  - `API-RBAC-MICRO-PERMISSIONS-001`: AdminAuthUseCase упоминает permissions matrix (`super_admin: ['*']`, `admin: ['user:*', ...]`), но на endpoint level проверки не видно — все admin endpoints доступны любому AdminUser с любой ролью. Должен быть decorator `@AdminPermission('user:write')` на каждом sensitive endpoint.
+- **Не аудировано (XL — отдельная сессия):**
+  - 43 frontend файла admin (кnopки/формы) — UI consistency.
+  - Audit log integrity (все action пишут в audit_log?).
+  - Impersonation flow (token swap безопасный?).
+
+---
+
+## 2026-05-06 [AUDIT-WEB-SELLER-2026-05-06] Web-seller аудит
+
+- **Статус:** 🟡 Audit-only. Зона Азима, мне записать findings.
+- **🟢 Что хорошо:**
+  - 0 `window.alert`/`window.confirm` (лучше чем TMA где 5 мест).
+  - 0 silent `.catch(() => {})` (лучше чем TMA).
+  - Большинство preview URL используют `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` (graceful fallback).
+- **🟠 P1 для Азима:**
+  - **WEB-SELLER-HARDCODED-DOMAIN-001:** 3 места с прямым хардкодом `savdo.uz` без env fallback:
+    - `app/(dashboard)/layout.tsx:127` — sidebar показывает `savdo.uz/${store.slug}`. Если домен ещё не на проде — юзер видит несуществующую ссылку.
+    - `app/(dashboard)/layout.tsx:236` — `navigator.clipboard.writeText('https://savdo.uz/${store.slug}')`. Юзер копирует мёртвую ссылку.
+    - `app/(dashboard)/profile/page.tsx:49` — `storeUrl = 'https://savdo.uz/${store.slug}'`.
+  - Решение: использовать `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` везде (как уже сделано в dashboard/products). Или вынести в общий `lib/buyer-url.ts` helper.
+
+---
+
+## 2026-05-06 [AUDIT-WEB-BUYER-API-CONTRACT-2026-05-06] Web-buyer ↔ API контракт-checkup
+
+- **Статус:** 🟡 1 баг закрыт, остальной web-buyer аудит уже сделан 5 мая (4 параллельных агента, 25 проблем). Это зона Азима — не повторяю.
+- **Моя зона:** проверить что api корректно принимает данные от web-buyer.
+- **🔴 Найдено и закрыто:**
+  - **`BUG-WB-AUDIT-009-API`** ✅: `ConfirmCheckoutDto` не принимал `customerFullName`/`customerPhone`. Фронт давал юзеру редактировать contact-fields, но они терялись (ValidationPipe whitelist=true резал) → Order заполнялся данными из Buyer.firstName/lastName + User.phone, а не из формы. Фикс:
+    - `confirm-checkout.dto.ts` — добавлены optional `customerFullName` (200ch) + `customerPhone` (20ch).
+    - `checkout.controller.ts` — прокидывает в use-case.
+    - `confirm-checkout.use-case.ts` — `input.customerFullName?.trim() || profileFullName` (override > profile fallback).
+- **Контрактный анализ:**
+  - `/checkout/confirm` теперь consistent с `/orders` (CreateDirectOrderDto имеет buyerName/buyerPhone).
+  - DeliveryAddressDto имеет `country` дефолт 'UZ' — норм.
+  - `customerFullName` 200ch — широко, может быть стрес-тест на 50+ char юзера.
+- **Не покрыто моим прогоном (web-buyer внутренний — Азим):** 24 пункта из `WEB-BUYER-AUDIT-2026-05-05` (BUG-WB-AUDIT-001..025) — это всё клиентская работа.
+
+---
+
 ## 2026-05-06 [AUDIT-API-SEC-2026-05-06] API security audit (auth, RBAC, throttle, SQL, CORS, secrets)
 
 - **Статус:** 🟡 Audit-only. 19 controllers, ~250 endpoints.
@@ -1396,3 +1585,74 @@ P2: остальное.
 - **Что сделано:**
   - `apps/api/Dockerfile`: добавлен `RUN apk add --no-cache openssl`
   - `packages/db/prisma/schema.prisma`: добавлен `binaryTargets = ["native", "linux-musl-openssl-3.0.x"]`
+
+---
+
+## [2026-05-09] AUDIT-POLAT-ZONE-2026-05-09 — Полный аудит зоны Полата (api/admin/db)
+
+- **Статус:** 🟡 Предупреждение (backlog)
+- **Контекст:** Пользователь попросил расширить кругозор, увидеть всё что не так в зоне. Запущены 3 параллельных Explore-агента: admin UI/UX, api code/architecture, db schema.
+
+### ADMIN UI/UX — 20 findings
+
+**P0 (4):**
+- `apps/admin/src/pages/AdminUsersPage.tsx:407-420` — `ModalShell` без `role="dialog"`/`aria-modal`/focus-trap
+- `apps/admin/src/pages/LoginPage.tsx:210-229` — 6 OTP-inputs без `<fieldset><legend>`
+- `apps/admin/src/pages/LoginPage.tsx:138` — theme toggle `w-8 h-8` (32px < 44 WCAG)
+- icon-only без `aria-label`: `ModerationPage.tsx:152`, `SellersPage.tsx:69`, `DashboardLayout.tsx:135,223,232`
+
+**P1 (6):** `var(--text-dim)` контраст не проверен на light, `AddAdminDialog` без autoFocus, form validation без `aria-invalid`/`aria-describedby`, `DashboardPage.tsx:73-77` показывает `—` вместо skeleton, pagination disabled слабо видим, `ModerationPage.tsx:412` Close-X без явных размеров.
+
+**P2 (6):** hardcoded `rgba(245,158,11,0.08)`/`rgba(239,68,68,0.08)` (`AdminUsersPage:71,78`), `padding: 32px 32px 48px` нестандарт (`AdminUsersPage:48`,`UsersPage:55`), grid `minmax(320px, 1fr)` без mobile breakpoint, `opacity: 0.5` в disabled может не достигать contrast.
+
+**P3 (4):** нет skip-link, main wrapped в `<main>` (OK), inconsistent icon sizes (12/14/15), light-theme-specific tokens.
+
+### API — 30 findings
+
+**P0 (5):**
+- `products.controller.ts:106,638,679,793` — масса `as unknown as Array<Record<string,unknown> & ...>` casts (schema drift)
+- `admin.controller.ts:445` — `productsRepo.updateStatus(id, "HIDDEN_BY_ADMIN" as any)` обходит Prisma enum
+- `stores.controller.ts:112-119` — `@Body() body: { ids?: unknown }` runtime-validation вместо class-validator DTO
+- `admin/admin-create-seller.use-case.ts:50` — `data: { role: "SELLER" as any }`
+- Inconsistent pagination shapes: storefront `{data, meta}` vs seller `{products, total}`
+
+**P1 (15):**
+- `products.controller.ts` 947 LOC + 16 inject → split на ProductsSellerController + StorefrontController
+- `admin.controller.ts` 702 LOC + 29 inject → split на AdminUsersController/AdminProductsController/AdminOrdersController/AdminBroadcastController/AdminDbController
+- N+1: `products.controller.ts:630-636` resolveStoreImageUrls в `Promise.all(stores.map(...))` — каждый store findMany отдельно
+- `chat/send-message.use-case.ts:115-124` — `findMessageById(parentMessageId)` вызывается дважды
+- `confirm-checkout.use-case.ts` 254 LOC — split на validate-cart, check-stock, create-order sub-use-cases
+- Swagger полностью отсутствует (`@nestjs/swagger`, `@ApiOperation`, `@ApiResponse`)
+- Structured logging отсутствует — везде string-concat в `Logger.log()`
+- `refund-order.use-case.ts:70` TODO — refund пишет в ledger, но НЕ вызывает Click/Payme reverse-tx (financial mismatch)
+- `chat/send-message.use-case.ts:127` — `{ ...message, mediaUrl, parentMessage } as any` для socket emit
+- `orders.controller.ts:66` — `(result as any).orders ?? []` runtime cast
+- Inconsistent error responses: ErrorCode + message vs только message
+- Admin JWT expiresIn хардкод 3600 — ✅ ИСПРАВЛЕНО в этой сессии (jwt.accessExpiresIn config + token.service.getAccessTokenTtlSeconds)
+
+**P2 (10):** только 10 `.spec.ts` на 100+ use-cases, нет e2e для checkout/payment/chat/OTP, дубль `Number(basePrice)` в 3 местах, `void _l; void _c;` suppression, redundant type assertions.
+
+### DB SCHEMA — 32 findings
+
+**P0 (4):**
+- `schema.prisma:121` `User.referredBy` — нет `@relation` self-FK, нет индекса (orphan referrer)
+- `schema.prisma:833` `ChatMessage.senderUserId` — полиморфный (Buyer | Seller), не задокументировано в schema (только комментарий DB-AUDIT-001-01)
+- `schema.prisma:597` `InventoryMovement.productId` — нет `@relation` FK (orphan productId)
+- `schema.prisma:1066` `AuditLog.actor SetNull` — спорно для append-only лога
+
+**P1 (11):** 9 String-полей, должны быть Enum:
+- `SellerVerificationDocument.status` (271), `ModerationCase.status` (1023), `ModerationCase.caseType` (1022), `ModerationAction.actionType` (1042), `OrderRefund.status` (1006), `Cart.status` (622), `SellerVerificationDocument.documentType` (269), `InAppNotification.type` (896), `ChatMessage.messageType` (834)
+Плюс: `Store.telegramChannelId` (296) без индекса, `GlobalCategory(level, isLeaf)` (380-381) без composite-индекса.
+
+**P2 (10):** `BuyerAddress.phone` (220) без `@db.VarChar(20)`, `Decimal(12,2)` (450-452) без CHECK (basePrice > 0), `CategoryFilter.options` (407) JSON без schema-validation, `Seller.telegramUsername` (246) без уникального индекса, `StoreContact.contactType` (342) строка, `InventoryMovement.referenceType` (601) String, не задокументировано какие таблицы пишут в AuditLog.
+
+### Что закрыто в этой сессии (Полат-зона)
+- ✅ `API-ADMIN-JWT-EXPIRES-001` — `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts:189` хардкод `expiresIn: 3600` → `tokenService.getAccessTokenTtlSeconds()`. Добавлен `getAccessTokenTtlSeconds()` в `apps/api/src/modules/auth/services/token.service.ts` (парсит `15m`/`1h`/`3600s`).
+
+### Следующие шаги (приоритет для запуска)
+- P0 admin a11y (focus trap + OTP fieldset + aria-label на icon-only) — быстро, безопасно, daily UX продавцов-админов.
+- P0 api type safety (убрать `as any` / `as unknown as` касты) — рискованный refactor, тесты обязательны.
+- P0 db FK на `User.referredBy` / `InventoryMovement.productId` — миграция + код проверка.
+- P1 split `products.controller.ts` и `admin.controller.ts` — большой, в отдельную сессию.
+- P1 Swagger setup — `API-SWAGGER-001` уже в tasks.md.
+

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { showToast } from '@/components/ui/Toast';
 import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
+import { clickableA11y } from '@/lib/a11y';
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -22,7 +24,10 @@ export default function WishlistPage() {
         setItems(data);
         for (const it of data) setLocalFlag(it.productId, true);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить избранное', 'error');
+      })
       .finally(() => setLoading(false));
   }, [authenticated]);
 
@@ -65,7 +70,9 @@ export default function WishlistPage() {
       )}
 
       {authenticated && loading && (
-        <div className="flex justify-center py-10"><Spinner /></div>
+        <div className={`grid ${cols} gap-3`}>
+          {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+        </div>
       )}
 
       {authenticated && !loading && items.length === 0 && (
@@ -84,7 +91,8 @@ export default function WishlistPage() {
             return (
               <div
                 key={it.id}
-                onClick={() => navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`)}
+                {...clickableA11y(() => navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`))}
+                aria-label={`Открыть товар ${p.title}`}
                 style={{
                   borderRadius: 14,
                   overflow: 'hidden',

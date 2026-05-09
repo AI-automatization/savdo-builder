@@ -110,6 +110,9 @@ export default function ProductPage() {
     navigator.clipboard.writeText(url).then(() => {
       setShared(true);
       setTimeout(() => setShared(false), 2000);
+    }).catch(() => {
+      // Clipboard API may reject on HTTP / Telegram WebView with no permission.
+      // Silent best-effort — sharing is a nice-to-have, not a critical path.
     });
   }
 
@@ -149,15 +152,23 @@ export default function ProductPage() {
     if (product) track.productViewed(product.storeId, product.id);
   }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset & re-initialize variant selection on product change. Triggering only on
+  // product.id (not optionGroups/activeVariants) is intentional — those derive from
+  // product itself, so we always read the freshest value via the closure that fires
+  // for THIS render of THIS product. Back/forward cache used to leave stale selection
+  // because we read snapshot inputs without resetting first.
   useEffect(() => {
     if (!product) return;
     if (hasGroups) {
-      if (Object.keys(selection).length === 0) {
-        setSelection(initialSelectionFromVariants(activeVariants, optionGroups));
-      }
-    } else if (!selectedVariantId && activeVariants.length > 0) {
+      setSelection(initialSelectionFromVariants(activeVariants, optionGroups));
+      setSelectedVariantId(null);
+    } else if (activeVariants.length > 0) {
       const firstInStock = activeVariants.find((v) => v.stockQuantity > 0);
-      if (firstInStock) setSelectedVariantId(firstInStock.id);
+      setSelectedVariantId(firstInStock?.id ?? null);
+      setSelection({});
+    } else {
+      setSelection({});
+      setSelectedVariantId(null);
     }
   }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -649,8 +660,8 @@ export default function ProductPage() {
                     style={{ background: colors.surface }}
                   >
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
-                      style={{ background: colors.brand }}
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0"
+                      style={{ background: colors.brand, color: colors.brandTextOnBg }}
                     >
                       {storeName.charAt(0).toUpperCase()}
                     </div>

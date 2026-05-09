@@ -506,7 +506,7 @@ export default function SellerDetailPage() {
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Создать магазин</h3>
-              <button onClick={() => setShowCreateStore(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+              <button onClick={() => setShowCreateStore(false)} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18, padding: '8px 12px', background: 'rgba(16,185,129,0.06)', borderRadius: 8, borderLeft: '3px solid #10B981' }}>
               Статус ACTIVE, сразу опубликован. Продавец: <strong>{seller.fullName}</strong>

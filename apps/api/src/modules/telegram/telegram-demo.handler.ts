@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TelegramBotService, InlineButton, WebAppButton } from './services/telegram-bot.service';
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
+import { escapeTgHtml } from '../../shared/telegram-html';
 
 // ── Redis keys ────────────────────────────────────────────────────────────────
 const TTL_LONG  = 365 * 24 * 60 * 60; // 1 год — привязка телефона
@@ -94,7 +95,7 @@ export class TelegramDemoHandler {
       // Новый пользователь — просим телефон
       await this.bot.sendMessage(
         chatId,
-        `👋 Привет${firstName ? `, <b>${firstName}</b>` : ''}!\n\nДобро пожаловать в <b>Savdo</b> — маркетплейс в Telegram.\n\nДля входа поделитесь номером телефона:`,
+        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nДобро пожаловать в <b>Savdo</b> — маркетплейс в Telegram.\n\nДля входа поделитесь номером телефона:`,
         { parseMode: 'HTML' },
       );
       await this.bot.sendContactRequest(chatId);
@@ -106,7 +107,7 @@ export class TelegramDemoHandler {
     if (user.phone.startsWith('tg_')) {
       await this.bot.sendMessage(
         chatId,
-        `👋 Привет${firstName ? `, <b>${firstName}</b>` : ''}!\n\nВы уже вошли через наше приложение. Для полноценной работы с ботом поделитесь номером телефона:`,
+        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nВы уже вошли через наше приложение. Для полноценной работы с ботом поделитесь номером телефона:`,
         { parseMode: 'HTML' },
       );
       await this.bot.sendContactRequest(chatId);
@@ -399,7 +400,7 @@ export class TelegramDemoHandler {
 
       await this.bot.sendInlineKeyboard(
         chatId,
-        `🎉 <b>Магазин создан!</b>\n\n🏪 ${storeName}\n🔗 savdo.uz/${slug}\n\nТеперь настройте Telegram-канал для автопостинга товаров:`,
+        `🎉 <b>Магазин создан!</b>\n\n🏪 ${escapeTgHtml(storeName)}\n🔗 savdo.uz/${escapeTgHtml(slug)}\n\nТеперь настройте Telegram-канал для автопостинга товаров:`,
         [
           [{ text: '📢 Привязать TG канал', callback_data: 'seller_link_channel' }],
           [{ text: '⏭ Пропустить',         callback_data: 'seller_skip_channel'  }],
@@ -476,7 +477,7 @@ export class TelegramDemoHandler {
       await this.setState(chatId, 'awaiting_channel');
       await this.bot.sendMessage(
         chatId,
-        `✅ Магазин <b>${name}</b> создан!\n\n📢 <b>Теперь привяжем Telegram-канал</b>\n\n1. Добавьте бота как <b>администратора</b> в ваш канал\n2. Отправьте сюда <b>username канала</b>, например:\n\n<code>@mystore_channel</code>`,
+        `✅ Магазин <b>${escapeTgHtml(name)}</b> создан!\n\n📢 <b>Теперь привяжем Telegram-канал</b>\n\n1. Добавьте бота как <b>администратора</b> в ваш канал\n2. Отправьте сюда <b>username канала</b>, например:\n\n<code>@mystore_channel</code>`,
         { parseMode: 'HTML' },
       );
     } catch (err) {
@@ -562,7 +563,7 @@ export class TelegramDemoHandler {
     if (!product) return;
 
     const price = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;
-    const caption = `🛍 <b>${product.title}</b>\n\n${product.description ? `📝 ${product.description}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${store.name}`;
+    const caption = `🛍 <b>${escapeTgHtml(product.title)}</b>\n\n${product.description ? `📝 ${escapeTgHtml(product.description)}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${escapeTgHtml(store.name)}`;
 
     const tmaUrl = process.env.TMA_URL ?? '';
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
@@ -625,7 +626,7 @@ export class TelegramDemoHandler {
     ];
     await this.bot.sendWithWebApp(
       chatId,
-      `👋 <b>${name || 'Продавец'}</b>, панель управления:\n\n💡 <i>Для удобного управления товарами используйте приложение</i>`,
+      `👋 <b>${name ? escapeTgHtml(name) : 'Продавец'}</b>, панель управления:\n\n💡 <i>Для удобного управления товарами используйте приложение</i>`,
       rows,
       'HTML',
     );
@@ -653,7 +654,7 @@ export class TelegramDemoHandler {
       : 0;
 
     const text = store
-      ? `📦 <b>Мои товары — ${store.name}</b>\n\nВсего товаров: <b>${productCount}</b>\n\n<i>Управляйте товарами, добавляйте новые и публикуйте их прямо в приложении. При публикации товар автоматически появится в вашем Telegram-канале.</i>`
+      ? `📦 <b>Мои товары — ${escapeTgHtml(store.name)}</b>\n\nВсего товаров: <b>${productCount}</b>\n\n<i>Управляйте товарами, добавляйте новые и публикуйте их прямо в приложении. При публикации товар автоматически появится в вашем Telegram-канале.</i>`
       : `📦 <b>Товары</b>\n\n<i>Создайте магазин чтобы добавлять товары.</i>`;
 
     await this.bot.sendToChannel(
@@ -720,12 +721,12 @@ export class TelegramDemoHandler {
     if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
 
     const channel = store.telegramChannelId
-      ? `\n📢 Канал: ${store.telegramChannelTitle ?? store.telegramChannelId}`
+      ? `\n📢 Канал: ${escapeTgHtml(store.telegramChannelTitle ?? store.telegramChannelId)}`
       : `\n📢 Канал: не привязан`;
 
     await this.bot.sendMessage(
       chatId,
-      `🏪 <b>${store.name}</b>\n🔗 savdo.uz/${store.slug}\n📌 Статус: ${store.status}${channel}`,
+      `🏪 <b>${escapeTgHtml(store.name)}</b>\n🔗 savdo.uz/${escapeTgHtml(store.slug)}\n📌 Статус: ${store.status}${channel}`,
       { parseMode: 'HTML' },
     );
   }
@@ -745,7 +746,7 @@ export class TelegramDemoHandler {
 
     await this.bot.sendMessage(
       chatId,
-      `📊 <b>Статистика «${store.name}»</b>\n\n📦 Товаров: <b>${productCount}</b>\n🛒 Всего заказов: <b>${orderCount}</b>`,
+      `📊 <b>Статистика «${escapeTgHtml(store.name)}»</b>\n\n📦 Товаров: <b>${productCount}</b>\n🛒 Всего заказов: <b>${orderCount}</b>`,
       { parseMode: 'HTML' },
     );
   }
@@ -762,7 +763,7 @@ export class TelegramDemoHandler {
       [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
       [{ text: '📦 Мои заказы',   callback_data: 'buyer_orders'     }],
     ];
-    await this.bot.sendWithWebApp(chatId, `👋 Привет, <b>${name}</b>!`, rows, 'HTML');
+    await this.bot.sendWithWebApp(chatId, `👋 Привет, <b>${escapeTgHtml(name)}</b>!`, rows, 'HTML');
   }
 
   async handleBuyerFindStore(chatId: string): Promise<void> {
@@ -777,7 +778,7 @@ export class TelegramDemoHandler {
     if (!store) {
       await this.bot.sendInlineKeyboard(
         chatId,
-        `❌ Магазин <code>${slug}</code> не найден.`,
+        `❌ Магазин <code>${escapeTgHtml(slug)}</code> не найден.`,
         [[{ text: '🔍 Искать снова', callback_data: 'buyer_find_store' }]],
         'HTML',
       );
@@ -791,7 +792,7 @@ export class TelegramDemoHandler {
     });
 
     const productLines = products.length
-      ? products.map((p, i) => `${i + 1}. <b>${p.title}</b> — ${Number(String(p.basePrice ?? 0)).toLocaleString('ru')} сум`).join('\n')
+      ? products.map((p, i) => `${i + 1}. <b>${escapeTgHtml(p.title)}</b> — ${Number(String(p.basePrice ?? 0)).toLocaleString('ru')} сум`).join('\n')
       : '📭 Товаров пока нет';
 
     const tmaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
@@ -800,7 +801,7 @@ export class TelegramDemoHandler {
       ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
       : tmaUrl;
     await this.bot.sendToChannel(chatId, // sendToChannel работает и для личных чатов
-      `🏪 <b>${store.name}</b>\n\n${store.description ? `${store.description}\n\n` : ''}<b>Товары:</b>\n${productLines}`,
+      `🏪 <b>${escapeTgHtml(store.name)}</b>\n\n${store.description ? `${escapeTgHtml(store.description)}\n\n` : ''}<b>Товары:</b>\n${productLines}`,
       [[{ text: '🛒 Открыть магазин', url: storeLink }]],
       'HTML',
     );

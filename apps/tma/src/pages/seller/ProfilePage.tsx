@@ -6,6 +6,8 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { showToast } from '@/components/ui/Toast';
 import { webStoreUrl } from '@/lib/webUrl';
 
 interface Store {
@@ -32,7 +34,11 @@ export default function SellerProfilePage() {
     abortRef.current = ac;
     api<Store>('/seller/store', { signal: ac.signal })
       .then((s) => { if (!ac.signal.aborted) setStore(s); })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить профиль магазина', 'error');
+      });
     return () => ac.abort();
   }, []);
 
@@ -49,8 +55,9 @@ export default function SellerProfilePage() {
   const copyStoreLink = () => {
     if (!store) return;
     const link = `https://t.me/${BOT_USERNAME}?startapp=store_${store.slug}`;
-    navigator.clipboard.writeText(link).catch(() => {});
-    tg?.HapticFeedback.notificationOccurred('success');
+    navigator.clipboard.writeText(link)
+      .then(() => { tg?.HapticFeedback.notificationOccurred('success'); })
+      .catch(() => { showToast('Не удалось скопировать ссылку', 'error'); });
     track.storeLinkCopied(store.id);
   };
 
@@ -85,6 +92,19 @@ export default function SellerProfilePage() {
             Продавец
           </span>
         </GlassCard>
+
+        {/* Магазин — skeleton до прихода ответа */}
+        {!store && (
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <Skeleton style={{ height: 12, width: 100 }} />
+              <Skeleton style={{ height: 18, width: 60, borderRadius: 9999 }} />
+            </div>
+            <Skeleton style={{ height: 16, width: '50%' }} />
+            <Skeleton style={{ height: 22, width: 130 }} />
+            <Skeleton style={{ height: 12, width: '70%' }} />
+          </GlassCard>
+        )}
 
         {/* Магазин */}
         {store && (

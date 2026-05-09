@@ -266,7 +266,7 @@ export default function CartPage() {
       >
         <Link
           href="/"
-          className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover-soft"
           style={{ color: colors.textPrimary }}
           aria-label="Назад"
         >
@@ -336,8 +336,8 @@ export default function CartPage() {
             style={{ background: colors.surface, borderColor: colors.divider }}
           >
             <div
-              className="w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-              style={{ background: colors.brand }}
+              className="w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+              style={{ background: colors.brand, color: colors.brandTextOnBg }}
             >
               {storeInitial}
             </div>
@@ -490,7 +490,7 @@ export default function CartPage() {
       {/* ── Mobile sticky CTA ─────────────────────────────────────────────── */}
       {items.length > 0 && (
         <div
-          className="md:hidden sticky bottom-0 z-30 p-3 border-t"
+          className="md:hidden sticky bottom-0 z-[51] p-3 border-t"
           style={{ background: colors.surfaceMuted, borderColor: colors.divider }}
         >
           <Link

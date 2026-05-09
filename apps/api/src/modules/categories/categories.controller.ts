@@ -16,7 +16,10 @@ import { IsString, IsNotEmpty, MaxLength, IsOptional, IsBoolean, IsInt, IsUUID }
 import { Type } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
+import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateStoreCategoryDto } from './dto/create-store-category.dto';
 import { UpdateStoreCategoryDto } from './dto/update-store-category.dto';
@@ -156,14 +159,16 @@ export class CategoriesController {
   // ─── Seller ───────────────────────────────────────────────────────────────────
 
   @Get('seller/categories')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listMyStoreCategories(@CurrentUser() user: JwtPayload) {
     const storeId = await this.resolveStoreId(user.sub);
     return this.getStoreCategories.execute(storeId);
   }
 
   @Post('seller/categories')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createCategory(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateStoreCategoryDto,
@@ -173,7 +178,8 @@ export class CategoriesController {
   }
 
   @Patch('seller/categories/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateCategory(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -184,7 +190,8 @@ export class CategoriesController {
   }
 
   @Delete('seller/categories/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteCategory(
     @CurrentUser() user: JwtPayload,
@@ -197,8 +204,9 @@ export class CategoriesController {
   // ─── Admin — GlobalCategory CRUD ─────────────────────────────────────────────
 
   @Post('admin/categories/seed')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('category:moderate')
   async adminSeedCategories() {
     const [cats, filters] = await Promise.all([
       this.seedService.seedCategories(),
@@ -208,15 +216,17 @@ export class CategoriesController {
   }
 
   @Get('admin/categories')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('category:read')
   async adminListCategories() {
     return this.globalCategoriesRepo.findAll();
   }
 
   @Post('admin/categories')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('category:moderate')
   async adminCreateCategory(@Body() dto: CreateGlobalCategoryDto) {
     const existing = await this.globalCategoriesRepo.findBySlug(dto.slug);
     if (existing) {
@@ -230,8 +240,9 @@ export class CategoriesController {
   }
 
   @Patch('admin/categories/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('category:moderate')
   async adminUpdateCategory(
     @Param('id') id: string,
     @Body() dto: UpdateGlobalCategoryDto,
@@ -252,8 +263,9 @@ export class CategoriesController {
   }
 
   @Delete('admin/categories/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
+  @AdminPermission('category:moderate')
   @HttpCode(HttpStatus.NO_CONTENT)
   async adminDeleteCategory(@Param('id') id: string) {
     const cat = await this.globalCategoriesRepo.findById(id);

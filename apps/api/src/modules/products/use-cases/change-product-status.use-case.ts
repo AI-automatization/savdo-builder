@@ -5,6 +5,7 @@ import { ErrorCode } from '../../../shared/constants/error-codes';
 import { Product, ProductStatus } from '@prisma/client';
 import { TelegramBotService } from '../../telegram/services/telegram-bot.service';
 import { PrismaService } from '../../../database/prisma.service';
+import { escapeTgHtml } from '../../../shared/telegram-html';
 
 // Valid transitions per docs/V1.1/02_state_machines.md
 // DRAFT → ACTIVE, ACTIVE → ARCHIVED, ACTIVE → DRAFT, ARCHIVED → ACTIVE
@@ -82,7 +83,7 @@ export class ChangeProductStatusUseCase {
     const deepLink    = botUsername && store.slug
       ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
       : tmaUrl;
-    const text    = `🛍 <b>${product.title}</b>\n\n${product.description ? `${product.description}\n\n` : ''}💰 <b>${price}</b>\n\n🏪 ${store.name}`;
+    const text    = `🛍 <b>${escapeTgHtml(product.title)}</b>\n\n${product.description ? `${escapeTgHtml(product.description)}\n\n` : ''}💰 <b>${price}</b>\n\n🏪 ${escapeTgHtml(store.name)}`;
     const buttons = [
       [{ text: '🛒 Открыть магазин', url: deepLink }],
       [{ text: '💬 Написать продавцу', url: store.telegramContactLink || deepLink }],

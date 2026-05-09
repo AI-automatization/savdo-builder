@@ -5,10 +5,12 @@ import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { showToast } from '@/components/ui/Toast';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Spinner } from '@/components/ui/Spinner';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { WishlistButton } from '@/components/ui/WishlistButton';
+import { ProductReviews } from '@/components/reviews/ProductReviews';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
 import {
   findVariantBySelection,
   initialSelectionFromVariants,
@@ -41,6 +43,9 @@ interface Product {
   attributes?: ProductAttribute[];
   store?: { name: string; slug: string };
   globalCategory?: { id: string; nameRu: string } | null;
+  // FEAT-008: денормализованные агрегаты отзывов
+  avgRating?: number | string | null;
+  reviewCount?: number;
 }
 
 export default function ProductPage() {
@@ -194,9 +199,17 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      
-        <div className="flex justify-center py-10"><Spinner size={32} /></div>
-      
+      <div className="flex flex-col gap-4">
+        <Skeleton style={{ aspectRatio: '1/1', borderRadius: 16, width: '100%' }} />
+        <Skeleton style={{ height: 24, width: '70%' }} />
+        <Skeleton style={{ height: 28, width: '40%' }} />
+        <div className="flex flex-col gap-2 mt-2">
+          <Skeleton style={{ height: 14, width: '95%' }} />
+          <Skeleton style={{ height: 14, width: '85%' }} />
+          <Skeleton style={{ height: 14, width: '60%' }} />
+        </div>
+        <Skeleton style={{ height: 48, marginTop: 8 }} />
+      </div>
     );
   }
 
@@ -237,9 +250,10 @@ export default function ProductPage() {
   const galleryNode = (
     displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
       <div
+        {...clickableA11y(() => setActiveImage(0))}
+        aria-label="Открыть фото товара"
         className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
         style={{ aspectRatio: '1' }}
-        onClick={() => setActiveImage(0)}
       >
         {images.slice(0, 4).map((url, idx) => (
           <div key={idx} className="relative overflow-hidden bg-white/5">
@@ -484,6 +498,13 @@ export default function ProductPage() {
         >
           💬 {contacting ? 'Открываем чат...' : 'Задать вопрос продавцу'}
         </button>
+
+        {/* FEAT-008: отзывы */}
+        <ProductReviews
+          productId={product.id}
+          initialAvg={product.avgRating != null ? Number(product.avgRating) : null}
+          initialCount={product.reviewCount}
+        />
         </div>
       </div>
 

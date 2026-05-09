@@ -6,7 +6,7 @@ import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductDetailSkeleton } from '@/components/ui/Skeleton';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { glass } from '@/lib/styles';
 
@@ -34,6 +34,9 @@ interface ProductImage {
   sortOrder: number;
   isPrimary: boolean;
   media: { id: string; objectKey: string; mimeType: string };
+  // TMA-MEDIA-USE-API-URL-001: API уже резолвит URL — не вызываем getImageUrl
+  // на фронте (зависит от VITE_R2_PUBLIC_URL который надо ставить per-env).
+  url?: string;
 }
 
 interface StoreCategory {
@@ -144,10 +147,13 @@ export default function EditProductPage() {
         for (const v of p.variants) initial[v.id] = v.stockQuantity === 0 ? '' : String(v.stockQuantity);
         setStockEdits(initial);
       }
-      // Load attributes
+      // Load attributes — non-fatal, product still editable without them
       api<ProductAttr[]>(`/seller/products/${id}/attributes`, { signal })
         .then((a) => { if (!signal?.aborted) setAttrs(a); })
-        .catch(() => {});
+        .catch((err: unknown) => {
+          if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+          showToast('Не удалось загрузить характеристики товара');
+        });
     } catch {
       if (!signal?.aborted) setLoadError('Не удалось загрузить товар');
     } finally {
@@ -172,10 +178,18 @@ export default function EditProductPage() {
     catsAbortRef.current = ac;
     api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setCategories(c); })
-      .catch(() => {});
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить разделы магазина');
+      });
     api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
-      .catch(() => {});
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить категории каталога');
+      });
     return () => ac.abort();
   }, []);
 
@@ -253,8 +267,15 @@ export default function EditProductPage() {
 
   const deleteAttr = async (attrId: string) => {
     if (!id) return;
-    await api(`/seller/products/${id}/attributes/${attrId}`, { method: 'DELETE' }).catch(() => {});
-    setAttrs((prev) => prev.filter((a) => a.id !== attrId));
+    const prev = attrs;
+    setAttrs((p) => p.filter((a) => a.id !== attrId));
+    try {
+      await api(`/seller/products/${id}/attributes/${attrId}`, { method: 'DELETE' });
+    } catch (err) {
+      setAttrs(prev);
+      const msg = err instanceof Error ? err.message : 'Не удалось удалить характеристику';
+      showToast(`❌ ${msg}`);
+    }
   };
 
   // TMA-DYNAMIC-VARIANT-FILTERS-EDIT-001: добавить новый variant в существующую
@@ -576,7 +597,7 @@ export default function EditProductPage() {
           Редактировать товар
         </h1>
 
-        {loading && <div className="flex justify-center py-10"><Spinner size={32} /></div>}
+        {loading && <ProductDetailSkeleton />}
 
         {!loading && loadError && (
           <GlassCard className="p-4 text-center">
@@ -809,7 +830,9 @@ export default function EditProductPage() {
               {(product.images?.length ?? 0) > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {product.images!.map((img) => {
-                    const url = getImageUrl(img.media.objectKey, img.media.id);
+                    // TMA-MEDIA-USE-API-URL-001: API кладёт резолвлённый URL в img.url.
+                    // Fallback на getImageUrl только для backward-compat (старый клиент + новый API).
+                    const url = img.url ?? getImageUrl(img.media.objectKey, img.media.id);
                     return (
                       <div key={img.id} style={{ position: 'relative', width: 72, height: 72 }}>
                         {url ? (

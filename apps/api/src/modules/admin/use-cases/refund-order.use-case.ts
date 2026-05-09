@@ -53,11 +53,11 @@ export class RefundOrderUseCase {
     }
 
     // Проверка: не было ли уже refund'ов на эту сумму
-    const existingRefunds = await (this.prisma as any).orderRefund.findMany({
+    const existingRefunds = await this.prisma.orderRefund.findMany({
       where: { orderId: input.orderId, status: 'completed' },
       select: { amount: true },
     });
-    const alreadyRefunded = existingRefunds.reduce((s: number, r: any) => s + Number(r.amount), 0);
+    const alreadyRefunded = existingRefunds.reduce((s, r) => s + Number(r.amount), 0);
     const remaining = orderTotal - alreadyRefunded;
     if (refundAmount > remaining) {
       throw new DomainException(
@@ -73,7 +73,7 @@ export class RefundOrderUseCase {
     const isFullRefund = refundAmount + alreadyRefunded >= orderTotal;
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const refund = await (tx as any).orderRefund.create({
+      const refund = await tx.orderRefund.create({
         data: {
           orderId: input.orderId,
           adminId: input.adminId,

@@ -15,6 +15,7 @@ import { OrderStatus } from "types";
 import { ShoppingCart } from "lucide-react";
 import { colors, shell, shellTop } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { buyerStoreDisplay, buyerStoreUrl } from "@/lib/buyer-url";
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 
@@ -72,9 +73,9 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
         <Link href="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #A78BFA)", boxShadow: "0 4px 14px rgba(167,139,250,.40)" }}
+            style={{ background: colors.accent }}
           >
-            <ShoppingCart size={16} color="#fff" />
+            <ShoppingCart size={16} color={colors.accentTextOnBg} />
           </div>
           <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
         </Link>
@@ -124,7 +125,7 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
           <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: colors.textDim }}>Ваш магазин</p>
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs truncate" style={{ color: colors.textMuted }}>
-              {store ? `savdo.uz/${store.slug}` : 'savdo.uz/...'}
+              {store ? buyerStoreDisplay(store.slug) : 'savdo.uz/...'}
             </span>
             <button
               className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0 transition-opacity hover:opacity-80"
@@ -167,7 +168,7 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
           disabled={logoutPending}
           title="Выйти"
           style={{ color: colors.textDim }}
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-40 hover:opacity-80 hover:bg-white/[0.03] transition-opacity"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-40 hover:opacity-80 row-hoverable transition-opacity"
           aria-label="Выйти"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
@@ -233,7 +234,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     onLogout: handleLogout,
     onCopyLink: () => {
       if (!store) return;
-      navigator.clipboard.writeText(`https://savdo.uz/${store.slug}`);
+      navigator.clipboard.writeText(buyerStoreUrl(store.slug));
       track.storeLinkCopied(store.id);
     },
   };
@@ -312,7 +313,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {unreadCount > 0 && (
                 <span
                   className="absolute -top-1 -right-1.5 flex items-center justify-center rounded-full font-bold"
-                  style={{ minWidth: 14, height: 14, padding: '0 3px', fontSize: 9, background: colors.accent, color: colors.accentTextOnBg, borderRadius: 7 }}
+                  style={{ minWidth: 16, height: 16, padding: '0 4px', fontSize: 10, background: colors.accent, color: colors.accentTextOnBg, borderRadius: 8 }}
                 >
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
@@ -338,7 +339,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 background: colors.surfaceElevated,
                 color: colors.textPrimary,
                 border: `1px solid ${colors.accentBorder}`,
-                boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
                 animation: 'fadeSlideIn 0.25s ease',
               }}
             >

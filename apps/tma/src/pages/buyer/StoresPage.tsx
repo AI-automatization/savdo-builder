@@ -1,9 +1,9 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Spinner } from '@/components/ui/Spinner';
+import { ThreadRowSkeleton, ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { Sticker } from '@/components/ui/Sticker';
 import { ProductCard, type FeedProduct } from '@/components/ui/ProductCard';
 
@@ -31,9 +31,11 @@ export default function StoresPage() {
 
   // ── Stores tab ─────────────────────────────────────────────────────────────
   const [stores, setStores] = useState<Store[]>([]);
+  const [searchedStores, setSearchedStores] = useState<Store[] | null>(null);
   const [storesLoading, setStoresLoading] = useState(true);
   const [storesError, setStoresError] = useState(false);
   const [storesQuery, setStoresQuery] = useState('');
+  const [debouncedStoresQuery, setDebouncedStoresQuery] = useState('');
 
   const storesAbortRef = useRef<AbortController | null>(null);
   const loadStores = () => {
@@ -60,16 +62,33 @@ export default function StoresPage() {
     return () => storesAbortRef.current?.abort();
   }, []);
 
-  const filteredStores = useMemo(() => {
-    if (!storesQuery.trim()) return stores;
-    const q = storesQuery.toLowerCase().trim();
-    return stores.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.description?.toLowerCase().includes(q) ||
-        s.city?.toLowerCase().includes(q),
-    );
-  }, [stores, storesQuery]);
+  // FEAT-001: debounce поискового запроса 250ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedStoresQuery(storesQuery.trim()), 250);
+    return () => clearTimeout(t);
+  }, [storesQuery]);
+
+  // FEAT-001-FE: при q >= 2 символов делаем server-side поиск через
+  // /storefront/search — он ILIKE по name+description+slug по всей БД,
+  // а не только по 50 загруженным магазинам.
+  const searchAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (tab !== 'stores') return;
+    if (debouncedStoresQuery.length < 2) {
+      setSearchedStores(null);
+      return;
+    }
+    searchAbortRef.current?.abort();
+    const ac = new AbortController();
+    searchAbortRef.current = ac;
+    const params = new URLSearchParams({ q: debouncedStoresQuery, limit: '20' });
+    api<{ stores: Store[] }>(`/storefront/search?${params}`, { signal: ac.signal })
+      .then((res) => { if (!ac.signal.aborted) setSearchedStores(res.stores ?? []); })
+      .catch(() => { /* abort/error: оставляем прежний результат */ });
+    return () => ac.abort();
+  }, [tab, debouncedStoresQuery]);
+
+  const filteredStores = searchedStores !== null ? searchedStores : stores;
 
   // ── Products tab ───────────────────────────────────────────────────────────
   const [products, setProducts] = useState<FeedProduct[]>([]);
@@ -78,6 +97,14 @@ export default function StoresPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [sort, setSort] = useState<'new' | 'price_asc' | 'price_desc'>('new');
   const [activeCat, setActiveCat] = useState<string | null>(null);
+  // FEAT-003-FE: ценовой диапазон. Храним как строку (input-friendly), парсим в submit.
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [debouncedPrice, setDebouncedPrice] = useState({ min: '', max: '' });
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedPrice({ min: priceMin.trim(), max: priceMax.trim() }), 400);
+    return () => clearTimeout(t);
+  }, [priceMin, priceMax]);
   const [globalCategories, setGlobalCategories] = useState<GlobalCategory[]>([]);
   const catsLoaded = useRef(false);
 
@@ -89,7 +116,7 @@ export default function StoresPage() {
   useEffect(() => {
     if (tab !== 'products' || catsLoaded.current) return;
     catsLoaded.current = true;
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {/* best-effort: category filters are supplementary */});
   }, [tab]);
 
   const productsAbortRef = useRef<AbortController | null>(null);
@@ -102,12 +129,14 @@ export default function StoresPage() {
     const params = new URLSearchParams({ sort });
     if (debouncedQuery.trim()) params.set('q', debouncedQuery.trim());
     if (activeCat) params.set('globalCategoryId', activeCat);
+    if (debouncedPrice.min && Number(debouncedPrice.min) > 0) params.set('priceMin', debouncedPrice.min);
+    if (debouncedPrice.max && Number(debouncedPrice.max) > 0) params.set('priceMax', debouncedPrice.max);
     api<{ data: FeedProduct[]; meta: { total: number; page: number } }>(`/storefront/products?${params}`, { signal: ac.signal })
       .then((res) => { if (!ac.signal.aborted) setProducts(res.data ?? []); })
       .catch(() => { /* abort/error: оставляем прежний список */ })
       .finally(() => { if (!ac.signal.aborted) setProductsLoading(false); });
     return () => ac.abort();
-  }, [tab, debouncedQuery, activeCat, sort]);
+  }, [tab, debouncedQuery, activeCat, sort, debouncedPrice]);
 
   const openTgContact = (e: React.MouseEvent, link: string) => {
     e.stopPropagation();
@@ -231,27 +260,60 @@ export default function StoresPage() {
           </div>
         )}
 
-        {/* Products tab — sort */}
+        {/* Products tab — sort + price range (FEAT-003-FE) */}
         {tab === 'products' && (
-          <div className="flex gap-2">
-            {([
-              { value: 'new', label: 'Новые' },
-              { value: 'price_asc', label: '↑ Цена' },
-              { value: 'price_desc', label: '↓ Цена' },
-            ] as const).map((s) => (
-              <button
-                key={s.value}
-                onClick={() => setSort(s.value)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
-                style={sort !== s.value ? {
-                  background: 'rgba(255,255,255,0.06)',
-                  color: 'rgba(255,255,255,0.45)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                } : undefined}
-              >
-                {s.label}
-              </button>
-            ))}
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {([
+                { value: 'new', label: 'Новые' },
+                { value: 'price_asc', label: '↑ Цена' },
+                { value: 'price_desc', label: '↓ Цена' },
+              ] as const).map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setSort(s.value)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
+                  style={sort !== s.value ? {
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'rgba(255,255,255,0.45)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  } : undefined}
+                >
+                  {s.label}
+                </button>
+              ))}
+              {(priceMin || priceMax) && (
+                <button
+                  onClick={() => { setPriceMin(''); setPriceMax(''); }}
+                  className="px-3 py-1 rounded-lg text-xs font-medium"
+                  style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
+                >
+                  ✕ Сброс цены
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value.replace(/[^\d]/g, ''))}
+                placeholder="Цена от"
+                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+              />
+              <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: 12 }}>—</span>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value.replace(/[^\d]/g, ''))}
+                placeholder="до"
+                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+              />
+              <span style={{ color: 'rgba(255,255,255,0.40)', fontSize: 11 }}>сум</span>
+            </div>
           </div>
         )}
 
@@ -261,7 +323,9 @@ export default function StoresPage() {
             <div className="section-label">Магазины</div>
 
             {storesLoading && (
-              <div className="flex justify-center py-8"><Spinner /></div>
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4].map((i) => <ThreadRowSkeleton key={i} />)}
+              </div>
             )}
 
             {!storesLoading && storesError && (
@@ -342,7 +406,14 @@ export default function StoresPage() {
         {tab === 'products' && (
           <>
             {productsLoading && (
-              <div className="flex justify-center py-8"><Spinner /></div>
+              <div className={`grid gap-3 ${
+                viewportWidth >= 1280 ? 'grid-cols-6' :
+                viewportWidth >= 1024 ? 'grid-cols-5' :
+                viewportWidth >= 768  ? 'grid-cols-4' :
+                viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2'
+              }`}>
+                {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </div>
             )}
 
             {!productsLoading && products.length === 0 && (

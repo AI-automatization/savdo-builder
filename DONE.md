@@ -36,6 +36,75 @@
 ### ✅ [Phase 1.1] Кнопка «+ Добавить» больше не под Telegram MainBar
 - `apps/tma/src/pages/seller/ProductsPage.tsx` — `paddingRight: 56px` на header-row для мобильной ширины (<768px).
 
+## Полный sweep — frontend для всех FEAT-* + reviews stack (06.05.2026 поздним вечером)
+
+### ✅ [FEAT-001-FE] Server-side stores search в TMA
+- `apps/tma/src/pages/buyer/StoresPage.tsx` — при `q.length >= 2` debounced (250ms) вызов `/storefront/search?q=&limit=20`. Иначе показываем все 50 загруженных. Замена client-side filter на server-side.
+
+### ✅ [FEAT-003-FE] Price range фильтр в Products tab
+- 2 numeric input «Цена от» — «до» с маской `[^\d]/g` чтобы only digits. Debounce 400ms → попадает в `priceMin`/`priceMax` query.
+- Кнопка «✕ Сброс цены» когда хотя бы один заполнен.
+
+### ✅ [FEAT-004-FE] Seller «✉ Написать покупателю» на странице заказа
+- В detail BottomSheet → кнопка появляется только если `detail.buyer` (не guest checkout).
+- Modal: textarea (max 1000) + Cancel/Submit. Submit → `POST /seller/chat/threads` → toast → navigate `/seller/chat/${threadId}`.
+
+### ✅ [FEAT-005-FE] Typing indicator в обоих ChatPage
+- Новый hook `useChatTyping(threadId, role)` с throttled emit (1.5с между отправками `isTyping=true`) + auto-stop таймер 2.5с после последнего ввода.
+- Подписан на `chat:typing` от сокета — фильтрует свою роль; auto-fade indicator через 3с если новый ивент не пришёл.
+- В bubble — 3 анимированные точки (CSS keyframes `typing-bounce` в index.css). Send button и Enter сбрасывают `emitTyping(false)`.
+
+### ✅ [FEAT-006-FE] Seller Analytics card на DashboardPage
+- Новый `apps/tma/src/components/seller/SellerAnalyticsCard.tsx` — fetch `/seller/analytics`, период-селектор 7/30/90, 3 KPI блока (Выручка/Заказы/В работе).
+- SVG sparkline без recharts (легче бандл) — area-chart с gradient fill + точка в конце.
+- Топ-3 товара по выручке снизу.
+- Вставлен и в desktop, и в mobile layout.
+
+### ✅ [FEAT-008] Отзывы и рейтинг — full stack
+- **DB**: `packages/db/prisma/schema.prisma` + миграция `20260506000000_product_reviews/migration.sql`. Новая `model ProductReview { productId, buyerId, orderItemId @unique, rating, comment? }` с CHECK rating BETWEEN 1 AND 5. Денормализованные `Product.avgRating Decimal(3,2)` и `Product.reviewCount`.
+- **Backend** (`apps/api/src/modules/reviews/`):
+  - `POST /buyer/orders/:orderId/items/:itemId/review` — require DELIVERED, owner check, 1:1 orderItem (защита от дублей), throttle 10/min.
+  - `GET /storefront/products/:id/reviews?page=&limit=` — public, рейтинг + comment + автор (firstName или masked phone +998 *** ** ** XX).
+  - `ReviewsRepository.refreshProductAggregate()` пересчитывает AVG/COUNT после insert/delete.
+- **Frontend**:
+  - `Stars` shared компонент (`@/components/ui/Stars.tsx`) — read-only + interactive с keyboard support.
+  - `ProductReviews` блок на `buyer/ProductPage` — список + пагинация «Показать все».
+  - На `buyer/OrdersPage` для каждого item DELIVERED — кнопка «⭐ Оценить товар» → modal со звёздами + textarea + submit.
+
+### ✅ [FEAT-003 backend] Ценовой диапазон в фильтре товаров
+- `GET /storefront/products` теперь принимает `priceMin` и `priceMax` (UZS).
+- Логика в `ProductsRepository.findAllPublic()`: добавляет `basePrice: { gte, lte }` в WHERE.
+- Парсинг защищён: NaN/отрицательные значения игнорируются (превращаются в undefined).
+- Уже было: `q`, `globalCategoryId`, `sort=new|price_asc|price_desc`. Категории + сортировка работали; не было только цены.
+- Frontend FEAT-003-FE — bottom-sheet с range slider + sort radio.
+
+### ✅ [FEAT-004 backend] Seller инициирует чат с buyer заказа
+- `POST /seller/chat/threads` — `@Roles('SELLER')`, throttle 10/min.
+- Новый use-case `CreateSellerThreadUseCase`: проверяет `order.sellerId === seller.id`, идемпотентно переиспользует существующий тред для пары (buyer, order), пропускает первое сообщение через `SendMessageUseCase` (получает socket emit + TG push покупателю).
+- 422 если order без buyerId (guest checkout) — нечего открывать.
+- Frontend FEAT-004-FE — кнопка «✉ Написать» на странице заказа продавца → modal.
+
+### ✅ [FEAT-005 backend] Typing indicator socket event
+- `chat.gateway.ts` принимает `chat:typing { threadId, isTyping }` и ретранслирует в комнату `thread:${id}` всем кроме отправителя как `chat:typing { threadId, role, isTyping }`.
+- Anti-spoof: emit игнорируется если client не в комнате (т.е. не прошёл `join-chat-room` с проверкой участника).
+- Без БД-записи — эфемерное событие, auto-stop через клиентский debounce (3s).
+
+### ✅ [FEAT-006 backend] Seller Analytics с period-фильтром
+- `GET /seller/analytics?from=&to=` — `@Roles('SELLER')`. Default период = 30 дней. Cap 90 дней (BadRequest при превышении).
+- Новый use-case `GetSellerAnalyticsUseCase` агрегирует Order + OrderItem из БД:
+  - `revenue.{total,completed,pending}` — completed = DELIVERED, pending = CONFIRMED+PROCESSING+SHIPPED.
+  - `orders.{total, byStatus}` — счётчик по всем 6 OrderStatus.
+  - `topProducts[5]` — top-5 по выручке (sum(lineTotalAmount)), исключая CANCELLED.
+  - `daily[]` — массив `{date, revenue, orderCount}` с заполнением пустых дней нулями (для графика).
+- Frontend часть — отдельная задача FEAT-006-FE (recharts + period-селектор).
+
+### ✅ [FEAT-001 backend] Единый поиск товаров+магазинов
+- `GET /storefront/search?q=&limit=` — case-insensitive ILIKE по `name`/`title`/`description`/`slug`.
+- Защита: minimum 2 символа в `q`, throttle 30 req/min, limit clamp 1-30.
+- Параллельный поиск stores + products в одном HTTP-запросе → один round-trip с фронта.
+- Новые методы: `StoresRepository.searchPublic()`, `ProductsRepository.searchPublic()`.
+- TODO для prod: trigram-индекс (pg_trgm) на `Store.name`/`Product.title` чтобы ILIKE не делал seq scan на больших объёмах.
+
 ### ✅ [UX-004] Admin bundle code splitting — main 903КБ → 51КБ
 - `apps/admin/src/App.tsx` — все 23 страницы (кроме LoginPage) обёрнуты в `React.lazy()` + `<Suspense fallback="Загрузка…">`.
 - `apps/admin/vite.config.ts` manualChunks расширены: `vendor-charts` (recharts/d3 — 376КБ, грузится только на /analytics), `vendor-mfa` (qrcode/otplib), `vendor-ui` (lucide + sonner + radix).

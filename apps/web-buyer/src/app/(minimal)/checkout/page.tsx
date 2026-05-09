@@ -214,7 +214,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
           <button
             disabled={phone.trim().length < 9 || requestOtp.isPending}
             onClick={handleSendOtp}
-            className="w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
+            className="w-full py-3.5 rounded text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
             {requestOtp.isPending ? "Отправка..." : "Получить код"}
@@ -245,7 +245,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
           <button
             disabled={code.trim().length < 6 || verifyOtp.isPending}
             onClick={handleVerify}
-            className="w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
+            className="w-full py-3.5 rounded text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
             {verifyOtp.isPending ? "Проверка..." : "Подтвердить"}
@@ -300,7 +300,13 @@ export default function CheckoutPage() {
   const { user } = useAuth();
 
   const isAuthed = !!user?.isPhoneVerified;
-  const [pageStep, setPageStep] = useState<PageStep>(isAuthed ? "form" : "otp-phone");
+  // Lazy init avoids a 1-frame flash of the OTP form on hydration:
+  // we already know we have a session if there's a token in storage, even if
+  // the AuthContext hasn't populated `user` yet.
+  const [pageStep, setPageStep] = useState<PageStep>(() => {
+    if (typeof window === "undefined") return "otp-phone";
+    return localStorage.getItem("savdo_access_token") ? "form" : "otp-phone";
+  });
 
   useEffect(() => {
     if (user?.isPhoneVerified && pageStep !== "form") setPageStep("form");
@@ -381,6 +387,8 @@ export default function CheckoutPage() {
     if (!canSubmit) return;
     setApiError(undefined);
     try {
+      const trimmedName = contactName.trim();
+      const trimmedPhone = contactPhone.trim();
       const order = await confirm.mutateAsync({
         deliveryAddress:
           mode === "pickup"
@@ -388,6 +396,8 @@ export default function CheckoutPage() {
             : { street, city },
         buyerNote: comment || undefined,
         deliveryFee,
+        customerFullName: trimmedName || undefined,
+        customerPhone: trimmedPhone || undefined,
       });
       const storeId = previewData?.storeId ?? cart?.storeId ?? "";
       if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, "COD");

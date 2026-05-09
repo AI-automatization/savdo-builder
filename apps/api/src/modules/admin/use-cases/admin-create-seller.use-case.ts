@@ -1,4 +1,5 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
+import { UserRole, SellerVerificationStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
@@ -39,7 +40,7 @@ export class AdminCreateSellerUseCase {
           fullName: input.fullName,
           sellerType: input.sellerType,
           telegramUsername: input.telegramUsername,
-          verificationStatus: 'VERIFIED', // admin-created = auto verified
+          verificationStatus: SellerVerificationStatus.VERIFIED, // admin-created = auto verified
         },
         include: { user: true },
       });
@@ -47,7 +48,7 @@ export class AdminCreateSellerUseCase {
       // Upgrade user role to SELLER
       await db.user.update({
         where: { id: input.userId },
-        data: { role: 'SELLER' as any },
+        data: { role: UserRole.SELLER },
       });
 
       return seller;

@@ -1,14 +1,16 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, apiUpload } from '@/lib/api';
 import { connectSocket, joinRoom } from '@/lib/socket';
 import { refreshChatUnread } from '@/lib/chatUnread';
+import { useChatTyping } from '@/lib/useChatTyping';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { Spinner } from '@/components/ui/Spinner';
-import { ThreadRowSkeleton } from '@/components/ui/Skeleton';
+import { Skeleton, ThreadRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
 
 interface ChatThread {
   id: string;
@@ -77,6 +79,9 @@ export default function BuyerChatPage() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // FEAT-005-FE: typing indicator
+  const { isOtherTyping, emitTyping } = useChatTyping(threadId ?? null, 'BUYER');
+
   // ── Back button ──────────────────────────────────────────────────────────────
   useEffect(() => {
     tg?.BackButton.show();
@@ -89,21 +94,31 @@ export default function BuyerChatPage() {
   }, [navigate, tg, threadId]);
 
   // ── Load thread list ─────────────────────────────────────────────────────────
+  const threadsAbortRef = useRef<AbortController | null>(null);
   const loadThreads = () => {
+    threadsAbortRef.current?.abort();
+    const ac = new AbortController();
+    threadsAbortRef.current = ac;
     setLoading(true);
     setThreadsError(false);
-    api<ChatThread[]>('/chat/threads')
+    api<ChatThread[]>('/chat/threads', { signal: ac.signal })
       .then((data) => {
+        if (ac.signal.aborted) return;
         setThreads(data ?? []);
       })
       .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         setThreadsError(true);
         const msg = err instanceof Error ? err.message : 'Не удалось загрузить чаты';
         showToast(`❌ ${msg}`, 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
   };
-  useEffect(() => { loadThreads(); }, []);
+  useEffect(() => {
+    loadThreads();
+    return () => threadsAbortRef.current?.abort();
+  }, []);
 
   // ── Load messages + connect socket when threadId changes ─────────────────────
   useEffect(() => {
@@ -112,12 +127,15 @@ export default function BuyerChatPage() {
     setMsgLoading(true);
     setMessages([]);
 
-    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`)
-      .then((res) => setMessages((res.messages ?? []).slice().reverse()))
-      .catch(() => {
+    const msgAc = new AbortController();
+    api<{ messages: ChatMessage[]; hasMore: boolean }>(`/chat/threads/${threadId}/messages`, { signal: msgAc.signal })
+      .then((res) => { if (!msgAc.signal.aborted) setMessages((res.messages ?? []).slice().reverse()); })
+      .catch((err) => {
+        if (msgAc.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         navigate('/buyer/chat', { replace: true });
       })
-      .finally(() => setMsgLoading(false));
+      .finally(() => { if (!msgAc.signal.aborted) setMsgLoading(false); });
 
     const socket = connectSocket();
     joinRoom(socket, threadId);
@@ -158,6 +176,7 @@ export default function BuyerChatPage() {
     socket.on('chat:message:deleted', onDeleted);
 
     return () => {
+      msgAc.abort();
       socket.emit('leave-chat-room', { threadId });
       socket.off('chat:message', onMessage);
       socket.off('chat:message:edited', onEdited);
@@ -201,6 +220,9 @@ export default function BuyerChatPage() {
     }
   };
 
+  // TMA-PHOTO-UPLOAD-DIAG-001: было 2 бага — (1) `api()` JSON.stringify'ил FormData,
+  // файл терялся; (2) destructure `uploadRes.id` — API возвращает `mediaFileId`.
+  // Перешёл на `apiUpload` (XHR с правильным multipart).
   const sendPhoto = async (file: File) => {
     if (!threadId || uploadingPhoto) return;
     setUploadingPhoto(true);
@@ -208,10 +230,13 @@ export default function BuyerChatPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('purpose', 'chat_photo');
-      const uploadRes = await api<{ id: string; url: string }>('/media/upload', { method: 'POST', body: formData });
+      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+        '/media/upload',
+        formData,
+      );
       await api(`/chat/threads/${threadId}/messages`, {
         method: 'POST',
-        body: { mediaId: uploadRes.id, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
+        body: { mediaId: mediaFileId, ...(replyTo ? { parentMessageId: replyTo.id } : {}) },
       });
       setReplyTo(null);
       tg?.HapticFeedback.notificationOccurred('success');
@@ -291,6 +316,21 @@ export default function BuyerChatPage() {
     if (t.orderNumber) return `Заказ: ${t.orderNumber}`;
     return 'Диалог';
   };
+
+  // Контекст thread'а: буква бренда магазина для аватарки + 2-я строка с
+  // продукт/заказ если они дополняют storeName (раньше storeName съедал контекст).
+  const threadContext = (t: ChatThread): string | null => {
+    if (t.storeName && t.productTitle) return `📦 ${t.productTitle}`;
+    if (t.storeName && t.orderNumber) return `🧾 Заказ #${t.orderNumber.replace(/^ORD-/, '')}`;
+    return null;
+  };
+  const avatarColors = [
+    { bg: 'rgba(168,85,247,0.20)', fg: '#A855F7' },
+    { bg: 'rgba(34,211,238,0.20)', fg: '#22D3EE' },
+    { bg: 'rgba(52,211,153,0.20)', fg: '#34D399' },
+    { bg: 'rgba(251,191,36,0.20)', fg: '#FBBF24' },
+  ];
+  const avatarStyle = (id: string) => avatarColors[id.charCodeAt(0) % avatarColors.length];
 
   const activeThread = threads.find((t) => t.id === threadId) ?? null;
 
@@ -399,7 +439,12 @@ export default function BuyerChatPage() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto flex flex-col gap-2 pb-2 min-h-0">
             {msgLoading && (
-              <div className="flex justify-center py-8"><Spinner size={24} /></div>
+              <div className="flex flex-col gap-3 py-4">
+                <Skeleton style={{ height: 40, width: '60%', alignSelf: 'flex-start' }} />
+                <Skeleton style={{ height: 40, width: '70%', alignSelf: 'flex-end' }} />
+                <Skeleton style={{ height: 40, width: '50%', alignSelf: 'flex-start' }} />
+                <Skeleton style={{ height: 40, width: '65%', alignSelf: 'flex-end' }} />
+              </div>
             )}
             {!msgLoading && messages.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-12">
@@ -487,6 +532,16 @@ export default function BuyerChatPage() {
                 </span>
               </div>
             ))}
+            {isOtherTyping && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 self-start rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.06)', maxWidth: 100 }}
+                aria-live="polite"
+              >
+                <span className="typing-dot" style={{ animationDelay: '0ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '180ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '360ms' }} />
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
 
@@ -572,13 +627,21 @@ export default function BuyerChatPage() {
                 )}
                 <input
                   value={editingId ? editText : text}
-                  onChange={(e) => editingId ? setEditText(e.target.value) : setText(e.target.value)}
+                  onChange={(e) => {
+                    if (editingId) {
+                      setEditText(e.target.value);
+                    } else {
+                      setText(e.target.value);
+                      if (e.target.value.trim()) emitTyping(true);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (editingId) {
                         if (editText.trim()) submitEdit();
                       } else if (text.trim()) {
+                        emitTyping(false);
                         sendMsg();
                       }
                     }
@@ -596,7 +659,7 @@ export default function BuyerChatPage() {
                   }}
                 />
                 <button
-                  onClick={editingId ? submitEdit : sendMsg}
+                  onClick={() => { if (!editingId) emitTyping(false); (editingId ? submitEdit : sendMsg)(); }}
                   disabled={editingId ? !editText.trim() : (!text.trim() || sending)}
                   aria-label={editingId ? 'Сохранить' : 'Отправить сообщение'}
                   style={{
@@ -719,50 +782,56 @@ export default function BuyerChatPage() {
         </div>
       )}
 
-      {threads.map((t) => (
-        <div
-          key={t.id}
-          role="button"
-          tabIndex={0}
-          onClick={() => navigate(`/buyer/chat/${t.id}`)}
-          className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer active:opacity-70 transition-all"
-          style={glass}
-        >
+      {threads.map((t) => {
+        const ctx = threadContext(t);
+        const ac = avatarStyle(t.id);
+        const unread = t.unreadCount ?? 0;
+        const initial = (t.storeName ?? threadLabel(t)).charAt(0).toUpperCase();
+        return (
           <div
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-            style={{ background: 'rgba(167,139,250,0.15)' }}
-            aria-hidden="true"
+            key={t.id}
+            {...clickableA11y(() => navigate(`/buyer/chat/${t.id}`))}
+            aria-label={`Чат: ${threadLabel(t)}${unread > 0 ? `, ${unread} непрочитанных` : ''}`}
+            className="flex items-start gap-3 p-3.5 rounded-2xl cursor-pointer active:opacity-70 transition-all"
+            style={glass}
           >
-            💬
-            {(t.unreadCount ?? 0) > 0 && (
-              <span
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
-                style={{ background: '#A855F7', color: '#fff' }}
-              >
-                {t.unreadCount! > 9 ? '9+' : t.unreadCount}
-              </span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              {threadLabel(t)}
-            </p>
-            <p className="text-xs truncate" style={{ color: t.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.50)' }}>
-              {t.lastMessage ?? (
-                <>
-                  <span aria-hidden="true">{t.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
-                  {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
-                </>
+            <div
+              className="relative w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: ac.bg, border: `1px solid ${ac.fg}33` }}
+            >
+              <span style={{ color: ac.fg, fontSize: 16, fontWeight: 700 }}>{initial}</span>
+              {unread > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: '#A855F7', color: '#fff' }}
+                >
+                  {unread > 9 ? '9+' : unread}
+                </span>
               )}
-            </p>
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold truncate" style={{ color: unread > 0 ? '#fff' : 'rgba(255,255,255,0.88)' }}>
+                  {threadLabel(t)}
+                </p>
+                {t.lastMessageAt && (
+                  <span className="text-[10px] shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                    {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
+                  </span>
+                )}
+              </div>
+              {ctx && (
+                <p className="text-[11px] truncate" style={{ color: 'rgba(168,85,247,0.85)' }}>
+                  {ctx}
+                </p>
+              )}
+              <p className="text-xs truncate" style={{ color: unread > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.50)', fontWeight: unread > 0 ? 500 : 400 }}>
+                {t.lastMessage ?? (t.status === 'OPEN' ? 'Диалог открыт' : '🔒 Закрыт')}
+              </p>
+            </div>
           </div>
-          {t.lastMessageAt && (
-            <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
-              {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
-            </span>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 

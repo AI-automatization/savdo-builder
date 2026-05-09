@@ -38,10 +38,14 @@ export default function ProductCard({ product, storeSlug }: Props) {
     toggleWishlist.mutate({ productId: product.id, inWishlist });
   }
 
-  const mediaUrls =
-    (product as unknown as { images?: Array<{ url: string }> }).images?.map((i) => i.url)
-    ?? product.mediaUrls
-    ?? [];
+  // ProductListItem декларирует оба поля (API-PRODUCT-LIST-IMAGES-CONTRACT-001,
+  // закрыто Полатом 08.05.2026). Берём images когда есть — это canonical shape
+  // на storefront feed; mediaUrls — fallback для callsite'ов, которые могут
+  // строить ProductListItem из других источников (не storefront).
+  const mediaUrls = (product.images?.length
+    ? product.images.map((i) => i.url)
+    : product.mediaUrls ?? []
+  ).filter((u) => u.length > 0);
   const isUnavailable = product.status !== ProductStatus.ACTIVE || !product.isVisible;
   const displayType = product.displayType ?? 'SINGLE';
 
@@ -57,7 +61,12 @@ export default function ProductCard({ product, storeSlug }: Props) {
           style={{ background: colors.surfaceSunken }}
         >
           {mediaUrls.length === 0 ? (
-            <ShoppingBag size={32} style={{ color: colors.textMuted }} />
+            <div className="flex flex-col items-center gap-1.5 px-3 text-center">
+              <ShoppingBag size={26} style={{ color: colors.textMuted, opacity: 0.55 }} />
+              <span className="text-[10px] font-medium tracking-wide uppercase" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                Без фото
+              </span>
+            </div>
           ) : useCollage ? (
             <CollageGrid urls={mediaUrls} alt={product.title} />
           ) : (

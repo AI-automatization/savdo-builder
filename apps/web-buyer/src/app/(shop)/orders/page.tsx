@@ -117,6 +117,14 @@ function OrdersList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.data]);
 
+  // Reset pagination + accumulator when the filter changes — otherwise stale
+  // page state lets the next fetch return page-3 of the new filter and append
+  // it to old-filter rows.
+  useEffect(() => {
+    setPage(1);
+    setAccOrders([]);
+  }, [activeFilter]);
+
   const q = searchQuery.trim().toLowerCase().replace(/^#/, "");
   const orders = q
     ? accOrders.filter((o) =>
@@ -289,26 +297,40 @@ function OrdersList() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   useBuyerSocket();
+
+  const isBuyer = user?.role === 'BUYER';
 
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
       {/* Header */}
       <div className="px-4 py-3.5 border-b" style={{ borderColor: colors.divider }}>
-        <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Заказы</h1>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Заказы</h1>
       </div>
 
       <div className="max-w-4xl mx-auto pb-28 md:pb-12">
-        {isAuthenticated ? (
-          <OrdersList />
-        ) : (
+        {!isAuthenticated ? (
           <div className="px-4 pt-6">
             <OtpGate
               icon={<Package size={22} />}
               title="Войдите чтобы видеть заказы"
             />
           </div>
+        ) : !isBuyer ? (
+          <div className="px-4 pt-10 max-w-md mx-auto text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ background: colors.brandMuted, color: colors.brand }}>
+              <Package size={20} />
+            </div>
+            <h2 className="text-base font-bold mb-2" style={{ color: colors.textStrong }}>
+              Это аккаунт продавца
+            </h2>
+            <p className="text-[13px]" style={{ color: colors.textMuted }}>
+              История покупок доступна только покупателям. Войдите с другим номером, чтобы делать заказы здесь.
+            </p>
+          </div>
+        ) : (
+          <OrdersList />
         )}
       </div>
 

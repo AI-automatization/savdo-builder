@@ -72,4 +72,8 @@ export interface CheckoutConfirmRequest {
   deliveryAddress: DeliveryAddress;
   buyerNote?: string;
   deliveryFee?: number;
+  /** Override Buyer profile fullName for this order. Backend trims & falls back to profile when empty. */
+  customerFullName?: string;
+  /** Override account phone for this order. Backend falls back to user.phone when empty. */
+  customerPhone?: string;
 }

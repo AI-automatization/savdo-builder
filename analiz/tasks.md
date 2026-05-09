@@ -5,53 +5,144 @@
 
 ---
 
+# 🆕 Web-buyer Design Audit (09.05.2026) — Soft Color Lifestyle
+
+> Полный отчёт: `analiz/audit-web-buyer-design-2026-05-09.md` (25 findings: 3 P1 / 14 P2 / 8 P3, health 7.5/10).
+
+## WB-DESIGN-FIX-WAVES (Азим)
+
+- [x] **`WB-DESIGN-WAVE-1`** ✅ 09.05.2026 — emoji-picker на токенах. Commit `9a16999`.
+- [x] **`WB-DESIGN-WAVE-2`** ✅ 09.05.2026 — chat edit-bubble token cleanup. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-3`** ✅ 09.05.2026 — page headings text-2xl tracking-tight ×4. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-4`** ✅ 09.05.2026 — Stats brand + timeline pulse. Commit `c5b6163`.
+- [x] **`WB-DESIGN-WAVE-5`** ✅ 09.05.2026 — radius cleanup (5 файлов). Commit `c5b6163`.
+- [ ] **`WB-DESIGN-WAVE-6`** (P1, **блокируется API**) — pinned product context strip в chat thread: `rgba(brand,0.06)` полоса с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx ChatView`. Closes P1-003.
+  - **Блокер**: `ChatThread` response (`packages/types/src/api/chat.ts`) содержит только `productTitle`, без `productId/productImageUrl/productPrice`. Фронт не может построить полноценный strip без них.
+
+### 🔵 Контракт-задача для Полата (web-buyer Wave 6 unblock)
+
+- [ ] **`API-CHAT-THREAD-PRODUCT-PREVIEW-001`** (P2, для Полата) — расширить `ChatThread` response (use-case `list-my-threads.use-case.ts` + type `packages/types/src/api/chat.ts`) для PRODUCT-threads:
+  - Добавить поля: `productId: string | null`, `productImageUrl: string | null` (resolved CDN URL — первая картинка из media), `productPriceMinor: number | null` (для рендера через formatPrice).
+  - Альтернатива: отдельный endpoint `GET /chat/threads/:id/context-preview` если list-response не хочется bloating. Но первый вариант проще — данные уже в Prisma `t.product` JOIN'е, нужно просто map'нуть в response.
+  - Use-case `list-my-threads.use-case.ts:30-44` уже подключает `t.product` через relation — расширение mapBuyerThread на 3 поля без extra query'ёв.
+  - Симметрично — для seller-side: `mapSellerThread` те же 3 поля (полезно для `WS-CHAT-PINNED-CONTEXT-001` в будущем).
+  - Когда готово → азим раскроет фронт за один проход.
+- [x] **`WB-DESIGN-WAVE-7`** ✅ 09.05.2026 — backlog cleanup (12 P2/P3). Commit `7ad5063`. **Skipped** P2-004 (sections «Все NN →» — нужно решение о множественных секциях; одиночная «Товары» сейчас не требует pattern), P2-014 (нужен batch add-to-cart API), P3-004 (нужен `isSale` flag в API).
+
+**Skipped / requires API work:**
+- P3-004 (sale chip) — нужен `isSale` flag в категориях API.
+- P2-014 (Повторить заказ button) — нужен batch add-to-cart endpoint от Полата.
+
+---
+
+# 🆕 Design Audit (08.05.2026) — Admin / API / TMA
+
+> Полный отчёт: `analiz/design-audit-2026-05-08.md` (51 findings: 11 P0, 14 P1, 14 P2, 12 P3).
+> Использованы claude-skills: ui-design-system, apple-hig-expert, api-design-reviewer, senior-backend.
+
+## Sprint A — cross-platform polish (P0 only) — 10 тикетов (3 закрыто)
+
+- [ ] **`TMA-DESIGN-HIT-AREA-001`** (P0, T1) — qty buttons `w-7 h-7` (28px) → `w-10 h-10` (40px). Файлы: CartPage:97-121, OrdersPage, ChatPage qty.
+- [ ] **`TMA-DESIGN-FG-TOKENS-001`** (P0, T2) — 100+ inline `rgba(255,255,255,X)` → `FG.strong/muted/dim` в `styles.ts`. Миграция CartPage / OrdersPage / ProductPage.
+- [x] **`TMA-DESIGN-A11Y-LEFTOVERS-001`** ✅ 08.05.2026 — verified: упомянутые в аудите места (seller/ChatPage:205) — modal backdrop с stopPropagation + ESC, acceptable per ADR. buyer/ProductPage:252-256 уже закрыто `3400ecc`. Реальных нарушений не осталось.
+- [ ] **`TMA-DESIGN-ROLE-DIFF-001`** (P0, T4) — buyer (orchid) vs seller (cyan) визуальная дифференциация через `data-role` + scoped CSS-переменные.
+- [x] **`TMA-DESIGN-SPINNER-CLEANUP-001`** ✅ 08.05.2026 — заменены 3 initial-load `<Spinner>` → Skeleton: buyer/ChatPage:442 (4× message Skeleton), seller/ChatPage:506 (то же), seller/EditProductPage:597 (`ProductDetailSkeleton`). Inline Spinner на send-button и loadMore оставлены — они приемлемы.
+- [ ] **`ADMIN-A11Y-MODAL-001`** (P0, A1+A2) — DashboardLayout aria-* + ModerationPage modal на Radix Dialog.
+- [ ] **`ADMIN-DESIGN-TOKENS-SURFACE-001`** (P0, A3) — `--surface-error/-warning/-success` CSS-переменные + миграция hardcoded `rgba(239,68,68,...)`.
+- [ ] **`API-WS-EVENTS-NAMING-001`** (P0, B1) — единый стиль `<namespace>:<action>` для всех Socket.IO events. **⚠️ требует sync с frontend (TMA, web-buyer, web-seller) — не делать в отдельной сессии.**
+- [x] **`API-HTTP-201-CREATED-001`** ✅ 08.05.2026 — `@HttpCode(HttpStatus.CREATED)` добавлен на 6 POST endpoints в `products.controller.ts`: seller/products, /variants, /option-groups, /option-groups/:gid/values, /images, /attributes. NestJS уже отдавал 201 неявно для @Post — теперь explicit для consistency с cart/checkout.
+- [ ] **`API-ORDERS-ALIAS-REMOVE-001`** (P0, B3) — удалить `GET /orders/:id` alias. **⚠️ потенциально breaking для web-buyer — проверить вызовы перед удалением.**
+
+## Sprint B — design system hardening (P1) — 8 тикетов
+
+- [ ] **`ADMIN-THEME-VARS-MIGRATE-001`** (P1, A4+A5+A12) — Button/Badge/Dialog → CSS-переменные.
+- [ ] **`TMA-TYPOGRAPHY-SCALE-001`** (P1, T6) — 280 hardcoded `text-[11px]/xs/sm` → enum + CSS-vars с desktop scale.
+- [ ] **`API-SWAGGER-001`** (P1, B4) — `@nestjs/swagger` + `/api/docs` + `@ApiOperation` на топ-20.
+- [ ] **`API-PRODUCTS-CTRL-SPLIT-001`** (P1, B5) — products.controller.ts (942 LOC) → 3 controllers.
+- [ ] **`ADMIN-A11Y-TABS-OTP-001`** (P1, A7+A8) — Tabs primitive + LoginPage OTP `<fieldset>`.
+- [ ] **`ADMIN-PAGINATION-DISABLED-001`** (P1, A6) — `disabled={page === 1}` на pagination buttons.
+- [ ] **`API-IDEMPOTENCY-KEY-001`** (P1, B7) — `Idempotency-Key` header на /checkout/confirm + /orders.
+- [ ] **`API-PAGINATION-ENVELOPE-001`** (P1, B8) — единый `{ data, meta: { total, page, limit, totalPages } }`.
+
+## Sprint C — long tail (P2/P3) — 26 тикетов
+
+См. `analiz/design-audit-2026-05-08.md` секции P2/P3.
+
+---
+
+# 🆕 Web-buyer аудит 05.05 — закрыты 7 critical 08.05 (Азим)
+
+✅ **BUG-WB-AUDIT-001..007 + 009-FE** — 7 critical из `analiz/logs.md WEB-BUYER-AUDIT-2026-05-05` закрыты в одном проходе:
+- 001 (`useCart` enabled) · 002 (`useBuyerSocket` leave-room + destroySocket в logout) · 003 (`useChatSocket` leave-room) · 004 (`useOrders` enabled) · 005 (`chats handleSend` try/catch) · 006 (orders/[id] z-index 51) · 007 (product detail useEffect reset on id) · 009-FE (checkout `customerFullName`/`customerPhone` шлёт + расширил `CheckoutConfirmRequest` в `packages/types`).
+
+Подробности и список изменённых файлов — `analiz/done.md`.
+
+**Major-волна закрыта 08.05** (BUG-008, 010, 011, 012, 013, 014, 017, 019). Skipped с обоснованием в `analiz/done.md`: 015 (chat menu — нет реального race), 016 (OTP purpose — единственный безопасный default), 018 (defensive cast пока Полат не выровнял `ProductListItem` shape).
+
+**Minor-волна закрыта 08.05** (BUG-020..025). 026 принят как negligible.
+
+**Весь аудит 05.05 (BUG-WB-AUDIT-001..026) закрыт в одну сессию.** Подробности в `analiz/done.md`.
+
+**Контракт-задачи Полата (закрыты 08.05.2026):**
+- [x] `API-PRODUCT-LIST-IMAGES-CONTRACT-001` ✅ — `ProductListItem` теперь декларирует ОБА поля: `mediaUrls: string[]` (convenience) + `images: { url }[]` (canonical). API заполняет оба на storefront/products list (platform-wide + store-specific). Backward compat сохранён.
+- [x] `API-STOREFRONT-SEARCH-CONTRACT-001` ✅ — создан `packages/types/src/api/search.ts` с `SearchStoreHit/SearchProductHit/StorefrontSearchResponse`. Экспортирован из `packages/types/src/index.ts`. Азим может удалить локальный тип из `web-buyer/src/lib/api/search.api.ts` и импортировать из `@savdo-builder/types`.
+
+---
+
 # 🆕 Спринт TMA Quality + Platform Hardening (04-09.05.2026)
 
 > Полный план: `analiz/sprint-tma-quality-04-05-2026.md`. Здесь — короткая чек-лист.
 
 ## 🔴 P0 — Полат
 
+- [x] **`AUDIT-NETWORK-LOADING-P0-FIXES`** ✅ 08.05.2026 — закрыты P0 из `analiz/audit-network-loading-2026-05-07.md`: (1) `lib/api.ts` уже имеет auto-bust cache на не-GET (parallel session) + добавил `timeout?: number` в ApiOptions interface (был implicit, TS would complain on opts.timeout). (2) Race condition fix в `buyer/OrdersPage.tsx`: AbortController на loadMore + toggleExpand detail + loadingMore guard от double-tap.
 - [x] **`TMA-CHAT-403-READ-001`** — 403 на `/chat/threads/:id/messages` для dual-role. ✅ Коммит `2b2bca7`.
-- [ ] **`TMA-CHAT-403-WRITE-001`** — dual-role check на `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`.
-  - Файлы: `apps/api/src/modules/chat/chat.controller.ts` + 5 use-cases в `chat/use-cases/`.
-  - Паттерн: как в `getMessages` после `2b2bca7` — `resolveBothProfileIds` + `isBuyer || isSeller`.
-- [ ] **`TMA-PHOTO-UPLOAD-DIAG-001`** — диагноз почему фото не грузит.
-  - Нужно от Полата: console-лог с **URL** упавшего запроса и **status code**.
-  - Проверить: `STORAGE_PUBLIC_URL` на Railway, `/media/upload` контроллер, R2 ключи, Telegram channel admin status.
+- [x] **`TMA-CHAT-403-WRITE-001`** ✅ 06.05.2026 — `sendMessage`/`editMessage`/`deleteMessage`/`markAsRead`/`deleteThread`/`reportMessage` в `chat.controller.ts` уже используют `resolveBothProfileIds` + `isBuyer || isSeller` паттерн (как `getMessages` после 2b2bca7). Параллельная сессия закрыла, тикет был stale в tasks.md. Use-case `send-message` валидирует `senderUserId` через `thread.buyerId === senderUserId || thread.sellerId === senderUserId` — корректно, контроллер передаёт правильный profile-id.
+- [x] **`TMA-PHOTO-UPLOAD-DIAG-001`** ✅ 08.05.2026 — root cause найден через code review (без логов): `buyer/ChatPage.sendPhoto` + `seller/ChatPage.sendPhoto` использовали `api()` с `body: FormData`, но `api()` делал `JSON.stringify(opts.body)` → формдата сериализовалась в `"{}"`, файл терялся целиком. Дополнительно: destructure `uploadRes.id` — API возвращает `mediaFileId`. Чинено через `apiUpload()` (XHR multipart) + preventive guard в `lib/api.ts:doFetch` бросает error «Use apiUpload() for FormData» если кто-то снова попробует. Подробности в `analiz/done.md`.
 
 ## 🟠 P1 — Полат
 
-- [ ] **`TMA-SELECT-CUSTOM-001`** — портировать `apps/web-seller/src/components/select.tsx` в `apps/tma/src/components/ui/Select.tsx`. Применить везде где `<select>` (AddProductPage, EditProductPage, SettingsPage seller).
-- [ ] **`TMA-CROPPER-UX-001`** — большая видимая «✕ Отменить» в шапке кропера, `zIndex: 9999`, кнопка «➕ Добавить ещё фото» в AddProductPage / EditProductPage.
-  - Файлы: `apps/tma/src/components/ui/ImageCropper.tsx` + `apps/tma/src/pages/seller/{AddProductPage,EditProductPage}.tsx`.
-- [ ] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** — динамические опции товара из `CategoryFilter` по выбранной категории. Заменить хардкод-toggle «Товар с размерами».
-  - Endpoint: `GET /storefront/categories/:slug/filters` (уже работает).
-  - Поведение: SELECT/MULTI_SELECT с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
+- [x] **`TMA-SELECT-CUSTOM-001`** ✅ 06.05.2026 — `Select.tsx` уже в TMA (порт от web-seller с TMA-стайлами + inline SVG icons). Native `<select>` удалён из TMA — AddProductPage использует Select. EditProductPage/SettingsPage не имеют selects (используют кнопки/toggle-группы).
+- [x] **`TMA-CROPPER-UX-001`** ✅ 06.05.2026 — `ImageCropper` имеет zIndex 9999, видимый красный «✕ Отменить» 44pt в header слева, заголовок «Кадрировать фото» по центру. AddProductPage показывает «➕ Добавить ещё фото» когда `photoPreviews.length > 0`, EditProductPage — кнопка «+ Добавить» в шапке секции «Фото товара» всегда видна.
+- [x] **`TMA-DYNAMIC-VARIANT-FILTERS-001`** ✅ 08.05.2026 — `AddProductPage.tsx`: динамическая загрузка `CategoryFilter` по slug категории через `GET /storefront/categories/:slug/filters` с AbortController; рендерит select/boolean/number/multi_select. `multi_select` с >1 значением → авто-создаёт `ProductOptionGroup` + `ProductVariant` matrix.
 - [x] **`TMA-DESIGN-P0P1-001`** — P0+P1 из `[DESIGN-AUDIT-TMA-001]` ✅ закрыто 04.05.2026 (контраст BottomNav, hit-area Add-to-cart/back 44pt, aria-hidden на decorative emoji, OPEN/CLOSED с иконкой, text-[11px] meta → text-xs). См. `analiz/done.md`. Остаток `role/tabIndex/onKeyDown` на `<div>` — отдельным тиком если потребуется.
-- [ ] **`TMA-RESPONSIVE-DESKTOP-001`** — modals и cropper перекрывают весь экран (включая sidebar). Sidebar width дефиниция на breakpoint'ах.
+- [x] **`TMA-RESPONSIVE-DESKTOP-001`** ✅ 06.05.2026 — все 4 fixed-position модалки теперь учитывают sidebar 220px на desktop ≥768px: `BottomSheet`, `ConfirmModal`, `ImageCropper` (уже имели), `CategoryModal` (добавил `left: SIDEBAR_WIDTH`). Sidebar остаётся видимым во время modal'ов.
 
 ## 🟡 P2 — Полат + параллельная сессия
 
-- [ ] **`API-SQL-INJECTION-AUDIT-001`** — grep `$queryRaw`/`$executeRaw` в `apps/api`, проверить prepared params.
-- [ ] **`API-WS-AUDIT-001`** — WebSocket gateways: handshake JWT verify, `join-*-room` validation, rate-limit emit.
-- [ ] **`API-RATE-LIMIT-AUDIT-001`** — все public endpoints должны иметь `@Throttle()`.
+- [x] **`API-SQL-INJECTION-AUDIT-001`** ✅ 06.05.2026 — чисто. Все `$queryRaw` через tagged templates (Prisma параметризует). 0 unsafe. См. `analiz/logs.md AUDIT-API-SQL-INJECTION`.
+- [x] **`API-WS-AUDIT-001`** ✅ 06.05.2026 — найдена дыра в `OrdersGateway.handleJoinSellerRoom` (SELLER без storeId в JWT мог join'нуться в чужие room) → закрыто DB-lookup'ом владения. Валидация типов входных параметров. Chat gateway уже OK. См. `analiz/logs.md AUDIT-API-WS`.
+- [x] **`API-RATE-LIMIT-AUDIT-001`** ✅ 06.05.2026 — глобальный 120 req/min baseline + локальные `@Throttle` добавлены на cart (POST/PATCH /items 60/min) и wishlist (POST/DELETE 60/min). См. `analiz/logs.md AUDIT-API-RATE-LIMIT`.
 - [x] **`TMA-SELLER-PERF-PASS-001`** — AbortController + prefetch на seller-страницах TMA. ✅ Закрыто в `WEB-TMA-SELLER-PERF-001` (8 из 9 файлов; ChatPage пропущен из-за конфликта с `TMA-DESIGN-P0P1-001`). См. `analiz/done.md` 2026-05-04.
-- [ ] **`TMA-SELLER-CHAT-PERF-001`** — после мёрджа `TMA-DESIGN-P0P1-001` добавить AbortController в `apps/tma/src/pages/seller/ChatPage.tsx` (loadThreads + load messages useEffect). Pattern — как в DashboardPage/SettingsPage.
+- [x] **`TMA-SELLER-CHAT-PERF-001`** ✅ 06.05.2026 — добавлены AbortController в loadThreads (threadsAbortRef) + load messages useEffect (messagesAbortRef) в `seller/ChatPage.tsx`. Cleanup на unmount + при смене threadId. AbortError игнорируется в catch.
 
 ## 🟢 P3 — после спринта
 
-- [ ] **`NOTIF-IN-APP-001`** — in-app уведомления (Notification модель + socket emit + toast/badge).
-- [ ] **`WEB-DESIGN-AUDIT-001`** — дизайн-аудит web-buyer + web-seller (параллельная сессия).
-- [ ] **`DB-AUDIT-001`** — composite-индексы, pg_trgm, FK relations review.
+- [x] **`NOTIF-IN-APP-001`** ✅ 06.05.2026 — реализовано: `InAppNotification` модель в схеме, `InAppNotificationProcessor` создаёт записи + `chatGateway.emitNotificationNew()` WS push. Frontend `notifications.ts` слушает event + badge через `subscribeToUnread()`. Toast — через showToast при event'е (UI work осталось).
+- [x] **`WEB-DESIGN-AUDIT-001`** ✅ 08.05.2026 (web-seller часть) — полный отчёт: `analiz/audit-web-seller-design-2026-05-08.md`. Найдено 7 P1 (light-theme contrast killers + `confirm()` native dialogs + sidebar logo glow), 14 P2 (хардкоженный hex для order status, SMS-copy в login OTP, page heading typography sub-spec, native `<select>` regression в edit-product), 9 P3. Health 6.5/10. См. ниже секцию `WS-DESIGN-FIX-WAVES` для backlog'а исправлений.
+- [x] **`DB-AUDIT-001`** ✅ 06.05.2026 — найден и закрыт schema drift: AdminUser MFA-поля + OrderRefund модель существовали в DB (migration 20260503020000) но НЕ в schema.prisma → код использовал `(prisma as any)`. Добавлены индексы `media_files.bucket` + `chat_threads.status`. Migration `20260506200000_db_audit_indexes`. См. `analiz/logs.md AUDIT-DB`.
+
+## 🆕 Аудит платформы продолжение (06.05.2026)
+
+### 🔴 P0 — Полат / параллельная сессия
+- [x] **`API-MFA-NOT-ENFORCED-001`** ✅ 06.05.2026 — введён `mfaPending` claim в JWT (выставляется при login если `AdminUser.mfaEnabled=true`), `MfaEnforcedGuard` блокирует все admin endpoints кроме помеченных `@SkipMfaCheck()`. POST `/admin/auth/mfa/login` обменивает mfaPending JWT → полноценный после TOTP. См. `analiz/done.md API-MFA-NOT-ENFORCED-001`.
+
+### 🟠 P1 — Полат
+- [x] **`API-RBAC-MICRO-PERMISSIONS-001`** ✅ 06.05.2026 — `@AdminPermission(perm)` decorator + `AdminPermissionGuard` + `JwtPayload.adminRole` claim. Permissions matrix вынесена в `common/constants/admin-permissions.ts` с wildcard-логикой (`*`, `user:*`, `*:read`). Применено на 23 destructive endpoints в admin/super-admin controller'ах (suspend, approve, reject, archive, refund, impersonate, db CRUD, broadcast, migrate). См. `analiz/done.md API-RBAC-MICRO-PERMISSIONS-001`.
+
+### 🟠 P1 — Азим
+- [x] **`WEB-SELLER-HARDCODED-DOMAIN-001`** ✅ 08.05.2026 — введён helper `apps/web-seller/src/lib/buyer-url.ts` (`buyerOrigin`/`buyerStoreUrl`/`buyerStoreDisplay`). 3 места хардкода заменены: layout.tsx (sidebar label + clipboard) и profile/page.tsx (storeUrl). Подробности в `analiz/done.md`.
+
+---
 
 ## 🆕 Аудит API security (06.05.2026)
 
 ### 🟠 P1 — для Полата
-- [ ] **`API-WEBHOOK-SECRET-OPTIONAL-001`** — `telegram-webhook.controller.ts:45-46` принимает webhooks без secret token если env пуст. Fail-closed: в production без `TELEGRAM_WEBHOOK_SECRET` обязан throw на startup или возвращать 401.
-- [ ] **`API-MISSING-THROTTLE-001`** — добавить @Throttle на 3 endpoints: `POST /orders` (10/мин), `POST /media/upload-url` (20/мин), `POST /seller/products` (30/мин).
+- [x] **`API-WEBHOOK-SECRET-OPTIONAL-001`** ✅ 06.05.2026 — `telegram-webhook.controller.ts:50-52` fail-closed в production: если `NODE_ENV='production'` и `TELEGRAM_WEBHOOK_SECRET` пуст → возвращает `{ ok:true }` без обработки + лог error.
+- [x] **`API-MISSING-THROTTLE-001`** ✅ 06.05.2026 — `@Throttle` добавлен на: `POST /orders` (10/мин, `orders-create.controller.ts:22`), `POST /media/upload-url` (20/мин, `media.controller.ts:54`), `POST /seller/products` (30/мин, `products.controller.ts:121`).
 
 ### 🟢 P3 — для будущей сессии
-- [ ] **`API-RBAC-AUDIT-001`** — пройтись по всем 19 controllers, проверить что endpoint'ы с @UseGuards(JwtAuthGuard) имеют правильный @Roles. Сейчас могут быть случаи где BUYER может звать SELLER endpoint.
+- [x] **`API-RBAC-AUDIT-001`** ✅ 06.05.2026 — найдены и закрыты дыры: 23 `/seller/products/*` endpoints без @Roles('SELLER'), 4 `/seller/categories/*` без @Roles('SELLER'), 4 `/buyer/orders/*` без @Roles('BUYER'). admin/chat/moderation/reviews — чисто. См. `analiz/logs.md AUDIT-API-RBAC`.
 
 ---
 
@@ -61,12 +152,12 @@
 - [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `savdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
 
 ### 🟠 P1 — для Полата
-- [ ] **`TMA-NATIVE-CONFIRM-001`** — заменить `window.confirm/alert` на кастомный `<ConfirmModal>`. 5 мест: `seller/ProductsPage.tsx:100,113,120,129`, `seller/StorePage.tsx:173`. Создать новый `components/ui/ConfirmModal.tsx`.
-- [ ] **`TMA-LOADING-SKELETONS-001`** — добавить Skeleton-компоненты на 10 страниц где сейчас только Spinner: CartPage, CheckoutPage, OrdersPage buyer, ProductPage, ProfilePage buyer/seller, SettingsPage, StoresPage, WishlistPage, AddProductPage, DashboardPage seller.
+- [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
+- [x] **`TMA-LOADING-SKELETONS-001`** ✅ 08.05.2026 — добавлены skeletons на OrdersPage buyer (initial list, 4 OrderRowSkeleton) и seller/ProfilePage (skeleton-блок магазина пока store === null). Остальные страницы списка skip'нуты обоснованно: CartPage/CheckoutPage синхронны (localStorage), buyer/ProfilePage из useAuth, AddProductPage не имеет блокирующего initial fetch'а, StoresPage уже имел оба skeleton'а, DashboardPage — параллельная сессия. Подробности в `analiz/done.md`.
 
 ### 🟡 P2 — a11y
-- [ ] **`TMA-A11Y-ROLE-TABINDEX-001`** — 16/19 pages с `<div onClick>` без `role="button"`/`tabIndex={0}`/`onKeyDown`. Для desktop Telegram (где есть keyboard) недоступно.
-- [ ] **`TMA-SILENT-ERROR-CATCHES-001`** — 10 мест с `.catch(() => {})` без showToast. Юзер не понимает почему пусто. Файлы в `analiz/logs.md AUDIT-TMA-2026-05-06`.
+- [x] **`TMA-A11Y-ROLE-TABINDEX-001`** ✅ 08.05.2026 — создан `lib/a11y.ts` с `clickableA11y(handler)` helper'ом (role+tabIndex+onClick+onKeyDown). Применён к: `buyer/ChatPage` + `seller/ChatPage` thread rows, `buyer/StorePage` product grid, `ProductCard`, `buyer/WishlistPage` row, `buyer/ProductPage` collage gallery. Остальные клики на `<button>`/`<a>`/`GlassCard` (рендерится `<button>`) или modal-backdrop (intentional — клик-outside, не keyboard).
+- [x] **`TMA-SILENT-ERROR-CATCHES-001`** ✅ 06.05.2026 (частично) — добавлен `showToast` на 5 user-facing data-load fails: `buyer/WishlistPage`, `buyer/OrdersPage` (loadMore + detail), `seller/ProfilePage`, `seller/SettingsPage`. AbortError фильтруется. Остальные `.catch(() => {})` (clipboard, prefetch, attribute side-effects) намеренно тихие — best-effort fire-and-forget.
 
 ---
 
@@ -74,35 +165,30 @@
 
 ### 🔴 P0 — для Полата (apps/api + миграция данных)
 
-- [ ] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** — старые товары имеют `MediaFile.bucket='telegram'` с file_id который Telegram уже expired. На web-buyer/TMA эти фото грузятся через `/api/v1/media/proxy/:id` → TG getFile → 404 (или работают, но медленно через 1ч TTL). Решение:
-  - Скрипт миграции: пройтись по всем `MediaFile WHERE bucket='telegram'`, скачать через `getFileUrl()`, перезалить в Supabase, обновить `bucket='r2'` + `objectKey='product_image/2026/<uuid>.jpg'`.
-  - Альтернатива: помечать `MediaFile.deletedAt` для всех старых TG-файлов и заставить продавцов перезагрузить.
-  - **Файлы:** новый `apps/api/src/scripts/migrate-tg-media-to-supabase.ts` + admin endpoint для запуска.
+- [x] **`API-MEDIA-MIGRATION-TG-TO-R2-001`** ✅ 06.05.2026 — admin endpoint `POST /admin/media/migrate-tg-to-r2?limit=50` + use-case + audit log. См. `analiz/done.md`.
 
-- [ ] **`API-SEC-TG-001-REGRESS`** — после удаления `streamToResponse` в `TelegramStorageService` (параллельная сессия), `media.controller.ts` теперь редиректит на URL содержащий bot token в pathname. **Bot token утечёт клиенту в Location header**. Восстановить streaming через axios pipe — token остаётся на сервере.
-  - **Файлы:** `apps/api/src/modules/media/services/telegram-storage.service.ts` (вернуть `streamToResponse`), `media.controller.ts` (использовать его).
+- [x] **`API-SEC-TG-001-REGRESS`** ✅ 06.05.2026 — `streamToResponse` восстановлен в `TelegramStorageService`, `media.controller.ts` снова стримит вместо redirect. Коммит `32ce2fa`.
 
 ### 🟠 P1 — для Азима (apps/web-buyer)
 
-- [ ] **`WEB-BUYER-IMAGE-FALLBACK-001`** — на витрине магазина (`/<slug>`) товары без фото показывают пустой чёрный квадрат вместо placeholder'а. Скрин 06.05 — DRIPSB магазин, 6 товаров, 4 без фото. Решение: при `<img onError>` или пустом `mediaUrls` рендерить компонент-плейсхолдер (как `<ProductImage emptyVariant="no-photo">` в TMA).
-  - **Файлы:** `apps/web-buyer/src/components/store/ProductCard.tsx`.
+- [x] **`WEB-BUYER-IMAGE-FALLBACK-001`** ✅ 08.05.2026 — `ProductCard.tsx`: пустые/null `images[].url` фильтруются, placeholder при `mediaUrls.length === 0` теперь иконка + текст «Без фото» (вместо одинокого silhouette на тёмном surfaceSunken).
 
-- [ ] **`WEB-BUYER-LINK-PRETTIFY-001`** — длинная ссылка на сайт магазина в TMA buyer/StorePage заменена на «↗ Перейти на сайт» (06.05 commit). Проверить что web-buyer header не показывает где-то такие же длинные railway URL — заменить на короткие.
-  - **Файлы:** `apps/web-buyer/src/components/store/StoreHeader.tsx` (если такой текст есть).
+- [x] **`WEB-BUYER-LINK-PRETTIFY-001`** ✅ 08.05.2026 — no-op после проверки. Длинных railway URL в web-buyer UI нет, `app/layout.tsx:16` уже на env-helper. Подробности в `analiz/done.md`.
 
 ### 🟡 P2 — для Полата (technical debt)
 
-- [ ] **`API-WS-PUSH-NOTIFICATIONS-001`** — сейчас `apps/tma/src/lib/notifications.ts` poll'ит unread каждые 30 сек. Перевести на WebSocket push: `OrdersGateway.emit('notification:new', { userId })` после `prisma.inAppNotification.create()` в `InAppNotificationProcessor`. На фронте — слушать event и обновлять count + показывать toast.
+- [x] **`API-WS-PUSH-NOTIFICATIONS-001`** ✅ 06.05.2026 — реализовано параллельной сессией: `chat.gateway.ts handleConnection` авто-join `user:${userId}`, `emitNotificationNew()` в `InAppNotificationProcessor` после create. Frontend `notifications.ts` слушает `notification:new`, fallback poll 5 мин на разрыв WS.
+- [x] **`API-MFA-COVERAGE-EXTRA-001`** ✅ 06.05.2026 — `MfaEnforcedGuard` + `AdminPermissionGuard` + `@AdminPermission` добавлены на admin endpoints в categories (5 endpoints), analytics (1), media (1). Permissions matrix дополнена `category:read/moderate`, `media:read` для moderator/support/finance ролей.
 
-- [ ] **`API-OTPLIB-V13-UPGRADE-001`** — сейчас downgrade на `^12.0.1` (916a154). Правильно переписать `admin-auth.use-case.ts` под TOTP class API из v13.
+- [x] **`API-OTPLIB-V13-UPGRADE-001`** ✅ 08.05.2026 — bump `otplib` `^12.0.1 → ^13.4.0`. `admin-auth.use-case.ts` переписан под v13 functional API (`generateSecret`, `generateURI`, `verifySync`). Опции TOTP вынесены в `TOTP_VERIFY_OPTIONS` (digits=6, period=30, epochTolerance=30 = эквивалент v12 window:1 ±30s). Spec обновлён под новый API. 14/14 тестов passed, `npx tsc --noEmit` чист. Подробности в `analiz/done.md`.
 
-- [ ] **`TMA-MEDIA-USE-API-URL-001`** — фронт TMA в `EditProductPage.tsx` и `ProductsPage.tsx` использует `getImageUrl(objectKey)` (читает `VITE_R2_PUBLIC_URL`). Должен использовать `product.mediaUrls[0]` напрямую из API response — централизованный source of truth и работает для любого storage backend.
+- [x] **`TMA-MEDIA-USE-API-URL-001`** ✅ 06.05.2026 (полностью закрыто) — API теперь кладёт resolved URL прямо в `image.url` для 3 product detail endpoints (seller getMyProduct, products list seller endpoint, storefront product detail). EditProductPage использует `img.url` с fallback на getImageUrl для backward-compat. ProductsPage уже на mediaUrls[0]. Frontend больше не зависит от `VITE_R2_PUBLIC_URL`.
 
-- [ ] **`API-BUCKET-NAME-CONSISTENCY-001`** — в `MediaFile.bucket` старые записи имеют `'telegram'` или `'r2'` (legacy). После миграции на Supabase надо стандартизировать: либо `'supabase'`/`'telegram'`, либо `'public'`/`'private'` (по visibility). Решает следующая миграция данных.
+- [x] **`API-BUCKET-NAME-CONSISTENCY-001`** ✅ 06.05.2026 — добавлен явный handling `telegram-expired` (выставляется миграцией TG→Supabase когда file_id мёртв) в 3 mappers: `media.controller proxy/private` (404 NotFoundException), `cart.mapper.resolveMediaUrl` (returns null), `products.controller.resolveImageUrl` (returns ''). Раньше эти файлы попадали в S3 redirect → broken images.
 
 ### 🟢 P3 — для Полата (cleanup)
 
-- [ ] **`API-CHAT-CONTROLLER-TS-ERROR-001`** — параллельная сессия добавила `getUnreadCountUseCase` в chat.controller.ts:61 с TS error: `Argument of type 'string' is not assignable to '"SELLER" | "BUYER"'`. Нужен type cast или Zod-валидация в guard.
+- [x] **`API-CHAT-CONTROLLER-TS-ERROR-001`** ✅ 06.05.2026 — уже исправлено параллельной сессией: `user.role as 'BUYER' | 'SELLER'` cast в chat.controller.ts:64. Typecheck чист.
 
 - [ ] **`API-DELETE-OLD-STASHES-001`** — в `git stash list` несколько старых safety-stash от прошлых сессий. После подтверждения что параллельная закончила — `git stash drop`.
 
@@ -237,6 +323,23 @@
 
 ## 🚧 Открыто — Азим (фронт, `apps/web-buyer` / `apps/web-seller`)
 
+### 🆕 [WS-DESIGN-FIX-WAVES] Backlog по аудиту web-seller (08.05.2026)
+
+> Полный отчёт: `analiz/audit-web-seller-design-2026-05-08.md` (7 P1 / 14 P2 / 9 P3).
+> Грубо упорядочено по value/effort. Каждая волна — отдельный коммит, безопасно
+> мерджить в `web-seller` ветку независимо.
+
+- [x] **`WS-DESIGN-WAVE-1` 🔴** ✅ 08.05.2026 — закрыты 5 P1 из 6 (P1-002, P1-003, P1-005, P1-006, P1-007). Коммит `1ad0e69`. P1-004 (avatar spinner text-white) пропущен — overlay rgba(0,0,0,0.45) тёмный в обеих темах, white spinner читается. Подробности в `analiz/done.md`.
+- [x] **`WS-DESIGN-WAVE-2` 🔴** ✅ 08.05.2026 — все 4 native `confirm()` заменены на reusable `ConfirmModal` (новый компонент `apps/web-seller/src/components/confirm-modal.tsx`). Покрыто: edit-product handleDelete, option-groups ValueRow (Удалить значение), option-groups GroupRow (Удалить группу), variants section handleDelete. ESC/Enter keyboard support, danger flag, click-outside для close. P1-001.
+- [x] **`WS-DESIGN-WAVE-3` 🟡** ✅ 08.05.2026 — page heading typography (P2-014). 5 `<h1>` page titles `text-xl` (20px) → `text-2xl` (24px, нижняя граница Headline range). Файлы: analytics, orders, products, notifications, settings. Все 6 dashboard-страниц теперь консистентны.
+- [x] **`WS-DESIGN-WAVE-4` 🟡** ✅ 08.05.2026 — login OTP copy исправлен (P2-010). Коммит `a818720`. Подробности в `analiz/done.md`.
+- [x] **`WS-DESIGN-WAVE-5` 🟡** ✅ 08.05.2026 — добавлен semantic `colors.info` token в styles.ts + globals.css (light `#2563EB`, dark `#60A5FA`). Заменены 9 хардкоженных мест: CONFIRMED + SHIPPED status (×4 в dashboard/orders×2/orders-detail), TG-link icons в products list (×2), analytics block, profile TG chip (3 hex). SHIPPED унифицирован с CONFIRMED через `colors.info` (оба = «in-flight», PROCESSING остался на `accent`). Audit IDs: P2-002, P2-003, P2-013.
+- [x] **`WS-DESIGN-WAVE-6` 🟡** ✅ 08.05.2026 — products edit dragons закрыты: (a) radius выровнен create↔edit на `rounded-xl` (12px per spec) — раньше `rounded-lg` (8px) в create vs `rounded-2xl` (16px) ×4 в edit. (b) native `<select>` ×2 в edit заменены на custom `<Select>` с поиском/keyboard nav/clearable — устранено хардкоженное `background: '#1a1d2e'` на `<option>` (сломан в light theme). (c) `TITLE_EXAMPLES_BY_SLUG` + `DESCRIPTION_EXAMPLES_BY_SLUG` + 2 placeholder helper функции вынесены в новый `apps/web-seller/src/lib/product-examples.ts`. Audit IDs: P2-001, P2-004, P2-005.
+- [x] **`WS-DESIGN-WAVE-7-BACKLOG` 🟢** ✅ 08.05.2026 (частично) — закрыто 8 из 14 nit'ов: shadow > 8px ×3 (layout toast / select dropdown / emoji-picker popover) → soft 4-6px depth; onboarding 3 хардкоженных hex (#A78BFA + 2× #fff) → tokens; notifications hover-leave inverted semantics → unread bg color-mix(accent 22%) при hover; notification badge fontSize 9 → 10 (хорошо читается без потери компактности); theme-toggle redundant shadow-lg + soft inline; emoji-picker hover:bg-white/5 → row-hoverable; onboarding progress connector surfaceElevated → border (видно в light); analytics ASCII «— » divider → реальный `<hr>`. Audit IDs: P2-006, P2-009, P2-012, P3-001, P3-003, P3-004, P3-005, P3-007.
+- [ ] **`WS-DESIGN-WAVE-7-DEFERRED` 🟢** — оставшиеся 6 nit'ов отложены: P2-007 (sidebar 14%→15% accentMuted, в пределах rounding), P2-008 (onboarding `rounded-3xl` — sanctioned scene), P2-011+P3-009 (chat off-grid + non-responsive — нужен mobile-first рефактор chat layout, отдельным заходом), P3-002 (chat thread skeletons beyond 3), P3-006 (settings native `<select>` Firefox chevron — нужен custom Select для всех селектов в settings), P3-008 (analytics text-3xl — в пределах spec).
+
+---
+
 ### ✅ [WEB-BUYER-DESIGN-IMPL-001] Имплементация «Soft Color Lifestyle» — ВСЕ 10 ЗАДАЧ ЗАКРЫТЫ (05.05.2026)
 
 **Spec:** `docs/superpowers/specs/2026-05-05-buyer-design-differentiation-design.md`
@@ -357,6 +460,28 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 ## 🧊 ЗАМОРОЖЕНО — Монетизация + Payme/Click (Phase 4)
 
 > ❄️ Фриз до открытия бизнес-счёта в Click и Payme. Не брать в работу.
+>
+> **Текущая модель (06.05.2026, решение Полата):** платежей нет, продавец
+> связывается с админом → админ вручную через admin-панель открывает доступ
+> к общему рынку.
+>
+> ✅ **Закрыто 06.05.2026:** `API-MANUAL-SELLER-ACTIVATION-001` — добавлен
+> один endpoint в super-admin, объединяющий 3 шага:
+> - `POST /admin/users/:id/activate-seller-on-market`
+>   body: `{ fullName, sellerType, telegramUsername, storeName, storeCity, telegramContactLink, description?, region?, slug? }`
+>   → создаёт seller-профиль → создаёт магазин → approve → audit log `seller.activated_on_market`.
+>
+> Старые отдельные endpoints тоже работают (для случаев когда нужны шаги по отдельности):
+> - `POST /admin/users/:id/make-seller`
+> - `POST /admin/sellers/:id/create-store`
+> - `POST /admin/stores/:id/approve` / `/suspend` / `/unapprove`
+>
+> Когда придёт время монетизации — добавить subscription модель поверх
+> существующего flow. Все PAY-NNN тикеты ниже остаются как roadmap.
+>
+> **TODO для admin frontend:** добавить кнопку «Активировать продавца на рынке»
+> в `apps/admin/src/pages/UserDetailPage.tsx` (или где сейчас make-seller) —
+> модалка со всеми полями → один POST. Тикет: `ADMIN-MANUAL-ACTIVATION-UI-001`.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`

@@ -8,6 +8,7 @@ import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
 import { webStoreUrl } from '@/lib/webUrl';
 
 interface Product {
@@ -53,7 +54,8 @@ export default function StorePage() {
   useEffect(() => {
     const ac = new AbortController();
     api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
-      .then(setGlobalCategories).catch(() => {});
+      .then(setGlobalCategories)
+      .catch(() => {/* best-effort: category filters are supplementary, page works without them */});
     return () => ac.abort();
   }, []);
 
@@ -230,9 +232,8 @@ export default function StorePage() {
           {filtered.map((p) => (
             <div
               key={p.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/buyer/store/${slug}/product/${p.id}`)}
+              {...clickableA11y(() => navigate(`/buyer/store/${slug}/product/${p.id}`))}
+              aria-label={`Открыть товар ${p.title}`}
               className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
               style={glass}
             >

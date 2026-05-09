@@ -29,8 +29,8 @@ const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex flex-col items-center justify-center py-3.5" style={{ background: colors.surface }}>
-      <div className="text-base font-bold" style={{ color: colors.textStrong }}>{value}</div>
-      <div className="text-[10px] mt-0.5 tracking-wide uppercase" style={{ color: colors.textMuted }}>{label}</div>
+      <div className="text-2xl font-bold tracking-tight" style={{ color: colors.brand }}>{value}</div>
+      <div className="text-[10px] mt-1 tracking-wide uppercase" style={{ color: colors.textMuted }}>{label}</div>
     </div>
   );
 }
@@ -78,7 +78,7 @@ function MenuRow({
 // ── ProfileView ──────────────────────────────────────────────────────────────
 
 function ProfileView() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const logoutMutation = useLogout();
   const uploadAvatar = useUploadAvatar();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,8 +87,10 @@ function ProfileView() {
 
   const avatarUrl = user?.buyer?.avatarUrl ?? null;
 
-  // Stats — best-effort
-  const { data: ordersData } = useOrders({ page: 1, limit: 1 });
+  // Stats — best-effort. Skip when auth is still rehydrating (Strict Mode 401 race) AND when
+  // the user signed in as SELLER — buyer/orders is BUYER-gated and would 403.
+  const isBuyer = user?.role === 'BUYER';
+  const { data: ordersData } = useOrders({ page: 1, limit: 1, enabled: isAuthenticated && isBuyer });
   const { data: wishlist } = useWishlist();
   const ordersCount = ordersData?.meta?.total ?? 0;
   const wishlistCount = wishlist?.length ?? 0;
@@ -153,7 +155,7 @@ function ProfileView() {
               transition: "opacity 150ms",
             }}
           >
-            {uploadAvatar.isPending && <Loader2 size={18} className="animate-spin text-white" />}
+            {uploadAvatar.isPending && <Loader2 size={18} className="animate-spin" style={{ color: colors.brandTextOnBg }} />}
           </span>
         </button>
         <div className="flex-1 min-w-0">
@@ -230,7 +232,7 @@ function ProfileView() {
                 onClick={handleLogout}
                 disabled={logoutMutation.isPending}
                 className="flex-1 py-2 rounded-md text-[11px] font-semibold disabled:opacity-40"
-                style={{ background: colors.danger, color: "#FFFFFF" }}
+                style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
                 {logoutMutation.isPending ? "..." : "Выйти"}
               </button>
@@ -251,7 +253,7 @@ export default function ProfilePage() {
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
       {/* Header */}
       <div className="px-4 py-3.5 border-b" style={{ background: colors.surface, borderColor: colors.divider }}>
-        <h1 className="text-lg font-bold" style={{ color: colors.textStrong }}>Профиль</h1>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Профиль</h1>
       </div>
 
       <div className="max-w-2xl mx-auto pb-28 md:pb-12">

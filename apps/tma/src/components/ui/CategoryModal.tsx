@@ -1,4 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useTelegram } from '@/providers/TelegramProvider';
+import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
 export interface CategoryItem {
   id: string;
@@ -27,6 +30,9 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
   const [search, setSearch] = useState('');
   const [drilldownId, setDrilldownId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // TMA-RESPONSIVE-DESKTOP-001: на desktop sidebar 220px виден слева, не перекрываем.
+  const { viewportWidth } = useTelegram();
+  const sidebarOffset = (viewportWidth ?? 0) >= 768 ? SIDEBAR_WIDTH : 0;
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 80);
@@ -120,10 +126,13 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
     );
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  // Polat 07.05: portal в body — backdrop-filter в GlassCard ловит fixed.
+  return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex flex-col"
-      style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)', left: sidebarOffset }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -245,6 +254,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

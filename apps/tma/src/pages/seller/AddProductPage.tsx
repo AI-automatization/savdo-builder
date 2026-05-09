@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { Select } from '@/components/ui/Select';
+import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
 interface SizeRow {
@@ -112,7 +113,10 @@ export default function AddProductPage() {
     catsAbortRef.current = ac;
     api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setCategories(c); })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+        showToast('Не удалось загрузить разделы магазина', 'error');
+      });
     // Используем дерево с level/isLeaf/iconEmoji для cascade-modal
     api<GlobalCategory[]>('/storefront/categories/tree', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
@@ -121,7 +125,10 @@ export default function AddProductPage() {
         // Fallback: если эндпоинта нет (старая api версия) — обычный flat список
         api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
           .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
-          .catch(() => {});
+          .catch((err: unknown) => {
+            if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+            showToast('Не удалось загрузить категории', 'error');
+          });
       });
     return () => ac.abort();
   }, []);
@@ -264,12 +271,20 @@ export default function AddProductPage() {
     setPhotoUploading(true);
     try {
       for (let i = 0; i < photoFiles.length; i++) {
-        const mediaId = await uploadPhoto(photoFiles[i], i);
-        // POST в /seller/products/:id/images — первое фото primary.
-        await api(`/seller/products/${pid}/images`, {
-          method: 'POST',
-          body: { mediaId, isPrimary: i === 0, sortOrder: i },
-        });
+        try {
+          const mediaId = await uploadPhoto(photoFiles[i], i);
+          // POST в /seller/products/:id/images — первое фото primary.
+          await api(`/seller/products/${pid}/images`, {
+            method: 'POST',
+            body: { mediaId, isPrimary: i === 0, sortOrder: i },
+          });
+        } catch (err) {
+          // TMA-PHOTO-UPLOAD-DIAG-001: показываем конкретную причину фейла
+          // (storage unavailable / mime not allowed / size too big / 502).
+          // Раньше генерик «Не удалось» — продавец не знал что делать.
+          const reason = err instanceof Error ? err.message : 'неизвестная ошибка';
+          throw new Error(`Фото #${i + 1}: ${reason}`);
+        }
       }
     } finally {
       setPhotoUploading(false);
@@ -396,15 +411,24 @@ export default function AddProductPage() {
         });
       }
 
-      // 3. Сохранить атрибуты
+      // 3. Сохранить атрибуты. Если часть упала — товар уже создан,
+      // не блокируем UX, переводим в редактор для retry.
+      const failedAttrs: string[] = [];
       for (let i = 0; i < attrs.length; i++) {
         const a = attrs[i];
         if (a.name.trim() && a.value.trim()) {
-          await api(`/seller/products/${pid}/attributes`, {
-            method: 'POST',
-            body: { name: a.name.trim(), value: a.value.trim(), sortOrder: i },
-          }).catch(() => {});
+          try {
+            await api(`/seller/products/${pid}/attributes`, {
+              method: 'POST',
+              body: { name: a.name.trim(), value: a.value.trim(), sortOrder: i },
+            });
+          } catch {
+            failedAttrs.push(a.name.trim());
+          }
         }
+      }
+      if (failedAttrs.length > 0) {
+        showToast(`⚠️ Не сохранились характеристики: ${failedAttrs.join(', ')}. Добавьте в редакторе.`);
       }
 
       // 4. Загрузить фото (TMA-MULTI-PHOTO-001: массив, не одно). Ошибка
@@ -414,12 +438,15 @@ export default function AddProductPage() {
           await uploadPhotosForProduct(pid);
         } catch (photoErr: unknown) {
           const isStorageDown = photoErr instanceof ApiError && photoErr.status === 503;
+          // TMA-PHOTO-UPLOAD-DIAG-001: настоящий error.message теперь
+          // включает причину (см. uploadPhotosForProduct).
+          const detail = photoErr instanceof Error ? photoErr.message : 'часть фото не загружена';
           tg?.HapticFeedback.notificationOccurred('warning');
           navigate(`/seller/products/${pid}/edit`, {
             state: {
               photoError: isStorageDown
                 ? 'Загрузка фото временно недоступна — попробуйте позже'
-                : 'Часть фото не загружена — попробуйте добавить остальные здесь',
+                : `${detail}. Попробуйте добавить здесь.`,
             },
           });
           return;

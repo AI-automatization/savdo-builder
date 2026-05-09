@@ -61,9 +61,10 @@ export class VerifySellerExtendedUseCase {
     });
 
     // Audit log с полным контекстом (reason, notes, checkedRequirements)
-    await (this.prisma as any).auditLog.create({
+    await this.prisma.auditLog.create({
       data: {
         actorUserId: input.adminUserId,
+        actorType: 'admin',
         action: `seller.verification.${input.status.toLowerCase()}`,
         entityType: 'seller',
         entityId: input.sellerId,

@@ -15,6 +15,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -81,7 +83,8 @@ export class ProductsController {
   // ─── Seller routes ────────────────────────────────────────────────────────
 
   @Get('seller/products')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listMyProducts(
     @CurrentUser() user: JwtPayload,
     @Query('status') status?: ProductStatus,
@@ -117,7 +120,9 @@ export class ProductsController {
   }
 
   @Post('seller/products')
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @Throttle({ default: { ttl: 60_000, limit: 30 } }) // anti-spam при создании товаров
   async createMyProduct(
     @CurrentUser() user: JwtPayload,
@@ -139,7 +144,8 @@ export class ProductsController {
   }
 
   @Get('seller/products/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async getMyProduct(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -155,19 +161,27 @@ export class ProductsController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
+    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
+    const images = (p.images ?? []).map((img) => ({
+      ...img,
+      url: this.resolveImageUrl(img.media),
+    }));
     return {
       ...p,
       basePrice: Number(p.basePrice),
       oldPrice: this.toPrice(p.oldPrice),
       salePrice: this.toPrice(p.salePrice),
-      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      images,
+      mediaUrls: images.map((img) => img.url),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
 
   @Patch('seller/products/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateMyProduct(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -188,7 +202,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMyProduct(
     @CurrentUser() user: JwtPayload,
@@ -199,7 +214,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async changeMyProductStatus(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -210,7 +226,8 @@ export class ProductsController {
   }
 
   @Get('seller/products/:id/variants')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listMyVariants(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -231,7 +248,9 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/variants')
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createMyVariant(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -250,7 +269,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/variants/:variantId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateMyVariant(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -269,7 +289,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/variants/:variantId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMyVariant(
     @CurrentUser() user: JwtPayload,
@@ -281,7 +302,8 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/variants/:variantId/stock')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.OK)
   async adjustVariantStock(
     @CurrentUser() user: JwtPayload,
@@ -296,7 +318,9 @@ export class ProductsController {
   // ─── Option groups ────────────────────────────────────────────────────────
 
   @Post('seller/products/:id/option-groups')
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createOptionGroup(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -312,7 +336,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/option-groups/:gid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateOptionGroup(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -329,7 +354,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/option-groups/:gid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteOptionGroup(
     @CurrentUser() user: JwtPayload,
@@ -348,7 +374,9 @@ export class ProductsController {
   // ─── Option values ────────────────────────────────────────────────────────
 
   @Post('seller/products/:id/option-groups/:gid/values')
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async createOptionValue(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -369,7 +397,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/option-groups/:gid/values/:vid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateOptionValue(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -391,7 +420,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/option-groups/:gid/values/:vid')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteOptionValue(
     @CurrentUser() user: JwtPayload,
@@ -415,7 +445,9 @@ export class ProductsController {
   // ─── Product images ───────────────────────────────────────────────────────
 
   @Post('seller/products/:id/images')
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async attachProductImage(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -446,7 +478,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/images/:imageId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async detachProductImage(
     @CurrentUser() user: JwtPayload,
@@ -461,7 +494,8 @@ export class ProductsController {
   // ─── Product Attributes ──────────────────────────────────────────────────
 
   @Get('seller/products/:id/attributes')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async listProductAttributes(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -475,7 +509,9 @@ export class ProductsController {
   }
 
   @Post('seller/products/:id/attributes')
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async addProductAttribute(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -494,7 +530,8 @@ export class ProductsController {
   }
 
   @Patch('seller/products/:id/attributes/:attrId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   async updateProductAttribute(
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
@@ -510,7 +547,8 @@ export class ProductsController {
   }
 
   @Delete('seller/products/:id/attributes/:attrId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteProductAttribute(
     @CurrentUser() user: JwtPayload,
@@ -569,6 +607,53 @@ export class ProductsController {
     return { ...store, logoUrl, coverUrl };
   }
 
+  // FEAT-001: единый поиск по витрине — товары + магазины одним запросом.
+  // Использует case-insensitive ILIKE по name/title/description; minimum 2 символа
+  // (короткие запросы дают слишком много результатов и грузят БД).
+  @Get('storefront/search')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  async searchStorefront(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const query = (q ?? '').trim();
+    if (query.length < 2) {
+      return { stores: [], products: [] };
+    }
+    const lim = Math.min(Math.max(Number(limit ?? 10) || 10, 1), 30);
+
+    const [stores, products] = await Promise.all([
+      this.storesRepo.searchPublic(query, lim),
+      this.productsRepo.searchPublic(query, lim),
+    ]);
+
+    const storesData = await Promise.all(stores.map(async (s) => {
+      const sx = s as typeof s & { logoMediaId?: string | null; coverMediaId?: string | null };
+      const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(sx.logoMediaId, sx.coverMediaId);
+      const { logoMediaId: _l, coverMediaId: _c, ...rest } = sx;
+      void _l; void _c;
+      return { ...rest, logoUrl, coverUrl };
+    }));
+
+    const productsData = (products as unknown as Array<Record<string, unknown> & {
+      basePrice: unknown; oldPrice: unknown; salePrice: unknown;
+      images?: Array<{ media: unknown }>;
+      store?: { id: string; name: string; slug: string };
+    }>).map((p) => {
+      const { basePrice, oldPrice, salePrice, images, store, ...rest } = p;
+      return {
+        ...rest,
+        basePrice: Number(basePrice),
+        oldPrice: this.toPrice(oldPrice),
+        salePrice: this.toPrice(salePrice),
+        images: (images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+        store: store ? { id: store.id, name: store.name, slug: store.slug } : null,
+      };
+    });
+
+    return { stores: storesData, products: productsData };
+  }
+
   @Get('stores/:slug')
   async getStoreBySlug(@Param('slug') slug: string) {
     const store = await this.storesRepo.findBySlug(slug);
@@ -622,13 +707,20 @@ export class ProductsController {
     if (product.storeId !== store.id) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
+    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
+    const images = (p.images ?? []).map((img) => ({
+      ...img,
+      url: this.resolveImageUrl(img.media),
+    }));
     return {
       ...p,
       basePrice: Number(p.basePrice),
       oldPrice: this.toPrice(p.oldPrice),
       salePrice: this.toPrice(p.salePrice),
-      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      images,
+      mediaUrls: images.map((img) => img.url),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
@@ -646,9 +738,21 @@ export class ProductsController {
     @Query('filters') rawFilters?: Record<string, string>,
     @Query('q') q?: string,
     @Query('sort') sort?: string,
+    @Query('priceMin') priceMin?: string,
+    @Query('priceMax') priceMax?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    // FEAT-003: ценовой диапазон. Парсим из query — игнорируем NaN и
+    // отрицательные значения (Prisma басимым невалидное число выкинет
+    // P2003, лучше превратить в undefined).
+    const parsePrice = (s?: string): number | undefined => {
+      if (!s) return undefined;
+      const n = Number(s);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    };
+    const pMin = parsePrice(priceMin);
+    const pMax = parsePrice(priceMax);
     // Platform-wide feed (no storeId)
     let data: Array<Record<string, unknown> & { id: string; inWishlist?: boolean }>;
     let total: number;
@@ -659,6 +763,8 @@ export class ProductsController {
       const result = await this.productsRepo.findAllPublic({
         q,
         globalCategoryId,
+        priceMin: pMin,
+        priceMax: pMax,
         sort: validSort,
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,
@@ -671,7 +777,9 @@ export class ProductsController {
           basePrice: Number(basePrice),
           oldPrice: this.toPrice(oldPrice),
           salePrice: this.toPrice(salePrice),
+          // API-PRODUCT-LIST-IMAGES-CONTRACT-001: оба поля.
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
+          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
           variantCount: _count?.variants ?? 0,
           totalStock,
         };
@@ -690,7 +798,11 @@ export class ProductsController {
           basePrice: Number(basePrice),
           oldPrice: this.toPrice(oldPrice),
           salePrice: this.toPrice(salePrice),
+          // API-PRODUCT-LIST-IMAGES-CONTRACT-001: возвращаем оба поля для backward
+          // compat. `mediaUrls: string[]` — convenience, `images: [{url}]` — canonical
+          // (per-image metadata можно расширять).
           images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
+          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
           variantCount: _count?.variants ?? 0,
           totalStock,
         };
@@ -730,13 +842,20 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
+    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
+    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
+    const images = (p.images ?? []).map((img) => ({
+      ...img,
+      url: this.resolveImageUrl(img.media),
+    }));
     return {
       ...p,
       basePrice: Number(p.basePrice),
       oldPrice: this.toPrice(p.oldPrice),
       salePrice: this.toPrice(p.salePrice),
-      mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl(img.media)),
+      images,
+      mediaUrls: images.map((img) => img.url),
       variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
     };
   }
@@ -765,6 +884,9 @@ export class ProductsController {
   private resolveImageUrl(media: unknown): string {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
+    // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' выставляется migration
+    // если TG getFile вернул 404 — fileId мёртв навсегда. Не показываем.
+    if (m.bucket === 'telegram-expired') return '';
     const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
     // Telegram-stored files always proxy (file URLs expire ~1h)
     if (m.bucket === 'telegram') {
