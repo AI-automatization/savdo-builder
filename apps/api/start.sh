@@ -4,17 +4,6 @@ set -e
 echo "=== Migration status before deploy ==="
 pnpm --filter db exec prisma migrate status || true
 
-# 09.05.2026 (Polat) HOTFIX P3009: cart_refund_status_enums упала в проде,
-# заблокировав все последующие миграции. Файл переписан идемпотентным —
-# но Prisma не перезапустит её пока row в _prisma_migrations в failed-state.
-# Этот блок один раз сбрасывает запись, потом noop (resolve idempotent).
-echo "=== One-shot resolve of known-failed migrations (P3009 recovery) ==="
-for FAILED_MIG in 20260509233000_cart_refund_status_enums; do
-  pnpm --filter db exec prisma migrate resolve --rolled-back "$FAILED_MIG" 2>&1 \
-    | grep -v -E "is not in a failed state|No migration to roll back" \
-    || echo "  (noop) $FAILED_MIG не в failed-state"
-done
-
 echo "=== Running Prisma migrations ==="
 # 07.05 (Polat): убран `|| true` — раньше при failed миграции скрипт
 # продолжал запуск API с расхождением schema↔DB → 500 на /auth/telegram
