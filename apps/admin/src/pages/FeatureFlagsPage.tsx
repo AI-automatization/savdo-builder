@@ -21,7 +21,7 @@ export default function FeatureFlagsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.get<FlagsResponse>('/admin/system/feature-flags')
+    api.get<FlagsResponse>('/api/v1/admin/system/feature-flags')
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : 'Не удалось загрузить'))
       .finally(() => setLoading(false))
