@@ -54,7 +54,8 @@ export default function StorePage() {
   useEffect(() => {
     const ac = new AbortController();
     api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
-      .then(setGlobalCategories).catch(() => {});
+      .then(setGlobalCategories)
+      .catch(() => {/* best-effort: category filters are supplementary, page works without them */});
     return () => ac.abort();
   }, []);
 

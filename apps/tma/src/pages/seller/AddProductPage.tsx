@@ -113,7 +113,10 @@ export default function AddProductPage() {
     catsAbortRef.current = ac;
     api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setCategories(c); })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+        showToast('Не удалось загрузить разделы магазина', 'error');
+      });
     // Используем дерево с level/isLeaf/iconEmoji для cascade-modal
     api<GlobalCategory[]>('/storefront/categories/tree', { signal: ac.signal })
       .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
@@ -122,7 +125,10 @@ export default function AddProductPage() {
         // Fallback: если эндпоинта нет (старая api версия) — обычный flat список
         api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
           .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
-          .catch(() => {});
+          .catch((err: unknown) => {
+            if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+            showToast('Не удалось загрузить категории', 'error');
+          });
       });
     return () => ac.abort();
   }, []);
