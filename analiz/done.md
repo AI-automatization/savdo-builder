@@ -1,5 +1,37 @@
 # Done — Азим + Полат
 
+## 2026-05-08 (Полат, поздний вечер) — Design audit P0 fixes (3 закрыто)
+
+### ✅ [API-HTTP-201-CREATED-001] @HttpCode(CREATED) explicit на 6 POST creators 🔴
+
+- **Дата:** 08.05.2026
+- **Файл:** `apps/api/src/modules/products/products.controller.ts`
+- **Skill criteria:** api-design-reviewer — "Status Code Compliance: ensure appropriate HTTP status codes are explicitly used"
+- **Что:** добавлен `@HttpCode(HttpStatus.CREATED)` на 6 POST endpoints (seller/products + /variants + /option-groups + /option-groups/:gid/values + /images + /attributes). NestJS уже возвращал 201 неявно для @Post() — теперь explicit для symmetry с cart/checkout (которые имели explicit раньше).
+- **Why:** consistency + Swagger generation friendly + intent ясно.
+
+### ✅ [TMA-DESIGN-SPINNER-CLEANUP-001] Initial-load Spinner → Skeleton 🔴
+
+- **Дата:** 08.05.2026
+- **Skill criteria:** ui-design-system "Loading state hierarchy: skeleton placeholders for known shape; spinner for indeterminate progress"
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/ChatPage.tsx:442` — initial-messages `<Spinner>` → 4× `Skeleton` блоки (alternating left/right alignment imitating message bubbles).
+  - `apps/tma/src/pages/seller/ChatPage.tsx:506` — то же.
+  - `apps/tma/src/pages/seller/EditProductPage.tsx:597` — full-page `<Spinner>` → `<ProductDetailSkeleton />`.
+- **Что НЕ заменено:** inline Spinner на send-button (sending indicator), loadMore button (pagination), expand-detail (small inline) — они correctly indeterminate-progress.
+
+### ✅ [TMA-DESIGN-A11Y-LEFTOVERS-001] Verification: реальных нарушений не осталось 🔴
+
+- **Дата:** 08.05.2026
+- **Что проверено:** упомянутые в design-audit T3 места (seller/ChatPage:205, buyer/ProductPage:252-256).
+- **Findings:**
+  - `seller/ChatPage` line 205 — это код функции `sendMsg`, не div onClick. Audit ошибся.
+  - Все `<div onClick>` в seller/ChatPage (lines 377, 383, 683, 684) — modal backdrops с `stopPropagation` + ESC handler в ConfirmModal/ImageCropper. Acceptable per ADR `2026-05-08-tma-a11y-roletabindex-vs-button.md`.
+  - `buyer/ProductPage:252-256` (collage 2x2) уже фикшено в коммите `3400ecc`.
+- **Решение:** тикет закрыт без изменений.
+
+---
+
 ## 2026-05-08 (Азим, сессия 54) — web-seller дизайн-фикс Wave 7 (частично)
 
 ### ✅ [WS-DESIGN-WAVE-7-BACKLOG] 8 из 14 backlog nit'ов 🟢
