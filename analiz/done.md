@@ -32,8 +32,35 @@
   - Chat (20): ResolveThread (only seller), GetUnreadCount summarise (count > 0), GetThreadMessages — participant check, hasMore +1 trick, batch parent resolve (no N+1, dedupe), isDeleted text mask.
   - Checkout (24): PreviewCheckout — invalid items с reasons, **INV-C01** (CART_STORE_MISMATCH) защита cross-product variant inject (productId mismatch), priceOverride > basePrice, store ownership.
   - AdminCreate (12): manual seller activation flow (API-MANUAL-SELLER-ACTIVATION-001), **INV-S01** (one store per seller), slugify edge cases + uniqueSlug suffix.
-- **Результат:** 42 test suites, 550 passed, 0 failed, 100% pass.
-- **Commits:** 6ed34cd, 22b3b4b, 52a2987, fba9da1, 5bd47af, c1607c5, 88f9d02
+- **Результат:** 47 test suites, 624 passed, 0 failed, 100% pass.
+- **Commits:** 6ed34cd, 22b3b4b, 52a2987, fba9da1, 5bd47af, c1607c5, 88f9d02, 8fa6dda, ace965f, 611c15a, 647d532, f3b651b
+
+### ✅ [TEST-COVERAGE-W32-36] Расширение покрытия: analytics, admin, orders, auth, chat 🟡
+
+- **Дата:** 10.05.2026
+- **Файлы (5 новых spec файлов):**
+  - `apps/api/src/modules/analytics/use-cases/analytics.use-cases.spec.ts` — Wave 32 (18 cases)
+  - `apps/api/src/modules/admin/use-cases/admin-list-detail.use-cases.spec.ts` — Wave 33 (12 cases)
+  - `apps/api/src/modules/orders/use-cases/orders-read.use-cases.spec.ts` — Wave 34 (14 cases)
+  - `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.spec.ts` — Wave 35 (13 cases)
+  - `apps/api/src/modules/chat/use-cases/create-thread.use-cases.spec.ts` — Wave 36 (17 cases)
+- **Что покрыто:**
+  - Analytics (18): TrackEvent role-to-actorType mapping, range parsing 30d default/90d cap/from<to/ISO,
+    revenue split DELIVERED→completed vs CONFIRMED/PROCESSING/SHIPPED→pending, topProducts top-5 with
+    snapshot-key fallback, daily buckets fill для дней без заказов.
+  - Admin proxy (12): list/detail forwarding, GetMe UnauthorizedException, GetAuditLog filters.
+  - Orders read (14): GetBuyerOrders UNAUTHORIZED guard, GetSellerOrders limit cap 100 (abuse prevent),
+    Decimal→Number mapping, deliveryAddress + preview build. GetOrderDetail — NOT_ORDER_PARTICIPANT
+    защита (cross-buyer/cross-store).
+  - **TelegramAuth (13) — security-critical:** real HMAC-SHA256 buildInitData, missing botToken/hash/user,
+    HMAC mismatch via timingSafeEqual, invalid JSON, existing telegramId reuse, Redis tg:phone link
+    (clearTelegramIdIfGhost first), Redis-phone match с existing telegramId reuse byPhone, new user via
+    createUserWithBuyerByTelegram. JWT claims: SELLER→storeId, ADMIN+MFA→mfaPending+adminRole.
+  - CreateThread (17): chatEnabled flag, PRODUCT vs ORDER context, ownership (cross-buyer ORDER_ACCESS_DENIED),
+    idempotent reuse. CreateSellerThread (FEAT-004): empty firstMessage block, guest checkout (buyerId=null)
+    → BUYER_NOT_IDENTIFIED, sendMessage trimming, idempotent reuse.
+- **Финальный итог:** **47 suites, 624 cases**, 100% pass — почти 5× прирост от стартовых 130.
+- **Commits:** 8fa6dda, ace965f, 611c15a, 647d532, f3b651b
 
 ## 2026-05-09 (Азим) — Web-buyer Design Audit + 6 fix waves (22 из 25 findings закрыты)
 
