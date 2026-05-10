@@ -95,6 +95,12 @@ enum MediaVisibility {
   PRIVATE
 }
 
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
 enum SellerVerificationDocumentType {
   PASSPORT
   BUSINESS_DOC
@@ -899,7 +905,7 @@ model ChatMessage {
   id               String   @id @default(uuid())
   threadId         String
   senderUserId     String
-  messageType      String   @default("text") // text | image | system
+  messageType      ChatMessageType @default(TEXT)
   body             String?
   productContextId String?
   orderContextId   String?

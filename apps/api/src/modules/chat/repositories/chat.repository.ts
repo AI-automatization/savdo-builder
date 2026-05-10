@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ChatMessage, ChatThread, ThreadType, Seller, Store, Buyer, User } from '@prisma/client';
+import { ChatMessage, ChatMessageType, ChatThread, ThreadType, Seller, Store, Buyer, User } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 
 export type ThreadWithMessages = ChatThread & {
@@ -24,7 +24,7 @@ export interface AddMessageData {
   body?: string | null;
   parentMessageId?: string | null;
   mediaId?: string | null;
-  messageType?: 'text' | 'image' | 'system';
+  messageType?: ChatMessageType;
 }
 
 @Injectable()
@@ -130,7 +130,7 @@ export class ChatRepository {
         data: {
           threadId: data.threadId,
           senderUserId: data.senderUserId,
-          messageType: data.messageType ?? (data.mediaId ? 'image' : 'text'),
+          messageType: data.messageType ?? (data.mediaId ? ChatMessageType.IMAGE : ChatMessageType.TEXT),
           body: data.body ?? null,
           ...(data.parentMessageId ? { parentMessageId: data.parentMessageId } : {}),
           ...(data.mediaId ? { mediaId: data.mediaId } : {}),
