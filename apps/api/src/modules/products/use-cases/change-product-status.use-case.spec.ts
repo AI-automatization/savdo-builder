@@ -131,6 +131,7 @@ describe('ChangeProductStatusUseCase', () => {
         name: 'My Store',
         telegramChannelId: '@my_channel',
         telegramContactLink: null,
+        autoPostProductsToChannel: true,
       });
       prisma.productImage.findMany.mockResolvedValue([]);
       await useCase.execute('p-1', 'store-1', ProductStatus.ACTIVE);
@@ -146,6 +147,7 @@ describe('ChangeProductStatusUseCase', () => {
       prisma.store.findFirst.mockResolvedValue({
         id: 'store-1', slug: 'my-store', name: 'My Store',
         telegramChannelId: '@my_channel', telegramContactLink: null,
+        autoPostProductsToChannel: true,
       });
       prisma.productImage.findMany.mockResolvedValue([
         { isPrimary: true, sortOrder: 0, media: { bucket: 'telegram', objectKey: 'tg:FILE_ID_1' } },
@@ -161,6 +163,7 @@ describe('ChangeProductStatusUseCase', () => {
       prisma.store.findFirst.mockResolvedValue({
         id: 'store-1', slug: 'my-store', name: 'My Store',
         telegramChannelId: '@my_channel', telegramContactLink: null,
+        autoPostProductsToChannel: true,
       });
       prisma.productImage.findMany.mockResolvedValue([
         { isPrimary: true, sortOrder: 0, media: { bucket: 'telegram', objectKey: 'tg:FILE1' } },
@@ -178,6 +181,7 @@ describe('ChangeProductStatusUseCase', () => {
       prisma.store.findFirst.mockResolvedValue({
         id: 'store-1', slug: 'my-store', name: 'My Store',
         telegramChannelId: '@my_channel', telegramContactLink: null,
+        autoPostProductsToChannel: true,
       });
       prisma.productImage.findMany.mockResolvedValue([
         { isPrimary: true, sortOrder: 0, media: { bucket: 'r2', objectKey: 'savdo/123.jpg' } },
@@ -196,6 +200,20 @@ describe('ChangeProductStatusUseCase', () => {
       await new Promise((r) => setTimeout(r, 0));
       expect(prisma.store.findFirst).not.toHaveBeenCalled();
       expect(telegramBot.sendToChannel).not.toHaveBeenCalled();
+    });
+
+    it('FEAT-TG-AUTOPOST-001: autoPostProductsToChannel=false → НЕ постит', async () => {
+      prisma.store.findFirst.mockResolvedValue({
+        id: 'store-1', slug: 'my-store', name: 'My Store',
+        telegramChannelId: '@my_channel', telegramContactLink: null,
+        autoPostProductsToChannel: false, // opt-out
+      });
+      prisma.productImage.findMany.mockResolvedValue([]);
+      await useCase.execute('p-1', 'store-1', ProductStatus.ACTIVE);
+      await new Promise((r) => setTimeout(r, 0));
+      expect(telegramBot.sendToChannel).not.toHaveBeenCalled();
+      expect(telegramBot.sendPhotoToChannel).not.toHaveBeenCalled();
+      expect(telegramBot.sendMediaGroupToChannel).not.toHaveBeenCalled();
     });
 
     it('postToChannel падает → НЕ блокирует ответ (fire-and-forget)', async () => {

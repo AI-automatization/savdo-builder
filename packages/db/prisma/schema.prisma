@@ -374,6 +374,9 @@ model Store {
   telegramContactLink    String
   telegramChannelId      String?     // @channel_username или числовой chat_id
   telegramChannelTitle   String?     // отображаемое название канала
+  // FEAT-TG-AUTOPOST-001: при ACTIVE-публикации товара автоматически
+  // постить в канал продавца. Opt-in — продавец явно включает в Settings.
+  autoPostProductsToChannel Boolean  @default(false)
   isPublic               Boolean     @default(false)
   publishedAt            DateTime?
   createdAt              DateTime    @default(now())

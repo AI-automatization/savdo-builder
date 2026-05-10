@@ -32,6 +32,7 @@ import { CreateVariantUseCase } from './use-cases/create-variant.use-case';
 import { UpdateVariantUseCase } from './use-cases/update-variant.use-case';
 import { DeleteVariantUseCase } from './use-cases/delete-variant.use-case';
 import { AdjustStockUseCase } from './use-cases/adjust-stock.use-case';
+import { PostProductToChannelUseCase } from './use-cases/post-product-to-channel.use-case';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
@@ -64,6 +65,7 @@ export class ProductsController {
     private readonly updateVariant: UpdateVariantUseCase,
     private readonly deleteVariant: DeleteVariantUseCase,
     private readonly adjustStock: AdjustStockUseCase,
+    private readonly postToChannel: PostProductToChannelUseCase,
     private readonly productsRepo: ProductsRepository,
     private readonly variantsRepo: VariantsRepository,
     private readonly optionGroupsRepo: OptionGroupsRepository,
@@ -216,6 +218,32 @@ export class ProductsController {
   ) {
     const storeId = await this.resolveStoreId(user.sub);
     return this.changeProductStatus.execute(id, storeId, dto.status);
+  }
+
+  /**
+   * FEAT-TG-AUTOPOST-001: ручной repost товара в TG-канал. Игнорирует
+   * `autoPostProductsToChannel` toggle (force=true) — для re-post после
+   * правки описания/фото без изменения статуса. Throttle 5/мин — не
+   * злоупотреблять, иначе TG зашлёт shadowban.
+   */
+  @Post('seller/products/:id/repost-to-channel')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  async repostMyProductToChannel(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    const product = await this.productsRepo.findById(id);
+    if (!product) {
+      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    if (product.storeId !== storeId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
+    }
+    return this.postToChannel.execute({ productId: id, force: true });
   }
 
   @Get('seller/products/:id/variants')

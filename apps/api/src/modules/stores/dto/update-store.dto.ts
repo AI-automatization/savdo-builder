@@ -46,4 +46,10 @@ export class UpdateStoreDto {
   @IsNumber()
   @Min(0)
   deliveryFeeAmount?: number;
+
+  // FEAT-TG-AUTOPOST-001: opt-in авто-постинг товаров в TG-канал.
+  // Toggle применяется только если есть `telegramChannelId`.
+  @IsOptional()
+  @IsBoolean()
+  autoPostProductsToChannel?: boolean;
 }
