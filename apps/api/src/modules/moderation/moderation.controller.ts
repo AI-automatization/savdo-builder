@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ModerationActionType, ModerationCaseStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -24,6 +25,8 @@ import { TakeActionDto } from './dto/take-action.dto';
 import { ListCasesDto } from './dto/list-cases.dto';
 import { ModerationRepository } from './repositories/moderation.repository';
 
+@ApiTags('moderation')
+@ApiBearerAuth('jwt')
 @Controller('admin/moderation')
 @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 @Roles('ADMIN')
