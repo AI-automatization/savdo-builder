@@ -1,6 +1,57 @@
 # Done — Азим + Полат
 
-## 2026-05-10 (Полат) — 5 P0/P1/P2 задач из Sprint A/B + cleanup
+## 2026-05-10 evening (Полат) — Pre-launch P0/P1 marathon
+
+После 5-perspective platform audit (design / marketing / seller UX / buyer UX / QA)
+закрыто 14 P0/P1 задач за одну сессию:
+
+### ✅ [ADMIN-P0-7-FIXES] 7 admin/TMA блокеров запуска (commit `7b6a149`) 🔴
+1. `api.ts` handle 204 — DELETE/mark-read больше не падают
+2. OrdersPage refund typo `returnToWallet`→`returnedToWallet`
+3. MfaSetupPage GET endpoint /admin/auth/mfa/status → /admin/auth/me
+4. AdminUsersPage 3 contract mismatches (POST/PATCH/GET shape)
+5. **LoginPage MFA challenge step (step 3 + decodeJwtPayload + POST mfa/login)** — без этого ВСЕ админы с MFA не могли войти
+6. TMA EditProductPage `window.confirm()` → `confirmDialog` (popup блокировался в TG mobile)
+7. TMA EditProductPage ручной fetch DELETE → `api()` (auth refresh + cache-bust)
+
+### ✅ [SEC-API-2-FIXES] Security fixes (commit `045f1d7`) 🔴
+- **API-ROLES-GUARD-ADMIN-BYPASS-001 (SEC-003)** — admin больше не может звать buyer/seller endpoints от чужого имени. Bypass требует явный `@AllowAdminBypass()`.
+- **API-DIRECT-ORDER-DOS-001** — `@ArrayMaxSize(50)` + `@Max(999)` quantity. POST /orders с массивом 50000 items больше не валит DB.
+
+### ✅ [API-P0-STOCK + INV-O04 + Multer + Swagger] 5 fix (commit `385246a`) 🔴
+- **API-STOCK-RACE-OVERSELL-001** — checkout.repository.ts: atomic UPDATE с WHERE stockQuantity >= qty (Prisma.sql + $executeRaw). 2 параллельных checkout на stock=1 → один success, второй CHECKOUT_STOCK_INSUFFICIENT.
+- **API-INV-O04-STOCK-RELEASE-001** — orders.repository.updateStatus возвращает stock + InventoryMovement.ORDER_RELEASED при CANCELLED. Refund-order full refund тоже. Тестов +3.
+- **API-MULTER-LIMITS-001** — `limits: { fileSize: 10 * 1024 * 1024 }` на 3 FileInterceptor.
+- **API-SWAGGER-PROD-CLOSE-001** — `/api/v1/docs` отключён в prod (SWAGGER_ENABLED=true override).
+- DirectOrder DoS + variant priceOverride@Min(1) — уже в `045f1d7`.
+
+### ✅ [TMA-SELLER-WS-NOTIFY-001] TMA seller realtime (commit `23ddc7f`) 🟡
+- Новый `apps/tma/src/lib/sellerNotifications.ts` — bind/unbind socket с join-seller-room + listen на `order:new` / `order:status_changed` / `chat:new_message` + showToast + HapticFeedback.
+- Интегрирован в SellerLayout. Re-join on reconnect. Resolve storeId через `/seller/store` (INV-S01).
+- Импакт: продавец на TG-only больше не теряет уведомления о заказах.
+
+### ✅ [FEAT-TG-AUTOPOST-001] Opt-in TG channel auto-post (commit `8203542`) 🟡
+- Новое поле `Store.autoPostProductsToChannel` (default false; existing stores с channelId set true для backward-compat).
+- Migration `20260510210000_store_auto_post_to_channel`.
+- Новый `PostProductToChannelUseCase` с corner-cases:
+  - 0 фото → text + button «🛒 Открыть товар»
+  - 1 фото bucket=telegram → sendPhotoToChannel + buttons
+  - 2-10 фото → sendMediaGroupToChannel (caption на первом)
+  - bucket=telegram-expired пропускается
+  - HTML escape title/description (XSS защита)
+  - salePrice priority с `<s>` зачёркнутым basePrice
+  - force=true override toggle (manual repost)
+  - Fail-tolerant: errors → {posted:false, reason}
+- ChangeProductStatusUseCase теперь проверяет toggle перед auto-post.
+- Manual repost endpoint: `POST /api/v1/seller/products/:id/repost-to-channel` (Throttle 5/мин, force=true).
+- UpdateStoreDto: добавлен `autoPostProductsToChannel?: boolean` — Settings UI Азима будет toggle'ить через PATCH /seller/store.
+- Тесты: +14 PostProductToChannel + 1 ChangeProductStatus.
+
+**Итого сессии:** 49 test suites, **665 cases** (от 647 утренних), 100% pass.
+
+---
+
+## 2026-05-10 day (Полат) — 5 P0/P1/P2 задач из Sprint A/B + cleanup
 
 ### ✅ [API-CHAT-THREAD-PRODUCT-PREVIEW-001] Pinned product context для chat 🟡
 
