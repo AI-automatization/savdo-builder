@@ -95,6 +95,18 @@ enum MediaVisibility {
   PRIVATE
 }
 
+enum SellerVerificationDocumentType {
+  PASSPORT
+  BUSINESS_DOC
+  OTHER
+}
+
+enum SellerVerificationDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum ModerationCaseStatus {
   OPEN       // только что создан, ждёт модератора
   IN_REVIEW  // модератор взял в работу (assignedAdminId != null)
@@ -316,9 +328,9 @@ model Seller {
 model SellerVerificationDocument {
   id           String   @id @default(uuid())
   sellerId     String
-  documentType String   // passport | business_doc | other
+  documentType SellerVerificationDocumentType
   mediaId      String
-  status       String   @default("pending")
+  status       SellerVerificationDocumentStatus @default(PENDING)
   adminComment String?
   createdAt    DateTime @default(now())
   reviewedAt   DateTime?
