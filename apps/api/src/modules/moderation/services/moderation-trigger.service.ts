@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ModerationRepository } from '../repositories/moderation.repository';
-import { ModerationCase } from '@prisma/client';
+import { ModerationCase, ModerationCaseStatus, ModerationCaseType } from '@prisma/client';
 
 @Injectable()
 export class ModerationTriggerService {
@@ -15,7 +15,7 @@ export class ModerationTriggerService {
   async openCaseForStore(storeId: string): Promise<ModerationCase> {
     const existing = await this.moderationRepo.findCaseByEntity('store', storeId);
 
-    if (existing && existing.status === 'open') {
+    if (existing && existing.status === ModerationCaseStatus.OPEN) {
       this.logger.log(`Returning existing moderation case ${existing.id} for store ${storeId}`);
       return existing;
     }
@@ -23,7 +23,7 @@ export class ModerationTriggerService {
     const newCase = await this.moderationRepo.createCase({
       entityType: 'store',
       entityId: storeId,
-      caseType: 'verification',
+      caseType: ModerationCaseType.VERIFICATION,
     });
 
     this.logger.log(`Created moderation case ${newCase.id} for store ${storeId}`);
@@ -37,7 +37,7 @@ export class ModerationTriggerService {
   async openCaseForSeller(sellerId: string): Promise<ModerationCase> {
     const existing = await this.moderationRepo.findCaseByEntity('seller', sellerId);
 
-    if (existing && existing.status === 'open') {
+    if (existing && existing.status === ModerationCaseStatus.OPEN) {
       this.logger.log(`Returning existing moderation case ${existing.id} for seller ${sellerId}`);
       return existing;
     }
@@ -45,7 +45,7 @@ export class ModerationTriggerService {
     const newCase = await this.moderationRepo.createCase({
       entityType: 'seller',
       entityId: sellerId,
-      caseType: 'verification',
+      caseType: ModerationCaseType.VERIFICATION,
     });
 
     this.logger.log(`Created moderation case ${newCase.id} for seller ${sellerId}`);

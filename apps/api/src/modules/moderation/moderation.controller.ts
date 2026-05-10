@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ModerationActionType, ModerationCaseStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
@@ -110,13 +111,13 @@ export class ModerationController {
     if (!modCase) {
       return { success: false, error: 'Case not found' };
     }
-    await this.moderationRepo.updateCaseStatus(id, 'closed');
+    await this.moderationRepo.updateCaseStatus(id, ModerationCaseStatus.CLOSED);
     await this.moderationRepo.addAction({
       caseId: id,
       entityType: modCase.entityType,
       entityId: modCase.entityId,
       adminUserId: user.sub,
-      actionType: 'CLOSE',
+      actionType: ModerationActionType.CLOSE,
       comment: 'Case closed manually by admin',
     });
     await this.moderationRepo.writeAuditLog({
@@ -144,13 +145,13 @@ export class ModerationController {
     if (!modCase) {
       return { success: false, error: 'Case not found' };
     }
-    await this.moderationRepo.updateCaseStatus(id, 'open');
+    await this.moderationRepo.updateCaseStatus(id, ModerationCaseStatus.OPEN);
     await this.moderationRepo.addAction({
       caseId: id,
       entityType: modCase.entityType,
       entityId: modCase.entityId,
       adminUserId: user.sub,
-      actionType: 'REOPEN',
+      actionType: ModerationActionType.REOPEN,
       comment: 'Case reopened by admin',
     });
     await this.moderationRepo.writeAuditLog({
