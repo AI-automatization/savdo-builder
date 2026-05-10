@@ -72,7 +72,21 @@ export class ChatRepository {
       orderBy: { lastMessageAt: 'desc' },
       include: {
         seller: { include: { store: { select: { id: true, name: true, slug: true } } } },
-        product: { select: { title: true } },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            basePrice: true,
+            salePrice: true,
+            images: {
+              orderBy: { sortOrder: 'asc' },
+              take: 1,
+              select: {
+                media: { select: { id: true, objectKey: true, bucket: true } },
+              },
+            },
+          },
+        },
         order: { select: { orderNumber: true } },
         messages: {
           where: { isDeleted: false },
@@ -90,7 +104,21 @@ export class ChatRepository {
       orderBy: { lastMessageAt: 'desc' },
       include: {
         buyer: { include: { user: { select: { phone: true } } } },
-        product: { select: { title: true } },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            basePrice: true,
+            salePrice: true,
+            images: {
+              orderBy: { sortOrder: 'asc' },
+              take: 1,
+              select: {
+                media: { select: { id: true, objectKey: true, bucket: true } },
+              },
+            },
+          },
+        },
         order: { select: { orderNumber: true } },
         messages: {
           where: { isDeleted: false },
