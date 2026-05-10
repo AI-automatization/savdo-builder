@@ -5,6 +5,115 @@
 
 ---
 
+# 🚨 PLATFORM AUDIT 10.05.2026 — Pre-launch findings (5 perspectives + endpoint inventory)
+
+> Полные отчёты от 5 параллельных аудит-агентов сохранены в conversation 10.05.2026.
+> Score: 6.4/10 общий (TMA 7, web-buyer 7, web-seller 8, admin 4→9 после P0 fix, API 8.5).
+
+## ✅ Закрыто 10.05.2026 (Полат, после аудита)
+
+- [x] **`API-CHAT-THREAD-PRODUCT-PREVIEW-001`** — pinned product context
+- [x] **`API-IDEMPOTENCY-KEY-001`** — Stripe-style idempotency
+- [x] **`API-ORDERS-ALIAS-REMOVE-001`** — dead alias removed
+- [x] **`API-SWAGGER-001`** + **`API-PRODUCTS-CTRL-SPLIT-001`** — verified done
+- [x] **`API-DELETE-OLD-STASHES-001`** — stale stashes dropped
+- [x] **`ADMIN-API-204-HANDLE-001`** ✅ 10.05.2026 — request<T> бросал SyntaxError на 204. Коммит `7b6a149`.
+- [x] **`ADMIN-REFUND-TYPO-001`** ✅ 10.05.2026 — returnToWallet→returnedToWallet, возвраты теперь попадают на wallet. Коммит `7b6a149`.
+- [x] **`ADMIN-MFA-STATUS-ENDPOINT-001`** ✅ 10.05.2026 — заменён на GET /admin/auth/me. Коммит `7b6a149`.
+- [x] **`ADMIN-USERS-CONTRACT-001`** ✅ 10.05.2026 — 3 mismatch: GET shape, POST/PATCH field names, currentRole через /me. Коммит `7b6a149`.
+- [x] **`ADMIN-LOGIN-MFA-CHALLENGE-001`** ✅ 10.05.2026 — step 3 TOTP input + POST /admin/auth/mfa/login. Без этого админы с MFA не могли войти. Коммит `7b6a149`.
+- [x] **`TMA-EDIT-PRODUCT-CONFIRM-001`** ✅ 10.05.2026 — window.confirm() → confirmDialog (popup блокировался в TG mobile). Коммит `7b6a149`.
+- [x] **`TMA-EDIT-PRODUCT-FETCH-001`** ✅ 10.05.2026 — ручной fetch DELETE → api() (refresh + cache-bust). Коммит `7b6a149`.
+
+## 🔴 P0 — БЛОКЕРЫ ДЛЯ PRODUCTION (Полат)
+
+### QA findings — критичные баги первого дня prod
+
+- [ ] **`API-STOCK-RACE-OVERSELL-001`** 🔴 — `checkout.repository.ts:149-156` нет SELECT FOR UPDATE / atomic decrement. Два buyer'а на последний товар оба получат success → stock уйдёт в минус. **Repro**: 2 параллельных POST `/checkout/confirm` на товар с stockQuantity=1.
+  - **Fix**: migration `ALTER TABLE product_variants ADD CONSTRAINT stock_non_negative CHECK (stockQuantity >= 0)`. В коде — `UPDATE ... WHERE stockQuantity >= ${qty} RETURNING` через `$queryRaw`. Если 0 rows affected → CHECKOUT_STOCK_INSUFFICIENT.
+- [ ] **`API-INV-O04-STOCK-RELEASE-001`** 🔴 — INV-O04 (CLAUDE.md) явно требует возврата stock при cancel. Сейчас `update-order-status.use-case.ts` пишет только новый статус. То же в `refund-order.use-case` (full refund).
+  - **Fix**: на PENDING→CANCELLED, CONFIRMED→CANCELLED, PROCESSING→CANCELLED делать increment + InventoryMovement.ORDER_RELEASED запись. Тесты обязательны (race + concurrent).
+- [ ] **`API-ROLES-GUARD-ADMIN-BYPASS-001`** 🔴 — `roles.guard.ts:25-26` `if user.role === 'ADMIN' return true` — admin может звать buyer/seller endpoints от чужого имени. Уже зафиксировано как `SEC-003 HIGH-02`.
+  - **Fix**: убрать bypass. Где admin реально нужен — добавить опциональный декоратор `@AllowAdminRoleBypass()`.
+- [ ] **`API-DIRECT-ORDER-DOS-001`** 🔴 — `CreateDirectOrderDto.items` без `@ArrayMaxSize`. POST `/orders` с массивом 50000 items → N+1 → DB connection exhaust → API down.
+  - **Fix**: `@ArrayMaxSize(50)` + `@Min(0.01)` на `priceOverride` (variant=0 даёт бесплатные заказы).
+- [ ] **`API-VARIANT-PRICE-ZERO-001`** 🔴 — variant с `priceOverride=0` пройдёт validate-cart → buyer заказывает за 0 сум. Бесплатные заказы.
+  - **Fix**: `@Min(0.01)` в DTO + `if (variant.priceOverride <= 0) throw VALIDATION_ERROR` в add-to-cart use-case.
+
+## 🟠 P1 — Critical для launch (Полат)
+
+- [ ] **`API-N1-CHECKOUT-001`** — N+1 queries в CreateDirectOrder + ValidateCartItems (`Promise.all(items.map(findById))` + второй loop variants). На 100 items = 200 round-trips.
+  - **Fix**: `findMany({ where: { id: { in: ids } } })` один раз.
+- [ ] **`API-IDEMPOTENCY-FAIL-OPEN-001`** — `idempotency.service.ts:60-61` при Redis-down `acquireLock` возвращает true (fail-open). Под нагрузкой Redis-restart → double orders.
+  - **Fix**: либо fail-closed с user-facing 503, либо DB-level unique constraint на (idempotencyKey, userId).
+- [ ] **`API-DELIVERY-FEE-CLIENT-CONTROLLED-001`** — `confirm-checkout.dto.ts:46` buyer передаёт `deliveryFee` любым числом. Может прислать 0 на платный магазин.
+  - **Fix**: backend сам считает deliveryFee от store.deliverySettings.
+- [ ] **`API-JWT-REVOCATION-001`** — logout удаляет UserSession из БД, но access JWT валиден до истечения (~15 min). Two-tab logout не выкидывает все сессии моментально.
+  - **Fix**: Redis blacklist `revoked:{jti}` до accessExpiresIn.
+- [ ] **`API-MULTER-LIMITS-001`** — FileInterceptor без `limits.fileSize`, body буферизуется в RAM до проверки. 50 concurrent × 10MB = 500MB spike (SEC-012).
+- [ ] **`API-SWAGGER-PROD-CLOSE-001`** — `/api/v1/docs` публичен в production. Надо закрыть `if (NODE_ENV === 'production') return`.
+- [ ] **`API-BULL-BOARD-DATA-LEAK-001`** — Bull Board показывает `data.code` (OTP) в job preview. SEC-008.
+  - **Fix**: middleware sanitize `data.code` → `***` в preview.
+- [ ] **`API-RBAC-CART-CROSS-SESSION-001`** — `cart.controller` UPDATE/DELETE опирается только на cartId match, anonymous с украденным sessionToken получает доступ.
+  - **Fix**: проверка ownership через buyer.userId или sessionKey hash.
+
+## 🔴 P0 — Marketing blockers для launch (Полат + Азим, согласовать)
+
+- [ ] **`MARKETING-HOMEPAGE-DISCOVERY-001`** 🔴 — `apps/web-buyer/src/app/(shop)/page.tsx` сейчас просто форма ввода slug. Cold-traffic от Instagram/TG = bounce 100%. **Зона Азима**, но требует endpoint `GET /storefront/featured` от меня.
+- [ ] **`MARKETING-SEO-INFRA-001`** 🔴 — нет sitemap.ts, robots.ts, JSON-LD, manifest.webmanifest. `<html lang="en">` баг (должно быть `ru`). **Зона Азима**.
+- [ ] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — schema bilingual (`nameRu` + `nameUz`), но фронт читает только `nameRu`. ~60% UZ market предпочитают узбекский. Нужна i18n инфра + перевод UI strings.
+- [ ] **`MARKETING-PUBLIC-OFFER-PAGES-001`** 🔴 — нет `/terms`, `/privacy`, `/offer`, `/refund`. Checkout footer ссылается на «условия» в никуда. **Требование UZ закона.**
+- [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
+
+## 🟠 P1 — Marketing should-have
+
+- [ ] **`MARKETING-REVIEWS-SHOW-001`** — Reviews API готов, но `web-buyer/products/[id]` не рендерит. Нет social proof.
+- [ ] **`MARKETING-VERIFIED-SELLER-001`** — `Store` модель без `isVerified` / `avgRating` / `reviewCount`. Buyers не отличают good от bad sellers.
+- [ ] **`MARKETING-CART-ABANDONMENT-001`** — нет cron + TG nudge через N часов идлинга.
+- [ ] **`MARKETING-WISHLIST-NOTIFY-001`** — wishlist без price-drop / back-in-stock notifications.
+- [ ] **`MARKETING-FAKE-RESPONSE-TIME-001`** — `«отвечает за час»` hardcoded на product page (`...products/[id]/page.tsx:673`). False claim.
+
+## 🟠 P1 — UX fixes (моя зона apps/api + apps/admin + apps/tma)
+
+### TMA seller (продавец теряет заказы)
+
+- [ ] **`TMA-SELLER-WS-NOTIFY-001`** 🔴 — TMA НЕ подписан на `order:new`/`order:status_changed`/`chat:new_message`. Продавец на TG-only теряет уведомления → плохой ETA → отмены. Скопировать `useSellerSocket` логику из web-seller в TMA.
+- [ ] **`TMA-SELLER-MAIN-BUTTON-001`** — формы (AddProduct, EditProduct, Settings) не используют `tg.MainButton`. CTA теряется в скролле.
+- [ ] **`TMA-CART-DUPLICATE-WARNING-001`** — `addToCart` сбрасывает чужую корзину silent (cross-store). Покупатель теряет товары без подтверждения.
+- [ ] **`TMA-CART-API-SYNC-001`** — TMA cart в localStorage, web-buyer cart через `/cart` API. Кросс-канально несовместимы.
+- [ ] **`TMA-CHECKOUT-GUEST-SILENT-401-001`** — guest нажимает "Подтвердить" → 401 → user не понимает что нужен auth.
+
+### TMA buyer
+
+- [ ] **`TMA-PHONE-MASK-001`** — phone validation `+998901234567` без формат-mask, не принимает `+998 90 123 45 67`.
+- [ ] **`TMA-CHECKOUT-SUCCESS-PAGE-001`** — после `/orders` сразу navigate, нет confirmation screen с orderNumber.
+- [ ] **`TMA-ADDRESS-AUTOCOMPLETE-001`** — адрес одна строка свободного текста. UZ адреса `mahalla, district` сложные. Нужен Yandex Maps autocomplete.
+- [ ] **`TMA-LIGHT-THEME-MIGRATION-001`** — force-dark, 553 hardcoded `rgba(255,255,255,X)` в 40 файлах. Миграция на CSS-vars (~3-4ч).
+
+### Admin
+
+- [ ] **`ADMIN-NATIVE-CONFIRM-001`** — ChatsPage:67, ReportsPage:33 используют `window.confirm()`. Заменить на DialogShell.
+- [ ] **`ADMIN-MODAL-A11Y-001`** — OrdersPage Cancel/Refund modals + ModerationPage Reject modal + BroadcastPage Confirm modal не используют DialogShell (нет role=dialog/aria-modal/Escape/focus-trap).
+
+## 🎨 P1 — Design quick wins (Полат + Азим)
+
+- [ ] **`DESIGN-PHONE-INPUT-PACKAGE-001`** — единый `<PhoneInput>` в `packages/ui` с маской `+998 XX XXX XX XX`, импорт в OtpGate (web-buyer) + login (web-seller) + checkout (tma) + login (admin).
+- [ ] **`DESIGN-SEMANTIC-COLORS-001`** — `packages/design-tokens/semantic.css` с `--success/--warning/--danger`. 4 разных hex для error в 4 apps.
+- [ ] **`DESIGN-TMA-BRAND-DIFF-001`** — buyer (orchid violet) vs seller (cyan) в TMA визуально не отличаются. Менять `BottomNav` accent по контексту.
+- [ ] **`DESIGN-A11Y-ARIA-LABELS-001`** — 21 icon-only button без `aria-label` (DatabasePage, ProductPage etc).
+
+## 🟢 P2-P3 — Tech debt после launch
+
+- [ ] **`API-N1-PRODUCTS-LIST-001`** — `findPublicByStoreId` (`products.repository.ts:182`) take=200 default. Нужна pagination.
+- [ ] **`API-STOREFRONT-SEARCH-PERF-001`** — нет `pg_trgm` GIN index. ILIKE на 100k+ товаров медленный.
+- [ ] **`API-SENTRY-001`** — Sentry не подключён. Critical для prod.
+- [ ] **`API-PINO-LOGGING-001`** — заменить NestJS Logger на pino structured logging.
+- [ ] **`API-PII-MASKING-001`** — phone в логах plain (SEC-011). Маскировать `+998 *** ** 67`.
+- [ ] **`API-FRONTEND-TESTS-001`** — 0 frontend tests для admin / web-buyer / web-seller / TMA. Хотя бы smoke.
+- [ ] **`API-PAGINATION-ENVELOPE-001`** (P1, B8) — единый `{ data, meta: { total, page, limit, totalPages } }` (breaking, требует sync с фронтом).
+
+---
+
 # 🆕 Web-buyer Design Audit (09.05.2026) — Soft Color Lifestyle
 
 > Полный отчёт: `analiz/audit-web-buyer-design-2026-05-09.md` (25 findings: 3 P1 / 14 P2 / 8 P3, health 7.5/10).
