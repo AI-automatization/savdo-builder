@@ -3851,3 +3851,13 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - 130 → **279 cases (+115%)**
   - 8 → **22 spec files (+175%)**
   - Покрыто: ValidateCartItems / ConfirmCheckout / VerifyOtp / UpdateOrderStatus / ChangeProductStatus / SuspendUser / SuspendStore / UnsuspendUser / UnsuspendStore / AdminCancelOrder / ApproveStore / RejectStore / ArchiveStore / UnapproveStore / Broadcast — все P0/P1 critical use-cases из аудита.
+
+### POLAT-ZONE-WAVE23-24 (10.05.2026) — admin/seller/cart tests
+
+- **Wave 23 — AdminUsersManagement (16) + VerifySellerExtended (14):** privilege escalation surface (только super_admin manages admins), self-action protection (нельзя себя revoke/changeRole), seller verification status enum + reason для REJECTED/SUSPENDED + isBlocked side effects + audit log fail tolerance.
+- **Wave 24 — Cart use-cases:** MergeGuestCart (8) — guest→buyer cart merge при логине + INV-C01 store conflict → guest wins. AddToCart (13) — INV-C03 product/variant ACTIVE+stock, INV-C01 store match, duplicate increment с capacity 100, priceOverride/salePriceOverride.
+
+- **Test coverage итого (Wave 14-24):**
+  - 130 → **330 cases (+154%)**
+  - 8 → **26 spec files (+225%)**
+  - Покрыты все P0/P1 critical use-cases из аудита: финансы (cart/checkout/order/refund), auth (OTP/JWT), state machines (order/product), moderation (suspend/approve/reject/archive/unapprove), admin management (privileges), broadcasts (rate-limit/dedup), seller verification.
