@@ -3,6 +3,7 @@ import { MessageSquare, RefreshCw, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { confirmDialog } from '../components/admin/ConfirmDialog'
 
 interface ThreadRow {
   id: string
@@ -64,7 +65,13 @@ export default function ChatsPage() {
 
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Удалить этот диалог и все его сообщения?')) return
+    const ok = await confirmDialog({
+      title: 'Удалить диалог?',
+      body: 'Все сообщения треда будут удалены безвозвратно. Восстановить нельзя.',
+      confirmText: 'Удалить',
+      danger: true,
+    })
+    if (!ok) return
     setDeletingId(id)
     try {
       await api.delete(`/api/v1/admin/chat/threads/${id}`)

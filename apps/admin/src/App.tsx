@@ -3,6 +3,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { Toaster } from 'sonner'
 import { auth } from './lib/api'
 import { ImpersonationProvider } from './lib/impersonation'
+import { ConfirmContainer } from './components/admin/ConfirmDialog'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
 
@@ -77,6 +78,7 @@ export default function App() {
     <BrowserRouter>
       <ImpersonationProvider>
         <AuthLogoutListener />
+        <ConfirmContainer />
         <Toaster
           position="bottom-right"
           theme="dark"
