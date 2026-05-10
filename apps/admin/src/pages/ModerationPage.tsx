@@ -73,7 +73,7 @@ export default function ModerationPage() {
 
   const isClosed = tab === 'CLOSED'
   const fetchUrl = isClosed
-    ? '/api/v1/admin/moderation?status=closed&limit=50'
+    ? '/api/v1/admin/moderation?status=CLOSED&limit=50'
     : '/api/v1/admin/moderation/queue'
 
   const { data, loading, error, refetch } = useFetch<QueueResponse>(fetchUrl, [tab])
@@ -109,7 +109,7 @@ export default function ModerationPage() {
   async function toggleCaseStatus(caseId: string, currentStatus: string) {
     setActionLoading(caseId)
     setActionError(null)
-    const endpoint = currentStatus === 'open' ? 'close' : 'reopen'
+    const endpoint = currentStatus === 'OPEN' ? 'close' : 'reopen'
     try {
       await api.patch(`/api/v1/admin/moderation/${caseId}/${endpoint}`, {})
       refetch()
