@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
@@ -18,6 +19,8 @@ import { UsersRepository } from '../users/repositories/users.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 
+@ApiTags('buyer')
+@ApiBearerAuth('jwt')
 @Controller('checkout')
 @UseGuards(JwtAuthGuard)
 export class CheckoutController {

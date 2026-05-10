@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,6 +42,8 @@ class OptionalJwtAuthGuard extends AuthGuard('jwt') {
   }
 }
 
+@ApiTags('buyer')
+@ApiBearerAuth('jwt')
 @Controller('cart')
 export class CartController {
   private readonly logger = new Logger(CartController.name);

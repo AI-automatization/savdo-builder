@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { SkipMfaCheck } from '../../common/decorators/skip-mfa.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
@@ -27,6 +28,8 @@ import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-ma
  * Все маршруты проверяют ADMIN role через RolesGuard. Дополнительная RBAC-проверка
  * (super_admin / moderator / etc) делается внутри use-cases по AdminUser.adminRole.
  */
+@ApiTags('admin')
+@ApiBearerAuth('jwt')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
 @Roles('ADMIN')

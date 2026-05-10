@@ -5,6 +5,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 
@@ -45,6 +46,8 @@ class OptionalJwtAuthGuard extends AuthGuard('jwt') {
  *
  * Все маппинги через `ProductPresenterService` (shared с seller controller).
  */
+@ApiTags('storefront')
+@ApiBearerAuth('jwt')
 @Controller()
 export class StorefrontController {
   constructor(
