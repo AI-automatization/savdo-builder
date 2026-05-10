@@ -103,17 +103,17 @@ export class ProductsController {
       }),
       this.productsRepo.countByStoreId(storeId),
     ]);
-    const mapped = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+    const mapped = products.map((p) => {
       const { _count, images, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
         basePrice: Number(basePrice),
         oldPrice: this.toPrice(oldPrice),
         salePrice: this.toPrice(salePrice),
-        variantCount: _count?.variants ?? 0,
+        variantCount: _count.variants,
         totalStock,
-        mediaUrls: (images ?? []).map((img) => this.resolveImageUrl(img.media)),
+        mediaUrls: images.map((img) => this.resolveImageUrl(img.media)),
       };
     });
     return { products: mapped, total };
@@ -644,20 +644,20 @@ export class ProductsController {
     @Query('storeCategoryId') storeCategoryId?: string,
   ) {
     const store = await this.storesRepo.findBySlug(slug);
-    if (!store || !(store as any).isPublic) {
+    if (!store || !store.isPublic) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
     const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
-    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+    return products.map((p) => {
+      const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
+      const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
         basePrice: Number(basePrice),
         oldPrice: this.toPrice(oldPrice),
         salePrice: this.toPrice(salePrice),
-        images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
-        variantCount: _count?.variants ?? 0,
+        images: images.map((img) => ({ url: this.resolveImageUrl(img.media) })),
+        variantCount: _count.variants,
         totalStock,
       };
     });
@@ -669,7 +669,7 @@ export class ProductsController {
     @Param('id') id: string,
   ) {
     const store = await this.storesRepo.findBySlug(slug);
-    if (!store || !(store as any).isPublic) {
+    if (!store || !store.isPublic) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
     const product = await this.productsRepo.findPublicById(id);
