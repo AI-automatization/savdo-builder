@@ -18,13 +18,57 @@ const publicProductInclude = Prisma.validator<Prisma.ProductInclude>()({
   _count:   { select: { variants: { where: { isActive: true, deletedAt: null } } } },
 });
 
-export type SellerProductListItem = Prisma.ProductGetPayload<{
-  include: typeof sellerProductInclude;
-}>;
+// Detail view — все картинки + варианты со связками optionValues + optionGroups + globalCategory.
+const sellerProductDetailInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images:   { orderBy: { sortOrder: 'asc' as const }, include: { media: true } },
+  variants: {
+    where: { deletedAt: null },
+    include: { optionValues: { include: { optionValue: true } } },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+  optionGroups: {
+    include: { values: { orderBy: { sortOrder: 'asc' as const } } },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+  globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
+});
 
-export type PublicProductListItem = Prisma.ProductGetPayload<{
-  include: typeof publicProductInclude;
-}>;
+// Public detail — то же + attributes.
+const publicProductDetailInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images:   { orderBy: { sortOrder: 'asc' as const }, include: { media: true } },
+  variants: {
+    where: { deletedAt: null, isActive: true },
+    include: { optionValues: { include: { optionValue: true } } },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+  optionGroups: {
+    include: { values: { orderBy: { sortOrder: 'asc' as const } } },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+  attributes: { orderBy: { sortOrder: 'asc' as const } },
+  globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
+});
+
+// Search-результат — товар + первая картинка + ссылка на магазин (FEAT-001).
+const searchProductInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images: { orderBy: { sortOrder: 'asc' as const }, take: 1, include: { media: true } },
+  store:  { select: { id: true, name: true, slug: true } },
+});
+
+// Platform-wide storefront feed — товар + primary картинка + store + variants + counter.
+const allPublicProductInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images:   { where: { isPrimary: true }, take: 1, include: { media: true } },
+  store:    { select: { id: true, name: true, slug: true } },
+  variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
+  _count:   { select: { variants: { where: { isActive: true, deletedAt: null } } } },
+});
+
+export type SellerProductListItem   = Prisma.ProductGetPayload<{ include: typeof sellerProductInclude }>;
+export type PublicProductListItem   = Prisma.ProductGetPayload<{ include: typeof publicProductInclude }>;
+export type SellerProductDetail     = Prisma.ProductGetPayload<{ include: typeof sellerProductDetailInclude }>;
+export type PublicProductDetail     = Prisma.ProductGetPayload<{ include: typeof publicProductDetailInclude }>;
+export type SearchProductHit        = Prisma.ProductGetPayload<{ include: typeof searchProductInclude }>;
+export type AllPublicProductItem    = Prisma.ProductGetPayload<{ include: typeof allPublicProductInclude }>;
 
 export interface CreateProductData {
   storeId: string;
@@ -110,42 +154,17 @@ export class ProductsRepository {
     });
   }
 
-  async findById(id: string): Promise<Product | null> {
+  async findById(id: string): Promise<SellerProductDetail | null> {
     return this.prisma.product.findFirst({
       where: { id, deletedAt: null },
-      include: {
-        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
-        variants: {
-          where: { deletedAt: null },
-          include: { optionValues: { include: { optionValue: true } } },
-          orderBy: { sortOrder: 'asc' },
-        },
-        optionGroups: {
-          include: { values: { orderBy: { sortOrder: 'asc' } } },
-          orderBy: { sortOrder: 'asc' },
-        },
-        globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
-      },
+      include: sellerProductDetailInclude,
     });
   }
 
-  async findPublicById(id: string): Promise<Product | null> {
+  async findPublicById(id: string): Promise<PublicProductDetail | null> {
     return this.prisma.product.findFirst({
-      where: { id, status: 'ACTIVE', deletedAt: null },
-      include: {
-        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
-        variants: {
-          where: { deletedAt: null, isActive: true },
-          include: { optionValues: { include: { optionValue: true } } },
-          orderBy: { sortOrder: 'asc' },
-        },
-        optionGroups: {
-          include: { values: { orderBy: { sortOrder: 'asc' } } },
-          orderBy: { sortOrder: 'asc' },
-        },
-        attributes: { orderBy: { sortOrder: 'asc' } },
-        globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
-      },
+      where: { id, status: ProductStatus.ACTIVE, deletedAt: null },
+      include: publicProductDetailInclude,
     });
   }
 
@@ -187,12 +206,12 @@ export class ProductsRepository {
 
   // FEAT-001: case-insensitive поиск по публичным товарам активных магазинов.
   // Используется в GET /storefront/search.
-  async searchPublic(query: string, limit = 10): Promise<Product[]> {
+  async searchPublic(query: string, limit = 10): Promise<SearchProductHit[]> {
     const q = query.trim();
     if (!q) return [];
     return this.prisma.product.findMany({
       where: {
-        status: 'ACTIVE',
+        status: ProductStatus.ACTIVE,
         deletedAt: null,
         store: { isPublic: true, deletedAt: null },
         OR: [
@@ -200,13 +219,10 @@ export class ProductsRepository {
           { description: { contains: q, mode: 'insensitive' } },
         ],
       },
-      include: {
-        images: { orderBy: { sortOrder: 'asc' }, take: 1, include: { media: true } },
-        store: { select: { id: true, name: true, slug: true } },
-      },
+      include: searchProductInclude,
       orderBy: { createdAt: 'desc' },
       take: limit,
-    }) as unknown as Promise<Product[]>;
+    });
   }
 
   async create(data: CreateProductData): Promise<Product> {
@@ -281,7 +297,7 @@ export class ProductsRepository {
     sort?: 'new' | 'price_asc' | 'price_desc';
     page?: number;
     limit?: number;
-  }): Promise<{ products: Product[]; total: number }> {
+  }): Promise<{ products: AllPublicProductItem[]; total: number }> {
     const page  = filters?.page  ?? 1;
     const limit = Math.min(filters?.limit ?? 20, 50);
     const skip  = (page - 1) * limit;
@@ -297,8 +313,8 @@ export class ProductsRepository {
       priceFilter.lte = filters.priceMax;
     }
 
-    const where: Record<string, unknown> = {
-      status: 'ACTIVE',
+    const where: Prisma.ProductWhereInput = {
+      status: ProductStatus.ACTIVE,
       deletedAt: null,
       store: { status: 'APPROVED', isPublic: true },
       ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
@@ -319,12 +335,7 @@ export class ProductsRepository {
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
-        include: {
-          images: { where: { isPrimary: true }, take: 1, include: { media: true } },
-          store: { select: { id: true, name: true, slug: true } },
-          variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
-          _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
-        },
+        include: allPublicProductInclude,
         orderBy,
         skip,
         take: limit,
