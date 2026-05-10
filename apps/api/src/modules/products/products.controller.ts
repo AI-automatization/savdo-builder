@@ -161,21 +161,20 @@ export class ProductsController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
     // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
     // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
-    const images = (p.images ?? []).map((img) => ({
+    const images = product.images.map((img) => ({
       ...img,
       url: this.resolveImageUrl(img.media),
     }));
     return {
-      ...p,
-      basePrice: Number(p.basePrice),
-      oldPrice: this.toPrice(p.oldPrice),
-      salePrice: this.toPrice(p.salePrice),
+      ...product,
+      basePrice: Number(product.basePrice),
+      oldPrice: this.toPrice(product.oldPrice),
+      salePrice: this.toPrice(product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
-      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
+      variants: product.variants.map((v) => this.normalizeVariant(v)),
     };
   }
 
@@ -607,18 +606,14 @@ export class ProductsController {
     // Раньше resolveStoreImageUrls вызывался per-store -> N запросов на 30 stores.
     const storesData = await this.attachStoreImageUrls(stores);
 
-    const productsData = (products as unknown as Array<Record<string, unknown> & {
-      basePrice: unknown; oldPrice: unknown; salePrice: unknown;
-      images?: Array<{ media: unknown }>;
-      store?: { id: string; name: string; slug: string };
-    }>).map((p) => {
+    const productsData = products.map((p) => {
       const { basePrice, oldPrice, salePrice, images, store, ...rest } = p;
       return {
         ...rest,
         basePrice: Number(basePrice),
         oldPrice: this.toPrice(oldPrice),
         salePrice: this.toPrice(salePrice),
-        images: (images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
+        images: images.map((img) => ({ url: this.resolveImageUrl(img.media) })),
         store: store ? { id: store.id, name: store.name, slug: store.slug } : null,
       };
     });
@@ -679,21 +674,20 @@ export class ProductsController {
     if (product.storeId !== store.id) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
     // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
     // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
-    const images = (p.images ?? []).map((img) => ({
+    const images = product.images.map((img) => ({
       ...img,
       url: this.resolveImageUrl(img.media),
     }));
     return {
-      ...p,
-      basePrice: Number(p.basePrice),
-      oldPrice: this.toPrice(p.oldPrice),
-      salePrice: this.toPrice(p.salePrice),
+      ...product,
+      basePrice: Number(product.basePrice),
+      oldPrice: this.toPrice(product.oldPrice),
+      salePrice: this.toPrice(product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
-      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
+      variants: product.variants.map((v) => this.normalizeVariant(v)),
     };
   }
 
@@ -726,7 +720,7 @@ export class ProductsController {
     const pMin = parsePrice(priceMin);
     const pMax = parsePrice(priceMax);
     // Platform-wide feed (no storeId)
-    let data: Array<Record<string, unknown> & { id: string; inWishlist?: boolean }>;
+    let data: Array<{ id: string; inWishlist?: boolean; [k: string]: unknown }>;
     let total: number;
     let pageNum: number;
 
@@ -741,18 +735,18 @@ export class ProductsController {
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,
       });
-      data = (result.products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
-        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      data = result.products.map((p) => {
+        const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
+        const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
           basePrice: Number(basePrice),
           oldPrice: this.toPrice(oldPrice),
           salePrice: this.toPrice(salePrice),
           // API-PRODUCT-LIST-IMAGES-CONTRACT-001: оба поля.
-          images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
-          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
-          variantCount: _count?.variants ?? 0,
+          images: images.map((img) => ({ url: this.resolveImageUrl(img.media) })),
+          mediaUrls: images.map((img) => this.resolveImageUrl(img.media)),
+          variantCount: _count.variants,
           totalStock,
         };
       });
@@ -762,20 +756,19 @@ export class ProductsController {
       // Store-specific feed
       const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
       const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-      data = (products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
-        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      data = products.map((p) => {
+        const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
+        const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
           basePrice: Number(basePrice),
           oldPrice: this.toPrice(oldPrice),
           salePrice: this.toPrice(salePrice),
           // API-PRODUCT-LIST-IMAGES-CONTRACT-001: возвращаем оба поля для backward
-          // compat. `mediaUrls: string[]` — convenience, `images: [{url}]` — canonical
-          // (per-image metadata можно расширять).
-          images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
-          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
-          variantCount: _count?.variants ?? 0,
+          // compat. `mediaUrls: string[]` — convenience, `images: [{url}]` — canonical.
+          images: images.map((img) => ({ url: this.resolveImageUrl(img.media) })),
+          mediaUrls: images.map((img) => this.resolveImageUrl(img.media)),
+          variantCount: _count.variants,
           totalStock,
         };
       });
@@ -814,21 +807,19 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
-    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
-    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
-    const images = (p.images ?? []).map((img) => ({
+    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image.
+    const images = product.images.map((img) => ({
       ...img,
       url: this.resolveImageUrl(img.media),
     }));
     return {
-      ...p,
-      basePrice: Number(p.basePrice),
-      oldPrice: this.toPrice(p.oldPrice),
-      salePrice: this.toPrice(p.salePrice),
+      ...product,
+      basePrice: Number(product.basePrice),
+      oldPrice: this.toPrice(product.oldPrice),
+      salePrice: this.toPrice(product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
-      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
+      variants: product.variants.map((v) => this.normalizeVariant(v)),
     };
   }
 
