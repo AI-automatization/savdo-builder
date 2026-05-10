@@ -29,29 +29,29 @@
 
 ### QA findings — критичные баги первого дня prod
 
-- [ ] **`API-STOCK-RACE-OVERSELL-001`** 🔴 — `checkout.repository.ts:149-156` нет SELECT FOR UPDATE / atomic decrement. Два buyer'а на последний товар оба получат success → stock уйдёт в минус. **Repro**: 2 параллельных POST `/checkout/confirm` на товар с stockQuantity=1.
+- [x] **`API-STOCK-RACE-OVERSELL-001`** ✅ 10.05.2026 — atomic UPDATE с WHERE stockQuantity >= qty через $executeRaw. 0 rows affected → CHECKOUT_STOCK_INSUFFICIENT. Коммит `385246a`.
   - **Fix**: migration `ALTER TABLE product_variants ADD CONSTRAINT stock_non_negative CHECK (stockQuantity >= 0)`. В коде — `UPDATE ... WHERE stockQuantity >= ${qty} RETURNING` через `$queryRaw`. Если 0 rows affected → CHECKOUT_STOCK_INSUFFICIENT.
-- [ ] **`API-INV-O04-STOCK-RELEASE-001`** 🔴 — INV-O04 (CLAUDE.md) явно требует возврата stock при cancel. Сейчас `update-order-status.use-case.ts` пишет только новый статус. То же в `refund-order.use-case` (full refund).
+- [x] **`API-INV-O04-STOCK-RELEASE-001`** ✅ 10.05.2026 — orders.repository.updateStatus возвращает stock + InventoryMovement.ORDER_RELEASED при PENDING/CONFIRMED/PROCESSING → CANCELLED. refund-order full refund тоже. Tests +3. Коммит `385246a`.
   - **Fix**: на PENDING→CANCELLED, CONFIRMED→CANCELLED, PROCESSING→CANCELLED делать increment + InventoryMovement.ORDER_RELEASED запись. Тесты обязательны (race + concurrent).
-- [ ] **`API-ROLES-GUARD-ADMIN-BYPASS-001`** 🔴 — `roles.guard.ts:25-26` `if user.role === 'ADMIN' return true` — admin может звать buyer/seller endpoints от чужого имени. Уже зафиксировано как `SEC-003 HIGH-02`.
+- [x] **`API-ROLES-GUARD-ADMIN-BYPASS-001`** ✅ 10.05.2026 — bypass требует явный `@AllowAdminBypass()` декоратор. Admin endpoints через `@Roles('ADMIN')` — ничего не сломалось. Impersonation идёт через `/admin/auth/impersonate/:userId` (выдаёт BUYER/SELLER JWT). Коммит `045f1d7`.
   - **Fix**: убрать bypass. Где admin реально нужен — добавить опциональный декоратор `@AllowAdminRoleBypass()`.
-- [ ] **`API-DIRECT-ORDER-DOS-001`** 🔴 — `CreateDirectOrderDto.items` без `@ArrayMaxSize`. POST `/orders` с массивом 50000 items → N+1 → DB connection exhaust → API down.
+- [x] **`API-DIRECT-ORDER-DOS-001`** ✅ 10.05.2026 — `@ArrayMinSize(1)` + `@ArrayMaxSize(50)` + `@Max(999)` quantity. Коммит `045f1d7`.
   - **Fix**: `@ArrayMaxSize(50)` + `@Min(0.01)` на `priceOverride` (variant=0 даёт бесплатные заказы).
-- [ ] **`API-VARIANT-PRICE-ZERO-001`** 🔴 — variant с `priceOverride=0` пройдёт validate-cart → buyer заказывает за 0 сум. Бесплатные заказы.
+- [x] **`API-VARIANT-PRICE-ZERO-001`** ✅ 10.05.2026 — verified `@Min(1)` уже есть в create-variant.dto и update-variant.dto. priceOverride < 1 заблокирован.
   - **Fix**: `@Min(0.01)` в DTO + `if (variant.priceOverride <= 0) throw VALIDATION_ERROR` в add-to-cart use-case.
 
 ## 🟠 P1 — Critical для launch (Полат)
 
-- [ ] **`API-N1-CHECKOUT-001`** — N+1 queries в CreateDirectOrder + ValidateCartItems (`Promise.all(items.map(findById))` + второй loop variants). На 100 items = 200 round-trips.
+- [x] **`API-N1-CHECKOUT-001`** ✅ 10.05.2026 — новые `findManyByIds(ids)` в ProductsRepo + VariantsRepo (Map<id,entity>). 2N → 2 SELECT IN. Tests +1. Коммит `7f10caf`. (ValidateCartItems можно оптимизировать отдельно — там тот же паттерн.)
   - **Fix**: `findMany({ where: { id: { in: ids } } })` один раз.
 - [ ] **`API-IDEMPOTENCY-FAIL-OPEN-001`** — `idempotency.service.ts:60-61` при Redis-down `acquireLock` возвращает true (fail-open). Под нагрузкой Redis-restart → double orders.
   - **Fix**: либо fail-closed с user-facing 503, либо DB-level unique constraint на (idempotencyKey, userId).
-- [ ] **`API-DELIVERY-FEE-CLIENT-CONTROLLED-001`** — `confirm-checkout.dto.ts:46` buyer передаёт `deliveryFee` любым числом. Может прислать 0 на платный магазин.
+- [x] **`API-DELIVERY-FEE-CLIENT-CONTROLLED-001`** ✅ 10.05.2026 — backend computes из `store.deliverySettings`. fixed → fixedDeliveryFee, manual/none → 0. input.deliveryFee игнорируется. Tests +4. Коммит `7f10caf`.
   - **Fix**: backend сам считает deliveryFee от store.deliverySettings.
-- [ ] **`API-JWT-REVOCATION-001`** — logout удаляет UserSession из БД, но access JWT валиден до истечения (~15 min). Two-tab logout не выкидывает все сессии моментально.
+- [x] **`API-JWT-REVOCATION-001`** ✅ 10.05.2026 — verified already done. `JwtStrategy.validate` (`jwt.strategy.ts:52`) делает session DB lookup. После `deleteSession` в logout-session.use-case JWT с этим sessionId не пройдёт.
   - **Fix**: Redis blacklist `revoked:{jti}` до accessExpiresIn.
-- [ ] **`API-MULTER-LIMITS-001`** — FileInterceptor без `limits.fileSize`, body буферизуется в RAM до проверки. 50 concurrent × 10MB = 500MB spike (SEC-012).
-- [ ] **`API-SWAGGER-PROD-CLOSE-001`** — `/api/v1/docs` публичен в production. Надо закрыть `if (NODE_ENV === 'production') return`.
+- [x] **`API-MULTER-LIMITS-001`** ✅ 10.05.2026 — `limits: { fileSize: 10*1024*1024 }` на 3 FileInterceptor в media.controller. Коммит `385246a`.
+- [x] **`API-SWAGGER-PROD-CLOSE-001`** ✅ 10.05.2026 — Swagger выключен если `NODE_ENV='production'` (override через `SWAGGER_ENABLED=true`). Коммит `385246a`.
 - [ ] **`API-BULL-BOARD-DATA-LEAK-001`** — Bull Board показывает `data.code` (OTP) в job preview. SEC-008.
   - **Fix**: middleware sanitize `data.code` → `***` в preview.
 - [ ] **`API-RBAC-CART-CROSS-SESSION-001`** — `cart.controller` UPDATE/DELETE опирается только на cartId match, anonymous с украденным sessionToken получает доступ.
@@ -77,23 +77,23 @@
 
 ### TMA seller (продавец теряет заказы)
 
-- [ ] **`TMA-SELLER-WS-NOTIFY-001`** 🔴 — TMA НЕ подписан на `order:new`/`order:status_changed`/`chat:new_message`. Продавец на TG-only теряет уведомления → плохой ETA → отмены. Скопировать `useSellerSocket` логику из web-seller в TMA.
+- [x] **`TMA-SELLER-WS-NOTIFY-001`** ✅ 10.05.2026 — `apps/tma/src/lib/sellerNotifications.ts` + интеграция в SellerLayout. join-seller-room + listen + showToast + HapticFeedback. Re-join on reconnect. Коммит `23ddc7f`.
 - [ ] **`TMA-SELLER-MAIN-BUTTON-001`** — формы (AddProduct, EditProduct, Settings) не используют `tg.MainButton`. CTA теряется в скролле.
-- [ ] **`TMA-CART-DUPLICATE-WARNING-001`** — `addToCart` сбрасывает чужую корзину silent (cross-store). Покупатель теряет товары без подтверждения.
+- [x] **`TMA-CART-DUPLICATE-WARNING-001`** ✅ 10.05.2026 — `confirmDialog` в StorePage перед reset cross-store cart. Коммит `5e486a3`.
 - [ ] **`TMA-CART-API-SYNC-001`** — TMA cart в localStorage, web-buyer cart через `/cart` API. Кросс-канально несовместимы.
-- [ ] **`TMA-CHECKOUT-GUEST-SILENT-401-001`** — guest нажимает "Подтвердить" → 401 → user не понимает что нужен auth.
+- [x] **`TMA-CHECKOUT-GUEST-SILENT-401-001`** ✅ 10.05.2026 — submit disabled пока !authenticated, warning-блок «⚠️ Нужна авторизация», label «Войдите через Telegram». Коммит `5e486a3`.
 
 ### TMA buyer
 
 - [ ] **`TMA-PHONE-MASK-001`** — phone validation `+998901234567` без формат-mask, не принимает `+998 90 123 45 67`.
-- [ ] **`TMA-CHECKOUT-SUCCESS-PAGE-001`** — после `/orders` сразу navigate, нет confirmation screen с orderNumber.
+- [x] **`TMA-CHECKOUT-SUCCESS-PAGE-001`** ✅ 10.05.2026 — ✓ icon + orderNumber + total + 2 CTA (Мои заказы / К магазинам). Коммит `5e486a3`.
 - [ ] **`TMA-ADDRESS-AUTOCOMPLETE-001`** — адрес одна строка свободного текста. UZ адреса `mahalla, district` сложные. Нужен Yandex Maps autocomplete.
 - [ ] **`TMA-LIGHT-THEME-MIGRATION-001`** — force-dark, 553 hardcoded `rgba(255,255,255,X)` в 40 файлах. Миграция на CSS-vars (~3-4ч).
 
 ### Admin
 
-- [ ] **`ADMIN-NATIVE-CONFIRM-001`** — ChatsPage:67, ReportsPage:33 используют `window.confirm()`. Заменить на DialogShell.
-- [ ] **`ADMIN-MODAL-A11Y-001`** — OrdersPage Cancel/Refund modals + ModerationPage Reject modal + BroadcastPage Confirm modal не используют DialogShell (нет role=dialog/aria-modal/Escape/focus-trap).
+- [x] **`ADMIN-NATIVE-CONFIRM-001`** ✅ 10.05.2026 — новый `ConfirmDialog` imperative API + `<ConfirmContainer/>` в App.tsx. ChatsPage + ReportsPage используют `confirmDialog()`. Коммит `5e486a3`.
+- [x] **`ADMIN-MODAL-A11Y-001`** ✅ 10.05.2026 — 4 modal'а на DialogShell: Orders Cancel + Refund, Moderation Reject, Broadcast Confirm. role=dialog, aria-modal, focus-trap, Esc close. Коммиты `5e486a3`, `f2dc9f9`.
 
 ## 🎨 P1 — Design quick wins (Полат + Азим)
 
