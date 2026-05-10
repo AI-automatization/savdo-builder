@@ -3766,3 +3766,38 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
 - **Net:** checkout module **полностью type-safe** на compile-time. ~39 cast'ов удалены за один коммит.
 
 - **Verified:** `tsc --noEmit` зелёный.
+
+### POLAT-ZONE-WAVE14 (10.05.2026) — tests + Swagger setup
+
+- **Wave 14a — ValidateCartItemsService unit tests:**
+  - `apps/api/src/modules/checkout/services/validate-cart-items.service.spec.ts` (NEW, 12 cases).
+  - Покрытие: empty input, happy path (5 веток), product validation (2), variant validation (4), multiple invalids collection (1).
+  - Финансовый flow — все ветки checkout валидации проверены.
+  - **142/142 tests passing** (было 130, сейчас 142, +12 кейсов).
+
+- **Wave 14b — Swagger / OpenAPI:**
+  - `pnpm install @nestjs/swagger@^7.4.2` (matches existing nestjs/core@10.x).
+  - `apps/api/src/main.ts` — DocumentBuilder + SwaggerModule.setup на `/api/v1/docs`. Bearer JWT auth scheme. 7 tags для группировки.
+  - 19 controllers получили `@ApiTags` + `@ApiBearerAuth('jwt')`:
+    - admin (10): admin/super-admin + 8 sub-controllers (analytics/broadcast/db/ops/products/sellers/stores/users)
+    - seller: products.controller
+    - storefront: storefront.controller
+    - buyer: checkout.controller, cart.controller
+    - chat: chat.controller
+    - moderation: moderation.controller
+    - auth: auth.controller
+  - Endpoints всё ещё protected guard'ами — Swagger doc только описывает.
+
+- **Verified:**
+  - `tsc --noEmit` зелёный
+  - `nest build` зелёный
+  - 142 tests pass
+
+- **Net (текущая сессия — Wave 7-14):**
+  - 5 enum-конверсий (Moderation/SVD/ChatMessage/InAppNotif) через swap-column
+  - products.controller 947 → 587 LOC + StorefrontController 315 LOC + ProductPresenterService
+  - admin.controller 702 → 169 LOC + 8 sub-controllers + AdminContextService
+  - confirm-checkout.use-case 254 → 149 LOC + ValidateCartItemsService
+  - **~80+ `as any` / `as unknown as` casts** удалены через Prisma.validator + enum constants
+  - 12 новых unit tests для финансово-критичного flow
+  - Swagger UI на `/api/v1/docs`
