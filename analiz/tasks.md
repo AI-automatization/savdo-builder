@@ -21,12 +21,7 @@
 
 ### 🔵 Контракт-задача для Полата (web-buyer Wave 6 unblock)
 
-- [ ] **`API-CHAT-THREAD-PRODUCT-PREVIEW-001`** (P2, для Полата) — расширить `ChatThread` response (use-case `list-my-threads.use-case.ts` + type `packages/types/src/api/chat.ts`) для PRODUCT-threads:
-  - Добавить поля: `productId: string | null`, `productImageUrl: string | null` (resolved CDN URL — первая картинка из media), `productPriceMinor: number | null` (для рендера через formatPrice).
-  - Альтернатива: отдельный endpoint `GET /chat/threads/:id/context-preview` если list-response не хочется bloating. Но первый вариант проще — данные уже в Prisma `t.product` JOIN'е, нужно просто map'нуть в response.
-  - Use-case `list-my-threads.use-case.ts:30-44` уже подключает `t.product` через relation — расширение mapBuyerThread на 3 поля без extra query'ёв.
-  - Симметрично — для seller-side: `mapSellerThread` те же 3 поля (полезно для `WS-CHAT-PINNED-CONTEXT-001` в будущем).
-  - Когда готово → азим раскроет фронт за один проход.
+- [x] **`API-CHAT-THREAD-PRODUCT-PREVIEW-001`** ✅ 10.05.2026 — `ChatThread` теперь содержит `productId/productTitle/productImageUrl/productPrice` (effective: `salePrice ?? basePrice`). Symmetric mapping для buyer и seller через `resolveProductImageUrl` (учитывает telegram-expired bucket → null + Telegram proxy + STORAGE_PUBLIC_URL CDN). Тесты +4: salePrice priority, STORAGE_PUBLIC_URL build, telegram-expired → null, ORDER-thread имеет product*=null. Коммит `f4ad95d`. **Азим может раскрывать Wave 6 (P1-003 pinned product strip).**
 - [x] **`WB-DESIGN-WAVE-7`** ✅ 09.05.2026 — backlog cleanup (12 P2/P3). Commit `7ad5063`. **Skipped** P2-004 (sections «Все NN →» — нужно решение о множественных секциях; одиночная «Товары» сейчас не требует pattern), P2-014 (нужен batch add-to-cart API), P3-004 (нужен `isSale` flag в API).
 
 **Skipped / requires API work:**
@@ -51,17 +46,17 @@
 - [ ] **`ADMIN-DESIGN-TOKENS-SURFACE-001`** (P0, A3) — `--surface-error/-warning/-success` CSS-переменные + миграция hardcoded `rgba(239,68,68,...)`.
 - [ ] **`API-WS-EVENTS-NAMING-001`** (P0, B1) — единый стиль `<namespace>:<action>` для всех Socket.IO events. **⚠️ требует sync с frontend (TMA, web-buyer, web-seller) — не делать в отдельной сессии.**
 - [x] **`API-HTTP-201-CREATED-001`** ✅ 08.05.2026 — `@HttpCode(HttpStatus.CREATED)` добавлен на 6 POST endpoints в `products.controller.ts`: seller/products, /variants, /option-groups, /option-groups/:gid/values, /images, /attributes. NestJS уже отдавал 201 неявно для @Post — теперь explicit для consistency с cart/checkout.
-- [ ] **`API-ORDERS-ALIAS-REMOVE-001`** (P0, B3) — удалить `GET /orders/:id` alias. **⚠️ потенциально breaking для web-buyer — проверить вызовы перед удалением.**
+- [x] **`API-ORDERS-ALIAS-REMOVE-001`** ✅ 10.05.2026 — alias `GET /orders/:id` удалён. Grep по TMA/admin/web-buyer/web-seller подтвердил что bare endpoint не вызывается (все на `/buyer/orders/:id`, `/seller/orders/:id`, `/admin/orders/:id`). Next.js routes `/orders/:id` в web-* — это страничные пути, не API. Коммит `c445d20`.
 
 ## Sprint B — design system hardening (P1) — 8 тикетов
 
 - [ ] **`ADMIN-THEME-VARS-MIGRATE-001`** (P1, A4+A5+A12) — Button/Badge/Dialog → CSS-переменные.
 - [ ] **`TMA-TYPOGRAPHY-SCALE-001`** (P1, T6) — 280 hardcoded `text-[11px]/xs/sm` → enum + CSS-vars с desktop scale.
-- [ ] **`API-SWAGGER-001`** (P1, B4) — `@nestjs/swagger` + `/api/docs` + `@ApiOperation` на топ-20.
-- [ ] **`API-PRODUCTS-CTRL-SPLIT-001`** (P1, B5) — products.controller.ts (942 LOC) → 3 controllers.
+- [x] **`API-SWAGGER-001`** ✅ — `@nestjs/swagger` + DocumentBuilder с 7 tags + BearerAuth уже в `main.ts`. Все ключевые endpoints помечены `@ApiTags` / `@ApiHeader` / `@ApiBearerAuth`.
+- [x] **`API-PRODUCTS-CTRL-SPLIT-001`** ✅ — products.controller (590 LOC) + storefront.controller (318 LOC, 8 storefront routes отдельно) + ProductPresenterService для маппинга. С 942 LOC до разделения.
 - [ ] **`ADMIN-A11Y-TABS-OTP-001`** (P1, A7+A8) — Tabs primitive + LoginPage OTP `<fieldset>`.
 - [ ] **`ADMIN-PAGINATION-DISABLED-001`** (P1, A6) — `disabled={page === 1}` на pagination buttons.
-- [ ] **`API-IDEMPOTENCY-KEY-001`** (P1, B7) — `Idempotency-Key` header на /checkout/confirm + /orders.
+- [x] **`API-IDEMPOTENCY-KEY-001`** ✅ 10.05.2026 — Stripe-style `Idempotency-Key` header защита от двойных заказов. Применено на `POST /checkout/confirm` + `POST /orders`. Архитектура `common/idempotency/`: SHA256(key + userId + route) → Redis cache 24h, NX-lock через read-then-set для concurrent retry, fail-open при Redis down (defence-in-depth через DB unique constraints), success-only caching (errors не кэшируются — клиент может ретраить с тем же ключом). Header опционален (legacy compat), валидация формата 8-128 chars `[A-Za-z0-9_:.-]`. Тесты +19. Коммит `60d47ba`.
 - [ ] **`API-PAGINATION-ENVELOPE-001`** (P1, B8) — единый `{ data, meta: { total, page, limit, totalPages } }`.
 
 ## Sprint C — long tail (P2/P3) — 26 тикетов
@@ -190,7 +185,7 @@
 
 - [x] **`API-CHAT-CONTROLLER-TS-ERROR-001`** ✅ 06.05.2026 — уже исправлено параллельной сессией: `user.role as 'BUYER' | 'SELLER'` cast в chat.controller.ts:64. Typecheck чист.
 
-- [ ] **`API-DELETE-OLD-STASHES-001`** — в `git stash list` несколько старых safety-stash от прошлых сессий. После подтверждения что параллельная закончила — `git stash drop`.
+- [x] **`API-DELETE-OLD-STASHES-001`** ✅ 10.05.2026 — оба stash (stash-3 + tma-api-perf-deploy-stash) дропнуты после проверки. Все полезные изменения уже в main в более качественной форме (OrderRefund с RefundStatus enum, AdminUser MFA-поля, impersonation, admin.module split на 8 sub-controllers).
 
 ---
 

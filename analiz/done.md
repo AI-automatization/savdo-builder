@@ -1,5 +1,50 @@
 # Done — Азим + Полат
 
+## 2026-05-10 (Полат) — 5 P0/P1/P2 задач из Sprint A/B + cleanup
+
+### ✅ [API-CHAT-THREAD-PRODUCT-PREVIEW-001] Pinned product context для chat 🟡
+
+- **Дата:** 10.05.2026
+- **Файлы:** `apps/api/src/modules/chat/repositories/chat.repository.ts`, `apps/api/src/modules/chat/use-cases/list-my-threads.use-case.ts` (+spec), `packages/types/src/api/chat.ts`
+- **Что:** `ChatThread` теперь содержит `productId/productTitle/productImageUrl/productPrice` для PRODUCT-threads. `productPrice` — effective: `salePrice ?? basePrice` (Decimal → Number). `productImageUrl` — resolved CDN URL для первой картинки (ORDER BY sortOrder asc) с handling для telegram-expired bucket → null + Telegram proxy + STORAGE_PUBLIC_URL CDN.
+- **Зачем:** разблокирует Азима — Wave 6 (P1-003 pinned product context strip) в web-buyer теперь может рендериться без отдельного fetch'а товара.
+- **Тесты:** +4 case (salePrice priority, STORAGE_PUBLIC_URL build, telegram-expired → null, ORDER-thread имеет product*=null).
+- **Commit:** `f4ad95d`.
+
+### ✅ [API-IDEMPOTENCY-KEY-001] Stripe-style header защита от двойных заказов 🟠
+
+- **Дата:** 10.05.2026
+- **Файлы (новые):** `apps/api/src/common/idempotency/{idempotency.service,idempotent.decorator,idempotency.interceptor,idempotency.module}.ts` + spec
+- **Изменено:** `apps/api/src/app.module.ts`, `apps/api/src/modules/checkout/checkout.controller.ts`, `apps/api/src/modules/checkout/orders-create.controller.ts`
+- **Что:** `Idempotency-Key` header (опциональный) на `POST /checkout/confirm` + `POST /orders`. SHA256(key + userId + route) → Redis cache 24h. NX-lock через read-then-set для concurrent retry → 409 CONFLICT. Success-only caching (errors не кэшируются — клиент может ретраить после фикса). Fail-open при Redis down (defence-in-depth через DB unique constraints). Валидация формата: 8-128 chars `[A-Za-z0-9_:.-]`.
+- **Зачем:** защита от двойных заказов при network retry / double-tap. Стандартная практика (Stripe API).
+- **Архитектура:** `@Idempotent()` decorator + `IdempotencyInterceptor` (через `@UseInterceptors`) — opt-in модель. Legacy clients без header работают как раньше.
+- **Тесты:** +19 cases (buildCacheKey isolation cross-user/cross-route, getCached fail-open, NX через read-then-set, storeResponse 24h TTL, releaseLock защищает валидный кэш от wipe).
+- **Commit:** `60d47ba`.
+
+### ✅ [API-ORDERS-ALIAS-REMOVE-001] Удаление dead alias 🔴
+
+- **Дата:** 10.05.2026
+- **Файл:** `apps/api/src/modules/orders/orders.controller.ts` (-12 строк)
+- **Что:** удалён alias `GET /api/v1/orders/:id` (был дублем `/buyer/orders/:id`).
+- **Зачем:** dead code, дубль инкапсулирующего endpoint'а.
+- **Verification:** grep по всем consumers — TMA (`/buyer/orders/:id`, `/seller/orders/:id`), admin (`/admin/orders/:id`), web-buyer (apiClient.get(`/buyer/orders/${id}`)), web-seller (apiClient.get(`/seller/orders/${id}`)). Bare endpoint никем не используется. Next.js routes `/orders/:id` в web-* — это страничные пути, не API endpoints.
+- **Commit:** `c445d20`.
+
+### ✅ [API-SWAGGER-001 + API-PRODUCTS-CTRL-SPLIT-001] Verification — already done
+
+- **Дата:** проверка 10.05.2026
+- **Что:** обе задачи уже были закрыты ранее (Wave 13-14 в test coverage push). Swagger полностью работает: `DocumentBuilder` в `main.ts:5` с 7 ApiTags + BearerAuth, `@ApiOperation/@ApiHeader/@ApiBearerAuth` на endpoints. ProductsController разделён: `products.controller.ts` (590 LOC) + `storefront.controller.ts` (318 LOC, 8 storefront routes отдельно) + `product-presenter.service.ts`.
+
+### ✅ [API-DELETE-OLD-STASHES-001] Cleanup старых stashes 🟢
+
+- **Дата:** 10.05.2026
+- **Что:** дропнуты 2 stash после проверки diff'ов:
+  - `stash-3` — мелкая правка `admin.controller.ts` (2 import строки), уже не актуально (admin.module разделён на 8 sub-controllers)
+  - `tma-api-perf-deploy-stash` — 288 строк WIP с старой реализацией `OrderRefund` модели + admin impersonation. Все полезные изменения уже в main в более качественной форме: `OrderRefund` с `RefundStatus` enum (вместо String), `AdminUser` MFA-поля через DB-AUDIT-001, полностью работающая impersonation в `super-admin.controller.ts` + `admin-auth.use-case.ts`.
+
+---
+
 ## 2026-05-10 (Полат) — Test coverage push: Wave 25-31 (130 → 550 cases, +323%)
 
 ### ✅ [TEST-COVERAGE-W25-31] Расширение покрытия Jest-тестами по 14 модулям 🟡
