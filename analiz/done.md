@@ -3725,3 +3725,29 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - Structured logging.
   - 2 мелких `as any` в `products.repository.ts` (для Prisma JSON field) — Prisma quirk.
 
+
+### POLAT-ZONE-WAVE11-12 (10.05.2026 продолжение) — split monolithic controllers
+
+- **Wave 11 — products.controller.ts split:**
+  - `apps/api/src/modules/products/services/product-presenter.service.ts` (NEW) — общий сервис: `toPrice`, `normalizeVariant`, `resolveImageUrl`, `resolveStoreImageUrls`, `attachStoreImageUrls`. Раньше 5 private методов в одном controller.
+  - `apps/api/src/modules/products/storefront.controller.ts` (NEW, 315 LOC) — все 8 публичных storefront routes:
+    - `storefront/stores`, `storefront/stores/:slug`, `storefront/search`
+    - `stores/:slug`, `stores/:slug/products`, `stores/:slug/products/:id`
+    - `storefront/products`, `storefront/products/:id`
+  - `products.controller.ts`: **947 → 587 LOC (-38%)**. Только seller-routes (products/variants/option-groups/images/attributes).
+
+- **Wave 12 — admin.controller.ts split:**
+  - `apps/api/src/modules/admin/services/admin-context.service.ts` (NEW) — единый `requireAdmin(jwt)` helper. Раньше дублировался в каждом split controller.
+  - `apps/api/src/modules/admin/admin-users.controller.ts` (NEW, 106 LOC) — 5 routes (list/get/suspend/unsuspend + make-seller).
+  - `apps/api/src/modules/admin/admin-sellers.controller.ts` (NEW, 99 LOC) — 4 routes (list/get/verify + create-store).
+  - `apps/api/src/modules/admin/admin-stores.controller.ts` (NEW, 124 LOC) — 8 routes (list/get + suspend/unsuspend/reject/archive + approve/unapprove).
+  - `admin.controller.ts`: **702 → 169 LOC (-76%)**. Inject deps **29 → 7**. Остались: audit-log GET, search GET, orders cancel PATCH, orders list GET.
+
+- **Итог split-серии (Wave 5 + 11 + 12):**
+  - `AdminController`: 702 → 169 LOC, 8 sub-controllers
+  - `ProductsController`: 947 → 587 LOC, 1 sub-controller (StorefrontController) + ProductPresenterService
+  - 2 новых service'а (AdminContextService, ProductPresenterService) убирают дублирование
+
+- **Verified:** `tsc --noEmit` зелёный после каждой волны. Public route paths unchanged.
+
+- **Push:** main → api → Railway redeploy.
