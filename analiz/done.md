@@ -3751,3 +3751,18 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
 - **Verified:** `tsc --noEmit` зелёный после каждой волны. Public route paths unchanged.
 
 - **Push:** main → api → Railway redeploy.
+
+### POLAT-ZONE-WAVE13 (10.05.2026) — confirm-checkout split + checkout module type-safety
+
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts` — добавлен `VariantWithOptions = Prisma.ProductVariantGetPayload<{ include: { optionValues: { include: { optionValue: true } } } }>`. `findById` теперь возвращает этот типизированный payload.
+  - `apps/api/src/modules/checkout/services/validate-cart-items.service.ts` (NEW, 152 LOC, 0 cast'ов) — валидация items: ACTIVE product + variant принадлежит + stock + variantLabel из optionValues. Бросает `CHECKOUT_ITEMS_UNAVAILABLE` с полным `invalidItems[]`.
+  - `confirm-checkout.use-case.ts`: **254 → 149 LOC (-41%)**. Тонкий orchestrator: auth → load cart → validate items → compute totals → create order → notify. Все 15 `as any` убраны.
+  - `preview-checkout.use-case.ts`: 13 `as any` убраны через типизированный variant access.
+  - `create-direct-order.use-case.ts`: 11 `as any` убраны.
+  - 3 `'ACTIVE'` string literals → `ProductStatus.ACTIVE` enum.
+  - `checkout.module.ts`: + ValidateCartItemsService.
+
+- **Net:** checkout module **полностью type-safe** на compile-time. ~39 cast'ов удалены за один коммит.
+
+- **Verified:** `tsc --noEmit` зелёный.
