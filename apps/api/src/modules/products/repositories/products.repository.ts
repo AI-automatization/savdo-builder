@@ -1,6 +1,30 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma, Product, ProductStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
-import { Product, ProductStatus } from '@prisma/client';
+
+// Стандартный include-блок для Seller list view — товар + все картинки + варианты + счётчик.
+// Вынесено в const чтобы Prisma.validator вывел точный тип возврата
+// (раньше return-type был просто Product[] с `as unknown as` cast в контроллере).
+const sellerProductInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images:   { orderBy: { sortOrder: 'asc' as const }, include: { media: true } },
+  variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
+  _count:   { select: { variants: { where: { isActive: true, deletedAt: null } } } },
+});
+
+// Storefront list view — то же что seller, но картинка только первая (take: 1).
+const publicProductInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images:   { orderBy: { sortOrder: 'asc' as const }, take: 1, include: { media: true } },
+  variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
+  _count:   { select: { variants: { where: { isActive: true, deletedAt: null } } } },
+});
+
+export type SellerProductListItem = Prisma.ProductGetPayload<{
+  include: typeof sellerProductInclude;
+}>;
+
+export type PublicProductListItem = Prisma.ProductGetPayload<{
+  include: typeof publicProductInclude;
+}>;
 
 export interface CreateProductData {
   storeId: string;
@@ -71,7 +95,7 @@ export class ProductsRepository {
       storeCategoryId?: string;
       limit?: number;
     },
-  ): Promise<Product[]> {
+  ): Promise<SellerProductListItem[]> {
     return this.prisma.product.findMany({
       where: {
         storeId,
@@ -80,14 +104,10 @@ export class ProductsRepository {
         ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
         ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
       },
-      include: {
-        images: { orderBy: { sortOrder: 'asc' }, include: { media: true } },
-        variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
-        _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
-      },
+      include: sellerProductInclude,
       orderBy: { createdAt: 'desc' },
       ...(filters?.limit !== undefined && { take: filters.limit }),
-    }) as unknown as Promise<Product[]>;
+    });
   }
 
   async findById(id: string): Promise<Product | null> {
@@ -137,13 +157,13 @@ export class ProductsRepository {
       attributes?: Record<string, string>;
       limit?: number;
     },
-  ): Promise<Product[]> {
+  ): Promise<PublicProductListItem[]> {
     const attrEntries = Object.entries(filters?.attributes ?? {}).filter(([, v]) => !!v);
     const take = Math.min(Math.max(filters?.limit ?? 200, 1), 500);
     return this.prisma.product.findMany({
       where: {
         storeId,
-        status: 'ACTIVE',
+        status: ProductStatus.ACTIVE,
         deletedAt: null,
         ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
         ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
@@ -153,14 +173,10 @@ export class ProductsRepository {
           })),
         }),
       },
-      include: {
-        images: { orderBy: { sortOrder: 'asc' }, take: 1, include: { media: true } },
-        variants: { where: { isActive: true, deletedAt: null }, select: { stockQuantity: true } },
-        _count: { select: { variants: { where: { isActive: true, deletedAt: null } } } },
-      },
+      include: publicProductInclude,
       orderBy: { createdAt: 'desc' },
       take,
-    }) as unknown as Promise<Product[]>;
+    });
   }
 
   async countByStoreId(storeId: string): Promise<number> {
