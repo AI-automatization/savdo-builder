@@ -1,8 +1,25 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft, Sun, Moon } from 'lucide-react'
+import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft, Sun, Moon, Lock } from 'lucide-react'
 import { api, auth } from '../lib/api'
 import { cn } from '@/lib/utils'
+
+/** Decode JWT payload (no signature verify — фронт только читает claim'ы). */
+function decodeJwtPayload<T = Record<string, unknown>>(token: string): T | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    // base64url → base64 для atob (UTF-8 safe через decodeURIComponent + escape).
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4)
+    const json = decodeURIComponent(
+      atob(padded).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''),
+    )
+    return JSON.parse(json) as T
+  } catch {
+    return null
+  }
+}
 
 function getInitialDark() {
   const saved = localStorage.getItem('admin-theme')
@@ -24,13 +41,18 @@ export default function LoginPage() {
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
   }
 
-  const [step, setStep] = useState<1 | 2>(1)
+  // step 1 = phone, 2 = OTP, 3 = MFA TOTP challenge.
+  // После Wave 30 (c1607c5) MFA enforced на admin endpoints — JWT с mfaPending=true
+  // не пройдёт MfaEnforcedGuard. Step 3 обменивает mfaPending JWT на полный.
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [phone, setPhone] = useState('+998')
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [mfaCode, setMfaCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [timer, setTimer] = useState(0)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const mfaInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (timer > 0) {
@@ -93,7 +115,21 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
+      // Сохраняем токены до проверки MFA — refresh-token нужен для возможной replay,
+      // accessToken с mfaPending=true даёт доступ только к /admin/auth/mfa/* (SkipMfaCheck).
       auth.setTokens(data.accessToken, data.refreshToken)
+
+      // Decode JWT — если mfaPending=true, переходим на step 3 (TOTP challenge).
+      const payload = decodeJwtPayload<{ mfaPending?: boolean }>(data.accessToken)
+      if (payload?.mfaPending) {
+        setStep(3)
+        setOtp(['', '', '', '', '', ''])
+        setMfaCode('')
+        setLoading(false)
+        setTimeout(() => mfaInputRef.current?.focus(), 100)
+        return
+      }
+
       navigate('/dashboard')
     } catch (e: any) {
       if (e.message?.includes('TELEGRAM_NOT_LINKED')) {
@@ -108,7 +144,33 @@ export default function LoginPage() {
     }
   }
 
-  const reset = () => { setStep(1); setOtp(['', '', '', '', '', '']); setError('') }
+  const verifyMfa = async () => {
+    if (mfaCode.length !== 6) return
+    setError('')
+    setLoading(true)
+    try {
+      // POST /admin/auth/mfa/login — обменивает mfaPending JWT на полноценный
+      // (super-admin.controller.ts mfaLogin → admin-auth.use-case.mfaLogin).
+      const data: any = await api.post('/api/v1/admin/auth/mfa/login', { code: mfaCode })
+      // refreshToken остаётся прежним — backend перевыпускает только access.
+      auth.setTokens(data.accessToken, auth.getRefresh() ?? '')
+      navigate('/dashboard')
+    } catch (e: any) {
+      setError(e.message?.includes('Invalid') ? 'Неверный TOTP код' : (e.message ?? 'Не удалось войти'))
+      setMfaCode('')
+      setTimeout(() => mfaInputRef.current?.focus(), 50)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const reset = () => {
+    setStep(1)
+    setOtp(['', '', '', '', '', ''])
+    setMfaCode('')
+    setError('')
+    auth.clear()
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-5 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -152,13 +214,17 @@ export default function LoginPage() {
           </div>
           <h1 className="text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Savdo Admin</h1>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {step === 1 ? 'Вход через Telegram OTP' : `Код отправлен на ${phone}`}
+            {step === 1
+              ? 'Вход через Telegram OTP'
+              : step === 2
+                ? `Код отправлен на ${phone}`
+                : 'Введите код из приложения-аутентификатора'}
           </p>
         </div>
 
         {/* Step bar */}
         <div className="flex gap-1.5 mb-6">
-          {[1, 2].map(s => (
+          {[1, 2, 3].map(s => (
             <div key={s} className={cn(
               'flex-1 h-0.5 rounded-full transition-colors duration-300',
               s <= step ? 'bg-indigo-500' : 'bg-white/10',
@@ -202,6 +268,49 @@ export default function LoginPage() {
                 ? <><Loader2 size={15} className="animate-spin" /> Отправляем...</>
                 : <>Получить код <ArrowRight size={15} /></>
               }
+            </button>
+          </div>
+        ) : step === 3 ? (
+          // ── MFA TOTP Challenge ─────────────────────────────────────────────
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
+              <Lock size={12} className="text-indigo-400 shrink-0" />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Двухфакторная аутентификация активна. Откройте Google Authenticator / Authy / 1Password.
+              </span>
+            </div>
+
+            <div>
+              <label className="block mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                Код из приложения (6 цифр)
+              </label>
+              <input
+                ref={el => { mfaInputRef.current = el }}
+                value={mfaCode}
+                onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={e => e.key === 'Enter' && mfaCode.length === 6 && verifyMfa()}
+                placeholder="000000"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                className="w-full h-12 px-3 rounded-lg text-center text-xl font-bold font-mono tracking-[0.5em] focus:outline-none focus:border-indigo-500/60 transition-colors"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              />
+            </div>
+
+            <button
+              onClick={verifyMfa}
+              disabled={loading || mfaCode.length !== 6}
+              className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading
+                ? <><Loader2 size={15} className="animate-spin" /> Проверяем...</>
+                : <>Подтвердить <ArrowRight size={15} /></>
+              }
+            </button>
+
+            <button onClick={reset} className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: 'var(--text-dim)' }}>
+              <ChevronLeft size={13} /> Войти заново
             </button>
           </div>
         ) : (

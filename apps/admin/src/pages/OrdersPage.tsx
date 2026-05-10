@@ -322,9 +322,11 @@ function RefundDialog({ order, onClose, onSuccess }: {
   const submit = async () => {
     setLoading(true)
     try {
-      const body: { amount?: number; reason: string; returnToWallet: boolean } = {
+      // Field name MUST match backend (refund-order.use-case.ts: returnedToWallet).
+      // Старое имя returnToWallet всегда уходило с false → wallet не пополнялся.
+      const body: { amount?: number; reason: string; returnedToWallet: boolean } = {
         reason: reason.trim(),
-        returnToWallet,
+        returnedToWallet: returnToWallet,
       }
       if (partial) body.amount = numAmount
       await api.post(`/api/v1/admin/orders/${order.id}/refund`, body)
