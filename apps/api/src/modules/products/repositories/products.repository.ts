@@ -161,6 +161,19 @@ export class ProductsRepository {
     });
   }
 
+  /**
+   * API-N1-CHECKOUT-001: batch fetch для CreateDirectOrder. Один SELECT IN
+   * вместо Promise.all(map(findById)) — на 100 items было 100 round-trips.
+   */
+  async findManyByIds(ids: string[]): Promise<Map<string, SellerProductDetail>> {
+    if (ids.length === 0) return new Map();
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      include: sellerProductDetailInclude,
+    });
+    return new Map(products.map((p) => [p.id, p as SellerProductDetail]));
+  }
+
   async findPublicById(id: string): Promise<PublicProductDetail | null> {
     return this.prisma.product.findFirst({
       where: { id, status: ProductStatus.ACTIVE, deletedAt: null },

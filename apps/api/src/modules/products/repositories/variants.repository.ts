@@ -54,6 +54,20 @@ export class VariantsRepository {
     });
   }
 
+  /**
+   * API-N1-CHECKOUT-001: batch fetch для CreateDirectOrder и similar flows.
+   * Раньше Promise.all(items.map(findById)) → N round-trips. Теперь один
+   * SELECT с IN. Возвращает Map для O(1) lookup в caller.
+   */
+  async findManyByIds(ids: string[]): Promise<Map<string, VariantWithOptions>> {
+    if (ids.length === 0) return new Map();
+    const variants = await this.prisma.productVariant.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      include: variantWithOptionsInclude,
+    });
+    return new Map(variants.map((v) => [v.id, v as VariantWithOptions]));
+  }
+
   async create(productId: string, data: CreateVariantData): Promise<ProductVariant> {
     return this.prisma.productVariant.create({
       data: {

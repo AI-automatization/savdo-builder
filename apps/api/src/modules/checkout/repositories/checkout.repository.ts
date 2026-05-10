@@ -56,6 +56,12 @@ export interface StoreWithSeller {
     telegramChatId: bigint | null;
     telegramNotificationsActive: boolean;
   };
+  // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend computes deliveryFee
+  // из store.deliverySettings. Buyer не контролирует сумму.
+  deliverySettings: {
+    deliveryFeeType: string; // 'fixed' | 'manual' | 'none'
+    fixedDeliveryFee: unknown; // Decimal | null — Number() в use-case
+  } | null;
 }
 
 @Injectable()
@@ -90,6 +96,12 @@ export class CheckoutRepository {
             telegramUsername: true,
             telegramChatId: true,
             telegramNotificationsActive: true,
+          },
+        },
+        deliverySettings: {
+          select: {
+            deliveryFeeType: true,
+            fixedDeliveryFee: true,
           },
         },
       },
