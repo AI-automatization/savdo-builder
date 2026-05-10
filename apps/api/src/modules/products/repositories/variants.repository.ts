@@ -1,8 +1,18 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { ProductVariant, InventoryMovementType } from '@prisma/client';
+import { Prisma, ProductVariant, InventoryMovementType } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+
+// Variant + optionValues junctions с подгруженным optionValue (для variantLabel
+// рендера в checkout flow). Раньше код использовал `as any` на каждое поле.
+const variantWithOptionsInclude = Prisma.validator<Prisma.ProductVariantInclude>()({
+  optionValues: { include: { optionValue: true } },
+});
+
+export type VariantWithOptions = Prisma.ProductVariantGetPayload<{
+  include: typeof variantWithOptionsInclude;
+}>;
 
 export interface CreateVariantData {
   sku: string;
@@ -37,12 +47,10 @@ export class VariantsRepository {
     });
   }
 
-  async findById(id: string): Promise<ProductVariant | null> {
+  async findById(id: string): Promise<VariantWithOptions | null> {
     return this.prisma.productVariant.findFirst({
       where: { id, deletedAt: null },
-      include: {
-        optionValues: { include: { optionValue: true } },
-      },
+      include: variantWithOptionsInclude,
     });
   }
 

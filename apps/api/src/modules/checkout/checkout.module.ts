@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CheckoutController } from './checkout.controller';
 import { OrdersCreateController } from './orders-create.controller';
 import { CheckoutRepository } from './repositories/checkout.repository';
+import { ValidateCartItemsService } from './services/validate-cart-items.service';
 import { PreviewCheckoutUseCase } from './use-cases/preview-checkout.use-case';
 import { ConfirmCheckoutUseCase } from './use-cases/confirm-checkout.use-case';
 import { CreateDirectOrderUseCase } from './use-cases/create-direct-order.use-case';
@@ -16,6 +17,7 @@ import { TelegramModule } from '../telegram/telegram.module';
   controllers: [CheckoutController, OrdersCreateController],
   providers: [
     CheckoutRepository,
+    ValidateCartItemsService,
     PreviewCheckoutUseCase,
     ConfirmCheckoutUseCase,
     CreateDirectOrderUseCase,

@@ -1,4 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { ProductStatus } from '@prisma/client';
 import { CartRepository } from '../../cart/repositories/cart.repository';
 import { ProductsRepository } from '../../products/repositories/products.repository';
 import { VariantsRepository } from '../../products/repositories/variants.repository';
@@ -69,7 +70,7 @@ export class PreviewCheckoutUseCase {
         continue;
       }
 
-      if ((product as any).status !== 'ACTIVE') {
+      if (product.status !== ProductStatus.ACTIVE) {
         invalidItems.push({
           productId: cartItem.productId,
           variantId: cartItem.variantId ?? null,
@@ -93,38 +94,33 @@ export class PreviewCheckoutUseCase {
             reason: 'Variant not found',
           });
           itemInvalid = true;
-        } else if (!(variant as any).isActive) {
+        } else if (!variant.isActive) {
           invalidItems.push({
             productId: cartItem.productId,
             variantId: cartItem.variantId,
             reason: 'Variant is no longer available',
           });
           itemInvalid = true;
-        } else if ((variant as any).stockQuantity < cartItem.quantity) {
+        } else if (variant.stockQuantity < cartItem.quantity) {
           invalidItems.push({
             productId: cartItem.productId,
             variantId: cartItem.variantId,
-            reason: `Insufficient stock: available ${(variant as any).stockQuantity}, requested ${cartItem.quantity}`,
+            reason: `Insufficient stock: available ${variant.stockQuantity}, requested ${cartItem.quantity}`,
           });
           itemInvalid = true;
         } else {
-          if (
-            (variant as any).priceOverride !== null &&
-            (variant as any).priceOverride !== undefined
-          ) {
-            unitPrice = toNum((variant as any).priceOverride);
+          if (variant.priceOverride !== null && variant.priceOverride !== undefined) {
+            unitPrice = toNum(variant.priceOverride);
           }
-          // Build variant label from option values
-          const optionValues = (variant as any).optionValues ?? [];
-          if (optionValues.length > 0) {
-            variantLabelSnapshot = optionValues
-              .map((ov: any) => ov.optionValue?.value ?? '')
+          if (variant.optionValues.length > 0) {
+            variantLabelSnapshot = variant.optionValues
+              .map((ov) => ov.optionValue?.value ?? '')
               .filter(Boolean)
               .join(' / ');
-          } else if ((variant as any).titleOverride) {
-            variantLabelSnapshot = (variant as any).titleOverride;
+          } else if (variant.titleOverride) {
+            variantLabelSnapshot = variant.titleOverride;
           }
-          skuSnapshot = (variant as any).sku ?? null;
+          skuSnapshot = variant.sku ?? null;
         }
       }
 
@@ -132,7 +128,7 @@ export class PreviewCheckoutUseCase {
         validItems.push({
           productId: cartItem.productId,
           variantId: cartItem.variantId ?? null,
-          title: (product as any).title,
+          title: product.title,
           variantTitle: variantLabelSnapshot,
           skuSnapshot,
           unitPrice,
