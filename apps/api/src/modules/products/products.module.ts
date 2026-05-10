@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ProductsController } from './products.controller';
+import { StorefrontController } from './storefront.controller';
+import { ProductPresenterService } from './services/product-presenter.service';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
@@ -18,11 +20,12 @@ import { WishlistModule } from '../wishlist/wishlist.module';
 
 @Module({
   imports: [StoresModule, SellersModule, TelegramModule, WishlistModule],
-  controllers: [ProductsController],
+  controllers: [ProductsController, StorefrontController],
   providers: [
     ProductsRepository,
     VariantsRepository,
     OptionGroupsRepository,
+    ProductPresenterService,
     CreateProductUseCase,
     UpdateProductUseCase,
     ChangeProductStatusUseCase,

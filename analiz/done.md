@@ -3668,3 +3668,60 @@ P1:
 
 P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraints).
 
+
+### POLAT-ZONE-WAVE7-10 (10.05.2026 утром)
+
+- **Дата:** 10.05.2026
+- **Файлы:**
+
+  **Wave 7 — Moderation enums:**
+  - `packages/db/prisma/schema.prisma` — `ModerationCaseStatus` (OPEN/IN_REVIEW/CLOSED), `ModerationCaseType` (VERIFICATION/ABUSE/MANUAL_REVIEW), `ModerationActionType` (11 values: APPROVE/REJECT/REQUEST_CHANGES/ESCALATE + ASSIGN/CLOSE/REOPEN + HIDE/SUSPEND/RESTORE/BLOCK).
+  - `packages/db/prisma/migrations/20260510080000_moderation_enums/` — swap-column для 3 колонок.
+  - Code: `moderation/repositories/moderation.repository.ts`, `moderation/services/moderation-trigger.service.ts`, `moderation/use-cases/{assign-case,take-action}.use-case.ts`, `moderation/dto/list-cases.dto.ts`, `moderation/moderation.controller.ts`, admin SPA `ModerationPage.tsx`, `ModerationDetailPage.tsx`. Bonus: 2 `as any` касты в take-action убраны → `SellerVerificationStatus.*` / `StoreStatus.*` enum.
+
+  **Wave 8 — SellerVerificationDocument enums + verify-seller-extended cleanup:**
+  - `SellerVerificationDocumentType` (PASSPORT/BUSINESS_DOC/OTHER) + `SellerVerificationDocumentStatus` (PENDING/APPROVED/REJECTED).
+  - `verify-seller-extended.use-case.ts` — `VALID_STATUSES` const → `Object.values(SellerVerificationStatus)`, убран `input.status as any` каст, literals → enum constants.
+  - Migration `20260510080500_seller_verification_doc_enums`.
+
+  **Wave 8b — ChatMessage.messageType enum:**
+  - `ChatMessageType` (TEXT/IMAGE/SYSTEM).
+  - `chat/repositories/chat.repository.ts`, `chat/use-cases/send-message.use-case.ts`, `chat/use-cases/get-thread-messages.use-case.ts`. Убран `(message as any).messageType` cast.
+  - Migration `20260510081000_chat_message_type_enum`.
+
+  **Wave 9 — InAppNotification.type enum:**
+  - `InAppNotificationType` (ORDER_STATUS_CHANGED, STORE_APPROVED, STORE_REJECTED, NEW_ORDER, NEW_MESSAGE, SELLER_VERIFIED, MODERATION_ACTION, GENERIC).
+  - Legacy dotted/snake_case (`order.status_changed`, `store.approved` etc) маппятся в UPPERCASE_SNAKE_CASE.
+  - Type-safe `notifyInApp(type: InAppNotificationType, ...)` + `createInAppDirect(type: InAppNotificationType, ...)` + `InAppNotificationJobData.type`.
+  - Migration `20260510081500_in_app_notification_type_enum`.
+
+  **Wave 10 — products.controller `as unknown as` cleanup:**
+  - `apps/api/src/modules/products/repositories/products.repository.ts` — 5 типизированных include'ов через `Prisma.validator<Prisma.ProductInclude>()`:
+    - `sellerProductInclude` / `SellerProductListItem` — для `findByStoreId`
+    - `publicProductInclude` / `PublicProductListItem` — для `findPublicByStoreId`
+    - `sellerProductDetailInclude` / `SellerProductDetail` — для `findById`
+    - `publicProductDetailInclude` / `PublicProductDetail` — для `findPublicById`
+    - `searchProductInclude` / `SearchProductHit` — для `searchPublic`
+    - `allPublicProductInclude` / `AllPublicProductItem` — для `findAllPublic`
+  - `apps/api/src/modules/products/products.controller.ts` — **9 `as unknown as` cast'ов и 2 `(store as any).isPublic` cast'а удалены**. Контроллер теперь читает поля напрямую через типизированные payload'ы.
+  - Bonus: 3 `'ACTIVE'` string literal → `ProductStatus.ACTIVE` в repo.
+
+- **Что сделано:**
+  - **Все P1 enum-конверсии из аудита закрыты** (Moderation x3, SVD x2, ChatMessage, InAppNotif). 6 миграций swap-column.
+  - **Type safety в products.controller (947 LOC)** — главный источник schema-drift риска убран.
+  - **6 `as any` cast'ов** удалены в этой сессии (по итогам всех волн ~10 за день).
+
+- **Деплой:**
+  - main pushed → tma/api/admin merged + pushed → Railway redeploys.
+  - 4 новые миграции прогонятся на api redeploy через swap-column паттерн (стабильный).
+
+- **Verified:** `tsc --noEmit` зелёный после каждой волны.
+
+- **Что осталось из P1/P2:**
+  - Split products.controller.ts (947 LOC) на ProductsSellerController + StorefrontController — теперь без cast'ов рискованнее меньше.
+  - Split admin.controller.ts оставшиеся 407 LOC (users/sellers/stores).
+  - Split confirm-checkout.use-case.ts (254 LOC).
+  - `@nestjs/swagger` setup.
+  - Structured logging.
+  - 2 мелких `as any` в `products.repository.ts` (для Prisma JSON field) — Prisma quirk.
+
