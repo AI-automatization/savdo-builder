@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-05-10 late-evening (Полат) — Wave 2 P1 fixes (6 задач)
+
+Продолжение работ после P0-marathon:
+
+### ✅ [API-DELIVERY-FEE-CLIENT-CONTROLLED-001] Backend computes deliveryFee 🔴
+- `confirm-checkout.use-case.ts` игнорирует `input.deliveryFee` (deprecated в DTO)
+- Считает из `store.deliverySettings`: fixed → fixedDeliveryFee, manual/none → 0
+- `StoreWithSeller` расширен `deliverySettings` полем
+- Spec: +4 case. Защита от buyer'а присылающего `deliveryFee:0`.
+- **Commit:** `7f10caf`
+
+### ✅ [API-N1-CHECKOUT-001] Batch fetch CreateDirectOrder 🟡
+- Старый `Promise.all(items.map(findById))` + loop = 2N round-trips → 2 SELECT IN
+- Новые `findManyByIds(ids[])` в ProductsRepo + VariantsRepo (Map<id, entity>)
+- Spec: +1 case. **Commit:** `7f10caf`
+
+### ✅ [TMA-CART-DUPLICATE-WARNING-001] Confirm перед cross-store 🟡
+- `addToCart` в StorePage показывает confirmDialog «Заменить корзину?»
+- Раньше silent reset терял товары без уведомления
+- **Commit:** `5e486a3`
+
+### ✅ [TMA-CHECKOUT-GUEST-401-001] Disable submit для guest 🟡
+- Submit `disabled` пока `!authenticated`
+- Warning-блок + label кнопки «Войдите через Telegram»
+- **Commit:** `5e486a3`
+
+### ✅ [TMA-CHECKOUT-SUCCESS-PAGE-001] Order confirmation screen 🟡
+- ✓ icon + orderNumber + total + 2 CTA вместо моментального navigate
+- **Commit:** `5e486a3`
+
+### ✅ [ADMIN-NATIVE-CONFIRM-001 + ADMIN-MODAL-A11Y-001] 🟡
+- Новый `ConfirmDialog` imperative API + `<ConfirmContainer/>` в App.tsx
+- `window.confirm()` заменён в ChatsPage + ReportsPage
+- 4 modal мигрированы на DialogShell: Orders Cancel + Refund, Moderation Reject, Broadcast Confirm
+- a11y: role=dialog, aria-modal, focus-trap, Esc close
+- **Commits:** `5e486a3`, `f2dc9f9`
+
+**Также:** API-JWT-REVOCATION-001 — verified already done (JwtStrategy.validate
+проверяет session в БД, deleteSession в logout инвалидирует токены).
+
+**Wave 2 итог:** 668/668 tests, typecheck clean across api+admin+tma, 4 commits.
+
+---
+
 ## 2026-05-10 evening (Полат) — Pre-launch P0/P1 marathon
 
 После 5-perspective platform audit (design / marketing / seller UX / buyer UX / QA)
