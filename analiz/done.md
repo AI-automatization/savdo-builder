@@ -3801,3 +3801,31 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - **~80+ `as any` / `as unknown as` casts** удалены через Prisma.validator + enum constants
   - 12 новых unit tests для финансово-критичного flow
   - Swagger UI на `/api/v1/docs`
+
+### POLAT-ZONE-WAVE15-17 (10.05.2026) — больше unit-тестов для критичных use-cases
+
+- **Wave 15 — ConfirmCheckoutUseCase orchestrator:**
+  - `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.spec.ts` (NEW, 19 cases).
+  - Покрытие: OTP guard, cart validation, buyer/store load, total computation, customer override (BUG-WB-AUDIT-009), order/cart/socket/TG side-effects ordering, error rollback (createOrder fails → cart NOT cleared).
+  - **161/161 passing** (было 142, +19).
+
+- **Wave 16 — VerifyOtpUseCase:**
+  - `apps/api/src/modules/auth/use-cases/verify-otp.use-case.spec.ts` (NEW, 16 cases).
+  - Покрытие: brute-force protection (SEC-002), OTP not found / invalid + recordFailedAttempt, user resolution (new/existing/missing buyer), JWT claims (BUYER/SELLER/ADMIN+MFA), session.expiresAt = +30d, refreshToken format `<sessionId>.<rawToken>`.
+  - **177/177 passing** (было 161, +16).
+
+- **Wave 17 — UpdateOrderStatusUseCase:**
+  - `apps/api/src/modules/orders/use-cases/update-order-status.use-case.spec.ts` (NEW, 22 cases).
+  - Покрытие state-machine: 7 SELLER transitions (table-driven), 3 BUYER cases, 3 forbidden transitions (skip/anti-progression/re-life), store ownership (foreign 403), side effects (emit + TG notify both, fire-and-forget on error, BUYER-cancels-PENDING → seller notify).
+  - **199/199 passing** (было 177, +22).
+
+- **Net (Wave 14-17 — все тесты):**
+  - 4 новых spec'а: ValidateCartItemsService (12), ConfirmCheckoutUseCase (19), VerifyOtpUseCase (16), UpdateOrderStatusUseCase (22) = +69 кейсов
+  - **Test coverage:** было 130 → стало **199 cases** (+53%)
+  - Покрыты: financial validation (checkout), auth (OTP verification), order state machine — 3 из самых security/finance критичных use-cases.
+
+- **Что осталось из P1 testing list:**
+  - CreateProductUseCase — seller flow, валидация duplicate SKU + storeId guard
+  - SuspendUserUseCase / SuspendStoreUseCase — admin actions с audit log
+  - SendOtpUseCase — companion к VerifyOtp (rate-limit, Telegram delivery)
+  - E2E (отдельная сессия, нужен отдельный jest config с DB)
