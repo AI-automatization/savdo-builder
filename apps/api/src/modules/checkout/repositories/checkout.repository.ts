@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpStatus } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { Order, OrderStatus, InventoryMovementType, DeliveryType, PaymentMethod, CartStatus } from '@prisma/client';
+import { DomainException } from '../../../common/exceptions/domain.exception';
+import { ErrorCode } from '../../../shared/constants/error-codes';
 
 export interface CheckoutOrderItemInput {
   productId: string;
@@ -149,10 +152,26 @@ export class CheckoutRepository {
       for (const item of data.items) {
         if (!item.variantId) continue;
 
-        await tx.productVariant.update({
-          where: { id: item.variantId },
-          data: { stockQuantity: { decrement: item.quantity } },
-        });
+        // API-STOCK-RACE-OVERSELL-001 (QA-AUDIT P0):
+        // Старый decrement без guard позволял двум параллельным транзакциям
+        // вычитать одинаковый stock → minus values, oversell. Atomic UPDATE
+        // с WHERE stockQuantity >= qty: если 0 rows affected — недостаточно
+        // в другой параллельной транзакции уже вычли.
+        const affected = await tx.$executeRaw(Prisma.sql`
+          UPDATE "product_variants"
+          SET "stockQuantity" = "stockQuantity" - ${item.quantity}
+          WHERE "id" = ${item.variantId}::uuid
+            AND "stockQuantity" >= ${item.quantity}
+        `);
+
+        if (affected === 0) {
+          throw new DomainException(
+            ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+            `Insufficient stock for ${item.productTitleSnapshot}`,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            { productId: item.productId, variantId: item.variantId },
+          );
+        }
 
         await tx.inventoryMovement.create({
           data: {

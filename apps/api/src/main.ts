@@ -61,31 +61,36 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Swagger / OpenAPI doc (publicly accessible на /api/v1/docs).
-  // В проде виден только через прокси если ALLOWED_ORIGINS закрывает доступ.
-  // Auth не блокирует — сами эндпоинты под guard'ами, doc только описывает.
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Savdo API')
-    .setDescription('Backend для savdo-builder — TG-storefront + buyer/seller flows.')
-    .setVersion('1.0')
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', name: 'JWT', in: 'header' },
-      'jwt',
-    )
-    .addTag('admin',      'Admin/super-admin operations')
-    .addTag('seller',     'Seller-side: products, variants, orders, store')
-    .addTag('storefront', 'Public read-only — товары и магазины')
-    .addTag('buyer',      'Buyer flow: cart, checkout, orders, wishlist')
-    .addTag('chat',       'Chat threads + messages (buyer ↔ seller)')
-    .addTag('moderation', 'Cases / actions / audit log')
-    .addTag('auth',       'OTP login + Telegram WebApp auth')
-    .build();
+  // Swagger / OpenAPI doc — в production выключен (раскрытие endpoints/DTOs).
+  // Опционально включается через `SWAGGER_ENABLED=true` для staging окружения.
+  // QA-AUDIT-SEC-A05: Swagger в проде = leak шапок endpoints + payload schemas.
+  const swaggerEnabled = !isProd || process.env.SWAGGER_ENABLED === 'true';
+  if (swaggerEnabled) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Savdo API')
+      .setDescription('Backend для savdo-builder — TG-storefront + buyer/seller flows.')
+      .setVersion('1.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', name: 'JWT', in: 'header' },
+        'jwt',
+      )
+      .addTag('admin',      'Admin/super-admin operations')
+      .addTag('seller',     'Seller-side: products, variants, orders, store')
+      .addTag('storefront', 'Public read-only — товары и магазины')
+      .addTag('buyer',      'Buyer flow: cart, checkout, orders, wishlist')
+      .addTag('chat',       'Chat threads + messages (buyer ↔ seller)')
+      .addTag('moderation', 'Cases / actions / audit log')
+      .addTag('auth',       'OTP login + Telegram WebApp auth')
+      .build();
 
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/v1/docs', app, swaggerDocument, {
-    swaggerOptions: { persistAuthorization: true },
-  });
-  Logger.log('Swagger UI mounted at /api/v1/docs', 'Bootstrap');
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/v1/docs', app, swaggerDocument, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+    Logger.log('Swagger UI mounted at /api/v1/docs', 'Bootstrap');
+  } else {
+    Logger.log('Swagger disabled in production (set SWAGGER_ENABLED=true to override)', 'Bootstrap');
+  }
 
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {

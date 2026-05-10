@@ -1,5 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
-import { RefundStatus } from '@prisma/client';
+import { RefundStatus, InventoryMovementType } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
@@ -96,6 +96,33 @@ export class RefundOrderUseCase {
             paymentStatus: 'REFUNDED' as any,
           },
         });
+
+        // INV-O04: full refund возвращает stock. Только если order был в
+        // активном статусе — для DELIVERED тоже возвращаем (физически товар
+        // вернулся seller'у при refund). Если seller физически списал —
+        // отдельная manual MANUAL_ADJUSTMENT через admin/db tools.
+        const items = await tx.orderItem.findMany({
+          where: { orderId: input.orderId, variantId: { not: null }, productId: { not: null } },
+          select: { productId: true, variantId: true, quantity: true },
+        });
+        for (const item of items) {
+          if (!item.variantId || !item.productId) continue;
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stockQuantity: { increment: item.quantity } },
+          });
+          await tx.inventoryMovement.create({
+            data: {
+              productId: item.productId,
+              variantId: item.variantId,
+              movementType: InventoryMovementType.ORDER_RELEASED,
+              quantityDelta: item.quantity,
+              referenceType: 'order',
+              referenceId: input.orderId,
+              note: `Full refund: ${input.reason.trim()}`,
+            },
+          });
+        }
       }
 
       return refund;
