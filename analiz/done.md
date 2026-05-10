@@ -1,5 +1,40 @@
 # Done — Азим + Полат
 
+## 2026-05-10 (Полат) — Test coverage push: Wave 25-31 (130 → 550 cases, +323%)
+
+### ✅ [TEST-COVERAGE-W25-31] Расширение покрытия Jest-тестами по 14 модулям 🟡
+
+- **Дата:** 10.05.2026
+- **Файлы:** 13 новых spec файлов
+  - `apps/api/src/modules/wishlist/use-cases/wishlist.use-cases.spec.ts` — Wave 25 (12 cases)
+  - `apps/api/src/modules/cart/use-cases/cart-mutations.use-cases.spec.ts` — Wave 25 (13 cases)
+  - `apps/api/src/modules/auth/services/token.service.spec.ts` — Wave 26 (17 cases)
+  - `apps/api/src/modules/auth/services/otp.service.spec.ts` — Wave 26 (23 cases)
+  - `apps/api/src/modules/auth/use-cases/{request-otp,refresh-session,logout-session}.use-case.spec.ts` — Wave 27 (27 cases)
+  - `apps/api/src/modules/categories/use-cases/store-categories.use-cases.spec.ts` — Wave 28 (12 cases)
+  - `apps/api/src/modules/media/use-cases/media.use-cases.spec.ts` — Wave 28 (16 cases)
+  - `apps/api/src/modules/cart/use-cases/get-cart.use-case.spec.ts` — Wave 29 (12 cases)
+  - `apps/api/src/modules/notifications/use-cases/notifications.use-cases.spec.ts` — Wave 29 (12 cases)
+  - `apps/api/src/modules/moderation/use-cases/moderation.use-cases.spec.ts` — Wave 30 (20 cases)
+  - `apps/api/src/modules/chat/use-cases/chat-readonly.use-cases.spec.ts` — Wave 30 (20 cases)
+  - `apps/api/src/modules/checkout/use-cases/{preview-checkout,create-direct-order}.use-case.spec.ts` — Wave 31 (24 cases)
+  - `apps/api/src/modules/admin/use-cases/admin-create.use-cases.spec.ts` — Wave 31 (12 cases)
+- **Что покрыто:**
+  - Auth/JWT (17): TokenService — sign payload+secret+expiresIn fallback 15m, TTL parser (15m/1h/3600s/1d/whitespace/invalid), refresh token gen (80 hex chars), bcrypt hash/verify roundtrip + salt uniqueness, verifyAccessToken catch swallows error.
+  - OTP (23): randomInt 6-digit range, bcrypt round-trip, **SEC-002 brute-force** (5 attempts → DomainException), Redis fail-tolerant, dev/prod sendOtp с `TELEGRAM_NOT_LINKED` fallback @savdo_builderBOT.
+  - Auth use-cases (27): RequestOtp rate-limit 3/10min per phone+purpose, RefreshSession token rotation + JWT claims (BUYER vs SELLER vs ADMIN with mfaPending/adminRole), LogoutSession graceful failure.
+  - Categories (12): INV-S02 limit 20 categories per store (граница 19/20), cross-store FORBIDDEN guard.
+  - Media (16): RequestUpload mimeType validation (product_image vs seller_doc bucket+visibility split), ConfirmUpload idempotency, DeleteMedia R2-then-DB order.
+  - Cart (25): GetCart mapper logic — salePrice priority, variant title fallback chain, telegram-expired bucket → null. CartMutations — ownership cross-buyer защита.
+  - Wishlist (12): non-ACTIVE products НЕ возвращаются, idempotent toggle.
+  - Notifications (12): GetInbox pagination, GetPreferences schema defaults (mobilePush=true, webPush=false, telegram=true), GetNotificationLogs filters.
+  - Moderation (20): TakeAction state machine APPROVE/REJECT/ESCALATE → CLOSED; REQUEST_CHANGES → OPEN; **INV-A02** reject требует comment (whitespace blocks); side effects на store/seller; **INV-A01** audit log (lowercase action, payload).
+  - Chat (20): ResolveThread (only seller), GetUnreadCount summarise (count > 0), GetThreadMessages — participant check, hasMore +1 trick, batch parent resolve (no N+1, dedupe), isDeleted text mask.
+  - Checkout (24): PreviewCheckout — invalid items с reasons, **INV-C01** (CART_STORE_MISMATCH) защита cross-product variant inject (productId mismatch), priceOverride > basePrice, store ownership.
+  - AdminCreate (12): manual seller activation flow (API-MANUAL-SELLER-ACTIVATION-001), **INV-S01** (one store per seller), slugify edge cases + uniqueSlug suffix.
+- **Результат:** 42 test suites, 550 passed, 0 failed, 100% pass.
+- **Commits:** 6ed34cd, 22b3b4b, 52a2987, fba9da1, 5bd47af, c1607c5, 88f9d02
+
 ## 2026-05-09 (Азим) — Web-buyer Design Audit + 6 fix waves (22 из 25 findings закрыты)
 
 ### ✅ [WB-DESIGN-AUDIT-001] Read-only audit web-buyer vs Soft Color Lifestyle 🟡
