@@ -3829,3 +3829,15 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - SuspendUserUseCase / SuspendStoreUseCase — admin actions с audit log
   - SendOtpUseCase — companion к VerifyOtp (rate-limit, Telegram delivery)
   - E2E (отдельная сессия, нужен отдельный jest config с DB)
+
+### POLAT-ZONE-WAVE18-20 (10.05.2026) — продолжение test coverage
+
+- **Wave 18 — ChangeProductStatusUseCase:** 18 cases. Coverage: 4 allowed transitions (DRAFT↔ACTIVE, ACTIVE↔ARCHIVED), 4 forbidden (skip/backwards/HIDDEN_BY_ADMIN), HIDDEN_BY_ADMIN guard, ownership check, TG auto-post (0/1/2+ TG photos, R2-only filtered, depublish doesn't post, fire-and-forget on fail).
+- **Wave 19 — SuspendUser + SuspendStore:** 10 cases. INV-A01 audit + INV-A02 reason. Already-suspended → 409. Order: status BEFORE audit.
+- **Wave 20 — AdminCancelOrder + UnsuspendUser + UnsuspendStore:** 19 cases. Terminal status guard (DELIVERED/CANCELLED), 4 non-terminal cancellable, symmetric unsuspend tests.
+
+- **Net (Wave 14-20 — все тесты):**
+  - 7 новых spec'ов: ValidateCartItems (12) + ConfirmCheckout (19) + VerifyOtp (16) + UpdateOrderStatus (22) + ChangeProductStatus (18) + SuspendUser/Store (10) + AdminCancelOrder/Unsuspend (19) = +116 кейсов
+  - **Test coverage:** 130 → **246 cases (+89%)**
+  - 8 → **20 spec файлов** (+150%)
+  - Покрыты все P1/P0 critical use-cases по аудиту: financial validation, auth, order state machine, product publishing, admin moderation actions, order cancellation.
