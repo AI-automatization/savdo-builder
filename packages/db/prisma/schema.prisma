@@ -95,6 +95,17 @@ enum MediaVisibility {
   PRIVATE
 }
 
+enum InAppNotificationType {
+  ORDER_STATUS_CHANGED   // legacy: 'order.status_changed'
+  STORE_APPROVED         // legacy: 'store.approved'
+  STORE_REJECTED         // legacy: 'store.rejected'
+  NEW_ORDER              // legacy: 'new_order'
+  NEW_MESSAGE            // legacy: 'new_message'
+  SELLER_VERIFIED        // legacy: 'seller.verified'
+  MODERATION_ACTION      // legacy: 'moderation.action'
+  GENERIC                // fallback
+}
+
 enum ChatMessageType {
   TEXT
   IMAGE
@@ -967,7 +978,7 @@ model MediaFile {
 model InAppNotification {
   id        String   @id @default(uuid())
   userId    String
-  type      String   // order.status_changed | store.approved | store.rejected | new_order | new_message | seller.verified | moderation.action
+  type      InAppNotificationType
   title     String
   body      String
   data      Json     @default("{}")

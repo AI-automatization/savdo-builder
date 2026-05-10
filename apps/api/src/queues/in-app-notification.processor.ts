@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { InAppNotificationType } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { ChatGateway } from '../socket/chat.gateway';
 import { QUEUE_IN_APP_NOTIFICATIONS } from './queues.module';
@@ -9,7 +10,7 @@ export const IN_APP_JOB_CREATE = 'create';
 
 export interface InAppNotificationJobData {
   userId: string;
-  type: string;
+  type: InAppNotificationType;
   title: string;
   body: string;
   data?: object;
