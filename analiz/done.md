@@ -3841,3 +3841,13 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - **Test coverage:** 130 → **246 cases (+89%)**
   - 8 → **20 spec файлов** (+150%)
   - Покрыты все P1/P0 critical use-cases по аудиту: financial validation, auth, order state machine, product publishing, admin moderation actions, order cancellation.
+
+### POLAT-ZONE-WAVE21-22 (10.05.2026) — store moderation + broadcast tests
+
+- **Wave 21 — Store moderation:** Approve / Reject / Archive / Unapprove use-cases. 20 cases объединены в один spec (общий AdminRepository mock). Покрытие: not-found, invalid source status (test.each), happy path + audit log shape.
+- **Wave 22 — BroadcastUseCase:** 13 cases. TG broadcast critical: audience filter (sellers/buyers/all), chatId resolution + dedup (seller.telegramChatId wins over user.telegramId, Set-based dedup), previewMode skip log/queue, rate limit (34ms delay = 30 msg/sec), broadcastLog creation, getHistory.
+
+- **Test coverage итого (Wave 14-22):**
+  - 130 → **279 cases (+115%)**
+  - 8 → **22 spec files (+175%)**
+  - Покрыто: ValidateCartItems / ConfirmCheckout / VerifyOtp / UpdateOrderStatus / ChangeProductStatus / SuspendUser / SuspendStore / UnsuspendUser / UnsuspendStore / AdminCancelOrder / ApproveStore / RejectStore / ArchiveStore / UnapproveStore / Broadcast — все P0/P1 critical use-cases из аудита.
