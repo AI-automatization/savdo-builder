@@ -13,6 +13,10 @@ import { AdminBroadcastController } from './admin-broadcast.controller';
 import { AdminAnalyticsController } from './admin-analytics.controller';
 import { AdminOpsController } from './admin-ops.controller';
 import { AdminProductsController } from './admin-products.controller';
+import { AdminStoresController } from './admin-stores.controller';
+import { AdminUsersController } from './admin-users.controller';
+import { AdminSellersController } from './admin-sellers.controller';
+import { AdminContextService } from './services/admin-context.service';
 import { SuperAdminController } from './super-admin.controller';
 
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
@@ -62,10 +66,14 @@ import { MediaModule } from '../media/media.module';
     AdminAnalyticsController,
     AdminOpsController,
     AdminProductsController,
+    AdminStoresController,
+    AdminUsersController,
+    AdminSellersController,
     SuperAdminController,
   ],
   providers: [
     AdminRepository,
+    AdminContextService,
     ListUsersUseCase,
     GetUserDetailUseCase,
     SuspendUserUseCase,
