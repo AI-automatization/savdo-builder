@@ -95,6 +95,35 @@ enum MediaVisibility {
   PRIVATE
 }
 
+enum ModerationCaseStatus {
+  OPEN       // только что создан, ждёт модератора
+  IN_REVIEW  // модератор взял в работу (assignedAdminId != null)
+  CLOSED     // решение принято — see ModerationAction.actionType
+}
+
+enum ModerationCaseType {
+  VERIFICATION    // верификация продавца / магазина
+  ABUSE           // жалоба пользователя
+  MANUAL_REVIEW   // ручная проверка админом
+}
+
+enum ModerationActionType {
+  // User-facing (TakeActionDto MODERATION_ACTIONS)
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+  ESCALATE
+  // Admin-side internal
+  ASSIGN          // взять кейс себе
+  CLOSE           // закрыть кейс без действия
+  REOPEN          // переоткрыть закрытый кейс
+  // Legacy targeted actions (lowercase в старых записях)
+  HIDE
+  SUSPEND
+  RESTORE
+  BLOCK
+}
+
 enum CartStatus {
   ACTIVE
   CONVERTED  // checkout прошёл — корзина превращена в Order
@@ -1046,8 +1075,8 @@ model ModerationCase {
   id               String   @id @default(uuid())
   entityType       String   // seller | store | product | message
   entityId         String
-  caseType         String   // verification | abuse | manual_review
-  status           String   @default("open")
+  caseType         ModerationCaseType
+  status           ModerationCaseStatus @default(OPEN)
   reason           String?
   assignedAdminId  String?
   createdAt        DateTime @default(now())
@@ -1066,7 +1095,7 @@ model ModerationAction {
   caseId      String?
   entityType  String
   entityId    String
-  actionType  String   // approve | reject | hide | suspend | restore | block
+  actionType  ModerationActionType
   adminUserId String
   comment     String?
   createdAt   DateTime @default(now())

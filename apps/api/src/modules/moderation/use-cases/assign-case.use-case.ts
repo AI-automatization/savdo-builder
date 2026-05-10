@@ -1,4 +1,5 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
+import { ModerationActionType } from '@prisma/client';
 import { ModerationRepository } from '../repositories/moderation.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
@@ -43,7 +44,7 @@ export class AssignCaseUseCase {
           entityType: moderationCase.entityType,
           entityId: moderationCase.entityId,
           adminUserId: adminUser.id,
-          actionType: 'ASSIGN',
+          actionType: ModerationActionType.ASSIGN,
           comment: null,
         },
       });
