@@ -7,6 +7,7 @@ import { useSellerOrders } from '../../../hooks/use-orders';
 import { useSellerSummary } from '../../../hooks/use-analytics';
 import { OrderStatus, StoreStatus } from 'types';
 import { track } from '../../../lib/analytics';
+import { buyerStoreUrl } from '@/lib/buyer-url';
 import { Package, Eye, Link2, Clock, Plus, ClipboardList, BarChart3 } from 'lucide-react';
 import { card, cardMuted, colors } from '@/lib/styles';
 
@@ -71,7 +72,7 @@ export default function DashboardPage() {
 
   function handleCopyLink() {
     if (!store) return;
-    const url = `${process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'}/${store.slug}`;
+    const url = buyerStoreUrl(store.slug);
     navigator.clipboard.writeText(url).then(() => {
       track.storeLinkCopied(store.id);
       setCopied(true);

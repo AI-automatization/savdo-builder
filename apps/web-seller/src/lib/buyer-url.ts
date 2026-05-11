@@ -15,3 +15,13 @@ export function buyerStoreUrl(slug: string): string {
 export function buyerStoreDisplay(slug: string): string {
   return `${buyerOrigin().replace(/^https?:\/\//, '')}/${slug}`;
 }
+
+/** Host-only display without protocol or slug (`savdo.uz`, `localhost:3001`). */
+export function buyerHostDisplay(): string {
+  return buyerOrigin().replace(/^https?:\/\//, '');
+}
+
+/** Product detail URL (`https://savdo.uz/{slug}/products/{productId}`). */
+export function buyerProductUrl(slug: string, productId: string): string {
+  return `${buyerOrigin()}/${slug}/products/${productId}`;
+}
