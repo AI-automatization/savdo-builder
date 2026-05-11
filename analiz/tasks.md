@@ -60,18 +60,18 @@
 ## 🔴 P0 — Marketing blockers для launch (Полат + Азим, согласовать)
 
 - [ ] **`MARKETING-HOMEPAGE-DISCOVERY-001`** 🔴 — `apps/web-buyer/src/app/(shop)/page.tsx` сейчас просто форма ввода slug. Cold-traffic от Instagram/TG = bounce 100%. **Зона Азима**, но требует endpoint `GET /storefront/featured` от меня.
-- [ ] **`MARKETING-SEO-INFRA-001`** 🔴 — нет sitemap.ts, robots.ts, JSON-LD, manifest.webmanifest. `<html lang="en">` баг (должно быть `ru`). **Зона Азима**.
+- [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
 - [ ] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — schema bilingual (`nameRu` + `nameUz`), но фронт читает только `nameRu`. ~60% UZ market предпочитают узбекский. Нужна i18n инфра + перевод UI strings.
-- [ ] **`MARKETING-PUBLIC-OFFER-PAGES-001`** 🔴 — нет `/terms`, `/privacy`, `/offer`, `/refund`. Checkout footer ссылается на «условия» в никуда. **Требование UZ закона.**
+- [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 
 ## 🟠 P1 — Marketing should-have
 
-- [ ] **`MARKETING-REVIEWS-SHOW-001`** — Reviews API готов, но `web-buyer/products/[id]` не рендерит. Нет social proof.
+- [x] **`MARKETING-REVIEWS-SHOW-001`** ✅ 11.05.2026 — `ProductReviews` компонент (`components/store/ProductReviews.tsx`) рендерит секцию между Characteristics и «Из этого магазина». `useProductReviews` hook. Average rating + count + плюрализ + Stars + author + date + comment. API уже был, фронт его не использовал.
 - [ ] **`MARKETING-VERIFIED-SELLER-001`** — `Store` модель без `isVerified` / `avgRating` / `reviewCount`. Buyers не отличают good от bad sellers.
 - [ ] **`MARKETING-CART-ABANDONMENT-001`** — нет cron + TG nudge через N часов идлинга.
 - [ ] **`MARKETING-WISHLIST-NOTIFY-001`** — wishlist без price-drop / back-in-stock notifications.
-- [ ] **`MARKETING-FAKE-RESPONSE-TIME-001`** — `«отвечает за час»` hardcoded на product page (`...products/[id]/page.tsx:673`). False claim.
+- [x] **`MARKETING-FAKE-RESPONSE-TIME-001`** ✅ 11.05.2026 — убраны 3 false claims: product page «отвечает за час» → conditional city, order detail PENDING eta «в течение часа» → «скоро рассмотрит», cart sticky strip «отвечает за час» → «написать продавцу».
 
 ## 🟠 P1 — UX fixes (моя зона apps/api + apps/admin + apps/tma)
 
@@ -125,8 +125,7 @@
 - [x] **`WB-DESIGN-WAVE-3`** ✅ 09.05.2026 — page headings text-2xl tracking-tight ×4. Commit `c5b6163`.
 - [x] **`WB-DESIGN-WAVE-4`** ✅ 09.05.2026 — Stats brand + timeline pulse. Commit `c5b6163`.
 - [x] **`WB-DESIGN-WAVE-5`** ✅ 09.05.2026 — radius cleanup (5 файлов). Commit `c5b6163`.
-- [ ] **`WB-DESIGN-WAVE-6`** (P1, **блокируется API**) — pinned product context strip в chat thread: `rgba(brand,0.06)` полоса с 40px thumb + название + цена + «Открыть →» когда `thread.contextType === 'PRODUCT'`. Файл: `apps/web-buyer/src/app/(shop)/chats/page.tsx ChatView`. Closes P1-003.
-  - **Блокер**: `ChatThread` response (`packages/types/src/api/chat.ts`) содержит только `productTitle`, без `productId/productImageUrl/productPrice`. Фронт не может построить полноценный strip без них.
+- [x] **`WB-DESIGN-WAVE-6`** ✅ 11.05.2026 — pinned product strip в `chats/page.tsx` ChatView, использует `productId/Title/ImageUrl/Price` от `API-CHAT-THREAD-PRODUCT-PREVIEW-001`. Линк на `/{storeSlug}/products/{productId}`. Closes P1-003.
 
 ### 🔵 Контракт-задача для Полата (web-buyer Wave 6 unblock)
 
@@ -235,7 +234,7 @@
 - [x] **`API-RBAC-MICRO-PERMISSIONS-001`** ✅ 06.05.2026 — `@AdminPermission(perm)` decorator + `AdminPermissionGuard` + `JwtPayload.adminRole` claim. Permissions matrix вынесена в `common/constants/admin-permissions.ts` с wildcard-логикой (`*`, `user:*`, `*:read`). Применено на 23 destructive endpoints в admin/super-admin controller'ах (suspend, approve, reject, archive, refund, impersonate, db CRUD, broadcast, migrate). См. `analiz/done.md API-RBAC-MICRO-PERMISSIONS-001`.
 
 ### 🟠 P1 — Азим
-- [x] **`WEB-SELLER-HARDCODED-DOMAIN-001`** ✅ 08.05.2026 — введён helper `apps/web-seller/src/lib/buyer-url.ts` (`buyerOrigin`/`buyerStoreUrl`/`buyerStoreDisplay`). 3 места хардкода заменены: layout.tsx (sidebar label + clipboard) и profile/page.tsx (storeUrl). Подробности в `analiz/done.md`.
+- [x] **`WEB-SELLER-HARDCODED-DOMAIN-001`** ✅ 11.05.2026 — full closure. Helper расширен (`buyerHostDisplay` + `buyerProductUrl`). Закрыты оставшиеся хардкоды: `dashboard/page.tsx:74` (handleCopyLink), `products/page.tsx:58` (copyProductLink), `(onboarding)/onboarding/page.tsx:162/179` (live slug preview), `layout.tsx:128` placeholder. Все live места теперь через env. Подробности в `analiz/done.md`.
 
 ---
 

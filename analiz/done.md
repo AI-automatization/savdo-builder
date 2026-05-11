@@ -1,5 +1,44 @@
 # Done — Азим + Полат
 
+## 2026-05-11 (Азим) — Wave 6 + 5 marketing/launch quick wins (6 задач)
+
+После platform audit Полата (10.05.2026) подхватил весь web-side backlog (зона apps/web-*).
+6 задач в одной сессии, web-buyer + web-seller typecheck clean.
+
+### ✅ [WB-DESIGN-WAVE-6] Pinned product context strip в чате 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/chats/page.tsx`
+- **Что сделано:** PRODUCT-thread теперь имеет fixed strip между header и messages — 40px thumb + название + цена + «Открыть →». Линк ведёт на `/{storeSlug}/products/{productId}`. Использует `productId/Title/ImageUrl/Price` из ChatThread (закрыто Полатом 10.05 как `API-CHAT-THREAD-PRODUCT-PREVIEW-001`). Цвет фона — `color-mix(brand 6%, transparent)` per Soft Color Lifestyle spec. Fallback на `<Package/>` иконку если нет thumb. Last P1 из buyer audit 09.05 (closes P1-003).
+
+### ✅ [WEB-SELLER-HARDCODED-DOMAIN-001] Все savdo.uz → env helper 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-seller/src/lib/buyer-url.ts` (+2 helpers), `dashboard/page.tsx`, `products/page.tsx`, `(onboarding)/onboarding/page.tsx` (×2), `(dashboard)/layout.tsx` placeholder
+- **Что сделано:** добавлены `buyerHostDisplay()` и `buyerProductUrl(slug, productId)` в helper. Все 5 live мест (dashboard/products/onboarding × 2/layout placeholder) теперь используют `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` через helper. В dev (`localhost:3001`) — реалистичные ссылки, не dead production. Закрывает аудит 06.05.
+
+### ✅ [MARKETING-SEO-INFRA-001] SEO infra для cold-traffic 🔴
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/app/{layout.tsx,sitemap.ts,robots.ts,manifest.ts}`, `(shop)/[slug]/products/[id]/layout.tsx`
+- **Что сделано:** `<html lang="en">` → `<html lang="ru">` (баг с launch). Создан `sitemap.ts` (homepage + 4 legal pages, weekly/yearly), `robots.ts` (allow /, disallow checkout/cart/orders/wishlist/chats/api), `manifest.ts` (Savdo PWA). JSON-LD `Organization` в root layout (sitewide). JSON-LD `Product` со schema.org/Product (name/image/sku/brand/offers/UZS) на product layout — берётся из существующего SSR fetch, no extra request.
+
+### ✅ [MARKETING-PUBLIC-OFFER-PAGES-001] /terms /privacy /offer /refund 🔴
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/components/legal/LegalPage.tsx` (shared), `apps/web-buyer/src/app/{terms,privacy,offer,refund}/page.tsx`, `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (footer links)
+- **Что сделано:** 4 публичных страницы с прозой на русском (~500 слов каждая) — стандартные секции UZ e-com: условия использования, политика конфиденциальности, публичная оферта, возврат и обмен. Shared `LegalPage` компонент с H2/P/UL атомами для consistency. Checkout footer (desktop + mobile) — ссылки «соглашаетесь с публичной офертой и политикой» теперь underlined links, не dead text. Реквизиты юр. лица — placeholder (нужны после регистрации компании).
+
+### ✅ [MARKETING-FAKE-RESPONSE-TIME-001] Удалить fake claims 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:673`, `(shop)/orders/[id]/page.tsx:84`, `(minimal)/cart/page.tsx:352`
+- **Что сделано:** убраны 3 false claims: «отвечает за час» на product page → conditional `{storeCity}`; «Продавец рассмотрит в течение часа» в order detail PENDING ETA → «Продавец скоро рассмотрит заказ»; «отвечает за час» в cart sticky strip → «написать продавцу».
+
+### ✅ [MARKETING-REVIEWS-SHOW-001] Reviews на product page 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/lib/api/storefront.api.ts` (+`getProductReviews`), `hooks/use-storefront.ts` (+`useProductReviews`), `components/store/ProductReviews.tsx` (new), `app/(shop)/[slug]/products/[id]/page.tsx`
+- **Что сделано:** новый компонент `ProductReviews` (~120 LOC) — fetch `GET /storefront/products/:id/reviews` через TanStack (staleTime 5 мин). States: loading (skeleton), empty (СTA-style invite), populated (header с avg rating + count + правильный плюрализ «отзыв/отзыва/отзывов», список карточек с author + Stars + дата + comment). Звёзды — `lucide-react` `<Star>` filled/outlined по rating. Подключён между Characteristics и «Из этого магазина». API уже был — Полат сделал заранее, фронт не рендерил.
+
+**Итог сессии:** 6 задач, 18 новых/изменённых файлов, web-buyer + web-seller TS clean.
+
+---
+
 ## 2026-05-10 late-evening (Полат) — Wave 2 P1 fixes (6 задач)
 
 Продолжение работ после P0-marathon:
