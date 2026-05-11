@@ -1,5 +1,6 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ChatMessageType } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
@@ -23,7 +24,7 @@ export interface MappedChatMessage {
   editedAt: string | null;
   isDeleted: boolean;
   mediaUrl?: string | null;
-  messageType?: string;
+  messageType?: ChatMessageType;
   parentMessage?: { id: string; text: string; senderRole: 'BUYER' | 'SELLER' } | null;
 }
 
@@ -115,7 +116,7 @@ export class GetThreadMessagesUseCase {
         isDeleted: m.isDeleted,
         createdAt: m.createdAt.toISOString(),
         mediaUrl: mAny.mediaId ? `${appUrl}/api/v1/media/proxy/${mAny.mediaId}` : null,
-        messageType: mAny.messageType ?? 'text',
+        messageType: m.messageType,
         parentMessage: parent
           ? {
               id: parent.id,

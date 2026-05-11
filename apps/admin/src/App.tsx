@@ -3,6 +3,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { Toaster } from 'sonner'
 import { auth } from './lib/api'
 import { ImpersonationProvider } from './lib/impersonation'
+import { ConfirmContainer } from './components/admin/ConfirmDialog'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
 
@@ -59,7 +60,11 @@ function AuthLogoutListener() {
 function QueuesRedirect() {
   useEffect(() => {
     const apiUrl = (import.meta as any).env?.VITE_API_URL ?? ''
-    window.location.assign(`${apiUrl}/api/v1/admin/queues`)
+    // Bull Board защищён JWT — передаём admin access token в query.
+    // Сервер примет либо BULL_BOARD_TOKEN (legacy), либо валидный admin JWT.
+    const accessToken = auth.getAccess() ?? ''
+    const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : ''
+    window.location.assign(`${apiUrl}/api/v1/admin/queues${tokenParam}`)
   }, [])
   return (
     <div style={{ padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>
@@ -73,6 +78,7 @@ export default function App() {
     <BrowserRouter>
       <ImpersonationProvider>
         <AuthLogoutListener />
+        <ConfirmContainer />
         <Toaster
           position="bottom-right"
           theme="dark"

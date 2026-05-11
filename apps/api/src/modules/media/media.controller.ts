@@ -66,7 +66,7 @@ export class MediaController {
   @Post('upload')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 20 } }) // защита от bandwidth-spam
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async uploadFileDirect(
     @CurrentUser() user: JwtPayload,
     @UploadedFile() file: UploadedFileType,
@@ -78,7 +78,7 @@ export class MediaController {
   /** Upload buyer avatar — image only, max 10 MB */
   @Post('buyer/avatar')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async uploadBuyerAvatar(
     @CurrentUser() user: JwtPayload,
     @UploadedFile() file: UploadedFileType,
@@ -103,7 +103,7 @@ export class MediaController {
   @Post('seller/avatar')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async uploadSellerAvatar(
     @CurrentUser() user: JwtPayload,
     @UploadedFile() file: UploadedFileType,

@@ -1,14 +1,14 @@
 ﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { api, apiUpload, getToken, ApiError } from '@/lib/api';
+import { api, apiUpload, ApiError } from '@/lib/api';
 import { CategoryModal } from '@/components/ui/CategoryModal';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
-import { Spinner } from '@/components/ui/Spinner';
 import { ProductDetailSkeleton } from '@/components/ui/Skeleton';
 import { ImageCropper } from '@/components/ui/ImageCropper';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
 
 interface Variant {
@@ -148,10 +148,13 @@ export default function EditProductPage() {
         for (const v of p.variants) initial[v.id] = v.stockQuantity === 0 ? '' : String(v.stockQuantity);
         setStockEdits(initial);
       }
-      // Load attributes
+      // Load attributes — non-fatal, product still editable without them
       api<ProductAttr[]>(`/seller/products/${id}/attributes`, { signal })
         .then((a) => { if (!signal?.aborted) setAttrs(a); })
-        .catch(() => {});
+        .catch((err: unknown) => {
+          if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+          showToast('Не удалось загрузить характеристики товара');
+        });
     } catch {
       if (!signal?.aborted) setLoadError('Не удалось загрузить товар');
     } finally {
@@ -336,7 +339,15 @@ export default function EditProductPage() {
 
   const handleDeleteVariant = async (variantId: string) => {
     if (!id) return;
-    if (!confirm('Удалить вариант? Существующие заказы сохранятся.')) return;
+    // window.confirm() блокируется в Telegram WebApp на mobile (popup not allowed).
+    // Используем нативный TMA ConfirmModal через confirmDialog().
+    const ok = await confirmDialog({
+      title: 'Удалить вариант?',
+      body: 'Существующие заказы с этим вариантом сохранятся.',
+      confirmText: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api(`/seller/products/${id}/variants/${variantId}`, { method: 'DELETE' });
       setProduct((prev) =>
@@ -411,19 +422,10 @@ export default function EditProductPage() {
     setDeleting(true);
     setError('');
     try {
-      const token = getToken();
-      const BASE = (import.meta.env.VITE_API_URL as string) ?? '';
-      const res = await fetch(`${BASE}/api/v1/seller/products/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Ошибка удаления' }));
-        throw new Error(err.message ?? 'Ошибка удаления');
-      }
+      // Используем api() — он уже умеет 401 refresh + cache-bust + ApiError.
+      // Прямой fetch обходил setUnauthorizedHandler → юзер видел generic ошибку
+      // вместо нормального redirect на login при истёкшем токене.
+      await api(`/seller/products/${id}`, { method: 'DELETE' });
       tg?.HapticFeedback.notificationOccurred('success');
       navigate('/seller/products');
     } catch (e: unknown) {

@@ -81,7 +81,7 @@ function normalizeOrder(raw: any): NormalizedOrder {
 type StatusTone = "success" | "brand" | "warning" | "muted";
 
 const STATUS_META: Record<string, { label: string; eta: string; tone: StatusTone }> = {
-  [OrderStatus.PENDING]:    { label: "Ожидает подтверждения", eta: "Продавец рассмотрит в течение часа",  tone: "warning" },
+  [OrderStatus.PENDING]:    { label: "Ожидает подтверждения", eta: "Продавец скоро рассмотрит заказ",       tone: "warning" },
   [OrderStatus.CONFIRMED]:  { label: "Подтверждён",            eta: "Магазин готовит ваш заказ",            tone: "brand"   },
   [OrderStatus.PROCESSING]: { label: "В обработке",            eta: "Идёт сборка заказа",                   tone: "brand"   },
   [OrderStatus.SHIPPED]:    { label: "В пути",                  eta: "Курьер скоро привезёт",                tone: "brand"   },

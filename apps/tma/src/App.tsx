@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { LoadingScreen } from '@/components/layout/LoadingScreen';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/providers/AuthProvider';
+import { bindSellerNotifications, unbindSellerNotifications, resolveStoreIdForSeller } from '@/lib/sellerNotifications';
 
 // ── Error Boundary ─────────────────────────────────────────────────────────────
 
@@ -106,6 +107,21 @@ function BuyerLayout() {
 }
 
 function SellerLayout() {
+  // TMA-SELLER-WS-NOTIFY-001: подписаться на realtime events продавца —
+  // order:new / order:status_changed / chat:new_message — чтобы продавец
+  // на TG-mobile не пропускал заказы. Web-seller это давно делает.
+  useEffect(() => {
+    let cancelled = false;
+    void resolveStoreIdForSeller().then((storeId) => {
+      if (cancelled || !storeId) return;
+      bindSellerNotifications({ storeId });
+    });
+    return () => {
+      cancelled = true;
+      unbindSellerNotifications();
+    };
+  }, []);
+
   return (
     <SellerGuard>
       <AppShell role="SELLER">

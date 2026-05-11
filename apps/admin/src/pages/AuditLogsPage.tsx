@@ -1,6 +1,7 @@
-import { ScrollText, Search, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ScrollText, Search, RefreshCw, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useFetch } from '../lib/hooks'
+import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface AuditLog {
   id: string
@@ -152,18 +153,14 @@ export default function AuditLogsPage() {
         </table>
 
         {total > 20 && (
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              Страница {page} · {total} всего
-            </span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1, fontSize: 13 }}>
-                <ChevronLeft size={14} /> Пред
-              </button>
-              <button onClick={() => setPage(p => p + 1)} disabled={page * 20 >= total} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: page * 20 >= total ? 'not-allowed' : 'pointer', opacity: page * 20 >= total ? 0.5 : 1, fontSize: 13 }}>
-                След <ChevronRight size={14} />
-              </button>
-            </div>
+          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+            <PaginationBar
+              page={page}
+              totalPages={Math.ceil(total / 20)}
+              total={total}
+              itemsLabel="записей"
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

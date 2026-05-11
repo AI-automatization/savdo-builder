@@ -116,7 +116,7 @@ export default function StoresPage() {
   useEffect(() => {
     if (tab !== 'products' || catsLoaded.current) return;
     catsLoaded.current = true;
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {/* best-effort: category filters are supplementary */});
   }, [tab]);
 
   const productsAbortRef = useRef<AbortController | null>(null);

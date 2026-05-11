@@ -1,5 +1,6 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ChatMessageType } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
@@ -101,7 +102,7 @@ export class SendMessageUseCase {
       body: input.text?.trim() || null,
       parentMessageId: input.parentMessageId ?? null,
       mediaId: input.mediaId ?? null,
-      messageType: input.mediaId ? 'image' : 'text',
+      messageType: input.mediaId ? ChatMessageType.IMAGE : ChatMessageType.TEXT,
     });
 
     this.logger.log(`Message sent to thread ${input.threadId} by user ${input.senderUserId}`);
@@ -191,7 +192,7 @@ export class SendMessageUseCase {
       createdAt: message.createdAt.toISOString(),
       mediaUrl,
       parentMessage: parentPreview,
-      messageType: (message as any).messageType ?? 'text',
+      messageType: message.messageType,
     };
   }
 }

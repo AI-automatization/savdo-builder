@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
+import { DialogShell } from '../components/admin/DialogShell'
 
 interface AuditEntry {
   id: string
@@ -72,16 +74,18 @@ function ConfirmModal({
   onCancel: () => void; loading: boolean
 }) {
   const [reason, setReason] = useState('')
+  const titleId = 'store-confirm-title'
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 440, maxWidth: '90vw' }}>
-        <h3 style={{ margin: '0 0 8px', color: 'var(--text)', fontSize: 18, fontWeight: 700 }}>{title}</h3>
+    <DialogShell onClose={onCancel} width={440} ariaLabelledBy={titleId} closeOnBackdrop={!loading} closeOnEscape={!loading}>
+        <h3 id={titleId} style={{ margin: '0 0 8px', color: 'var(--text)', fontSize: 18, fontWeight: 700 }}>{title}</h3>
         <p style={{ margin: '0 0 20px', color: 'var(--text-muted)', fontSize: 14 }}>{description}</p>
         {requireReason && (
           <textarea
             value={reason} onChange={e => setReason(e.target.value)}
             placeholder="Причина (обязательно)..."
             rows={3}
+            aria-label="Причина действия"
+            aria-invalid={requireReason && !reason.trim() || undefined}
             style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, resize: 'vertical', outline: 'none', marginBottom: 16 }}
           />
         )}
@@ -97,8 +101,7 @@ function ConfirmModal({
             {loading ? 'Загрузка...' : actionLabel}
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
@@ -429,32 +432,14 @@ export default function StoreDetailPage() {
         </div>
       )}
 
-      {/* Audit History */}
-      {auditData && auditData.logs.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
-            История действий ({auditData.logs.length})
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {auditData.logs.map(entry => (
-              <div key={entry.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.action.includes('SUSPENDED') || entry.action.includes('REJECTED') ? '#EF4444' : entry.action.includes('APPROVED') || entry.action.includes('UNSUSPEND') ? '#10B981' : '#94A3B8', marginTop: 5, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{entry.action}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(entry.createdAt).toLocaleString('ru-RU')}</span>
-                  </div>
-                  {entry.payload?.reason && (
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                      Причина: {entry.payload.reason}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Audit History — единая активность магазина: модерация, владелец, товары, заказы */}
+      <div style={{ marginTop: 16 }}>
+        <ActivityLogPanel
+          entityType="Store"
+          entityId={store.id}
+          emptyText="С этим магазином ещё не было админ-действий"
+        />
+      </div>
 
       {/* Modals */}
       {modal === 'suspend' && (

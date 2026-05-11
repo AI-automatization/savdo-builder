@@ -186,7 +186,7 @@ export class AdminAuthUseCase {
       accessToken,
       target: { id: target.id, phone: target.phone, role: target.role },
       adminId: admin.id,
-      expiresIn: 3600,
+      expiresIn: this.tokenService.getAccessTokenTtlSeconds(),
     };
   }
 

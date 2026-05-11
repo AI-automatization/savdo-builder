@@ -3,33 +3,44 @@ import { Shield, Plus, UserCog, Trash2, AlertCircle, Phone, Search } from 'lucid
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { useFocusTrap } from '../lib/use-focus-trap'
 import { ROLE_OPTIONS, ROLE_BADGE, type AdminRole } from '../lib/admin-roles'
 
+// API contract from super-admin.controller.ts admin-users-management.use-case.ts list().
+// Backend возвращает плоский массив AdminRow[]; поле adminRole (НЕ role); user без fullName.
 interface AdminRow {
   id: string
-  role: AdminRole
+  userId: string
+  adminRole: AdminRole
   isSuperadmin: boolean
+  mfaEnabled?: boolean
+  lastLoginAt?: string | null
   createdAt: string
   user: {
     id: string
     phone: string
-    fullName?: string | null
   }
 }
 
-interface AdminsResponse {
-  admins: AdminRow[]
-  currentRole: AdminRole | null
+// /admin/auth/me возвращает текущую роль + permissions для UI gates.
+interface AdminMe {
+  id: string
+  userId: string
+  adminRole: AdminRole
+  isSuperadmin: boolean
+  mfaEnabled: boolean
 }
 
 export default function AdminUsersPage() {
-  const { data, loading, error, refetch } = useFetch<AdminsResponse>('/api/v1/admin/admins')
+  const { data: admins, loading, error, refetch } = useFetch<AdminRow[]>('/api/v1/admin/admins')
+  const { data: me } = useFetch<AdminMe>('/api/v1/admin/auth/me')
   const [editTarget, setEditTarget] = useState<AdminRow | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<AdminRow | null>(null)
 
-  const admins = data?.admins ?? []
-  const currentRole = data?.currentRole ?? null
+  const adminsList = admins ?? []
+  const currentRole: AdminRole | null = me?.adminRole ?? null
+  const currentAdminId: string | null = me?.id ?? null
   const isSuperAdmin = currentRole === 'super_admin'
 
   const handleRemove = async () => {
@@ -83,16 +94,16 @@ export default function AdminUsersPage() {
       {/* Grid */}
       {loading ? (
         <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
-      ) : admins.length === 0 ? (
+      ) : adminsList.length === 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 48, textAlign: 'center' }}>
           <Shield size={32} style={{ opacity: 0.3, color: 'var(--text-muted)', margin: '0 auto 12px' }} />
           <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)' }}>Администраторов не найдено</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
-          {admins.map(admin => {
-            const cfg = ROLE_BADGE[admin.role] ?? ROLE_BADGE.read_only
-            const isSelf = false // TODO: compare with current admin id when /me endpoint ready
+          {adminsList.map(admin => {
+            const cfg = ROLE_BADGE[admin.adminRole] ?? ROLE_BADGE.read_only
+            const isSelf = admin.id === currentAdminId
             return (
               <div
                 key={admin.id}
@@ -105,11 +116,13 @@ export default function AdminUsersPage() {
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {admin.user.fullName || 'Без имени'}
+                        {admin.user.phone}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                         <Phone size={11} color="var(--text-dim)" />
-                        <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: 12 }}>{admin.user.phone}</span>
+                        <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: 12 }}>
+                          {cfg.label}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -133,9 +146,9 @@ export default function AdminUsersPage() {
                     </button>
                     <button
                       onClick={() => setRemoveTarget(admin)}
-                      disabled={isSelf || admin.role === 'super_admin'}
-                      title={admin.role === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ'}
-                      style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: (isSelf || admin.role === 'super_admin') ? 'not-allowed' : 'pointer', opacity: (isSelf || admin.role === 'super_admin') ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
+                      disabled={isSelf || admin.adminRole === 'super_admin'}
+                      title={admin.adminRole === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ'}
+                      style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: (isSelf || admin.adminRole === 'super_admin') ? 'not-allowed' : 'pointer', opacity: (isSelf || admin.adminRole === 'super_admin') ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       <Trash2 size={12} />
                     </button>
@@ -168,7 +181,7 @@ export default function AdminUsersPage() {
       {removeTarget && (
         <ConfirmDialog
           title="Удалить доступ администратора?"
-          description={`${removeTarget.user.phone} (${ROLE_BADGE[removeTarget.role].label}) потеряет доступ к панели.`}
+          description={`${removeTarget.user.phone} (${ROLE_BADGE[removeTarget.adminRole].label}) потеряет доступ к панели.`}
           actionLabel="Удалить"
           actionColor="#EF4444"
           onConfirm={handleRemove}
@@ -182,13 +195,14 @@ export default function AdminUsersPage() {
 // ── Edit Role ────────────────────────────────────────────────────────────────
 
 function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose: () => void; onSaved: () => void }) {
-  const [role, setRole] = useState<AdminRole>(admin.role)
+  const [role, setRole] = useState<AdminRole>(admin.adminRole)
   const [loading, setLoading] = useState(false)
 
   const submit = async () => {
     setLoading(true)
     try {
-      await api.patch(`/api/v1/admin/admins/${admin.id}/role`, { role })
+      // Backend (super-admin.controller.ts:131) expects @Body('adminRole'), не 'role'.
+      await api.patch(`/api/v1/admin/admins/${admin.id}/role`, { adminRole: role })
       toast.success(`Роль обновлена: ${ROLE_BADGE[role].label}`)
       onSaved()
     } catch (e: any) {
@@ -202,7 +216,7 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
     <ModalShell onClose={onClose} width={500}>
       <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Изменить роль</h3>
       <p style={{ margin: '6px 0 18px', fontSize: 13, color: 'var(--text-muted)' }}>
-        {admin.user.fullName || admin.user.phone}
+        {admin.user.phone}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
@@ -241,8 +255,8 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
         <button onClick={onClose} style={btnSecondary}>Отмена</button>
         <button
           onClick={submit}
-          disabled={loading || role === admin.role}
-          style={{ ...btnPrimary, opacity: (loading || role === admin.role) ? 0.5 : 1, cursor: loading ? 'wait' : 'pointer' }}
+          disabled={loading || role === admin.adminRole}
+          style={{ ...btnPrimary, opacity: (loading || role === admin.adminRole) ? 0.5 : 1, cursor: loading ? 'wait' : 'pointer' }}
         >
           {loading ? 'Сохранение...' : 'Сохранить'}
         </button>
@@ -286,7 +300,9 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     if (!found) return
     setCreating(true)
     try {
-      await api.post('/api/v1/admin/admins', { userId: found.id, role })
+      // Backend (super-admin.controller.ts:115) expects {phone, adminRole}, не {userId, role}.
+      // Phone берём из found, чтобы избежать опечаток пользователя.
+      await api.post('/api/v1/admin/admins', { phone: found.phone, adminRole: role })
       toast.success(`${ROLE_BADGE[role].label} назначен: ${found.phone}`)
       onSaved()
     } catch (e: any) {
@@ -404,15 +420,21 @@ function ConfirmDialog({ title, description, actionLabel, actionColor, onConfirm
   )
 }
 
-function ModalShell({ children, onClose, width }: { children: React.ReactNode; onClose: () => void; width: number }) {
+function ModalShell({ children, onClose, width, labelledBy }: { children: React.ReactNode; onClose: () => void; width: number; labelledBy?: string }) {
+  const dialogRef = useFocusTrap<HTMLDivElement>(onClose)
   return (
     <div
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
         onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', outline: 'none' }}
       >
         {children}
       </div>

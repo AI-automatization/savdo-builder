@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InAppNotification, NotificationLog, NotificationPreference } from '@prisma/client';
+import { InAppNotification, InAppNotificationType, NotificationLog, NotificationPreference } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
@@ -34,7 +34,7 @@ export interface PaginatedNotificationLogs {
 
 export interface CreateInAppNotificationData {
   userId: string;
-  type: string;
+  type: InAppNotificationType;
   title: string;
   body: string;
   data?: object;
