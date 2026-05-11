@@ -37,6 +37,11 @@
 
 **Итог сессии:** 6 задач, 18 новых/изменённых файлов, web-buyer + web-seller TS clean.
 
+### ✅ [P3-006] Settings native select → custom Select 🟢
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/settings/page.tsx`
+- **Что сделано:** последний deferred тикет из WS-DESIGN-WAVE-7. 2 native `<select>` мигрированы на existing custom `<Select>` через `Controller` из react-hook-form. `DeliverySection.deliveryFeeType` (none/fixed/manual) + `ProfileSection.languageCode` (ru/uz). `searchable={false}` (мало опций), `ariaLabel` для a11y, типизированный `onChange` через field.onChange cast. Закрывает Firefox chevron issue + dark/light theme consistency + keyboard nav. WS-DESIGN-WAVE-7-DEFERRED теперь 5 nit'ов вместо 6.
+
 ---
 
 ## 2026-05-10 late-evening (Полат) — Wave 2 P1 fixes (6 задач)
