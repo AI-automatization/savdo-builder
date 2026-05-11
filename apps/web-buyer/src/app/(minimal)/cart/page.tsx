@@ -349,7 +349,7 @@ export default function CartPage() {
                 {storeName}
               </div>
               <div className="text-[10px]" style={{ color: colors.textMuted }}>
-                отвечает за час
+                написать продавцу
               </div>
             </div>
             <button
