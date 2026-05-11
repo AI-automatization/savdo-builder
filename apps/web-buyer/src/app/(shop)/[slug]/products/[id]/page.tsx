@@ -11,6 +11,7 @@ import { ProductStatus, ThreadType } from "types";
 import { track } from "@/lib/analytics";
 import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Heart, Minus, Plus } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
+import { ProductReviews } from "@/components/store/ProductReviews";
 import { colors } from "@/lib/styles";
 import { useAuth } from "@/lib/auth/context";
 import { useToggleWishlist, useWishlistIds } from "@/hooks/use-wishlist";
@@ -669,9 +670,11 @@ export default function ProductPage() {
                       <div className="text-sm font-semibold truncate" style={{ color: colors.textStrong }}>
                         {storeName}
                       </div>
-                      <div className="text-xs" style={{ color: colors.textMuted }}>
-                        отвечает за час{storeCity ? ` · ${storeCity}` : ''}
-                      </div>
+                      {storeCity && (
+                        <div className="text-xs" style={{ color: colors.textMuted }}>
+                          {storeCity}
+                        </div>
+                      )}
                     </div>
                     <Link
                       href={`/chats?storeId=${storeId}`}
@@ -734,6 +737,9 @@ export default function ProductPage() {
                 </div>
               </section>
             )}
+
+            {/* Reviews */}
+            {!isLoading && product && <ProductReviews productId={product.id} />}
 
             {/* Related products placeholder — fetching out of scope; editorial section kept */}
             {!isLoading && product && (
