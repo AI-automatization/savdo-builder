@@ -158,7 +158,7 @@ export default function ModerationDetailPage() {
 
   async function toggleStatus() {
     if (!id || !modCase) return
-    const endpoint = modCase.status === 'open' ? 'close' : 'reopen'
+    const endpoint = modCase.status === 'OPEN' ? 'close' : 'reopen'
     setActionLoading(endpoint)
     setActionError(null)
     try {
@@ -187,7 +187,7 @@ export default function ModerationDetailPage() {
 
   const cfg = TYPE_CFG[modCase.entityType] ?? TYPE_CFG.seller
   const sla = getSla(modCase.createdAt)
-  const isClosed = modCase.status !== 'open'
+  const isClosed = modCase.status !== 'OPEN'
   const isLoading = (a: string) => actionLoading === a
 
   return (

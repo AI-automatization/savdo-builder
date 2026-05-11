@@ -19,6 +19,26 @@ export class TokenService {
     });
   }
 
+  /**
+   * TTL access-токена в секундах — для ответов API, которым нужно
+   * вернуть `expiresIn` клиенту (admin login, impersonate, mfa/login).
+   * Парсит формат `15m`/`1h`/`3600`. Default — 900 (15 минут).
+   */
+  getAccessTokenTtlSeconds(): number {
+    const raw = this.config.get<string>('jwt.accessExpiresIn') ?? '15m';
+    const match = /^(\d+)\s*([smhd])?$/.exec(raw.trim());
+    if (!match) return 900;
+    const n = Number(match[1]);
+    if (!Number.isFinite(n)) return 900;
+    switch (match[2]) {
+      case 's': return n;
+      case 'm': return n * 60;
+      case 'h': return n * 3600;
+      case 'd': return n * 86400;
+      default:  return n; // bare number = seconds
+    }
+  }
+
   generateRefreshToken(): string {
     return crypto.randomBytes(40).toString('hex');
   }

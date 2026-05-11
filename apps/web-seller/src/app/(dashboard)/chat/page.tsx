@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { UserRole } from 'types';
 import type { ChatThread } from 'types';
 import { getThreadDisplay } from '@/lib/api/chat.api';
-import { MessageSquare, MoreVertical, Pencil, Trash2, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, MessageSquare, MoreVertical, Pencil, Trash2, User as UserIcon } from 'lucide-react';
 import {
   useThreads,
   useMessages,
@@ -81,7 +81,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 
 // ── Chat Window ────────────────────────────────────────────────────────────
 
-function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () => void }) {
+function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDeleted: () => void; onBack: () => void }) {
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
@@ -174,8 +174,16 @@ function ChatWindow({ thread, onDeleted }: { thread: ChatThread; onDeleted: () =
   return (
     <div className="relative flex-1 rounded-2xl flex flex-col overflow-hidden" style={glass}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 gap-3" style={{ borderBottom: `1px solid ${colors.divider}` }}>
+      <div className="flex items-center justify-between px-3 md:px-5 py-3.5 gap-2 md:gap-3" style={{ borderBottom: `1px solid ${colors.divider}` }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          <button
+            onClick={onBack}
+            className="md:hidden w-8 h-8 -ml-1 flex items-center justify-center rounded-lg flex-shrink-0 transition-opacity hover:opacity-80"
+            style={{ color: colors.textPrimary }}
+            aria-label="Назад к списку"
+          >
+            <ArrowLeft size={18} />
+          </button>
           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: colors.accentMuted, color: colors.accent }}>
             <UserIcon size={15} />
           </div>
@@ -480,19 +488,25 @@ export default function ChatPage() {
 
   const activeThread = threads?.find((t) => t.id === activeId) ?? null;
 
-  // Auto-select first thread
+  // Auto-select first thread on desktop only — on mobile the thread list
+  // is the entry point and user picks one to enter the chat view.
   useEffect(() => {
     if (!activeId && threads && threads.length > 0) {
-      setActiveId(threads[0].id);
+      if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+        setActiveId(threads[0].id);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads]);
 
   return (
-    <div className="flex gap-5 max-w-4xl h-[calc(100vh-10rem)]">
+    <div className="flex flex-col md:flex-row md:gap-5 h-[calc(100vh-9rem)] md:h-[calc(100vh-10rem)]">
 
-      {/* Thread list */}
-      <div className="w-72 flex-shrink-0 rounded-2xl overflow-hidden flex flex-col" style={glass}>
+      {/* Thread list — full-width on mobile when no active thread; fixed-width sidebar on desktop */}
+      <div
+        className={`${activeThread ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 flex-shrink-0 rounded-2xl overflow-hidden`}
+        style={glass}
+      >
         <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
           <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Чаты</p>
         </div>
@@ -540,12 +554,14 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Chat window or empty */}
-      {activeThread ? (
-        <ChatWindow thread={activeThread} onDeleted={() => setActiveId(null)} />
-      ) : (
-        <EmptyState noThreads={!threads || threads.length === 0} />
-      )}
+      {/* Chat window or empty — full-width on mobile when active thread, always visible on desktop */}
+      <div className={`${activeThread ? 'flex' : 'hidden md:flex'} flex-1 min-h-0`}>
+        {activeThread ? (
+          <ChatWindow thread={activeThread} onDeleted={() => setActiveId(null)} onBack={() => setActiveId(null)} />
+        ) : (
+          <EmptyState noThreads={!threads || threads.length === 0} />
+        )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,27 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+
+/**
+ * Какой UI-control рисовать на фронте для редактирования поля.
+ * Маппинг типа Prisma → input-type:
+ *   String                       → 'string' (или 'text' если field name содержит "description"/"bio")
+ *   Int / BigInt / Float / Decimal → 'number'
+ *   Boolean                      → 'boolean'
+ *   DateTime                     → 'datetime'
+ *   Json                         → 'json'
+ *   <enum>                       → 'enum' (+ enumValues)
+ */
+export type DbFieldType = 'string' | 'text' | 'number' | 'boolean' | 'datetime' | 'json' | 'enum';
+
+export interface DbFieldMeta {
+  name: string;
+  type: DbFieldType;
+  nullable: boolean;
+  enumValues?: string[];
+}
+
+const LONG_TEXT_FIELDS = new Set(['description', 'bio', 'message', 'comment', 'notes']);
 
 const TABLE_CONFIG: Record<string, {
   prismaModel: string;
@@ -25,6 +47,110 @@ export const ALLOWED_TABLES = Object.keys(TABLE_CONFIG);
 export class DbManagerUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Достать metadata writable-полей через Prisma DMMF (data model meta format).
+   * Это используется фронтом для рендера правильных input'ов: enum→<select>,
+   * datetime→<input type="datetime-local">, json→<textarea>, и т.д.
+   */
+  private getFieldMetas(prismaModelName: string, writableFields: string[]): DbFieldMeta[] {
+    // DMMF model name начинается с заглавной — у нас в config lowercase prismaModel.
+    // Конвертируем 'user' → 'User'.
+    const modelName = prismaModelName.charAt(0).toUpperCase() + prismaModelName.slice(1);
+    const model = Prisma.dmmf.datamodel.models.find((m) => m.name === modelName);
+    if (!model) return [];
+
+    return writableFields.map<DbFieldMeta>((fieldName) => {
+      const field = model.fields.find((f) => f.name === fieldName);
+      if (!field) return { name: fieldName, type: 'string', nullable: true };
+
+      // enum
+      if (field.kind === 'enum') {
+        const enumDef = Prisma.dmmf.datamodel.enums.find((e) => e.name === field.type);
+        return {
+          name: fieldName,
+          type: 'enum',
+          nullable: !field.isRequired,
+          enumValues: enumDef?.values.map((v) => v.name) ?? [],
+        };
+      }
+
+      // scalar
+      let type: DbFieldType = 'string';
+      switch (field.type) {
+        case 'Boolean':                                            type = 'boolean';  break;
+        case 'Int': case 'BigInt': case 'Float': case 'Decimal':   type = 'number';   break;
+        case 'DateTime':                                           type = 'datetime'; break;
+        case 'Json':                                               type = 'json';     break;
+        case 'String':
+          type = LONG_TEXT_FIELDS.has(fieldName) ? 'text' : 'string';
+          break;
+      }
+
+      return { name: fieldName, type, nullable: !field.isRequired };
+    });
+  }
+
+  /**
+   * Привести значение к нативному типу до записи в Prisma.
+   * - boolean: 'true'/'false' → true/false
+   * - number:  '42' → 42 (или Decimal-string как-есть для big precision)
+   * - datetime: ISO-string или 'YYYY-MM-DDTHH:mm' → Date
+   * - json: { ... } или JSON-string → объект
+   * - nullable + пустая строка → null
+   */
+  private coerceField(meta: DbFieldMeta, raw: unknown): unknown {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw === 'string' && raw.trim() === '' && meta.nullable) return null;
+
+    switch (meta.type) {
+      case 'boolean':
+        if (typeof raw === 'boolean') return raw;
+        if (raw === 'true') return true;
+        if (raw === 'false') return false;
+        throw new BadRequestException(`Field "${meta.name}" expects boolean, got: ${String(raw)}`);
+
+      case 'number': {
+        if (typeof raw === 'number') return raw;
+        const n = Number(raw);
+        if (!Number.isFinite(n)) {
+          throw new BadRequestException(`Field "${meta.name}" expects number, got: ${String(raw)}`);
+        }
+        return n;
+      }
+
+      case 'datetime': {
+        if (raw instanceof Date) return raw;
+        const d = new Date(raw as string);
+        if (isNaN(d.getTime())) {
+          throw new BadRequestException(`Field "${meta.name}" expects datetime, got: ${String(raw)}`);
+        }
+        return d;
+      }
+
+      case 'json': {
+        if (typeof raw === 'object') return raw;
+        if (typeof raw === 'string') {
+          try { return JSON.parse(raw); }
+          catch { throw new BadRequestException(`Field "${meta.name}" expects valid JSON`); }
+        }
+        return raw;
+      }
+
+      case 'enum':
+        if (typeof raw !== 'string' || !meta.enumValues?.includes(raw)) {
+          throw new BadRequestException(
+            `Field "${meta.name}" expects one of: ${meta.enumValues?.join(', ')} — got: ${String(raw)}`,
+          );
+        }
+        return raw;
+
+      case 'string':
+      case 'text':
+      default:
+        return String(raw);
+    }
+  }
+
   // Recursively convert BigInt → string, Date → ISO string (JSON-safe)
   private serialize(data: unknown): unknown {
     if (data === null || data === undefined) return data;
@@ -45,11 +171,12 @@ export class DbManagerUseCase {
     const counts = await Promise.all(
       ALLOWED_TABLES.map(async (tableName) => {
         const cfg = TABLE_CONFIG[tableName];
+        const fieldMetas = this.getFieldMetas(cfg.prismaModel, cfg.writableFields);
         try {
           const count = await (this.prisma as any)[cfg.prismaModel].count();
-          return { table: tableName, count, readonly: cfg.readonly ?? false, writableFields: cfg.writableFields };
+          return { table: tableName, count, readonly: cfg.readonly ?? false, writableFields: cfg.writableFields, fieldMetas };
         } catch {
-          return { table: tableName, count: 0, readonly: cfg.readonly ?? false, writableFields: cfg.writableFields };
+          return { table: tableName, count: 0, readonly: cfg.readonly ?? false, writableFields: cfg.writableFields, fieldMetas };
         }
       }),
     );
@@ -95,6 +222,7 @@ export class DbManagerUseCase {
       page,
       totalPages: Math.ceil(total / take) || 1,
       writableFields: cfg.writableFields,
+      fieldMetas: this.getFieldMetas(cfg.prismaModel, cfg.writableFields),
       readonly: cfg.readonly ?? false,
     };
   }
@@ -120,13 +248,15 @@ export class DbManagerUseCase {
     if (!cfg) throw new BadRequestException(`Table "${tableName}" is not allowed`);
     if (cfg.readonly) throw new BadRequestException(`Table "${tableName}" is read-only`);
 
+    const fieldMetas = this.getFieldMetas(cfg.prismaModel, cfg.writableFields);
+    const metaByName = new Map(fieldMetas.map((m) => [m.name, m]));
+
     const safeData: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
-      if (cfg.writableFields.includes(key)) {
-        // coerce 'true'/'false' strings to boolean where applicable
-        const val = data[key];
-        safeData[key] = val === 'true' ? true : val === 'false' ? false : val;
-      }
+      if (!cfg.writableFields.includes(key)) continue;
+      const meta = metaByName.get(key);
+      if (!meta) continue;
+      safeData[key] = this.coerceField(meta, data[key]);
     }
     if (Object.keys(safeData).length === 0) {
       throw new BadRequestException('No writable fields provided');
@@ -158,12 +288,18 @@ export class DbManagerUseCase {
     if (!cfg) throw new BadRequestException(`Table "${tableName}" is not allowed`);
     if (cfg.readonly) throw new BadRequestException(`Table "${tableName}" is read-only`);
 
+    const fieldMetas = this.getFieldMetas(cfg.prismaModel, cfg.writableFields);
+    const metaByName = new Map(fieldMetas.map((m) => [m.name, m]));
+
     const safeData: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
-      if (cfg.writableFields.includes(key)) {
-        const val = data[key];
-        safeData[key] = val === 'true' ? true : val === 'false' ? false : val;
-      }
+      if (!cfg.writableFields.includes(key)) continue;
+      const meta = metaByName.get(key);
+      if (!meta) continue;
+      const coerced = this.coerceField(meta, data[key]);
+      // Не передавать null если поле NOT NULL — Prisma бросит более внятную ошибку.
+      if (coerced === null && !meta.nullable) continue;
+      safeData[key] = coerced;
     }
 
     const model = (this.prisma as any)[cfg.prismaModel];

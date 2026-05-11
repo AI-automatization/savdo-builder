@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Put, Body, UseGuards, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { ReplaceDirectionsDto } from './dto/replace-directions.dto';
 import { CreateStoreUseCase } from './use-cases/create-store.use-case';
 import { UpdateStoreUseCase } from './use-cases/update-store.use-case';
 import { SubmitStoreForReviewUseCase } from './use-cases/submit-store-for-review.use-case';
@@ -109,14 +110,13 @@ export class StoresController {
   @Put('directions')
   async replaceDirections(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { ids?: unknown },
+    @Body() body: ReplaceDirectionsDto,
   ) {
-    if (!Array.isArray(body.ids)) {
-      throw new BadRequestException('ids must be an array of GlobalCategory ids');
-    }
-    const ids = (body.ids as unknown[])
+    // class-validator (через ValidationPipe) гарантирует Array<string> размера ≤10.
+    // Доп. фильтр на пустые строки + явный slice — defense-in-depth если pipe выключат.
+    const ids = body.ids
       .filter((id): id is string => typeof id === 'string' && id.length > 0)
-      .slice(0, 10); // защита от спама — макс 10 направлений на магазин
+      .slice(0, 10);
 
     const store = await this.requireMyStore(user.sub);
 

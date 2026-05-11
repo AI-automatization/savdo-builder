@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo, Fragment } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
 import { UserRole } from "types";
@@ -17,7 +18,7 @@ import {
   useDeleteMessage,
   useEditMessage,
 } from "@/hooks/use-chat";
-import { MessageSquare, MoreVertical, Pencil, Search, Send, Store, Trash2 } from "lucide-react";
+import { ChevronRight, MessageSquare, MoreVertical, Package, Pencil, Search, Send, Store, Trash2 } from "lucide-react";
 import { colors } from "@/lib/styles";
 import { EmojiPicker } from "@/components/emoji-picker";
 
@@ -106,6 +107,68 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
       </div>
     </button>
   );
+}
+
+function PinnedProductStrip({ thread }: { thread: ChatThread }) {
+  if (!thread.productId) return null;
+  const href = thread.storeSlug ? `/${thread.storeSlug}/products/${thread.productId}` : null;
+  const priceLabel =
+    typeof thread.productPrice === "number"
+      ? `${Number(thread.productPrice).toLocaleString("ru-RU")} сум`
+      : null;
+  const title = thread.productTitle ?? "Товар";
+
+  const content = (
+    <div
+      className="flex items-center gap-2.5 px-3 py-2 border-b transition-opacity hover:opacity-90"
+      style={{
+        background: `color-mix(in srgb, ${colors.brand} 6%, transparent)`,
+        borderColor: colors.divider,
+      }}
+    >
+      <div
+        className="w-10 h-10 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0"
+        style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
+      >
+        {thread.productImageUrl ? (
+          <Image
+            src={thread.productImageUrl}
+            alt={title}
+            width={40}
+            height={40}
+            className="w-full h-full object-cover"
+            unoptimized
+          />
+        ) : (
+          <Package size={16} style={{ color: colors.textMuted }} />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: colors.textMuted, letterSpacing: "0.04em" }}>
+          Обсуждение товара
+        </div>
+        <div className="text-[13px] font-semibold truncate" style={{ color: colors.textStrong }}>
+          {title}
+        </div>
+      </div>
+      {priceLabel && (
+        <div className="text-[13px] font-bold flex-shrink-0" style={{ color: colors.brand }}>
+          {priceLabel}
+        </div>
+      )}
+      {href && (
+        <div
+          className="flex items-center gap-0.5 text-[11px] font-semibold flex-shrink-0"
+          style={{ color: colors.brand }}
+        >
+          Открыть
+          <ChevronRight size={12} />
+        </div>
+      )}
+    </div>
+  );
+
+  return href ? <Link href={href}>{content}</Link> : content;
 }
 
 function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: () => void; onDeleted: () => void }) {
@@ -235,6 +298,8 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           <Trash2 size={14} />
         </button>
       </div>
+
+      <PinnedProductStrip thread={thread} />
 
       {/* Confirm delete message modal */}
       {confirmDeleteMsg && (

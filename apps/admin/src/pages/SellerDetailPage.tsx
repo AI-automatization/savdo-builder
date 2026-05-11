@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck, History, Plus, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Calendar, Ban, Unlock, Shield, UserCheck, Plus, X } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { SellerVerificationPanel } from '../components/admin/SellerVerificationPanel'
+import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
 
 interface ModerationAction {
   id: string
@@ -102,7 +103,6 @@ export default function SellerDetailPage() {
   const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'verify' | 'reject' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [historyTab, setHistoryTab] = useState<'key' | 'all'>('key')
   const [showCreateStore, setShowCreateStore] = useState(false)
   const [createStoreForm, setCreateStoreForm] = useState({ name: '', city: '', telegramContactLink: '', description: '', region: '', slug: '' })
   const [createStoreLoading, setCreateStoreLoading] = useState(false)
@@ -163,10 +163,6 @@ export default function SellerDetailPage() {
   const isUserBlocked = seller.user.status === 'BLOCKED'
   const suspendEntry = auditData?.logs?.find(e => e.action === 'USER_SUSPENDED')
   const blockReason: string | null = suspendEntry?.payload?.reason ?? null
-
-  const KEY_ACTIONS = ['USER_SUSPENDED', 'USER_UNSUSPENDED', 'seller.verification.verified', 'seller.verification.rejected', 'seller.verification.pending']
-  const keyLogs = auditData?.logs?.filter(e => KEY_ACTIONS.includes(e.action)) ?? []
-  const allLogs = auditData?.logs ?? []
 
   return (
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh', maxWidth: 900 }}>
@@ -381,69 +377,11 @@ export default function SellerDetailPage() {
           initialStatus={seller.verificationStatus}
           onChanged={refetch}
         />
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-          {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
-            {(['key', 'all'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setHistoryTab(tab)}
-                style={{
-                  flex: 1, padding: '12px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  border: 'none', background: 'none',
-                  color: historyTab === tab ? 'var(--primary)' : 'var(--text-muted)',
-                  borderBottom: historyTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {tab === 'key' ? (
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <Shield size={13} /> Важные события {keyLogs.length > 0 && `(${keyLogs.length})`}
-                  </span>
-                ) : (
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <History size={13} /> Вся история {allLogs.length > 0 && `(${allLogs.length})`}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Log entries */}
-          <div style={{ padding: 16, maxHeight: 480, overflowY: 'auto' }}>
-            {(historyTab === 'key' ? keyLogs : allLogs).length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>
-                Нет записей
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(historyTab === 'key' ? keyLogs : allLogs).map(entry => {
-                  const isBad  = entry.action.includes('SUSPEND') || entry.action.includes('REJECT')
-                  const isGood = entry.action.includes('UNSUSPEND') || entry.action.includes('verified') || entry.action.includes('APPROVE')
-                  const dotColor = isBad ? '#EF4444' : isGood ? '#10B981' : '#94A3B8'
-                  return (
-                    <div key={entry.id} style={{ display: 'flex', gap: 10, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, marginTop: 5, flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: entry.payload?.reason ? 4 : 0 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-all' }}>{entry.action}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {new Date(entry.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        {entry.payload?.reason && (
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                            Причина: {entry.payload.reason}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        <ActivityLogPanel
+          entityType="User"
+          entityId={seller.user?.id ?? null}
+          emptyText="История действий с этим продавцом ещё не велась"
+        />
         </div>
         {/* END RIGHT COLUMN */}
 
@@ -506,7 +444,7 @@ export default function SellerDetailPage() {
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Создать магазин</h3>
-              <button onClick={() => setShowCreateStore(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+              <button onClick={() => setShowCreateStore(false)} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18, padding: '8px 12px', background: 'rgba(16,185,129,0.06)', borderRadius: 8, borderLeft: '3px solid #10B981' }}>
               Статус ACTIVE, сразу опубликован. Продавец: <strong>{seller.fullName}</strong>

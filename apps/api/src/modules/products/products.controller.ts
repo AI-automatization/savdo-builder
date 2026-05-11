@@ -12,7 +12,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -32,6 +32,7 @@ import { CreateVariantUseCase } from './use-cases/create-variant.use-case';
 import { UpdateVariantUseCase } from './use-cases/update-variant.use-case';
 import { DeleteVariantUseCase } from './use-cases/delete-variant.use-case';
 import { AdjustStockUseCase } from './use-cases/adjust-stock.use-case';
+import { PostProductToChannelUseCase } from './use-cases/post-product-to-channel.use-case';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
@@ -44,20 +45,13 @@ import { PrismaService } from '../../database/prisma.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
+import { ProductPresenterService } from './services/product-presenter.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { ProductStatus } from '@prisma/client';
 
-/**
- * Allows storefront feed to be called both anonymously (req.user undefined)
- * and authenticated (req.user populated for inWishlist enrichment).
- */
-class OptionalJwtAuthGuard extends AuthGuard('jwt') {
-  handleRequest<TUser>(_err: Error, user: TUser): TUser {
-    return user;
-  }
-}
-
+@ApiTags('seller')
+@ApiBearerAuth('jwt')
 @Controller()
 export class ProductsController {
   private readonly logger = new Logger(ProductsController.name);
@@ -71,6 +65,7 @@ export class ProductsController {
     private readonly updateVariant: UpdateVariantUseCase,
     private readonly deleteVariant: DeleteVariantUseCase,
     private readonly adjustStock: AdjustStockUseCase,
+    private readonly postToChannel: PostProductToChannelUseCase,
     private readonly productsRepo: ProductsRepository,
     private readonly variantsRepo: VariantsRepository,
     private readonly optionGroupsRepo: OptionGroupsRepository,
@@ -78,6 +73,7 @@ export class ProductsController {
     private readonly storesRepo: StoresRepository,
     private readonly prisma: PrismaService,
     private readonly wishlistRepo: WishlistRepository,
+    private readonly presenter: ProductPresenterService,
   ) {}
 
   // ─── Seller routes ────────────────────────────────────────────────────────
@@ -103,17 +99,17 @@ export class ProductsController {
       }),
       this.productsRepo.countByStoreId(storeId),
     ]);
-    const mapped = (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
+    const mapped = products.map((p) => {
       const { _count, images, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
         basePrice: Number(basePrice),
-        oldPrice: this.toPrice(oldPrice),
-        salePrice: this.toPrice(salePrice),
-        variantCount: _count?.variants ?? 0,
+        oldPrice: this.presenter.toPrice(oldPrice),
+        salePrice: this.presenter.toPrice(salePrice),
+        variantCount: _count.variants,
         totalStock,
-        mediaUrls: (images ?? []).map((img) => this.resolveImageUrl(img.media)),
+        mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
       };
     });
     return { products: mapped, total };
@@ -161,21 +157,20 @@ export class ProductsController {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
     }
 
-    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
     // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
     // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
-    const images = (p.images ?? []).map((img) => ({
+    const images = product.images.map((img) => ({
       ...img,
-      url: this.resolveImageUrl(img.media),
+      url: this.presenter.resolveImageUrl(img.media),
     }));
     return {
-      ...p,
-      basePrice: Number(p.basePrice),
-      oldPrice: this.toPrice(p.oldPrice),
-      salePrice: this.toPrice(p.salePrice),
+      ...product,
+      basePrice: Number(product.basePrice),
+      oldPrice: this.presenter.toPrice(product.oldPrice),
+      salePrice: this.presenter.toPrice(product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
-      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
+      variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
     };
   }
 
@@ -225,6 +220,32 @@ export class ProductsController {
     return this.changeProductStatus.execute(id, storeId, dto.status);
   }
 
+  /**
+   * FEAT-TG-AUTOPOST-001: ручной repost товара в TG-канал. Игнорирует
+   * `autoPostProductsToChannel` toggle (force=true) — для re-post после
+   * правки описания/фото без изменения статуса. Throttle 5/мин — не
+   * злоупотреблять, иначе TG зашлёт shadowban.
+   */
+  @Post('seller/products/:id/repost-to-channel')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  async repostMyProductToChannel(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    const product = await this.productsRepo.findById(id);
+    if (!product) {
+      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    if (product.storeId !== storeId) {
+      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
+    }
+    return this.postToChannel.execute({ productId: id, force: true });
+  }
+
   @Get('seller/products/:id/variants')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
@@ -244,7 +265,7 @@ export class ProductsController {
     }
 
     const variants = await this.variantsRepo.findByProductId(productId);
-    return variants.map((v) => this.normalizeVariant(v));
+    return variants.map((v) => this.presenter.normalizeVariant(v));
   }
 
   @Post('seller/products/:id/variants')
@@ -265,7 +286,7 @@ export class ProductsController {
       titleOverride: dto.titleOverride,
       optionValueIds: dto.optionValueIds,
     });
-    return this.normalizeVariant(variant);
+    return this.presenter.normalizeVariant(variant);
   }
 
   @Patch('seller/products/:id/variants/:variantId')
@@ -285,7 +306,7 @@ export class ProductsController {
       isActive: dto.isActive,
       titleOverride: dto.titleOverride,
     });
-    return this.normalizeVariant(variant);
+    return this.presenter.normalizeVariant(variant);
   }
 
   @Delete('seller/products/:id/variants/:variantId')
@@ -560,366 +581,16 @@ export class ProductsController {
     await this.prisma.productAttribute.deleteMany({ where: { id: attrId, productId } });
   }
 
-  // ─── Storefront routes (public) ──────────────────────────────────────────
-
-  @Get('storefront/stores')
-  async listStorefrontStores() {
-    const stores = await this.storesRepo.findAllPublished();
-    if (!stores.length) return { data: [] };
-
-    // Batch: один findMany на все магазины вместо N запросов
-    const ids = stores
-      .flatMap((s) => [s.logoMediaId, s.coverMediaId])
-      .filter((id): id is string => Boolean(id));
-
-    const mediaMap = new Map<string, { id: string; bucket: string; objectKey: string }>();
-    if (ids.length) {
-      const files = await this.prisma.mediaFile.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, bucket: true, objectKey: true },
-      });
-      for (const f of files) mediaMap.set(f.id, f);
-    }
-
-    const resolveOne = (id: string | null | undefined): string | null => {
-      if (!id) return null;
-      const m = mediaMap.get(id);
-      if (!m) return null;
-      return this.resolveImageUrl(m) || null;
-    };
-
-    const data = stores.map((s) => ({
-      ...s,
-      logoUrl: resolveOne(s.logoMediaId),
-      coverUrl: resolveOne(s.coverMediaId),
-    }));
-    return { data };
-  }
-
-  @Get('storefront/stores/:slug')
-  async getStorefrontStoreBySlug(@Param('slug') slug: string) {
-    const store = await this.storesRepo.findBySlug(slug);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
-    const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-    return { ...store, logoUrl, coverUrl };
-  }
-
-  // FEAT-001: единый поиск по витрине — товары + магазины одним запросом.
-  // Использует case-insensitive ILIKE по name/title/description; minimum 2 символа
-  // (короткие запросы дают слишком много результатов и грузят БД).
-  @Get('storefront/search')
-  @Throttle({ default: { ttl: 60_000, limit: 30 } })
-  async searchStorefront(
-    @Query('q') q?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const query = (q ?? '').trim();
-    if (query.length < 2) {
-      return { stores: [], products: [] };
-    }
-    const lim = Math.min(Math.max(Number(limit ?? 10) || 10, 1), 30);
-
-    const [stores, products] = await Promise.all([
-      this.storesRepo.searchPublic(query, lim),
-      this.productsRepo.searchPublic(query, lim),
-    ]);
-
-    const storesData = await Promise.all(stores.map(async (s) => {
-      const sx = s as typeof s & { logoMediaId?: string | null; coverMediaId?: string | null };
-      const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(sx.logoMediaId, sx.coverMediaId);
-      const { logoMediaId: _l, coverMediaId: _c, ...rest } = sx;
-      void _l; void _c;
-      return { ...rest, logoUrl, coverUrl };
-    }));
-
-    const productsData = (products as unknown as Array<Record<string, unknown> & {
-      basePrice: unknown; oldPrice: unknown; salePrice: unknown;
-      images?: Array<{ media: unknown }>;
-      store?: { id: string; name: string; slug: string };
-    }>).map((p) => {
-      const { basePrice, oldPrice, salePrice, images, store, ...rest } = p;
-      return {
-        ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.toPrice(oldPrice),
-        salePrice: this.toPrice(salePrice),
-        images: (images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
-        store: store ? { id: store.id, name: store.name, slug: store.slug } : null,
-      };
-    });
-
-    return { stores: storesData, products: productsData };
-  }
-
-  @Get('stores/:slug')
-  async getStoreBySlug(@Param('slug') slug: string) {
-    const store = await this.storesRepo.findBySlug(slug);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
-    const { logoUrl, coverUrl } = await this.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-    return { ...store, logoUrl, coverUrl };
-  }
-
-  @Get('stores/:slug/products')
-  async listStoreProductsBySlug(
-    @Param('slug') slug: string,
-    @Query('globalCategoryId') globalCategoryId?: string,
-    @Query('storeCategoryId') storeCategoryId?: string,
-  ) {
-    const store = await this.storesRepo.findBySlug(slug);
-    if (!store || !(store as any).isPublic) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-    const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
-    return (products as unknown as Array<Record<string, unknown> & { images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
-      const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-      const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
-      return {
-        ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.toPrice(oldPrice),
-        salePrice: this.toPrice(salePrice),
-        images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl(img.media) })),
-        variantCount: _count?.variants ?? 0,
-        totalStock,
-      };
-    });
-  }
-
-  @Get('stores/:slug/products/:id')
-  async getStoreProductBySlug(
-    @Param('slug') slug: string,
-    @Param('id') id: string,
-  ) {
-    const store = await this.storesRepo.findBySlug(slug);
-    if (!store || !(store as any).isPublic) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-    const product = await this.productsRepo.findPublicById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    if (product.storeId !== store.id) {
-      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
-    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
-    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
-    const images = (p.images ?? []).map((img) => ({
-      ...img,
-      url: this.resolveImageUrl(img.media),
-    }));
-    return {
-      ...p,
-      basePrice: Number(p.basePrice),
-      oldPrice: this.toPrice(p.oldPrice),
-      salePrice: this.toPrice(p.salePrice),
-      images,
-      mediaUrls: images.map((img) => img.url),
-      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
-    };
-  }
-
-  // ─── Storefront routes (public) ───────────────────────────────────────────
-
-  @Get('storefront/products')
-  @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { ttl: 60_000, limit: 60 } }) // search ILIKE дорогая, ограничиваем
-  async listStorefrontProducts(
-    @CurrentUser() user: JwtPayload | undefined,
-    @Query('storeId') storeId?: string,
-    @Query('globalCategoryId') globalCategoryId?: string,
-    @Query('storeCategoryId') storeCategoryId?: string,
-    @Query('filters') rawFilters?: Record<string, string>,
-    @Query('q') q?: string,
-    @Query('sort') sort?: string,
-    @Query('priceMin') priceMin?: string,
-    @Query('priceMax') priceMax?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    // FEAT-003: ценовой диапазон. Парсим из query — игнорируем NaN и
-    // отрицательные значения (Prisma басимым невалидное число выкинет
-    // P2003, лучше превратить в undefined).
-    const parsePrice = (s?: string): number | undefined => {
-      if (!s) return undefined;
-      const n = Number(s);
-      return Number.isFinite(n) && n >= 0 ? n : undefined;
-    };
-    const pMin = parsePrice(priceMin);
-    const pMax = parsePrice(priceMax);
-    // Platform-wide feed (no storeId)
-    let data: Array<Record<string, unknown> & { id: string; inWishlist?: boolean }>;
-    let total: number;
-    let pageNum: number;
-
-    if (!storeId) {
-      const validSort = (['new', 'price_asc', 'price_desc'] as const).find((s) => s === sort) ?? 'new';
-      const result = await this.productsRepo.findAllPublic({
-        q,
-        globalCategoryId,
-        priceMin: pMin,
-        priceMax: pMax,
-        sort: validSort,
-        page: page ? parseInt(page, 10) : 1,
-        limit: limit ? parseInt(limit, 10) : 20,
-      });
-      data = (result.products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; store?: unknown; _count?: { variants?: number } }>).map((p) => {
-        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
-        return {
-          ...rest,
-          basePrice: Number(basePrice),
-          oldPrice: this.toPrice(oldPrice),
-          salePrice: this.toPrice(salePrice),
-          // API-PRODUCT-LIST-IMAGES-CONTRACT-001: оба поля.
-          images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
-          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
-          variantCount: _count?.variants ?? 0,
-          totalStock,
-        };
-      });
-      total = result.total;
-      pageNum = page ? parseInt(page, 10) : 1;
-    } else {
-      // Store-specific feed
-      const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
-      const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-      data = (products as unknown as Array<Record<string, unknown> & { id: string; images?: Array<{ media: unknown }>; variants?: Array<{ stockQuantity: number }>; _count?: { variants?: number } }>).map((p) => {
-        const { _count, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-        const totalStock = (variants ?? []).reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
-        return {
-          ...rest,
-          basePrice: Number(basePrice),
-          oldPrice: this.toPrice(oldPrice),
-          salePrice: this.toPrice(salePrice),
-          // API-PRODUCT-LIST-IMAGES-CONTRACT-001: возвращаем оба поля для backward
-          // compat. `mediaUrls: string[]` — convenience, `images: [{url}]` — canonical
-          // (per-image metadata можно расширять).
-          images: (p.images ?? []).map((img) => ({ url: this.resolveImageUrl((img as { media: unknown }).media) })),
-          mediaUrls: (p.images ?? []).map((img) => this.resolveImageUrl((img as { media: unknown }).media)),
-          variantCount: _count?.variants ?? 0,
-          totalStock,
-        };
-      });
-      total = data.length;
-      pageNum = 1;
-    }
-
-    // Enrich with inWishlist flag for authenticated buyer
-    if (user?.sub && data.length) {
-      const buyerId = await this.resolveBuyerIdOrNull(user.sub);
-      if (buyerId) {
-        const productIds = data.map((p) => p.id);
-        const wishedIds = await this.wishlistRepo.findExistingProductIds(buyerId, productIds);
-        for (const item of data) {
-          item.inWishlist = wishedIds.has(item.id);
-        }
-      }
-    }
-
-    return { data, meta: { total, page: pageNum } };
-  }
-
-  private async resolveBuyerIdOrNull(userId: string): Promise<string | null> {
-    const buyer = await this.prisma.buyer.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-    return buyer?.id ?? null;
-  }
-
-  @Get('storefront/products/:id')
-  async getStorefrontProduct(@Param('id') id: string) {
-    const product = await this.productsRepo.findPublicById(id);
-
-    if (!product) {
-      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-
-    const p = product as unknown as Record<string, unknown> & { images?: Array<Record<string, unknown> & { media: unknown }>; variants?: unknown[]; basePrice: unknown; oldPrice: unknown; salePrice: unknown };
-    // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
-    // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
-    const images = (p.images ?? []).map((img) => ({
-      ...img,
-      url: this.resolveImageUrl(img.media),
-    }));
-    return {
-      ...p,
-      basePrice: Number(p.basePrice),
-      oldPrice: this.toPrice(p.oldPrice),
-      salePrice: this.toPrice(p.salePrice),
-      images,
-      mediaUrls: images.map((img) => img.url),
-      variants: (p.variants ?? []).map((v) => this.normalizeVariant(v)),
-    };
-  }
+  // ─── Storefront / public routes вынесены в `StorefrontController`
+  //    (apps/api/src/modules/products/storefront.controller.ts):
+  //    - storefront/stores, storefront/stores/:slug, storefront/search
+  //    - stores/:slug, stores/:slug/products, stores/:slug/products/:id
+  //    - storefront/products, storefront/products/:id
 
   // ─── Private helpers ──────────────────────────────────────────────────────
-
-  private toPrice(val: unknown): number | null {
-    if (val === null || val === undefined) return null;
-    return Number(val);
-  }
-
-  private normalizeVariant(variant: unknown): unknown {
-    const v = variant as Record<string, unknown>;
-    const junctions = (v['optionValues'] ?? []) as Array<{ optionValueId: string }>;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { optionValues: _drop, priceOverride, oldPriceOverride, salePriceOverride, ...rest } = v;
-    return {
-      ...rest,
-      priceOverride: this.toPrice(priceOverride),
-      oldPriceOverride: this.toPrice(oldPriceOverride),
-      salePriceOverride: this.toPrice(salePriceOverride),
-      optionValueIds: junctions.map((j) => j.optionValueId),
-    };
-  }
-
-  private resolveImageUrl(media: unknown): string {
-    const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
-    if (!m?.objectKey) return '';
-    // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' выставляется migration
-    // если TG getFile вернул 404 — fileId мёртв навсегда. Не показываем.
-    if (m.bucket === 'telegram-expired') return '';
-    const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
-    // Telegram-stored files always proxy (file URLs expire ~1h)
-    if (m.bucket === 'telegram') {
-      return `${appUrl}/api/v1/media/proxy/${m.id}`;
-    }
-    // R2: prefer direct public URL; fall back to proxy if STORAGE_PUBLIC_URL is missing
-    const r2Base = process.env.STORAGE_PUBLIC_URL ?? '';
-    if (r2Base) return `${r2Base}/${m.objectKey}`;
-    return m.id && appUrl ? `${appUrl}/api/v1/media/proxy/${m.id}` : '';
-  }
-
-  private async resolveStoreImageUrls(
-    logoMediaId: string | null | undefined,
-    coverMediaId: string | null | undefined,
-  ): Promise<{ logoUrl: string | null; coverUrl: string | null }> {
-    const ids = [logoMediaId, coverMediaId].filter(Boolean) as string[];
-    if (!ids.length) return { logoUrl: null, coverUrl: null };
-
-    const files = await this.prisma.mediaFile.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, bucket: true, objectKey: true },
-    });
-    const map = new Map(files.map((f) => [f.id, f]));
-
-    const resolve = (id: string | null | undefined): string | null => {
-      if (!id) return null;
-      const m = map.get(id);
-      if (!m) return null;
-      return this.resolveImageUrl(m) || null;
-    };
-
-    return { logoUrl: resolve(logoMediaId), coverUrl: resolve(coverMediaId) };
-  }
+  // toPrice / normalizeVariant / resolveImageUrl / resolveStoreImageUrls /
+  // attachStoreImageUrls вынесены в `ProductPresenterService`
+  // (apps/api/src/modules/products/services/product-presenter.service.ts).
 
   private async ensureProductOwnership(productId: string, storeId: string): Promise<void> {
     const product = await this.productsRepo.findById(productId);

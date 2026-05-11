@@ -77,6 +77,11 @@ export class ChangeProductStatusUseCase {
     });
     if (!store?.telegramChannelId) return;
 
+    // FEAT-TG-AUTOPOST-001: opt-in toggle. Продавец должен явно включить
+    // авто-постинг в Settings. Для existing stores с channel migration
+    // 20260510210000 set true (сохранение прежнего поведения).
+    if (!store.autoPostProductsToChannel) return;
+
     const price       = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
     const tmaUrl      = process.env.TMA_URL ?? '';

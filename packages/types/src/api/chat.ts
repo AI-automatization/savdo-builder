@@ -21,7 +21,13 @@ export interface ChatThread {
   status: 'OPEN' | 'CLOSED';
   lastMessageAt: string | null;
   lastMessage: string | null;
+  /** PRODUCT-thread context (API-CHAT-THREAD-PRODUCT-PREVIEW-001) — null для ORDER-thread */
+  productId: string | null;
   productTitle: string | null;
+  /** Resolved CDN URL (sortOrder=0 image), null если фото нет / telegram-expired */
+  productImageUrl: string | null;
+  /** Effective price: salePrice ?? basePrice; в основной валюте магазина (не minor) */
+  productPrice: number | null;
   orderNumber: string | null;
   storeName: string | null;
   storeSlug: string | null;
