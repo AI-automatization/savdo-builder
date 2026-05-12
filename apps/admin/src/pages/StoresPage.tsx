@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface StoreItem {
   id: string
@@ -297,16 +298,10 @@ export default function StoresPage() {
           </tbody>
         </table>
 
-        {/* Pagination */}
+        {/* Pagination — ADMIN-PAGINATION-DISABLED-001: unified via PaginationBar */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Стр. {page} из {totalPages} · {total} магазинов
-            </span>
-            <div className="flex gap-1.5">
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Назад</Button>
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Вперёд →</Button>
-            </div>
+          <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel="магазинов" />
           </div>
         )}
       </div>
