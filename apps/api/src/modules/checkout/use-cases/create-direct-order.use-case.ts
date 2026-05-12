@@ -45,20 +45,30 @@ export class CreateDirectOrderUseCase {
       );
     }
 
-    // Load and validate all products
-    const products = await Promise.all(
-      dto.items.map(async (item) => {
-        const product = await this.productsRepo.findById(item.productId);
-        if (!product || product.status !== ProductStatus.ACTIVE || product.deletedAt) {
-          throw new DomainException(
-            ErrorCode.PRODUCT_NOT_FOUND,
-            `Product ${item.productId} is not available`,
-            HttpStatus.UNPROCESSABLE_ENTITY,
-          );
-        }
-        return product;
-      }),
-    );
+    // API-N1-CHECKOUT-001: batch fetch — раньше Promise.all(map(findById))
+    // на products + последовательный loop на variants = 2N round-trips.
+    // Теперь 2 SELECT IN независимо от размера cart.
+    const productIds = [...new Set(dto.items.map((i) => i.productId))];
+    const variantIds = [...new Set(dto.items.map((i) => i.variantId).filter((v): v is string => !!v))];
+    const [productMap, variantMap] = await Promise.all([
+      this.productsRepo.findManyByIds(productIds),
+      variantIds.length > 0
+        ? this.variantsRepo.findManyByIds(variantIds)
+        : Promise.resolve(new Map()),
+    ]);
+
+    // Validate каждого продукта (in-memory).
+    const products = dto.items.map((item) => {
+      const product = productMap.get(item.productId);
+      if (!product || product.status !== ProductStatus.ACTIVE || product.deletedAt) {
+        throw new DomainException(
+          ErrorCode.PRODUCT_NOT_FOUND,
+          `Product ${item.productId} is not available`,
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+      return product;
+    });
 
     // All items must be from the same store (INV-C01)
     const storeIds = [...new Set(products.map((p) => p.storeId))];
@@ -71,7 +81,7 @@ export class CreateDirectOrderUseCase {
     }
     const storeId = storeIds[0];
 
-    // Validate variants and compute per-item prices
+    // Validate variants и compute per-item prices (in-memory, no DB hits).
     const itemsMeta: Array<{ unitPrice: number; variantLabel?: string }> = [];
 
     for (let i = 0; i < dto.items.length; i++) {
@@ -81,7 +91,7 @@ export class CreateDirectOrderUseCase {
       let variantLabel: string | undefined;
 
       if (item.variantId) {
-        const variant = await this.variantsRepo.findById(item.variantId);
+        const variant = variantMap.get(item.variantId);
 
         if (
           !variant ||

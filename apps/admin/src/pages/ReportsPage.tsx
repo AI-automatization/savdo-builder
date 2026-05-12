@@ -3,6 +3,7 @@ import { Flag, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { confirmDialog } from '../components/admin/ConfirmDialog'
 import { useNavigate } from 'react-router-dom'
 
 interface ReportRow {
@@ -30,7 +31,12 @@ export default function ReportsPage() {
   const { data: reports, loading, refetch } = useFetch<ReportRow[]>('/api/v1/admin/chat/reports')
 
   const dismiss = async (id: string) => {
-    if (!confirm('Снять жалобу с этого сообщения?')) return
+    const ok = await confirmDialog({
+      title: 'Снять жалобу?',
+      body: 'Сообщение останется опубликованным. Если жалоба обоснована — лучше удалить через ChatsPage.',
+      confirmText: 'Снять жалобу',
+    })
+    if (!ok) return
     setDismissingId(id)
     try {
       await api.delete(`/api/v1/admin/chat/messages/${id}/report`)

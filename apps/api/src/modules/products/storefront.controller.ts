@@ -19,6 +19,7 @@ import { ProductsRepository } from './repositories/products.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
 import { ProductPresenterService } from './services/product-presenter.service';
+import { GetFeaturedStorefrontUseCase } from './use-cases/get-featured-storefront.use-case';
 
 /**
  * Optional JWT — анонимные запросы пропускаются (req.user undefined),
@@ -56,7 +57,24 @@ export class StorefrontController {
     private readonly wishlistRepo: WishlistRepository,
     private readonly prisma: PrismaService,
     private readonly presenter: ProductPresenterService,
+    private readonly getFeatured: GetFeaturedStorefrontUseCase,
   ) {}
+
+  // ─── MARKETING-HOMEPAGE-DISCOVERY-001: featured feed для cold-traffic ─────
+
+  /**
+   * GET /api/v1/storefront/featured
+   *
+   * Публичный endpoint без auth для homepage. Возвращает `{topStores, featuredProducts}`
+   * — разблокирует web-buyer landing (раньше форма ввода slug → 100% bounce).
+   *
+   * Throttle 60/min — защита от scraping (вышу глобального 120/min baseline).
+   */
+  @Get('storefront/featured')
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  async getFeaturedStorefront() {
+    return this.getFeatured.execute();
+  }
 
   // ─── Stores ──────────────────────────────────────────────────────────────
 
@@ -251,10 +269,18 @@ export class StorefrontController {
       total = result.total;
       pageNum = page ? parseInt(page, 10) : 1;
     } else {
-      // Store-specific feed
+      // API-N1-PRODUCTS-LIST-001: paginated store-specific feed.
+      // Раньше findPublicByStoreId возвращал до 500 products в одном запросе
+      // → большие магазины ловили N+1 на includes и медленный TTFB.
       const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
-      const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-      data = products.map((p) => {
+      const result = await this.productsRepo.findPublicByStoreIdPaginated(storeId, {
+        globalCategoryId,
+        storeCategoryId,
+        attributes,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
+      });
+      data = result.products.map((p) => {
         const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
         const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
@@ -268,8 +294,8 @@ export class StorefrontController {
           totalStock,
         };
       });
-      total = data.length;
-      pageNum = 1;
+      total = result.total;
+      pageNum = page ? parseInt(page, 10) : 1;
     }
 
     // inWishlist enrichment для залогиненного buyer

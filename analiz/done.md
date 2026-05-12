@@ -1,5 +1,498 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 5: TG-канал шаблон + критический фикс sendPhoto (FEAT-TG-CHANNEL)
+
+Полат заметил по скринам конкурентов (ArloeStore_UZ, Eleganza, Montanno) что
+наш бот при автопостинге отправляет фото товара как файл с превью, а не как
+открытое изображение. Конверсия страдает. Сразу же — план настраиваемого
+шаблона поста + контактные данные продавца в TMA.
+
+### ✅ [API-TG-CHANNEL-PHOTO-FIX-001] Фикс sendPhotoToChannel 🔴 CRITICAL
+- **Root cause:** `telegram-bot.service.ts:283` метод `sendPhotoToChannel`
+  вызывал Telegram API `/sendDocument` вместо `/sendPhoto`. Все 1-фото посты
+  уходили как файл с превью.
+- TG API ограничение: document file_id (из `TelegramStorageService.uploadFile`
+  через sendDocument) **нельзя** передать в sendPhoto.
+- **Fix:** правильный `/sendPhoto`, новое поле `MediaFile.photoFileId String?`,
+  lazy backfill — при первой публикации в канал шлём через URL (Telegram сам
+  скачивает + конвертит в photo), сохраняем возвращённый `photoFileId` в БД
+  для следующих публикаций.
+- Возврат сигнатур: `sendPhotoToChannel` теперь возвращает `string | null`
+  (photo file_id), `sendMediaGroupToChannel` — `string[] | null`.
+- **Миграция:** `20260512150000_media_photo_file_id` — additive nullable.
+  Существующие данные не теряются.
+
+### ✅ [API-TG-CHANNEL-DEDUP-001] Удалена дублирующая логика автопостинга 🔴
+- В `change-product-status.use-case.ts` была своя legacy `postToChannel`
+  с фильтром `objectKey.startsWith('tg:')`. В проде `objectKey` хранит
+  чистый file_id без префикса → **фото вообще не отправлялись при автопостинге**.
+- Заменил на делегирование в единый `PostProductToChannelUseCase`. Один путь
+  публикации — auto и manual.
+
+### ✅ [FEAT-TG-CHANNEL-TEMPLATE-001] Настраиваемый шаблон + контакты 🟠
+- 4 новых nullable поля в Store: `channelPostTemplate`, `channelContactPhone`,
+  `channelInstagramLink`, `channelTiktokLink`.
+- **Миграция:** `20260512150100_store_channel_template_and_contacts` — additive.
+- Новый `ChannelTemplateService` — Mustache-style rendering с whitelist 15
+  переменных, секциями `{{#var}}…{{/var}}`, **HTML sanitize** (теги не из
+  TG-whitelist escape'ятся), **safe truncate** на 1024 char (не режет
+  HTML-теги пополам, закрывает открытые), `findUnsupportedTags()` для UI warning.
+- Дефолтный шаблон по образцу UZ-конкурентов: заголовок, цена, материал,
+  размеры, наличие, контакт, IG, TikTok, ссылка на товар.
+- Новый `ChannelMediaResolverService` — единая точка резолва фото
+  (photoFileId → URL fallback → null если telegram-expired) с Promise.all.
+
+### ✅ [API-CHANNEL-ENDPOINTS-001] 4 endpoint'а для TMA UI 🟠
+- `GET    /api/v1/seller/store/channel-template`
+- `PATCH  /api/v1/seller/store/channel-template`
+- `POST   /api/v1/seller/store/channel-template/preview`
+- `POST   /api/v1/seller/store/channel-test-post`
+
+### 🏗️ Архитектура
+- **forwardRef(StoresModule ↔ ProductsModule)** — без shared-модуля
+- **Single source of truth** — все 3 пути публикации делегируют единому use-case
+- **Lazy backfill photoFileId** — не делаем массовую миграцию старых фото
+
+### 📊 Тесты + typecheck
+- `npx tsc --noEmit` чист
+- `npx jest`: **51 suites / 686 tests passed** (+1 suite, +15 тестов на
+  `channel-template.service.spec.ts` включая CRITICAL покрытие sanitize/truncate)
+
+### ✅ [TMA-CHANNEL-SETTINGS-PAGE-001] TMA UI — настройка канала 🟠
+- Новый файл: `apps/tma/src/pages/seller/ChannelSettingsPage.tsx` (route `/seller/settings/channel`)
+- Секции страницы:
+  - **Привязка канала** — ✅ привязан / инструкция через @savdo_builderBOT
+  - **Авто-постинг** — toggle с защитой (disabled если канал не привязан)
+  - **Контакты в посте** — phone / Instagram / TikTok inputs
+  - **Шаблон поста** — textarea (resize=vertical, font-mono) + 13 insert-variable
+    чипов, ставят `{{var}}` в позицию курсора. Для секций `{{#var}}` ставится
+    парный шаблон `{{#var}}…{{/var}}`. Кнопка «Сбросить» к `defaultTemplate`.
+  - **Превью** — live render через `POST /channel-template/preview` с debounce
+    400ms + AbortController. Caption отрендеренный сервером.
+  - **Тестовая публикация** — кнопка с защитой (disabled пока есть dirty changes
+    или нет канала). Отправляет последний ACTIVE-товар.
+- `tg.MainButton('Сохранить')` показывается при dirty, fallback in-form button
+  для dev без TG.
+- HapticFeedback: success при сохранении, warning при unposted test, error при API fail.
+- Зарегистрирован в `apps/tma/src/App.tsx` lazy-загрузкой + ссылка из основного
+  `SettingsPage.tsx` («📢 Telegram канал → Шаблон поста и авто-публикация»).
+
+### 📊 Финальная верификация
+- `apps/api` `tsc --noEmit` чист
+- `apps/tma` `tsc --noEmit` чист
+- `apps/api` `jest`: **51 suites / 686 tests passed**
+
+---
+
+## 2026-05-12 (Полат) — Wave 6: Verified seller — trust signals на storefront
+
+### ✅ [MARKETING-VERIFIED-SELLER-001] Store.isVerified / avgRating / reviewCount 🟠
+- **Миграция** `20260512160000_store_verification_and_rating` — additive:
+  - `isVerified BOOLEAN NOT NULL DEFAULT false`
+  - `avgRating DECIMAL(3,2) NULL`
+  - `reviewCount INTEGER NOT NULL DEFAULT 0`
+  - Composite index `(isVerified, avgRating DESC)` для storefront sort
+  - **Backfill** через SQL: weighted average по существующим Product reviews
+    (`SUM(p.avgRating × p.reviewCount) / SUM(p.reviewCount)`) — данные не теряются.
+- `ReviewsRepository.refreshStoreAggregate(storeId)` — пересчёт после insert/delete
+  review, основан на product-aggregates (быстрее чем по сырым review'ам).
+- `CreateReviewUseCase` теперь каскадно: `refreshProductAggregate` →
+  `refreshStoreAggregate(product.storeId)`.
+
+### ✅ [API-ADMIN-STORE-VERIFY-001] Admin endpoint для верификации
+- `POST /api/v1/admin/stores/:id/verify` — ставит галочку
+- `POST /api/v1/admin/stores/:id/unverify` — снимает (требует `reason`)
+- Use-case `SetStoreVerificationUseCase`:
+  - Идемпотентен (повторный verify не пишет audit log)
+  - INV-A02: reason обязателен при unverify
+  - INV-A01: audit log `STORE_VERIFIED` / `STORE_UNVERIFIED`
+- Permission `store:moderate` (через `@AdminPermission`)
+- Spec +6 cases
+
+### ✅ [API-STOREFRONT-VERIFIED-EXPOSE-001] Trust signals в API ответах
+- `StoresRepository.findAllPublished` + `searchPublic` — добавлены поля,
+  изменён `orderBy` → verified DESC сначала, потом publishedAt
+- `GetFeaturedStorefrontUseCase.topStores` — отдаёт `isVerified`, `avgRating`,
+  `reviewCount`; сортировка `[verified DESC, avgRating DESC NULLS LAST, publishedAt DESC]`
+- `findBySlug` использует `include` — новые поля автоматически попадают
+  в `/storefront/stores/:slug` response.
+
+### 📊 Финальная верификация Wave 6
+- `apps/api` `tsc --noEmit` чист
+- `apps/api` `jest`: **53 suites / 699 tests passed** (+1 suite, +6 tests
+  на `set-store-verification`; +1 на trust signals в featured)
+- Data safety: миграция additive, backfill weighted-avg из существующих
+  отзывов через UPDATE … FROM, не теряет данных.
+
+### ⚠️ Что осталось (admin frontend — apps/admin, моя зона)
+- `ADMIN-STORE-VERIFY-BUTTON-001` — кнопка «✓ Verified» в `/stores/:id` detail
+  page admin SPA. Хорошее дополнение на следующий заход.
+
+### ⚠️ Что осталось (web-buyer/seller frontend — зона Азима)
+- `WEB-VERIFIED-BADGE-001` — рендерить галочку рядом с названием магазина
+  на storefront card / detail page (web-buyer). API уже отдаёт.
+
+---
+
+## 2026-05-12 (Полат) — Wave 7: tech debt — pagination + PII + search perf (3 задачи)
+
+После Wave 4 параллельная сессия закрыла Wave 5 (TG-канал шаблон) и Wave 6
+(verified seller). Я взял backend tech debt:
+
+### ✅ [API-N1-PRODUCTS-LIST-001] Pagination в store-specific feed 🟢
+- Новый `findPublicByStoreIdPaginated(storeId, {page, limit, ...filters})`:
+  offset pagination + `{products, total}` envelope через `$transaction`.
+- Default `limit=20`, max 100. Раньше `findPublicByStoreId` брал `take=200`
+  без offset → store с 200+ products = медленный TTFB + N+1 includes.
+- Controller `/storefront/products?storeId=` теперь читает `page`/`limit`
+  query params и возвращает `{data, meta: {total, page, limit, totalPages}}`.
+- **Commit:** `1601160`
+
+### ✅ [API-PII-MASKING-001] Phone masking в логах (SEC-011) 🟢
+- `apps/api/src/shared/pii.ts`: `maskPhone('+998901234567')` → `'+998 *** ** 67'`
+- TG ghost users: `maskPhone('tg_123456789')` → `'tg_***89'`
+- null/empty → `'[empty]'`, < 6 digits → `'[invalid]'`, foreign E.164 fallback
+- Applied в 13 log statements: otp.service, otp.processor (3), admin-auth
+  (IMPERSONATION), telegram-auth, ghost-cleanup (2), telegram-demo (2).
+- Spec +7 cases. **Commit:** `d7f8853`
+
+### ✅ [API-STOREFRONT-SEARCH-PERF-001] pg_trgm GIN indexes 🟢
+- Migration `20260512170000_search_pg_trgm_indexes`:
+  - `CREATE EXTENSION pg_trgm`
+  - GIN trigram indexes на `products.title/description`, `stores.name/description/slug`
+  - Partial indexes на nullable columns (`WHERE description IS NOT NULL`)
+- Ускоряет `ILIKE %q%` в 100-1000× на 100k+ products (vs seqscan).
+- Repository код не меняется — Postgres query planner сам подхватывает.
+- **Commit:** `c473c75`
+
+**Wave 7 итог:** 50 suites, 683 tests, 3 commits, 1 миграция, typecheck clean.
+
+---
+
+## 2026-05-12 (Полат) — Wave 4: launch блокеры + prod issues (4 задачи)
+
+После Wave 3 параллельная сессия Азима закрыла 6 marketing задач (SEO,
+public offer pages, reviews UI, fake response-time, pinned product strip,
+hardcoded domain, settings select). Я подхватил оставшиеся.
+
+### ✅ [MARKETING-HOMEPAGE-DISCOVERY-001] GET /storefront/featured 🔴
+- Endpoint разблокирует web-buyer landing (раньше форма ввода slug → 100% bounce).
+- `GetFeaturedStorefrontUseCase`: topStores (max 8) + featuredProducts (max 12).
+- Sort stores: `publishedAt DESC`; products: `avgRating DESC NULLS LAST → createdAt DESC`.
+- Filter: APPROVED + isPublic + has ACTIVE product; products + isVisible.
+- Public endpoint, Throttle 60/min.
+- Spec +7 cases. **Commit:** `5d3f961`
+
+### ✅ [PROD-BULL-BOARD-STATIC-401] Cookie-based auth для Bull Board 🟡
+- В production Bull Board зависал на «Loading»: middleware требовал token в
+  `?query` или header. Browser `<link>`/`<script>` НЕ передают токен → 401
+  на каждый CSS/JS/SVG.
+- Fix: cookie `bull-board-token` HttpOnly + SameSite=Strict + Secure prod,
+  TTL 30 мин. Первый GET с `?token=` ставит cookie. Browser потом шлёт автоматически.
+- **Commit:** `3a55ec4`
+
+### ✅ [TMA-SELLER-MAIN-BUTTON-001] MainButton CTA в seller forms 🟡
+- AddProductPage: `tg.MainButton('Опубликовать товар')` → handleSave(true)
+- EditProductPage: `tg.MainButton('Сохранить изменения')` → handleSave
+- Disable пока !isValid / saving / photoUploading.
+- SettingsPage пропущен — там auto-save (no single submit).
+- **Commit:** `83c0b72`
+
+### ✅ Production issues задокументированы в `analiz/logs.md`
+- **PROD-ADMIN-MFA-DEPLOY**: MfaSetupPage показывает старый endpoint. Код
+  в main правильный (commit `7b6a149`), `adminsb` Railway не подтянул main →
+  force-redeploy needed.
+- **PROD-BULL-BOARD-STATIC-401**: ↑ fixed.
+- **ADMIN-ROLE-PERMISSION-CHECK**: «admin:read required» — by design (super_admin only).
+
+**Wave 4 итог:** 50 suites, 676+ tests, 4 commits, typecheck clean (api + tma).
+
+---
+
+## 2026-05-12 (Полат) — Wave 3: P1 security/UX (5 задач)
+
+### ✅ [API-IDEMPOTENCY-FAIL-OPEN-001] Fail-closed на Redis-down 🔴
+- `acquireLock` возвращает discriminated union: `'acquired' | 'busy' | 'redis-down'`
+- Interceptor → 503 SERVICE_UNAVAILABLE при Redis-down (fail-closed)
+- Раньше fail-open → double orders при Redis-restart + retry
+- Spec +1 case. **Commit:** `0829fb2`
+
+### ✅ [API-BULL-BOARD-DATA-LEAK-001] OTP code больше не в job.data 🔴 (SEC-008)
+- Ref-pattern: `codeRef = UUID` в job, реальный code в Redis `otp:job:{ref}` TTL 10мин
+- `OtpProcessor` резолвит code → отправляет → удаляет ref
+- Backward-compat fallback для legacy jobs (`data.code`)
+- Spec +1 case verify нет `code` в job.data. **Commit:** `293efda`
+
+### ✅ [API-RBAC-CART-CROSS-SESSION-001] UUID validation для x-session-token 🟡
+- Server-side regex UUID v4 — 122 бита энтропии (не подбирается)
+- Невалидный токен → 400 VALIDATION_ERROR
+- После merge guest cart status=MERGED → findBySessionKey filters by ACTIVE
+- **Commit:** `0bf1681`
+
+### ✅ [TMA-PHONE-MASK-001] Маска `+998 XX XXX XX XX` 🟡
+- `apps/tma/src/lib/phone.ts`: formatUzPhone / stripPhone / isValidUzPhone
+- CheckoutPage onChange форматирует, backend получает E.164 через stripPhone
+- Placeholder с примером `+998 90 123 45 67`
+- **Commit:** `abfb7a7`
+
+### ✅ [FEAT-TG-AUTOPOST-001] Восстановлены файлы + verified 🟡
+- Use-case `post-product-to-channel.use-case.ts` (TG file_id resolution из MediaFile)
+- Migration `20260510210000_store_auto_post_to_channel` с upgrade existing stores
+- Settings field `autoPostProductsToChannel` в update-store DTO + use-case
+- Manual repost endpoint `POST /seller/products/:id/repost-to-channel`
+- Hook в change-product-status при ACTIVE → fire-and-forget
+- 14 unit tests pass
+
+**Wave 3 итог:** 49 suites, 669 tests, 5 commits, typecheck clean (api + tma).
+
+---
+
+## 2026-05-11 (Азим) — Wave 6 + 5 marketing/launch quick wins (6 задач)
+
+После platform audit Полата (10.05.2026) подхватил весь web-side backlog (зона apps/web-*).
+6 задач в одной сессии, web-buyer + web-seller typecheck clean.
+
+### ✅ [WB-DESIGN-WAVE-6] Pinned product context strip в чате 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/chats/page.tsx`
+- **Что сделано:** PRODUCT-thread теперь имеет fixed strip между header и messages — 40px thumb + название + цена + «Открыть →». Линк ведёт на `/{storeSlug}/products/{productId}`. Использует `productId/Title/ImageUrl/Price` из ChatThread (закрыто Полатом 10.05 как `API-CHAT-THREAD-PRODUCT-PREVIEW-001`). Цвет фона — `color-mix(brand 6%, transparent)` per Soft Color Lifestyle spec. Fallback на `<Package/>` иконку если нет thumb. Last P1 из buyer audit 09.05 (closes P1-003).
+
+### ✅ [WEB-SELLER-HARDCODED-DOMAIN-001] Все savdo.uz → env helper 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-seller/src/lib/buyer-url.ts` (+2 helpers), `dashboard/page.tsx`, `products/page.tsx`, `(onboarding)/onboarding/page.tsx` (×2), `(dashboard)/layout.tsx` placeholder
+- **Что сделано:** добавлены `buyerHostDisplay()` и `buyerProductUrl(slug, productId)` в helper. Все 5 live мест (dashboard/products/onboarding × 2/layout placeholder) теперь используют `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` через helper. В dev (`localhost:3001`) — реалистичные ссылки, не dead production. Закрывает аудит 06.05.
+
+### ✅ [MARKETING-SEO-INFRA-001] SEO infra для cold-traffic 🔴
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/app/{layout.tsx,sitemap.ts,robots.ts,manifest.ts}`, `(shop)/[slug]/products/[id]/layout.tsx`
+- **Что сделано:** `<html lang="en">` → `<html lang="ru">` (баг с launch). Создан `sitemap.ts` (homepage + 4 legal pages, weekly/yearly), `robots.ts` (allow /, disallow checkout/cart/orders/wishlist/chats/api), `manifest.ts` (Savdo PWA). JSON-LD `Organization` в root layout (sitewide). JSON-LD `Product` со schema.org/Product (name/image/sku/brand/offers/UZS) на product layout — берётся из существующего SSR fetch, no extra request.
+
+### ✅ [MARKETING-PUBLIC-OFFER-PAGES-001] /terms /privacy /offer /refund 🔴
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/components/legal/LegalPage.tsx` (shared), `apps/web-buyer/src/app/{terms,privacy,offer,refund}/page.tsx`, `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (footer links)
+- **Что сделано:** 4 публичных страницы с прозой на русском (~500 слов каждая) — стандартные секции UZ e-com: условия использования, политика конфиденциальности, публичная оферта, возврат и обмен. Shared `LegalPage` компонент с H2/P/UL атомами для consistency. Checkout footer (desktop + mobile) — ссылки «соглашаетесь с публичной офертой и политикой» теперь underlined links, не dead text. Реквизиты юр. лица — placeholder (нужны после регистрации компании).
+
+### ✅ [MARKETING-FAKE-RESPONSE-TIME-001] Удалить fake claims 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:673`, `(shop)/orders/[id]/page.tsx:84`, `(minimal)/cart/page.tsx:352`
+- **Что сделано:** убраны 3 false claims: «отвечает за час» на product page → conditional `{storeCity}`; «Продавец рассмотрит в течение часа» в order detail PENDING ETA → «Продавец скоро рассмотрит заказ»; «отвечает за час» в cart sticky strip → «написать продавцу».
+
+### ✅ [MARKETING-REVIEWS-SHOW-001] Reviews на product page 🟠
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-buyer/src/lib/api/storefront.api.ts` (+`getProductReviews`), `hooks/use-storefront.ts` (+`useProductReviews`), `components/store/ProductReviews.tsx` (new), `app/(shop)/[slug]/products/[id]/page.tsx`
+- **Что сделано:** новый компонент `ProductReviews` (~120 LOC) — fetch `GET /storefront/products/:id/reviews` через TanStack (staleTime 5 мин). States: loading (skeleton), empty (СTA-style invite), populated (header с avg rating + count + правильный плюрализ «отзыв/отзыва/отзывов», список карточек с author + Stars + дата + comment). Звёзды — `lucide-react` `<Star>` filled/outlined по rating. Подключён между Characteristics и «Из этого магазина». API уже был — Полат сделал заранее, фронт не рендерил.
+
+**Итог сессии:** 6 задач, 18 новых/изменённых файлов, web-buyer + web-seller TS clean.
+
+### ✅ [P3-006] Settings native select → custom Select 🟢
+- **Дата:** 11.05.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/settings/page.tsx`
+- **Что сделано:** последний deferred тикет из WS-DESIGN-WAVE-7. 2 native `<select>` мигрированы на existing custom `<Select>` через `Controller` из react-hook-form. `DeliverySection.deliveryFeeType` (none/fixed/manual) + `ProfileSection.languageCode` (ru/uz). `searchable={false}` (мало опций), `ariaLabel` для a11y, типизированный `onChange` через field.onChange cast. Закрывает Firefox chevron issue + dark/light theme consistency + keyboard nav. WS-DESIGN-WAVE-7-DEFERRED теперь 5 nit'ов вместо 6.
+
+---
+
+## 2026-05-10 late-evening (Полат) — Wave 2 P1 fixes (6 задач)
+
+Продолжение работ после P0-marathon:
+
+### ✅ [API-DELIVERY-FEE-CLIENT-CONTROLLED-001] Backend computes deliveryFee 🔴
+- `confirm-checkout.use-case.ts` игнорирует `input.deliveryFee` (deprecated в DTO)
+- Считает из `store.deliverySettings`: fixed → fixedDeliveryFee, manual/none → 0
+- `StoreWithSeller` расширен `deliverySettings` полем
+- Spec: +4 case. Защита от buyer'а присылающего `deliveryFee:0`.
+- **Commit:** `7f10caf`
+
+### ✅ [API-N1-CHECKOUT-001] Batch fetch CreateDirectOrder 🟡
+- Старый `Promise.all(items.map(findById))` + loop = 2N round-trips → 2 SELECT IN
+- Новые `findManyByIds(ids[])` в ProductsRepo + VariantsRepo (Map<id, entity>)
+- Spec: +1 case. **Commit:** `7f10caf`
+
+### ✅ [TMA-CART-DUPLICATE-WARNING-001] Confirm перед cross-store 🟡
+- `addToCart` в StorePage показывает confirmDialog «Заменить корзину?»
+- Раньше silent reset терял товары без уведомления
+- **Commit:** `5e486a3`
+
+### ✅ [TMA-CHECKOUT-GUEST-401-001] Disable submit для guest 🟡
+- Submit `disabled` пока `!authenticated`
+- Warning-блок + label кнопки «Войдите через Telegram»
+- **Commit:** `5e486a3`
+
+### ✅ [TMA-CHECKOUT-SUCCESS-PAGE-001] Order confirmation screen 🟡
+- ✓ icon + orderNumber + total + 2 CTA вместо моментального navigate
+- **Commit:** `5e486a3`
+
+### ✅ [ADMIN-NATIVE-CONFIRM-001 + ADMIN-MODAL-A11Y-001] 🟡
+- Новый `ConfirmDialog` imperative API + `<ConfirmContainer/>` в App.tsx
+- `window.confirm()` заменён в ChatsPage + ReportsPage
+- 4 modal мигрированы на DialogShell: Orders Cancel + Refund, Moderation Reject, Broadcast Confirm
+- a11y: role=dialog, aria-modal, focus-trap, Esc close
+- **Commits:** `5e486a3`, `f2dc9f9`
+
+**Также:** API-JWT-REVOCATION-001 — verified already done (JwtStrategy.validate
+проверяет session в БД, deleteSession в logout инвалидирует токены).
+
+**Wave 2 итог:** 668/668 tests, typecheck clean across api+admin+tma, 4 commits.
+
+---
+
+## 2026-05-10 evening (Полат) — Pre-launch P0/P1 marathon
+
+После 5-perspective platform audit (design / marketing / seller UX / buyer UX / QA)
+закрыто 14 P0/P1 задач за одну сессию:
+
+### ✅ [ADMIN-P0-7-FIXES] 7 admin/TMA блокеров запуска (commit `7b6a149`) 🔴
+1. `api.ts` handle 204 — DELETE/mark-read больше не падают
+2. OrdersPage refund typo `returnToWallet`→`returnedToWallet`
+3. MfaSetupPage GET endpoint /admin/auth/mfa/status → /admin/auth/me
+4. AdminUsersPage 3 contract mismatches (POST/PATCH/GET shape)
+5. **LoginPage MFA challenge step (step 3 + decodeJwtPayload + POST mfa/login)** — без этого ВСЕ админы с MFA не могли войти
+6. TMA EditProductPage `window.confirm()` → `confirmDialog` (popup блокировался в TG mobile)
+7. TMA EditProductPage ручной fetch DELETE → `api()` (auth refresh + cache-bust)
+
+### ✅ [SEC-API-2-FIXES] Security fixes (commit `045f1d7`) 🔴
+- **API-ROLES-GUARD-ADMIN-BYPASS-001 (SEC-003)** — admin больше не может звать buyer/seller endpoints от чужого имени. Bypass требует явный `@AllowAdminBypass()`.
+- **API-DIRECT-ORDER-DOS-001** — `@ArrayMaxSize(50)` + `@Max(999)` quantity. POST /orders с массивом 50000 items больше не валит DB.
+
+### ✅ [API-P0-STOCK + INV-O04 + Multer + Swagger] 5 fix (commit `385246a`) 🔴
+- **API-STOCK-RACE-OVERSELL-001** — checkout.repository.ts: atomic UPDATE с WHERE stockQuantity >= qty (Prisma.sql + $executeRaw). 2 параллельных checkout на stock=1 → один success, второй CHECKOUT_STOCK_INSUFFICIENT.
+- **API-INV-O04-STOCK-RELEASE-001** — orders.repository.updateStatus возвращает stock + InventoryMovement.ORDER_RELEASED при CANCELLED. Refund-order full refund тоже. Тестов +3.
+- **API-MULTER-LIMITS-001** — `limits: { fileSize: 10 * 1024 * 1024 }` на 3 FileInterceptor.
+- **API-SWAGGER-PROD-CLOSE-001** — `/api/v1/docs` отключён в prod (SWAGGER_ENABLED=true override).
+- DirectOrder DoS + variant priceOverride@Min(1) — уже в `045f1d7`.
+
+### ✅ [TMA-SELLER-WS-NOTIFY-001] TMA seller realtime (commit `23ddc7f`) 🟡
+- Новый `apps/tma/src/lib/sellerNotifications.ts` — bind/unbind socket с join-seller-room + listen на `order:new` / `order:status_changed` / `chat:new_message` + showToast + HapticFeedback.
+- Интегрирован в SellerLayout. Re-join on reconnect. Resolve storeId через `/seller/store` (INV-S01).
+- Импакт: продавец на TG-only больше не теряет уведомления о заказах.
+
+### ✅ [FEAT-TG-AUTOPOST-001] Opt-in TG channel auto-post (commit `8203542`) 🟡
+- Новое поле `Store.autoPostProductsToChannel` (default false; existing stores с channelId set true для backward-compat).
+- Migration `20260510210000_store_auto_post_to_channel`.
+- Новый `PostProductToChannelUseCase` с corner-cases:
+  - 0 фото → text + button «🛒 Открыть товар»
+  - 1 фото bucket=telegram → sendPhotoToChannel + buttons
+  - 2-10 фото → sendMediaGroupToChannel (caption на первом)
+  - bucket=telegram-expired пропускается
+  - HTML escape title/description (XSS защита)
+  - salePrice priority с `<s>` зачёркнутым basePrice
+  - force=true override toggle (manual repost)
+  - Fail-tolerant: errors → {posted:false, reason}
+- ChangeProductStatusUseCase теперь проверяет toggle перед auto-post.
+- Manual repost endpoint: `POST /api/v1/seller/products/:id/repost-to-channel` (Throttle 5/мин, force=true).
+- UpdateStoreDto: добавлен `autoPostProductsToChannel?: boolean` — Settings UI Азима будет toggle'ить через PATCH /seller/store.
+- Тесты: +14 PostProductToChannel + 1 ChangeProductStatus.
+
+**Итого сессии:** 49 test suites, **665 cases** (от 647 утренних), 100% pass.
+
+---
+
+## 2026-05-10 day (Полат) — 5 P0/P1/P2 задач из Sprint A/B + cleanup
+
+### ✅ [API-CHAT-THREAD-PRODUCT-PREVIEW-001] Pinned product context для chat 🟡
+
+- **Дата:** 10.05.2026
+- **Файлы:** `apps/api/src/modules/chat/repositories/chat.repository.ts`, `apps/api/src/modules/chat/use-cases/list-my-threads.use-case.ts` (+spec), `packages/types/src/api/chat.ts`
+- **Что:** `ChatThread` теперь содержит `productId/productTitle/productImageUrl/productPrice` для PRODUCT-threads. `productPrice` — effective: `salePrice ?? basePrice` (Decimal → Number). `productImageUrl` — resolved CDN URL для первой картинки (ORDER BY sortOrder asc) с handling для telegram-expired bucket → null + Telegram proxy + STORAGE_PUBLIC_URL CDN.
+- **Зачем:** разблокирует Азима — Wave 6 (P1-003 pinned product context strip) в web-buyer теперь может рендериться без отдельного fetch'а товара.
+- **Тесты:** +4 case (salePrice priority, STORAGE_PUBLIC_URL build, telegram-expired → null, ORDER-thread имеет product*=null).
+- **Commit:** `f4ad95d`.
+
+### ✅ [API-IDEMPOTENCY-KEY-001] Stripe-style header защита от двойных заказов 🟠
+
+- **Дата:** 10.05.2026
+- **Файлы (новые):** `apps/api/src/common/idempotency/{idempotency.service,idempotent.decorator,idempotency.interceptor,idempotency.module}.ts` + spec
+- **Изменено:** `apps/api/src/app.module.ts`, `apps/api/src/modules/checkout/checkout.controller.ts`, `apps/api/src/modules/checkout/orders-create.controller.ts`
+- **Что:** `Idempotency-Key` header (опциональный) на `POST /checkout/confirm` + `POST /orders`. SHA256(key + userId + route) → Redis cache 24h. NX-lock через read-then-set для concurrent retry → 409 CONFLICT. Success-only caching (errors не кэшируются — клиент может ретраить после фикса). Fail-open при Redis down (defence-in-depth через DB unique constraints). Валидация формата: 8-128 chars `[A-Za-z0-9_:.-]`.
+- **Зачем:** защита от двойных заказов при network retry / double-tap. Стандартная практика (Stripe API).
+- **Архитектура:** `@Idempotent()` decorator + `IdempotencyInterceptor` (через `@UseInterceptors`) — opt-in модель. Legacy clients без header работают как раньше.
+- **Тесты:** +19 cases (buildCacheKey isolation cross-user/cross-route, getCached fail-open, NX через read-then-set, storeResponse 24h TTL, releaseLock защищает валидный кэш от wipe).
+- **Commit:** `60d47ba`.
+
+### ✅ [API-ORDERS-ALIAS-REMOVE-001] Удаление dead alias 🔴
+
+- **Дата:** 10.05.2026
+- **Файл:** `apps/api/src/modules/orders/orders.controller.ts` (-12 строк)
+- **Что:** удалён alias `GET /api/v1/orders/:id` (был дублем `/buyer/orders/:id`).
+- **Зачем:** dead code, дубль инкапсулирующего endpoint'а.
+- **Verification:** grep по всем consumers — TMA (`/buyer/orders/:id`, `/seller/orders/:id`), admin (`/admin/orders/:id`), web-buyer (apiClient.get(`/buyer/orders/${id}`)), web-seller (apiClient.get(`/seller/orders/${id}`)). Bare endpoint никем не используется. Next.js routes `/orders/:id` в web-* — это страничные пути, не API endpoints.
+- **Commit:** `c445d20`.
+
+### ✅ [API-SWAGGER-001 + API-PRODUCTS-CTRL-SPLIT-001] Verification — already done
+
+- **Дата:** проверка 10.05.2026
+- **Что:** обе задачи уже были закрыты ранее (Wave 13-14 в test coverage push). Swagger полностью работает: `DocumentBuilder` в `main.ts:5` с 7 ApiTags + BearerAuth, `@ApiOperation/@ApiHeader/@ApiBearerAuth` на endpoints. ProductsController разделён: `products.controller.ts` (590 LOC) + `storefront.controller.ts` (318 LOC, 8 storefront routes отдельно) + `product-presenter.service.ts`.
+
+### ✅ [API-DELETE-OLD-STASHES-001] Cleanup старых stashes 🟢
+
+- **Дата:** 10.05.2026
+- **Что:** дропнуты 2 stash после проверки diff'ов:
+  - `stash-3` — мелкая правка `admin.controller.ts` (2 import строки), уже не актуально (admin.module разделён на 8 sub-controllers)
+  - `tma-api-perf-deploy-stash` — 288 строк WIP с старой реализацией `OrderRefund` модели + admin impersonation. Все полезные изменения уже в main в более качественной форме: `OrderRefund` с `RefundStatus` enum (вместо String), `AdminUser` MFA-поля через DB-AUDIT-001, полностью работающая impersonation в `super-admin.controller.ts` + `admin-auth.use-case.ts`.
+
+---
+
+## 2026-05-10 (Полат) — Test coverage push: Wave 25-31 (130 → 550 cases, +323%)
+
+### ✅ [TEST-COVERAGE-W25-31] Расширение покрытия Jest-тестами по 14 модулям 🟡
+
+- **Дата:** 10.05.2026
+- **Файлы:** 13 новых spec файлов
+  - `apps/api/src/modules/wishlist/use-cases/wishlist.use-cases.spec.ts` — Wave 25 (12 cases)
+  - `apps/api/src/modules/cart/use-cases/cart-mutations.use-cases.spec.ts` — Wave 25 (13 cases)
+  - `apps/api/src/modules/auth/services/token.service.spec.ts` — Wave 26 (17 cases)
+  - `apps/api/src/modules/auth/services/otp.service.spec.ts` — Wave 26 (23 cases)
+  - `apps/api/src/modules/auth/use-cases/{request-otp,refresh-session,logout-session}.use-case.spec.ts` — Wave 27 (27 cases)
+  - `apps/api/src/modules/categories/use-cases/store-categories.use-cases.spec.ts` — Wave 28 (12 cases)
+  - `apps/api/src/modules/media/use-cases/media.use-cases.spec.ts` — Wave 28 (16 cases)
+  - `apps/api/src/modules/cart/use-cases/get-cart.use-case.spec.ts` — Wave 29 (12 cases)
+  - `apps/api/src/modules/notifications/use-cases/notifications.use-cases.spec.ts` — Wave 29 (12 cases)
+  - `apps/api/src/modules/moderation/use-cases/moderation.use-cases.spec.ts` — Wave 30 (20 cases)
+  - `apps/api/src/modules/chat/use-cases/chat-readonly.use-cases.spec.ts` — Wave 30 (20 cases)
+  - `apps/api/src/modules/checkout/use-cases/{preview-checkout,create-direct-order}.use-case.spec.ts` — Wave 31 (24 cases)
+  - `apps/api/src/modules/admin/use-cases/admin-create.use-cases.spec.ts` — Wave 31 (12 cases)
+- **Что покрыто:**
+  - Auth/JWT (17): TokenService — sign payload+secret+expiresIn fallback 15m, TTL parser (15m/1h/3600s/1d/whitespace/invalid), refresh token gen (80 hex chars), bcrypt hash/verify roundtrip + salt uniqueness, verifyAccessToken catch swallows error.
+  - OTP (23): randomInt 6-digit range, bcrypt round-trip, **SEC-002 brute-force** (5 attempts → DomainException), Redis fail-tolerant, dev/prod sendOtp с `TELEGRAM_NOT_LINKED` fallback @savdo_builderBOT.
+  - Auth use-cases (27): RequestOtp rate-limit 3/10min per phone+purpose, RefreshSession token rotation + JWT claims (BUYER vs SELLER vs ADMIN with mfaPending/adminRole), LogoutSession graceful failure.
+  - Categories (12): INV-S02 limit 20 categories per store (граница 19/20), cross-store FORBIDDEN guard.
+  - Media (16): RequestUpload mimeType validation (product_image vs seller_doc bucket+visibility split), ConfirmUpload idempotency, DeleteMedia R2-then-DB order.
+  - Cart (25): GetCart mapper logic — salePrice priority, variant title fallback chain, telegram-expired bucket → null. CartMutations — ownership cross-buyer защита.
+  - Wishlist (12): non-ACTIVE products НЕ возвращаются, idempotent toggle.
+  - Notifications (12): GetInbox pagination, GetPreferences schema defaults (mobilePush=true, webPush=false, telegram=true), GetNotificationLogs filters.
+  - Moderation (20): TakeAction state machine APPROVE/REJECT/ESCALATE → CLOSED; REQUEST_CHANGES → OPEN; **INV-A02** reject требует comment (whitespace blocks); side effects на store/seller; **INV-A01** audit log (lowercase action, payload).
+  - Chat (20): ResolveThread (only seller), GetUnreadCount summarise (count > 0), GetThreadMessages — participant check, hasMore +1 trick, batch parent resolve (no N+1, dedupe), isDeleted text mask.
+  - Checkout (24): PreviewCheckout — invalid items с reasons, **INV-C01** (CART_STORE_MISMATCH) защита cross-product variant inject (productId mismatch), priceOverride > basePrice, store ownership.
+  - AdminCreate (12): manual seller activation flow (API-MANUAL-SELLER-ACTIVATION-001), **INV-S01** (one store per seller), slugify edge cases + uniqueSlug suffix.
+- **Результат:** 47 test suites, 624 passed, 0 failed, 100% pass.
+- **Commits:** 6ed34cd, 22b3b4b, 52a2987, fba9da1, 5bd47af, c1607c5, 88f9d02, 8fa6dda, ace965f, 611c15a, 647d532, f3b651b
+
+### ✅ [TEST-COVERAGE-W32-36] Расширение покрытия: analytics, admin, orders, auth, chat 🟡
+
+- **Дата:** 10.05.2026
+- **Файлы (5 новых spec файлов):**
+  - `apps/api/src/modules/analytics/use-cases/analytics.use-cases.spec.ts` — Wave 32 (18 cases)
+  - `apps/api/src/modules/admin/use-cases/admin-list-detail.use-cases.spec.ts` — Wave 33 (12 cases)
+  - `apps/api/src/modules/orders/use-cases/orders-read.use-cases.spec.ts` — Wave 34 (14 cases)
+  - `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.spec.ts` — Wave 35 (13 cases)
+  - `apps/api/src/modules/chat/use-cases/create-thread.use-cases.spec.ts` — Wave 36 (17 cases)
+- **Что покрыто:**
+  - Analytics (18): TrackEvent role-to-actorType mapping, range parsing 30d default/90d cap/from<to/ISO,
+    revenue split DELIVERED→completed vs CONFIRMED/PROCESSING/SHIPPED→pending, topProducts top-5 with
+    snapshot-key fallback, daily buckets fill для дней без заказов.
+  - Admin proxy (12): list/detail forwarding, GetMe UnauthorizedException, GetAuditLog filters.
+  - Orders read (14): GetBuyerOrders UNAUTHORIZED guard, GetSellerOrders limit cap 100 (abuse prevent),
+    Decimal→Number mapping, deliveryAddress + preview build. GetOrderDetail — NOT_ORDER_PARTICIPANT
+    защита (cross-buyer/cross-store).
+  - **TelegramAuth (13) — security-critical:** real HMAC-SHA256 buildInitData, missing botToken/hash/user,
+    HMAC mismatch via timingSafeEqual, invalid JSON, existing telegramId reuse, Redis tg:phone link
+    (clearTelegramIdIfGhost first), Redis-phone match с existing telegramId reuse byPhone, new user via
+    createUserWithBuyerByTelegram. JWT claims: SELLER→storeId, ADMIN+MFA→mfaPending+adminRole.
+  - CreateThread (17): chatEnabled flag, PRODUCT vs ORDER context, ownership (cross-buyer ORDER_ACCESS_DENIED),
+    idempotent reuse. CreateSellerThread (FEAT-004): empty firstMessage block, guest checkout (buyerId=null)
+    → BUYER_NOT_IDENTIFIED, sendMessage trimming, idempotent reuse.
+- **Финальный итог:** **47 suites, 624 cases**, 100% pass — почти 5× прирост от стартовых 130.
+- **Commits:** 8fa6dda, ace965f, 611c15a, 647d532, f3b651b
+
 ## 2026-05-09 (Азим) — Web-buyer Design Audit + 6 fix waves (22 из 25 findings закрыты)
 
 ### ✅ [WB-DESIGN-AUDIT-001] Read-only audit web-buyer vs Soft Color Lifestyle 🟡

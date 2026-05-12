@@ -89,31 +89,34 @@ export default function CartPage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.88)' }}>{item.title}</p>
               <p className="text-xs" style={{ color: 'rgba(167,139,250,0.80)' }}>{item.storeName}</p>
-              <p className="text-xs font-bold mt-0.5" style={{ color: '#A855F7' }}>
+              <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--tg-accent)' }}>
                 {(item.price * item.qty).toLocaleString('ru')} сум
               </p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => updateQty(item.productId, -1)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                aria-label="Уменьшить количество"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-base"
                 style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.60)' }}
               >
                 −
               </button>
-              <span className="text-sm font-bold w-5 text-center" style={{ color: 'rgba(255,255,255,0.80)' }}>
+              <span className="text-sm font-bold w-6 text-center" style={{ color: 'rgba(255,255,255,0.80)' }}>
                 {item.qty}
               </span>
               <button
                 onClick={() => updateQty(item.productId, 1)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                style={{ background: 'rgba(167,139,250,0.25)', color: '#A855F7' }}
+                aria-label="Увеличить количество"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-base"
+                style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
               >
                 +
               </button>
               <button
                 onClick={() => removeItem(item.productId)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-sm ml-1"
+                aria-label="Удалить из корзины"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-base ml-1"
                 style={{ color: 'rgba(239,68,68,0.70)' }}
               >
                 ✕
@@ -125,7 +128,7 @@ export default function CartPage() {
         {items.length > 0 && (
           <div className="flex items-center justify-between px-2 py-3">
             <span className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>Итого:</span>
-            <span className="text-base font-bold" style={{ color: '#A855F7' }}>
+            <span className="text-base font-bold" style={{ color: 'var(--tg-accent)' }}>
               {total.toLocaleString('ru')} сум
             </span>
           </div>

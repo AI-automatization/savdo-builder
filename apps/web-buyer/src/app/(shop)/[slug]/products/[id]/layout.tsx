@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { Product } from 'types';
 
 const BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1`;
+const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz';
 
 async function fetchProduct(id: string): Promise<Product | null> {
   try {
@@ -13,6 +14,29 @@ async function fetchProduct(id: string): Promise<Product | null> {
   } catch {
     return null;
   }
+}
+
+function buildProductJsonLd(product: Product, slug: string, id: string) {
+  const price = Number(product.basePrice);
+  const images = product.mediaUrls?.length ? product.mediaUrls : undefined;
+  return {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: product.title,
+    description: product.description ?? undefined,
+    image: images,
+    sku: id,
+    brand: product.store?.name
+      ? { '@type': 'Brand', name: product.store.name }
+      : undefined,
+    offers: {
+      '@type': 'Offer',
+      url: `${SITE_URL}/${slug}/products/${id}`,
+      priceCurrency: 'UZS',
+      price: Number.isFinite(price) ? price : 0,
+      availability: 'https://schema.org/InStock',
+    },
+  };
 }
 
 export async function generateMetadata({
@@ -53,6 +77,24 @@ export async function generateMetadata({
   };
 }
 
-export default function ProductLayout({ children }: { children: React.ReactNode }) {
-  return children;
+export default async function ProductLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string; id: string }>;
+}) {
+  const { slug, id } = await params;
+  const product = await fetchProduct(id);
+  if (!product) return <>{children}</>;
+  const jsonLd = buildProductJsonLd(product, slug, id);
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {children}
+    </>
+  );
 }

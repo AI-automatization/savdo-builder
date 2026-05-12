@@ -41,6 +41,10 @@ const STORE = {
   sellerId: 'seller-1',
   name: 'Тестовый магазин',
   seller: { telegramUsername: 'test_seller' },
+  // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend читает из deliverySettings.
+  // По умолчанию none → 0. Тесты которые проверяют ненулевой deliveryFee
+  // переопределяют через mockResolvedValueOnce с deliveryFeeType=fixed.
+  deliverySettings: { deliveryFeeType: 'none', fixedDeliveryFee: null },
 };
 
 const VALIDATED_ITEMS = [{
@@ -135,8 +139,14 @@ describe('ConfirmCheckoutUseCase', () => {
   });
 
   describe('order creation', () => {
-    it('total = subtotal + deliveryFee', async () => {
-      await useCase.execute({ ...VALID_INPUT, deliveryFee: 250 });
+    it('store deliveryFeeType=fixed + fixedDeliveryFee → total включает', async () => {
+      // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend читает deliverySettings,
+      // input.deliveryFee игнорируется (deprecated).
+      checkoutRepo.findStoreWithSeller.mockResolvedValueOnce({
+        ...STORE,
+        deliverySettings: { deliveryFeeType: 'fixed', fixedDeliveryFee: 250 },
+      });
+      await useCase.execute({ ...VALID_INPUT, deliveryFee: 9999 }); // 9999 ignored
       expect(checkoutRepo.createOrder).toHaveBeenCalledWith(expect.objectContaining({
         subtotalAmount: 1000,
         deliveryFeeAmount: 250,
@@ -144,10 +154,33 @@ describe('ConfirmCheckoutUseCase', () => {
       }));
     });
 
-    it('deliveryFee опущен → 0', async () => {
+    it('store без deliverySettings → deliveryFee=0', async () => {
+      checkoutRepo.findStoreWithSeller.mockResolvedValueOnce({
+        ...STORE,
+        deliverySettings: null,
+      });
       await useCase.execute(VALID_INPUT);
       expect(checkoutRepo.createOrder).toHaveBeenCalledWith(expect.objectContaining({
         deliveryFeeAmount: 0,
+        totalAmount: 1000,
+      }));
+    });
+
+    it('deliveryFeeType=manual → 0 (продавец проставит при confirm заказа)', async () => {
+      checkoutRepo.findStoreWithSeller.mockResolvedValueOnce({
+        ...STORE,
+        deliverySettings: { deliveryFeeType: 'manual', fixedDeliveryFee: 500 },
+      });
+      await useCase.execute(VALID_INPUT);
+      expect(checkoutRepo.createOrder).toHaveBeenCalledWith(expect.objectContaining({
+        deliveryFeeAmount: 0,
+      }));
+    });
+
+    it('input.deliveryFee игнорируется (защита от client-controlled fee)', async () => {
+      await useCase.execute({ ...VALID_INPUT, deliveryFee: 99999 });
+      expect(checkoutRepo.createOrder).toHaveBeenCalledWith(expect.objectContaining({
+        deliveryFeeAmount: 0, // STORE по дефолту 'none'
         totalAmount: 1000,
       }));
     });
@@ -218,7 +251,11 @@ describe('ConfirmCheckoutUseCase', () => {
     });
 
     it('TG notification → seller.telegramUsername с правильными полями', async () => {
-      await useCase.execute({ ...VALID_INPUT, deliveryFee: 100 });
+      checkoutRepo.findStoreWithSeller.mockResolvedValueOnce({
+        ...STORE,
+        deliverySettings: { deliveryFeeType: 'fixed', fixedDeliveryFee: 100 },
+      });
+      await useCase.execute(VALID_INPUT);
       expect(tgNotifier.notifyNewOrder).toHaveBeenCalledWith({
         sellerTelegramUsername: 'test_seller',
         orderNumber: 'ORD-XYZ',

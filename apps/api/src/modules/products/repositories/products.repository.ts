@@ -161,11 +161,72 @@ export class ProductsRepository {
     });
   }
 
+  /**
+   * API-N1-CHECKOUT-001: batch fetch для CreateDirectOrder. Один SELECT IN
+   * вместо Promise.all(map(findById)) — на 100 items было 100 round-trips.
+   */
+  async findManyByIds(ids: string[]): Promise<Map<string, SellerProductDetail>> {
+    if (ids.length === 0) return new Map();
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      include: sellerProductDetailInclude,
+    });
+    return new Map(products.map((p) => [p.id, p as SellerProductDetail]));
+  }
+
   async findPublicById(id: string): Promise<PublicProductDetail | null> {
     return this.prisma.product.findFirst({
       where: { id, status: ProductStatus.ACTIVE, deletedAt: null },
       include: publicProductDetailInclude,
     });
+  }
+
+  /**
+   * API-N1-PRODUCTS-LIST-001: paginated вариант findPublicByStoreId.
+   * Раньше default take=200 без offset → store с 200+ products загружало
+   * всё одним запросом + N+1 на images/variants. Теперь offset pagination
+   * + envelope `{products, total}` для UI «Загрузить ещё».
+   */
+  async findPublicByStoreIdPaginated(
+    storeId: string,
+    filters?: {
+      globalCategoryId?: string;
+      storeCategoryId?: string;
+      attributes?: Record<string, string>;
+      page?: number;
+      limit?: number;
+    },
+  ): Promise<{ products: PublicProductListItem[]; total: number }> {
+    const attrEntries = Object.entries(filters?.attributes ?? {}).filter(([, v]) => !!v);
+    const limit = Math.min(Math.max(filters?.limit ?? 20, 1), 100);
+    const page = Math.max(filters?.page ?? 1, 1);
+    const skip = (page - 1) * limit;
+
+    const where = {
+      storeId,
+      status: ProductStatus.ACTIVE,
+      deletedAt: null,
+      ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
+      ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
+      ...(attrEntries.length > 0 && {
+        AND: attrEntries.map(([name, value]) => ({
+          attributes: { some: { name, value } },
+        })),
+      }),
+    };
+
+    const [products, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        include: publicProductInclude,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { products, total };
   }
 
   async findPublicByStoreId(

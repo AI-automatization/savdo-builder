@@ -5,6 +5,7 @@ import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/admin/PageHeader'
 import { EmptyState } from '../components/admin/EmptyState'
+import { DialogShell } from '../components/admin/DialogShell'
 
 interface ModerationCase {
   id: string
@@ -391,27 +392,19 @@ export default function ModerationPage() {
         })}
       </div>
 
-      {/* Reject Modal */}
+      {/* Reject Modal — ADMIN-MODAL-A11Y-001: DialogShell wraps for role=dialog/aria-modal/Esc/focus-trap */}
       {rejectTarget && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[200]"
-          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-          onClick={() => { setRejectTarget(null); setComment('') }}
+        <DialogShell
+          onClose={() => { setRejectTarget(null); setComment('') }}
+          width={440}
+          ariaLabelledBy="reject-modal-title"
         >
-          <div
-            className="rounded-2xl p-7 w-[440px] max-w-[90vw]"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
             <div className="flex items-center justify-between mb-2">
-              <h3 className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>Отклонить заявку</h3>
+              <h3 id="reject-modal-title" className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>Отклонить заявку</h3>
               <button
                 onClick={() => { setRejectTarget(null); setComment('') }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                aria-label="Закрыть"
               >
                 <X size={18} />
               </button>
@@ -489,8 +482,7 @@ export default function ModerationPage() {
                 {actionLoading === rejectTarget.id ? 'Отправка...' : 'Отклонить'}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   )

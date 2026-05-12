@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ProductsController } from './products.controller';
 import { StorefrontController } from './storefront.controller';
 import { ProductPresenterService } from './services/product-presenter.service';
+import { ChannelTemplateService } from './services/channel-template.service';
+import { ChannelMediaResolverService } from './services/channel-media-resolver.service';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
@@ -13,19 +15,25 @@ import { CreateVariantUseCase } from './use-cases/create-variant.use-case';
 import { UpdateVariantUseCase } from './use-cases/update-variant.use-case';
 import { DeleteVariantUseCase } from './use-cases/delete-variant.use-case';
 import { AdjustStockUseCase } from './use-cases/adjust-stock.use-case';
+import { PostProductToChannelUseCase } from './use-cases/post-product-to-channel.use-case';
+import { PreviewChannelPostUseCase } from './use-cases/preview-channel-post.use-case';
+import { GetFeaturedStorefrontUseCase } from './use-cases/get-featured-storefront.use-case';
 import { StoresModule } from '../stores/stores.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { MediaModule } from '../media/media.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
 
 @Module({
-  imports: [StoresModule, SellersModule, TelegramModule, WishlistModule],
+  imports: [forwardRef(() => StoresModule), SellersModule, TelegramModule, MediaModule, WishlistModule],
   controllers: [ProductsController, StorefrontController],
   providers: [
     ProductsRepository,
     VariantsRepository,
     OptionGroupsRepository,
     ProductPresenterService,
+    ChannelTemplateService,
+    ChannelMediaResolverService,
     CreateProductUseCase,
     UpdateProductUseCase,
     ChangeProductStatusUseCase,
@@ -34,7 +42,17 @@ import { WishlistModule } from '../wishlist/wishlist.module';
     UpdateVariantUseCase,
     DeleteVariantUseCase,
     AdjustStockUseCase,
+    PostProductToChannelUseCase,
+    PreviewChannelPostUseCase,
+    GetFeaturedStorefrontUseCase,
   ],
-  exports: [ProductsRepository, VariantsRepository, OptionGroupsRepository],
+  exports: [
+    ProductsRepository,
+    VariantsRepository,
+    OptionGroupsRepository,
+    PostProductToChannelUseCase,
+    PreviewChannelPostUseCase,
+    ChannelTemplateService,
+  ],
 })
 export class ProductsModule {}

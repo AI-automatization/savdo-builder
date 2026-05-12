@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { LoadingScreen } from '@/components/layout/LoadingScreen';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/providers/AuthProvider';
+import { bindSellerNotifications, unbindSellerNotifications, resolveStoreIdForSeller } from '@/lib/sellerNotifications';
 
 // ── Error Boundary ─────────────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ const SellerAddProduct   = lazy(() => import('@/pages/seller/AddProductPage'));
 const SellerEditProduct  = lazy(() => import('@/pages/seller/EditProductPage'));
 const SellerProfile   = lazy(() => import('@/pages/seller/ProfilePage'));
 const SellerSettings  = lazy(() => import('@/pages/seller/SettingsPage'));
+const SellerChannelSettings = lazy(() => import('@/pages/seller/ChannelSettingsPage'));
 const SellerChat      = lazy(() => import('@/pages/seller/ChatPage'));
 
 // ── Guards ────────────────────────────────────────────────────────────────────
@@ -106,6 +108,21 @@ function BuyerLayout() {
 }
 
 function SellerLayout() {
+  // TMA-SELLER-WS-NOTIFY-001: подписаться на realtime events продавца —
+  // order:new / order:status_changed / chat:new_message — чтобы продавец
+  // на TG-mobile не пропускал заказы. Web-seller это давно делает.
+  useEffect(() => {
+    let cancelled = false;
+    void resolveStoreIdForSeller().then((storeId) => {
+      if (cancelled || !storeId) return;
+      bindSellerNotifications({ storeId });
+    });
+    return () => {
+      cancelled = true;
+      unbindSellerNotifications();
+    };
+  }, []);
+
   return (
     <SellerGuard>
       <AppShell role="SELLER">
@@ -165,6 +182,7 @@ export default function App() {
           <Route path="products/:id/edit" element={<SellerEditProduct />} />
           <Route path="profile" element={<SellerProfile />} />
           <Route path="settings" element={<SellerSettings />} />
+          <Route path="settings/channel" element={<SellerChannelSettings />} />
           <Route path="chat" element={<SellerChat />} />
           <Route path="chat/:threadId" element={<SellerChat />} />
         </Route>

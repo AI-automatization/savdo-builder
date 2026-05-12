@@ -44,7 +44,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ru"
       className={`${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -52,6 +52,19 @@ export default function RootLayout({
         <ThemeScript defaultTheme="system" />
       </head>
       <body className="min-h-full flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'Savdo',
+              url: siteUrl,
+              description: 'Платформа интернет-магазинов Узбекистана в Telegram',
+              areaServed: { '@type': 'Country', name: 'Uzbekistan' },
+            }),
+          }}
+        />
         <QueryProvider>
           <AuthProvider>
             <ThemeProvider defaultTheme="system">

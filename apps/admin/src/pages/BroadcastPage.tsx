@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Send, Eye, AlertCircle, CheckCircle, RefreshCw, Megaphone } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { DialogShell } from '../components/admin/DialogShell'
 
 interface BroadcastLog {
   id: string
@@ -283,46 +284,47 @@ export default function BroadcastPage() {
         <TelegramPreview text={message} />
       </div>
 
-      {/* Confirm modal */}
+      {/* Confirm modal — ADMIN-MODAL-A11Y-001: DialogShell */}
       {confirm && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 420, maxWidth: '90vw' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <Megaphone size={20} style={{ color: '#818CF8' }} />
-              <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Подтвердите рассылку</span>
-            </div>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
-              Сообщение будет отправлено{' '}
-              <strong style={{ color: 'var(--text)' }}>{previewCount} получателям</strong> в Telegram
-              {' '}(
-              <span style={{ color: '#818CF8' }}>
-                {AUDIENCE_OPTIONS.find(o => o.value === audience)?.label ?? audience}
-              </span>
-              ).
-            </p>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>
-              Это действие нельзя отменить.
-            </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setConfirm(false)}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleSend}
-                disabled={sending}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 8, border: 'none', background: '#818CF8', color: '#fff', fontSize: 14, fontWeight: 600, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1 }}
-              >
-                <Send size={14} /> {sending ? 'Отправка...' : 'Отправить всем'}
-              </button>
-            </div>
+        <DialogShell
+          onClose={() => !sending && setConfirm(false)}
+          width={420}
+          ariaLabelledBy="broadcast-confirm-title"
+          closeOnBackdrop={!sending}
+          closeOnEscape={!sending}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <Megaphone size={20} style={{ color: '#818CF8' }} />
+            <span id="broadcast-confirm-title" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Подтвердите рассылку</span>
           </div>
-        </div>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
+            Сообщение будет отправлено{' '}
+            <strong style={{ color: 'var(--text)' }}>{previewCount} получателям</strong> в Telegram
+            {' '}(
+            <span style={{ color: '#818CF8' }}>
+              {AUDIENCE_OPTIONS.find(o => o.value === audience)?.label ?? audience}
+            </span>
+            ).
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>
+            Это действие нельзя отменить.
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => setConfirm(false)}
+              style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={sending}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 8, border: 'none', background: '#818CF8', color: '#fff', fontSize: 14, fontWeight: 600, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1 }}
+            >
+              <Send size={14} /> {sending ? 'Отправка...' : 'Отправить всем'}
+            </button>
+          </div>
+        </DialogShell>
       )}
 
       {/* History */}

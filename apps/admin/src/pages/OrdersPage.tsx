@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DialogShell } from '../components/admin/DialogShell'
 import { Input } from '@/components/ui/input'
 
 interface Store { id: string; name: string; slug: string }
@@ -248,45 +249,47 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* Cancel Modal */}
+      {/* Cancel Modal — ADMIN-MODAL-A11Y-001: DialogShell для role=dialog/aria-modal/Esc/focus-trap */}
       {cancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-full max-w-md rounded-2xl p-7 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--text)' }}>Отменить заказ</h3>
-            <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-              Заказ <span className="font-mono font-semibold" style={{ color: 'var(--text)' }}>{cancelModal.orderNumber}</span> будет отменён.
-            </p>
-            <textarea
-              value={cancelReason}
-              onChange={e => setCancelReason(e.target.value)}
-              placeholder="Причина отмены (обязательно)..."
-              rows={3}
-              className="w-full px-3 py-2.5 rounded-lg text-sm resize-y outline-none"
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', marginBottom: 12 }}
-            />
-            {cancelError && (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-4 text-xs border"
-                style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)', color: 'var(--error)' }}>
-                <AlertCircle size={12} /> {cancelError}
-              </div>
-            )}
-            <div className="flex gap-2.5 justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => { setCancelModal(null); setCancelReason(''); setCancelError(null) }}
-              >
-                Отмена
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handleCancelConfirm}
-                disabled={cancelLoading || !cancelReason.trim()}
-              >
-                {cancelLoading ? 'Загрузка...' : 'Отменить заказ'}
-              </Button>
+        <DialogShell
+          onClose={() => { setCancelModal(null); setCancelReason(''); setCancelError(null) }}
+          width={448}
+          ariaLabelledBy="cancel-order-title"
+        >
+          <h3 id="cancel-order-title" className="text-base font-semibold mb-1" style={{ color: 'var(--text)' }}>Отменить заказ</h3>
+          <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+            Заказ <span className="font-mono font-semibold" style={{ color: 'var(--text)' }}>{cancelModal.orderNumber}</span> будет отменён.
+          </p>
+          <textarea
+            value={cancelReason}
+            onChange={e => setCancelReason(e.target.value)}
+            placeholder="Причина отмены (обязательно)..."
+            rows={3}
+            className="w-full px-3 py-2.5 rounded-lg text-sm resize-y outline-none"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', marginBottom: 12 }}
+          />
+          {cancelError && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-4 text-xs border"
+              style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)', color: 'var(--error)' }}>
+              <AlertCircle size={12} /> {cancelError}
             </div>
+          )}
+          <div className="flex gap-2.5 justify-end">
+            <Button
+              variant="secondary"
+              onClick={() => { setCancelModal(null); setCancelReason(''); setCancelError(null) }}
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleCancelConfirm}
+              disabled={cancelLoading || !cancelReason.trim()}
+            >
+              {cancelLoading ? 'Загрузка...' : 'Отменить заказ'}
+            </Button>
           </div>
-        </div>
+        </DialogShell>
       )}
 
       {/* Refund Modal */}
@@ -322,9 +325,11 @@ function RefundDialog({ order, onClose, onSuccess }: {
   const submit = async () => {
     setLoading(true)
     try {
-      const body: { amount?: number; reason: string; returnToWallet: boolean } = {
+      // Field name MUST match backend (refund-order.use-case.ts: returnedToWallet).
+      // Старое имя returnToWallet всегда уходило с false → wallet не пополнялся.
+      const body: { amount?: number; reason: string; returnedToWallet: boolean } = {
         reason: reason.trim(),
-        returnToWallet,
+        returnedToWallet: returnToWallet,
       }
       if (partial) body.amount = numAmount
       await api.post(`/api/v1/admin/orders/${order.id}/refund`, body)
@@ -338,22 +343,19 @@ function RefundDialog({ order, onClose, onSuccess }: {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-      onClick={() => !loading && onClose()}
+    <DialogShell
+      onClose={() => !loading && onClose()}
+      width={448}
+      ariaLabelledBy="refund-title"
+      closeOnBackdrop={!loading}
+      closeOnEscape={!loading}
     >
-      <div
-        className="w-full max-w-md rounded-2xl p-7 shadow-2xl"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-        onClick={e => e.stopPropagation()}
-      >
         <div className="flex items-center gap-3 mb-4">
           <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Wallet size={18} color="#F59E0B" />
           </div>
           <div>
-            <h3 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Возврат средств</h3>
+            <h3 id="refund-title" className="text-base font-semibold" style={{ color: 'var(--text)' }}>Возврат средств</h3>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Заказ <span className="font-mono">{order.orderNumber}</span> · {order.customerFullName || order.customerPhone}
             </p>
@@ -450,7 +452,6 @@ function RefundDialog({ order, onClose, onSuccess }: {
             <Wallet size={13} /> {loading ? 'Возврат...' : 'Подтвердить возврат'}
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }

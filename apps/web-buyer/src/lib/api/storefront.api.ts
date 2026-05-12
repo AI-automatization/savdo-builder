@@ -52,3 +52,32 @@ export async function getCategoryFilters(slug: string): Promise<StorefrontCatego
   const res = await apiClient.get<StorefrontCategoryFilter[]>(`/storefront/categories/${slug}/filters`);
   return res.data;
 }
+
+// ── Reviews ───────────────────────────────────────────────────────────────────
+
+/** Public review item — local type pending Полат promoting to packages/types. */
+export interface ProductReviewItem {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  authorName: string;
+}
+
+export interface ProductReviewsResponse {
+  items: ProductReviewItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function getProductReviews(
+  productId: string,
+  page = 1,
+  limit = 20,
+): Promise<ProductReviewsResponse> {
+  const res = await apiClient.get<ProductReviewsResponse>(
+    `/storefront/products/${productId}/reviews?page=${page}&limit=${limit}`,
+  );
+  return res.data;
+}

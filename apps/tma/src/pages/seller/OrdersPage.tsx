@@ -269,8 +269,8 @@ export default function SellerOrdersPage() {
                     <span
                       className="px-1.5 py-0 rounded-full text-[10px] font-bold"
                       style={{
-                        background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
-                        color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                        background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
+                        color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
                         minWidth: 18,
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -302,7 +302,7 @@ export default function SellerOrdersPage() {
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
             <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить заказы</p>
-            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
           </div>
         )}
 
@@ -362,7 +362,7 @@ export default function SellerOrdersPage() {
                           </span>
                         )}
                       </p>
-                      <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: '#A855F7' }}>
+                      <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--tg-accent)' }}>
                         {Number(o.totalAmount).toLocaleString('ru')} сум
                       </p>
                     </div>
@@ -385,7 +385,7 @@ export default function SellerOrdersPage() {
                         onClick={(e) => { e.stopPropagation(); changeStatus(o.id, next.status); }}
                         disabled={isUpdating}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
-                        style={{ background: 'rgba(167,139,250,0.20)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.30)' }}
+                        style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)', border: '1px solid var(--tg-accent-border)' }}
                       >
                         {isUpdating ? '...' : next.label}
                       </button>
@@ -433,7 +433,7 @@ export default function SellerOrdersPage() {
         >
           {detailLoading && (
             <div className="flex justify-center py-12">
-              <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(167,139,250,0.3)', borderTopColor: '#A855F7' }} />
+              <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tg-accent-border)', borderTopColor: 'var(--tg-accent)' }} />
             </div>
           )}
           {!detailLoading && detail && (
@@ -476,7 +476,7 @@ export default function SellerOrdersPage() {
                       <span className="text-sm flex-1 truncate" style={{ color: 'rgba(255,255,255,0.80)' }}>
                         {item.title}{item.variantTitle ? ` · ${item.variantTitle}` : ''} × {item.quantity}
                       </span>
-                      <span className="text-sm font-semibold shrink-0" style={{ color: '#A855F7' }}>
+                      <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--tg-accent)' }}>
                         {Number(item.subtotal).toLocaleString('ru')} сум
                       </span>
                     </div>
@@ -505,7 +505,7 @@ export default function SellerOrdersPage() {
               {/* Итого */}
               <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Итого</span>
-                <span className="text-base font-bold" style={{ color: '#A855F7' }}>
+                <span className="text-base font-bold" style={{ color: 'var(--tg-accent)' }}>
                   {Number(detail.totalAmount).toLocaleString('ru')} сум
                 </span>
               </div>
@@ -557,8 +557,8 @@ export default function SellerOrdersPage() {
                 disabled={!chatMessage.trim() || chatSending}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold"
                 style={{
-                  background: 'rgba(124,58,237,0.40)',
-                  border: '1px solid rgba(124,58,237,0.50)',
+                  background: 'var(--tg-accent)',
+                  border: '1px solid var(--tg-accent-border)',
                   color: '#fff',
                   opacity: (chatMessage.trim() && !chatSending) ? 1 : 0.4,
                 }}

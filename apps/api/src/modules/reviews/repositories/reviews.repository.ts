@@ -56,4 +56,34 @@ export class ReviewsRepository {
       },
     });
   }
+
+  /**
+   * MARKETING-VERIFIED-SELLER-001: пересчёт weighted avg на Store-level.
+   * Считаем по уже денормализованным product-aggregates (быстрее чем
+   * по сырым review'ам — особенно если у магазина 1000 товаров).
+   * Если у магазина нет товаров с отзывами — avgRating=NULL, reviewCount=0.
+   *
+   * Вызывается после refreshProductAggregate(productId).
+   */
+  async refreshStoreAggregate(storeId: string): Promise<void> {
+    const products = await this.prisma.product.findMany({
+      where: { storeId, deletedAt: null, reviewCount: { gt: 0 } },
+      select: { avgRating: true, reviewCount: true },
+    });
+
+    const totalReviews = products.reduce((sum, p) => sum + p.reviewCount, 0);
+    const weightedSum = products.reduce(
+      (sum, p) => sum + Number(p.avgRating ?? 0) * p.reviewCount,
+      0,
+    );
+    const avg = totalReviews > 0 ? weightedSum / totalReviews : null;
+
+    await this.prisma.store.update({
+      where: { id: storeId },
+      data: {
+        avgRating: avg !== null ? Math.round(avg * 100) / 100 : null,
+        reviewCount: totalReviews,
+      },
+    });
+  }
 }

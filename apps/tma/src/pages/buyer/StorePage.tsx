@@ -7,6 +7,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
 import { clickableA11y } from '@/lib/a11y';
 import { webStoreUrl } from '@/lib/webUrl';
@@ -83,15 +84,29 @@ export default function StorePage() {
     return () => ac.abort();
   }, [slug]);
 
-  const addToCart = (product: Product) => {
+  const addToCart = async (product: Product) => {
     if (!store) return;
     tg?.HapticFeedback.impactOccurred('light');
 
     const cart = getCart();
 
-    // INV-C01: корзина = один магазин. Если в корзине товары другого магазина — сбрасываем.
+    // INV-C01: корзина = один магазин. Если в корзине товары другого магазина —
+    // подтверждение перед очисткой (TMA-CART-DUPLICATE-WARNING-001). Раньше
+    // silent reset терял товары без уведомления.
     const hasOtherStore = cart.length > 0 && cart[0].storeId !== store.id;
     if (hasOtherStore) {
+      const otherStoreName = cart[0].storeName ?? 'другого магазина';
+      const ok = await confirmDialog({
+        title: 'Заменить корзину?',
+        body: `В корзине сейчас товары из «${otherStoreName}». Чтобы добавить товар из «${store.name}», нужно очистить старую корзину.`,
+        confirmText: 'Заменить',
+        cancelText: 'Отмена',
+        danger: true,
+      });
+      if (!ok) {
+        tg?.HapticFeedback.notificationOccurred('error');
+        return;
+      }
       saveCart([{
         productId: product.id,
         title: product.title,
@@ -101,7 +116,8 @@ export default function StorePage() {
         storeSlug: slug!,
         storeName: store.name,
       }]);
-      tg?.HapticFeedback.notificationOccurred('warning');
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('🛒 Корзина обновлена');
       track.addToCart(store.id, product.id, null, 1);
       return;
     }

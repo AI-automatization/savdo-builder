@@ -1,0 +1,68 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "TMA-BECOME-SELLER-CTA-001 — Buyer → Seller deep-link flow",
+  "description": "End-to-end walkthrough фичи: кнопка 'Стать продавцом' в TMA → deep-link в TG-бот → upgrade существующего покупателя до продавца через 3-шаговую регистрацию. Для feature-explainer.",
+  "ref": "main",
+  "steps": [
+    {
+      "file": "apps/tma/src/pages/buyer/SettingsPage.tsx",
+      "line": 7,
+      "title": "1 / 10 — Entry point: BOT_USERNAME",
+      "description": "**Situation**: TMA знает username бота через env-переменную с fallback на `savdo_builderBOT`.\n\n**Mechanism**: `import.meta.env.VITE_BOT_USERNAME` инжектится при сборке Vite. Это значение пойдёт в URL deep-link.\n\n**Implication**: окружения dev/staging/prod указывают на разные боты — переменная единственное место конфига.\n\n**Gotcha**: если переменная не выставлена в Railway envs, fallback указывает на prod-бот. На staging-TMA это ведёт на боевой бот."
+    },
+    {
+      "file": "apps/tma/src/pages/buyer/SettingsPage.tsx",
+      "line": 20,
+      "title": "2 / 10 — handleBecomeSeller: открытие TG deep-link",
+      "description": "**Situation**: handler кнопки CTA в карточке 'Открыть свой магазин'.\n\n**Mechanism**: `tg.openTelegramLink` — официальный Telegram WebApp API, открывает чат с ботом ВНЕ webview и сразу отправляет ему сообщение `/start become_seller` (параметр после `?start=` идёт боту как часть команды).\n\n**Implication**: TMA-нативного flow регистрации нет — переиспользуем проверенный 3-шаговый flow в боте. Меньше кода, меньше регрессий.\n\n**Gotcha**: `HapticFeedback.impactOccurred('medium')` обязателен для UX на iOS — без него кнопка кажется не сработавшей."
+    },
+    {
+      "file": "apps/tma/src/pages/buyer/SettingsPage.tsx",
+      "line": 25,
+      "title": "3 / 10 — canBecomeSeller: видимость кнопки",
+      "description": "**Situation**: вычисляемый флаг — показывать CTA или нет.\n\n**Mechanism**: `authenticated && user?.role === 'BUYER'`. Гость (не залогинен через `telegramAuth`) или уже SELLER/ADMIN — карточку не видят.\n\n**Implication**: продавец уже имеет свой кабинет в TMA — кнопка ему не нужна (роутер при `role === 'SELLER'` отдаёт другой layout). Гостю некуда апгрейдиться — нет user.id.\n\n**Gotcha**: проверка только `role === 'BUYER'`. Покупатель, который раньше был продавцом и потом удалил seller-профиль, тут не покажется — нужен сценарий, но это edge case (нет такого UI)."
+    },
+    {
+      "file": "apps/tma/src/pages/buyer/SettingsPage.tsx",
+      "line": 89,
+      "title": "4 / 10 — JSX: рендер карточки",
+      "description": "**Situation**: GlassCard вставлен между 'Тема оформления' и 'Приложение'.\n\n**Mechanism**: conditional render через `{canBecomeSeller && (...)}`. Cyan-градиент `#06b6d4 → #22d3ee` визуально отличает CTA от soft-glass карточек настроек.\n\n**Implication**: `minHeight: 44` — WCAG hit-area (рекомендация Apple HIG = 44pt). `aria-label` для скринридеров.\n\n**Gotcha**: фон не использует CSS-переменные темы → в светлой теме (если включат) кнопка останется cyan. Намеренно — это primary action."
+    },
+    {
+      "file": "apps/api/src/modules/telegram/telegram-webhook.controller.ts",
+      "line": 88,
+      "title": "5 / 10 — Webhook: парсинг /start с параметром",
+      "description": "**Situation**: Telegram POSTит update на `/telegram/webhook`. В сообщении `msg.text === '/start become_seller'`.\n\n**Mechanism**: было `=== '/start'` (точное равенство). Теперь добавлен `startsWith('/start ')` — пробел обязателен, иначе `/store` тоже бы сматчился. Param режется до 64 символов и trim'ится.\n\n**Implication**: param — user-controlled (Telegram передаёт что угодно). Hard cap + downstream whitelist делают это безопасным.\n\n**Gotcha**: если кто-то напишет вручную `/start ' OR 1=1`, param улетит дальше — но он попадёт в строгий whitelist в handleStart и будет проигнорирован."
+    },
+    {
+      "file": "apps/api/src/modules/telegram/telegram-demo.handler.ts",
+      "line": 91,
+      "title": "6 / 10 — handleStart: новая сигнатура с startParam",
+      "description": "**Situation**: точка входа /start. Раньше принимала только chatId+firstName.\n\n**Mechanism**: добавлен опциональный третий параметр `startParam`. Если он не пришёл, поведение точно как было — обратная совместимость 100%.\n\n**Implication**: единственное расширение API хендлера, никаких разветвлений.\n\n**Gotcha**: param распознаётся ТОЛЬКО для существующего user с реальным телефоном (см. следующий шаг). Гостям и tg_*-юзерам сначала показывается contact request — иначе в БД не будет phone для setTmp."
+    },
+    {
+      "file": "apps/api/src/modules/telegram/telegram-demo.handler.ts",
+      "line": 119,
+      "title": "7 / 10 — Whitelist + переход в seller registration",
+      "description": "**Situation**: проверка `startParam === 'become_seller' && !seller`.\n\n**Mechanism**: строгий === whitelist. Любое другое значение тихо игнорируется → flow продолжается в обычный showBuyerMenu/showSellerMenu. setTmp кладёт phone (из user.phone) и firstName в Redis tmp-bucket, чтобы finishSellerRegistration позже смог их прочитать.\n\n**Implication**: переиспользование проверенного flow `startSellerRegistration` (Шаг 1/3: имя → Шаг 2/3: магазин → Шаг 3/3: описание).\n\n**Gotcha**: `!seller` важно — иначе уже-продавец, нажав CTA, попал бы в повторную регистрацию. Тут он провалится в showSellerMenu ниже."
+    },
+    {
+      "file": "apps/api/src/modules/telegram/telegram-demo.handler.ts",
+      "line": 330,
+      "title": "8 / 10 — startSellerRegistration: state machine входа",
+      "description": "**Situation**: уже существующий код (не трогали).\n\n**Mechanism**: ставит Redis state `seller_reg_name`. Следующее текстовое сообщение от пользователя пройдёт через switch в webhook (line 152-159) и попадёт в handleSellerRegName → handleSellerRegStoreName → finishSellerRegistration.\n\n**Implication**: state machine на Redis, не in-memory — переживает рестарты API.\n\n**Gotcha**: state имеет TTL — если пользователь бросит регистрацию на полпути, через сутки tmp очистится и придётся стартовать заново."
+    },
+    {
+      "file": "apps/api/src/modules/telegram/telegram-demo.handler.ts",
+      "line": 382,
+      "title": "9 / 10 — finishSellerRegistration: upsert вместо create",
+      "description": "**Situation**: финал 3-шаговой регистрации. КРИТИЧНОЕ изменение от 12.05.2026.\n\n**Mechanism**: раньше — безусловный `prisma.user.create({ phone, role: 'SELLER' })`. Для существующего покупателя это падало на `Unique(phone)` → 500 → каждый flow become_seller был обречён. Теперь три ветки: existing.seller → no-op, existing → update role + create seller, нет user → create как раньше.\n\n**Implication**: buyer-запись остаётся в БД при апгрейде (`UserRole = SELLER`, но `Buyer` relation сохранён). Это совпадает с задачей `HYBRID role` из backlog (пока не реализована, но не блокирует).\n\n**Gotcha**: повторный вход с тем же telegramChatId переносится в `user.update({ telegramId })` — потому что ghost-аккаунт мог быть привязан раньше."
+    },
+    {
+      "file": "apps/api/src/modules/telegram/telegram-demo.handler.ts",
+      "line": 445,
+      "title": "10 / 10 — Финал: inline keyboard на канал",
+      "description": "**Situation**: магазин создан, показываем CTA на привязку TG-канала.\n\n**Mechanism**: `slug` зачищен от unsafe chars + timestamp в base36 для уникальности. `status: 'DRAFT'` — модерация через админку.\n\n**Implication**: продавец сразу видит свой URL `savdo.uz/{slug}` и опцию автопостинга. UX без потерь после длинного flow.\n\n**Gotcha**: store в DRAFT — товары не индексируются. Активация — `activate-seller-on-market.use-case.ts` (админская одобрялка)."
+    }
+  ]
+}

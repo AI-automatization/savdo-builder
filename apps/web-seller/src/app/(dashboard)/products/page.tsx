@@ -6,6 +6,7 @@ import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products'
 import { Check, Link2, Send, Layers, Package } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
+import { buyerProductUrl } from '@/lib/buyer-url';
 import { card, colors, inputStyle } from '@/lib/styles';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -55,8 +56,7 @@ export default function ProductsPage() {
 
   function copyProductLink(productId: string) {
     if (!store) return;
-    const base = process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz';
-    const url = `${base}/${store.slug}/products/${productId}`;
+    const url = buyerProductUrl(store.slug, productId);
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(productId);
       setTimeout(() => setCopiedId(null), 2000);

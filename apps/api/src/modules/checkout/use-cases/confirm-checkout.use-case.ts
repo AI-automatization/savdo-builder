@@ -96,7 +96,17 @@ export class ConfirmCheckoutUseCase {
     );
 
     const subtotalAmount = validatedItems.reduce((sum, item) => sum + item.lineTotalAmount, 0);
-    const deliveryFeeAmount = input.deliveryFee ?? 0;
+
+    // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend сам считает deliveryFee
+    // из store.deliverySettings. Раньше buyer мог прислать `deliveryFee: 0`
+    // и платить без доставки. Теперь input.deliveryFee игнорируется (DTO
+    // оставлен для backward-compat). 'manual' = 0 (продавец сам выставит
+    // при confirm заказа), 'none' = 0, 'fixed' = fixedDeliveryFee ?? 0.
+    const ds = store.deliverySettings;
+    const deliveryFeeAmount =
+      ds?.deliveryFeeType === 'fixed' && ds.fixedDeliveryFee != null
+        ? Number(String(ds.fixedDeliveryFee))
+        : 0;
     const totalAmount = subtotalAmount + deliveryFeeAmount;
 
     const firstName = buyerWithUser.firstName ?? '';
