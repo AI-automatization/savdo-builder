@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { glass } from '@/lib/styles';
 import { type CartItem, getCart, clearCart } from '@/lib/cart';
+import { formatUzPhone, stripPhone, isValidUzPhone } from '@/lib/phone';
 
 interface SuccessOrder {
   id: string;
@@ -21,7 +22,9 @@ export default function CheckoutPage() {
   const { authenticated, user } = useAuth();
   const [items] = useState<CartItem[]>(getCart);
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState(user?.phone ?? '');
+  // TMA-PHONE-MASK-001: маска `+998 XX XXX XX XX`. State хранит уже
+  // отформатированную строку, для backend stripPhone() возвращает E.164.
+  const [phone, setPhone] = useState(() => formatUzPhone(user?.phone ?? ''));
   const [address, setAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -46,11 +49,13 @@ export default function CheckoutPage() {
       setError('Заполните имя и телефон');
       return;
     }
-    const cleanPhone = phone.replace(/[\s\-()]/g, '');
-    if (!/^\+998\d{9}$/.test(cleanPhone)) {
-      setError('Введите номер в формате +998XXXXXXXXX');
+    // TMA-PHONE-MASK-001: validation через helper. Backend ждёт +998XXXXXXXXX
+    // (E.164), маска `+998 XX XXX XX XX` визуальная — stripPhone снимает пробелы.
+    if (!isValidUzPhone(phone)) {
+      setError('Введите 9 цифр после +998 (например, +998 90 123 45 67)');
       return;
     }
+    const cleanPhone = stripPhone(phone);
 
     setSubmitting(true);
     setError('');
@@ -62,7 +67,7 @@ export default function CheckoutPage() {
         body: {
           items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, quantity: i.qty })),
           buyerName: name.trim(),
-          buyerPhone: phone.replace(/[\s\-()]/g, ''),
+          buyerPhone: cleanPhone,
           deliveryAddress: address.trim() || undefined,
         },
       });
@@ -185,9 +190,11 @@ export default function CheckoutPage() {
           />
           <input
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Телефон (+998...)"
+            onChange={(e) => setPhone(formatUzPhone(e.target.value))}
+            placeholder="+998 90 123 45 67"
             inputMode="tel"
+            autoComplete="tel"
+            maxLength={17}
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
             style={{ ...glass, background: 'rgba(255,255,255,0.05)' }}
           />
