@@ -137,9 +137,7 @@ export class StorefrontController {
       const { basePrice, oldPrice, salePrice, images, store, ...rest } = p;
       return {
         ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.presenter.toPrice(oldPrice),
-        salePrice: this.presenter.toPrice(salePrice),
+        ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
         store: store ? { id: store.id, name: store.name, slug: store.slug } : null,
       };
@@ -166,9 +164,7 @@ export class StorefrontController {
       const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.presenter.toPrice(oldPrice),
-        salePrice: this.presenter.toPrice(salePrice),
+        ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
         variantCount: _count.variants,
         totalStock,
@@ -199,9 +195,7 @@ export class StorefrontController {
     }));
     return {
       ...product,
-      basePrice: Number(product.basePrice),
-      oldPrice: this.presenter.toPrice(product.oldPrice),
-      salePrice: this.presenter.toPrice(product.salePrice),
+      ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
@@ -256,9 +250,7 @@ export class StorefrontController {
         const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
-          basePrice: Number(basePrice),
-          oldPrice: this.presenter.toPrice(oldPrice),
-          salePrice: this.presenter.toPrice(salePrice),
+          ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
           // API-PRODUCT-LIST-IMAGES-CONTRACT-001: оба поля.
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
@@ -285,9 +277,7 @@ export class StorefrontController {
         const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
-          basePrice: Number(basePrice),
-          oldPrice: this.presenter.toPrice(oldPrice),
-          salePrice: this.presenter.toPrice(salePrice),
+          ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
           variantCount: _count.variants,
@@ -325,9 +315,7 @@ export class StorefrontController {
     }));
     return {
       ...product,
-      basePrice: Number(product.basePrice),
-      oldPrice: this.presenter.toPrice(product.oldPrice),
-      salePrice: this.presenter.toPrice(product.salePrice),
+      ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
