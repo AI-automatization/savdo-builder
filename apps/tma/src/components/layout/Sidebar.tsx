@@ -60,7 +60,7 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
         background: 'rgba(9,7,18,0.96)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderRight: '1px solid rgba(255,255,255,0.07)',
+        borderRight: '1px solid var(--tg-border-soft)',
         boxShadow: '4px 0 24px rgba(0,0,0,0.35)',
       }}
     >
@@ -79,7 +79,7 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
           <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--tg-accent)', lineHeight: 1.2, letterSpacing: '-0.3px' }}>
             Savdo
           </p>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.30)', marginTop: 1 }}>
+          <p style={{ fontSize: 10, color: 'var(--tg-text-dim)', marginTop: 1 }}>
             {role === 'SELLER' ? 'Панель продавца' : 'Каталог'}
           </p>
         </div>
@@ -110,7 +110,7 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
                 background: active
                   ? 'var(--tg-accent-bg)'
                   : 'transparent',
-                color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.50)',
+                color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-secondary)',
                 fontSize: 13,
                 fontWeight: active ? 600 : 400,
                 cursor: active ? 'default' : 'pointer',
@@ -121,14 +121,14 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
               }}
               onMouseEnter={(e) => {
                 if (!active) {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.75)';
+                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--tg-surface)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--tg-text-secondary)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!active) {
                   (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.50)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--tg-text-secondary)';
                 }
               }}
             >
@@ -163,7 +163,7 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
       </nav>
 
       {/* ── Divider ───────────────────────────────────────────────────────── */}
-      <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 4px' }} />
+      <div style={{ height: 1, background: 'var(--tg-surface-hover)', margin: '6px 4px' }} />
 
       {/* ── Settings ──────────────────────────────────────────────────────── */}
       <button
@@ -173,20 +173,20 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
           padding: '9px 10px', borderRadius: 11, width: '100%', textAlign: 'left',
           border: settingsActive ? '1px solid var(--tg-accent-border)' : '1px solid transparent',
           background: settingsActive ? 'var(--tg-accent-bg)' : 'transparent',
-          color: settingsActive ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.40)',
+          color: settingsActive ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
           fontSize: 13, cursor: 'pointer', marginBottom: 4,
           transition: 'all 0.15s',
         }}
         onMouseEnter={(e) => {
           if (!settingsActive) {
-            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.70)';
+            (e.currentTarget as HTMLButtonElement).style.background = 'var(--tg-surface)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--tg-text-secondary)';
           }
         }}
         onMouseLeave={(e) => {
           if (!settingsActive) {
             (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.40)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--tg-text-muted)';
           }
         }}
       >
@@ -202,8 +202,8 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
           gap: 9,
           padding: '10px 10px',
           borderRadius: 11,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.07)',
+          background: 'var(--tg-surface)',
+          border: '1px solid var(--tg-border-soft)',
         }}>
           <div style={{
             width: 30, height: 30, borderRadius: 9, flexShrink: 0,
@@ -217,13 +217,13 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{
-              fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.80)',
+              fontSize: 12, fontWeight: 600, color: 'var(--tg-text-primary)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {tgUser.first_name}{tgUser.last_name ? ` ${tgUser.last_name}` : ''}
             </p>
             {tgUser.username && (
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', marginTop: 1 }}>
+              <p style={{ fontSize: 10, color: 'var(--tg-text-dim)', marginTop: 1 }}>
                 @{tgUser.username}
               </p>
             )}
