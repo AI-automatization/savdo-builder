@@ -173,7 +173,7 @@ export default function StoresPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 14px rgba(168,85,247,.40)' }}
+            style={{ background: 'var(--tg-accent)', boxShadow: '0 4px 14px var(--tg-accent-glow)' }}
           >
             <Sticker emoji="🛒" size={26} />
           </div>
@@ -213,9 +213,9 @@ export default function StoresPage() {
               onClick={() => setTab(t)}
               className="flex-1 py-2 rounded-[10px] text-xs font-semibold transition-all"
               style={{
-                background: tab === t ? 'rgba(168,85,247,0.25)' : 'transparent',
-                color: tab === t ? '#A855F7' : 'rgba(255,255,255,0.45)',
-                border: `1px solid ${tab === t ? 'rgba(168,85,247,0.35)' : 'transparent'}`,
+                background: tab === t ? 'var(--tg-accent-dim)' : 'transparent',
+                color: tab === t ? 'var(--tg-accent)' : 'rgba(255,255,255,0.45)',
+                border: `1px solid ${tab === t ? 'var(--tg-accent-border)' : 'transparent'}`,
               }}
             >
               {t === 'stores' ? '🏪 Магазины' : '📦 Товары'}
@@ -349,7 +349,7 @@ export default function StoresPage() {
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
                 <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-                <button onClick={loadStores} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+                <button onClick={loadStores} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
               </div>
             )}
 
@@ -379,9 +379,9 @@ export default function StoresPage() {
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold uppercase"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
-                    border: '1px solid rgba(168,85,247,0.28)',
-                    color: '#A855F7',
+                    background: 'var(--tg-accent-dim)',
+                    border: '1px solid var(--tg-accent-border)',
+                    color: 'var(--tg-accent)',
                     fontSize: 17,
                   }}
                 >
@@ -393,7 +393,7 @@ export default function StoresPage() {
                     <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>{store.description}</p>
                   )}
                   {store.city && (
-                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(168,85,247,0.65)' }}>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--tg-accent)' }}>
                       📍 {store.city}
                     </p>
                   )}

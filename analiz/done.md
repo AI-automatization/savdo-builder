@@ -1,5 +1,41 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 8: TMA-CART-API-SYNC-001 (cross-channel cart persistence)
+
+После login TMA-buyer'а его localStorage-корзина теперь одноразово
+синхронизируется в backend через POST /cart/bulk-merge. Раньше TMA cart жил
+только в localStorage → переключение на web-buyer показывало пустую корзину.
+
+### ✅ [TMA-CART-API-SYNC-001] Bulk-merge корзины TMA → backend 🟠
+- **Backend:** новый endpoint `POST /api/v1/cart/bulk-merge` + use-case
+  `BulkMergeCartUseCase` (apps/api/src/modules/cart/use-cases/).
+  - JWT auth + `@Throttle 5/min` (защита от flood).
+  - DTO: `@ArrayMinSize(1)`, `@ArrayMaxSize(50)`, `@Max(100)` quantity.
+  - Шаги: batch fetch (findManyByIds — no N+1), валидация product+variant
+    (skip невалидных), INV-C01 (все items — один store), reuse buyer cart или
+    `clearCart + setStoreId` (TMA wins), дедуп по productId+variantId, qty
+    суммируется max 100.
+  - Возврат: `{ cart, imported, skipped }`.
+  - 12 spec тестов: empty/INV-C01/variant cross-product/dedup/etc.
+- **Frontend (TMA):**
+  - `apps/tma/src/lib/cartSync.ts` — `syncCartToBackend()`, idempotent через
+    `localStorage['savdo_cart_synced']`, тихий fallback (retry на следующем
+    login если backend упал). Также `resetCartSync()` для logout и
+    `fullCartReset()` для INV-C01 violation.
+  - `AuthProvider.tsx` — хук `syncCartToBackend()` в `doAuth` после BUYER
+    auth (рядом с `hydrateWishlist`), `resetCartSync()` в `logout`.
+- **Behaviour:** sync максимум один раз per device (до logout/reset). После
+  sync localStorage НЕ очищается (UI cache для быстрого rendering).
+  Web-buyer теперь видит те же items через /cart API.
+- **Файлы:** `apps/api/src/modules/cart/dto/bulk-merge-cart.dto.ts`,
+  `apps/api/src/modules/cart/use-cases/bulk-merge-cart.use-case.ts`,
+  `apps/api/src/modules/cart/cart.controller.ts`,
+  `apps/api/src/modules/cart/cart.module.ts`,
+  `apps/tma/src/lib/cartSync.ts`,
+  `apps/tma/src/providers/AuthProvider.tsx`.
+
+---
+
 ## 2026-05-12 (Полат) — Wave 5: TG-канал шаблон + критический фикс sendPhoto (FEAT-TG-CHANNEL)
 
 Полат заметил по скринам конкурентов (ArloeStore_UZ, Eleganza, Montanno) что

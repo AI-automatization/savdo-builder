@@ -129,7 +129,7 @@ export function Select({
           padding: '10px 12px',
           borderRadius: 12,
           background: 'rgba(255,255,255,0.06)',
-          border: `1px solid ${open ? 'rgba(168,85,247,0.55)' : 'rgba(255,255,255,0.12)'}`,
+          border: `1px solid ${open ? 'var(--tg-accent)' : 'rgba(255,255,255,0.12)'}`,
           color: selected ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.45)',
           fontSize: 14,
           textAlign: 'left',
@@ -301,9 +301,9 @@ export function Select({
                     alignItems: 'center',
                     gap: 8,
                     padding: '8px 14px',
-                    background: isHighlight ? 'rgba(168,85,247,0.12)' : 'transparent',
+                    background: isHighlight ? 'var(--tg-accent-bg)' : 'transparent',
                     border: 'none',
-                    color: isSelected ? '#A855F7' : 'rgba(255,255,255,0.92)',
+                    color: isSelected ? 'var(--tg-accent)' : 'rgba(255,255,255,0.92)',
                     fontSize: 14,
                     textAlign: 'left',
                     cursor: 'pointer',
@@ -332,7 +332,7 @@ export function Select({
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2.5"
-                      style={{ color: '#A855F7', flexShrink: 0 }}
+                      style={{ color: 'var(--tg-accent)', flexShrink: 0 }}
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>

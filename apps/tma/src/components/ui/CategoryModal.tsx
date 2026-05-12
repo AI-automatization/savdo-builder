@@ -115,12 +115,12 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
                 {getBreadcrumb(item).slice(0, -1).join(' › ') || ' '}
               </span>
             )}
-            <span className="text-sm truncate" style={{ color: active ? '#A855F7' : 'rgba(255,255,255,0.85)' }}>
+            <span className="text-sm truncate" style={{ color: active ? 'var(--tg-accent)' : 'rgba(255,255,255,0.85)' }}>
               {item.nameRu}
             </span>
           </div>
         </div>
-        {active && <span style={{ color: '#A855F7', fontSize: 15, flexShrink: 0, marginLeft: 8 }}>✓</span>}
+        {active && <span style={{ color: 'var(--tg-accent)', fontSize: 15, flexShrink: 0, marginLeft: 8 }}>✓</span>}
         {isDrilldown && !active && <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: 16, flexShrink: 0, marginLeft: 8 }}>›</span>}
       </button>
     );
