@@ -84,6 +84,7 @@
 
 - [x] **`TMA-PHONE-MASK-001`** ✅ 12.05.2026 — `apps/tma/src/lib/phone.ts` (formatUzPhone/stripPhone/isValidUzPhone). Маска `+998 XX XXX XX XX` в CheckoutPage onChange. Backend получает E.164 через stripPhone. Коммит `abfb7a7`.
 - [x] **`TMA-CHECKOUT-SUCCESS-PAGE-001`** ✅ 10.05.2026 — ✓ icon + orderNumber + total + 2 CTA (Мои заказы / К магазинам). Коммит `5e486a3`.
+- [ ] **`TMA-BECOME-SELLER-CTA-001`** (P1) — в `buyer/SettingsPage.tsx` нет способа стать продавцом. Покупатель залогинен, но `handleStart` в боте всегда показывает `showBuyerMenu` → flow `reg_seller` доступен ТОЛЬКО полностью новым users. **Fix**: добавить CTA "🏪 Открыть свой магазин" (виден только если `authenticated && user.role === 'BUYER'`) → `tg.openTelegramLink('https://t.me/{BOT}?start=become_seller')`. В webhook: парсить `/start <param>` (whitelist `become_seller`), для существующего buyer с реальным phone — setTmp phone+firstName и `startSellerRegistration`. Если уже seller → `showSellerMenu`. Если ghost (`tg_*`) → стандартный contact request.
 - [ ] **`TMA-ADDRESS-AUTOCOMPLETE-001`** — адрес одна строка свободного текста. UZ адреса `mahalla, district` сложные. Нужен Yandex Maps autocomplete.
 - [ ] **`TMA-LIGHT-THEME-MIGRATION-001`** — force-dark, 553 hardcoded `rgba(255,255,255,X)` в 40 файлах. Миграция на CSS-vars (~3-4ч).
 

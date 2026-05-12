@@ -17,6 +17,13 @@ export default function BuyerSettingsPage() {
     navigate('/', { replace: true });
   };
 
+  const handleBecomeSeller = () => {
+    tg?.HapticFeedback.impactOccurred('medium');
+    tg?.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=become_seller`);
+  };
+
+  const canBecomeSeller = authenticated && user?.role === 'BUYER';
+
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
@@ -78,6 +85,31 @@ export default function BuyerSettingsPage() {
             Авто — синхронизация с Telegram. Можно зафиксировать вручную.
           </p>
         </GlassCard>
+
+        {/* ── Стать продавцом ── */}
+        {canBecomeSeller && (
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              Открыть свой магазин
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              Продавайте на Savdo: создайте магазин, добавьте товары и принимайте заказы в Telegram.
+            </p>
+            <button
+              type="button"
+              onClick={handleBecomeSeller}
+              aria-label="Стать продавцом — продолжить в Telegram-боте"
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
+              style={{
+                background: 'linear-gradient(135deg, #06b6d4, #22d3ee)',
+                color: '#0b1220',
+                minHeight: 44,
+              }}
+            >
+              🏪 Стать продавцом
+            </button>
+          </GlassCard>
+        )}
 
         {/* ── Приложение ── */}
         <GlassCard className="p-4 flex flex-col gap-2">

@@ -85,9 +85,12 @@ export class TelegramWebhookController {
     const firstName = msg.from.first_name;
     const username  = msg.from.username;
 
-    // /start | /menu
-    if (msg.text === '/start' || msg.text === '/menu') {
-      await this.demo.handleStart(chatId, firstName);
+    // /start | /menu | /start <param> (deep-link, e.g. ?start=become_seller)
+    if (msg.text === '/start' || msg.text === '/menu' || msg.text?.startsWith('/start ')) {
+      const startParam = msg.text?.startsWith('/start ')
+        ? msg.text.slice('/start '.length).trim().slice(0, 64) // hard cap для безопасности
+        : undefined;
+      await this.demo.handleStart(chatId, firstName, startParam);
       return;
     }
 
