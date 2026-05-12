@@ -1,5 +1,43 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 3: P1 security/UX (5 задач)
+
+### ✅ [API-IDEMPOTENCY-FAIL-OPEN-001] Fail-closed на Redis-down 🔴
+- `acquireLock` возвращает discriminated union: `'acquired' | 'busy' | 'redis-down'`
+- Interceptor → 503 SERVICE_UNAVAILABLE при Redis-down (fail-closed)
+- Раньше fail-open → double orders при Redis-restart + retry
+- Spec +1 case. **Commit:** `0829fb2`
+
+### ✅ [API-BULL-BOARD-DATA-LEAK-001] OTP code больше не в job.data 🔴 (SEC-008)
+- Ref-pattern: `codeRef = UUID` в job, реальный code в Redis `otp:job:{ref}` TTL 10мин
+- `OtpProcessor` резолвит code → отправляет → удаляет ref
+- Backward-compat fallback для legacy jobs (`data.code`)
+- Spec +1 case verify нет `code` в job.data. **Commit:** `293efda`
+
+### ✅ [API-RBAC-CART-CROSS-SESSION-001] UUID validation для x-session-token 🟡
+- Server-side regex UUID v4 — 122 бита энтропии (не подбирается)
+- Невалидный токен → 400 VALIDATION_ERROR
+- После merge guest cart status=MERGED → findBySessionKey filters by ACTIVE
+- **Commit:** `0bf1681`
+
+### ✅ [TMA-PHONE-MASK-001] Маска `+998 XX XXX XX XX` 🟡
+- `apps/tma/src/lib/phone.ts`: formatUzPhone / stripPhone / isValidUzPhone
+- CheckoutPage onChange форматирует, backend получает E.164 через stripPhone
+- Placeholder с примером `+998 90 123 45 67`
+- **Commit:** `abfb7a7`
+
+### ✅ [FEAT-TG-AUTOPOST-001] Восстановлены файлы + verified 🟡
+- Use-case `post-product-to-channel.use-case.ts` (TG file_id resolution из MediaFile)
+- Migration `20260510210000_store_auto_post_to_channel` с upgrade existing stores
+- Settings field `autoPostProductsToChannel` в update-store DTO + use-case
+- Manual repost endpoint `POST /seller/products/:id/repost-to-channel`
+- Hook в change-product-status при ACTIVE → fire-and-forget
+- 14 unit tests pass
+
+**Wave 3 итог:** 49 suites, 669 tests, 5 commits, typecheck clean (api + tma).
+
+---
+
 ## 2026-05-11 (Азим) — Wave 6 + 5 marketing/launch quick wins (6 задач)
 
 После platform audit Полата (10.05.2026) подхватил весь web-side backlog (зона apps/web-*).

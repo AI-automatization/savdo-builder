@@ -44,18 +44,15 @@
 
 - [x] **`API-N1-CHECKOUT-001`** ✅ 10.05.2026 — новые `findManyByIds(ids)` в ProductsRepo + VariantsRepo (Map<id,entity>). 2N → 2 SELECT IN. Tests +1. Коммит `7f10caf`. (ValidateCartItems можно оптимизировать отдельно — там тот же паттерн.)
   - **Fix**: `findMany({ where: { id: { in: ids } } })` один раз.
-- [ ] **`API-IDEMPOTENCY-FAIL-OPEN-001`** — `idempotency.service.ts:60-61` при Redis-down `acquireLock` возвращает true (fail-open). Под нагрузкой Redis-restart → double orders.
-  - **Fix**: либо fail-closed с user-facing 503, либо DB-level unique constraint на (idempotencyKey, userId).
+- [x] **`API-IDEMPOTENCY-FAIL-OPEN-001`** ✅ 12.05.2026 — `acquireLock` возвращает discriminated union ('acquired'/'busy'/'redis-down'). Interceptor → 503 SERVICE_UNAVAILABLE при Redis-down (fail-closed). Spec +1 case. Коммит `0829fb2`.
 - [x] **`API-DELIVERY-FEE-CLIENT-CONTROLLED-001`** ✅ 10.05.2026 — backend computes из `store.deliverySettings`. fixed → fixedDeliveryFee, manual/none → 0. input.deliveryFee игнорируется. Tests +4. Коммит `7f10caf`.
   - **Fix**: backend сам считает deliveryFee от store.deliverySettings.
 - [x] **`API-JWT-REVOCATION-001`** ✅ 10.05.2026 — verified already done. `JwtStrategy.validate` (`jwt.strategy.ts:52`) делает session DB lookup. После `deleteSession` в logout-session.use-case JWT с этим sessionId не пройдёт.
   - **Fix**: Redis blacklist `revoked:{jti}` до accessExpiresIn.
 - [x] **`API-MULTER-LIMITS-001`** ✅ 10.05.2026 — `limits: { fileSize: 10*1024*1024 }` на 3 FileInterceptor в media.controller. Коммит `385246a`.
 - [x] **`API-SWAGGER-PROD-CLOSE-001`** ✅ 10.05.2026 — Swagger выключен если `NODE_ENV='production'` (override через `SWAGGER_ENABLED=true`). Коммит `385246a`.
-- [ ] **`API-BULL-BOARD-DATA-LEAK-001`** — Bull Board показывает `data.code` (OTP) в job preview. SEC-008.
-  - **Fix**: middleware sanitize `data.code` → `***` в preview.
-- [ ] **`API-RBAC-CART-CROSS-SESSION-001`** — `cart.controller` UPDATE/DELETE опирается только на cartId match, anonymous с украденным sessionToken получает доступ.
-  - **Fix**: проверка ownership через buyer.userId или sessionKey hash.
+- [x] **`API-BULL-BOARD-DATA-LEAK-001`** ✅ 12.05.2026 — OTP code больше не в job.data. Ref-pattern: `codeRef = UUID` в job, реальный code в Redis по `otp:job:{ref}` TTL 10мин, processor резолвит+удаляет ref. Backward-compat для legacy jobs. Spec +1 case. Коммит `293efda`.
+- [x] **`API-RBAC-CART-CROSS-SESSION-001`** ✅ 12.05.2026 — server-side UUID v4 validation для `x-session-token` (122 бита entropy, не подбирается). Невалидный → 400. Дополнительно: после merge guest cart status=MERGED, findBySessionKey filters by ACTIVE — украденный токен не работает. Коммит `0bf1681`.
 
 ## 🔴 P0 — Marketing blockers для launch (Полат + Азим, согласовать)
 
@@ -85,7 +82,7 @@
 
 ### TMA buyer
 
-- [ ] **`TMA-PHONE-MASK-001`** — phone validation `+998901234567` без формат-mask, не принимает `+998 90 123 45 67`.
+- [x] **`TMA-PHONE-MASK-001`** ✅ 12.05.2026 — `apps/tma/src/lib/phone.ts` (formatUzPhone/stripPhone/isValidUzPhone). Маска `+998 XX XXX XX XX` в CheckoutPage onChange. Backend получает E.164 через stripPhone. Коммит `abfb7a7`.
 - [x] **`TMA-CHECKOUT-SUCCESS-PAGE-001`** ✅ 10.05.2026 — ✓ icon + orderNumber + total + 2 CTA (Мои заказы / К магазинам). Коммит `5e486a3`.
 - [ ] **`TMA-ADDRESS-AUTOCOMPLETE-001`** — адрес одна строка свободного текста. UZ адреса `mahalla, district` сложные. Нужен Yandex Maps autocomplete.
 - [ ] **`TMA-LIGHT-THEME-MIGRATION-001`** — force-dark, 553 hardcoded `rgba(255,255,255,X)` в 40 файлах. Миграция на CSS-vars (~3-4ч).
