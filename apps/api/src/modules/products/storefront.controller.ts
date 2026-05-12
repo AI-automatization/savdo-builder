@@ -269,10 +269,18 @@ export class StorefrontController {
       total = result.total;
       pageNum = page ? parseInt(page, 10) : 1;
     } else {
-      // Store-specific feed
+      // API-N1-PRODUCTS-LIST-001: paginated store-specific feed.
+      // Раньше findPublicByStoreId возвращал до 500 products в одном запросе
+      // → большие магазины ловили N+1 на includes и медленный TTFB.
       const attributes = rawFilters && typeof rawFilters === 'object' ? rawFilters : undefined;
-      const products = await this.productsRepo.findPublicByStoreId(storeId, { globalCategoryId, storeCategoryId, attributes });
-      data = products.map((p) => {
+      const result = await this.productsRepo.findPublicByStoreIdPaginated(storeId, {
+        globalCategoryId,
+        storeCategoryId,
+        attributes,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
+      });
+      data = result.products.map((p) => {
         const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
         const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
@@ -286,8 +294,8 @@ export class StorefrontController {
           totalStock,
         };
       });
-      total = data.length;
-      pageNum = 1;
+      total = result.total;
+      pageNum = page ? parseInt(page, 10) : 1;
     }
 
     // inWishlist enrichment для залогиненного buyer
