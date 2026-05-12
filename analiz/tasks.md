@@ -75,7 +75,9 @@
 ### TMA seller (продавец теряет заказы)
 
 - [x] **`TMA-SELLER-WS-NOTIFY-001`** ✅ 10.05.2026 — `apps/tma/src/lib/sellerNotifications.ts` + интеграция в SellerLayout. join-seller-room + listen + showToast + HapticFeedback. Re-join on reconnect. Коммит `23ddc7f`.
-- [ ] **`TMA-SELLER-MAIN-BUTTON-001`** — формы (AddProduct, EditProduct, Settings) не используют `tg.MainButton`. CTA теряется в скролле.
+- [~] **`TMA-SELLER-MAIN-BUTTON-001`** — формы (AddProduct, EditProduct, Settings) не используют `tg.MainButton`. CTA теряется в скролле. **Прогресс 12.05.2026:** создан reusable hook `apps/tma/src/lib/useMainButton.ts` (text/onClick/visible/enabled/loading). Применён в `seller/SettingsPage.tsx` — MainButton показывается только при profileDirty, in-form кнопка скрыта когда `tg` доступен (fallback для dev в браузере). **Осталось:**
+  - [ ] **`TMA-SELLER-MAIN-BUTTON-002`** — AddProductPage (1069 LOC, разные стадии: photo/category/variants/submit) — нужен анализ как MainButton менять текст по стадиям.
+  - [ ] **`TMA-SELLER-MAIN-BUTTON-003`** — EditProductPage (1150 LOC, аналогично).
 - [x] **`TMA-CART-DUPLICATE-WARNING-001`** ✅ 10.05.2026 — `confirmDialog` в StorePage перед reset cross-store cart. Коммит `5e486a3`.
 - [ ] **`TMA-CART-API-SYNC-001`** — TMA cart в localStorage, web-buyer cart через `/cart` API. Кросс-канально несовместимы.
 - [x] **`TMA-CHECKOUT-GUEST-SILENT-401-001`** ✅ 10.05.2026 — submit disabled пока !authenticated, warning-блок «⚠️ Нужна авторизация», label «Войдите через Telegram». Коммит `5e486a3`.

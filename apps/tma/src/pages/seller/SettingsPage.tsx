@@ -1,6 +1,7 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useMainButton } from '@/lib/useMainButton';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -93,7 +94,7 @@ export default function SellerSettingsPage() {
     return () => ac.abort();
   }, []);
 
-  const saveProfile = async () => {
+  const saveProfile = useCallback(async () => {
     if (!profile || saving) return;
     setSaving(true);
     try {
@@ -106,7 +107,19 @@ export default function SellerSettingsPage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [profile, saving, fullName, sellerType, tg]);
+
+  const profileDirty =
+    !!profile &&
+    (fullName.trim() !== (profile.fullName ?? '').trim() || sellerType !== profile.sellerType);
+
+  useMainButton({
+    text: saving ? 'Сохранение...' : 'Сохранить профиль',
+    onClick: saveProfile,
+    visible: !loading && profileDirty,
+    enabled: !saving && !!fullName.trim(),
+    loading: saving,
+  });
 
   const toggleNotifications = async () => {
     if (!profile || toggling) return;
@@ -221,20 +234,25 @@ export default function SellerSettingsPage() {
             </div>
           </div>
 
-          <button
-            onClick={saveProfile}
-            disabled={saving || !fullName.trim()}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold"
-            style={{
-              background: saving || !fullName.trim()
-                ? 'rgba(255,255,255,0.06)'
-                : 'linear-gradient(135deg, #7C3AED, #A855F7)',
-              color: saving || !fullName.trim() ? 'rgba(255,255,255,0.30)' : '#fff',
-              transition: 'all 0.15s',
-            }}
-          >
-            {saving ? 'Сохранение...' : 'Сохранить'}
-          </button>
+          {/* In-form CTA — fallback для не-Telegram окружений (dev в браузере).
+              В TMA `tg.MainButton` рендерит зафиксированный CTA внизу экрана,
+              чтобы не дублировать. */}
+          {!tg && (
+            <button
+              onClick={saveProfile}
+              disabled={saving || !fullName.trim()}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold"
+              style={{
+                background: saving || !fullName.trim()
+                  ? 'rgba(255,255,255,0.06)'
+                  : 'linear-gradient(135deg, #7C3AED, #A855F7)',
+                color: saving || !fullName.trim() ? 'rgba(255,255,255,0.30)' : '#fff',
+                transition: 'all 0.15s',
+              }}
+            >
+              {saving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          )}
         </GlassCard>
 
         {/* ── Уведомления ── */}
