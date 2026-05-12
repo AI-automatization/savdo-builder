@@ -43,21 +43,25 @@ export class IdempotencyService {
   }
 
   /**
-   * Атомарный lock: SET key value NX EX. Возвращает true если получили lock,
-   * false если уже занят (либо in-flight другой запрос, либо есть кэш).
-   * RedisService.set не возвращает NX-результат, поэтому делаем guard через
-   * read-then-set (race окно ~ms — для нашего сценария приемлемо, defence-in-depth
-   * через DB unique constraints на orderNumber).
+   * Атомарный lock: SET key value NX EX. Возвращает 'acquired' если получили,
+   * 'busy' если занят (другой in-flight или есть cached response),
+   * 'redis-down' если Redis недоступен — caller решает fail-open/fail-closed.
+   *
+   * API-IDEMPOTENCY-FAIL-OPEN-001: раньше при Redis-down возвращал true
+   * (fail-open). Под нагрузкой Redis-restart двойные tab-retry давали
+   * double orders. Теперь caller (interceptor) делает fail-closed — 503,
+   * чтобы клиент повторил после восстановления Redis. Redis = critical
+   * dependency (OTP brute-force, cart sessions, idempotency).
    */
-  async acquireLock(cacheKey: string): Promise<boolean> {
+  async acquireLock(cacheKey: string): Promise<'acquired' | 'busy' | 'redis-down'> {
     try {
       const existing = await this.redis.get(cacheKey);
-      if (existing !== null) return false;
+      if (existing !== null) return 'busy';
       await this.redis.set(cacheKey, '__lock__', LOCK_TTL_SECONDS);
-      return true;
+      return 'acquired';
     } catch (err) {
-      this.logger.warn(`Idempotency lock acquire failed: ${(err as Error).message}`);
-      return true; // fail-open: при недоступности Redis не ломаем основной flow
+      this.logger.error(`Idempotency Redis unavailable: ${(err as Error).message}`);
+      return 'redis-down';
     }
   }
 

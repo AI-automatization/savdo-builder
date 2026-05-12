@@ -77,30 +77,33 @@ describe('IdempotencyService', () => {
   });
 
   describe('acquireLock', () => {
-    it('пусто → set __lock__ с TTL 30s + true', async () => {
+    it('пусто → set __lock__ с TTL 30s + "acquired"', async () => {
       redis.get.mockResolvedValue(null);
-      const acquired = await service.acquireLock('idem:x');
-      expect(acquired).toBe(true);
+      const result = await service.acquireLock('idem:x');
+      expect(result).toBe('acquired');
       expect(redis.set).toHaveBeenCalledWith('idem:x', '__lock__', 30);
     });
 
-    it('уже занят (lock) → false', async () => {
+    it('уже занят (lock) → "busy"', async () => {
       redis.get.mockResolvedValue('__lock__');
-      const acquired = await service.acquireLock('idem:x');
-      expect(acquired).toBe(false);
+      const result = await service.acquireLock('idem:x');
+      expect(result).toBe('busy');
       expect(redis.set).not.toHaveBeenCalled();
     });
 
-    it('уже есть cached response → false', async () => {
+    it('уже есть cached response → "busy"', async () => {
       redis.get.mockResolvedValue(JSON.stringify({ status: 201, body: {} }));
-      const acquired = await service.acquireLock('idem:x');
-      expect(acquired).toBe(false);
+      const result = await service.acquireLock('idem:x');
+      expect(result).toBe('busy');
     });
 
-    it('Redis fail → fail-open true (не блокируем основной flow)', async () => {
+    // API-IDEMPOTENCY-FAIL-OPEN-001: раньше return true (fail-open) →
+    // double orders при Redis-restart. Теперь "redis-down" → caller
+    // (interceptor) выдаёт 503.
+    it('Redis fail → "redis-down" (fail-closed, caller вернёт 503)', async () => {
       redis.get.mockRejectedValue(new Error('Redis down'));
-      const acquired = await service.acquireLock('idem:x');
-      expect(acquired).toBe(true);
+      const result = await service.acquireLock('idem:x');
+      expect(result).toBe('redis-down');
     });
   });
 

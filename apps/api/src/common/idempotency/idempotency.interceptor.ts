@@ -87,12 +87,22 @@ export class IdempotencyInterceptor implements NestInterceptor {
         }
 
         return from(this.idempotencyService.acquireLock(cacheKey)).pipe(
-          switchMap((acquired) => {
-            if (!acquired) {
+          switchMap((lockState) => {
+            if (lockState === 'busy') {
               throw new DomainException(
                 ErrorCode.CONFLICT,
                 'A request with this Idempotency-Key is already in progress',
                 HttpStatus.CONFLICT,
+              );
+            }
+            // API-IDEMPOTENCY-FAIL-OPEN-001: fail-closed при Redis-down.
+            // Раньше пропускали handler без guard → double orders при Redis-restart.
+            // Теперь 503 — клиент повторит после восстановления.
+            if (lockState === 'redis-down') {
+              throw new DomainException(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                'Idempotency service temporarily unavailable. Please retry.',
+                HttpStatus.SERVICE_UNAVAILABLE,
               );
             }
 
