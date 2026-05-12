@@ -103,7 +103,7 @@ export default function DashboardPage() {
       {!loading && orders.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-8">
           <Sticker emoji="📭" size={56} />
-          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
+          <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Заказов пока нет</p>
         </div>
       )}
 
@@ -130,13 +130,13 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                     Заказ #{orderShort}
                   </p>
                   <Badge status={o.status} />
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  <p className="text-[11px] truncate" style={{ color: 'var(--tg-text-secondary)' }}>
                     {o.preview?.title ?? '—'}
                     {o.preview && o.preview.itemCount > 1 && (
                       <span style={{ color: 'rgba(167,139,250,0.85)' }}> +{o.preview.itemCount - 1}</span>
@@ -146,7 +146,7 @@ export default function DashboardPage() {
                     {Number(o.totalAmount).toLocaleString('ru')} сум
                   </p>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
+                <p className="text-[10px] mt-0.5" style={{ color: 'var(--tg-text-dim)' }}>
                   {dateLabel} · {timeLabel}
                 </p>
               </div>
@@ -171,7 +171,7 @@ export default function DashboardPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-gradient">Панель продавца</h1>
             {user && (
-              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
                 Привет, {user.first_name} 👋
               </p>
             )}
@@ -179,7 +179,7 @@ export default function DashboardPage() {
           <button
             onClick={() => navigate('/seller/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.50)' }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)' }}
           >
             <GearIcon />
           </button>
@@ -216,10 +216,10 @@ export default function DashboardPage() {
                           }} />
                         )}
                       </div>
-                      <span className="text-2xl font-bold" style={{ color: s.urgent ? '#EF4444' : 'rgba(255,255,255,0.90)' }}>
+                      <span className="text-2xl font-bold" style={{ color: s.urgent ? '#EF4444' : 'var(--tg-text-primary)' }}>
                         {s.value}
                       </span>
-                      <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
+                      <span className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
                     </GlassCard>
                   ))}
                 </div>
@@ -294,10 +294,10 @@ export default function DashboardPage() {
                         }} />
                       )}
                     </div>
-                    <span className="text-lg font-bold" style={{ color: s.urgent ? '#EF4444' : 'rgba(255,255,255,0.90)' }}>
+                    <span className="text-lg font-bold" style={{ color: s.urgent ? '#EF4444' : 'var(--tg-text-primary)' }}>
                       {s.value}
                     </span>
-                    <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
+                    <span className="text-[10px]" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
                   </GlassCard>
                 ))}
               </div>
