@@ -180,7 +180,7 @@ export default function StoresPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-gradient">Savdo</h1>
             {user && (
-              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
                 Привет, {user.first_name} 👋
               </p>
             )}
@@ -188,7 +188,7 @@ export default function StoresPage() {
           <button
             onClick={() => navigate('/buyer/wishlist')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15 }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', fontSize: 15 }}
             aria-label="Избранное"
           >
             ❤️
@@ -196,7 +196,7 @@ export default function StoresPage() {
           <button
             onClick={() => navigate('/buyer/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.50)', fontSize: 16 }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)', fontSize: 16 }}
           >
             ⚙️
           </button>
@@ -205,7 +205,7 @@ export default function StoresPage() {
         {/* Tab switcher */}
         <div
           className="flex rounded-xl p-0.5 gap-1"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border-soft)' }}
         >
           {(['stores', 'products'] as const).map((t) => (
             <button
@@ -214,7 +214,7 @@ export default function StoresPage() {
               className="flex-1 py-2 rounded-[10px] text-xs font-semibold transition-all"
               style={{
                 background: tab === t ? 'var(--tg-accent-dim)' : 'transparent',
-                color: tab === t ? 'var(--tg-accent)' : 'rgba(255,255,255,0.45)',
+                color: tab === t ? 'var(--tg-accent)' : 'var(--tg-text-muted)',
                 border: `1px solid ${tab === t ? 'var(--tg-accent-border)' : 'transparent'}`,
               }}
             >
@@ -225,7 +225,7 @@ export default function StoresPage() {
 
         {/* Search */}
         <div className="relative">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--tg-text-dim)' }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
           <input
@@ -235,9 +235,9 @@ export default function StoresPage() {
             placeholder={tab === 'stores' ? 'Поиск магазинов...' : 'Поиск товаров...'}
             className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none"
             style={{
-              background: 'rgba(255,255,255,0.07)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              color: 'rgba(255,255,255,0.90)',
+              background: 'var(--tg-surface-hover)',
+              border: '1px solid var(--tg-border)',
+              color: 'var(--tg-text-primary)',
             }}
           />
         </div>
@@ -250,9 +250,9 @@ export default function StoresPage() {
                 onClick={() => setActiveCat(null)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
                 style={activeCat !== null ? {
-                  background: 'rgba(255,255,255,0.07)',
-                  color: 'rgba(255,255,255,0.55)',
-                  border: '1px solid rgba(255,255,255,0.10)',
+                  background: 'var(--tg-surface-hover)',
+                  color: 'var(--tg-text-secondary)',
+                  border: '1px solid var(--tg-border)',
                   whiteSpace: 'nowrap',
                 } : { whiteSpace: 'nowrap' }}
               >
@@ -264,9 +264,9 @@ export default function StoresPage() {
                   onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
                   className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === cat.id ? 'chip-active' : ''}`}
                   style={activeCat !== cat.id ? {
-                    background: 'rgba(255,255,255,0.07)',
-                    color: 'rgba(255,255,255,0.55)',
-                    border: '1px solid rgba(255,255,255,0.10)',
+                    background: 'var(--tg-surface-hover)',
+                    color: 'var(--tg-text-secondary)',
+                    border: '1px solid var(--tg-border)',
                     whiteSpace: 'nowrap',
                   } : { whiteSpace: 'nowrap' }}
                 >
@@ -291,9 +291,9 @@ export default function StoresPage() {
                   onClick={() => setSort(s.value)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
                   style={sort !== s.value ? {
-                    background: 'rgba(255,255,255,0.06)',
-                    color: 'rgba(255,255,255,0.45)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--tg-surface-hover)',
+                    color: 'var(--tg-text-muted)',
+                    border: '1px solid var(--tg-border-soft)',
                   } : undefined}
                 >
                   {s.label}
@@ -317,9 +317,9 @@ export default function StoresPage() {
                 onChange={(e) => setPriceMin(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder="Цена от"
                 className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+                style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: 12 }}>—</span>
+              <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>—</span>
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -327,9 +327,9 @@ export default function StoresPage() {
                 onChange={(e) => setPriceMax(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder="до"
                 className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+                style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'rgba(255,255,255,0.40)', fontSize: 11 }}>сум</span>
+              <span style={{ color: 'var(--tg-text-muted)', fontSize: 11 }}>сум</span>
             </div>
           </div>
         )}
@@ -348,7 +348,7 @@ export default function StoresPage() {
             {!storesLoading && storesError && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
-                <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
+                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Не удалось загрузить магазины</p>
                 <button onClick={loadStores} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
               </div>
             )}
@@ -356,7 +356,7 @@ export default function StoresPage() {
             {!storesLoading && !storesError && !filteredStores.length && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="🏪" size={56} />
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+                <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
                   {storesQuery.trim() ? 'Ничего не найдено' : 'Магазинов пока нет'}
                 </p>
               </div>
@@ -388,9 +388,9 @@ export default function StoresPage() {
                   {store.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
                   {store.description && (
-                    <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>{store.description}</p>
+                    <p className="text-xs truncate mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>{store.description}</p>
                   )}
                   {store.city && (
                     <p className="text-[11px] mt-0.5" style={{ color: 'var(--tg-accent)' }}>
@@ -409,7 +409,7 @@ export default function StoresPage() {
                       ✈️
                     </button>
                   )}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: 'var(--tg-text-dim)' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </div>
@@ -436,7 +436,7 @@ export default function StoresPage() {
             {!productsLoading && products.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="📦" size={56} />
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+                <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
                   {debouncedQuery || activeCat ? 'Ничего не найдено' : 'Товаров пока нет'}
                 </p>
               </div>
