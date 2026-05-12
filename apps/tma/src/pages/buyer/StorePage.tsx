@@ -27,6 +27,10 @@ interface Store {
   name: string;
   slug: string;
   description: string | null;
+  // MARKETING-VERIFIED-SELLER-001
+  isVerified?: boolean;
+  avgRating?: number | string | null;
+  reviewCount?: number;
 }
 
 interface GlobalCategory {
@@ -178,20 +182,41 @@ export default function StorePage() {
               {store.name.charAt(0)}
             </div>
             <div>
-              <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</h1>
-              <button
-                onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
-                className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
-                style={{
-                  color: 'var(--tg-accent)',
-                  background: 'var(--tg-accent-bg)',
-                  border: '1px solid var(--tg-accent-border)',
-                  cursor: 'pointer',
-                }}
-                aria-label="Перейти на сайт магазина"
-              >
-                ↗ Перейти на сайт
-              </button>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</h1>
+                {/* MARKETING-VERIFIED-SELLER-001 */}
+                {store.isVerified && (
+                  <span
+                    className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold"
+                    style={{ background: 'rgba(37,99,235,0.20)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.45)' }}
+                    title="Проверенный магазин"
+                    aria-label="Проверенный магазин"
+                  >
+                    ✓
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
+                  className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                  style={{
+                    color: 'var(--tg-accent)',
+                    background: 'var(--tg-accent-bg)',
+                    border: '1px solid var(--tg-accent-border)',
+                    cursor: 'pointer',
+                  }}
+                  aria-label="Перейти на сайт магазина"
+                >
+                  ↗ Перейти на сайт
+                </button>
+                {/* MARKETING-VERIFIED-SELLER-001 */}
+                {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
+                  <span className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>
+                    ⭐ {Number(store.avgRating).toFixed(1)} <span style={{ color: 'var(--tg-text-dim)' }}>({store.reviewCount})</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           {store.description && (

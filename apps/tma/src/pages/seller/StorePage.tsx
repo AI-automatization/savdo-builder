@@ -166,7 +166,7 @@ export default function SellerStorePage() {
       
         <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
           <span style={{ fontSize: 36 }}>⚠️</span>
-          <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 14 }}>{fetchError}</p>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>{fetchError}</p>
           <button
             onClick={() => {
               storeAbortRef.current?.abort();
@@ -187,15 +187,15 @@ export default function SellerStorePage() {
     return (
       
         <div className="flex flex-col gap-4">
-          <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
+          <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Мой магазин</h1>
           <div
             className="flex flex-col items-center gap-4 py-8 px-4 rounded-2xl"
             style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
             <span style={{ fontSize: 44 }}>🏪</span>
             <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>Создайте свой магазин</p>
-              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.40)' }}>Введите название чтобы начать продавать</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>Создайте свой магазин</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--tg-text-muted)' }}>Введите название чтобы начать продавать</p>
             </div>
             <div className="w-full flex flex-col gap-3">
               {[
@@ -210,7 +210,7 @@ export default function SellerStorePage() {
                   placeholder={field.placeholder}
                   maxLength={field.max}
                   className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)' }}
                 />
               ))}
               {createError && (
@@ -240,7 +240,7 @@ export default function SellerStorePage() {
       <div className={`grid gap-5 ${isDesktop ? 'max-w-screen-xl' : 'max-w-4xl'} mx-auto w-full`}
         style={isDesktop ? { gridTemplateColumns: '1.1fr 1fr', alignItems: 'start' } : undefined}
       >
-        <h1 className="text-base font-bold" style={isDesktop ? { gridColumn: '1 / -1', color: 'rgba(255,255,255,0.90)' } : { color: 'rgba(255,255,255,0.90)' }}>
+        <h1 className="text-base font-bold" style={isDesktop ? { gridColumn: '1 / -1', color: 'var(--tg-text-primary)' } : { color: 'var(--tg-text-primary)' }}>
           Мой магазин
         </h1>
 
@@ -252,7 +252,7 @@ export default function SellerStorePage() {
               🏪
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
               {/* Длинный URL раньше ломал layout — теперь короткая «Перейти на сайт» pill */}
               <a
                 href={webStoreUrl(store.slug)}
@@ -276,11 +276,11 @@ export default function SellerStorePage() {
           </div>
 
           {store.description && !editing && (
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.50)' }}>{store.description}</p>
+            <p className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>{store.description}</p>
           )}
 
           {store.telegramChannelId && (
-            <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--tg-text-muted)' }}>
               <span>📢</span>
               <span>{store.telegramChannelTitle ?? store.telegramChannelId}</span>
             </div>
@@ -300,7 +300,7 @@ export default function SellerStorePage() {
               onChange={(e) => setName(e.target.value)}
               placeholder="Название магазина"
               className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-              style={{ ...glass, background: 'rgba(255,255,255,0.05)' }}
+              style={{ ...glass, background: 'var(--tg-surface)' }}
             />
             <textarea
               value={description}
@@ -308,7 +308,7 @@ export default function SellerStorePage() {
               placeholder="Описание"
               rows={3}
               className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none resize-none"
-              style={{ ...glass, background: 'rgba(255,255,255,0.05)' }}
+              style={{ ...glass, background: 'var(--tg-surface)' }}
             />
             <div className="flex gap-3">
               <Button className="flex-1" onClick={save} disabled={saving}>
