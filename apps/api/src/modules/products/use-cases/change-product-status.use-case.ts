@@ -1,11 +1,9 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ProductsRepository } from '../repositories/products.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { Product, ProductStatus } from '@prisma/client';
-import { TelegramBotService } from '../../telegram/services/telegram-bot.service';
-import { PrismaService } from '../../../database/prisma.service';
-import { escapeTgHtml } from '../../../shared/telegram-html';
+import { PostProductToChannelUseCase } from './post-product-to-channel.use-case';
 
 // Valid transitions per docs/V1.1/02_state_machines.md
 // DRAFT → ACTIVE, ACTIVE → ARCHIVED, ACTIVE → DRAFT, ARCHIVED → ACTIVE
@@ -18,10 +16,11 @@ const ALLOWED_TRANSITIONS: Record<string, ProductStatus[]> = {
 
 @Injectable()
 export class ChangeProductStatusUseCase {
+  private readonly logger = new Logger(ChangeProductStatusUseCase.name);
+
   constructor(
     private readonly productsRepo: ProductsRepository,
-    private readonly telegramBot: TelegramBotService,
-    private readonly prisma: PrismaService,
+    private readonly postToChannel: PostProductToChannelUseCase,
   ) {}
 
   async execute(id: string, storeId: string, newStatus: ProductStatus): Promise<Product> {
@@ -62,58 +61,16 @@ export class ChangeProductStatusUseCase {
 
     const updated = await this.productsRepo.updateStatus(id, newStatus);
 
-    // Автопостинг в TG канал при публикации товара
+    // FEAT-TG-AUTOPOST-001: при → ACTIVE авто-постинг в TG-канал продавца.
+    // Делегируем единому use-case (он сам проверяет autoPostProductsToChannel,
+    // telegramChannelId, рендерит шаблон, шлёт фото как photo не document,
+    // кэширует photoFileId). Fire-and-forget — не блокируем seller response.
     if (newStatus === ProductStatus.ACTIVE) {
-      this.postToChannel(updated).catch(() => null); // fire-and-forget, не блокируем ответ
+      void this.postToChannel.execute({ productId: id }).catch((err) => {
+        this.logger.warn(`autoPost failed for product=${id}: ${err instanceof Error ? err.message : String(err)}`);
+      });
     }
 
     return updated;
-  }
-
-  private async postToChannel(product: Product): Promise<void> {
-    // DB-AUDIT-001-07: не постим товары удалённых магазинов в TG-канал
-    const store = await this.prisma.store.findFirst({
-      where: { id: product.storeId, deletedAt: null },
-    });
-    if (!store?.telegramChannelId) return;
-
-    // FEAT-TG-AUTOPOST-001: opt-in toggle. Продавец должен явно включить
-    // авто-постинг в Settings. Для existing stores с channel migration
-    // 20260510210000 set true (сохранение прежнего поведения).
-    if (!store.autoPostProductsToChannel) return;
-
-    const price       = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
-    const tmaUrl      = process.env.TMA_URL ?? '';
-    const deepLink    = botUsername && store.slug
-      ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
-      : tmaUrl;
-    const text    = `🛍 <b>${escapeTgHtml(product.title)}</b>\n\n${product.description ? `${escapeTgHtml(product.description)}\n\n` : ''}💰 <b>${price}</b>\n\n🏪 ${escapeTgHtml(store.name)}`;
-    const buttons = [
-      [{ text: '🛒 Открыть магазин', url: deepLink }],
-      [{ text: '💬 Написать продавцу', url: store.telegramContactLink || deepLink }],
-    ] as Array<Array<{ text: string; url: string }>>;
-
-    // Загружаем все фото товара (сортировка по sortOrder)
-    const allImages = await this.prisma.productImage.findMany({
-      where: { productId: product.id },
-      include: { media: true },
-      orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
-    });
-
-    type ImageWithMedia = { media?: { objectKey?: string; bucket?: string } };
-    const tgFileIds = (allImages as unknown as ImageWithMedia[])
-      .filter((img) => img.media?.bucket === 'telegram' && img.media.objectKey?.startsWith('tg:'))
-      .map((img) => img.media!.objectKey!.replace('tg:', ''));
-
-    if (tgFileIds.length >= 2) {
-      // Media group — слайды; кнопки отдельным сообщением (Telegram API ограничение)
-      await this.telegramBot.sendMediaGroupToChannel(store.telegramChannelId, tgFileIds, text, 'HTML');
-      await this.telegramBot.sendToChannel(store.telegramChannelId, '👆 ' + product.title, buttons);
-    } else if (tgFileIds.length === 1) {
-      await this.telegramBot.sendPhotoToChannel(store.telegramChannelId, tgFileIds[0], text, buttons, 'HTML');
-    } else {
-      await this.telegramBot.sendToChannel(store.telegramChannelId, text, buttons, 'HTML');
-    }
   }
 }

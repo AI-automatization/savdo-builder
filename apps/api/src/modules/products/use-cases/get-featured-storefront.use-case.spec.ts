@@ -54,7 +54,11 @@ describe('GetFeaturedStorefrontUseCase', () => {
         deletedAt: null,
         products: { some: { status: 'ACTIVE', deletedAt: null } },
       }),
-      orderBy: { publishedAt: 'desc' },
+      orderBy: [
+        { isVerified: 'desc' },
+        { avgRating: { sort: 'desc', nulls: 'last' } },
+        { publishedAt: 'desc' },
+      ],
       take: 8,
     }));
   });
@@ -76,9 +80,13 @@ describe('GetFeaturedStorefrontUseCase', () => {
     }));
   });
 
-  it('topStores mapping: id/slug/name/city + resolved logoUrl/coverUrl', async () => {
+  it('topStores mapping: id/slug/name/city + resolved logoUrl/coverUrl + trust signals', async () => {
     prisma.store.findMany.mockResolvedValue([
-      { id: 's-1', slug: 'shop-1', name: 'Shop 1', city: 'Tashkent', logoMediaId: 'm-1', coverMediaId: null },
+      {
+        id: 's-1', slug: 'shop-1', name: 'Shop 1', city: 'Tashkent',
+        logoMediaId: 'm-1', coverMediaId: null,
+        isVerified: true, avgRating: '4.75', reviewCount: 42,
+      },
     ]);
     presenter.resolveStoreImageUrls.mockResolvedValue({ logoUrl: 'https://cdn/logo.jpg', coverUrl: null });
 
@@ -90,6 +98,9 @@ describe('GetFeaturedStorefrontUseCase', () => {
       city: 'Tashkent',
       logoUrl: 'https://cdn/logo.jpg',
       coverUrl: null,
+      isVerified: true,
+      avgRating: 4.75,
+      reviewCount: 42,
     }]);
     expect(presenter.resolveStoreImageUrls).toHaveBeenCalledWith('m-1', null);
   });

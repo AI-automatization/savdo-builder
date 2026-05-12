@@ -23,6 +23,10 @@ export interface FeaturedStorefront {
     city: string | null;
     logoUrl: string | null;
     coverUrl: string | null;
+    // MARKETING-VERIFIED-SELLER-001 — trust signals
+    isVerified: boolean;
+    avgRating: number | null;
+    reviewCount: number;
   }>;
   featuredProducts: Array<{
     id: string;
@@ -64,8 +68,17 @@ export class GetFeaturedStorefrontUseCase {
         city: true,
         logoMediaId: true,
         coverMediaId: true,
+        // MARKETING-VERIFIED-SELLER-001
+        isVerified: true,
+        avgRating: true,
+        reviewCount: true,
       },
-      orderBy: { publishedAt: 'desc' },
+      // Verified магазины сверху, затем по дате публикации
+      orderBy: [
+        { isVerified: 'desc' },
+        { avgRating: { sort: 'desc', nulls: 'last' } },
+        { publishedAt: 'desc' },
+      ],
       take: 8,
     });
 
@@ -82,6 +95,9 @@ export class GetFeaturedStorefrontUseCase {
           city: s.city,
           logoUrl,
           coverUrl,
+          isVerified: s.isVerified,
+          avgRating: s.avgRating != null ? Number(s.avgRating) : null,
+          reviewCount: s.reviewCount,
         };
       }),
     );

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { StoresController } from './stores.controller';
 import { StoresRepository } from './repositories/stores.repository';
 import { SlugService } from './services/slug.service';
@@ -8,11 +8,14 @@ import { UpdateStoreUseCase } from './use-cases/update-store.use-case';
 import { SubmitStoreForReviewUseCase } from './use-cases/submit-store-for-review.use-case';
 import { PublishStoreUseCase } from './use-cases/publish-store.use-case';
 import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
+import { UpdateChannelTemplateUseCase } from './use-cases/update-channel-template.use-case';
+import { TriggerChannelTestPostUseCase } from './use-cases/trigger-channel-test-post.use-case';
 import { SellersModule } from '../sellers/sellers.module';
 import { AuthModule } from '../auth/auth.module';
+import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [SellersModule, AuthModule],
+  imports: [SellersModule, AuthModule, forwardRef(() => ProductsModule)],
   controllers: [StoresController],
   providers: [
     StoresRepository,
@@ -23,6 +26,8 @@ import { AuthModule } from '../auth/auth.module';
     SubmitStoreForReviewUseCase,
     PublishStoreUseCase,
     UnpublishStoreUseCase,
+    UpdateChannelTemplateUseCase,
+    TriggerChannelTestPostUseCase,
   ],
   exports: [StoresRepository, SlugService],
 })

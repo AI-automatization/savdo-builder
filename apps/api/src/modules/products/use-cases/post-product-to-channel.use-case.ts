@@ -1,9 +1,28 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { TelegramBotService } from '../../telegram/services/telegram-bot.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { ChannelTemplateService, TemplateVariables } from '../services/channel-template.service';
+import { ChannelMediaResolverService } from '../services/channel-media-resolver.service';
+
+// Typed include — TypeScript подхватит store/images/attributes/variants из результата findUnique.
+const POST_PRODUCT_INCLUDE = Prisma.validator<Prisma.ProductInclude>()({
+  store: true,
+  images: {
+    orderBy: { sortOrder: 'asc' },
+    take: 10,
+    include: {
+      media: { select: { id: true, objectKey: true, bucket: true, photoFileId: true } },
+    },
+  },
+  attributes: { select: { name: true, value: true } },
+  variants: { select: { sku: true, titleOverride: true } },
+});
+
+type ProductWithRelations = Prisma.ProductGetPayload<{ include: typeof POST_PRODUCT_INCLUDE }>;
 
 /**
  * FEAT-TG-AUTOPOST-001: пост товара в Telegram-канал продавца.
@@ -15,11 +34,11 @@ import { ErrorCode } from '../../../shared/constants/error-codes';
  *      для re-post после правки).
  *
  * Поведение:
- *   - 1 фото → sendPhotoToChannel с inline-button «Открыть товар»
- *   - 2-10 фото → sendMediaGroupToChannel (caption на первом)
- *   - 0 фото → sendToChannel (text-only с button)
+ *   - 1 фото  → sendPhoto (открытое изображение) с inline-button «Открыть товар»
+ *   - 2-10    → sendMediaGroup (caption на первом)
+ *   - 0 фото  → sendMessage (text-only с button)
  *
- * Никогда не бросает в caller — это side-effect, fail-tolerant. Лог + return.
+ * Side effect, fail-tolerant: ошибки не пробрасываются caller'у, лог + return.
  */
 
 export interface PostInput {
@@ -41,19 +60,14 @@ export class PostProductToChannelUseCase {
     private readonly prisma: PrismaService,
     private readonly telegramBot: TelegramBotService,
     private readonly config: ConfigService,
+    private readonly templateService: ChannelTemplateService,
+    private readonly mediaResolver: ChannelMediaResolverService,
   ) {}
 
   async execute(input: PostInput): Promise<PostResult> {
-    const product = await this.prisma.product.findUnique({
+    const product: ProductWithRelations | null = await this.prisma.product.findUnique({
       where: { id: input.productId },
-      include: {
-        store: true,
-        images: {
-          orderBy: { sortOrder: 'asc' },
-          take: 10,
-          include: { media: { select: { id: true, objectKey: true, bucket: true } } },
-        },
-      },
+      include: POST_PRODUCT_INCLUDE,
     });
 
     if (!product) {
@@ -61,44 +75,40 @@ export class PostProductToChannelUseCase {
     }
 
     const store = product.store;
-    if (!store) {
-      return { posted: false, reason: 'Store not found' };
-    }
-    if (!store.telegramChannelId) {
-      return { posted: false, reason: 'Channel not configured' };
-    }
+    if (!store) return { posted: false, reason: 'Store not found' };
+    if (!store.telegramChannelId) return { posted: false, reason: 'Channel not configured' };
     if (!input.force && !store.autoPostProductsToChannel) {
       return { posted: false, reason: 'Auto-post disabled' };
     }
 
-    const buyerBaseUrl = (this.config.get<string>('app.buyerUrl') ?? process.env.BUYER_URL ?? '').replace(/\/$/, '');
-    const productUrl = buyerBaseUrl
-      ? `${buyerBaseUrl}/${store.slug}/products/${product.id}`
-      : `https://t.me/${this.config.get<string>('telegram.botUsername') ?? 'savdo_builderBOT'}?startapp=product_${product.id}`;
+    const productUrl = this.buildProductUrl(store.slug, product.id);
+    const vars = this.buildTemplateVariables(product, store, productUrl);
+    const caption = this.templateService.render(store.channelPostTemplate, vars);
 
-    const caption = this.buildCaption(product as any, store as any, productUrl);
-
-    // bucket='telegram' → objectKey хранит TG file_id
-    // (см. telegram-storage.service.ts uploadFile). bucket='telegram-expired'
-    // означает мёртвый file_id — пропускаем чтобы не упасть на sendPhoto 400.
-    const tgFileIds = product.images
-      .map((i) => i.media)
-      .filter((m): m is NonNullable<typeof m> => Boolean(m && m.bucket === 'telegram' && m.objectKey))
-      .map((m) => m.objectKey);
-
+    const photos = await this.resolvePhotos(product.images);
     const buttons = [[{ text: '🛒 Открыть товар', url: productUrl }]];
 
     try {
-      if (tgFileIds.length === 0) {
+      if (photos.length === 0) {
         await this.telegramBot.sendToChannel(store.telegramChannelId, caption, buttons, 'HTML');
-      } else if (tgFileIds.length === 1) {
-        await this.telegramBot.sendPhotoToChannel(store.telegramChannelId, tgFileIds[0], caption, buttons, 'HTML');
+      } else if (photos.length === 1) {
+        const fileId = await this.telegramBot.sendPhotoToChannel(
+          store.telegramChannelId, photos[0].src, caption, buttons, 'HTML',
+        );
+        if (fileId) await this.mediaResolver.cachePhotoFileId(photos[0].mediaId, fileId);
       } else {
-        // Media group — Telegram не поддерживает inline-buttons на group,
-        // поэтому ссылка будет в caption + отдельный follow-up message не нужен.
-        await this.telegramBot.sendMediaGroupToChannel(store.telegramChannelId, tgFileIds, caption, 'HTML');
+        const fileIds = await this.telegramBot.sendMediaGroupToChannel(
+          store.telegramChannelId, photos.map((p) => p.src), caption, 'HTML',
+        );
+        if (fileIds) {
+          await Promise.all(
+            fileIds.map((fid, i) =>
+              photos[i] ? this.mediaResolver.cachePhotoFileId(photos[i].mediaId, fid) : null,
+            ),
+          );
+        }
       }
-      this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (${tgFileIds.length} photos)`);
+      this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (${photos.length} photos)`);
       return { posted: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -107,15 +117,92 @@ export class PostProductToChannelUseCase {
     }
   }
 
-  /**
-   * Безопасный HTML escape для product.title / description (Telegram parse_mode=HTML).
-   * Telegram allowed: <b>, <i>, <u>, <s>, <a>, <code>, <pre>. Всё остальное — escape.
-   */
-  private escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+  private async resolvePhotos(
+    images: Array<{ media: { id: string; objectKey: string; bucket: string; photoFileId: string | null } | null }>,
+  ): Promise<Array<{ mediaId: string; src: string }>> {
+    const resolved = await Promise.all(
+      images.map(async (img) => {
+        if (!img.media) return null;
+        const src = await this.mediaResolver.resolveForChannelSend(img.media);
+        return src ? { mediaId: img.media.id, src } : null;
+      }),
+    );
+    return resolved.filter((r): r is { mediaId: string; src: string } => r !== null);
+  }
+
+  private buildProductUrl(storeSlug: string, productId: string): string {
+    const buyerBaseUrl = (this.config.get<string>('app.buyerUrl') ?? process.env.BUYER_URL ?? '').replace(/\/$/, '');
+    if (buyerBaseUrl) return `${buyerBaseUrl}/${storeSlug}/products/${productId}`;
+    const botUsername = this.config.get<string>('telegram.botUsername') ?? 'savdo_builderBOT';
+    return `https://t.me/${botUsername}?startapp=product_${productId}`;
+  }
+
+  private buildTemplateVariables(
+    product: ProductForPost,
+    store: StoreForPost,
+    productUrl: string,
+  ): TemplateVariables {
+    const currency = product.currencyCode ?? 'UZS';
+    const price = this.formatPrice(product.salePrice ?? product.basePrice, currency);
+    const hasOldPrice = product.salePrice != null || product.oldPrice != null;
+    const oldPrice = hasOldPrice
+      ? this.formatPrice(product.salePrice != null ? product.basePrice : product.oldPrice, currency)
+      : '';
+
+    return {
+      title: product.title,
+      price,
+      oldPrice,
+      hasOldPrice,
+      description: product.description ?? '',
+      material: this.extractAttribute(product.attributes, ['material', 'материал', 'matn']),
+      sizes: this.extractSizes(product.variants, product.attributes),
+      availability: product.totalStock > 0 ? 'В наличии' : 'Под заказ',
+      deliveryDays: '', // зарезервировано — пока берём из шаблона
+      contact: this.buildContact(store),
+      instagram: store.channelInstagramLink ?? '',
+      tiktok: store.channelTiktokLink ?? '',
+      storeName: store.name,
+      channelLink: store.telegramChannelId
+        ? `https://t.me/${store.telegramChannelId.replace(/^@/, '')}`
+        : '',
+      productUrl,
+    };
+  }
+
+  private buildContact(store: StoreForPost): string {
+    if (store.channelContactPhone) return store.channelContactPhone;
+    if (store.telegramContactLink) {
+      // telegramContactLink обычно "@username" или "https://t.me/username"
+      return store.telegramContactLink.startsWith('http')
+        ? store.telegramContactLink
+        : store.telegramContactLink;
+    }
+    return '';
+  }
+
+  private extractAttribute(
+    attributes: Array<{ name: string; value: string }>,
+    aliases: string[],
+  ): string {
+    const lowerAliases = aliases.map((a) => a.toLowerCase());
+    const found = attributes.find((a) => lowerAliases.includes(a.name.toLowerCase()));
+    return found?.value ?? '';
+  }
+
+  private extractSizes(
+    variants: Array<{ titleOverride: string | null }>,
+    attributes: Array<{ name: string; value: string }>,
+  ): string {
+    const fromAttr = this.extractAttribute(attributes, ['size', 'размер', 'razmer', 'o-lcham']);
+    if (fromAttr) return fromAttr;
+
+    const titles = variants
+      .map((v) => v.titleOverride?.trim())
+      .filter((t): t is string => Boolean(t));
+    if (titles.length > 0 && titles.length <= 10) return titles.join('-');
+
+    return '';
   }
 
   private formatPrice(amount: unknown, currency: string): string {
@@ -123,37 +210,27 @@ export class PostProductToChannelUseCase {
     if (Number.isNaN(n)) return '—';
     return `${n.toLocaleString('ru-RU')} ${currency}`;
   }
-
-  private buildCaption(
-    product: { title: string; description: string | null; basePrice: unknown; salePrice: unknown; oldPrice: unknown; currencyCode: string },
-    store: { name: string },
-    url: string,
-  ): string {
-    const lines: string[] = [];
-    lines.push(`<b>${this.escapeHtml(product.title)}</b>`);
-    lines.push('');
-
-    if (product.salePrice != null) {
-      lines.push(`💰 <b>${this.formatPrice(product.salePrice, product.currencyCode)}</b>  <s>${this.formatPrice(product.basePrice, product.currencyCode)}</s>`);
-    } else if (product.oldPrice != null) {
-      lines.push(`💰 <b>${this.formatPrice(product.basePrice, product.currencyCode)}</b>  <s>${this.formatPrice(product.oldPrice, product.currencyCode)}</s>`);
-    } else {
-      lines.push(`💰 <b>${this.formatPrice(product.basePrice, product.currencyCode)}</b>`);
-    }
-
-    if (product.description) {
-      // Обрезаем до 700 символов — caption Telegram limit ~1024.
-      const desc = product.description.length > 700
-        ? product.description.slice(0, 697) + '...'
-        : product.description;
-      lines.push('');
-      lines.push(this.escapeHtml(desc));
-    }
-
-    lines.push('');
-    lines.push(`🏪 ${this.escapeHtml(store.name)}`);
-    lines.push(`<a href="${url}">Открыть товар →</a>`);
-
-    return lines.join('\n');
-  }
 }
+
+type ProductForPost = {
+  title: string;
+  description: string | null;
+  basePrice: unknown;
+  salePrice: unknown;
+  oldPrice: unknown;
+  currencyCode: string;
+  totalStock: number;
+  attributes: Array<{ name: string; value: string }>;
+  variants: Array<{ titleOverride: string | null }>;
+};
+
+type StoreForPost = {
+  name: string;
+  slug: string;
+  telegramChannelId: string | null;
+  telegramContactLink: string;
+  channelPostTemplate: string | null;
+  channelContactPhone: string | null;
+  channelInstagramLink: string | null;
+  channelTiktokLink: string | null;
+};

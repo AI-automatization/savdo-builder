@@ -33,6 +33,7 @@ import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
 import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
 import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
+import { SetStoreVerificationUseCase } from './use-cases/set-store-verification.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
@@ -88,6 +89,7 @@ import { MediaModule } from '../media/media.module';
     ArchiveStoreUseCase,
     ApproveStoreUseCase,
     UnapproveStoreUseCase,
+    SetStoreVerificationUseCase,
     AdminCancelOrderUseCase,
     GetAuditLogUseCase,
     GetAnalyticsUseCase,

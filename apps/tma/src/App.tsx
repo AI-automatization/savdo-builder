@@ -75,6 +75,7 @@ const SellerAddProduct   = lazy(() => import('@/pages/seller/AddProductPage'));
 const SellerEditProduct  = lazy(() => import('@/pages/seller/EditProductPage'));
 const SellerProfile   = lazy(() => import('@/pages/seller/ProfilePage'));
 const SellerSettings  = lazy(() => import('@/pages/seller/SettingsPage'));
+const SellerChannelSettings = lazy(() => import('@/pages/seller/ChannelSettingsPage'));
 const SellerChat      = lazy(() => import('@/pages/seller/ChatPage'));
 
 // ── Guards ────────────────────────────────────────────────────────────────────
@@ -181,6 +182,7 @@ export default function App() {
           <Route path="products/:id/edit" element={<SellerEditProduct />} />
           <Route path="profile" element={<SellerProfile />} />
           <Route path="settings" element={<SellerSettings />} />
+          <Route path="settings/channel" element={<SellerChannelSettings />} />
           <Route path="chat" element={<SellerChat />} />
           <Route path="chat/:threadId" element={<SellerChat />} />
         </Route>

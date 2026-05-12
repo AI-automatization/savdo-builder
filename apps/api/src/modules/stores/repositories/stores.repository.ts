@@ -49,8 +49,13 @@ export class StoresRepository {
         telegramContactLink: true,
         logoMediaId: true,
         coverMediaId: true,
+        // MARKETING-VERIFIED-SELLER-001
+        isVerified: true,
+        avgRating: true,
+        reviewCount: true,
       },
-      orderBy: { publishedAt: 'desc' },
+      // Verified магазины сверху, потом по дате публикации
+      orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],
       take: 50,
     });
   }
@@ -78,8 +83,12 @@ export class StoresRepository {
         city: true,
         logoMediaId: true,
         coverMediaId: true,
+        // MARKETING-VERIFIED-SELLER-001
+        isVerified: true,
+        avgRating: true,
+        reviewCount: true,
       },
-      orderBy: { publishedAt: 'desc' },
+      orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],
       take: limit,
     });
   }
@@ -142,6 +151,49 @@ export class StoresRepository {
       where: { id: storeId },
       data: data as any,
       include: { deliverySettings: true, contacts: true },
+    });
+  }
+
+  /**
+   * FEAT-TG-CHANNEL-TEMPLATE-001: точечное обновление полей TG-канала.
+   * `null` в значении = очистить колонку, отсутствие ключа = не трогать.
+   */
+  async updateChannelTemplate(storeId: string, data: Partial<{
+    channelPostTemplate: string | null;
+    channelContactPhone: string | null;
+    channelInstagramLink: string | null;
+    channelTiktokLink: string | null;
+  }>) {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data,
+      select: {
+        id: true,
+        channelPostTemplate: true,
+        channelContactPhone: true,
+        channelInstagramLink: true,
+        channelTiktokLink: true,
+        telegramChannelId: true,
+        telegramChannelTitle: true,
+        autoPostProductsToChannel: true,
+      },
+    });
+  }
+
+  async findChannelTemplate(storeId: string) {
+    return this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        channelPostTemplate: true,
+        channelContactPhone: true,
+        channelInstagramLink: true,
+        channelTiktokLink: true,
+        telegramChannelId: true,
+        telegramChannelTitle: true,
+        telegramContactLink: true,
+        autoPostProductsToChannel: true,
+      },
     });
   }
 }

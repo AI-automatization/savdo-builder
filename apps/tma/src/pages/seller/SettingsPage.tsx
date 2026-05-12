@@ -310,6 +310,24 @@ export default function SellerSettingsPage() {
           </GlassCard>
         )}
 
+        {/* ── Telegram канал ── */}
+        <GlassCard className="p-4 flex flex-col gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            Telegram канал
+          </p>
+          <button
+            onClick={() => navigate('/seller/settings/channel')}
+            className="flex items-center justify-between gap-3 py-2 text-sm"
+            style={{ color: 'rgba(255,255,255,0.85)' }}
+          >
+            <div className="flex items-center gap-2.5">
+              <span>📢</span>
+              <span>Шаблон поста и авто-публикация</span>
+            </div>
+            <span style={{ color: '#A855F7' }}>→</span>
+          </button>
+        </GlassCard>
+
         {/* ── Прочее ── */}
         <GlassCard className="p-4 flex flex-col gap-2">
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
