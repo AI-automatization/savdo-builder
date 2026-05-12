@@ -731,6 +731,12 @@ model Cart {
   updatedAt    DateTime @updatedAt
   expiresAt    DateTime?
 
+  // MARKETING-CART-ABANDONMENT-001: тайминг для cron'а ремаркетинга.
+  // nudgeSentAt — когда отправили последний TG-nudge (не спамим).
+  // nudgeCount — сколько раз нудили (для аналитики и cap'а 1-2 раза).
+  nudgeSentAt  DateTime?
+  nudgeCount   Int      @default(0)
+
   buyer  Buyer?     @relation(fields: [buyerId], references: [id])
   store  Store      @relation(fields: [storeId], references: [id])
   items  CartItem[]
@@ -740,6 +746,8 @@ model Cart {
   @@index([sessionKey])
   @@index([storeId])
   @@index([status])
+  // Cart-abandonment scan: ACTIVE carts with stale updatedAt и нулевым/малым nudgeCount.
+  @@index([status, nudgeSentAt, updatedAt])
   @@map("carts")
 }
 
