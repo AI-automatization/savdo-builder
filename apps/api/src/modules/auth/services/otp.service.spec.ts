@@ -167,11 +167,31 @@ describe('OtpService', () => {
       });
       redis.get.mockResolvedValue('111111'); // chatId привязан
       await service.sendOtp('+998900000001', '123456');
+      // API-BULL-BOARD-DATA-LEAK-001: job НЕ содержит code, только codeRef.
       expect(queue.add).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ chatId: '111111', phone: '+998900000001', code: '123456' }),
+        expect.objectContaining({
+          chatId: '111111',
+          phone: '+998900000001',
+          codeRef: expect.any(String),
+        }),
         expect.objectContaining({ priority: 1 }),
       );
+      // code сам уходит в Redis (stash) под otp:job:{uuid}
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringMatching(/^otp:job:[a-f0-9-]+$/),
+        '123456',
+        10 * 60,
+      );
+    });
+
+    it('SEC: code НЕ передаётся в job.data (Bull Board leak fix)', async () => {
+      config.get.mockReturnValue(true);
+      redis.get.mockResolvedValue('111111');
+      await service.sendOtp('+998900000001', '654321');
+      const jobData = (queue.add as jest.Mock).mock.calls[0][1];
+      expect(jobData).not.toHaveProperty('code');
+      expect(jobData.codeRef).toMatch(/^[a-f0-9-]+$/);
     });
 
     it('devOtpEnabled=true + chatId НЕТ → не падает (silent skip)', async () => {
@@ -191,14 +211,20 @@ describe('OtpService', () => {
       });
     });
 
-    it('chatId привязан → enqueue', async () => {
+    it('chatId привязан → enqueue (codeRef в data, не code)', async () => {
       redis.get.mockResolvedValue('999999');
       await service.sendOtp('+998900000001', '123456');
       expect(queue.add).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ chatId: '999999', phone: '+998900000001', code: '123456' }),
+        expect.objectContaining({
+          chatId: '999999',
+          phone: '+998900000001',
+          codeRef: expect.any(String),
+        }),
         expect.objectContaining({ priority: 1 }),
       );
+      const jobData = (queue.add as jest.Mock).mock.calls[0][1];
+      expect(jobData).not.toHaveProperty('code');
     });
 
     it('chatId НЕТ → DomainException TELEGRAM_NOT_LINKED', async () => {
