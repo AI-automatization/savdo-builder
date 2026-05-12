@@ -71,12 +71,12 @@ export default function CartPage() {
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Корзина</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Корзина</h1>
 
         {!items.length && (
           <div className="flex flex-col items-center gap-3 py-16">
             <span style={{ fontSize: 48 }}>🛒</span>
-            <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: 14 }}>Корзина пуста</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 14 }}>Корзина пуста</p>
             <Button variant="ghost" onClick={() => navigate('/buyer')}>Перейти к магазинам</Button>
           </div>
         )}
@@ -87,7 +87,7 @@ export default function CartPage() {
               <ImagePlaceholder variant="thumbnail" hideLabel iconSize={18} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.88)' }}>{item.title}</p>
+              <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>{item.title}</p>
               <p className="text-xs" style={{ color: 'rgba(167,139,250,0.80)' }}>{item.storeName}</p>
               <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--tg-accent)' }}>
                 {(item.price * item.qty).toLocaleString('ru')} сум
@@ -98,11 +98,11 @@ export default function CartPage() {
                 onClick={() => updateQty(item.productId, -1)}
                 aria-label="Уменьшить количество"
                 className="w-10 h-10 rounded-lg flex items-center justify-center text-base"
-                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.60)' }}
+                style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
               >
                 −
               </button>
-              <span className="text-sm font-bold w-6 text-center" style={{ color: 'rgba(255,255,255,0.80)' }}>
+              <span className="text-sm font-bold w-6 text-center" style={{ color: 'var(--tg-text-primary)' }}>
                 {item.qty}
               </span>
               <button
@@ -127,7 +127,7 @@ export default function CartPage() {
 
         {items.length > 0 && (
           <div className="flex items-center justify-between px-2 py-3">
-            <span className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>Итого:</span>
+            <span className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>Итого:</span>
             <span className="text-base font-bold" style={{ color: 'var(--tg-accent)' }}>
               {total.toLocaleString('ru')} сум
             </span>
@@ -139,7 +139,7 @@ export default function CartPage() {
             onClick={handleContactSeller}
             disabled={contacting}
             className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-semibold disabled:opacity-50"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.70)' }}
+            style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)' }}
           >
             💬 {contacting ? 'Открываем чат...' : 'Уточнить у продавца'}
           </button>
