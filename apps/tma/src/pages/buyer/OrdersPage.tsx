@@ -201,7 +201,7 @@ export default function OrdersPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-gradient">Мои заказы</h1>
             {!loading && orders.length > 0 && (
-              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-muted)' }}>
                 {orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'}
               </p>
             )}
@@ -223,7 +223,7 @@ export default function OrdersPage() {
                     style={!active ? {
                       background: 'rgba(255,255,255,0.06)',
                       border: '1px solid rgba(255,255,255,0.10)',
-                      color: 'rgba(255,255,255,0.45)',
+                      color: 'var(--tg-text-muted)',
                     } : undefined}
                   >
                     {f.label}
@@ -232,7 +232,7 @@ export default function OrdersPage() {
                         className="px-1.5 py-0 rounded-full text-[10px] font-bold"
                         style={{
                           background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
-                          color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
+                          color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
                           minWidth: 18,
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -252,7 +252,7 @@ export default function OrdersPage() {
         {!authenticated && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔒</span>
-            <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <p className="text-xs text-center" style={{ color: 'var(--tg-text-muted)' }}>
               Откройте через Telegram для просмотра заказов
             </p>
           </div>
@@ -267,7 +267,7 @@ export default function OrdersPage() {
         {authenticated && !loading && error && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
-            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить заказы</p>
+            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Не удалось загрузить заказы</p>
             <button
               onClick={() => { setLoading(true); fetchFirst(); }}
               className="text-xs"
@@ -281,14 +281,14 @@ export default function OrdersPage() {
         {authenticated && !loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Заказов пока нет</p>
           </div>
         )}
 
         {authenticated && !loading && !error && orders.length > 0 && [...orders].filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔍</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Нет заказов в этой категории</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Нет заказов в этой категории</p>
           </div>
         )}
 
@@ -321,7 +321,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <Badge status={o.status} />
-                    <p className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    <p className="text-[11px] shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                       {dateLabel} · {timeLabel}
                     </p>
                   </div>
@@ -360,7 +360,7 @@ export default function OrdersPage() {
                                   {item.variantTitleSnapshot}
                                 </p>
                               )}
-                              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
                                 × {item.quantity}
                               </p>
                             </div>
@@ -391,7 +391,7 @@ export default function OrdersPage() {
                       );
                     })
                   ) : (
-                    <p className="text-xs pt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    <p className="text-xs pt-2" style={{ color: 'var(--tg-text-muted)' }}>
                       Нет данных о товарах
                     </p>
                   )}
@@ -430,7 +430,7 @@ export default function OrdersPage() {
               <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 Оцените товар
               </p>
-              <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              <p className="text-xs truncate" style={{ color: 'var(--tg-text-muted)' }}>
                 {reviewing.productTitle}
               </p>
             </div>
@@ -451,7 +451,7 @@ export default function OrdersPage() {
                 onClick={() => setReviewing(null)}
                 disabled={reviewSending}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--tg-text-secondary)' }}
               >
                 Отмена
               </button>
