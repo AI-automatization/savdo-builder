@@ -1,5 +1,45 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 4: launch блокеры + prod issues (4 задачи)
+
+После Wave 3 параллельная сессия Азима закрыла 6 marketing задач (SEO,
+public offer pages, reviews UI, fake response-time, pinned product strip,
+hardcoded domain, settings select). Я подхватил оставшиеся.
+
+### ✅ [MARKETING-HOMEPAGE-DISCOVERY-001] GET /storefront/featured 🔴
+- Endpoint разблокирует web-buyer landing (раньше форма ввода slug → 100% bounce).
+- `GetFeaturedStorefrontUseCase`: topStores (max 8) + featuredProducts (max 12).
+- Sort stores: `publishedAt DESC`; products: `avgRating DESC NULLS LAST → createdAt DESC`.
+- Filter: APPROVED + isPublic + has ACTIVE product; products + isVisible.
+- Public endpoint, Throttle 60/min.
+- Spec +7 cases. **Commit:** `5d3f961`
+
+### ✅ [PROD-BULL-BOARD-STATIC-401] Cookie-based auth для Bull Board 🟡
+- В production Bull Board зависал на «Loading»: middleware требовал token в
+  `?query` или header. Browser `<link>`/`<script>` НЕ передают токен → 401
+  на каждый CSS/JS/SVG.
+- Fix: cookie `bull-board-token` HttpOnly + SameSite=Strict + Secure prod,
+  TTL 30 мин. Первый GET с `?token=` ставит cookie. Browser потом шлёт автоматически.
+- **Commit:** `3a55ec4`
+
+### ✅ [TMA-SELLER-MAIN-BUTTON-001] MainButton CTA в seller forms 🟡
+- AddProductPage: `tg.MainButton('Опубликовать товар')` → handleSave(true)
+- EditProductPage: `tg.MainButton('Сохранить изменения')` → handleSave
+- Disable пока !isValid / saving / photoUploading.
+- SettingsPage пропущен — там auto-save (no single submit).
+- **Commit:** `83c0b72`
+
+### ✅ Production issues задокументированы в `analiz/logs.md`
+- **PROD-ADMIN-MFA-DEPLOY**: MfaSetupPage показывает старый endpoint. Код
+  в main правильный (commit `7b6a149`), `adminsb` Railway не подтянул main →
+  force-redeploy needed.
+- **PROD-BULL-BOARD-STATIC-401**: ↑ fixed.
+- **ADMIN-ROLE-PERMISSION-CHECK**: «admin:read required» — by design (super_admin only).
+
+**Wave 4 итог:** 50 suites, 676+ tests, 4 commits, typecheck clean (api + tma).
+
+---
+
 ## 2026-05-12 (Полат) — Wave 3: P1 security/UX (5 задач)
 
 ### ✅ [API-IDEMPOTENCY-FAIL-OPEN-001] Fail-closed на Redis-down 🔴
