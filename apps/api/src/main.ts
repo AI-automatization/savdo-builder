@@ -130,27 +130,59 @@ async function bootstrap() {
       const jwtService = app.get(JwtService);
       const jwtSecret = app.get(ConfigService).get<string>('jwt.accessSecret');
       const httpAdapter = app.getHttpAdapter() as any;
+
+      const BULL_COOKIE = 'bull-board-token';
+      const COOKIE_TTL_MS = 30 * 60 * 1000; // 30 min — короче чем access JWT
+
+      // Bull Board middleware. Token принимаем из (приоритет):
+      // 1. ?token= (первый клик из admin SPA, передаёт access JWT через URL)
+      // 2. Authorization: Bearer (curl/Postman)
+      // 3. Cookie `bull-board-token` (browser subsequent requests — static
+      //    CSS/JS НЕ передают token в URL, поэтому ставим cookie после
+      //    успешной валидации первого запроса).
+      //
+      // SEC: cookie HttpOnly + SameSite=Strict + Secure в production.
+      // Не используется для CSRF-чувствительных операций — Bull Board UI
+      // только показывает jobs (read-only через UI, write via API уже под JWT).
       httpAdapter.use('/api/v1/admin/queues', (req: any, res: any, next: any) => {
         const auth = req.headers.authorization || '';
+        const cookieHeader: string = req.headers.cookie || '';
+        const cookieToken = cookieHeader
+          .split(';')
+          .map((s: string) => s.trim())
+          .find((c: string) => c.startsWith(`${BULL_COOKIE}=`))
+          ?.slice(BULL_COOKIE.length + 1);
+
         const rawToken = (req.query?.token as string | undefined)
-          || (auth.startsWith('Bearer ') ? auth.slice(7) : '');
+          || (auth.startsWith('Bearer ') ? auth.slice(7) : '')
+          || cookieToken;
 
         if (!rawToken) {
           return res.status(401).send('Unauthorized — pass ?token=<admin-access-jwt>');
         }
 
-        // Старый fallback: статический BULL_BOARD_TOKEN — оставлен на случай
-        // если кто-то ходит curl'ом без полноценного admin login.
         const legacyToken = process.env.BULL_BOARD_TOKEN;
         if (legacyToken && rawToken === legacyToken) {
           return next();
         }
 
-        // Основной путь: JWT с role=ADMIN
         try {
           const decoded = jwtService.verify<{ role?: string }>(rawToken, { secret: jwtSecret });
           if (decoded.role !== 'ADMIN') {
             return res.status(403).send('Forbidden — admin role required');
+          }
+          // Set/refresh cookie только если token пришёл из query или header.
+          // Это исключает cookie-refresh цикл на каждый static asset request.
+          if (rawToken !== cookieToken) {
+            const flags = [
+              `${BULL_COOKIE}=${rawToken}`,
+              'Path=/api/v1/admin/queues',
+              'HttpOnly',
+              'SameSite=Strict',
+              `Max-Age=${Math.floor(COOKIE_TTL_MS / 1000)}`,
+            ];
+            if (isProd) flags.push('Secure');
+            res.setHeader('Set-Cookie', flags.join('; '));
           }
           return next();
         } catch {
