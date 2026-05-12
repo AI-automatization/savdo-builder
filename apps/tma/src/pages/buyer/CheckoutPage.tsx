@@ -176,7 +176,7 @@ export default function CheckoutPage() {
           ))}
           <div className="flex justify-between mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.80)' }}>Итого</span>
-            <span className="text-sm font-bold" style={{ color: '#A855F7' }}>{total.toLocaleString('ru')} сум</span>
+            <span className="text-sm font-bold" style={{ color: 'var(--tg-accent)' }}>{total.toLocaleString('ru')} сум</span>
           </div>
         </GlassCard>
 

@@ -231,8 +231,8 @@ export default function OrdersPage() {
                       <span
                         className="px-1.5 py-0 rounded-full text-[10px] font-bold"
                         style={{
-                          background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
-                          color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                          background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
+                          color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
                           minWidth: 18,
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -271,7 +271,7 @@ export default function OrdersPage() {
             <button
               onClick={() => { setLoading(true); fetchFirst(); }}
               className="text-xs"
-              style={{ color: '#A855F7' }}
+              style={{ color: 'var(--tg-accent)' }}
             >
               Попробовать снова
             </button>
@@ -315,7 +315,7 @@ export default function OrdersPage() {
                     <p className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
                       Заказ #{orderShort}
                     </p>
-                    <p className="text-sm font-bold shrink-0" style={{ color: '#A855F7' }}>
+                    <p className="text-sm font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
                       {Number(o.totalAmount).toLocaleString('ru')} сум
                     </p>
                   </div>
@@ -407,7 +407,7 @@ export default function OrdersPage() {
             onClick={loadMore}
             disabled={loadingMore}
             className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50"
-            style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7', border: '1px solid rgba(168,85,247,0.20)' }}
+            style={{ background: 'var(--tg-accent-bg)', color: 'var(--tg-accent)', border: '1px solid var(--tg-accent-border)' }}
           >
             {loadingMore ? <Spinner size={16} /> : 'Загрузить ещё'}
           </button>

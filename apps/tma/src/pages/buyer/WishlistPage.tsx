@@ -127,7 +127,7 @@ export default function WishlistPage() {
                   }}>
                     {p.title}
                   </p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#A855F7' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--tg-accent)' }}>
                     {Number(p.basePrice).toLocaleString('ru')} {p.currencyCode === 'UZS' ? 'сум' : p.currencyCode}
                   </p>
                   <p style={{
