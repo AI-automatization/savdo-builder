@@ -50,6 +50,22 @@
   color-scheme: light;
 }
 
+/* ── Role-scoped accent (TMA-DESIGN-ROLE-DIFF-001) ────────────────────────── */
+/* Контейнер с `data-role="SELLER"` (BottomNav, и любые seller-only компоненты)
+   получает cyan-accent. Без атрибута — наследует root orchid (buyer default). */
+[data-role="SELLER"] {
+  --tg-accent:        #22D3EE;
+  --tg-accent-dim:    rgba(34,211,238,0.18);
+  --tg-accent-glow:   rgba(34,211,238,0.35);
+  --tg-accent-text:   #CFFAFE;
+}
+:root[data-theme="light"] [data-role="SELLER"] {
+  --tg-accent:        #0891B2;
+  --tg-accent-dim:    rgba(8,145,178,0.10);
+  --tg-accent-glow:   rgba(8,145,178,0.25);
+  --tg-accent-text:   #0C4A6E;
+}
+
 /* ── Global reset ─────────────────────────────────────────────────────────── */
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
