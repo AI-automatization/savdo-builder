@@ -102,9 +102,9 @@ export default function BuyerProfilePage() {
               disabled={applying}
               className="text-xs font-semibold px-3 py-1.5 rounded-xl shrink-0"
               style={{
-                background: applying ? 'rgba(168,85,247,0.08)' : 'rgba(168,85,247,0.18)',
-                color: applying ? 'rgba(168,85,247,0.45)' : '#A855F7',
-                border: '1px solid rgba(168,85,247,0.25)',
+                background: applying ? 'var(--tg-accent-bg)' : 'var(--tg-accent-dim)',
+                color: applying ? 'var(--tg-accent-text)' : 'var(--tg-accent)',
+                border: '1px solid var(--tg-accent-border)',
                 cursor: applying ? 'wait' : 'pointer',
               }}
             >
@@ -151,7 +151,7 @@ export default function BuyerProfilePage() {
         {!authenticated && (
           <div
             className="p-4 rounded-2xl text-center"
-            style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.18)' }}
+            style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.60)' }}>
               Вы просматриваете магазины как гость.<br />
@@ -160,7 +160,7 @@ export default function BuyerProfilePage() {
             <button
               onClick={openBot}
               className="mt-3 text-sm font-semibold px-4 py-2 rounded-xl"
-              style={{ background: 'rgba(168,85,247,0.20)', color: '#A855F7' }}
+              style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
             >
               Войти через @{BOT_USERNAME}
             </button>

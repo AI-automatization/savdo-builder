@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { ModerationCase, ModerationAction } from '@prisma/client';
+import {
+  ModerationCase,
+  ModerationAction,
+  ModerationCaseStatus,
+  ModerationCaseType,
+  ModerationActionType,
+} from '@prisma/client';
 
 @Injectable()
 export class ModerationRepository {
@@ -11,14 +17,14 @@ export class ModerationRepository {
   async createCase(data: {
     entityType: string;
     entityId: string;
-    caseType: string;
+    caseType: ModerationCaseType;
   }): Promise<ModerationCase> {
     return this.prisma.moderationCase.create({
       data: {
         entityType: data.entityType,
         entityId: data.entityId,
         caseType: data.caseType,
-        status: 'open',
+        status: ModerationCaseStatus.OPEN,
       },
     });
   }
@@ -52,19 +58,19 @@ export class ModerationRepository {
 
     const [cases, total] = await this.prisma.$transaction([
       this.prisma.moderationCase.findMany({
-        where: { status: 'open' },
+        where: { status: ModerationCaseStatus.OPEN },
         orderBy: { createdAt: 'asc' },
         skip,
         take: limit,
       }),
-      this.prisma.moderationCase.count({ where: { status: 'open' } }),
+      this.prisma.moderationCase.count({ where: { status: ModerationCaseStatus.OPEN } }),
     ]);
 
     return { cases, total };
   }
 
   async findAllCases(filters?: {
-    status?: string;
+    status?: ModerationCaseStatus;
     entityType?: string;
     page?: number;
     limit?: number;
@@ -92,7 +98,7 @@ export class ModerationRepository {
 
   async updateCaseStatus(
     id: string,
-    status: string,
+    status: ModerationCaseStatus,
     assignedAdminId?: string,
   ): Promise<ModerationCase> {
     return this.prisma.moderationCase.update({
@@ -111,7 +117,7 @@ export class ModerationRepository {
     entityType: string;
     entityId: string;
     adminUserId: string;
-    actionType: string;
+    actionType: ModerationActionType;
     comment?: string;
   }): Promise<ModerationAction> {
     return this.prisma.moderationAction.create({

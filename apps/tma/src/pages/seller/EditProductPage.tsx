@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { api, apiUpload, getToken, ApiError } from '@/lib/api';
+import { api, apiUpload, ApiError } from '@/lib/api';
 import { CategoryModal } from '@/components/ui/CategoryModal';
 import { getImageUrl } from '@/lib/imageUrl';
 import { useTelegram } from '@/providers/TelegramProvider';
@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ProductDetailSkeleton } from '@/components/ui/Skeleton';
 import { ImageCropper } from '@/components/ui/ImageCropper';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
 
 interface Variant {
@@ -338,7 +339,15 @@ export default function EditProductPage() {
 
   const handleDeleteVariant = async (variantId: string) => {
     if (!id) return;
-    if (!confirm('Удалить вариант? Существующие заказы сохранятся.')) return;
+    // window.confirm() блокируется в Telegram WebApp на mobile (popup not allowed).
+    // Используем нативный TMA ConfirmModal через confirmDialog().
+    const ok = await confirmDialog({
+      title: 'Удалить вариант?',
+      body: 'Существующие заказы с этим вариантом сохранятся.',
+      confirmText: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api(`/seller/products/${id}/variants/${variantId}`, { method: 'DELETE' });
       setProduct((prev) =>
@@ -383,6 +392,29 @@ export default function EditProductPage() {
     }
   };
 
+  // TMA-SELLER-MAIN-BUTTON-001: Telegram MainButton как primary CTA.
+  // Раньше «Сохранить» терялась в скролле длинной формы → плохой UX на mobile.
+  // MainButton всегда виден внизу экрана, привязан к viewport.
+  useEffect(() => {
+    if (!tg) return;
+    const label = saving ? 'Сохраняем...' : 'Сохранить изменения';
+    tg.MainButton.setText(label);
+    tg.MainButton.show();
+    if (isValid && !saving) {
+      tg.MainButton.enable?.();
+      tg.MainButton.onClick(handleSave);
+      return () => {
+        tg.MainButton.offClick(handleSave);
+        tg.MainButton.hide();
+      };
+    } else {
+      tg.MainButton.disable?.();
+      return () => {
+        tg.MainButton.hide();
+      };
+    }
+  }, [tg, isValid, saving, title, description, price, storeCategoryId, globalCategoryId, displayType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleStatusChange = async (newStatus: 'DRAFT' | 'ACTIVE' | 'ARCHIVED') => {
     if (!id) return;
     setStatusChanging(true);
@@ -413,19 +445,10 @@ export default function EditProductPage() {
     setDeleting(true);
     setError('');
     try {
-      const token = getToken();
-      const BASE = (import.meta.env.VITE_API_URL as string) ?? '';
-      const res = await fetch(`${BASE}/api/v1/seller/products/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Ошибка удаления' }));
-        throw new Error(err.message ?? 'Ошибка удаления');
-      }
+      // Используем api() — он уже умеет 401 refresh + cache-bust + ApiError.
+      // Прямой fetch обходил setUnauthorizedHandler → юзер видел generic ошибку
+      // вместо нормального redirect на login при истёкшем токене.
+      await api(`/seller/products/${id}`, { method: 'DELETE' });
       tg?.HapticFeedback.notificationOccurred('success');
       navigate('/seller/products');
     } catch (e: unknown) {

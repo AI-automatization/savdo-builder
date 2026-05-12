@@ -8,6 +8,15 @@ import { AuthModule } from '../auth/auth.module';
 
 import { AdminRepository } from './repositories/admin.repository';
 import { AdminController } from './admin.controller';
+import { AdminDbController } from './admin-db.controller';
+import { AdminBroadcastController } from './admin-broadcast.controller';
+import { AdminAnalyticsController } from './admin-analytics.controller';
+import { AdminOpsController } from './admin-ops.controller';
+import { AdminProductsController } from './admin-products.controller';
+import { AdminStoresController } from './admin-stores.controller';
+import { AdminUsersController } from './admin-users.controller';
+import { AdminSellersController } from './admin-sellers.controller';
+import { AdminContextService } from './services/admin-context.service';
 import { SuperAdminController } from './super-admin.controller';
 
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
@@ -24,6 +33,7 @@ import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
 import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
 import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
+import { SetStoreVerificationUseCase } from './use-cases/set-store-verification.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
@@ -50,9 +60,21 @@ import { MediaModule } from '../media/media.module';
     MediaModule,
     BullModule.registerQueue({ name: QUEUE_TELEGRAM_NOTIFICATIONS }),
   ],
-  controllers: [AdminController, SuperAdminController],
+  controllers: [
+    AdminController,
+    AdminDbController,
+    AdminBroadcastController,
+    AdminAnalyticsController,
+    AdminOpsController,
+    AdminProductsController,
+    AdminStoresController,
+    AdminUsersController,
+    AdminSellersController,
+    SuperAdminController,
+  ],
   providers: [
     AdminRepository,
+    AdminContextService,
     ListUsersUseCase,
     GetUserDetailUseCase,
     SuspendUserUseCase,
@@ -67,6 +89,7 @@ import { MediaModule } from '../media/media.module';
     ArchiveStoreUseCase,
     ApproveStoreUseCase,
     UnapproveStoreUseCase,
+    SetStoreVerificationUseCase,
     AdminCancelOrderUseCase,
     GetAuditLogUseCase,
     GetAnalyticsUseCase,

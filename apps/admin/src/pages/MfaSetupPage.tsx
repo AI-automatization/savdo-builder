@@ -8,6 +8,13 @@ interface MfaStatus {
   enabledAt?: string | null
 }
 
+// Backend payload from GET /admin/auth/me (super-admin.controller.ts:49).
+// Эндпоинт /mfa/status НЕ существует — берём mfaEnabled/mfaEnabledAt из /me.
+interface AdminAuthMe {
+  mfaEnabled: boolean
+  mfaEnabledAt?: string | null
+}
+
 interface SetupResponse {
   qrCodeDataUrl: string
   secret: string
@@ -26,8 +33,8 @@ export default function MfaSetupPage() {
   const [secretCopied, setSecretCopied] = useState(false)
 
   useEffect(() => {
-    api.get<MfaStatus>('/api/v1/admin/auth/mfa/status')
-      .then(setStatus)
+    api.get<AdminAuthMe>('/api/v1/admin/auth/me')
+      .then(me => setStatus({ enabled: me.mfaEnabled, enabledAt: me.mfaEnabledAt ?? null }))
       .catch(e => setError(e.message ?? 'Не удалось проверить статус MFA'))
       .finally(() => setLoading(false))
   }, [])

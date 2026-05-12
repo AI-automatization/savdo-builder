@@ -70,7 +70,7 @@ export default function SellerProfilePage() {
         <GlassCard className="p-4 flex items-center gap-3">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
+            style={{ background: 'var(--tg-accent)' }}
           >
             {tgUser?.first_name?.[0] ?? '?'}
           </div>
@@ -87,7 +87,7 @@ export default function SellerProfilePage() {
           </div>
           <span
             className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: 'rgba(168,85,247,0.18)', color: '#A855F7' }}
+            style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
           >
             Продавец
           </span>
@@ -120,9 +120,9 @@ export default function SellerProfilePage() {
               onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
               className="text-[11px] inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
               style={{
-                color: '#A855F7',
-                background: 'rgba(168,85,247,0.10)',
-                border: '1px solid rgba(168,85,247,0.25)',
+                color: 'var(--tg-accent)',
+                background: 'var(--tg-accent-bg)',
+                border: '1px solid var(--tg-accent-border)',
                 cursor: 'pointer',
               }}
               aria-label="Перейти на сайт магазина"
@@ -148,7 +148,7 @@ export default function SellerProfilePage() {
             <button
               onClick={copyStoreLink}
               className="flex items-center gap-2 text-xs"
-              style={{ color: '#A855F7' }}
+              style={{ color: 'var(--tg-accent)' }}
             >
               🔗 Скопировать ссылку на магазин
             </button>

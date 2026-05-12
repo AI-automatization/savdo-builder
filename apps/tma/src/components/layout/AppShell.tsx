@@ -18,7 +18,7 @@ export function AppShell({ children, role }: Props) {
   const isDesktop = (viewportWidth ?? 0) >= 768;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--tg-bg-gradient)' }}>
+    <div data-role={role} className="min-h-screen flex flex-col" style={{ background: 'var(--tg-bg-gradient)' }}>
       {/* Ambient depth layers (только в тёмной теме — в светлой создают грязь) */}
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden z-0 hidden dark:block" data-ambient>
         <div className="absolute rounded-full" style={{

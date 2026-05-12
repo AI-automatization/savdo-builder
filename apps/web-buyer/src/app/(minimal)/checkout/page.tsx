@@ -820,7 +820,14 @@ export default function CheckoutPage() {
                 className="hidden md:block text-[10px] mt-2 text-center"
                 style={{ color: colors.textMuted }}
               >
-                Нажимая «Подтвердить», вы соглашаетесь с условиями
+                Нажимая «Подтвердить», вы соглашаетесь с{" "}
+                <Link href="/offer" className="underline" style={{ color: colors.textBody }}>
+                  публичной офертой
+                </Link>{" "}
+                и{" "}
+                <Link href="/privacy" className="underline" style={{ color: colors.textBody }}>
+                  политикой
+                </Link>
               </div>
             </div>
           </div>
@@ -847,7 +854,14 @@ export default function CheckoutPage() {
             className="text-[10px] mt-1.5 text-center"
             style={{ color: colors.textMuted }}
           >
-            Нажимая «Подтвердить», вы соглашаетесь с условиями
+            Нажимая «Подтвердить», вы соглашаетесь с{" "}
+            <Link href="/offer" className="underline" style={{ color: colors.textBody }}>
+              публичной офертой
+            </Link>{" "}
+            и{" "}
+            <Link href="/privacy" className="underline" style={{ color: colors.textBody }}>
+              политикой
+            </Link>
           </div>
         </div>
       )}

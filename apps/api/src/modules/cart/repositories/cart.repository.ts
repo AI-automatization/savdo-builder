@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { Cart, CartItem } from '@prisma/client';
+import { Cart, CartItem, CartStatus } from '@prisma/client';
 
 export type CartWithItems = Cart & { items: CartItem[] };
 
@@ -56,7 +56,7 @@ export class CartRepository {
 
   async findByBuyerId(buyerId: string): Promise<CartWithItems | null> {
     return this.prisma.cart.findFirst({
-      where: { buyerId, status: 'active' },
+      where: { buyerId, status: CartStatus.ACTIVE },
       include: CART_ITEMS_INCLUDE,
       orderBy: { createdAt: 'desc' },
     }) as Promise<CartWithItems | null>;
@@ -64,7 +64,7 @@ export class CartRepository {
 
   async findBySessionKey(sessionKey: string): Promise<CartWithItems | null> {
     return this.prisma.cart.findFirst({
-      where: { sessionKey, status: 'active' },
+      where: { sessionKey, status: CartStatus.ACTIVE },
       include: CART_ITEMS_INCLUDE,
       orderBy: { createdAt: 'desc' },
     }) as Promise<CartWithItems | null>;
@@ -72,7 +72,7 @@ export class CartRepository {
 
   async findById(id: string): Promise<CartWithItems | null> {
     return this.prisma.cart.findFirst({
-      where: { id, status: 'active' },
+      where: { id, status: CartStatus.ACTIVE },
       include: CART_ITEMS_INCLUDE,
     }) as Promise<CartWithItems | null>;
   }
@@ -82,7 +82,7 @@ export class CartRepository {
       data: {
         buyerId,
         storeId,
-        status: 'active',
+        status: CartStatus.ACTIVE,
       },
     });
   }
@@ -92,7 +92,7 @@ export class CartRepository {
       data: {
         sessionKey,
         storeId,
-        status: 'active',
+        status: CartStatus.ACTIVE,
       },
     });
   }
@@ -157,7 +157,7 @@ export class CartRepository {
   async markCartMerged(cartId: string): Promise<void> {
     await this.prisma.cart.update({
       where: { id: cartId },
-      data: { status: 'merged' },
+      data: { status: CartStatus.MERGED },
     });
   }
 
@@ -197,7 +197,7 @@ export class CartRepository {
 
       await tx.cart.update({
         where: { id: guestCartId },
-        data: { status: 'merged' },
+        data: { status: CartStatus.MERGED },
       });
     });
   }

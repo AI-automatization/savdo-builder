@@ -13,6 +13,7 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -36,6 +37,8 @@ import { ResolveThreadUseCase } from './use-cases/resolve-thread.use-case';
 import { GetUnreadCountUseCase } from './use-cases/get-unread-count.use-case';
 import { ChatGateway } from '../../socket/chat.gateway';
 
+@ApiTags('chat')
+@ApiBearerAuth('jwt')
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 export class ChatController {

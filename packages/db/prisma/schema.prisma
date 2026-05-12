@@ -95,6 +95,78 @@ enum MediaVisibility {
   PRIVATE
 }
 
+enum InAppNotificationType {
+  ORDER_STATUS_CHANGED   // legacy: 'order.status_changed'
+  STORE_APPROVED         // legacy: 'store.approved'
+  STORE_REJECTED         // legacy: 'store.rejected'
+  NEW_ORDER              // legacy: 'new_order'
+  NEW_MESSAGE            // legacy: 'new_message'
+  SELLER_VERIFIED        // legacy: 'seller.verified'
+  MODERATION_ACTION      // legacy: 'moderation.action'
+  GENERIC                // fallback
+}
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+enum SellerVerificationDocumentType {
+  PASSPORT
+  BUSINESS_DOC
+  OTHER
+}
+
+enum SellerVerificationDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ModerationCaseStatus {
+  OPEN       // только что создан, ждёт модератора
+  IN_REVIEW  // модератор взял в работу (assignedAdminId != null)
+  CLOSED     // решение принято — see ModerationAction.actionType
+}
+
+enum ModerationCaseType {
+  VERIFICATION    // верификация продавца / магазина
+  ABUSE           // жалоба пользователя
+  MANUAL_REVIEW   // ручная проверка админом
+}
+
+enum ModerationActionType {
+  // User-facing (TakeActionDto MODERATION_ACTIONS)
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+  ESCALATE
+  // Admin-side internal
+  ASSIGN          // взять кейс себе
+  CLOSE           // закрыть кейс без действия
+  REOPEN          // переоткрыть закрытый кейс
+  // Legacy targeted actions (lowercase в старых записях)
+  HIDE
+  SUSPEND
+  RESTORE
+  BLOCK
+}
+
+enum CartStatus {
+  ACTIVE
+  CONVERTED  // checkout прошёл — корзина превращена в Order
+  MERGED     // anonymous-cart смержен в buyer-cart при логине
+  EXPIRED
+}
+
+enum RefundStatus {
+  PENDING    // создан, ждёт обработки (Click/Payme reverse-tx)
+  COMPLETED  // средства вернулись
+  FAILED     // payment provider отказал
+  REVERSED   // отменён администратором
+}
+
 enum InventoryMovementType {
   ORDER_DEDUCTED
   ORDER_RELEASED
@@ -273,9 +345,9 @@ model Seller {
 model SellerVerificationDocument {
   id           String   @id @default(uuid())
   sellerId     String
-  documentType String   // passport | business_doc | other
+  documentType SellerVerificationDocumentType
   mediaId      String
-  status       String   @default("pending")
+  status       SellerVerificationDocumentStatus @default(PENDING)
   adminComment String?
   createdAt    DateTime @default(now())
   reviewedAt   DateTime?
@@ -302,6 +374,25 @@ model Store {
   telegramContactLink    String
   telegramChannelId      String?     // @channel_username или числовой chat_id
   telegramChannelTitle   String?     // отображаемое название канала
+  // FEAT-TG-AUTOPOST-001: при ACTIVE-публикации товара автоматически
+  // постить в канал продавца. Opt-in — продавец явно включает в Settings.
+  autoPostProductsToChannel Boolean  @default(false)
+  // FEAT-TG-CHANNEL-TEMPLATE-001: настраиваемый шаблон поста (Mustache-style
+  // placeholders из ChannelTemplateService). Если NULL — используется
+  // DEFAULT_TEMPLATE. Контактные данные ниже подставляются в {{contact}},
+  // {{instagram}}, {{tiktok}} при рендере шаблона.
+  channelPostTemplate    String?
+  channelContactPhone    String?
+  channelInstagramLink   String?
+  channelTiktokLink      String?
+  // MARKETING-VERIFIED-SELLER-001: trust signals на storefront.
+  // isVerified — manual флаг от admin (галочка в UI).
+  // avgRating/reviewCount — денормализованный weighted aggregate из всех
+  // ProductReview этого магазина. Обновляется через ReviewsRepository
+  // .refreshStoreAggregate() после insert/delete review.
+  isVerified             Boolean     @default(false)
+  avgRating              Decimal?    @db.Decimal(3, 2)
+  reviewCount            Int         @default(0)
   isPublic               Boolean     @default(false)
   publishedAt            DateTime?
   createdAt              DateTime    @default(now())
@@ -321,6 +412,8 @@ model Store {
   @@index([status])
   @@index([isPublic])
   @@index([primaryGlobalCategoryId])
+  // MARKETING-VERIFIED-SELLER-001: hot path storefront sort (verified first, rating DESC)
+  @@index([isVerified, avgRating(sort: Desc)])
   @@map("stores")
 }
 
@@ -632,7 +725,7 @@ model Cart {
   buyerId      String?
   sessionKey   String?
   storeId      String
-  status       String   @default("active") // active | converted | merged | expired
+  status       CartStatus @default(ACTIVE)
   currencyCode String   @default("UZS")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -844,7 +937,7 @@ model ChatMessage {
   id               String   @id @default(uuid())
   threadId         String
   senderUserId     String
-  messageType      String   @default("text") // text | image | system
+  messageType      ChatMessageType @default(TEXT)
   body             String?
   productContextId String?
   orderContextId   String?
@@ -881,6 +974,12 @@ model MediaFile {
   ownerUserId String?
   bucket      String
   objectKey   String
+  // FEAT-TG-CHANNEL-PHOTO-001: для bucket='telegram' objectKey хранит
+  // document file_id (legacy uploadFile через sendDocument). Чтобы отправить
+  // фото в канал через /sendPhoto, нужен photo-типа file_id — он другой.
+  // Заполняется лениво при первой публикации товара в канал через
+  // ChannelMediaResolverService.
+  photoFileId String?
   mimeType    String
   fileSize    BigInt
   width       Int?
@@ -906,7 +1005,7 @@ model MediaFile {
 model InAppNotification {
   id        String   @id @default(uuid())
   userId    String
-  type      String   // order.status_changed | store.approved | store.rejected | new_order | new_message | seller.verified | moderation.action
+  type      InAppNotificationType
   title     String
   body      String
   data      Json     @default("{}")
@@ -1016,7 +1115,7 @@ model OrderRefund {
   reason           String
   notes            String?
   returnedToWallet Boolean  @default(false)
-  status           String   @default("completed")
+  status           RefundStatus @default(COMPLETED)
   createdAt        DateTime @default(now())
 
   order Order      @relation(fields: [orderId], references: [id])
@@ -1032,8 +1131,8 @@ model ModerationCase {
   id               String   @id @default(uuid())
   entityType       String   // seller | store | product | message
   entityId         String
-  caseType         String   // verification | abuse | manual_review
-  status           String   @default("open")
+  caseType         ModerationCaseType
+  status           ModerationCaseStatus @default(OPEN)
   reason           String?
   assignedAdminId  String?
   createdAt        DateTime @default(now())
@@ -1052,7 +1151,7 @@ model ModerationAction {
   caseId      String?
   entityType  String
   entityId    String
-  actionType  String   // approve | reject | hide | suspend | restore | block
+  actionType  ModerationActionType
   adminUserId String
   comment     String?
   createdAt   DateTime @default(now())

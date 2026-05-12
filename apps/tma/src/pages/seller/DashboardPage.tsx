@@ -89,7 +89,7 @@ export default function DashboardPage() {
     <>
       <div className="flex items-center gap-2">
         <div className="section-label flex-1 min-w-0">Последние заказы</div>
-        <button onClick={() => navigate('/seller/orders')} className="text-xs shrink-0" style={{ color: '#A855F7' }}>
+        <button onClick={() => navigate('/seller/orders')} className="text-xs shrink-0" style={{ color: 'var(--tg-accent)' }}>
           Все →
         </button>
       </div>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                       <span style={{ color: 'rgba(167,139,250,0.85)' }}> +{o.preview.itemCount - 1}</span>
                     )}
                   </p>
-                  <p className="text-xs font-bold shrink-0" style={{ color: '#A855F7' }}>
+                  <p className="text-xs font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
                     {Number(o.totalAmount).toLocaleString('ru')} сум
                   </p>
                 </div>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 14px rgba(168,85,247,.40)' }}
+            style={{ background: 'var(--tg-accent)', boxShadow: '0 4px 14px var(--tg-accent-glow)' }}
           >
             <Sticker emoji="🏪" size={26} />
           </div>
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => navigate('/seller/products')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
-                  style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)' }}
+                  style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
                 >
                   <span style={{ fontSize: 28 }}>📦</span> Мои товары
                 </button>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => navigate('/seller/products')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
-                style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)' }}
+                style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
               >
                 <span>📦</span> Мои товары
               </button>

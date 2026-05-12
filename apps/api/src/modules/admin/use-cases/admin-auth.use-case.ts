@@ -3,6 +3,7 @@ import { generateSecret, generateURI, verifySync } from 'otplib';
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../../../database/prisma.service';
 import { TokenService } from '../../auth/services/token.service';
+import { maskPhone } from '../../../shared/pii';
 import { AuthRepository } from '../../auth/repositories/auth.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
@@ -180,7 +181,7 @@ export class AdminAuthUseCase {
       sessionId: session.id,
     });
 
-    this.logger.warn(`IMPERSONATION: admin=${admin.id} userId=${adminUserId} → target=${target.id} phone=${target.phone}`);
+    this.logger.warn(`IMPERSONATION: admin=${admin.id} userId=${adminUserId} → target=${target.id} phone=${maskPhone(target.phone)}`);
 
     return {
       accessToken,

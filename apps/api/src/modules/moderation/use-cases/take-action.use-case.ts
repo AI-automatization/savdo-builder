@@ -1,4 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { ModerationActionType, ModerationCaseStatus, SellerVerificationStatus, StoreStatus } from '@prisma/client';
 import { ModerationRepository } from '../repositories/moderation.repository';
 import { StoresRepository } from '../../stores/repositories/stores.repository';
 import { SellersRepository } from '../../sellers/repositories/sellers.repository';
@@ -7,11 +8,13 @@ import { ErrorCode } from '../../../shared/constants/error-codes';
 import { PrismaService } from '../../../database/prisma.service';
 import { TakeActionDto } from '../dto/take-action.dto';
 
-// Maps moderation action to the resulting case status (null = no change)
-const ACTION_TO_CASE_STATUS: Record<string, string | null> = {
-  APPROVE: 'approved',
-  REJECT: 'rejected',
-  ESCALATE: 'escalated',
+// APPROVE/REJECT/ESCALATE закрывают кейс. Конкретное решение хранится в
+// ModerationAction.actionType (последнее действие), поэтому здесь только CLOSED.
+// REQUEST_CHANGES оставляет кейс открытым (null = no transition).
+const ACTION_TO_CASE_STATUS: Record<string, ModerationCaseStatus | null> = {
+  APPROVE: ModerationCaseStatus.CLOSED,
+  REJECT: ModerationCaseStatus.CLOSED,
+  ESCALATE: ModerationCaseStatus.CLOSED,
   REQUEST_CHANGES: null,
 };
 
@@ -70,7 +73,7 @@ export class TakeActionUseCase {
           entityType: moderationCase.entityType,
           entityId: moderationCase.entityId,
           adminUserId: adminUser.id,
-          actionType: dto.action,
+          actionType: dto.action as ModerationActionType,
           comment: dto.comment,
         },
       });
@@ -88,24 +91,24 @@ export class TakeActionUseCase {
         if (dto.action === 'APPROVE') {
           await tx.store.update({
             where: { id: moderationCase.entityId },
-            data: { status: 'APPROVED' },
+            data: { status: StoreStatus.APPROVED },
           });
         } else if (dto.action === 'REJECT') {
           await tx.store.update({
             where: { id: moderationCase.entityId },
-            data: { status: 'REJECTED' },
+            data: { status: StoreStatus.REJECTED },
           });
         }
       } else if (moderationCase.entityType === 'seller') {
         if (dto.action === 'APPROVE') {
           await tx.seller.update({
             where: { id: moderationCase.entityId },
-            data: { verificationStatus: 'VERIFIED' as any },
+            data: { verificationStatus: SellerVerificationStatus.VERIFIED },
           });
         } else if (dto.action === 'REJECT') {
           await tx.seller.update({
             where: { id: moderationCase.entityId },
-            data: { verificationStatus: 'REJECTED' as any },
+            data: { verificationStatus: SellerVerificationStatus.REJECTED },
           });
         }
       }

@@ -60,7 +60,7 @@ export default function SystemHealthPage() {
 
   const fetchHealth = async () => {
     try {
-      const res = await api.get<SystemHealth>('/admin/system/health')
+      const res = await api.get<SystemHealth>('/api/v1/admin/system/health')
       setData(res)
       setError(null)
     } catch (e) {

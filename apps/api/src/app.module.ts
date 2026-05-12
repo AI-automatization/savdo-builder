@@ -13,6 +13,7 @@ import { featuresConfig } from './config/features.config';
 import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/prisma.module';
 import { RedisModule } from './shared/redis.module';
+import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { SellersModule } from './modules/sellers/sellers.module';
@@ -48,6 +49,7 @@ import { QueuesModule } from './queues/queues.module';
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     DatabaseModule,
     RedisModule,
+    IdempotencyModule,
     QueuesModule,
     AuthModule,
     UsersModule,

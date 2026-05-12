@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
@@ -22,40 +23,27 @@ import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 
 import { AdminRepository } from './repositories/admin.repository';
-import { ProductsRepository } from '../products/repositories/products.repository';
-import { ProductStatus } from '@prisma/client';
+// ProductsRepository / ProductStatus инжектятся в AdminProductsController, не здесь.
 import { OrdersRepository } from '../orders/repositories/orders.repository';
-import { ListUsersDto } from './dto/list-users.dto';
-import { ListSellersDto } from './dto/list-sellers.dto';
-import { ListStoresDto } from './dto/list-stores.dto';
-import { AdminActionDto } from './dto/admin-action.dto';
+// ListUsersDto / ListSellersDto / ListStoresDto / AdminActionDto импортируются
+// в Admin{Users,Sellers,Stores}Controller
 import { ListAuditLogDto } from './dto/list-audit-log.dto';
-import { BroadcastDto } from './dto/broadcast.dto';
+// BroadcastDto импортируется в AdminBroadcastController
 
-import { ListUsersUseCase } from './use-cases/list-users.use-case';
-import { GetUserDetailUseCase } from './use-cases/get-user-detail.use-case';
-import { SuspendUserUseCase } from './use-cases/suspend-user.use-case';
-import { UnsuspendUserUseCase } from './use-cases/unsuspend-user.use-case';
-import { ListSellersUseCase } from './use-cases/list-sellers.use-case';
-import { GetSellerDetailUseCase } from './use-cases/get-seller-detail.use-case';
-import { ListStoresUseCase } from './use-cases/list-stores.use-case';
-import { GetStoreDetailUseCase } from './use-cases/get-store-detail.use-case';
-import { SuspendStoreUseCase } from './use-cases/suspend-store.use-case';
-import { UnsuspendStoreUseCase } from './use-cases/unsuspend-store.use-case';
-import { RejectStoreUseCase } from './use-cases/reject-store.use-case';
-import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
-import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
-import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
+// 4 user + 2 seller use-cases инжектятся в Admin{Users,Sellers}Controller
+// 8 store use-cases инжектятся в AdminStoresController, не здесь.
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
-import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
-import { BroadcastUseCase } from './use-cases/broadcast.use-case';
-import { DbManagerUseCase } from './use-cases/db-manager.use-case';
-import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
-import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
-import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
-import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
+// GetAnalyticsUseCase инжектится в AdminAnalyticsController, не здесь.
+// BroadcastUseCase инжектится в AdminBroadcastController, не здесь.
+// DbManagerUseCase инжектится в AdminDbController, не здесь.
+// AdminCreateSellerUseCase / AdminCreateStoreUseCase инжектятся
+// в AdminUsersController / AdminSellersController
+// GetSystemHealthUseCase и MigrateTgMediaToR2UseCase инжектятся
+// в AdminOpsController, не здесь.
 
+@ApiTags('admin')
+@ApiBearerAuth('jwt')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
 @Roles('ADMIN')
@@ -64,60 +52,13 @@ export class AdminController {
 
   constructor(
     private readonly adminRepo: AdminRepository,
-    private readonly productsRepo: ProductsRepository,
     private readonly ordersRepo: OrdersRepository,
-    private readonly listUsersUseCase: ListUsersUseCase,
-    private readonly getUserDetailUseCase: GetUserDetailUseCase,
-    private readonly suspendUserUseCase: SuspendUserUseCase,
-    private readonly unsuspendUserUseCase: UnsuspendUserUseCase,
-    private readonly listSellersUseCase: ListSellersUseCase,
-    private readonly getSellerDetailUseCase: GetSellerDetailUseCase,
-    private readonly listStoresUseCase: ListStoresUseCase,
-    private readonly getStoreDetailUseCase: GetStoreDetailUseCase,
-    private readonly suspendStoreUseCase: SuspendStoreUseCase,
-    private readonly unsuspendStoreUseCase: UnsuspendStoreUseCase,
-    private readonly rejectStoreUseCase: RejectStoreUseCase,
-    private readonly archiveStoreUseCase: ArchiveStoreUseCase,
-    private readonly approveStoreUseCase: ApproveStoreUseCase,
-    private readonly unapproveStoreUseCase: UnapproveStoreUseCase,
     private readonly adminCancelOrderUseCase: AdminCancelOrderUseCase,
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
-    private readonly getAnalyticsUseCase: GetAnalyticsUseCase,
-    private readonly broadcastUseCase: BroadcastUseCase,
-    private readonly dbManagerUseCase: DbManagerUseCase,
-    private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
-    private readonly adminCreateStoreUseCase: AdminCreateStoreUseCase,
-    private readonly getSystemHealthUseCase: GetSystemHealthUseCase,
-    private readonly migrateTgMediaUseCase: MigrateTgMediaToR2UseCase,
   ) {}
 
-  // ── System Health (DevOps Dashboard) ──────────────────────────────────────
-  @Get('system/health')
-  async getSystemHealth() {
-    return this.getSystemHealthUseCase.execute();
-  }
-
-  // ── Feature flags (read-only view of process.env) ─────────────────────────
-  @Get('system/feature-flags')
-  async getFeatureFlags() {
-    return {
-      flags: [
-        { key: 'CHAT_ENABLED',                  label: 'Чат',                     value: process.env.CHAT_ENABLED !== 'false',                  envOverridable: true },
-        { key: 'STORE_APPROVAL_REQUIRED',       label: 'Модерация магазинов',     value: process.env.STORE_APPROVAL_REQUIRED !== 'false',       envOverridable: true },
-        { key: 'TELEGRAM_NOTIFICATIONS_ENABLED',label: 'Уведомления Telegram',    value: process.env.TELEGRAM_NOTIFICATIONS_ENABLED !== 'false', envOverridable: true },
-        { key: 'DEV_OTP_ENABLED',               label: 'DEV OTP (код в логах)',   value: process.env.DEV_OTP_ENABLED === 'true',                envOverridable: true },
-        { key: 'OTP_REQUIRED_FOR_CHECKOUT',     label: 'OTP при оформлении',      value: process.env.OTP_REQUIRED_FOR_CHECKOUT === 'true',      envOverridable: true },
-        { key: 'PAYMENT_ONLINE_ENABLED',        label: 'Онлайн-платежи',          value: process.env.PAYMENT_ONLINE_ENABLED === 'true',         envOverridable: true },
-        { key: 'ANALYTICS_ENABLED',             label: 'Аналитика',                value: process.env.ANALYTICS_ENABLED !== 'false',             envOverridable: true },
-        { key: 'WEB_PUSH_ENABLED',              label: 'Web Push',                value: process.env.WEB_PUSH_ENABLED === 'true',               envOverridable: true },
-        { key: 'MOBILE_PUSH_ENABLED',           label: 'Mobile Push',             value: process.env.MOBILE_PUSH_ENABLED === 'true',            envOverridable: true },
-        { key: 'SMS_FALLBACK_ENABLED',          label: 'SMS Fallback (запрещён)', value: false, envOverridable: false, locked: true, reason: 'SMS/Eskiz запрещены законом РУз' },
-        { key: 'SELLER_INSIGHTS_ENABLED',       label: 'Seller Insights',         value: process.env.SELLER_INSIGHTS_ENABLED === 'true',        envOverridable: true },
-        { key: 'PRODUCT_IMAGE_ATTACHMENT_ENABLED', label: 'Фото к товарам',        value: process.env.PRODUCT_IMAGE_ATTACHMENT_ENABLED !== 'false', envOverridable: true },
-      ],
-      note: 'Изменение feature flag требует перезапуска api. Через UI пока read-only — переменные задаются в Railway → Variables.',
-    };
-  }
+  // ── System Health + Feature Flags + Media Migration вынесены в
+  //    `AdminOpsController` (apps/api/src/modules/admin/admin-ops.controller.ts).
 
   // Resolve AdminUser record from JWT payload.
   // Throws ADMIN_NOT_FOUND if the caller has role=ADMIN in JWT but no AdminUser row.
@@ -133,218 +74,10 @@ export class AdminController {
     return adminUser;
   }
 
-  // ── Users ─────────────────────────────────────────────────────────────────
-
-  @Get('users')
-  async listUsers(
-    @Query() dto: ListUsersDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.listUsersUseCase.execute(dto);
-  }
-
-  @Get('users/:id')
-  async getUserDetail(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.getUserDetailUseCase.execute(id);
-  }
-
-  @Post('users/:id/suspend')
-  @AdminPermission('user:suspend')
-  async suspendUser(
-    @Param('id') id: string,
-    @Body() dto: AdminActionDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.suspendUserUseCase.execute(id, user.sub, dto.reason);
-  }
-
-  @Post('users/:id/unsuspend')
-  @AdminPermission('user:suspend')
-  async unsuspendUser(
-    @Param('id') id: string,
-    @Body() dto: AdminActionDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.unsuspendUserUseCase.execute(id, user.sub, dto.reason);
-  }
-
-  // ── Sellers ───────────────────────────────────────────────────────────────
-
-  @Get('sellers')
-  async listSellers(
-    @Query() dto: ListSellersDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.listSellersUseCase.execute(dto);
-  }
-
-  @Get('sellers/:id')
-  async getSellerDetail(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.getSellerDetailUseCase.execute(id);
-  }
-
-  @Patch('sellers/:id/verify')
-  @AdminPermission('seller:verify')
-  async verifySeller(
-    @Param('id') id: string,
-    @Body('status') status: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    const adminUser = await this.resolveAdminUser(user);
-    const updated = await this.adminRepo.updateSellerVerification(id, status);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: `seller.verification.${status.toLowerCase()}`,
-      entityType: 'seller',
-      entityId: id,
-      payload: { status },
-    });
-    return updated;
-  }
-
-  // POST /api/v1/admin/users/:id/make-seller
-  @Post('users/:id/make-seller')
-  @AdminPermission('seller:create')
-  async makeUserSeller(
-    @Param('id') id: string,
-    @Body() body: { fullName: string; sellerType: string; telegramUsername: string },
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const seller = await this.adminCreateSellerUseCase.execute({
-      userId: id,
-      fullName: body.fullName,
-      sellerType: body.sellerType as 'individual' | 'business',
-      telegramUsername: body.telegramUsername,
-    });
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'admin.create_seller',
-      entityType: 'seller',
-      entityId: seller.id,
-      payload: { userId: id, fullName: body.fullName },
-    });
-    return seller;
-  }
-
-  // POST /api/v1/admin/sellers/:id/create-store
-  @Post('sellers/:id/create-store')
-  @AdminPermission('store:create')
-  async createStoreForSeller(
-    @Param('id') id: string,
-    @Body() body: { name: string; city: string; telegramContactLink: string; description?: string; region?: string; slug?: string },
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const store = await this.adminCreateStoreUseCase.execute({
-      sellerId: id,
-      ...body,
-    });
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'admin.create_store',
-      entityType: 'store',
-      entityId: store.id,
-      payload: { sellerId: id, name: body.name, slug: store.slug },
-    });
-    return store;
-  }
-
-  // ── Stores ────────────────────────────────────────────────────────────────
-
-  @Get('stores')
-  async listStores(
-    @Query() dto: ListStoresDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.listStoresUseCase.execute(dto);
-  }
-
-  @Get('stores/:id')
-  async getStoreDetail(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.getStoreDetailUseCase.execute(id);
-  }
-
-  @Post('stores/:id/suspend')
-  @AdminPermission('store:suspend')
-  async suspendStore(
-    @Param('id') id: string,
-    @Body() dto: AdminActionDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.suspendStoreUseCase.execute(id, user.sub, dto.reason);
-  }
-
-  @Post('stores/:id/unsuspend')
-  @AdminPermission('store:suspend')
-  async unsuspendStore(
-    @Param('id') id: string,
-    @Body() dto: AdminActionDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.unsuspendStoreUseCase.execute(id, user.sub, dto.reason);
-  }
-
-  @Post('stores/:id/reject')
-  @AdminPermission('store:moderate')
-  async rejectStore(
-    @Param('id') id: string,
-    @Body() dto: AdminActionDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.rejectStoreUseCase.execute(id, user.sub, dto.reason);
-  }
-
-  @Post('stores/:id/archive')
-  @AdminPermission('store:archive')
-  async archiveStore(
-    @Param('id') id: string,
-    @Body() dto: AdminActionDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.archiveStoreUseCase.execute(id, user.sub, dto.reason);
-  }
-
-  @Post('stores/:id/approve')
-  @AdminPermission('store:moderate')
-  async approveStore(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.approveStoreUseCase.execute(id, user.sub);
-  }
-
-  @Post('stores/:id/unapprove')
-  @AdminPermission('store:moderate')
-  async unapproveStore(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.unapproveStoreUseCase.execute(id, user.sub);
-  }
+  // ── Users / Sellers / Stores эндпоинты вынесены в:
+  //    - `AdminUsersController` (admin-users.controller.ts)
+  //    - `AdminSellersController` (admin-sellers.controller.ts)
+  //    - `AdminStoresController` (admin-stores.controller.ts)
 
   // PATCH /api/v1/admin/orders/:id/status  { status: 'CANCELLED', reason: string }
   @Patch('orders/:id/status')
@@ -368,55 +101,11 @@ export class AdminController {
 
   // ── Analytics ─────────────────────────────────────────────────────────────
 
-  // GET /api/v1/admin/analytics/summary
-  @Get('analytics/summary')
-  async getAnalyticsSummary(@CurrentUser() user: JwtPayload) {
-    await this.resolveAdminUser(user);
-    return this.getAnalyticsUseCase.execute();
-  }
+  // ── Analytics эндпоинты вынесены в AdminAnalyticsController
+  //    (apps/api/src/modules/admin/admin-analytics.controller.ts).
 
-  // GET /api/v1/admin/analytics/events?page=&limit=&eventName=&storeId=
-  @Get('analytics/events')
-  async getAnalyticsEvents(
-    @CurrentUser() user: JwtPayload,
-    @Query('page')      page      = '1',
-    @Query('limit')     limit     = '50',
-    @Query('eventName') eventName?: string,
-    @Query('storeId')   storeId?: string,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.getAnalyticsUseCase.getEvents({
-      page:      Math.max(Number(page)  || 1,  1),
-      limit:     Math.min(Number(limit) || 50, 100),
-      eventName: eventName || undefined,
-      storeId:   storeId   || undefined,
-    });
-  }
-
-  // ── Broadcast ─────────────────────────────────────────────────────────────
-
-  // POST /api/v1/admin/broadcast
-  @Post('broadcast')
-  @AdminPermission('broadcast:create')
-  async broadcast(
-    @Body() dto: BroadcastDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.broadcastUseCase.execute({
-      message: dto.message,
-      previewMode: dto.preview_mode ?? false,
-      adminUserId: user.sub,
-      audience: dto.audience,
-    });
-  }
-
-  // GET /api/v1/admin/broadcast
-  @Get('broadcast')
-  async getBroadcastHistory(@CurrentUser() user: JwtPayload) {
-    await this.resolveAdminUser(user);
-    return this.broadcastUseCase.getHistory();
-  }
+  // ── Broadcast эндпоинты вынесены в AdminBroadcastController
+  //    (apps/api/src/modules/admin/admin-broadcast.controller.ts).
 
   // ── Audit Log ─────────────────────────────────────────────────────────────
 
@@ -429,119 +118,9 @@ export class AdminController {
     return this.getAuditLogUseCase.execute(dto);
   }
 
-  // ── Products ───────────────────────────────────────────────────────────────
-
-  // GET /api/v1/admin/products?storeId=&status=&page=&limit=
-  @Get('products')
-  async listProducts(
-    @Query('storeId') storeId: string | undefined,
-    @Query('status') status: string | undefined,
-    @Query('page') page: string | undefined,
-    @Query('limit') limit: string | undefined,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    // Узкая валидация: разрешаем только реальные значения ProductStatus.
-    const validStatus = status && (Object.values(ProductStatus) as string[]).includes(status)
-      ? (status as ProductStatus)
-      : undefined;
-    const products = await this.productsRepo.findAll({
-      storeId,
-      status: validStatus,
-      page: page ? Number(page) : 1,
-      limit: limit ? Math.min(Number(limit), 100) : 20,
-    });
-    return products;
-  }
-
-  // PATCH /api/v1/admin/products/:id/hide
-  @Patch('products/:id/hide')
-  @AdminPermission('product:moderate')
-  async hideProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_HIDDEN',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status },
-    });
-    return this.productsRepo.updateStatus(id, ProductStatus.HIDDEN_BY_ADMIN);
-  }
-
-  // PATCH /api/v1/admin/products/:id/restore
-  @Patch('products/:id/restore')
-  @AdminPermission('product:moderate')
-  async restoreProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_RESTORED',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status },
-    });
-    return this.productsRepo.updateStatus(id, ProductStatus.ACTIVE);
-  }
-
-  // DELETE /api/v1/admin/products/:id  — принудительное удаление (soft delete, любой статус)
-  @Delete('products/:id')
-  @AdminPermission('product:delete')
-  async forceDeleteProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_FORCE_DELETED',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status, title: product.title },
-    });
-    await this.productsRepo.delete(id);
-    return { success: true };
-  }
-
-  // PATCH /api/v1/admin/products/:id/archive
-  @Patch('products/:id/archive')
-  @AdminPermission('product:moderate')
-  async archiveProduct(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const product = await this.productsRepo.findById(id);
-    if (!product) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
-    }
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'PRODUCT_ARCHIVED',
-      entityType: 'Product',
-      entityId: id,
-      payload: { previousStatus: product.status },
-    });
-    return this.productsRepo.updateStatus(id, 'ARCHIVED' as any);
-  }
+  // ── Products эндпоинты вынесены в `AdminProductsController`
+  //    (apps/api/src/modules/admin/admin-products.controller.ts).
+  //    Заодно убран последний `'ARCHIVED' as any` каст -> `ProductStatus.ARCHIVED`.
 
   // ── Global search ──────────────────────────────────────────────────────────
 
@@ -586,122 +165,8 @@ export class AdminController {
     });
   }
 
-  // ── Database Manager ───────────────────────────────────────────────────────
+  // ── Database Manager эндпоинты вынесены в `AdminDbController`
+  //    (apps/api/src/modules/admin/admin-db.controller.ts).
 
-  // GET /api/v1/admin/db/tables
-  @Get('db/tables')
-  async dbListTables(@CurrentUser() user: JwtPayload) {
-    await this.resolveAdminUser(user);
-    return this.dbManagerUseCase.listTables();
-  }
-
-  // GET /api/v1/admin/db/tables/:table/:id
-  @Get('db/tables/:table/:id')
-  async dbGetRow(
-    @Param('table') table: string,
-    @Param('id')    id:    string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.dbManagerUseCase.getRow(table, id);
-  }
-
-  // GET /api/v1/admin/db/tables/:table?page=&limit=&search=
-  @Get('db/tables/:table')
-  async dbGetRows(
-    @Param('table') table: string,
-    @Query('page')   page:   string | undefined,
-    @Query('limit')  limit:  string | undefined,
-    @Query('search') search: string | undefined,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    return this.dbManagerUseCase.getRows(table, {
-      page:  page  ? Number(page)  : 1,
-      limit: limit ? Math.min(Number(limit), 100) : 25,
-      search: search?.trim() || undefined,
-    });
-  }
-
-  // PATCH /api/v1/admin/db/tables/:table/:id
-  @Patch('db/tables/:table/:id')
-  @AdminPermission('db:update')
-  async dbUpdateRow(
-    @Param('table') table: string,
-    @Param('id')    id:    string,
-    @Body()         data:  Record<string, unknown>,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: `db.update.${table}`,
-      entityType: table,
-      entityId: id,
-      payload: { fields: Object.keys(data) },
-    });
-    return this.dbManagerUseCase.updateRow(table, id, data);
-  }
-
-  // DELETE /api/v1/admin/db/tables/:table/:id
-  @Delete('db/tables/:table/:id')
-  @AdminPermission('db:delete')
-  async dbDeleteRow(
-    @Param('table') table: string,
-    @Param('id')    id:    string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: `db.delete.${table}`,
-      entityType: table,
-      entityId: id,
-      payload: {},
-    });
-    return this.dbManagerUseCase.deleteRow(table, id);
-  }
-
-  // ── Media migration (TG → Supabase) ───────────────────────────────────────
-  // POST /api/v1/admin/media/migrate-tg-to-r2?limit=50
-  // API-MEDIA-MIGRATION-TG-TO-R2-001: разово/батчами вытащить старые TG-фото
-  // и залить в Supabase. См. comment в use-case для контекста.
-  @Post('media/migrate-tg-to-r2')
-  @AdminPermission('media:migrate')
-  async migrateTgMediaToR2(
-    @Query('limit') limit: string | undefined,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const parsedLimit = limit ? Number(limit) : 50;
-    const result = await this.migrateTgMediaUseCase.execute(parsedLimit);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: 'media.migrate.tg_to_r2',
-      entityType: 'media',
-      entityId: 'batch',
-      payload: { limit: parsedLimit, ...result },
-    });
-    return result;
-  }
-
-  // POST /api/v1/admin/db/tables/:table
-  @Post('db/tables/:table')
-  @AdminPermission('db:insert')
-  async dbInsertRow(
-    @Param('table') table: string,
-    @Body()         data:  Record<string, unknown>,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.resolveAdminUser(user);
-    const result = await this.dbManagerUseCase.insertRow(table, data);
-    await this.adminRepo.writeAuditLog({
-      actorUserId: user.sub,
-      action: `db.insert.${table}`,
-      entityType: table,
-      entityId: (result as Record<string, unknown>).id as string ?? 'unknown',
-      payload: { fields: Object.keys(data) },
-    });
-    return result;
-  }
+  // db/tables/:table POST вынесен в AdminDbController
 }
