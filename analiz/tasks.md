@@ -65,7 +65,7 @@
 ## 🟠 P1 — Marketing should-have
 
 - [x] **`MARKETING-REVIEWS-SHOW-001`** ✅ 11.05.2026 — `ProductReviews` компонент (`components/store/ProductReviews.tsx`) рендерит секцию между Characteristics и «Из этого магазина». `useProductReviews` hook. Average rating + count + плюрализ + Stars + author + date + comment. API уже был, фронт его не использовал.
-- [ ] **`MARKETING-VERIFIED-SELLER-001`** — `Store` модель без `isVerified` / `avgRating` / `reviewCount`. Buyers не отличают good от bad sellers.
+- [x] **`MARKETING-VERIFIED-SELLER-001`** ✅ 12.05.2026 — Store schema fields (`isVerified` / `avgRating` / `reviewCount`) уже добавлены параллельной сессией с индексом `[isVerified, avgRating desc]`. **Сейчас добавил:** admin `POST /admin/stores/:id/verify|/unverify` (+ INV-A02 reason при unverify, INV-A01 audit, идемпотентность), сортировка `findAllPublished` / `searchPublic` в `stores.repository.ts` теперь `[isVerified desc, publishedAt desc]`, `reviews.repository.refreshStoreAggregate` (weighted-by-reviewCount). UI: TMA `StoresPage` карточки + `StorePage` шапка показывают ✓ badge + ⭐ rating (reviewCount), admin `StoresPage` имеет toggle Verify/Unverify в actions + galочку рядом с именем магазина в таблице.
 - [ ] **`MARKETING-CART-ABANDONMENT-001`** — нет cron + TG nudge через N часов идлинга.
 - [ ] **`MARKETING-WISHLIST-NOTIFY-001`** — wishlist без price-drop / back-in-stock notifications.
 - [x] **`MARKETING-FAKE-RESPONSE-TIME-001`** ✅ 11.05.2026 — убраны 3 false claims: product page «отвечает за час» → conditional city, order detail PENDING eta «в течение часа» → «скоро рассмотрит», cart sticky strip «отвечает за час» → «написать продавцу».
@@ -86,7 +86,7 @@
 
 - [x] **`TMA-PHONE-MASK-001`** ✅ 12.05.2026 — `apps/tma/src/lib/phone.ts` (formatUzPhone/stripPhone/isValidUzPhone). Маска `+998 XX XXX XX XX` в CheckoutPage onChange. Backend получает E.164 через stripPhone. Коммит `abfb7a7`.
 - [x] **`TMA-CHECKOUT-SUCCESS-PAGE-001`** ✅ 10.05.2026 — ✓ icon + orderNumber + total + 2 CTA (Мои заказы / К магазинам). Коммит `5e486a3`.
-- [ ] **`TMA-BECOME-SELLER-CTA-001`** (P1) — в `buyer/SettingsPage.tsx` нет способа стать продавцом. Покупатель залогинен, но `handleStart` в боте всегда показывает `showBuyerMenu` → flow `reg_seller` доступен ТОЛЬКО полностью новым users. **Fix**: добавить CTA "🏪 Открыть свой магазин" (виден только если `authenticated && user.role === 'BUYER'`) → `tg.openTelegramLink('https://t.me/{BOT}?start=become_seller')`. В webhook: парсить `/start <param>` (whitelist `become_seller`), для существующего buyer с реальным phone — setTmp phone+firstName и `startSellerRegistration`. Если уже seller → `showSellerMenu`. Если ghost (`tg_*`) → стандартный contact request.
+- [x] **`TMA-BECOME-SELLER-CTA-001`** ✅ 12.05.2026 — реализовано раньше коммитами `91a96b7` (feat tma+api) + `5b30642` (CodeTour `.tours/become-seller-cta.tour`). Полный flow: CTA в `buyer/SettingsPage.tsx` → `tg.openTelegramLink(?start=become_seller)` → webhook парсит startParam (hard cap 64) → handleStart с strict whitelist + `!seller` → setTmp phone+firstName из user → startSellerRegistration. finishSellerRegistration обрабатывает buyer→seller upgrade через 3 ветки (existing.seller / existing / new) — больше не падает на unique(phone).
 - [ ] **`TMA-ADDRESS-AUTOCOMPLETE-001`** — адрес одна строка свободного текста. UZ адреса `mahalla, district` сложные. Нужен Yandex Maps autocomplete.
 - [ ] **`TMA-LIGHT-THEME-MIGRATION-001`** — force-dark, 553 hardcoded `rgba(255,255,255,X)` в 40 файлах. Миграция на CSS-vars (~3-4ч).
 
@@ -108,7 +108,7 @@
 - [ ] **`API-STOREFRONT-SEARCH-PERF-001`** — нет `pg_trgm` GIN index. ILIKE на 100k+ товаров медленный.
 - [ ] **`API-SENTRY-001`** — Sentry не подключён. Critical для prod.
 - [ ] **`API-PINO-LOGGING-001`** — заменить NestJS Logger на pino structured logging.
-- [ ] **`API-PII-MASKING-001`** — phone в логах plain (SEC-011). Маскировать `+998 *** ** 67`.
+- [x] **`API-PII-MASKING-001`** ✅ verified done 12.05.2026 — `apps/api/src/shared/pii.ts` (`maskPhone`: `+998901234567` → `+998 *** ** 67`, ghost `tg_*` → `tg_***`). Использован во ВСЕХ logger.* с phone: otp.processor, otp.service, telegram-auth.use-case, admin-auth.use-case (impersonation), telegram-demo.handler (linked/registered logs), ghost-cleanup.service. Также есть unit-тесты `pii.spec.ts`. Verified grep — 0 plain-text phone в logger calls.
 - [ ] **`API-FRONTEND-TESTS-001`** — 0 frontend tests для admin / web-buyer / web-seller / TMA. Хотя бы smoke.
 - [ ] **`API-PAGINATION-ENVELOPE-001`** (P1, B8) — единый `{ data, meta: { total, page, limit, totalPages } }` (breaking, требует sync с фронтом).
 
@@ -146,7 +146,7 @@
 ## Sprint A — cross-platform polish (P0 only) — 10 тикетов (3 закрыто)
 
 - [x] **`TMA-DESIGN-HIT-AREA-001`** ✅ 12.05.2026 — qty buttons в `buyer/CartPage.tsx`: 3 кнопки (−/+/✕) с `w-7 h-7` (28px) → `w-10 h-10` (40px). Добавлены aria-label на каждую. text-sm → text-base для символа. ChatPage `w-6 h-6` — secondary ✕ в reply/edit banner, не qty (вне scope). OrdersPage qty не нашёл — `× {item.quantity}` рендерится как текст, кнопок нет.
-- [ ] **`TMA-DESIGN-FG-TOKENS-001`** (P0, T2) — 100+ inline `rgba(255,255,255,X)` → `FG.strong/muted/dim` в `styles.ts`. Миграция CartPage / OrdersPage / ProductPage.
+- [~] **`TMA-DESIGN-FG-TOKENS-001`** (P0, T2) — **прогресс 12.05.2026**: мигрированы CartPage (7), WishlistPage (6), CheckoutPage (14), ProfilePage (14), SettingsPage (15), buyer/StorePage (15), buyer/OrdersPage (11 из 24) = **82 точки**. Осталось: buyer/OrdersPage (13), buyer/ProductPage (22), buyer/StoresPage (28), buyer/ChatPage (46), все seller pages + components. Уже использует существующие `--tg-text-primary/secondary/muted/dim` + `--tg-surface*` + `--tg-border*` из index.css → light theme работает автоматически на мигрированных страницах. **Уроки:** параллельная сессия (web-buyer/web-seller checkout) откатывает unstaged → коммитить сразу после каждого edit.
 - [x] **`TMA-DESIGN-A11Y-LEFTOVERS-001`** ✅ 08.05.2026 — verified: упомянутые в аудите места (seller/ChatPage:205) — modal backdrop с stopPropagation + ESC, acceptable per ADR. buyer/ProductPage:252-256 уже закрыто `3400ecc`. Реальных нарушений не осталось.
 - [x] **`TMA-DESIGN-ROLE-DIFF-001`** ✅ 12.05.2026 (5 коммитов) — полная инфраструктура + миграция всех seller-страниц в моей зоне:
   - `index.css`: `--tg-accent` / `--tg-accent-dim` / `--tg-accent-glow` / `--tg-accent-bg` / `--tg-accent-border` / `--tg-accent-text` vars, scoped через `[data-role="SELLER"]` (cyan) + `:root[data-theme="light"] [data-role="SELLER"]`

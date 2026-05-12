@@ -24,6 +24,52 @@ export class ProductPresenterService {
   }
 
   /**
+   * P3-004: считает trust-флаг скидки и процент.
+   *
+   * isSale: salePrice строго меньше basePrice (защита от 0-discount и negative).
+   * discountPercent: floor((1 - salePrice/basePrice) * 100), clamp в [1, 99].
+   *
+   * Если нет скидки — `{ isSale: false, discountPercent: null }`. Фронт
+   * использует это для бэйджа `SALE -30%` на ProductCard.
+   */
+  computeSale(
+    basePrice: unknown,
+    salePrice: unknown,
+  ): { isSale: boolean; discountPercent: number | null } {
+    const base = this.toPrice(basePrice);
+    const sale = this.toPrice(salePrice);
+    if (base === null || sale === null) return { isSale: false, discountPercent: null };
+    if (base <= 0) return { isSale: false, discountPercent: null };
+    if (sale <= 0 || sale >= base) return { isSale: false, discountPercent: null };
+    // Integer arithmetic перед делением — иначе floating-point: например
+    // `(1 - 80/100) * 100 = 19.999...` → floor = 19 вместо ожидаемого 20.
+    const pct = Math.floor(((base - sale) * 100) / base);
+    if (pct < 1) return { isSale: false, discountPercent: null };
+    return { isSale: true, discountPercent: Math.min(pct, 99) };
+  }
+
+  /**
+   * P3-004: shortcut для DTO spread — возвращает все price-поля + sale-флаги.
+   * Используется в product list/detail mappers, заменяет 3 строки бойлерплейта:
+   *   basePrice + oldPrice + salePrice → +isSale +discountPercent.
+   */
+  priceFields(basePrice: unknown, oldPrice: unknown, salePrice: unknown): {
+    basePrice: number;
+    oldPrice: number | null;
+    salePrice: number | null;
+    isSale: boolean;
+    discountPercent: number | null;
+  } {
+    const sale = this.computeSale(basePrice, salePrice);
+    return {
+      basePrice: Number(basePrice),
+      oldPrice: this.toPrice(oldPrice),
+      salePrice: this.toPrice(salePrice),
+      ...sale,
+    };
+  }
+
+  /**
    * Нормализация variant для DTO: Decimal → number, optionValues junctions → optionValueIds[].
    */
   normalizeVariant(variant: unknown): unknown {

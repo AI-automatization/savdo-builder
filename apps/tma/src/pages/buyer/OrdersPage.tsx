@@ -201,7 +201,7 @@ export default function OrdersPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-gradient">Мои заказы</h1>
             {!loading && orders.length > 0 && (
-              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-muted)' }}>
                 {orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'}
               </p>
             )}
@@ -221,9 +221,9 @@ export default function OrdersPage() {
                     onClick={() => setStatusFilter(f.value)}
                     className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
                     style={!active ? {
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      color: 'rgba(255,255,255,0.45)',
+                      background: 'var(--tg-surface-hover)',
+                      border: '1px solid var(--tg-border)',
+                      color: 'var(--tg-text-muted)',
                     } : undefined}
                   >
                     {f.label}
@@ -231,8 +231,8 @@ export default function OrdersPage() {
                       <span
                         className="px-1.5 py-0 rounded-full text-[10px] font-bold"
                         style={{
-                          background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
-                          color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
+                          background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
+                          color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
                           minWidth: 18,
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -252,7 +252,7 @@ export default function OrdersPage() {
         {!authenticated && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔒</span>
-            <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <p className="text-xs text-center" style={{ color: 'var(--tg-text-muted)' }}>
               Откройте через Telegram для просмотра заказов
             </p>
           </div>
@@ -267,7 +267,7 @@ export default function OrdersPage() {
         {authenticated && !loading && error && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
-            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить заказы</p>
+            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Не удалось загрузить заказы</p>
             <button
               onClick={() => { setLoading(true); fetchFirst(); }}
               className="text-xs"
@@ -281,14 +281,14 @@ export default function OrdersPage() {
         {authenticated && !loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Заказов пока нет</p>
           </div>
         )}
 
         {authenticated && !loading && !error && orders.length > 0 && [...orders].filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔍</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Нет заказов в этой категории</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Нет заказов в этой категории</p>
           </div>
         )}
 
@@ -312,7 +312,7 @@ export default function OrdersPage() {
               >
                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                    <p className="text-sm font-bold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                       Заказ #{orderShort}
                     </p>
                     <p className="text-sm font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
@@ -321,7 +321,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <Badge status={o.status} />
-                    <p className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    <p className="text-[11px] shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                       {dateLabel} · {timeLabel}
                     </p>
                   </div>
@@ -330,7 +330,7 @@ export default function OrdersPage() {
                   viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
                   className="w-4 h-4 transition-transform mt-1.5 shrink-0"
                   style={{
-                    color: 'rgba(255,255,255,0.30)',
+                    color: 'var(--tg-text-dim)',
                     transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                   }}
                 >
@@ -341,7 +341,7 @@ export default function OrdersPage() {
               {isExpanded && (
                 <div
                   className="px-4 pb-4 flex flex-col gap-2 border-t"
-                  style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+                  style={{ borderColor: 'var(--tg-border-soft)' }}
                 >
                   {isLoadingDetail ? (
                     <div className="flex justify-center py-3"><Spinner size={16} /></div>
@@ -352,19 +352,19 @@ export default function OrdersPage() {
                         <div key={item.id} className="flex flex-col gap-1.5 pt-2">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.80)' }}>
+                              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-primary)' }}>
                                 {item.productTitleSnapshot}
                               </p>
                               {item.variantTitleSnapshot && (
-                                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                                <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
                                   {item.variantTitleSnapshot}
                                 </p>
                               )}
-                              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
                                 × {item.quantity}
                               </p>
                             </div>
-                            <p className="text-xs font-semibold shrink-0" style={{ color: 'rgba(255,255,255,0.70)' }}>
+                            <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--tg-text-secondary)' }}>
                               {Number(item.lineTotalAmount).toLocaleString('ru')} сум
                             </p>
                           </div>
@@ -391,7 +391,7 @@ export default function OrdersPage() {
                       );
                     })
                   ) : (
-                    <p className="text-xs pt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    <p className="text-xs pt-2" style={{ color: 'var(--tg-text-muted)' }}>
                       Нет данных о товарах
                     </p>
                   )}
@@ -423,14 +423,14 @@ export default function OrdersPage() {
         >
           <div
             className="w-full max-w-lg mx-auto rounded-t-2xl p-5 flex flex-col gap-4"
-            style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)' }}
+            style={{ background: '#1a1035', border: '1px solid var(--tg-border)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>
                 Оцените товар
               </p>
-              <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              <p className="text-xs truncate" style={{ color: 'var(--tg-text-muted)' }}>
                 {reviewing.productTitle}
               </p>
             </div>
@@ -444,14 +444,14 @@ export default function OrdersPage() {
               rows={4}
               maxLength={2000}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
+              style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => setReviewing(null)}
                 disabled={reviewSending}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
+                style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
               >
                 Отмена
               </button>

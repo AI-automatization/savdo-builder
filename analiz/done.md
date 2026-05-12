@@ -1,5 +1,47 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 9: MARKETING-VERIFIED-SELLER-001 (UI + admin toggle)
+
+Backend поля (`Store.isVerified` / `avgRating` / `reviewCount`) и индекс
+`[isVerified, avgRating desc]` параллельная сессия добавила раньше.
+Сегодня дотянул фронт + admin toggle + storefront-сортировку.
+
+### ✅ [MARKETING-VERIFIED-SELLER-001] Trust-signal: verified badge + rating 🟠
+- **Backend (уже было / закрепил):**
+  - `POST /admin/stores/:id/verify` + `/unverify` — `SetStoreVerificationUseCase`
+    с INV-A02 (reason required для unverify), INV-A01 (audit_log
+    `STORE_VERIFIED` / `STORE_UNVERIFIED` с previousIsVerified), идемпотентность.
+    +5 spec тестов.
+  - `stores.repository.findAllPublished()` + `searchPublic()` теперь делают
+    `select` с `isVerified/avgRating/reviewCount` и `orderBy: [{ isVerified:
+    'desc' }, { publishedAt: 'desc' }]` — verified магазины вверху списка.
+  - `reviews.repository.refreshStoreAggregate()` — weighted average по
+    `Product.avgRating × reviewCount`, дешевле чем по сырым review'ам.
+- **TMA:**
+  - `apps/tma/src/pages/buyer/StoresPage.tsx` — карточка магазина: ✓ badge
+    (cyan 4×4 круг) рядом с именем + строка `⭐ N.N (M)` под названием.
+  - `apps/tma/src/pages/buyer/StorePage.tsx` — шапка детальной страницы:
+    ✓ badge + рейтинг в той же строке что и «Перейти на сайт».
+  - Поля сделаны `optional` в интерфейсе — backward-compat если кто-то
+    закэшировал старую версию ответа.
+- **Admin:**
+  - `apps/admin/src/pages/StoresPage.tsx` — в таблице рядом с именем магазина
+    `<BadgeCheck />` (`lucide-react`) + `⭐ N.N (M)`. В actions колонке —
+    отдельная кнопка `Verify/Verified` рядом с «Одобрить». Unverify требует
+    `window.prompt('Причина')` (INV-A02 на клиенте, валидация на сервере).
+  - Старая кнопка «Верифицировать» переименована в «Одобрить» — она крутит
+    `status`, а не `isVerified`, путало.
+- **Файлы:** `apps/api/src/modules/admin/use-cases/set-store-verification.use-case.ts`,
+  `apps/api/src/modules/admin/admin-stores.controller.ts`,
+  `apps/api/src/modules/stores/repositories/stores.repository.ts`,
+  `apps/api/src/modules/reviews/repositories/reviews.repository.ts`,
+  `apps/tma/src/pages/buyer/StoresPage.tsx`,
+  `apps/tma/src/pages/buyer/StorePage.tsx`,
+  `apps/admin/src/pages/StoresPage.tsx`.
+- **Важность:** 🟠 P1 (marketing trust-signal — buyers увидят proof of
+  legitimacy без отзывов; storefront-сортировка дает verified-sellers лучшую
+  видимость).
+
 ## 2026-05-12 (Полат) — Wave 8: TMA-CART-API-SYNC-001 (cross-channel cart persistence)
 
 После login TMA-buyer'а его localStorage-корзина теперь одноразово

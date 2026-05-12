@@ -33,6 +33,9 @@ export interface FeaturedStorefront {
     title: string;
     basePrice: number;
     salePrice: number | null;
+    /** P3-004: trust signals для SALE-бэйджа на ProductCard */
+    isSale: boolean;
+    discountPercent: number | null;
     currencyCode: string;
     avgRating: number | null;
     reviewCount: number;
@@ -136,17 +139,22 @@ export class GetFeaturedStorefrontUseCase {
       take: 12,
     });
 
-    const featuredProducts = products.map((p) => ({
-      id: p.id,
-      title: p.title,
-      basePrice: Number(p.basePrice),
-      salePrice: p.salePrice != null ? Number(p.salePrice) : null,
-      currencyCode: p.currencyCode,
-      avgRating: p.avgRating != null ? Number(p.avgRating) : null,
-      reviewCount: p.reviewCount,
-      mediaUrl: this.presenter.resolveImageUrl(p.images[0]?.media) || null,
-      store: p.store,
-    }));
+    const featuredProducts = products.map((p) => {
+      const sale = this.presenter.computeSale(p.basePrice, p.salePrice);
+      return {
+        id: p.id,
+        title: p.title,
+        basePrice: Number(p.basePrice),
+        salePrice: p.salePrice != null ? Number(p.salePrice) : null,
+        isSale: sale.isSale,
+        discountPercent: sale.discountPercent,
+        currencyCode: p.currencyCode,
+        avgRating: p.avgRating != null ? Number(p.avgRating) : null,
+        reviewCount: p.reviewCount,
+        mediaUrl: this.presenter.resolveImageUrl(p.images[0]?.media) || null,
+        store: p.store,
+      };
+    });
 
     return { topStores, featuredProducts };
   }

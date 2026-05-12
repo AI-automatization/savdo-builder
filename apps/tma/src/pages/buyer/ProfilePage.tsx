@@ -47,33 +47,33 @@ export default function BuyerProfilePage() {
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Профиль</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Профиль</h1>
 
         {/* Аккаунт */}
         <GlassCard className="p-4 flex items-center gap-3">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0"
-            style={{ background: authenticated ? 'linear-gradient(135deg, #059669, #34d399)' : 'rgba(255,255,255,0.10)' }}
+            style={{ background: authenticated ? 'linear-gradient(135deg, #059669, #34d399)' : 'var(--tg-surface-hover)' }}
           >
             {tgUser?.first_name?.[0] ?? '👤'}
           </div>
           <div className="flex-1 min-w-0">
             {authenticated && tgUser ? (
               <>
-                <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.90)' }}>
+                <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>
                   {tgUser.first_name} {tgUser.last_name ?? ''}
                 </p>
                 {tgUser.username && (
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>@{tgUser.username}</p>
+                  <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>@{tgUser.username}</p>
                 )}
                 {user?.phone && (
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{user.phone}</p>
+                  <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>{user.phone}</p>
                 )}
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.60)' }}>Гость</p>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>Войдите чтобы делать заказы</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>Гость</p>
+                <p className="text-xs" style={{ color: 'var(--tg-text-dim)' }}>Войдите чтобы делать заказы</p>
               </>
             )}
           </div>
@@ -92,8 +92,8 @@ export default function BuyerProfilePage() {
           <GlassCard className="p-4 flex items-center gap-3">
             <span style={{ fontSize: 28 }}>🏪</span>
             <div className="flex-1">
-              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>Хочешь продавать?</p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>Хочешь продавать?</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
                 {applying ? 'Создаём аккаунт продавца...' : 'Открой свой магазин прямо здесь'}
               </p>
             </div>
@@ -115,7 +115,7 @@ export default function BuyerProfilePage() {
 
         {/* Действия */}
         <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
             Действия
           </p>
 
@@ -123,7 +123,7 @@ export default function BuyerProfilePage() {
             <button
               onClick={() => navigate('/buyer/orders')}
               className="flex items-center gap-3 py-2.5 text-sm"
-              style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+              style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
             >
               <span>📦</span> Мои заказы
             </button>
@@ -132,7 +132,7 @@ export default function BuyerProfilePage() {
           <button
             onClick={openBot}
             className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span>🤖</span> Написать боту (@{BOT_USERNAME})
           </button>
@@ -153,7 +153,7 @@ export default function BuyerProfilePage() {
             className="p-4 rounded-2xl text-center"
             style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.60)' }}>
+            <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>
               Вы просматриваете магазины как гость.<br />
               Для заказов нужно войти через Telegram.
             </p>
@@ -167,7 +167,7 @@ export default function BuyerProfilePage() {
           </div>
         )}
 
-        <p className="text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.18)' }}>
+        <p className="text-center text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · Покупатель
         </p>
       </div>

@@ -107,23 +107,23 @@ export default function CheckoutPage() {
           <span style={{ fontSize: 40 }}>✓</span>
         </div>
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-bold" style={{ color: 'rgba(255,255,255,0.95)' }}>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--tg-text-primary)' }}>
             Заказ оформлен!
           </h1>
           {successOrder.orderNumber && (
-            <p className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.50)' }}>
+            <p className="text-xs font-mono" style={{ color: 'var(--tg-text-secondary)' }}>
               № {successOrder.orderNumber}
             </p>
           )}
         </div>
         <GlassCard className="w-full p-4 flex flex-col gap-2">
           <div className="flex justify-between items-center">
-            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.50)' }}>К оплате при получении</span>
-            <span className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.95)' }}>
+            <span className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>К оплате при получении</span>
+            <span className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>
               {successOrder.totalAmount.toLocaleString('ru')} сум
             </span>
           </div>
-          <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.40)' }}>
+          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tg-text-muted)' }}>
             Продавец свяжется с вами для подтверждения. Уведомления о смене статуса
             придут в Telegram.
           </p>
@@ -152,7 +152,7 @@ export default function CheckoutPage() {
 
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 48 }}>🛒</span>
-          <p style={{ color: 'rgba(255,255,255,0.40)' }}>Корзина пуста</p>
+          <p style={{ color: 'var(--tg-text-muted)' }}>Корзина пуста</p>
           <Button variant="ghost" onClick={() => navigate('/buyer')}>К магазинам</Button>
         </div>
 
@@ -162,20 +162,20 @@ export default function CheckoutPage() {
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Оформление заказа</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Оформление заказа</h1>
 
         <GlassCard className="p-4">
-          <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.50)' }}>
+          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--tg-text-secondary)' }}>
             {items[0].storeName} — {items.length} товар(ов)
           </p>
           {items.map((i) => (
-            <div key={i.productId} className="flex justify-between text-xs py-1" style={{ color: 'rgba(255,255,255,0.70)' }}>
+            <div key={i.productId} className="flex justify-between text-xs py-1" style={{ color: 'var(--tg-text-secondary)' }}>
               <span>{i.title} × {i.qty}</span>
               <span>{(i.price * i.qty).toLocaleString('ru')} сум</span>
             </div>
           ))}
-          <div className="flex justify-between mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.80)' }}>Итого</span>
+          <div className="flex justify-between mt-2 pt-2" style={{ borderTop: '1px solid var(--tg-border-soft)' }}>
+            <span className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>Итого</span>
             <span className="text-sm font-bold" style={{ color: 'var(--tg-accent)' }}>{total.toLocaleString('ru')} сум</span>
           </div>
         </GlassCard>
@@ -186,7 +186,7 @@ export default function CheckoutPage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Ваше имя"
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-            style={{ ...glass, background: 'rgba(255,255,255,0.05)' }}
+            style={{ ...glass, background: 'var(--tg-surface)' }}
           />
           <input
             value={phone}
@@ -196,14 +196,14 @@ export default function CheckoutPage() {
             autoComplete="tel"
             maxLength={17}
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-            style={{ ...glass, background: 'rgba(255,255,255,0.05)' }}
+            style={{ ...glass, background: 'var(--tg-surface)' }}
           />
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Адрес доставки (необязательно)"
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-            style={{ ...glass, background: 'rgba(255,255,255,0.05)' }}
+            style={{ ...glass, background: 'var(--tg-surface)' }}
           />
         </div>
 

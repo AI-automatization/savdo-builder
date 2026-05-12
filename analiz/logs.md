@@ -1,5 +1,27 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-12] [P3-004-FLOATING-POINT] WIP — isSale/discountPercent
+- **Статус:** 🟡 НЕ ДЕПЛОИТЬ, локальный commit `e56c5bc` на main (не push)
+- **Что случилось:** реализовал P3-004 (isSale + discountPercent в API ответах).
+  `ProductPresenterService.computeSale` + `priceFields` helper, применено в 7
+  mapper'ах (storefront + products controllers + featured use-case). Тип
+  `ProductListItem` расширен (`isSale`, `discountPercent`, опц. `oldPrice`,
+  `salePrice`).
+- **Проблема:** 4 теста падают из-за JS floating-point.
+  `(1 - 80/100) * 100 = 19.999...` → `Math.floor` = **19** вместо **20**.
+- **Что сделать (10 минут):**
+  В `ProductPresenterService.computeSale` поменять формулу с
+  `Math.floor((1 - sale/base) * 100)` на:
+  ```ts
+  const pct = Math.floor(((base - sale) / base) * 100);
+  // или ещё устойчивее (integer arithmetic):
+  const pct = Math.floor(((base - sale) * 100) / base);
+  ```
+  Это даст ровные числа 20/30/50/65% как ожидают тесты.
+- **После фикса:** прогнать `npx jest src/modules/products/services/product-presenter.service.spec.ts`
+  → должно быть 15/15 passed. Потом `npx jest` (full suite) → должен остаться
+  53/699 + новый файл = 54/714. Тогда push main + merge → api → push api.
+
 Формат записи:
 ```
 ## [ДАТА] [ID] Описание
