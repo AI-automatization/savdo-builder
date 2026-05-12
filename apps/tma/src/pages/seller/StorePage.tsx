@@ -174,7 +174,7 @@ export default function SellerStorePage() {
               storeAbortRef.current = ac;
               loadStore(ac.signal);
             }}
-            style={{ padding: '8px 20px', borderRadius: 12, background: 'rgba(168,85,247,0.18)', color: '#A855F7', fontSize: 13, fontWeight: 600, border: '1px solid rgba(168,85,247,0.3)' }}
+            style={{ padding: '8px 20px', borderRadius: 12, background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)', fontSize: 13, fontWeight: 600, border: '1px solid var(--tg-accent-border)' }}
           >
             Попробовать снова
           </button>
@@ -190,7 +190,7 @@ export default function SellerStorePage() {
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
           <div
             className="flex flex-col items-center gap-4 py-8 px-4 rounded-2xl"
-            style={{ background: 'rgba(168,85,247,0.07)', border: '1px solid rgba(168,85,247,0.18)' }}
+            style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
             <span style={{ fontSize: 44 }}>🏪</span>
             <div className="text-center">
@@ -221,8 +221,8 @@ export default function SellerStorePage() {
                 disabled={creating}
                 className="w-full py-3 rounded-xl text-sm font-semibold"
                 style={{
-                  background: creating ? 'rgba(168,85,247,0.15)' : 'linear-gradient(135deg, #7C3AED, #A855F7)',
-                  color: creating ? 'rgba(168,85,247,0.50)' : '#fff',
+                  background: creating ? 'var(--tg-accent-bg)' : 'var(--tg-accent)',
+                  color: creating ? 'var(--tg-accent-text)' : '#fff',
                   cursor: creating ? 'wait' : 'pointer',
                 }}
               >
@@ -248,7 +248,7 @@ export default function SellerStorePage() {
         <GlassCard className="p-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-              style={{ background: 'rgba(168,85,247,0.20)', border: '1px solid rgba(168,85,247,0.25)' }}>
+              style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)' }}>
               🏪
             </div>
             <div className="flex-1 min-w-0">
@@ -261,9 +261,9 @@ export default function SellerStorePage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] mt-0.5 px-2 py-0.5 rounded-md"
                 style={{
-                  color: '#A855F7',
-                  background: 'rgba(168,85,247,0.10)',
-                  border: '1px solid rgba(168,85,247,0.25)',
+                  color: 'var(--tg-accent)',
+                  background: 'var(--tg-accent-bg)',
+                  border: '1px solid var(--tg-accent-border)',
                   textDecoration: 'none',
                   width: 'fit-content',
                 }}
