@@ -19,6 +19,7 @@ import { ProductsRepository } from './repositories/products.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
 import { ProductPresenterService } from './services/product-presenter.service';
+import { GetFeaturedStorefrontUseCase } from './use-cases/get-featured-storefront.use-case';
 
 /**
  * Optional JWT — анонимные запросы пропускаются (req.user undefined),
@@ -56,7 +57,24 @@ export class StorefrontController {
     private readonly wishlistRepo: WishlistRepository,
     private readonly prisma: PrismaService,
     private readonly presenter: ProductPresenterService,
+    private readonly getFeatured: GetFeaturedStorefrontUseCase,
   ) {}
+
+  // ─── MARKETING-HOMEPAGE-DISCOVERY-001: featured feed для cold-traffic ─────
+
+  /**
+   * GET /api/v1/storefront/featured
+   *
+   * Публичный endpoint без auth для homepage. Возвращает `{topStores, featuredProducts}`
+   * — разблокирует web-buyer landing (раньше форма ввода slug → 100% bounce).
+   *
+   * Throttle 60/min — защита от scraping (вышу глобального 120/min baseline).
+   */
+  @Get('storefront/featured')
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  async getFeaturedStorefront() {
+    return this.getFeatured.execute();
+  }
 
   // ─── Stores ──────────────────────────────────────────────────────────────
 
