@@ -155,7 +155,7 @@ export default function StorePage() {
         <div className="flex flex-col items-center gap-3 py-16">
           <span aria-hidden="true" style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
-          <button onClick={() => navigate('/buyer')} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
+          <button onClick={() => navigate('/buyer')} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← Назад</button>
         </div>
       
     );
@@ -170,9 +170,9 @@ export default function StorePage() {
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-bold uppercase"
               style={{
-                background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
-                border: '1px solid rgba(168,85,247,0.28)',
-                color: '#A855F7',
+                background: 'var(--tg-accent-dim)',
+                border: '1px solid var(--tg-accent-border)',
+                color: 'var(--tg-accent)',
                 fontSize: 20,
               }}>
               {store.name.charAt(0)}
@@ -183,9 +183,9 @@ export default function StorePage() {
                 onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
                 className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
                 style={{
-                  color: '#A855F7',
-                  background: 'rgba(168,85,247,0.10)',
-                  border: '1px solid rgba(168,85,247,0.25)',
+                  color: 'var(--tg-accent)',
+                  background: 'var(--tg-accent-bg)',
+                  border: '1px solid var(--tg-accent-border)',
                   cursor: 'pointer',
                 }}
                 aria-label="Перейти на сайт магазина"
@@ -261,14 +261,14 @@ export default function StorePage() {
                 {p.title}
               </p>
               <div className="flex items-center justify-between mt-auto">
-                <p className="text-xs font-bold" style={{ color: '#A855F7' }}>
+                <p className="text-xs font-bold" style={{ color: 'var(--tg-accent)' }}>
                   {Number(p.basePrice).toLocaleString('ru')} сум
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
                   aria-label="Добавить в корзину"
                   className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold"
-                  style={{ background: 'rgba(167,139,250,0.25)', border: '1px solid rgba(167,139,250,0.35)', color: '#A855F7' }}
+                  style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   +
                 </button>

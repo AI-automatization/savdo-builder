@@ -8,6 +8,7 @@ import { UpdateCartItemUseCase } from './use-cases/update-cart-item.use-case';
 import { RemoveFromCartUseCase } from './use-cases/remove-from-cart.use-case';
 import { ClearCartUseCase } from './use-cases/clear-cart.use-case';
 import { MergeGuestCartUseCase } from './use-cases/merge-guest-cart.use-case';
+import { BulkMergeCartUseCase } from './use-cases/bulk-merge-cart.use-case';
 import { ProductsModule } from '../products/products.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { ProductsModule } from '../products/products.module';
     RemoveFromCartUseCase,
     ClearCartUseCase,
     MergeGuestCartUseCase,
+    BulkMergeCartUseCase,
   ],
   exports: [CartRepository],
 })
