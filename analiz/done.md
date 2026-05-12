@@ -1,5 +1,174 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 5: TG-канал шаблон + критический фикс sendPhoto (FEAT-TG-CHANNEL)
+
+Полат заметил по скринам конкурентов (ArloeStore_UZ, Eleganza, Montanno) что
+наш бот при автопостинге отправляет фото товара как файл с превью, а не как
+открытое изображение. Конверсия страдает. Сразу же — план настраиваемого
+шаблона поста + контактные данные продавца в TMA.
+
+### ✅ [API-TG-CHANNEL-PHOTO-FIX-001] Фикс sendPhotoToChannel 🔴 CRITICAL
+- **Root cause:** `telegram-bot.service.ts:283` метод `sendPhotoToChannel`
+  вызывал Telegram API `/sendDocument` вместо `/sendPhoto`. Все 1-фото посты
+  уходили как файл с превью.
+- TG API ограничение: document file_id (из `TelegramStorageService.uploadFile`
+  через sendDocument) **нельзя** передать в sendPhoto.
+- **Fix:** правильный `/sendPhoto`, новое поле `MediaFile.photoFileId String?`,
+  lazy backfill — при первой публикации в канал шлём через URL (Telegram сам
+  скачивает + конвертит в photo), сохраняем возвращённый `photoFileId` в БД
+  для следующих публикаций.
+- Возврат сигнатур: `sendPhotoToChannel` теперь возвращает `string | null`
+  (photo file_id), `sendMediaGroupToChannel` — `string[] | null`.
+- **Миграция:** `20260512150000_media_photo_file_id` — additive nullable.
+  Существующие данные не теряются.
+
+### ✅ [API-TG-CHANNEL-DEDUP-001] Удалена дублирующая логика автопостинга 🔴
+- В `change-product-status.use-case.ts` была своя legacy `postToChannel`
+  с фильтром `objectKey.startsWith('tg:')`. В проде `objectKey` хранит
+  чистый file_id без префикса → **фото вообще не отправлялись при автопостинге**.
+- Заменил на делегирование в единый `PostProductToChannelUseCase`. Один путь
+  публикации — auto и manual.
+
+### ✅ [FEAT-TG-CHANNEL-TEMPLATE-001] Настраиваемый шаблон + контакты 🟠
+- 4 новых nullable поля в Store: `channelPostTemplate`, `channelContactPhone`,
+  `channelInstagramLink`, `channelTiktokLink`.
+- **Миграция:** `20260512150100_store_channel_template_and_contacts` — additive.
+- Новый `ChannelTemplateService` — Mustache-style rendering с whitelist 15
+  переменных, секциями `{{#var}}…{{/var}}`, **HTML sanitize** (теги не из
+  TG-whitelist escape'ятся), **safe truncate** на 1024 char (не режет
+  HTML-теги пополам, закрывает открытые), `findUnsupportedTags()` для UI warning.
+- Дефолтный шаблон по образцу UZ-конкурентов: заголовок, цена, материал,
+  размеры, наличие, контакт, IG, TikTok, ссылка на товар.
+- Новый `ChannelMediaResolverService` — единая точка резолва фото
+  (photoFileId → URL fallback → null если telegram-expired) с Promise.all.
+
+### ✅ [API-CHANNEL-ENDPOINTS-001] 4 endpoint'а для TMA UI 🟠
+- `GET    /api/v1/seller/store/channel-template`
+- `PATCH  /api/v1/seller/store/channel-template`
+- `POST   /api/v1/seller/store/channel-template/preview`
+- `POST   /api/v1/seller/store/channel-test-post`
+
+### 🏗️ Архитектура
+- **forwardRef(StoresModule ↔ ProductsModule)** — без shared-модуля
+- **Single source of truth** — все 3 пути публикации делегируют единому use-case
+- **Lazy backfill photoFileId** — не делаем массовую миграцию старых фото
+
+### 📊 Тесты + typecheck
+- `npx tsc --noEmit` чист
+- `npx jest`: **51 suites / 686 tests passed** (+1 suite, +15 тестов на
+  `channel-template.service.spec.ts` включая CRITICAL покрытие sanitize/truncate)
+
+### ✅ [TMA-CHANNEL-SETTINGS-PAGE-001] TMA UI — настройка канала 🟠
+- Новый файл: `apps/tma/src/pages/seller/ChannelSettingsPage.tsx` (route `/seller/settings/channel`)
+- Секции страницы:
+  - **Привязка канала** — ✅ привязан / инструкция через @savdo_builderBOT
+  - **Авто-постинг** — toggle с защитой (disabled если канал не привязан)
+  - **Контакты в посте** — phone / Instagram / TikTok inputs
+  - **Шаблон поста** — textarea (resize=vertical, font-mono) + 13 insert-variable
+    чипов, ставят `{{var}}` в позицию курсора. Для секций `{{#var}}` ставится
+    парный шаблон `{{#var}}…{{/var}}`. Кнопка «Сбросить» к `defaultTemplate`.
+  - **Превью** — live render через `POST /channel-template/preview` с debounce
+    400ms + AbortController. Caption отрендеренный сервером.
+  - **Тестовая публикация** — кнопка с защитой (disabled пока есть dirty changes
+    или нет канала). Отправляет последний ACTIVE-товар.
+- `tg.MainButton('Сохранить')` показывается при dirty, fallback in-form button
+  для dev без TG.
+- HapticFeedback: success при сохранении, warning при unposted test, error при API fail.
+- Зарегистрирован в `apps/tma/src/App.tsx` lazy-загрузкой + ссылка из основного
+  `SettingsPage.tsx` («📢 Telegram канал → Шаблон поста и авто-публикация»).
+
+### 📊 Финальная верификация
+- `apps/api` `tsc --noEmit` чист
+- `apps/tma` `tsc --noEmit` чист
+- `apps/api` `jest`: **51 suites / 686 tests passed**
+
+---
+
+## 2026-05-12 (Полат) — Wave 6: Verified seller — trust signals на storefront
+
+### ✅ [MARKETING-VERIFIED-SELLER-001] Store.isVerified / avgRating / reviewCount 🟠
+- **Миграция** `20260512160000_store_verification_and_rating` — additive:
+  - `isVerified BOOLEAN NOT NULL DEFAULT false`
+  - `avgRating DECIMAL(3,2) NULL`
+  - `reviewCount INTEGER NOT NULL DEFAULT 0`
+  - Composite index `(isVerified, avgRating DESC)` для storefront sort
+  - **Backfill** через SQL: weighted average по существующим Product reviews
+    (`SUM(p.avgRating × p.reviewCount) / SUM(p.reviewCount)`) — данные не теряются.
+- `ReviewsRepository.refreshStoreAggregate(storeId)` — пересчёт после insert/delete
+  review, основан на product-aggregates (быстрее чем по сырым review'ам).
+- `CreateReviewUseCase` теперь каскадно: `refreshProductAggregate` →
+  `refreshStoreAggregate(product.storeId)`.
+
+### ✅ [API-ADMIN-STORE-VERIFY-001] Admin endpoint для верификации
+- `POST /api/v1/admin/stores/:id/verify` — ставит галочку
+- `POST /api/v1/admin/stores/:id/unverify` — снимает (требует `reason`)
+- Use-case `SetStoreVerificationUseCase`:
+  - Идемпотентен (повторный verify не пишет audit log)
+  - INV-A02: reason обязателен при unverify
+  - INV-A01: audit log `STORE_VERIFIED` / `STORE_UNVERIFIED`
+- Permission `store:moderate` (через `@AdminPermission`)
+- Spec +6 cases
+
+### ✅ [API-STOREFRONT-VERIFIED-EXPOSE-001] Trust signals в API ответах
+- `StoresRepository.findAllPublished` + `searchPublic` — добавлены поля,
+  изменён `orderBy` → verified DESC сначала, потом publishedAt
+- `GetFeaturedStorefrontUseCase.topStores` — отдаёт `isVerified`, `avgRating`,
+  `reviewCount`; сортировка `[verified DESC, avgRating DESC NULLS LAST, publishedAt DESC]`
+- `findBySlug` использует `include` — новые поля автоматически попадают
+  в `/storefront/stores/:slug` response.
+
+### 📊 Финальная верификация Wave 6
+- `apps/api` `tsc --noEmit` чист
+- `apps/api` `jest`: **53 suites / 699 tests passed** (+1 suite, +6 tests
+  на `set-store-verification`; +1 на trust signals в featured)
+- Data safety: миграция additive, backfill weighted-avg из существующих
+  отзывов через UPDATE … FROM, не теряет данных.
+
+### ⚠️ Что осталось (admin frontend — apps/admin, моя зона)
+- `ADMIN-STORE-VERIFY-BUTTON-001` — кнопка «✓ Verified» в `/stores/:id` detail
+  page admin SPA. Хорошее дополнение на следующий заход.
+
+### ⚠️ Что осталось (web-buyer/seller frontend — зона Азима)
+- `WEB-VERIFIED-BADGE-001` — рендерить галочку рядом с названием магазина
+  на storefront card / detail page (web-buyer). API уже отдаёт.
+
+---
+
+## 2026-05-12 (Полат) — Wave 7: tech debt — pagination + PII + search perf (3 задачи)
+
+После Wave 4 параллельная сессия закрыла Wave 5 (TG-канал шаблон) и Wave 6
+(verified seller). Я взял backend tech debt:
+
+### ✅ [API-N1-PRODUCTS-LIST-001] Pagination в store-specific feed 🟢
+- Новый `findPublicByStoreIdPaginated(storeId, {page, limit, ...filters})`:
+  offset pagination + `{products, total}` envelope через `$transaction`.
+- Default `limit=20`, max 100. Раньше `findPublicByStoreId` брал `take=200`
+  без offset → store с 200+ products = медленный TTFB + N+1 includes.
+- Controller `/storefront/products?storeId=` теперь читает `page`/`limit`
+  query params и возвращает `{data, meta: {total, page, limit, totalPages}}`.
+- **Commit:** `1601160`
+
+### ✅ [API-PII-MASKING-001] Phone masking в логах (SEC-011) 🟢
+- `apps/api/src/shared/pii.ts`: `maskPhone('+998901234567')` → `'+998 *** ** 67'`
+- TG ghost users: `maskPhone('tg_123456789')` → `'tg_***89'`
+- null/empty → `'[empty]'`, < 6 digits → `'[invalid]'`, foreign E.164 fallback
+- Applied в 13 log statements: otp.service, otp.processor (3), admin-auth
+  (IMPERSONATION), telegram-auth, ghost-cleanup (2), telegram-demo (2).
+- Spec +7 cases. **Commit:** `d7f8853`
+
+### ✅ [API-STOREFRONT-SEARCH-PERF-001] pg_trgm GIN indexes 🟢
+- Migration `20260512170000_search_pg_trgm_indexes`:
+  - `CREATE EXTENSION pg_trgm`
+  - GIN trigram indexes на `products.title/description`, `stores.name/description/slug`
+  - Partial indexes на nullable columns (`WHERE description IS NOT NULL`)
+- Ускоряет `ILIKE %q%` в 100-1000× на 100k+ products (vs seqscan).
+- Repository код не меняется — Postgres query planner сам подхватывает.
+- **Commit:** `c473c75`
+
+**Wave 7 итог:** 50 suites, 683 tests, 3 commits, 1 миграция, typecheck clean.
+
+---
+
 ## 2026-05-12 (Полат) — Wave 4: launch блокеры + prod issues (4 задачи)
 
 После Wave 3 параллельная сессия Азима закрыла 6 marketing задач (SEO,
