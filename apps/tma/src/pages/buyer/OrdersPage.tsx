@@ -221,8 +221,8 @@ export default function OrdersPage() {
                     onClick={() => setStatusFilter(f.value)}
                     className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
                     style={!active ? {
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.10)',
+                      background: 'var(--tg-surface-hover)',
+                      border: '1px solid var(--tg-border)',
                       color: 'var(--tg-text-muted)',
                     } : undefined}
                   >
@@ -231,7 +231,7 @@ export default function OrdersPage() {
                       <span
                         className="px-1.5 py-0 rounded-full text-[10px] font-bold"
                         style={{
-                          background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
+                          background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
                           color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
                           minWidth: 18,
                           display: 'inline-flex',
@@ -312,7 +312,7 @@ export default function OrdersPage() {
               >
                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                    <p className="text-sm font-bold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                       Заказ #{orderShort}
                     </p>
                     <p className="text-sm font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
@@ -330,7 +330,7 @@ export default function OrdersPage() {
                   viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
                   className="w-4 h-4 transition-transform mt-1.5 shrink-0"
                   style={{
-                    color: 'rgba(255,255,255,0.30)',
+                    color: 'var(--tg-text-dim)',
                     transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                   }}
                 >
@@ -341,7 +341,7 @@ export default function OrdersPage() {
               {isExpanded && (
                 <div
                   className="px-4 pb-4 flex flex-col gap-2 border-t"
-                  style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+                  style={{ borderColor: 'var(--tg-border-soft)' }}
                 >
                   {isLoadingDetail ? (
                     <div className="flex justify-center py-3"><Spinner size={16} /></div>
@@ -352,11 +352,11 @@ export default function OrdersPage() {
                         <div key={item.id} className="flex flex-col gap-1.5 pt-2">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.80)' }}>
+                              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-primary)' }}>
                                 {item.productTitleSnapshot}
                               </p>
                               {item.variantTitleSnapshot && (
-                                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                                <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
                                   {item.variantTitleSnapshot}
                                 </p>
                               )}
@@ -364,7 +364,7 @@ export default function OrdersPage() {
                                 × {item.quantity}
                               </p>
                             </div>
-                            <p className="text-xs font-semibold shrink-0" style={{ color: 'rgba(255,255,255,0.70)' }}>
+                            <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--tg-text-secondary)' }}>
                               {Number(item.lineTotalAmount).toLocaleString('ru')} сум
                             </p>
                           </div>
@@ -423,11 +423,11 @@ export default function OrdersPage() {
         >
           <div
             className="w-full max-w-lg mx-auto rounded-t-2xl p-5 flex flex-col gap-4"
-            style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)' }}
+            style={{ background: '#1a1035', border: '1px solid var(--tg-border)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>
                 Оцените товар
               </p>
               <p className="text-xs truncate" style={{ color: 'var(--tg-text-muted)' }}>
@@ -444,14 +444,14 @@ export default function OrdersPage() {
               rows={4}
               maxLength={2000}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
+              style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => setReviewing(null)}
                 disabled={reviewSending}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--tg-text-secondary)' }}
+                style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
               >
                 Отмена
               </button>
