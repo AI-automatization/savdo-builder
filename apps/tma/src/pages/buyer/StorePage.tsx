@@ -154,7 +154,7 @@ export default function StorePage() {
       
         <div className="flex flex-col items-center gap-3 py-16">
           <span aria-hidden="true" style={{ fontSize: 40 }}>😕</span>
-          <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>Магазин не найден</p>
           <button onClick={() => navigate('/buyer')} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← Назад</button>
         </div>
       
@@ -178,7 +178,7 @@ export default function StorePage() {
               {store.name.charAt(0)}
             </div>
             <div>
-              <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>{store.name}</h1>
+              <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</h1>
               <button
                 onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
                 className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
@@ -195,7 +195,7 @@ export default function StorePage() {
             </div>
           </div>
           {store.description && (
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>{store.description}</p>
+            <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>{store.description}</p>
           )}
         </div>
 
@@ -206,9 +206,9 @@ export default function StorePage() {
                 onClick={() => setActiveCat(null)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
                 style={activeCat !== null ? {
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: 'rgba(255,255,255,0.55)',
+                  background: 'var(--tg-surface-hover)',
+                  border: '1px solid var(--tg-border)',
+                  color: 'var(--tg-text-secondary)',
                 } : undefined}
               >
                 Все
@@ -219,9 +219,9 @@ export default function StorePage() {
                   onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
                   className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === c.id ? 'chip-active' : ''}`}
                   style={activeCat !== c.id ? {
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.55)',
+                    background: 'var(--tg-surface-hover)',
+                    border: '1px solid var(--tg-border)',
+                    color: 'var(--tg-text-secondary)',
                   } : undefined}
                 >
                   {c.nameRu}
@@ -238,7 +238,7 @@ export default function StorePage() {
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span aria-hidden="true" style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
               {activeCat ? 'Нет товаров в этой категории' : 'Товаров пока нет'}
             </p>
           </div>
@@ -254,10 +254,10 @@ export default function StorePage() {
               style={glass}
             >
               <div className="w-full aspect-square rounded-xl overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.04)' }}>
+                style={{ background: 'var(--tg-surface)' }}>
                 <ProductImage src={p.images?.[0]?.url} alt={p.title} emptyVariant="product-empty" />
               </div>
-              <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
+              <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'var(--tg-text-primary)' }}>
                 {p.title}
               </p>
               <div className="flex items-center justify-between mt-auto">
