@@ -66,7 +66,7 @@ export function SellerAnalyticsCard() {
   return (
     <GlassCard className="p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>📊 Аналитика</h3>
+        <h3 className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>📊 Аналитика</h3>
         <div className="flex gap-1">
           {PERIODS.map((p) => (
             <button
@@ -76,7 +76,7 @@ export function SellerAnalyticsCard() {
               style={
                 period === p.value
                   ? { background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }
-                  : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
+                  : { background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)', color: 'var(--tg-text-muted)' }
               }
             >
               {p.label}
@@ -110,15 +110,15 @@ export function SellerAnalyticsCard() {
 
           {data.topProducts.length > 0 && (
             <div className="flex flex-col gap-1">
-              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.32)' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                 Топ товары
               </p>
               {data.topProducts.slice(0, 3).map((p) => (
                 <div key={p.productId ?? p.title} className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs truncate flex-1" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                  <span className="text-xs truncate flex-1" style={{ color: 'var(--tg-text-secondary)' }}>
                     {p.title}
                   </span>
-                  <span className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                  <span className="text-[11px] shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                     × {p.quantity}
                   </span>
                   <span className="text-xs font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
@@ -138,13 +138,13 @@ function Kpi({ label, value, unit, tone }: { label: string; value: string; unit?
   const color = tone === 'purple' ? '#A855F7' : tone === 'cyan' ? '#22D3EE' : '#FBBF24';
   return (
     <div className="flex flex-col items-start gap-0.5 px-2.5 py-2 rounded-lg"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+      style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}
     >
-      <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.40)' }}>
+      <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: 'var(--tg-text-muted)' }}>
         {label}
       </span>
       <span className="text-base font-bold" style={{ color }}>{value}</span>
-      {unit && <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.30)' }}>{unit}</span>}
+      {unit && <span className="text-[9px]" style={{ color: 'var(--tg-text-dim)' }}>{unit}</span>}
     </div>
   );
 }
@@ -165,7 +165,7 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.32)' }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
         Выручка по дням
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" aria-hidden>
