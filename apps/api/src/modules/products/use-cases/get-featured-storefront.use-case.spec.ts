@@ -23,6 +23,7 @@ describe('GetFeaturedStorefrontUseCase', () => {
   let presenter: {
     resolveStoreImageUrls: jest.Mock;
     resolveImageUrl: jest.Mock;
+    computeSale: jest.Mock;
   };
 
   beforeEach(() => {
@@ -33,6 +34,18 @@ describe('GetFeaturedStorefrontUseCase', () => {
     presenter = {
       resolveStoreImageUrls: jest.fn().mockResolvedValue({ logoUrl: null, coverUrl: null }),
       resolveImageUrl: jest.fn().mockReturnValue(''),
+      // P3-004: real-equivalent computeSale для предсказуемых тестов
+      computeSale: jest.fn().mockImplementation((base: unknown, sale: unknown) => {
+        const b = base != null ? Number(base) : null;
+        const s = sale != null ? Number(sale) : null;
+        if (b === null || s === null || b <= 0 || s <= 0 || s >= b) {
+          return { isSale: false, discountPercent: null };
+        }
+        const pct = Math.floor(((b - s) * 100) / b);
+        return pct >= 1
+          ? { isSale: true, discountPercent: Math.min(pct, 99) }
+          : { isSale: false, discountPercent: null };
+      }),
     };
     useCase = new GetFeaturedStorefrontUseCase(
       prisma as unknown as PrismaService,
@@ -127,6 +140,8 @@ describe('GetFeaturedStorefrontUseCase', () => {
       title: 'iPhone',
       basePrice: 1200000,
       salePrice: null,
+      isSale: false,           // P3-004: salePrice=null → no sale
+      discountPercent: null,
       currencyCode: 'UZS',
       avgRating: 4.5,
       reviewCount: 12,
@@ -145,6 +160,9 @@ describe('GetFeaturedStorefrontUseCase', () => {
     const result = await useCase.execute();
     expect(result.featuredProducts[0].salePrice).toBe(80);
     expect(result.featuredProducts[0].avgRating).toBeNull();
+    // P3-004: 100 → 80 = 20% discount
+    expect(result.featuredProducts[0].isSale).toBe(true);
+    expect(result.featuredProducts[0].discountPercent).toBe(20);
   });
 
   it('product без images → mediaUrl=null (resolveImageUrl получает undefined)', async () => {

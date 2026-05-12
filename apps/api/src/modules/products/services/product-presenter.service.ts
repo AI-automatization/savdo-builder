@@ -41,7 +41,9 @@ export class ProductPresenterService {
     if (base === null || sale === null) return { isSale: false, discountPercent: null };
     if (base <= 0) return { isSale: false, discountPercent: null };
     if (sale <= 0 || sale >= base) return { isSale: false, discountPercent: null };
-    const pct = Math.floor((1 - sale / base) * 100);
+    // Integer arithmetic перед делением — иначе floating-point: например
+    // `(1 - 80/100) * 100 = 19.999...` → floor = 19 вместо ожидаемого 20.
+    const pct = Math.floor(((base - sale) * 100) / base);
     if (pct < 1) return { isSale: false, discountPercent: null };
     return { isSale: true, discountPercent: Math.min(pct, 99) };
   }
