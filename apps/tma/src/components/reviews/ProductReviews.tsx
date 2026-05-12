@@ -55,14 +55,14 @@ export function ProductReviews({ productId, initialAvg, initialCount }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline gap-2">
-        <h3 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+        <h3 className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>
           ⭐ Отзывы
         </h3>
         {avg !== null && (
           <span className="flex items-center gap-1.5">
             <Stars value={avg} size={13} />
             <span className="text-xs font-bold" style={{ color: '#FBBF24' }}>{avg.toFixed(1)}</span>
-            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>· {total}</span>
+            <span className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>· {total}</span>
           </span>
         )}
       </div>
@@ -73,20 +73,20 @@ export function ProductReviews({ productId, initialAvg, initialCount }: Props) {
         <div
           key={r.id}
           className="px-3 py-2.5 rounded-xl flex flex-col gap-1"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+          style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
+            <span className="text-xs font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>
               {r.authorName}
             </span>
             <Stars value={r.rating} size={12} />
           </div>
           {r.comment && (
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)', lineHeight: 1.4 }}>
+            <p className="text-xs" style={{ color: 'var(--tg-text-secondary)', lineHeight: 1.4 }}>
               {r.comment}
             </p>
           )}
-          <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <p className="text-[10px]" style={{ color: 'var(--tg-text-muted)' }}>
             {new Date(r.createdAt).toLocaleDateString('ru', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>
         </div>

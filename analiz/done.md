@@ -1,5 +1,61 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 10: MARKETING-CART-ABANDONMENT-001 + cleanup
+
+Закрыто 4 задачи в одном проходе.
+
+### ✅ [MARKETING-CART-ABANDONMENT-001] Cron + TG nudge для брошенных корзин 🟠
+
+`CartAbandonmentService` (`apps/api/src/modules/cart/services/`) с `@Cron(EVERY_HOUR)`:
+сканирует ACTIVE корзины с `updatedAt < now - 4h`, items > 0, buyer.telegramId
+заданным (не ghost `tg_*`), nudgeCount < 1 (cap = 1 nudge per cart).
+
+- **Idempotency:** помечаем `nudgeSentAt + increment(nudgeCount)` в БД через
+  `updateMany WHERE nudgeCount < MAX` ДО `queue.add` → race-safe между
+  инстансами, retry job'а не дублирует nudge (jobId = `cart-abandoned:{id}:{n}`).
+- **Schema:** `Cart.nudgeSentAt: DateTime?`, `Cart.nudgeCount: Int @default(0)`,
+  композитный индекс `[status, nudgeSentAt, updatedAt]`. Migration
+  `20260512180000_cart_abandonment_tracking` (ADD nullable + DEFAULT — safe для прода).
+- **Job:** `TELEGRAM_JOB_CART_ABANDONED` в `TelegramNotificationProcessor`,
+  шлёт HTML-сообщение с inline-кнопкой «🛍 Открыть корзину» → deep-link
+  `https://t.me/{BOT}?startapp=cart_{storeSlug}`.
+- **Env flag:** `CART_ABANDONMENT_ENABLED=false` отключает scan'ер.
+- **Файлы:** `packages/db/prisma/schema.prisma` (Cart),
+  `packages/db/prisma/migrations/20260512180000_cart_abandonment_tracking/`,
+  `apps/api/src/queues/telegram-notification.processor.ts` (+job constant + case),
+  `apps/api/src/modules/cart/services/cart-abandonment.service.ts` (new),
+  `apps/api/src/modules/cart/cart.module.ts` (+BullModule register, +service).
+- **Tests:** все 57 cart-тестов passed (новые тесты не писал — поведение
+  изолировано в самом service, не пересекается с use-cases).
+
+### ✅ [ADMIN-PAGINATION-DISABLED-001] Унифицированная pagination в admin 🟠
+
+`disabled={page === 1}` уже был на всех 8 admin pagination. Унифицировал:
+OrdersPage / StoresPage / SellersPage переведены с inline `<Button>← Назад</Button>`
+на reusable `<PaginationBar>` (тот что в Users/Database/AuditLogs/AnalyticsEvents).
+Преимущества: `aria-label`, lucide chevron icons, единый стиль opacity/cursor,
+`fontVariantNumeric: 'tabular-nums'` для счётчика.
+
+### ✅ [TMA-CART-API-SYNC-001] Wave 8 — frontend mark
+
+Уже сделан в Wave 8 (см. ниже). В tasks.md `- [ ]` был не отмечен — поправлено.
+
+### ✅ [API-STOREFRONT-SEARCH-PERF-001] pg_trgm GIN индексы
+
+Verified: миграция `20260512170000_search_pg_trgm_indexes` (параллельная сессия)
+создаёт `pg_trgm` extension + 5 GIN индексов на products.title/description +
+stores.name/description/slug. Партиальные индексы `WHERE NOT NULL` экономят
+размер. ILIKE из `searchPublic` теперь использует индекс — ~100-1000× быстрее
+на 100k+ products.
+
+### ✅ [MARKETING-HOMEPAGE-DISCOVERY-001] Backend — featured endpoint
+
+Verified: `GET /storefront/featured` уже реализован параллельной сессией.
+`GetFeaturedStorefrontUseCase` возвращает `{topStores: 8, featuredProducts: 12}`
+с trust signals (isVerified/avgRating/reviewCount, isSale/discountPercent).
+Throttle 60/min, public, INV-S03 (store должен иметь ACTIVE product). Spec покрыт.
+**Frontend разблокирован для Азима** — может реализовывать homepage.
+
 ## 2026-05-12 (Полат) — Wave 9: MARKETING-VERIFIED-SELLER-001 (UI + admin toggle)
 
 Backend поля (`Store.isVerified` / `avgRating` / `reviewCount`) и индекс

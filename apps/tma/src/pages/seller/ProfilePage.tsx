@@ -64,7 +64,7 @@ export default function SellerProfilePage() {
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Профиль</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Профиль</h1>
 
         {/* Telegram аккаунт */}
         <GlassCard className="p-4 flex items-center gap-3">
@@ -75,14 +75,14 @@ export default function SellerProfilePage() {
             {tgUser?.first_name?.[0] ?? '?'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.90)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>
               {tgUser?.first_name ?? ''} {tgUser?.last_name ?? ''}
             </p>
             {tgUser?.username && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>@{tgUser.username}</p>
+              <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>@{tgUser.username}</p>
             )}
             {user?.phone && (
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{user.phone}</p>
+              <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>{user.phone}</p>
             )}
           </div>
           <span
@@ -110,12 +110,12 @@ export default function SellerProfilePage() {
         {store && (
           <GlassCard className="p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                 Мой магазин
               </p>
               <Badge status={store.status} />
             </div>
-            <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.88)' }}>{store.name}</p>
+            <p className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
             <button
               onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
               className="text-[11px] inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
@@ -131,7 +131,7 @@ export default function SellerProfilePage() {
             </button>
 
             {store.telegramChannelId ? (
-              <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+              <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--tg-text-muted)' }}>
                 <span>📢</span>
                 <span>{store.telegramChannelTitle ?? store.telegramChannelId}</span>
               </div>
@@ -157,34 +157,34 @@ export default function SellerProfilePage() {
 
         {/* Быстрые действия */}
         <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
             Действия
           </p>
           <button
             onClick={() => navigate('/seller/store')}
             className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span>⚙️</span> Настройки магазина
           </button>
           <button
             onClick={() => navigate('/seller/products')}
             className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span>📦</span> Управление товарами
           </button>
           <button
             onClick={() => navigate('/buyer')}
             className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'rgba(52,211,153,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ color: 'rgba(52,211,153,0.85)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span>🛍</span> Режим покупателя
           </button>
           <button
             onClick={openBot}
             className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span>🤖</span> Открыть бота (@{BOT_USERNAME})
           </button>
@@ -197,7 +197,7 @@ export default function SellerProfilePage() {
           </button>
         </GlassCard>
 
-        <p className="text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.18)' }}>
+        <p className="text-center text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · Продавец
         </p>
       </div>

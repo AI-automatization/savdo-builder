@@ -128,9 +128,9 @@ export function Select({
           gap: 8,
           padding: '10px 12px',
           borderRadius: 12,
-          background: 'rgba(255,255,255,0.06)',
-          border: `1px solid ${open ? 'var(--tg-accent)' : 'rgba(255,255,255,0.12)'}`,
-          color: selected ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.45)',
+          background: 'var(--tg-surface-hover)',
+          border: `1px solid ${open ? 'var(--tg-accent)' : 'var(--tg-border)'}`,
+          color: selected ? 'var(--tg-text-primary)' : 'var(--tg-text-muted)',
           fontSize: 14,
           textAlign: 'left',
           cursor: disabled ? 'not-allowed' : 'pointer',
@@ -160,7 +160,7 @@ export function Select({
               style={{
                 padding: 2,
                 borderRadius: 4,
-                color: 'rgba(255,255,255,0.45)',
+                color: 'var(--tg-text-muted)',
                 cursor: 'pointer',
                 fontSize: 14,
                 lineHeight: 1,
@@ -177,7 +177,7 @@ export function Select({
             stroke="currentColor"
             strokeWidth="2.5"
             style={{
-              color: 'rgba(255,255,255,0.55)',
+              color: 'var(--tg-text-secondary)',
               transform: open ? 'rotate(180deg)' : 'none',
               transition: 'transform 0.15s',
             }}
@@ -200,7 +200,7 @@ export function Select({
             borderRadius: 12,
             overflow: 'hidden',
             background: '#1a1035',
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: '1px solid var(--tg-border)',
             boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
             maxHeight: 320,
           }}
@@ -213,8 +213,8 @@ export function Select({
                 gap: 8,
                 padding: '8px 12px',
                 flexShrink: 0,
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.03)',
+                borderBottom: '1px solid var(--tg-border-soft)',
+                background: 'var(--tg-surface)',
               }}
             >
               <svg
@@ -224,7 +224,7 @@ export function Select({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                style={{ color: 'rgba(255,255,255,0.45)', flexShrink: 0 }}
+                style={{ color: 'var(--tg-text-muted)', flexShrink: 0 }}
               >
                 <circle cx="11" cy="11" r="7" />
                 <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
@@ -239,7 +239,7 @@ export function Select({
                   background: 'transparent',
                   border: 'none',
                   outline: 'none',
-                  color: 'rgba(255,255,255,0.92)',
+                  color: 'var(--tg-text-primary)',
                   fontSize: 14,
                 }}
               />
@@ -251,7 +251,7 @@ export function Select({
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255,255,255,0.45)',
+                    color: 'var(--tg-text-muted)',
                     cursor: 'pointer',
                     fontSize: 14,
                     padding: 0,
@@ -275,7 +275,7 @@ export function Select({
                   padding: '12px 16px',
                   fontSize: 12,
                   textAlign: 'center',
-                  color: 'rgba(255,255,255,0.45)',
+                  color: 'var(--tg-text-muted)',
                   margin: 0,
                 }}
               >
@@ -303,7 +303,7 @@ export function Select({
                     padding: '8px 14px',
                     background: isHighlight ? 'var(--tg-accent-bg)' : 'transparent',
                     border: 'none',
-                    color: isSelected ? 'var(--tg-accent)' : 'rgba(255,255,255,0.92)',
+                    color: isSelected ? 'var(--tg-accent)' : 'var(--tg-text-primary)',
                     fontSize: 14,
                     textAlign: 'left',
                     cursor: 'pointer',
@@ -317,7 +317,7 @@ export function Select({
                         style={{
                           marginLeft: 6,
                           fontSize: 11,
-                          color: 'rgba(255,255,255,0.45)',
+                          color: 'var(--tg-text-muted)',
                         }}
                       >
                         {opt.hint}

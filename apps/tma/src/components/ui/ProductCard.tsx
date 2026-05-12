@@ -58,14 +58,14 @@ export function ProductCard({ product }: { product: FeedProduct }) {
       style={{
         borderRadius: 14,
         overflow: 'hidden',
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--tg-surface)',
+        border: '1px solid var(--tg-border-soft)',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
+      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'var(--tg-surface-hover)', position: 'relative' }}>
         <ProductImage src={imageUrl} alt={product.title} emptyVariant="product-empty" />
         <div style={{ position: 'absolute', top: 6, right: 6 }}>
           <WishlistButton productId={product.id} variant="card" />
@@ -96,7 +96,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         <p style={{
           fontSize: 12,
           fontWeight: 600,
-          color: 'rgba(255,255,255,0.88)',
+          color: 'var(--tg-text-primary)',
           lineHeight: 1.3,
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -111,7 +111,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
           <p style={{
             fontSize: 12,
-            color: 'rgba(255,255,255,0.50)',
+            color: 'var(--tg-text-secondary)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',

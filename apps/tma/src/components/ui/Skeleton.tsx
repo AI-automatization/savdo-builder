@@ -9,7 +9,7 @@ export function Skeleton({ className = '', style, rounded = false }: Props) {
     <div
       className={`animate-pulse ${className}`}
       style={{
-        background: 'linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.06) 75%)',
+        background: 'linear-gradient(90deg, var(--tg-surface-hover) 25%, var(--tg-border) 50%, var(--tg-surface-hover) 75%)',
         backgroundSize: '200% 100%',
         animation: 'skeleton-shimmer 1.5s infinite',
         borderRadius: rounded ? 9999 : 12,
@@ -22,7 +22,7 @@ export function Skeleton({ className = '', style, rounded = false }: Props) {
 // Preset: карточка товара в StorePage
 export function ProductCardSkeleton() {
   return (
-    <div className="rounded-2xl p-3 flex flex-col gap-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="rounded-2xl p-3 flex flex-col gap-2" style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}>
       <Skeleton style={{ height: 140, borderRadius: 14 }} />
       <Skeleton style={{ height: 14, width: '70%' }} />
       <Skeleton style={{ height: 14, width: '45%' }} />
@@ -33,7 +33,7 @@ export function ProductCardSkeleton() {
 // Preset: строка заказа
 export function OrderRowSkeleton() {
   return (
-    <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}>
       <Skeleton style={{ width: 48, height: 48, flexShrink: 0 }} />
       <div className="flex flex-col gap-2 flex-1">
         <Skeleton style={{ height: 13, width: '65%' }} />
@@ -47,7 +47,7 @@ export function OrderRowSkeleton() {
 // Preset: строка треда в чате
 export function ThreadRowSkeleton() {
   return (
-    <div className="flex items-center gap-3 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="flex items-center gap-3 p-4 rounded-2xl" style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}>
       <Skeleton style={{ width: 40, height: 40, flexShrink: 0 }} />
       <div className="flex flex-col gap-2 flex-1">
         <Skeleton style={{ height: 13, width: '55%' }} />
@@ -76,7 +76,7 @@ export function ProductDetailSkeleton() {
 // Preset: stats-карточка дашборда (KPI блоки)
 export function StatsCardSkeleton() {
   return (
-    <div className="rounded-2xl p-4 flex flex-col items-center gap-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="rounded-2xl p-4 flex flex-col items-center gap-2" style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}>
       <Skeleton style={{ width: 32, height: 32, borderRadius: 8 }} />
       <Skeleton style={{ height: 24, width: '50%' }} />
       <Skeleton style={{ height: 11, width: '60%' }} />
@@ -105,7 +105,7 @@ export function ProfileBlockSkeleton() {
 // Preset: карточка корзины (line item)
 export function CartItemSkeleton() {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}>
       <Skeleton style={{ width: 60, height: 60, flexShrink: 0, borderRadius: 12 }} />
       <div className="flex flex-col gap-1.5 flex-1">
         <Skeleton style={{ height: 13, width: '70%' }} />

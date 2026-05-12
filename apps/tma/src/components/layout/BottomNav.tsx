@@ -56,7 +56,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
         background: 'rgba(11,14,20,0.94)',
         backdropFilter: 'blur(30px)',
         WebkitBackdropFilter: 'blur(30px)',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        borderTop: '1px solid var(--tg-border-soft)',
         boxShadow: '0 -4px 24px rgba(0,0,0,0.40)',
         paddingBottom: 'env(safe-area-inset-bottom, 10px)',
         paddingTop: 6,
@@ -126,7 +126,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
             <span
               className="text-[10px] font-semibold truncate w-full text-center"
               style={{
-                color: active ? 'var(--tg-accent)' : 'rgba(255,255,255,0.50)',
+                color: active ? 'var(--tg-accent)' : 'var(--tg-text-secondary)',
                 transition: 'color 0.15s',
                 letterSpacing: '0.01em',
               }}

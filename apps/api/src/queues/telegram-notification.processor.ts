@@ -21,6 +21,18 @@ export const TELEGRAM_JOB_STORE_REJECTED = 'store-rejected';
 export const TELEGRAM_JOB_VERIFICATION_APPROVED = 'verification-approved';
 export const TELEGRAM_JOB_ORDER_STATUS_CHANGED = 'order-status-changed';
 export const TELEGRAM_JOB_CHAT_MESSAGE = 'chat-message';
+export const TELEGRAM_JOB_CART_ABANDONED = 'cart-abandoned';
+
+export interface NotifyCartAbandonedData {
+  cartId: string;
+  recipientChatId: string;
+  storeName: string;
+  itemCount: number;
+  total: number;
+  currency: string;
+  /** Используется для TMA deep-link `?startapp=cart` (универсальный путь к корзине). */
+  cartDeepLink: string;
+}
 
 const ORDER_STATUS_LABEL_BUYER: Record<string, string> = {
   PENDING:    '⏳ ожидает подтверждения',
@@ -139,6 +151,29 @@ export class TelegramNotificationProcessor extends WorkerHost {
             replyMarkup: {
               inline_keyboard: [[
                 { text: '✉️ Открыть чат', url: `https://t.me/${botUsername}?startapp=${startapp}` },
+              ]],
+            },
+          });
+          break;
+        }
+
+        case TELEGRAM_JOB_CART_ABANDONED: {
+          // MARKETING-CART-ABANDONMENT-001 — мягкий ремаркетинг через TG.
+          // Один nudge на cart, cron уже выставил nudgeSentAt+nudgeCount в БД
+          // до постановки job'а (idempotent — даже если job retry, не дублирует).
+          const d = job.data as NotifyCartAbandonedData;
+          const text =
+            `🛒 <b>Вы оставили товары в корзине</b>\n` +
+            `Магазин: ${escapeTgHtml(d.storeName)}\n` +
+            `Товаров: ${d.itemCount}\n` +
+            `Сумма: ${d.total.toLocaleString('ru')} ${d.currency}\n\n` +
+            `Завершите заказ за 30 секунд — товары всё ещё в наличии.`;
+
+          await this.telegramBot.sendMessage(d.recipientChatId, text, {
+            parseMode: 'HTML',
+            replyMarkup: {
+              inline_keyboard: [[
+                { text: '🛍 Открыть корзину', url: d.cartDeepLink },
               ]],
             },
           });

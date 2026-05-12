@@ -34,14 +34,14 @@ export function Stars({
                 }
               },
               style: {
-                color: isFilled ? '#FBBF24' : 'rgba(255,255,255,0.18)',
+                color: isFilled ? '#FBBF24' : 'var(--tg-text-dim)',
                 cursor: 'pointer',
                 userSelect: 'none' as const,
                 fontSize: size * 1.6,
                 transition: 'transform 0.1s',
               },
             }
-          : { style: { color: isFilled ? '#FBBF24' : 'rgba(255,255,255,0.18)' } };
+          : { style: { color: isFilled ? '#FBBF24' : 'var(--tg-text-dim)' } };
         return <span key={i} {...props}>★</span>;
       })}
     </span>
