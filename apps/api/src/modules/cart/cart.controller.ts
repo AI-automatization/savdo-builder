@@ -181,6 +181,29 @@ export class CartController {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
+  /**
+   * API-RBAC-CART-CROSS-SESSION-001: sessionToken должен быть UUID v4.
+   * Старая версия принимала любой произвольный string → SQL/path injection
+   * через sessionKey + low-entropy токены легко подбираются. UUID v4 имеет
+   * 122 бита энтропии — практически не подбирается.
+   *
+   * Если фронт прислал не-UUID — 400, не silent fallback на anonymous,
+   * чтобы фронт сразу заметил баг (а не молча работал без сессии).
+   */
+  private static readonly UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  private validateSessionToken(token: string | undefined): string | undefined {
+    if (!token) return undefined;
+    if (!CartController.UUID_V4_RE.test(token)) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'x-session-token must be a UUID v4',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return token;
+  }
+
   private async resolveIdentity(
     user: JwtPayload | undefined,
     sessionToken: string | undefined,
@@ -192,8 +215,9 @@ export class CartController {
       }
     }
 
-    if (sessionToken) {
-      return { sessionKey: sessionToken };
+    const validToken = this.validateSessionToken(sessionToken);
+    if (validToken) {
+      return { sessionKey: validToken };
     }
 
     // Neither auth nor session token — operations that require identity will fail
