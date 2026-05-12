@@ -392,6 +392,29 @@ export default function EditProductPage() {
     }
   };
 
+  // TMA-SELLER-MAIN-BUTTON-001: Telegram MainButton как primary CTA.
+  // Раньше «Сохранить» терялась в скролле длинной формы → плохой UX на mobile.
+  // MainButton всегда виден внизу экрана, привязан к viewport.
+  useEffect(() => {
+    if (!tg) return;
+    const label = saving ? 'Сохраняем...' : 'Сохранить изменения';
+    tg.MainButton.setText(label);
+    tg.MainButton.show();
+    if (isValid && !saving) {
+      tg.MainButton.enable?.();
+      tg.MainButton.onClick(handleSave);
+      return () => {
+        tg.MainButton.offClick(handleSave);
+        tg.MainButton.hide();
+      };
+    } else {
+      tg.MainButton.disable?.();
+      return () => {
+        tg.MainButton.hide();
+      };
+    }
+  }, [tg, isValid, saving, title, description, price, storeCategoryId, globalCategoryId, displayType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleStatusChange = async (newStatus: 'DRAFT' | 'ACTIVE' | 'ARCHIVED') => {
     if (!id) return;
     setStatusChanging(true);

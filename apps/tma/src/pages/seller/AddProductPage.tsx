@@ -472,6 +472,35 @@ export default function AddProductPage() {
     }
   };
 
+  // TMA-SELLER-MAIN-BUTTON-001: MainButton как primary CTA для длинной формы.
+  // Default action — publish=true (Опубликовать). Draft через обычную inline-кнопку.
+  // Disable пока validation не пройдёт или идёт upload фото.
+  useEffect(() => {
+    if (!tg) return;
+    const label = saving
+      ? 'Создаём...'
+      : photoUploading
+        ? 'Загрузка фото...'
+        : 'Опубликовать товар';
+    tg.MainButton.setText(label);
+    tg.MainButton.show();
+    const canSubmit = isValid && !saving && !photoUploading;
+    if (canSubmit) {
+      const onClick = () => handleSave(true);
+      tg.MainButton.enable?.();
+      tg.MainButton.onClick(onClick);
+      return () => {
+        tg.MainButton.offClick(onClick);
+        tg.MainButton.hide();
+      };
+    } else {
+      tg.MainButton.disable?.();
+      return () => {
+        tg.MainButton.hide();
+      };
+    }
+  }, [tg, isValid, saving, photoUploading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       {cropSrc && (
