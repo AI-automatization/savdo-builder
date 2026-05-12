@@ -19,6 +19,8 @@
   --tg-accent-dim:     rgba(168,85,247,0.18);
   --tg-accent-glow:    rgba(168,85,247,0.35);
   --tg-accent-text:    #F3E8FF;
+  --tg-accent-bg:      rgba(168,85,247,0.15);
+  --tg-accent-border:  rgba(168,85,247,0.25);
   --tg-cyan:           #22D3EE;
   --tg-cyan-dim:       rgba(34,211,238,0.15);
   --tg-success:        #34D399;
@@ -42,6 +44,8 @@
   --tg-accent-dim:     rgba(124,58,237,0.10);
   --tg-accent-glow:    rgba(124,58,237,0.25);
   --tg-accent-text:    #5B21B6;
+  --tg-accent-bg:      rgba(124,58,237,0.08);
+  --tg-accent-border:  rgba(124,58,237,0.18);
   --tg-cyan:           #0891B2;
   --tg-cyan-dim:       rgba(8,145,178,0.10);
   --tg-success:        #059669;
@@ -58,12 +62,16 @@
   --tg-accent-dim:    rgba(34,211,238,0.18);
   --tg-accent-glow:   rgba(34,211,238,0.35);
   --tg-accent-text:   #CFFAFE;
+  --tg-accent-bg:     rgba(34,211,238,0.15);
+  --tg-accent-border: rgba(34,211,238,0.25);
 }
 :root[data-theme="light"] [data-role="SELLER"] {
   --tg-accent:        #0891B2;
   --tg-accent-dim:    rgba(8,145,178,0.10);
   --tg-accent-glow:   rgba(8,145,178,0.25);
   --tg-accent-text:   #0C4A6E;
+  --tg-accent-bg:     rgba(8,145,178,0.08);
+  --tg-accent-border: rgba(8,145,178,0.18);
 }
 
 /* ── Global reset ─────────────────────────────────────────────────────────── */
