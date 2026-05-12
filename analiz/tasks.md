@@ -108,7 +108,7 @@
 - [ ] **`API-STOREFRONT-SEARCH-PERF-001`** — нет `pg_trgm` GIN index. ILIKE на 100k+ товаров медленный.
 - [ ] **`API-SENTRY-001`** — Sentry не подключён. Critical для prod.
 - [ ] **`API-PINO-LOGGING-001`** — заменить NestJS Logger на pino structured logging.
-- [ ] **`API-PII-MASKING-001`** — phone в логах plain (SEC-011). Маскировать `+998 *** ** 67`.
+- [x] **`API-PII-MASKING-001`** ✅ verified done 12.05.2026 — `apps/api/src/shared/pii.ts` (`maskPhone`: `+998901234567` → `+998 *** ** 67`, ghost `tg_*` → `tg_***`). Использован во ВСЕХ logger.* с phone: otp.processor, otp.service, telegram-auth.use-case, admin-auth.use-case (impersonation), telegram-demo.handler (linked/registered logs), ghost-cleanup.service. Также есть unit-тесты `pii.spec.ts`. Verified grep — 0 plain-text phone в logger calls.
 - [ ] **`API-FRONTEND-TESTS-001`** — 0 frontend tests для admin / web-buyer / web-seller / TMA. Хотя бы smoke.
 - [ ] **`API-PAGINATION-ENVELOPE-001`** (P1, B8) — единый `{ data, meta: { total, page, limit, totalPages } }` (breaking, требует sync с фронтом).
 
