@@ -113,10 +113,27 @@ export default function StoresPage() {
     return () => clearTimeout(t);
   }, [productsQuery]);
 
+  // TMA-STORES-CATS-RACE-001 (12.05.2026): был race — `catsLoaded.current = true`
+  // ставился до fetch, и при network error флаг оставался true → категории
+  // никогда не перезагружались. + не было AbortController, setGlobalCategories
+  // мог сработать после unmount. Fix: AbortController + сброс флага на error
+  // (но не при abort — это намеренная отмена).
   useEffect(() => {
     if (tab !== 'products' || catsLoaded.current) return;
     catsLoaded.current = true;
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {/* best-effort: category filters are supplementary */});
+    const ac = new AbortController();
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then((data) => {
+        if (ac.signal.aborted) return;
+        setGlobalCategories(data);
+      })
+      .catch((err: unknown) => {
+        if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+        // best-effort: category filters are supplementary. Сбрасываем флаг,
+        // чтобы следующий tab-switch попробовал ещё раз.
+        catsLoaded.current = false;
+      });
+    return () => ac.abort();
   }, [tab]);
 
   const productsAbortRef = useRef<AbortController | null>(null);
