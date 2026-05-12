@@ -2,8 +2,14 @@ import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { TelegramBotService } from '../modules/telegram/services/telegram-bot.service';
+import { RedisService } from '../shared/redis.service';
+import { maskPhone } from '../shared/pii';
 import { QUEUE_OTP } from './queues.module';
-import { OTP_JOB_SEND_TELEGRAM, OtpSendTelegramJobData } from './otp.jobs';
+import {
+  OTP_JOB_SEND_TELEGRAM,
+  OTP_CODE_REF_KEY,
+  OtpSendTelegramJobData,
+} from './otp.jobs';
 
 export { OTP_JOB_SEND_TELEGRAM, OtpSendTelegramJobData };
 
@@ -11,7 +17,10 @@ export { OTP_JOB_SEND_TELEGRAM, OtpSendTelegramJobData };
 export class OtpProcessor extends WorkerHost {
   private readonly logger = new Logger(OtpProcessor.name);
 
-  constructor(private readonly telegramBot: TelegramBotService) {
+  constructor(
+    private readonly telegramBot: TelegramBotService,
+    private readonly redis: RedisService,
+  ) {
     super();
   }
 
@@ -21,9 +30,44 @@ export class OtpProcessor extends WorkerHost {
       return;
     }
 
-    const { chatId, phone, code } = job.data as OtpSendTelegramJobData;
+    const data = job.data as Partial<OtpSendTelegramJobData> & { code?: string };
+    const { chatId, phone, codeRef } = data;
 
-    this.logger.log(`Sending OTP to phone=${phone} chatId=${chatId} attempt=${job.attemptsMade + 1}`);
+    if (!chatId || !phone) {
+      this.logger.error('OtpProcessor: missing chatId or phone');
+      return;
+    }
+
+    // Backward-compat: legacy job (до миграции BULL-BOARD-DATA-LEAK-001 имел
+    // `code` прямо в data). Если стоит на очереди — обрабатываем тоже.
+    const legacyCode = data.code;
+    if (legacyCode && !codeRef) {
+      this.logger.warn(`OtpProcessor: legacy job без codeRef — fallback`);
+      return this.send(chatId, phone, legacyCode, job.attemptsMade);
+    }
+
+    if (!codeRef) {
+      this.logger.error('OtpProcessor: missing codeRef');
+      return;
+    }
+
+    // API-BULL-BOARD-DATA-LEAK-001: реальный code в Redis по ref.
+    const code = await this.redis.get(OTP_CODE_REF_KEY(codeRef));
+    if (!code) {
+      // TTL истёк (10 мин) или processor запустился повторно после успешной
+      // отправки (ref удалён). Не fatal — warn и skip.
+      this.logger.warn(`OtpProcessor: codeRef expired/missing for phone=${maskPhone(phone)} — skipping`);
+      return;
+    }
+
+    await this.send(chatId, phone, code, job.attemptsMade);
+
+    // Удаляем ref после отправки (idempotency защита от replay).
+    await this.redis.del(OTP_CODE_REF_KEY(codeRef)).catch(() => undefined);
+  }
+
+  private async send(chatId: string, phone: string, code: string, attemptsMade: number): Promise<void> {
+    this.logger.log(`Sending OTP to phone=${maskPhone(phone)} chatId=${chatId} attempt=${attemptsMade + 1}`);
 
     await this.telegramBot.sendMessage(
       chatId,
@@ -31,6 +75,6 @@ export class OtpProcessor extends WorkerHost {
       { parseMode: 'HTML' },
     );
 
-    this.logger.log(`OTP sent OK to phone=${phone}`);
+    this.logger.log(`OTP sent OK to phone=${maskPhone(phone)}`);
   }
 }

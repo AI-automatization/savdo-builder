@@ -5,6 +5,12 @@ export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().default(3000),
 
+  // APP_URL — публичный URL api сервера. Используется для построения absolute
+  // URL прокси Telegram-фото и в storefront image resolution. Без него
+  // фото из TG-storage отдаются как relative path, который ломается на
+  // TMA-домене → 404 «фото не грузится». TMA-PHOTO-UPLOAD-DIAG-001.
+  APP_URL: Joi.string().uri().required(),
+
   // Database
   DATABASE_URL: Joi.string().required(),
 
@@ -17,18 +23,26 @@ export const envValidationSchema = Joi.object({
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
 
-  // Storage (R2)
+  // Storage (S3-compatible: Cloudflare R2 / Supabase Storage / AWS S3)
   STORAGE_ENDPOINT: Joi.string().allow('').optional(),
   STORAGE_ACCESS_KEY_ID: Joi.string().allow('').optional(),
   STORAGE_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
   STORAGE_BUCKET_PUBLIC: Joi.string().allow('').optional(),
   STORAGE_BUCKET_PRIVATE: Joi.string().allow('').optional(),
   STORAGE_PUBLIC_URL: Joi.string().allow('').optional(),
+  // SigV4 region. R2 принимает 'auto', Supabase требует реальный регион
+  // (project region из dashboard) — иначе подпись неправильная → 403.
+  STORAGE_REGION: Joi.string().default('us-east-1'),
 
   // Telegram Bot — OTP через Telegram (Eskiz ЗАПРЕЩЁН)
   TELEGRAM_BOT_TOKEN: Joi.string().required(),
   TELEGRAM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
   TELEGRAM_BOT_USERNAME: Joi.string().default('savdo_builderBOT'),
+  // Telegram-канал для хранения медиа (fallback к R2). Бот должен быть
+  // админом канала с правом «Публикация сообщений». Если не выставлен и
+  // R2 не сконфигурирован — uploadDirect вернёт 503.
+  TELEGRAM_STORAGE_CHANNEL_ID: Joi.string().allow('').optional(),
+  TMA_URL: Joi.string().uri().allow('').optional(),
 
   // Feature flags
   DEV_OTP_ENABLED: Joi.boolean().default(false),

@@ -71,7 +71,13 @@ function StatCard({
       </div>
       <div className="text-2xl font-bold tabular-nums tracking-tight leading-none mb-1" style={{ color: 'var(--text)' }}>
         {loading
-          ? <span style={{ color: 'var(--text-dim)' }}>—</span>
+          ? (
+            <span
+              aria-label="Загрузка значения"
+              className="inline-block animate-pulse rounded"
+              style={{ width: 56, height: 22, background: 'var(--surface2)' }}
+            />
+          )
           : error
           ? <span className="text-red-500">!</span>
           : <span style={{ color: 'var(--text)' }}><NumberTicker value={value} /></span>

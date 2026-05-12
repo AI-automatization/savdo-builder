@@ -38,6 +38,7 @@ export function useBuyerSocket() {
     return () => {
       socket.off('connect', joinRoom);
       socket.off('order:status_changed', onOrderStatusChanged);
+      if (socket.connected) socket.emit('leave-buyer-room', { buyerId });
     };
   }, [user?.id, queryClient]);
 }

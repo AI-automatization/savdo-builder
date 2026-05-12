@@ -2,12 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme variables ──────────────────────────────────────────────────────── */
+:root,
+:root[data-theme="dark"] {
+  --tg-bg:             #0B0E14;
+  --tg-bg-gradient:    linear-gradient(160deg, #0B0E14 0%, #0D1120 45%, #0B0F1C 100%);
+  --tg-surface:        rgba(255,255,255,0.055);
+  --tg-surface-hover:  rgba(255,255,255,0.08);
+  --tg-text-primary:   rgba(255,255,255,0.90);
+  --tg-text-secondary: rgba(255,255,255,0.55);
+  --tg-text-muted:     rgba(255,255,255,0.40);
+  --tg-text-dim:       rgba(255,255,255,0.30);
+  --tg-border:         rgba(255,255,255,0.11);
+  --tg-border-soft:    rgba(255,255,255,0.06);
+  --tg-accent:         #A855F7;
+  --tg-accent-dim:     rgba(168,85,247,0.18);
+  --tg-accent-glow:    rgba(168,85,247,0.35);
+  --tg-accent-text:    #F3E8FF;
+  --tg-accent-bg:      rgba(168,85,247,0.15);
+  --tg-accent-border:  rgba(168,85,247,0.25);
+  --tg-cyan:           #22D3EE;
+  --tg-cyan-dim:       rgba(34,211,238,0.15);
+  --tg-success:        #34D399;
+  --tg-warning:        #FBBF24;
+  --tg-danger:         #EF4444;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --tg-bg:             #F7F8FB;
+  --tg-bg-gradient:    linear-gradient(160deg, #FFFFFF 0%, #F7F8FB 45%, #EEF1F8 100%);
+  --tg-surface:        rgba(0,0,0,0.04);
+  --tg-surface-hover:  rgba(0,0,0,0.06);
+  --tg-text-primary:   rgba(0,0,0,0.88);
+  --tg-text-secondary: rgba(0,0,0,0.62);
+  --tg-text-muted:     rgba(0,0,0,0.45);
+  --tg-text-dim:       rgba(0,0,0,0.28);
+  --tg-border:         rgba(0,0,0,0.10);
+  --tg-border-soft:    rgba(0,0,0,0.06);
+  --tg-accent:         #7C3AED;
+  --tg-accent-dim:     rgba(124,58,237,0.10);
+  --tg-accent-glow:    rgba(124,58,237,0.25);
+  --tg-accent-text:    #5B21B6;
+  --tg-accent-bg:      rgba(124,58,237,0.08);
+  --tg-accent-border:  rgba(124,58,237,0.18);
+  --tg-cyan:           #0891B2;
+  --tg-cyan-dim:       rgba(8,145,178,0.10);
+  --tg-success:        #059669;
+  --tg-warning:        #D97706;
+  --tg-danger:         #DC2626;
+  color-scheme: light;
+}
+
+/* ── Role-scoped accent (TMA-DESIGN-ROLE-DIFF-001) ────────────────────────── */
+/* Контейнер с `data-role="SELLER"` (BottomNav, и любые seller-only компоненты)
+   получает cyan-accent. Без атрибута — наследует root orchid (buyer default). */
+[data-role="SELLER"] {
+  --tg-accent:        #22D3EE;
+  --tg-accent-dim:    rgba(34,211,238,0.18);
+  --tg-accent-glow:   rgba(34,211,238,0.35);
+  --tg-accent-text:   #CFFAFE;
+  --tg-accent-bg:     rgba(34,211,238,0.15);
+  --tg-accent-border: rgba(34,211,238,0.25);
+}
+:root[data-theme="light"] [data-role="SELLER"] {
+  --tg-accent:        #0891B2;
+  --tg-accent-dim:    rgba(8,145,178,0.10);
+  --tg-accent-glow:   rgba(8,145,178,0.25);
+  --tg-accent-text:   #0C4A6E;
+  --tg-accent-bg:     rgba(8,145,178,0.08);
+  --tg-accent-border: rgba(8,145,178,0.18);
+}
+
 /* ── Global reset ─────────────────────────────────────────────────────────── */
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: #0B0E14;
+  background: var(--tg-bg);
+  color: var(--tg-text-primary);
   /* SF Pro Rounded on Apple devices, system-ui everywhere else */
   font-family: 'SF Pro Rounded', -apple-system, BlinkMacSystemFont,
                ui-rounded, 'Helvetica Neue', system-ui, sans-serif;
@@ -75,6 +148,20 @@ body {
   50%       { opacity: 0.6; transform: scale(1.4); }
 }
 
+/* ── Typing indicator dots (FEAT-005-FE) ─────────────────────────────────── */
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(168,85,247,0.85);
+  display: inline-block;
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+  40%           { transform: translateY(-4px); opacity: 1; }
+}
+
 /* ── Interactive card hover lift (desktop only) ──────────────────────────── */
 @media (hover: hover) {
   .glass-card-interactive {
@@ -122,12 +209,16 @@ body {
 
 /* ── Page enter animation (used in App.tsx PageOutlet) ───────────────────── */
 @keyframes page-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .page-enter {
   animation: page-enter 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  will-change: opacity, transform;
+  /* Polat 07.05: убран `transform: translateY(8px)` + `will-change: transform`.
+     `will-change: transform` создавало containing block → modal'и (BottomSheet)
+     с position:fixed обрезались границами .page-enter контейнера, а не viewport.
+     Симптом: picker направлений магазина рендерился inside small card.
+     Только opacity-fade без transform — нет containing block. */
 }
 
 /* ── Bottom nav haptic press feedback ────────────────────────────────────── */
@@ -264,4 +355,46 @@ input:focus {
   justify-content: center;
   font-size: 22px;
   flex-shrink: 0;
+}
+
+/* ── Filter chips: active state with strong glow ─────────────────────────── */
+.chip-active {
+  background: linear-gradient(135deg, rgba(168,85,247,0.32) 0%, rgba(124,58,237,0.42) 100%) !important;
+  border: 1px solid rgba(168,85,247,0.60) !important;
+  color: #D8B4FE !important;
+  box-shadow: 0 0 16px rgba(168,85,247,0.35), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+.chip-active-cyan {
+  background: linear-gradient(135deg, rgba(34,211,238,0.22) 0%, rgba(14,165,233,0.30) 100%) !important;
+  border: 1px solid rgba(34,211,238,0.50) !important;
+  color: #67E8F9 !important;
+  box-shadow: 0 0 14px rgba(34,211,238,0.30), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+
+/* ── Horizontal scroll fade hint ──────────────────────────────────────────
+   Wrap any horizontal scroller in <div class="scroll-fade-x"> to add a
+   subtle gradient on the right edge that signals "there's more, swipe me". */
+.scroll-fade-x {
+  position: relative;
+}
+.scroll-fade-x::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to left, rgba(11,14,20,0.92) 0%, rgba(11,14,20,0) 100%);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 0 12px 12px 0;
+}
+
+/* Smooth scroll-snap for filter rows on touch devices */
+.scroll-snap-x {
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 4px;
+}
+.scroll-snap-x > * {
+  scroll-snap-align: start;
 }

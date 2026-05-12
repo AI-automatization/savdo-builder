@@ -6,6 +6,7 @@ import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products'
 import { Check, Link2, Send, Layers, Package } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
+import { buyerProductUrl } from '@/lib/buyer-url';
 import { card, colors, inputStyle } from '@/lib/styles';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -55,8 +56,7 @@ export default function ProductsPage() {
 
   function copyProductLink(productId: string) {
     if (!store) return;
-    const base = process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz';
-    const url = `${base}/${store.slug}/products/${productId}`;
+    const url = buyerProductUrl(store.slug, productId);
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(productId);
       setTimeout(() => setCopiedId(null), 2000);
@@ -88,7 +88,7 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Товары</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Товары</h1>
           <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
             {isLoading ? "Загрузка..." : `${products?.length ?? 0} товаров`}
           </p>
@@ -96,7 +96,7 @@ export default function ProductsPage() {
         <Link
           href="/products/create"
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shrink-0 transition-opacity hover:opacity-90"
-          style={{ background: colors.accent, color: colors.bg }}
+          style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
           + Добавить
         </Link>
@@ -263,7 +263,7 @@ export default function ProductsPage() {
                     onClick={() => copyTelegramLink(p.id)}
                     aria-label="Скопировать Telegram-ссылку"
                     className="p-1.5 -m-1.5 transition-opacity hover:opacity-80"
-                    style={{ color: tgCopiedId === p.id ? colors.success : "#60A5FA" }}
+                    style={{ color: tgCopiedId === p.id ? colors.success : colors.info }}
                   >
                     {tgCopiedId === p.id ? <Check size={16} /> : <Send size={16} />}
                   </button>
@@ -345,7 +345,7 @@ export default function ProductsPage() {
                     onClick={() => copyTelegramLink(p.id)}
                     title="Скопировать Telegram-ссылку (открывает TMA)"
                     className="text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ color: tgCopiedId === p.id ? colors.success : "#60A5FA" }}
+                    style={{ color: tgCopiedId === p.id ? colors.success : colors.info }}
                   >
                     {tgCopiedId === p.id ? <Check size={14} /> : <Send size={14} />}
                   </button>

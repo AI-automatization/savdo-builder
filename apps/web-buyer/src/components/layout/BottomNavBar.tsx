@@ -8,15 +8,16 @@ import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/lib/auth/context';
 import { IcoShop, IcoCart, IcoChat, IcoOrders, IcoProfile } from '@/components/icons';
 import { colors } from '@/lib/styles';
+import { getRecentStores } from '@/lib/recent-stores';
 
-export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile';
+export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile' | 'wishlist' | 'notifications';
 
 export function BottomNavBar({
   active,
   cartBadge,
   storeSlug: propSlug,
 }: {
-  active: NavActive;
+  active?: NavActive;
   cartBadge?: number;
   storeSlug?: string;
 }) {
@@ -24,12 +25,14 @@ export function BottomNavBar({
   const { isAuthenticated } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
   const unreadChatCount = useUnreadChatCount(isAuthenticated);
-  const { data: cart } = useCart();
+  const { data: cart } = useCart({ enabled: isAuthenticated });
   const cartCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
 
+  // Use the most recently visited store as the "Магазин" tab target.
+  // (Older code read a `last_store_slug` key that nothing wrote — dead read.)
   useEffect(() => {
     if (!propSlug) {
-      setStoredSlug(localStorage.getItem('last_store_slug') ?? '');
+      setStoredSlug(getRecentStores()[0]?.slug ?? '');
     }
   }, [propSlug]);
 
@@ -53,7 +56,7 @@ export function BottomNavBar({
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        <nav className="flex items-center justify-around px-2 py-2 max-w-md mx-auto">
+        <nav className="flex items-center justify-around px-2 pt-2.5 pb-2 max-w-md mx-auto">
           {NAV.map(({ key, href, label, icon, badge }) => {
             const isActive = key === active;
             return (
@@ -63,17 +66,17 @@ export function BottomNavBar({
                 className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl"
               >
                 <div className="relative">
-                  <span style={{ color: isActive ? colors.accent : colors.textDim }}>{icon}</span>
+                  <span style={{ color: isActive ? colors.brand : colors.textMuted }}>{icon}</span>
                   {badge != null && badge > 0 && (
                     <span
                       className="absolute -top-1 -right-1.5 min-w-[17px] h-[17px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold"
-                      style={{ background: colors.accent, color: colors.accentTextOnBg }}
+                      style={{ background: colors.brand, color: colors.brandTextOnBg }}
                     >
                       {badge > 9 ? '9+' : badge}
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] font-medium" style={{ color: isActive ? colors.accent : colors.textMuted }}>
+                <span className="text-[10px] font-medium" style={{ color: isActive ? colors.brand : colors.textMuted }}>
                   {label}
                 </span>
               </Link>

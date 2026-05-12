@@ -5,8 +5,12 @@ import { track } from '@/lib/analytics';
 import { getCart, saveCart } from '@/lib/cart';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
+import { webStoreUrl } from '@/lib/webUrl';
 
 interface Product {
   id: string;
@@ -35,9 +39,11 @@ export default function StorePage() {
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
   const gridCols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,15 +53,21 @@ export default function StorePage() {
   const [activeCat, setActiveCat] = useState<string | null>(null);
 
   useEffect(() => {
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    const ac = new AbortController();
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then(setGlobalCategories)
+      .catch(() => {/* best-effort: category filters are supplementary, page works without them */});
+    return () => ac.abort();
   }, []);
 
   useEffect(() => {
     if (!slug) return;
+    const ac = new AbortController();
     Promise.allSettled([
-      api<Store>(`/storefront/stores/${slug}`),
-      api<Product[]>(`/stores/${slug}/products`),
+      api<Store>(`/storefront/stores/${slug}`, { signal: ac.signal }),
+      api<Product[]>(`/stores/${slug}/products`, { signal: ac.signal }),
     ]).then(([storeResult, productsResult]) => {
+      if (ac.signal.aborted) return;
       if (storeResult.status === 'fulfilled') {
         setStore(storeResult.value);
         if (trackedRef.current !== storeResult.value.id) {
@@ -68,18 +80,33 @@ export default function StorePage() {
       if (productsResult.status === 'fulfilled') {
         setProducts(productsResult.value ?? []);
       }
-    }).finally(() => setLoading(false));
+    }).finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [slug]);
 
-  const addToCart = (product: Product) => {
+  const addToCart = async (product: Product) => {
     if (!store) return;
     tg?.HapticFeedback.impactOccurred('light');
 
     const cart = getCart();
 
-    // INV-C01: корзина = один магазин. Если в корзине товары другого магазина — сбрасываем.
+    // INV-C01: корзина = один магазин. Если в корзине товары другого магазина —
+    // подтверждение перед очисткой (TMA-CART-DUPLICATE-WARNING-001). Раньше
+    // silent reset терял товары без уведомления.
     const hasOtherStore = cart.length > 0 && cart[0].storeId !== store.id;
     if (hasOtherStore) {
+      const otherStoreName = cart[0].storeName ?? 'другого магазина';
+      const ok = await confirmDialog({
+        title: 'Заменить корзину?',
+        body: `В корзине сейчас товары из «${otherStoreName}». Чтобы добавить товар из «${store.name}», нужно очистить старую корзину.`,
+        confirmText: 'Заменить',
+        cancelText: 'Отмена',
+        danger: true,
+      });
+      if (!ok) {
+        tg?.HapticFeedback.notificationOccurred('error');
+        return;
+      }
       saveCart([{
         productId: product.id,
         title: product.title,
@@ -89,7 +116,8 @@ export default function StorePage() {
         storeSlug: slug!,
         storeName: store.name,
       }]);
-      tg?.HapticFeedback.notificationOccurred('warning');
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('🛒 Корзина обновлена');
       track.addToCart(store.id, product.id, null, 1);
       return;
     }
@@ -125,9 +153,9 @@ export default function StorePage() {
     return (
       
         <div className="flex flex-col items-center gap-3 py-16">
-          <span style={{ fontSize: 40 }}>😕</span>
-          <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Магазин не найден</p>
-          <button onClick={() => navigate('/buyer')} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
+          <span aria-hidden="true" style={{ fontSize: 40 }}>😕</span>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>Магазин не найден</p>
+          <button onClick={() => navigate('/buyer')} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← Назад</button>
         </div>
       
     );
@@ -142,50 +170,64 @@ export default function StorePage() {
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-bold uppercase"
               style={{
-                background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
-                border: '1px solid rgba(168,85,247,0.28)',
-                color: '#A855F7',
+                background: 'var(--tg-accent-dim)',
+                border: '1px solid var(--tg-accent-border)',
+                color: 'var(--tg-accent)',
                 fontSize: 20,
               }}>
               {store.name.charAt(0)}
             </div>
             <div>
-              <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>{store.name}</h1>
-              <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>savdo.uz/{store.slug}</p>
+              <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</h1>
+              <button
+                onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
+                className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                style={{
+                  color: 'var(--tg-accent)',
+                  background: 'var(--tg-accent-bg)',
+                  border: '1px solid var(--tg-accent-border)',
+                  cursor: 'pointer',
+                }}
+                aria-label="Перейти на сайт магазина"
+              >
+                ↗ Перейти на сайт
+              </button>
             </div>
           </div>
           {store.description && (
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.50)' }}>{store.description}</p>
+            <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>{store.description}</p>
           )}
         </div>
 
         {globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                border: `1px solid ${activeCat === null ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((c) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={c.id}
-                onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === c.id ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.07)',
-                  border: `1px solid ${activeCat === c.id ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                  color: activeCat === c.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                }}
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'var(--tg-surface-hover)',
+                  border: '1px solid var(--tg-border)',
+                  color: 'var(--tg-text-secondary)',
+                } : undefined}
               >
-                {c.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === c.id ? 'chip-active' : ''}`}
+                  style={activeCat !== c.id ? {
+                    background: 'var(--tg-surface-hover)',
+                    border: '1px solid var(--tg-border)',
+                    color: 'var(--tg-text-secondary)',
+                  } : undefined}
+                >
+                  {c.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -195,8 +237,8 @@ export default function StorePage() {
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
-            <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+            <span aria-hidden="true" style={{ fontSize: 36 }}>📭</span>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
               {activeCat ? 'Нет товаров в этой категории' : 'Товаров пока нет'}
             </p>
           </div>
@@ -206,29 +248,27 @@ export default function StorePage() {
           {filtered.map((p) => (
             <div
               key={p.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/buyer/store/${slug}/product/${p.id}`)}
+              {...clickableA11y(() => navigate(`/buyer/store/${slug}/product/${p.id}`))}
+              aria-label={`Открыть товар ${p.title}`}
               className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
               style={glass}
             >
-              <div className="w-full aspect-square rounded-xl flex items-center justify-center text-3xl overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.04)' }}>
-                {p.images?.[0]?.url
-                  ? <img src={p.images[0].url} alt={p.title} className="w-full h-full object-cover" />
-                  : '📦'}
+              <div className="w-full aspect-square rounded-xl overflow-hidden"
+                style={{ background: 'var(--tg-surface)' }}>
+                <ProductImage src={p.images?.[0]?.url} alt={p.title} emptyVariant="product-empty" />
               </div>
-              <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
+              <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'var(--tg-text-primary)' }}>
                 {p.title}
               </p>
               <div className="flex items-center justify-between mt-auto">
-                <p className="text-xs font-bold" style={{ color: '#A855F7' }}>
+                <p className="text-xs font-bold" style={{ color: 'var(--tg-accent)' }}>
                   {Number(p.basePrice).toLocaleString('ru')} сум
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold"
-                  style={{ background: 'rgba(167,139,250,0.25)', border: '1px solid rgba(167,139,250,0.35)', color: '#A855F7' }}
+                  aria-label="Добавить в корзину"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold"
+                  style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   +
                 </button>

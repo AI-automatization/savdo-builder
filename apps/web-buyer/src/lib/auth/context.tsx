@@ -14,6 +14,7 @@ import {
 } from './storage';
 import { getMe, logout as logoutApi } from '../api/auth.api';
 import { mergeCart } from '../api/cart.api';
+import { destroySocket } from '../socket';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTokens();
       setUser(null);
       queryClient.clear();
+      destroySocket();
     }
   }, [queryClient]);
 
@@ -72,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearTokens();
     setUser(null);
     queryClient.clear();
+    destroySocket();
   }, [queryClient]);
 
   const refreshUser = useCallback(async () => {
@@ -102,6 +105,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     function onExpired() { localLogout(); }
     window.addEventListener('savdo:auth:expired', onExpired);
     return () => window.removeEventListener('savdo:auth:expired', onExpired);
+  }, [localLogout]);
+
+  // Cross-tab logout sync — when another tab clears the access token, mirror
+  // it here so this tab doesn't keep flashing user-only UI until its next 401.
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === 'savdo_access_token' && !e.newValue) {
+        localLogout();
+      }
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, [localLogout]);
 
   return (

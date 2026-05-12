@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -6,6 +6,9 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { showToast } from '@/components/ui/Toast';
+import { webStoreUrl } from '@/lib/webUrl';
 
 interface Store {
   id: string;
@@ -24,10 +27,19 @@ export default function SellerProfilePage() {
   const navigate = useNavigate();
   const [store, setStore] = useState<Store | null>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    api<Store>('/seller/store')
-      .then((s) => setStore(s))
-      .catch(() => {});
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    api<Store>('/seller/store', { signal: ac.signal })
+      .then((s) => { if (!ac.signal.aborted) setStore(s); })
+      .catch((err: unknown) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить профиль магазина', 'error');
+      });
+    return () => ac.abort();
   }, []);
 
   const handleLogout = () => {
@@ -43,21 +55,22 @@ export default function SellerProfilePage() {
   const copyStoreLink = () => {
     if (!store) return;
     const link = `https://t.me/${BOT_USERNAME}?startapp=store_${store.slug}`;
-    navigator.clipboard.writeText(link).catch(() => {});
-    tg?.HapticFeedback.notificationOccurred('success');
+    navigator.clipboard.writeText(link)
+      .then(() => { tg?.HapticFeedback.notificationOccurred('success'); })
+      .catch(() => { showToast('Не удалось скопировать ссылку', 'error'); });
     track.storeLinkCopied(store.id);
   };
 
   return (
-    
-      <div className="flex flex-col gap-4">
+
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Профиль</h1>
 
         {/* Telegram аккаунт */}
         <GlassCard className="p-4 flex items-center gap-3">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
+            style={{ background: 'var(--tg-accent)' }}
           >
             {tgUser?.first_name?.[0] ?? '?'}
           </div>
@@ -74,11 +87,24 @@ export default function SellerProfilePage() {
           </div>
           <span
             className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: 'rgba(168,85,247,0.18)', color: '#A855F7' }}
+            style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
           >
             Продавец
           </span>
         </GlassCard>
+
+        {/* Магазин — skeleton до прихода ответа */}
+        {!store && (
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <Skeleton style={{ height: 12, width: 100 }} />
+              <Skeleton style={{ height: 18, width: 60, borderRadius: 9999 }} />
+            </div>
+            <Skeleton style={{ height: 16, width: '50%' }} />
+            <Skeleton style={{ height: 22, width: 130 }} />
+            <Skeleton style={{ height: 12, width: '70%' }} />
+          </GlassCard>
+        )}
 
         {/* Магазин */}
         {store && (
@@ -90,7 +116,19 @@ export default function SellerProfilePage() {
               <Badge status={store.status} />
             </div>
             <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.88)' }}>{store.name}</p>
-            <p className="text-[11px]" style={{ color: 'rgba(168,85,247,0.70)' }}>savdo.uz/{store.slug}</p>
+            <button
+              onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
+              className="text-[11px] inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+              style={{
+                color: 'var(--tg-accent)',
+                background: 'var(--tg-accent-bg)',
+                border: '1px solid var(--tg-accent-border)',
+                cursor: 'pointer',
+              }}
+              aria-label="Перейти на сайт магазина"
+            >
+              ↗ Перейти на сайт
+            </button>
 
             {store.telegramChannelId ? (
               <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
@@ -110,7 +148,7 @@ export default function SellerProfilePage() {
             <button
               onClick={copyStoreLink}
               className="flex items-center gap-2 text-xs"
-              style={{ color: '#A855F7' }}
+              style={{ color: 'var(--tg-accent)' }}
             >
               🔗 Скопировать ссылку на магазин
             </button>

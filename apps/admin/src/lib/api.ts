@@ -75,6 +75,13 @@ async function request<T>(path: string, options?: RequestInit, retry = true): Pr
     throw new Error('Unauthorized')
   }
 
+  // 204 No Content — нет body, не вызываем res.json() (иначе SyntaxError).
+  // DELETE-эндпоинты в API возвращают 204, как и mark-as-read / mark-all-read.
+  if (res.status === 204) {
+    if (!res.ok) throw new Error('Request failed')
+    return undefined as unknown as T
+  }
+
   const data = await res.json()
   if (!res.ok) throw new Error(data.message ?? 'Request failed')
   return data

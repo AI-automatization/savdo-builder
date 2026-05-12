@@ -1,4 +1,4 @@
-import { randomInt } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -9,7 +9,13 @@ import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { TELEGRAM_CHAT_ID_KEY } from '../../telegram/telegram-webhook.controller';
 import { QUEUE_OTP } from '../../../queues/queues.module';
-import { OTP_JOB_SEND_TELEGRAM, type OtpSendTelegramJobData } from '../../../queues/otp.jobs';
+import {
+  OTP_JOB_SEND_TELEGRAM,
+  OTP_CODE_REF_KEY,
+  OTP_CODE_REF_TTL_SECONDS,
+  type OtpSendTelegramJobData,
+} from '../../../queues/otp.jobs';
+import { maskPhone } from '../../../shared/pii';
 
 const OTP_VERIFY_ATTEMPTS_KEY = (phone: string) => `otp:attempts:${phone}`;
 const OTP_MAX_ATTEMPTS = 5;
@@ -82,10 +88,11 @@ export class OtpService {
 
     if (devMode) {
       // SEC-003: never log the actual code — only confirm delivery attempt
-      this.logger.warn(`[DEV OTP] Sending code to phone=${phone}`);
+      this.logger.warn(`[DEV OTP] Sending code to phone=${maskPhone(phone)}`);
       const chatId = await this.redis.get(TELEGRAM_CHAT_ID_KEY(phone));
       if (chatId) {
-        const jobData: OtpSendTelegramJobData = { chatId, phone, code };
+        const codeRef = await this.stashCodeInRedis(code);
+        const jobData: OtpSendTelegramJobData = { chatId, phone, codeRef };
         await this.otpQueue.add(OTP_JOB_SEND_TELEGRAM, jobData, { priority: 1 });
       }
       return;
@@ -101,8 +108,20 @@ export class OtpService {
       );
     }
 
-    const jobData: OtpSendTelegramJobData = { chatId, phone, code };
+    const codeRef = await this.stashCodeInRedis(code);
+    const jobData: OtpSendTelegramJobData = { chatId, phone, codeRef };
     await this.otpQueue.add(OTP_JOB_SEND_TELEGRAM, jobData, { priority: 1 });
-    this.logger.log(`OTP queued for phone=${phone}`);
+    this.logger.log(`OTP queued for phone=${maskPhone(phone)}`);
+  }
+
+  /**
+   * API-BULL-BOARD-DATA-LEAK-001: вместо передачи code в job.data
+   * (где Bull Board UI его палит) — кладём в Redis по короткоживущему ref.
+   * Processor резолвит и удаляет ref после отправки.
+   */
+  private async stashCodeInRedis(code: string): Promise<string> {
+    const codeRef = randomUUID();
+    await this.redis.set(OTP_CODE_REF_KEY(codeRef), code, OTP_CODE_REF_TTL_SECONDS);
+    return codeRef;
   }
 }

@@ -5,6 +5,7 @@ import { AnalyticsService } from './services/analytics.service';
 import { TrackEventUseCase } from './use-cases/track-event.use-case';
 import { QueryEventsUseCase } from './use-cases/query-events.use-case';
 import { GetSellerSummaryUseCase } from './use-cases/get-seller-summary.use-case';
+import { GetSellerAnalyticsUseCase } from './use-cases/get-seller-analytics.use-case';
 import { AnalyticsController } from './analytics.controller';
 
 @Module({
@@ -16,6 +17,7 @@ import { AnalyticsController } from './analytics.controller';
     TrackEventUseCase,
     QueryEventsUseCase,
     GetSellerSummaryUseCase,
+    GetSellerAnalyticsUseCase,
   ],
   exports: [AnalyticsService],
 })

@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories, useCreateStoreCategory, useUpdateStoreCategory, useDeleteStoreCategory } from '@/hooks/use-seller';
 import { X, Check, Trash2 } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
 import type { Store, StoreCategory } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
+import { Select, type SelectOption } from '@/components/select';
 import { card, colors, inputStyle as inputStyleBase } from '@/lib/styles';
 
 // Backend returns deliverySettings nested in Store response (not yet in shared types)
@@ -308,7 +309,7 @@ function DeliverySettingsSection() {
   const currentType = storeWithDelivery?.deliverySettings?.deliveryFeeType ?? 'none';
   const currentAmount = storeWithDelivery?.deliverySettings?.fixedDeliveryFee ?? 0;
 
-  const { register, handleSubmit, reset, watch, formState: { isDirty } } = useForm<DeliveryFormValues>();
+  const { register, handleSubmit, reset, watch, control, formState: { isDirty } } = useForm<DeliveryFormValues>();
   const feeType = watch('deliveryFeeType');
 
   useEffect(() => {
@@ -336,6 +337,11 @@ function DeliverySettingsSection() {
     manual: 'Договорная',
   };
 
+  const feeTypeOptions: SelectOption[] = useMemo(
+    () => Object.entries(FEE_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   if (isLoading) {
     return (
       <div className="rounded-lg overflow-hidden" style={card}>
@@ -358,15 +364,19 @@ function DeliverySettingsSection() {
     <Section title="Доставка">
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <Field label="Стоимость доставки">
-          <select
-            {...register('deliveryFeeType')}
-            className={inputBase}
-            style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
-          >
-            {Object.entries(FEE_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value} style={{ background: colors.surface, color: colors.textPrimary }}>{label}</option>
-            ))}
-          </select>
+          <Controller
+            name="deliveryFeeType"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value ?? 'none'}
+                onChange={(v) => field.onChange(v as DeliveryFormValues['deliveryFeeType'])}
+                options={feeTypeOptions}
+                searchable={false}
+                ariaLabel="Тип стоимости доставки"
+              />
+            )}
+          />
         </Field>
 
         {feeType === 'fixed' && (
@@ -395,7 +405,7 @@ function DeliverySettingsSection() {
             type="submit"
             disabled={!isDirty || updateStore.isPending}
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -552,7 +562,7 @@ function StoreSettingsSection() {
             type="submit"
             disabled={!isDirty || updateStore.isPending}
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -579,7 +589,15 @@ function ProfileSettingsSection() {
   const updateProfile = useUpdateSellerProfile();
   const [saved, setSaved] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<ProfileFormValues>();
+  const { register, handleSubmit, reset, control, formState: { errors, isDirty } } = useForm<ProfileFormValues>();
+
+  const languageOptions: SelectOption[] = useMemo(
+    () => [
+      { value: 'ru', label: 'Русский' },
+      { value: 'uz', label: "O'zbekcha" },
+    ],
+    [],
+  );
 
   useEffect(() => {
     if (profile) {
@@ -644,14 +662,19 @@ function ProfileSettingsSection() {
         </Field>
 
         <Field label="Язык интерфейса" error={errors.languageCode?.message}>
-          <select
-            {...register('languageCode')}
-            className={inputBase}
-            style={{ ...inputStyle, appearance: 'none' } as React.CSSProperties}
-          >
-            <option value="ru" style={{ background: colors.surface, color: colors.textPrimary }}>Русский</option>
-            <option value="uz" style={{ background: colors.surface, color: colors.textPrimary }}>O&apos;zbekcha</option>
-          </select>
+          <Controller
+            name="languageCode"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value ?? 'ru'}
+                onChange={(v) => field.onChange(v as ProfileFormValues['languageCode'])}
+                options={languageOptions}
+                searchable={false}
+                ariaLabel="Язык интерфейса"
+              />
+            )}
+          />
         </Field>
 
         <div className="flex items-center gap-3 pt-1">
@@ -659,7 +682,7 @@ function ProfileSettingsSection() {
             type="submit"
             disabled={!isDirty || updateProfile.isPending}
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {updateProfile.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
@@ -789,7 +812,7 @@ function NotifPreferencesSection() {
 export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-5 max-w-5xl">
-      <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
+      <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <div className="flex flex-col gap-5 min-w-0">
           <StoreSettingsSection />

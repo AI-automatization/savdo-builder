@@ -13,6 +13,7 @@ import {
   NotifyChatMessageData,
 } from '../modules/telegram/services/seller-notification.service';
 import { TELEGRAM_JOB_BROADCAST } from '../modules/admin/use-cases/broadcast.use-case';
+import { escapeTgHtml } from '../shared/telegram-html';
 
 export const TELEGRAM_JOB_NEW_ORDER = 'new-order';
 export const TELEGRAM_JOB_STORE_APPROVED = 'store-approved';
@@ -108,19 +109,39 @@ export class TelegramNotificationProcessor extends WorkerHost {
         }
 
         case TELEGRAM_JOB_CHAT_MESSAGE: {
+          // Polat 07.05: формат как нормальный мессенджер — bold заголовок,
+          // понятный context, кнопка «Открыть чат» one-tap в TMA.
           const d = job.data as NotifyChatMessageData;
-          const contextParts: string[] = [];
-          if (d.productTitle) contextParts.push(`«${d.productTitle}»`);
-          else if (d.orderNumber) contextParts.push(`заказ #${d.orderNumber}`);
-          const subjectLine = d.storeName
-            ? `🏪 ${d.storeName}`
-            : `👤 ${d.senderName}`;
-          const contextLine = contextParts.length ? `📌 ${contextParts.join(' · ')}\n` : '';
+
+          const senderLine = d.recipientRole === 'SELLER'
+            ? `от <b>${escapeTgHtml(d.senderName)}</b>` // продавцу: «от +99890...»
+            : `от <b>${escapeTgHtml(d.senderName)}</b>${d.storeName && d.storeName !== d.senderName ? ` · ${escapeTgHtml(d.storeName)}` : ''}`; // покупателю: «от Магазин»
+
+          const contextLine = d.productTitle
+            ? `\n📦 <i>${escapeTgHtml(d.productTitle)}</i>`
+            : d.orderNumber
+              ? `\n🧾 <i>Заказ #${escapeTgHtml(d.orderNumber.replace(/^ORD-/, ''))}</i>`
+              : '';
+
           const text =
-            `${subjectLine}\n` +
-            contextLine +
-            `💬 ${d.messagePreview}`;
-          await this.telegramBot.sendMessage(d.recipientChatId, text);
+            `💬 <b>Новое сообщение</b>\n` +
+            `${senderLine}` +
+            `${contextLine}\n\n` +
+            `«${escapeTgHtml(d.messagePreview)}»`;
+
+          // Кнопка-ссылка «Открыть чат» — глубокий линк через TMA startapp.
+          // Telegram при клике откроет наш Mini App с параметром chat_<threadId>.
+          const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'savdo_builderBOT';
+          const startapp = `chat_${d.threadId}`;
+
+          await this.telegramBot.sendMessage(d.recipientChatId, text, {
+            parseMode: 'HTML',
+            replyMarkup: {
+              inline_keyboard: [[
+                { text: '✉️ Открыть чат', url: `https://t.me/${botUsername}?startapp=${startapp}` },
+              ]],
+            },
+          });
           break;
         }
 

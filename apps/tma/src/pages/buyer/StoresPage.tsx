@@ -1,9 +1,9 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Spinner } from '@/components/ui/Spinner';
+import { ThreadRowSkeleton, ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { Sticker } from '@/components/ui/Sticker';
 import { ProductCard, type FeedProduct } from '@/components/ui/ProductCard';
 
@@ -31,27 +31,64 @@ export default function StoresPage() {
 
   // ── Stores tab ─────────────────────────────────────────────────────────────
   const [stores, setStores] = useState<Store[]>([]);
+  const [searchedStores, setSearchedStores] = useState<Store[] | null>(null);
   const [storesLoading, setStoresLoading] = useState(true);
   const [storesError, setStoresError] = useState(false);
   const [storesQuery, setStoresQuery] = useState('');
+  const [debouncedStoresQuery, setDebouncedStoresQuery] = useState('');
 
-  useEffect(() => {
-    api<{ data: Store[] }>('/storefront/stores')
+  const storesAbortRef = useRef<AbortController | null>(null);
+  const loadStores = () => {
+    storesAbortRef.current?.abort();
+    const ac = new AbortController();
+    storesAbortRef.current = ac;
+    setStoresLoading(true);
+    setStoresError(false);
+    api<{ data: Store[] }>('/storefront/stores', { signal: ac.signal })
       .then((res) => setStores(res.data ?? []))
-      .catch(() => setStoresError(true))
-      .finally(() => setStoresLoading(false));
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          setStores([]);
+        } else {
+          setStoresError(true);
+        }
+      })
+      .finally(() => { if (!ac.signal.aborted) setStoresLoading(false); });
+  };
+  useEffect(() => {
+    loadStores();
+    return () => storesAbortRef.current?.abort();
   }, []);
 
-  const filteredStores = useMemo(() => {
-    if (!storesQuery.trim()) return stores;
-    const q = storesQuery.toLowerCase().trim();
-    return stores.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.description?.toLowerCase().includes(q) ||
-        s.city?.toLowerCase().includes(q),
-    );
-  }, [stores, storesQuery]);
+  // FEAT-001: debounce поискового запроса 250ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedStoresQuery(storesQuery.trim()), 250);
+    return () => clearTimeout(t);
+  }, [storesQuery]);
+
+  // FEAT-001-FE: при q >= 2 символов делаем server-side поиск через
+  // /storefront/search — он ILIKE по name+description+slug по всей БД,
+  // а не только по 50 загруженным магазинам.
+  const searchAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (tab !== 'stores') return;
+    if (debouncedStoresQuery.length < 2) {
+      setSearchedStores(null);
+      return;
+    }
+    searchAbortRef.current?.abort();
+    const ac = new AbortController();
+    searchAbortRef.current = ac;
+    const params = new URLSearchParams({ q: debouncedStoresQuery, limit: '20' });
+    api<{ stores: Store[] }>(`/storefront/search?${params}`, { signal: ac.signal })
+      .then((res) => { if (!ac.signal.aborted) setSearchedStores(res.stores ?? []); })
+      .catch(() => { /* abort/error: оставляем прежний результат */ });
+    return () => ac.abort();
+  }, [tab, debouncedStoresQuery]);
+
+  const filteredStores = searchedStores !== null ? searchedStores : stores;
 
   // ── Products tab ───────────────────────────────────────────────────────────
   const [products, setProducts] = useState<FeedProduct[]>([]);
@@ -60,6 +97,14 @@ export default function StoresPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [sort, setSort] = useState<'new' | 'price_asc' | 'price_desc'>('new');
   const [activeCat, setActiveCat] = useState<string | null>(null);
+  // FEAT-003-FE: ценовой диапазон. Храним как строку (input-friendly), парсим в submit.
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [debouncedPrice, setDebouncedPrice] = useState({ min: '', max: '' });
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedPrice({ min: priceMin.trim(), max: priceMax.trim() }), 400);
+    return () => clearTimeout(t);
+  }, [priceMin, priceMax]);
   const [globalCategories, setGlobalCategories] = useState<GlobalCategory[]>([]);
   const catsLoaded = useRef(false);
 
@@ -68,23 +113,47 @@ export default function StoresPage() {
     return () => clearTimeout(t);
   }, [productsQuery]);
 
+  // TMA-STORES-CATS-RACE-001 (12.05.2026): был race — `catsLoaded.current = true`
+  // ставился до fetch, и при network error флаг оставался true → категории
+  // никогда не перезагружались. + не было AbortController, setGlobalCategories
+  // мог сработать после unmount. Fix: AbortController + сброс флага на error
+  // (но не при abort — это намеренная отмена).
   useEffect(() => {
     if (tab !== 'products' || catsLoaded.current) return;
     catsLoaded.current = true;
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    const ac = new AbortController();
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then((data) => {
+        if (ac.signal.aborted) return;
+        setGlobalCategories(data);
+      })
+      .catch((err: unknown) => {
+        if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+        // best-effort: category filters are supplementary. Сбрасываем флаг,
+        // чтобы следующий tab-switch попробовал ещё раз.
+        catsLoaded.current = false;
+      });
+    return () => ac.abort();
   }, [tab]);
 
+  const productsAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (tab !== 'products') return;
+    productsAbortRef.current?.abort();
+    const ac = new AbortController();
+    productsAbortRef.current = ac;
     setProductsLoading(true);
     const params = new URLSearchParams({ sort });
     if (debouncedQuery.trim()) params.set('q', debouncedQuery.trim());
     if (activeCat) params.set('globalCategoryId', activeCat);
-    api<{ data: FeedProduct[]; meta: { total: number; page: number } }>(`/storefront/products?${params}`)
-      .then((res) => setProducts(res.data ?? []))
-      .catch(() => {})
-      .finally(() => setProductsLoading(false));
-  }, [tab, debouncedQuery, activeCat, sort]);
+    if (debouncedPrice.min && Number(debouncedPrice.min) > 0) params.set('priceMin', debouncedPrice.min);
+    if (debouncedPrice.max && Number(debouncedPrice.max) > 0) params.set('priceMax', debouncedPrice.max);
+    api<{ data: FeedProduct[]; meta: { total: number; page: number } }>(`/storefront/products?${params}`, { signal: ac.signal })
+      .then((res) => { if (!ac.signal.aborted) setProducts(res.data ?? []); })
+      .catch(() => { /* abort/error: оставляем прежний список */ })
+      .finally(() => { if (!ac.signal.aborted) setProductsLoading(false); });
+    return () => ac.abort();
+  }, [tab, debouncedQuery, activeCat, sort, debouncedPrice]);
 
   const openTgContact = (e: React.MouseEvent, link: string) => {
     e.stopPropagation();
@@ -104,7 +173,7 @@ export default function StoresPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 14px rgba(168,85,247,.40)' }}
+            style={{ background: 'var(--tg-accent)', boxShadow: '0 4px 14px var(--tg-accent-glow)' }}
           >
             <Sticker emoji="🛒" size={26} />
           </div>
@@ -144,9 +213,9 @@ export default function StoresPage() {
               onClick={() => setTab(t)}
               className="flex-1 py-2 rounded-[10px] text-xs font-semibold transition-all"
               style={{
-                background: tab === t ? 'rgba(168,85,247,0.25)' : 'transparent',
-                color: tab === t ? '#A855F7' : 'rgba(255,255,255,0.45)',
-                border: `1px solid ${tab === t ? 'rgba(168,85,247,0.35)' : 'transparent'}`,
+                background: tab === t ? 'var(--tg-accent-dim)' : 'transparent',
+                color: tab === t ? 'var(--tg-accent)' : 'rgba(255,255,255,0.45)',
+                border: `1px solid ${tab === t ? 'var(--tg-accent-border)' : 'transparent'}`,
               }}
             >
               {t === 'stores' ? '🏪 Магазины' : '📦 Товары'}
@@ -175,58 +244,93 @@ export default function StoresPage() {
 
         {/* Products tab — categories */}
         {tab === 'products' && globalCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <button
-              onClick={() => setActiveCat(null)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: activeCat === null ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                color: activeCat === null ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                border: `1px solid ${activeCat === null ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Все
-            </button>
-            {globalCategories.map((cat) => (
+          <div className="scroll-fade-x -mx-4">
+            <div className="flex gap-2 overflow-x-auto scroll-snap-x pb-1 px-4" style={{ scrollbarWidth: 'none' }}>
               <button
-                key={cat.id}
-                onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{
-                  background: activeCat === cat.id ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.07)',
-                  color: activeCat === cat.id ? '#A855F7' : 'rgba(255,255,255,0.55)',
-                  border: `1px solid ${activeCat === cat.id ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
+                onClick={() => setActiveCat(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
+                style={activeCat !== null ? {
+                  background: 'rgba(255,255,255,0.07)',
+                  color: 'rgba(255,255,255,0.55)',
+                  border: '1px solid rgba(255,255,255,0.10)',
                   whiteSpace: 'nowrap',
-                }}
+                } : { whiteSpace: 'nowrap' }}
               >
-                {cat.nameRu}
+                Все
               </button>
-            ))}
+              {globalCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === cat.id ? 'chip-active' : ''}`}
+                  style={activeCat !== cat.id ? {
+                    background: 'rgba(255,255,255,0.07)',
+                    color: 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    whiteSpace: 'nowrap',
+                  } : { whiteSpace: 'nowrap' }}
+                >
+                  {cat.nameRu}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Products tab — sort */}
+        {/* Products tab — sort + price range (FEAT-003-FE) */}
         {tab === 'products' && (
-          <div className="flex gap-2">
-            {([
-              { value: 'new', label: 'Новые' },
-              { value: 'price_asc', label: '↑ Цена' },
-              { value: 'price_desc', label: '↓ Цена' },
-            ] as const).map((s) => (
-              <button
-                key={s.value}
-                onClick={() => setSort(s.value)}
-                className="px-3 py-1 rounded-lg text-xs font-medium"
-                style={{
-                  background: sort === s.value ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.06)',
-                  color: sort === s.value ? '#22D3EE' : 'rgba(255,255,255,0.45)',
-                  border: `1px solid ${sort === s.value ? 'rgba(34,211,238,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                }}
-              >
-                {s.label}
-              </button>
-            ))}
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {([
+                { value: 'new', label: 'Новые' },
+                { value: 'price_asc', label: '↑ Цена' },
+                { value: 'price_desc', label: '↓ Цена' },
+              ] as const).map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setSort(s.value)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
+                  style={sort !== s.value ? {
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'rgba(255,255,255,0.45)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  } : undefined}
+                >
+                  {s.label}
+                </button>
+              ))}
+              {(priceMin || priceMax) && (
+                <button
+                  onClick={() => { setPriceMin(''); setPriceMax(''); }}
+                  className="px-3 py-1 rounded-lg text-xs font-medium"
+                  style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
+                >
+                  ✕ Сброс цены
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value.replace(/[^\d]/g, ''))}
+                placeholder="Цена от"
+                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+              />
+              <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: 12 }}>—</span>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value.replace(/[^\d]/g, ''))}
+                placeholder="до"
+                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+              />
+              <span style={{ color: 'rgba(255,255,255,0.40)', fontSize: 11 }}>сум</span>
+            </div>
           </div>
         )}
 
@@ -236,14 +340,16 @@ export default function StoresPage() {
             <div className="section-label">Магазины</div>
 
             {storesLoading && (
-              <div className="flex justify-center py-8"><Spinner /></div>
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4].map((i) => <ThreadRowSkeleton key={i} />)}
+              </div>
             )}
 
             {!storesLoading && storesError && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
                 <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-                <button onClick={() => window.location.reload()} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+                <button onClick={loadStores} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
               </div>
             )}
 
@@ -256,18 +362,26 @@ export default function StoresPage() {
               </div>
             )}
 
+            <div className={`grid gap-3 ${
+              viewportWidth >= 1280 ? 'grid-cols-3' :
+              viewportWidth >= 768  ? 'grid-cols-2' : 'grid-cols-1'
+            }`}>
             {filteredStores.map((store) => (
               <GlassCard
                 key={store.id}
                 className="flex items-center gap-3 px-4 py-3.5"
                 onClick={() => navigate(`/buyer/store/${store.slug}`)}
+                onPointerEnter={() => {
+                  prefetch(`/storefront/stores/${store.slug}`);
+                  prefetch(`/stores/${store.slug}/products`);
+                }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold uppercase"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
-                    border: '1px solid rgba(168,85,247,0.28)',
-                    color: '#A855F7',
+                    background: 'var(--tg-accent-dim)',
+                    border: '1px solid var(--tg-accent-border)',
+                    color: 'var(--tg-accent)',
                     fontSize: 17,
                   }}
                 >
@@ -279,7 +393,7 @@ export default function StoresPage() {
                     <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>{store.description}</p>
                   )}
                   {store.city && (
-                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(168,85,247,0.65)' }}>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--tg-accent)' }}>
                       📍 {store.city}
                     </p>
                   )}
@@ -301,6 +415,7 @@ export default function StoresPage() {
                 </div>
               </GlassCard>
             ))}
+            </div>
           </>
         )}
 
@@ -308,7 +423,14 @@ export default function StoresPage() {
         {tab === 'products' && (
           <>
             {productsLoading && (
-              <div className="flex justify-center py-8"><Spinner /></div>
+              <div className={`grid gap-3 ${
+                viewportWidth >= 1280 ? 'grid-cols-6' :
+                viewportWidth >= 1024 ? 'grid-cols-5' :
+                viewportWidth >= 768  ? 'grid-cols-4' :
+                viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2'
+              }`}>
+                {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </div>
             )}
 
             {!productsLoading && products.length === 0 && (
@@ -322,9 +444,11 @@ export default function StoresPage() {
 
             {!productsLoading && products.length > 0 && (
               <div className={`grid gap-3 ${
-                viewportWidth >= 960 ? 'grid-cols-5' :
-                viewportWidth >= 768 ? 'grid-cols-4' :
-                viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2'
+                viewportWidth >= 1536 ? 'grid-cols-7' :
+                viewportWidth >= 1280 ? 'grid-cols-6' :
+                viewportWidth >= 1024 ? 'grid-cols-5' :
+                viewportWidth >= 768  ? 'grid-cols-4' :
+                viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2'
               }`}>
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} />

@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -6,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 interface Order {
   id: string;
@@ -84,8 +86,36 @@ function matchesFilter(status: string, filter: StatusFilter): boolean {
   return true;
 }
 
+// Продавцу важнее всего PENDING (новые), затем CONFIRMED/PROCESSING/SHIPPED (в работе),
+// потом DELIVERED, и в самом низу CANCELLED. Внутри группы — свежие первыми.
+const STATUS_PRIORITY: Record<string, number> = {
+  PENDING:    0,
+  CONFIRMED:  1,
+  PROCESSING: 1,
+  SHIPPED:    2,
+  DELIVERED:  3,
+  CANCELLED:  4,
+};
+function compareOrders(a: Order, b: Order): number {
+  const pa = STATUS_PRIORITY[a.status] ?? 5;
+  const pb = STATUS_PRIORITY[b.status] ?? 5;
+  if (pa !== pb) return pa - pb;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
+// Цветовая обводка карточки по важности статуса для продавца
+function cardAccent(status: string): { border: string; glow: string; opacity: number } {
+  if (status === 'PENDING')    return { border: 'rgba(251,146,60,0.55)', glow: '0 0 24px rgba(251,146,60,0.20)', opacity: 1 };
+  if (status === 'CONFIRMED' || status === 'PROCESSING') return { border: 'rgba(34,211,238,0.40)', glow: '0 0 18px rgba(34,211,238,0.14)', opacity: 1 };
+  if (status === 'SHIPPED')    return { border: 'rgba(168,85,247,0.40)', glow: '0 0 16px rgba(168,85,247,0.14)', opacity: 1 };
+  if (status === 'DELIVERED')  return { border: 'rgba(52,211,153,0.30)', glow: 'none', opacity: 1 };
+  return { border: 'rgba(255,255,255,0.06)', glow: 'none', opacity: 0.55 };
+}
+
 export default function SellerOrdersPage() {
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  const navigate = useNavigate();
+  const isWide = (viewportWidth ?? 0) >= 1024;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -95,25 +125,83 @@ export default function SellerOrdersPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+  // FEAT-004-FE: «Написать покупателю» modal
+  const [chatOrderId, setChatOrderId] = useState<string | null>(null);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatSending, setChatSending] = useState(false);
 
-  const fetchOrders = () => {
-    setError(false);
-    api<{ data: Order[] }>('/seller/orders')
-      .then((r) => setOrders(r.data ?? []))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+  const startChatWithBuyer = async () => {
+    if (!chatOrderId || !chatMessage.trim() || chatSending) return;
+    setChatSending(true);
+    try {
+      const thread = await api<{ id: string }>('/seller/chat/threads', {
+        method: 'POST',
+        body: { orderId: chatOrderId, firstMessage: chatMessage.trim() },
+      });
+      setChatOrderId(null);
+      setChatMessage('');
+      setDetailId(null);
+      setDetail(null);
+      showToast('✅ Сообщение отправлено');
+      navigate(`/seller/chat/${thread.id}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Не удалось начать чат';
+      showToast(`❌ ${msg}`, 'error');
+    } finally {
+      setChatSending(false);
+    }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  const ordersAbortRef = useRef<AbortController | null>(null);
+  const detailAbortRef = useRef<AbortController | null>(null);
+
+  const fetchOrders = () => {
+    ordersAbortRef.current?.abort();
+    const ac = new AbortController();
+    ordersAbortRef.current = ac;
+    setError(false);
+    // forceFresh: заказы быстро меняются — статусы, новые поступления.
+    api<{ data: Order[] }>('/seller/orders', { signal: ac.signal, forceFresh: true })
+      .then((r) => { if (!ac.signal.aborted) setOrders(r.data ?? []); })
+      .catch(() => { if (!ac.signal.aborted) setError(true); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    return () => ordersAbortRef.current?.abort();
+  }, []);
+
+  // Auto-open detail if navigated with ?openId=:id (из DashboardPage «Последние заказы»)
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const openId = searchParams.get('openId');
+    if (openId && detailId !== openId) {
+      openDetail(openId);
+      // убираем query param чтобы при back-button не открывался заново
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const openDetail = (orderId: string) => {
+    detailAbortRef.current?.abort();
+    const ac = new AbortController();
+    detailAbortRef.current = ac;
     setDetailId(orderId);
     setDetail(null);
     setDetailLoading(true);
-    api<OrderDetail>(`/seller/orders/${orderId}`)
-      .then(setDetail)
-      .catch(() => {})
-      .finally(() => setDetailLoading(false));
+    api<OrderDetail>(`/seller/orders/${orderId}`, { signal: ac.signal, forceFresh: true })
+      .then((d) => { if (!ac.signal.aborted) setDetail(d); })
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+        const msg = err instanceof Error ? err.message : 'Не удалось загрузить заказ';
+        showToast(`❌ ${msg}`, 'error');
+        setDetailId(null);
+      })
+      .finally(() => { if (!ac.signal.aborted) setDetailLoading(false); });
   };
 
   const changeStatus = async (orderId: string, newStatus: string) => {
@@ -160,40 +248,42 @@ export default function SellerOrdersPage() {
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
 
         {/* Status filter tabs */}
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-          {STATUS_FILTERS.map((f) => {
-            const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
-            const active = statusFilter === f.value;
-            return (
-              <button
-                key={f.value}
-                onClick={() => setStatusFilter(f.value)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all"
-                style={{
-                  background: active ? 'rgba(168,85,247,0.22)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${active ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                  color: active ? '#A855F7' : 'rgba(255,255,255,0.45)',
-                }}
-              >
-                {f.label}
-                {count > 0 && (
-                  <span
-                    className="px-1.5 py-0 rounded-full text-[10px] font-bold"
-                    style={{
-                      background: active ? 'rgba(168,85,247,0.30)' : 'rgba(255,255,255,0.08)',
-                      color: active ? '#A855F7' : 'rgba(255,255,255,0.35)',
-                      minWidth: 18,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="scroll-fade-x">
+          <div className="flex gap-1.5 overflow-x-auto scroll-snap-x pb-0.5" style={{ scrollbarWidth: 'none' }}>
+            {STATUS_FILTERS.map((f) => {
+              const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
+              const active = statusFilter === f.value;
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setStatusFilter(f.value)}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                  style={!active ? {
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    color: 'rgba(255,255,255,0.45)',
+                  } : undefined}
+                >
+                  {f.label}
+                  {count > 0 && (
+                    <span
+                      className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                      style={{
+                        background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
+                        color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
+                        minWidth: 18,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {loading && [1,2,3].map((i) => <OrderRowSkeleton key={i} />)}
@@ -212,7 +302,7 @@ export default function SellerOrdersPage() {
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
             <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить заказы</p>
-            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
           </div>
         )}
 
@@ -229,82 +319,111 @@ export default function SellerOrdersPage() {
           </div>
         )}
 
-        {orders.filter((o) => matchesFilter(o.status, statusFilter)).map((o) => {
-          const next = NEXT_STATUS[o.status];
-          const isUpdating = updating === o.id;
-          return (
-            <GlassCard key={o.id} className="flex flex-col gap-3 p-4" style={{ cursor: 'pointer' }} onClick={() => openDetail(o.id)}>
-              {/* Main row: thumbnail + title/meta + amount/badge */}
-              <div className="flex items-start gap-3 min-w-0">
-                {/* Thumbnail */}
-                <div
-                  className="shrink-0 w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center"
-                  style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
-                >
-                  {o.preview?.imageUrl ? (
-                    <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span style={{ fontSize: 20 }}>📦</span>
-                  )}
-                </div>
+        {(() => {
+          const filtered = [...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter));
+          // Когда фильтр Все — отменённые прячем под кнопку "Показать N отменённых"
+          const hideCancelled = statusFilter === 'all' && !showCancelled;
+          const visible = hideCancelled ? filtered.filter((o) => o.status !== 'CANCELLED') : filtered;
+          const cancelledHidden = hideCancelled ? filtered.filter((o) => o.status === 'CANCELLED').length : 0;
 
-                {/* Middle: title + meta line with right-side amount + badge */}
-                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                  {/* Row 1: title · amount */}
-                  <div className="flex items-baseline justify-between gap-2 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
-                      {o.preview?.title ?? 'Без товаров'}
-                      {o.preview && o.preview.itemCount > 1 && (
-                        <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
-                          +{o.preview.itemCount - 1}
-                        </span>
-                      )}
-                    </p>
-                    <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: '#A855F7' }}>
-                      {Number(o.totalAmount).toLocaleString('ru')} сум
-                    </p>
+          const renderCard = (o: Order) => {
+            const next = NEXT_STATUS[o.status];
+            const isUpdating = updating === o.id;
+            const accent = cardAccent(o.status);
+            return (
+              <GlassCard
+                key={o.id}
+                className="flex flex-col gap-3 p-4 transition-all"
+                style={{
+                  cursor: 'pointer',
+                  border: `1px solid ${accent.border}`,
+                  boxShadow: accent.glow,
+                  opacity: accent.opacity,
+                }}
+                onClick={() => openDetail(o.id)}
+              >
+                {/* Main row: thumbnail + title/meta + amount/badge */}
+                <div className="flex items-start gap-3 min-w-0">
+                  {/* Thumbnail (preview.imageUrl на свежих заказах) */}
+                  <div
+                    className="shrink-0 w-14 h-14 rounded-xl overflow-hidden"
+                    style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
+                  >
+                    <ProductImage src={o.preview?.imageUrl} emptyVariant="thumbnail" hideLabel />
                   </div>
-                  {/* Row 2: meta · badge */}
-                  <div className="flex items-center justify-between gap-2 min-w-0">
-                    <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                      #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
-                      {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
-                    </p>
-                    <div className="shrink-0">
-                      <Badge status={o.status} />
+
+                  <div className="min-w-0 flex-1 flex flex-col gap-1">
+                    <div className="flex items-baseline justify-between gap-2 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                        {o.preview?.title ?? 'Без товаров'}
+                        {o.preview && o.preview.itemCount > 1 && (
+                          <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
+                            +{o.preview.itemCount - 1}
+                          </span>
+                        )}
+                      </p>
+                      <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--tg-accent)' }}>
+                        {Number(o.totalAmount).toLocaleString('ru')} сум
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                        #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
+                        {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
+                      </p>
+                      <div className="shrink-0">
+                        <Badge status={o.status} />
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {(next || o.status === 'PENDING' || o.status === 'CONFIRMED') && (
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    {next && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); changeStatus(o.id, next.status); }}
+                        disabled={isUpdating}
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
+                        style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)', border: '1px solid var(--tg-accent-border)' }}
+                      >
+                        {isUpdating ? '...' : next.label}
+                      </button>
+                    )}
+                    {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); cancelOrder(o.id); }}
+                        disabled={isUpdating}
+                        className="py-2 px-3 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
+                        style={{ background: 'rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}
+                      >
+                        ✕ Отменить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </GlassCard>
+            );
+          };
+
+          return (
+            <>
+              <div className={isWide ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+                {visible.map(renderCard)}
               </div>
 
-              {/* Actions */}
-              {(next || o.status === 'PENDING' || o.status === 'CONFIRMED') && (
-                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  {next && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); changeStatus(o.id, next.status); }}
-                      disabled={isUpdating}
-                      className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
-                      style={{ background: 'rgba(167,139,250,0.20)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.30)' }}
-                    >
-                      {isUpdating ? '...' : next.label}
-                    </button>
-                  )}
-                  {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); cancelOrder(o.id); }}
-                      disabled={isUpdating}
-                      className="py-2 px-3 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
-                      style={{ background: 'rgba(239,68,68,0.12)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}
-                    >
-                      ✕ Отменить
-                    </button>
-                  )}
-                </div>
+              {cancelledHidden > 0 && (
+                <button
+                  onClick={() => setShowCancelled(true)}
+                  className="self-start text-xs font-semibold py-2 px-4 rounded-full transition-all"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.50)' }}
+                >
+                  ↓ Показать {cancelledHidden} {cancelledHidden === 1 ? 'отменённый' : 'отменённых'}
+                </button>
               )}
-            </GlassCard>
+            </>
           );
-        })}
+        })()}
       </div>
 
       {detailId && (
@@ -314,7 +433,7 @@ export default function SellerOrdersPage() {
         >
           {detailLoading && (
             <div className="flex justify-center py-12">
-              <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(167,139,250,0.3)', borderTopColor: '#A855F7' }} />
+              <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tg-accent-border)', borderTopColor: 'var(--tg-accent)' }} />
             </div>
           )}
           {!detailLoading && detail && (
@@ -357,7 +476,7 @@ export default function SellerOrdersPage() {
                       <span className="text-sm flex-1 truncate" style={{ color: 'rgba(255,255,255,0.80)' }}>
                         {item.title}{item.variantTitle ? ` · ${item.variantTitle}` : ''} × {item.quantity}
                       </span>
-                      <span className="text-sm font-semibold shrink-0" style={{ color: '#A855F7' }}>
+                      <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--tg-accent)' }}>
                         {Number(item.subtotal).toLocaleString('ru')} сум
                       </span>
                     </div>
@@ -386,12 +505,68 @@ export default function SellerOrdersPage() {
               {/* Итого */}
               <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Итого</span>
-                <span className="text-base font-bold" style={{ color: '#A855F7' }}>
+                <span className="text-base font-bold" style={{ color: 'var(--tg-accent)' }}>
                   {Number(detail.totalAmount).toLocaleString('ru')} сум
                 </span>
               </div>
+
+              {/* FEAT-004-FE: написать покупателю — только если у заказа есть buyer (не guest) */}
+              {detail.buyer && (
+                <button
+                  onClick={() => { setChatOrderId(detail.id); setChatMessage(''); }}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: 'rgba(34,211,238,0.14)', border: '1px solid rgba(34,211,238,0.35)', color: '#22D3EE' }}
+                >
+                  ✉ Написать покупателю
+                </button>
+              )}
             </div>
           )}
+        </BottomSheet>
+      )}
+
+      {/* FEAT-004-FE chat-init modal */}
+      {chatOrderId && (
+        <BottomSheet
+          title="Сообщение покупателю"
+          onClose={() => { setChatOrderId(null); setChatMessage(''); }}
+        >
+          <div className="px-5 py-4 flex flex-col gap-3 pb-6">
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              Покупатель получит уведомление в Telegram и сможет ответить из своей вкладки «Чаты».
+            </p>
+            <textarea
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+              placeholder="Например: Здравствуйте! Уточните, пожалуйста, удобное время доставки."
+              rows={4}
+              maxLength={1000}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setChatOrderId(null); setChatMessage(''); }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={startChatWithBuyer}
+                disabled={!chatMessage.trim() || chatSending}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{
+                  background: 'var(--tg-accent)',
+                  border: '1px solid var(--tg-accent-border)',
+                  color: '#fff',
+                  opacity: (chatMessage.trim() && !chatSending) ? 1 : 0.4,
+                }}
+              >
+                {chatSending ? '...' : '➤ Отправить'}
+              </button>
+            </div>
+          </div>
         </BottomSheet>
       )}
     </>

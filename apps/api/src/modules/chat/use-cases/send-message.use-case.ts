@@ -1,5 +1,6 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ChatMessageType } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
@@ -19,7 +20,9 @@ function makePreview(text: string): string {
 export interface SendMessageInput {
   threadId: string;
   senderUserId: string;
-  text: string;
+  text?: string;
+  parentMessageId?: string;
+  mediaId?: string;
 }
 
 @Injectable()
@@ -73,16 +76,56 @@ export class SendMessageUseCase {
       );
     }
 
+    if (!input.text?.trim() && !input.mediaId) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Message must contain text or media',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Validate parentMessageId belongs to same thread (if provided)
+    if (input.parentMessageId) {
+      const parent = await this.chatRepo.findMessageById(input.parentMessageId);
+      if (!parent || parent.threadId !== input.threadId) {
+        throw new DomainException(
+          ErrorCode.VALIDATION_ERROR,
+          'Parent message not found in this thread',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
     const message = await this.chatRepo.addMessage({
       threadId: input.threadId,
       senderUserId: input.senderUserId,
-      body: input.text,
+      body: input.text?.trim() || null,
+      parentMessageId: input.parentMessageId ?? null,
+      mediaId: input.mediaId ?? null,
+      messageType: input.mediaId ? ChatMessageType.IMAGE : ChatMessageType.TEXT,
     });
 
     this.logger.log(`Message sent to thread ${input.threadId} by user ${input.senderUserId}`);
 
+    // Build mediaUrl + parentMessage preview for socket payload
+    const mediaUrl = input.mediaId
+      ? `${(process.env.APP_URL ?? '').replace(/\/$/, '')}/api/v1/media/proxy/${input.mediaId}`
+      : null;
+
+    let parentPreview: { id: string; text: string; senderRole: 'BUYER' | 'SELLER' } | null = null;
+    if (input.parentMessageId) {
+      const parent = await this.chatRepo.findMessageById(input.parentMessageId);
+      if (parent) {
+        parentPreview = {
+          id: parent.id,
+          text: parent.body ?? '',
+          senderRole: parent.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+        };
+      }
+    }
+
     const senderRole = message.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER';
-    this.chatGateway.emitChatMessage(message, senderRole);
+    this.chatGateway.emitChatMessage({ ...message, mediaUrl, parentMessage: parentPreview } as any, senderRole);
 
     // Notify seller-room when buyer sends a message
     const storeId = thread.seller.store?.id;
@@ -91,8 +134,18 @@ export class SendMessageUseCase {
       this.chatGateway.emitChatNewMessage(storeId, { threadId: input.threadId });
     }
 
+    // API-WS-PUSH-NOTIFICATIONS-001 (chat-unread): bump получателю чтобы
+    // его chatUnread badge обновился без polling каждые 30 сек.
+    // thread.buyer.userId / thread.seller.userId резолвят profile-id → User.id
+    // (сами FK column'ы, не relation, доступны без extra include).
+    const recipientUserId =
+      senderRole === 'BUYER' ? thread.seller.userId : thread.buyer?.userId ?? null;
+    if (recipientUserId) {
+      this.chatGateway.emitChatUnreadBump(recipientUserId, input.threadId);
+    }
+
     // TG notification → recipient (the other party)
-    const preview = makePreview(input.text);
+    const preview = makePreview(input.text ?? (input.mediaId ? '📷 Фото' : ''));
     const productTitle = thread.product?.title ?? null;
     const orderNumber = thread.order?.orderNumber ?? null;
     const storeName = thread.seller.store?.name ?? null;
@@ -108,6 +161,8 @@ export class SendMessageUseCase {
           productTitle,
           orderNumber,
           messagePreview: preview,
+          threadId: input.threadId,
+          recipientRole: 'SELLER',
         });
       }
     } else {
@@ -121,6 +176,8 @@ export class SendMessageUseCase {
           orderNumber,
           storeName,
           messagePreview: preview,
+          threadId: input.threadId,
+          recipientRole: 'BUYER',
         });
       }
     }
@@ -133,6 +190,9 @@ export class SendMessageUseCase {
       editedAt: (message as any).editedAt ? new Date((message as any).editedAt).toISOString() : null,
       isDeleted: message.isDeleted,
       createdAt: message.createdAt.toISOString(),
+      mediaUrl,
+      parentMessage: parentPreview,
+      messageType: message.messageType,
     };
   }
 }

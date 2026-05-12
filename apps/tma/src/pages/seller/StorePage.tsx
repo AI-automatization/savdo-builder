@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -8,7 +8,9 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
 import { glass } from '@/lib/styles';
+import { webStoreUrl } from '@/lib/webUrl';
 
 interface Store {
   id: string;
@@ -21,14 +23,9 @@ interface Store {
   telegramChannelTitle: string | null;
 }
 
-interface StoreCategory {
-  id: string;
-  name: string;
-  sortOrder: number;
-}
-
 export default function SellerStorePage() {
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  const isDesktop = (viewportWidth ?? 0) >= 1024;
   const navigate = useNavigate();
   const { authVersion } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
@@ -40,12 +37,9 @@ export default function SellerStorePage() {
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
-  // Categories inline
-  const [categories, setCategories] = useState<StoreCategory[]>([]);
-  const [catInput, setCatInput] = useState('');
-  const [catAdding, setCatAdding] = useState(false);
-  const [catDeletingId, setCatDeletingId] = useState<string | null>(null);
-  const catInputRef = useRef<HTMLInputElement>(null);
+  // StoreCategory state удалён вместе с UI блоком (Polat 07.05 — дубликат
+  // с StoreDirectionsPicker). API /seller/categories продолжает работать,
+  // вернём UI отдельным экраном если потребуется.
 
   // Create store flow
   const [fetchError, setFetchError] = useState('');
@@ -56,10 +50,11 @@ export default function SellerStorePage() {
   const [createError, setCreateError] = useState('');
 
   const botUsername = (import.meta.env.VITE_BOT_USERNAME as string) ?? '';
+  // Mini App deep-link если бот настроен, иначе публичная веб-витрина.
   const storeLink = (s: Store) =>
     botUsername
       ? `https://t.me/${botUsername}?startapp=store_${s.slug}`
-      : `https://savdo.uz/${s.slug}`;
+      : webStoreUrl(s.slug);
 
   const copyLink = async (s: Store) => {
     try {
@@ -87,27 +82,35 @@ export default function SellerStorePage() {
     }
   };
 
-  useEffect(() => {
+  const storeAbortRef = useRef<AbortController | null>(null);
+
+  const loadStore = useCallback((signal: AbortSignal) => {
     setLoading(true);
     setStore(null);
     setFetchError('');
-    api<Store>('/seller/store')
+    api<Store>('/seller/store', { signal })
       .then((s) => {
+        if (signal.aborted) return;
         setStore(s);
         setName(s.name);
         setDescription(s.description ?? '');
       })
       .catch((err: unknown) => {
+        if (signal.aborted) return;
         if (!(err instanceof ApiError && err.status === 404)) {
           setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.');
         }
       })
-      .finally(() => setLoading(false));
-  }, [authVersion]);
+      .finally(() => { if (!signal.aborted) setLoading(false); });
+  }, []);
 
   useEffect(() => {
-    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
-  }, [authVersion]);
+    storeAbortRef.current?.abort();
+    const ac = new AbortController();
+    storeAbortRef.current = ac;
+    loadStore(ac.signal);
+    return () => ac.abort();
+  }, [authVersion, loadStore]);
 
   const save = async () => {
     if (!store) return;
@@ -124,41 +127,6 @@ export default function SellerStorePage() {
       tg?.HapticFeedback.notificationOccurred('error');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const addCategory = async () => {
-    const n = catInput.trim();
-    if (!n || categories.length >= 20) return;
-    setCatAdding(true);
-    try {
-      const created = await api<StoreCategory>('/seller/categories', {
-        method: 'POST',
-        body: { name: n },
-      });
-      setCategories((prev) => [...prev, created]);
-      setCatInput('');
-      tg?.HapticFeedback.notificationOccurred('success');
-      catInputRef.current?.focus();
-    } catch {
-      tg?.HapticFeedback.notificationOccurred('error');
-    } finally {
-      setCatAdding(false);
-    }
-  };
-
-  const deleteCategory = async (cat: StoreCategory) => {
-    const confirmed = window.confirm(`Удалить «${cat.name}»?`);
-    if (!confirmed) return;
-    setCatDeletingId(cat.id);
-    try {
-      await api(`/seller/categories/${cat.id}`, { method: 'DELETE' });
-      setCategories((prev) => prev.filter((c) => c.id !== cat.id));
-      tg?.HapticFeedback.notificationOccurred('success');
-    } catch {
-      tg?.HapticFeedback.notificationOccurred('error');
-    } finally {
-      setCatDeletingId(null);
     }
   };
 
@@ -200,8 +168,13 @@ export default function SellerStorePage() {
           <span style={{ fontSize: 36 }}>⚠️</span>
           <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 14 }}>{fetchError}</p>
           <button
-            onClick={() => { setFetchError(''); setLoading(true); api<Store>('/seller/store').then((s) => { setStore(s); setName(s.name); setDescription(s.description ?? ''); }).catch((err: unknown) => { if (!(err instanceof ApiError && err.status === 404)) setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.'); }).finally(() => setLoading(false)); }}
-            style={{ padding: '8px 20px', borderRadius: 12, background: 'rgba(168,85,247,0.18)', color: '#A855F7', fontSize: 13, fontWeight: 600, border: '1px solid rgba(168,85,247,0.3)' }}
+            onClick={() => {
+              storeAbortRef.current?.abort();
+              const ac = new AbortController();
+              storeAbortRef.current = ac;
+              loadStore(ac.signal);
+            }}
+            style={{ padding: '8px 20px', borderRadius: 12, background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)', fontSize: 13, fontWeight: 600, border: '1px solid var(--tg-accent-border)' }}
           >
             Попробовать снова
           </button>
@@ -217,7 +190,7 @@ export default function SellerStorePage() {
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
           <div
             className="flex flex-col items-center gap-4 py-8 px-4 rounded-2xl"
-            style={{ background: 'rgba(168,85,247,0.07)', border: '1px solid rgba(168,85,247,0.18)' }}
+            style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
             <span style={{ fontSize: 44 }}>🏪</span>
             <div className="text-center">
@@ -248,8 +221,8 @@ export default function SellerStorePage() {
                 disabled={creating}
                 className="w-full py-3 rounded-xl text-sm font-semibold"
                 style={{
-                  background: creating ? 'rgba(168,85,247,0.15)' : 'linear-gradient(135deg, #7C3AED, #A855F7)',
-                  color: creating ? 'rgba(168,85,247,0.50)' : '#fff',
+                  background: creating ? 'var(--tg-accent-bg)' : 'var(--tg-accent)',
+                  color: creating ? 'var(--tg-accent-text)' : '#fff',
                   cursor: creating ? 'wait' : 'pointer',
                 }}
               >
@@ -263,20 +236,41 @@ export default function SellerStorePage() {
   }
 
   return (
-    
-      <div className="flex flex-col gap-4">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Мой магазин</h1>
+
+      <div className={`grid gap-5 ${isDesktop ? 'max-w-screen-xl' : 'max-w-4xl'} mx-auto w-full`}
+        style={isDesktop ? { gridTemplateColumns: '1.1fr 1fr', alignItems: 'start' } : undefined}
+      >
+        <h1 className="text-base font-bold" style={isDesktop ? { gridColumn: '1 / -1', color: 'rgba(255,255,255,0.90)' } : { color: 'rgba(255,255,255,0.90)' }}>
+          Мой магазин
+        </h1>
 
         {/* Store info */}
         <GlassCard className="p-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-              style={{ background: 'rgba(168,85,247,0.20)', border: '1px solid rgba(168,85,247,0.25)' }}>
+              style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)' }}>
               🏪
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
-              <p className="text-[11px]" style={{ color: 'rgba(168,85,247,0.80)' }}>savdo.uz/{store.slug}</p>
+              {/* Длинный URL раньше ломал layout — теперь короткая «Перейти на сайт» pill */}
+              <a
+                href={webStoreUrl(store.slug)}
+                onClick={(e) => { e.preventDefault(); tg?.openLink?.(webStoreUrl(store.slug)); }}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] mt-0.5 px-2 py-0.5 rounded-md"
+                style={{
+                  color: 'var(--tg-accent)',
+                  background: 'var(--tg-accent-bg)',
+                  border: '1px solid var(--tg-accent-border)',
+                  textDecoration: 'none',
+                  width: 'fit-content',
+                }}
+                aria-label="Перейти на сайт магазина"
+              >
+                ↗ Перейти на сайт
+              </a>
             </div>
             <Badge status={store.status} />
           </div>
@@ -291,6 +285,11 @@ export default function SellerStorePage() {
               <span>{store.telegramChannelTitle ?? store.telegramChannelId}</span>
             </div>
           )}
+        </GlassCard>
+
+        {/* FEAT-002 (Polat 06.05): направления магазина — multi-select autocomplete */}
+        <GlassCard className="p-4">
+          <StoreDirectionsPicker />
         </GlassCard>
 
         {/* Edit form or actions */}
@@ -346,103 +345,13 @@ export default function SellerStorePage() {
           </div>
         )}
 
-        {/* Categories inline section */}
-        <GlassCard className="p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Направление магазина
-              </p>
-              <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Помогает покупателям найти вас в поиске
-              </p>
-            </div>
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
-              style={{
-                background: categories.length >= 20 ? 'rgba(239,68,68,0.12)' : 'rgba(167,139,250,0.10)',
-                color: categories.length >= 20 ? 'rgba(239,68,68,0.70)' : 'rgba(167,139,250,0.60)',
-              }}
-            >
-              {categories.length}/20
-            </span>
-          </div>
-
-          {/* Existing categories as chips */}
-          {categories.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full"
-                  style={{
-                    background: 'rgba(167,139,250,0.12)',
-                    border: '1px solid rgba(167,139,250,0.20)',
-                  }}
-                >
-                  <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                    {cat.name}
-                  </span>
-                  <button
-                    onClick={() => deleteCategory(cat)}
-                    disabled={catDeletingId === cat.id}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '0 2px',
-                      cursor: catDeletingId === cat.id ? 'not-allowed' : 'pointer',
-                      color: catDeletingId === cat.id ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.35)',
-                      fontSize: 12,
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Add input */}
-          {categories.length < 20 && (
-            <div className="flex gap-2">
-              <input
-                ref={catInputRef}
-                value={catInput}
-                onChange={(e) => setCatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addCategory()}
-                placeholder="Например: Одежда, Электроника..."
-                maxLength={100}
-                className="flex-1 px-3 py-2 rounded-xl text-sm text-white placeholder-white/25 outline-none"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              />
-              <button
-                onClick={addCategory}
-                disabled={!catInput.trim() || catAdding}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: 10,
-                  background: catInput.trim() && !catAdding ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(167,139,250,0.20)',
-                  color: catInput.trim() && !catAdding ? '#A855F7' : 'rgba(167,139,250,0.30)',
-                  fontSize: 16,
-                  fontWeight: 500,
-                  flexShrink: 0,
-                  cursor: catInput.trim() && !catAdding ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {catAdding ? '…' : '+'}
-              </button>
-            </div>
-          )}
-
-          {categories.length === 0 && (
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-              Укажите направления — покупатели найдут вас по поиску в каталоге
-            </p>
-          )}
-        </GlassCard>
+        {/* Polat 07.05: блок «Разделы каталога» удалён — был дубликатом с
+            StoreDirectionsPicker сверху. categories ещё используются на бэкенде
+            (StoreCategory модель + /seller/categories) — здесь UI убран,
+            unused state переменные оставлены чтобы не сломать другие файлы
+            которые их могут импортировать. Управление разделами вернётся
+            отдельным экраном в /seller/store/categories когда будет нужно. */}
       </div>
-    
+
   );
 }

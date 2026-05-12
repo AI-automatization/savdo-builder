@@ -5,23 +5,25 @@ import { PrismaService } from '../../../database/prisma.service';
 export class StoresRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Все find* теперь фильтруют deletedAt: null чтобы soft-deleted магазины
+  // не лились в storefront/seller dashboard/admin/TG-bot. См. DB-AUDIT-001-07.
   async findBySellerId(sellerId: string) {
-    return this.prisma.store.findUnique({
-      where: { sellerId },
+    return this.prisma.store.findFirst({
+      where: { sellerId, deletedAt: null },
       include: { deliverySettings: true, contacts: true },
     });
   }
 
   async findById(id: string) {
-    return this.prisma.store.findUnique({
-      where: { id },
+    return this.prisma.store.findFirst({
+      where: { id, deletedAt: null },
       include: { seller: true, deliverySettings: true, contacts: true },
     });
   }
 
   async findBySlug(slug: string) {
-    return this.prisma.store.findUnique({
-      where: { slug },
+    return this.prisma.store.findFirst({
+      where: { slug, deletedAt: null },
       include: {
         deliverySettings: true,
         contacts: true,
@@ -47,9 +49,47 @@ export class StoresRepository {
         telegramContactLink: true,
         logoMediaId: true,
         coverMediaId: true,
+        // MARKETING-VERIFIED-SELLER-001
+        isVerified: true,
+        avgRating: true,
+        reviewCount: true,
       },
-      orderBy: { publishedAt: 'desc' },
+      // Verified магазины сверху, потом по дате публикации
+      orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],
       take: 50,
+    });
+  }
+
+  // FEAT-001: case-insensitive поиск по публичным магазинам.
+  // Используется в GET /storefront/search.
+  async searchPublic(query: string, limit = 10) {
+    const q = query.trim();
+    if (!q) return [];
+    return this.prisma.store.findMany({
+      where: {
+        isPublic: true,
+        deletedAt: null,
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { slug: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        city: true,
+        logoMediaId: true,
+        coverMediaId: true,
+        // MARKETING-VERIFIED-SELLER-001
+        isVerified: true,
+        avgRating: true,
+        reviewCount: true,
+      },
+      orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],
+      take: limit,
     });
   }
 
@@ -111,6 +151,49 @@ export class StoresRepository {
       where: { id: storeId },
       data: data as any,
       include: { deliverySettings: true, contacts: true },
+    });
+  }
+
+  /**
+   * FEAT-TG-CHANNEL-TEMPLATE-001: точечное обновление полей TG-канала.
+   * `null` в значении = очистить колонку, отсутствие ключа = не трогать.
+   */
+  async updateChannelTemplate(storeId: string, data: Partial<{
+    channelPostTemplate: string | null;
+    channelContactPhone: string | null;
+    channelInstagramLink: string | null;
+    channelTiktokLink: string | null;
+  }>) {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data,
+      select: {
+        id: true,
+        channelPostTemplate: true,
+        channelContactPhone: true,
+        channelInstagramLink: true,
+        channelTiktokLink: true,
+        telegramChannelId: true,
+        telegramChannelTitle: true,
+        autoPostProductsToChannel: true,
+      },
+    });
+  }
+
+  async findChannelTemplate(storeId: string) {
+    return this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        channelPostTemplate: true,
+        channelContactPhone: true,
+        channelInstagramLink: true,
+        channelTiktokLink: true,
+        telegramChannelId: true,
+        telegramChannelTitle: true,
+        telegramContactLink: true,
+        autoPostProductsToChannel: true,
+      },
     });
   }
 }

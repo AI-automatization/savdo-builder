@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
+import { useTelegram } from '@/providers/TelegramProvider';
+import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
 interface Props {
   imageSrc: string;
@@ -37,6 +40,9 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
   const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const [processing, setProcessing] = useState(false);
+  // На desktop оставляем sidebar 220px видимым — cropper не перекрывает навигацию.
+  const { viewportWidth } = useTelegram();
+  const leftOffset = (viewportWidth ?? 0) >= 768 ? SIDEBAR_WIDTH : 0;
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
     setCroppedArea(croppedPixels);
@@ -53,13 +59,19 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  // Polat 07.05: portal в body — backdrop-filter в GlassCard ломает fixed.
+  return createPortal(
     <div
       style={{
         position: 'fixed',
-        inset: 0,
-        zIndex: 200,
-        background: 'rgba(0,0,0,0.92)',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: leftOffset,
+        zIndex: 9999,
+        background: 'rgba(0,0,0,0.95)',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -67,23 +79,42 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
       {/* Header */}
       <div
         style={{
-          padding: '16px 20px 12px',
+          padding: '14px 16px 12px',
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 12,
+          background: 'rgba(0,0,0,0.55)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}
       >
         <button
           onClick={onCancel}
-          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontSize: 14, cursor: 'pointer', padding: 0 }}
+          aria-label="Отменить кадрирование"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            minWidth: 44,
+            minHeight: 44,
+            padding: '8px 14px',
+            borderRadius: 12,
+            background: 'rgba(239,68,68,0.18)',
+            border: '1px solid rgba(239,68,68,0.45)',
+            color: '#fca5a5',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
         >
-          Отмена
+          ✕ Отменить
         </button>
-        <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600, margin: 0 }}>
+        <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: 15, fontWeight: 700, margin: 0, textAlign: 'center', flex: 1 }}>
           Кадрировать фото
         </p>
-        <div style={{ width: 52 }} />
+        {/* Spacer для симметрии (равен ширине Отменить ~110px) */}
+        <div style={{ width: 110, flexShrink: 0 }} />
       </div>
 
       {/* Hint */}
@@ -104,7 +135,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
           style={{
             containerStyle: { background: 'transparent' },
             cropAreaStyle: {
-              border: '2px solid #A855F7',
+              border: '2px solid var(--tg-accent)',
               boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
             },
           }}
@@ -120,7 +151,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
           step={0.01}
           value={zoom}
           onChange={(e) => setZoom(Number(e.target.value))}
-          style={{ width: '100%', accentColor: '#A855F7' }}
+          style={{ width: '100%', accentColor: 'var(--tg-accent)' }}
         />
       </div>
 
@@ -133,7 +164,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
             width: '100%',
             padding: '14px 0',
             borderRadius: 14,
-            background: processing ? 'rgba(124,58,237,0.40)' : 'linear-gradient(135deg,#7C3AED,#A855F7)',
+            background: processing ? 'var(--tg-accent-dim)' : 'var(--tg-accent)',
             border: 'none',
             color: '#fff',
             fontSize: 15,
@@ -144,6 +175,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
           {processing ? 'Обработка...' : '✂️ Применить кадрирование'}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

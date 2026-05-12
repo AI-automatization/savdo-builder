@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronDown, Filter as FilterIcon, X } from "lucide-react";
 import type { GlobalCategory } from "types";
@@ -16,6 +16,9 @@ type Props = {
   attributeFilters: StorefrontCategoryFilter[];
   /** Active attribute values from URL ?f.<key>=<value>. */
   activeAttributes: Record<string, string>;
+  /** Active price range from URL ?priceMin=&priceMax= (FEAT-003). */
+  priceMin: number | null;
+  priceMax: number | null;
 };
 
 export default function CategoryAttributeFilters({
@@ -23,6 +26,8 @@ export default function CategoryAttributeFilters({
   activeGlobalSlug,
   attributeFilters,
   activeAttributes,
+  priceMin,
+  priceMax,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -30,8 +35,19 @@ export default function CategoryAttributeFilters({
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Local input state — submitted on blur / Enter so each keystroke doesn't
+  // refetch the storefront. Synced with URL on prop change.
+  const [minInput, setMinInput] = useState<string>(priceMin != null ? String(priceMin) : '');
+  const [maxInput, setMaxInput] = useState<string>(priceMax != null ? String(priceMax) : '');
+  // Re-sync when URL changes (e.g. clear-all, navigation).
+  useEffect(() => { setMinInput(priceMin != null ? String(priceMin) : ''); }, [priceMin]);
+  useEffect(() => { setMaxInput(priceMax != null ? String(priceMax) : ''); }, [priceMax]);
+
   const activeCount =
-    (activeGlobalSlug ? 1 : 0) + Object.values(activeAttributes).filter(Boolean).length;
+    (activeGlobalSlug ? 1 : 0)
+    + Object.values(activeAttributes).filter(Boolean).length
+    + (priceMin != null ? 1 : 0)
+    + (priceMax != null ? 1 : 0);
 
   function pushParams(updater: (params: URLSearchParams) => void) {
     const next = new URLSearchParams(searchParams.toString());
@@ -63,8 +79,24 @@ export default function CategoryAttributeFilters({
   function handleClearAll() {
     pushParams((p) => {
       Array.from(p.keys())
-        .filter((k) => k === "gcat" || k.startsWith("f."))
+        .filter((k) => k === "gcat" || k === "priceMin" || k === "priceMax" || k.startsWith("f."))
         .forEach((k) => p.delete(k));
+    });
+  }
+
+  function commitPrice(kind: "priceMin" | "priceMax", raw: string) {
+    const trimmed = raw.trim();
+    pushParams((p) => {
+      if (!trimmed) {
+        p.delete(kind);
+        return;
+      }
+      const n = Number(trimmed);
+      if (!Number.isFinite(n) || n < 0) {
+        p.delete(kind);
+      } else {
+        p.set(kind, String(Math.round(n)));
+      }
     });
   }
 
@@ -74,19 +106,19 @@ export default function CategoryAttributeFilters({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex-shrink-0 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors"
+          className="flex-shrink-0 inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-medium transition-colors"
           style={
             open || activeCount > 0
-              ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
-              : { background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }
+              ? { background: colors.textStrong, color: colors.brandTextOnBg, border: `1px solid ${colors.textStrong}`, borderRadius: 6 }
+              : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}`, borderRadius: 6 }
           }
         >
           <FilterIcon size={14} />
           Фильтры
           {activeCount > 0 && (
             <span
-              className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
-              style={{ background: colors.accent, color: colors.accentTextOnBg }}
+              className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold"
+              style={{ background: colors.brand, color: colors.brandTextOnBg, borderRadius: 9 }}
             >
               {activeCount}
             </span>
@@ -108,23 +140,23 @@ export default function CategoryAttributeFilters({
 
       {open && (
         <div
-          className="mt-3 p-4 rounded-2xl flex flex-col gap-4"
+          className="mt-3 p-4 rounded-lg flex flex-col gap-4"
           style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         >
           {/* Global category select */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: colors.textDim }}>
+            <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: colors.textStrong }}>
               Категория
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
                 type="button"
                 onClick={() => handlePickGlobalCategory(null)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                className="flex-shrink-0 px-3 py-1.5 text-xs font-medium transition-colors"
                 style={
                   !activeGlobalSlug
-                    ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
-                    : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
+                    ? { background: colors.textStrong, color: colors.brandTextOnBg, border: `1px solid ${colors.textStrong}`, borderRadius: 4 }
+                    : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}`, borderRadius: 4 }
                 }
               >
                 Все
@@ -136,17 +168,51 @@ export default function CategoryAttributeFilters({
                     type="button"
                     key={cat.id}
                     onClick={() => handlePickGlobalCategory(cat.slug)}
-                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                    className="flex-shrink-0 px-3 py-1.5 text-xs font-medium transition-colors"
                     style={
                       isActive
-                        ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
-                        : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
+                        ? { background: colors.textStrong, color: colors.brandTextOnBg, border: `1px solid ${colors.textStrong}`, borderRadius: 4 }
+                        : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}`, borderRadius: 4 }
                     }
                   >
                     {cat.nameRu}
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Price range — always available, no category required. */}
+          <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: '12px' }}>
+            <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: colors.textStrong }}>
+              Цена, сум
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={minInput}
+                onChange={(e) => setMinInput(e.target.value)}
+                onBlur={() => commitPrice("priceMin", minInput)}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                placeholder="от"
+                className="w-1/2 px-3 py-2 text-sm outline-none"
+                style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textBody, borderRadius: 6 }}
+              />
+              <span style={{ color: colors.textDim }}>—</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={maxInput}
+                onChange={(e) => setMaxInput(e.target.value)}
+                onBlur={() => commitPrice("priceMax", maxInput)}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                placeholder="до"
+                className="w-1/2 px-3 py-2 text-sm outline-none"
+                style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textBody, borderRadius: 6 }}
+              />
             </div>
           </div>
 
@@ -157,7 +223,7 @@ export default function CategoryAttributeFilters({
             </p>
           )}
           {activeGlobalSlug && attributeFilters.length > 0 && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3" style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: '12px' }}>
               {attributeFilters.map((f) => (
                 <AttributeControl
                   key={f.key}
@@ -188,18 +254,19 @@ function AttributeControl({
   if (filter.fieldType === "select" && filter.options && filter.options.length > 0) {
     return (
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] uppercase tracking-wider" style={{ color: colors.textDim }}>
+        <span className="text-[11px] uppercase tracking-wider" style={{ color: colors.textStrong }}>
           {label}
         </span>
         <div className="relative">
           <select
             value={value}
             onChange={(e) => onChange(e.target.value || null)}
-            className="w-full appearance-none px-3 pr-9 py-2 rounded-xl text-sm outline-none"
+            className="w-full appearance-none px-3 pr-9 py-2 text-sm outline-none"
             style={{
               background: colors.surfaceMuted,
               border: `1px solid ${colors.border}`,
-              color: colors.textPrimary,
+              color: colors.textBody,
+              borderRadius: 6,
             }}
           >
             <option value="">Любой</option>
@@ -216,7 +283,7 @@ function AttributeControl({
             <button
               type="button"
               onClick={() => onChange(null)}
-              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full transition-colors hover:bg-black/5"
+              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover-soft"
               aria-label="Очистить"
             >
               <X size={12} style={{ color: colors.textMuted }} />
@@ -231,16 +298,16 @@ function AttributeControl({
     const isActive = value === "true";
     return (
       <label className="flex items-center justify-between gap-3">
-        <span className="text-sm" style={{ color: colors.textPrimary }}>{label}</span>
+        <span className="text-sm" style={{ color: colors.textBody }}>{label}</span>
         <button
           type="button"
           onClick={() => onChange(isActive ? null : "true")}
           className="relative w-10 h-6 rounded-full transition-colors"
-          style={{ background: isActive ? colors.accent : colors.borderStrong }}
+          style={{ background: isActive ? colors.brand : colors.borderStrong }}
         >
           <span
-            className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm"
-            style={{ transform: isActive ? "translateX(18px)" : "translateX(2px)" }}
+            className="absolute top-0.5 w-5 h-5 rounded-full transition-transform shadow-sm"
+            style={{ background: colors.surface, transform: isActive ? "translateX(18px)" : "translateX(2px)" }}
           />
         </button>
       </label>
@@ -249,7 +316,7 @@ function AttributeControl({
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[11px] uppercase tracking-wider" style={{ color: colors.textDim }}>
+      <span className="text-[11px] uppercase tracking-wider" style={{ color: colors.textStrong }}>
         {label}
       </span>
       <input
@@ -257,11 +324,12 @@ function AttributeControl({
         value={value}
         onChange={(e) => onChange(e.target.value || null)}
         placeholder="Любое"
-        className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+        className="w-full px-3 py-2 text-sm outline-none"
         style={{
           background: colors.surfaceMuted,
           border: `1px solid ${colors.border}`,
-          color: colors.textPrimary,
+          color: colors.textBody,
+          borderRadius: 6,
         }}
       />
     </label>

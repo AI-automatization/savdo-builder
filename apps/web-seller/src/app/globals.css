@@ -1,18 +1,116 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* ──────────────────────────────────────────────────────────────────────────────
+   Theme tokens — seller dashboard
+   `[data-theme="dark"]` is the original CRM look (kept as default — see
+   ThemeScript in apps/web-seller/src/app/layout.tsx). Light is the new addition.
+   Values mirror `apps/web-seller/src/lib/styles.ts` for the dark palette.
+   See `docs/design/liquid-authority.md`.
+   ─────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --bg-gradient: linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%);
-  --accent: #A78BFA;
-  --accent-dim: rgba(167,139,250,0.18);
+  /* ── Light (cream/slate, mirrors buyer light for unified brand) ──────────── */
+  --color-bg:                #F4F5F7;
+  --color-surface:           #FFFFFF;
+  --color-surface-muted:     #ECEEF1;
+  --color-surface-elevated:  #FFFFFF;
+  --color-surface-sunken:    #E4E7EB;
+  --color-divider:           rgba(15,23,42,0.06);
+  --color-border:            rgba(15,23,42,0.10);
+  --color-border-strong:     rgba(15,23,42,0.18);
+  --color-text-primary:      #0F172A;
+  --color-text-muted:        #475569;
+  --color-text-dim:          #94A3B8;
+  --color-accent:            #7C3AED;
+  --color-accent-muted:      rgba(124,58,237,0.10);
+  --color-accent-border:     rgba(124,58,237,0.30);
+  --color-accent-text-on-bg: #FFFFFF;
+  --color-brand:             #7C3AED;
+  --color-success:           #16A34A;
+  --color-warning:           #D97706;
+  --color-danger:            #DC2626;
+  --color-info:              #2563EB;
+  --color-skeleton:          rgba(15,23,42,0.06);
+
+  /* App-shell background — light mode is solid */
+  --app-bg: var(--color-bg);
+
+  /* Onboarding scene — soft light wash */
+  --onboarding-bg: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #EEF2F7 100%);
+  --onboarding-orb-1: radial-gradient(circle, rgba(124,58,237,0.10) 0%, transparent 70%);
+  --onboarding-orb-2: radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%);
+
+  /* Legacy aliases kept for any straggler reading old vars */
+  --accent:     var(--color-accent);
+  --accent-dim: var(--color-accent-muted);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  /* ── Dark — the original CRM palette (slate-900 base + violet accent) ────── */
+  --color-bg:                #0F172A;
+  --color-surface:           #1E293B;
+  --color-surface-muted:     #172033;
+  --color-surface-elevated:  #293548;
+  --color-surface-sunken:    #0B1120;
+  --color-divider:           rgba(148,163,184,0.16);
+  --color-border:            rgba(148,163,184,0.20);
+  --color-border-strong:     rgba(148,163,184,0.32);
+  --color-text-primary:      #F1F5F9;
+  --color-text-muted:        #94A3B8;
+  --color-text-dim:          #64748B;
+  --color-accent:            #A78BFA;
+  --color-accent-muted:      rgba(167,139,250,0.14);
+  --color-accent-border:     rgba(167,139,250,0.40);
+  --color-accent-text-on-bg: #0F172A;
+  --color-brand:             #7C3AED;
+  --color-success:           #34D399;
+  --color-warning:           #FBBF24;
+  --color-danger:            #F87171;
+  --color-info:              #60A5FA;
+  --color-skeleton:          rgba(255,255,255,0.06);
+
+  /* Restore the signature gradient body background — only in dark mode */
+  --app-bg: linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%);
+
+  /* Onboarding scene — original navy-purple wash */
+  --onboarding-bg: linear-gradient(135deg, #0f0a1e 0%, #1a0d2e 50%, #0d1a2e 100%);
+  --onboarding-orb-1: radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%);
+  --onboarding-orb-2: radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%);
+
+  --accent:     var(--color-accent);
+  --accent-dim: var(--color-accent-muted);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-primary);
 }
 
 body {
+  background: var(--app-bg);
+  color: var(--color-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Smooth swap when theme changes */
+  transition: color 200ms ease;
 }
 
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+}
+
+/* Row hover — theme-aware highlight for clickable rows / icon buttons.
+   Replaces `hover:bg-white/[0.03]` Tailwind which only reads in dark theme. */
+.row-hoverable:hover {
+  background-color: var(--color-surface-elevated);
 }

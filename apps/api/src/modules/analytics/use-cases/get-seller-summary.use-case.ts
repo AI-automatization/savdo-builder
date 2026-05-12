@@ -15,7 +15,7 @@ export class GetSellerSummaryUseCase {
     // user.sub = User.id; Store.sellerId = Seller.id (not User.id)
     // → must join through Seller to find the store
     const store = await this.prisma.store.findFirst({
-      where: { seller: { userId: user.sub } },
+      where: { seller: { userId: user.sub }, deletedAt: null }, // DB-AUDIT-001-07
       select: { id: true },
     });
 

@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/context';
 import { useStore, useSellerProfile, useUploadSellerAvatar } from '@/hooks/use-seller';
 import { useLogout } from '@/hooks/use-auth';
 import { card, cardMuted, colors } from '@/lib/styles';
+import { buyerStoreUrl } from '@/lib/buyer-url';
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -46,7 +47,7 @@ export default function ProfilePage() {
   const letter = avatarLetter(profile?.fullName || user?.phone);
   const avatarUrl = profile?.avatarUrl ?? null;
   const statusInfo = store?.status ? STATUS_LABEL[store.status] ?? { text: store.status, color: colors.textDim } : null;
-  const storeUrl = store ? `https://savdo.uz/${store.slug}` : null;
+  const storeUrl = store ? buyerStoreUrl(store.slug) : null;
 
   async function handleCopy() {
     if (!storeUrl) return;
@@ -165,7 +166,11 @@ export default function ProfilePage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md transition-opacity hover:opacity-80"
-                  style={{ background: 'rgba(56,189,248,0.13)', color: '#7dd3fc', border: '1px solid rgba(125,211,252,0.30)' }}
+                  style={{
+                    background: `color-mix(in srgb, ${colors.info} 13%, transparent)`,
+                    color: colors.info,
+                    border: `1px solid color-mix(in srgb, ${colors.info} 30%, transparent)`,
+                  }}
                 >
                   <MessageCircle size={11} /> @{profile.telegramUsername.replace(/^@/, '')}
                 </a>
@@ -239,7 +244,7 @@ export default function ProfilePage() {
       <section className="rounded-xl overflow-hidden" style={cardMuted}>
         <Link
           href="/settings"
-          className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-white/[0.03]"
+          className="flex items-center gap-3 px-5 py-4 transition-colors row-hoverable"
           style={{ borderBottom: `1px solid ${colors.divider}` }}
         >
           <Settings size={16} style={{ color: colors.textMuted }} />
@@ -253,7 +258,7 @@ export default function ProfilePage() {
           type="button"
           onClick={handleLogout}
           disabled={logoutMutation.isPending}
-          className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.03] disabled:opacity-60"
+          className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors row-hoverable disabled:opacity-60"
         >
           <LogOut size={16} style={{ color: colors.danger }} />
           <div className="flex-1 min-w-0">
