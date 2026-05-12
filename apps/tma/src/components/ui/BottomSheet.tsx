@@ -34,7 +34,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
         style={{
           background: 'linear-gradient(160deg, #13111f 0%, #1a1635 100%)',
           border: '1px solid rgba(255,255,255,0.10)',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.50), 0 0 0 1px rgba(168,85,247,0.06)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.50), 0 0 0 1px var(--tg-accent-bg)',
           width: 'min(720px, 100%)',
           maxHeight: '88vh',
           overflow: 'hidden',

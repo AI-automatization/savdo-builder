@@ -106,7 +106,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
           {product.title}
         </p>
 
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#A855F7' }}>{price}</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--tg-accent)' }}>{price}</p>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
           <p style={{
@@ -126,9 +126,9 @@ export function ProductCard({ product }: { product: FeedProduct }) {
               width: 44,
               height: 44,
               borderRadius: 12,
-              background: 'rgba(168,85,247,0.25)',
-              border: '1px solid rgba(168,85,247,0.40)',
-              color: '#A855F7',
+              background: 'var(--tg-accent-dim)',
+              border: '1px solid var(--tg-accent-border)',
+              color: 'var(--tg-accent)',
               fontSize: 22,
               fontWeight: 600,
               display: 'flex',

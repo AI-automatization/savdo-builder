@@ -96,7 +96,7 @@ export function ProductReviews({ productId, initialAvg, initialCount }: Props) {
         <button
           onClick={() => setShowAll(true)}
           className="text-xs font-semibold py-2 rounded-lg"
-          style={{ background: 'rgba(168,85,247,0.10)', color: '#A855F7', border: '1px solid rgba(168,85,247,0.20)' }}
+          style={{ background: 'var(--tg-accent-bg)', color: 'var(--tg-accent)', border: '1px solid var(--tg-accent-border)' }}
         >
           Показать все {total} отзывов
         </button>

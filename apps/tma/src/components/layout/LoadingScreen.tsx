@@ -11,7 +11,7 @@ export function LoadingScreen() {
         aria-hidden
         style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse at 50% 48%, rgba(168,85,247,0.07) 0%, transparent 65%)',
+          background: 'radial-gradient(ellipse at 50% 48%, var(--tg-accent-bg) 0%, transparent 65%)',
         }}
       />
 
@@ -20,7 +20,7 @@ export function LoadingScreen() {
         className="logo-pulse"
         style={{
           width: 76, height: 76, borderRadius: 26,
-          background: 'linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)',
+          background: 'var(--tg-accent)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 38,
         }}
@@ -45,7 +45,7 @@ export function LoadingScreen() {
             key={i}
             style={{
               width: 5, height: 5, borderRadius: '50%',
-              background: 'rgba(168,85,247,0.50)',
+              background: 'var(--tg-accent)',
               animation: `fade-slide-in 0.6s ease-in-out ${i * 0.18}s infinite alternate both`,
             }}
           />
