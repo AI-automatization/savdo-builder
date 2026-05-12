@@ -15,6 +15,10 @@ interface Store {
   status: string;
   city: string | null;
   telegramContactLink: string | null;
+  // MARKETING-VERIFIED-SELLER-001
+  isVerified?: boolean;
+  avgRating?: number | string | null;
+  reviewCount?: number;
 }
 
 interface GlobalCategory {
@@ -388,15 +392,36 @@ export default function StoresPage() {
                   {store.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
+                    {/* MARKETING-VERIFIED-SELLER-001: verified badge */}
+                    {store.isVerified && (
+                      <span
+                        className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+                        style={{ background: 'rgba(37,99,235,0.20)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.45)' }}
+                        title="Проверенный магазин"
+                        aria-label="Проверенный магазин"
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </div>
                   {store.description && (
                     <p className="text-xs truncate mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>{store.description}</p>
                   )}
-                  {store.city && (
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--tg-accent)' }}>
-                      📍 {store.city}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {store.city && (
+                      <p className="text-[11px]" style={{ color: 'var(--tg-accent)' }}>
+                        📍 {store.city}
+                      </p>
+                    )}
+                    {/* MARKETING-VERIFIED-SELLER-001: rating + review count */}
+                    {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
+                      <p className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>
+                        ⭐ {Number(store.avgRating).toFixed(1)} <span style={{ color: 'var(--tg-text-dim)' }}>({store.reviewCount})</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {store.telegramContactLink && (

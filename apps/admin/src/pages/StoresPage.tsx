@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, Package, ShoppingCart, RefreshCw, AlertCircle, ChevronRight, Search, ShieldCheck } from 'lucide-react'
+import { Store, Package, ShoppingCart, RefreshCw, AlertCircle, ChevronRight, Search, ShieldCheck, BadgeCheck } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,10 @@ interface StoreItem {
   createdAt: string
   seller: { id: string; fullName: string; verificationStatus: string }
   _count?: { products: number; orders: number }
+  // MARKETING-VERIFIED-SELLER-001
+  isVerified?: boolean
+  avgRating?: number | string | null
+  reviewCount?: number
 }
 interface StoresResponse { stores: StoreItem[]; total: number }
 
@@ -76,6 +80,29 @@ export default function StoresPage() {
     } catch (e: any) {
       setLocalStores(data?.stores ?? [])
       setActionError(e.message ?? 'Ошибка верификации')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // MARKETING-VERIFIED-SELLER-001: переключение «trust-signal» галочки.
+  // Verify — без reason; unverify — INV-A02 требует comment, спрашиваем через prompt.
+  async function toggleVerify(storeId: string, willVerify: boolean) {
+    let reason: string | undefined
+    if (!willVerify) {
+      const input = window.prompt('Причина снятия верификации (обязательно):')
+      if (!input?.trim()) return
+      reason = input.trim()
+    }
+    setLocalStores(prev => prev.map(s => s.id === storeId ? { ...s, isVerified: willVerify } : s))
+    setActionLoading(storeId)
+    setActionError(null)
+    try {
+      const url = `/api/v1/admin/stores/${storeId}/${willVerify ? 'verify' : 'unverify'}`
+      await api.post(url, willVerify ? {} : { reason })
+    } catch (e: any) {
+      setLocalStores(data?.stores ?? [])
+      setActionError(e.message ?? 'Ошибка изменения верификации')
     } finally {
       setActionLoading(null)
     }
@@ -172,7 +199,18 @@ export default function StoresPage() {
                         <Store size={14} style={{ color: 'var(--primary)' }} />
                       </div>
                       <div>
-                        <div className="font-medium" style={{ color: 'var(--text)' }}>{s.name}</div>
+                        <div className="font-medium flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
+                          {s.name}
+                          {/* MARKETING-VERIFIED-SELLER-001 */}
+                          {s.isVerified && (
+                            <BadgeCheck size={13} style={{ color: '#60a5fa' }} aria-label="Проверенный магазин" />
+                          )}
+                          {s.reviewCount != null && s.reviewCount > 0 && s.avgRating != null && (
+                            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                              ⭐ {Number(s.avgRating).toFixed(1)} ({s.reviewCount})
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] font-mono" style={{ color: 'var(--text-dim)' }}>/{s.slug}</div>
                       </div>
                     </div>
@@ -228,9 +266,28 @@ export default function StoresPage() {
                           }}
                         >
                           <ShieldCheck size={12} />
-                          Верифицировать
+                          Одобрить
                         </button>
                       )}
+                      {/* MARKETING-VERIFIED-SELLER-001 — trust-signal toggle */}
+                      <button
+                        disabled={actionLoading === s.id}
+                        onClick={(e) => { e.stopPropagation(); toggleVerify(s.id, !s.isVerified) }}
+                        title={s.isVerified ? 'Снять верификацию' : 'Поставить верификацию'}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                          cursor: actionLoading === s.id ? 'not-allowed' : 'pointer',
+                          opacity: actionLoading === s.id ? 0.5 : 1,
+                          border: s.isVerified ? '1px solid rgba(96,165,250,0.45)' : '1px solid var(--border)',
+                          background: s.isVerified ? 'rgba(37,99,235,0.10)' : 'transparent',
+                          color: s.isVerified ? '#60a5fa' : 'var(--text-muted)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <BadgeCheck size={12} />
+                        {s.isVerified ? 'Verified' : 'Verify'}
+                      </button>
                       <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
                     </div>
                   </td>
