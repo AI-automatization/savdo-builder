@@ -2,10 +2,13 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { auth } from '../lib/api'
 import { cn } from '@/lib/utils'
+import { ImpersonationBanner } from '../components/admin/ImpersonationBanner'
+import { CommandPalette } from '../components/admin/CommandPalette'
 import {
   LayoutDashboard, Users, UserCog, Store, ShoppingCart,
   Shield, ScrollText, LogOut, Package, Database, Megaphone,
   ChevronRight, Search, Sun, Moon, BarChart2, Activity, MessageSquare, Tags, Flag,
+  Heart, ToggleLeft, Lock, ListTodo,
 } from 'lucide-react'
 
 const NAV_DATA = [
@@ -32,6 +35,21 @@ const NAV_DATA = [
       { to: '/broadcast',  icon: Megaphone,       label: 'Рассылка' },
       { to: '/chats',      icon: MessageSquare,   label: 'Чаты' },
       { to: '/reports',    icon: Flag,            label: 'Жалобы' },
+    ],
+  },
+  {
+    group: 'Безопасность',
+    items: [
+      { to: '/admins',       icon: Shield, label: 'Администраторы' },
+      { to: '/security/mfa', icon: Lock,   label: 'MFA setup' },
+    ],
+  },
+  {
+    group: 'DevOps',
+    items: [
+      { to: '/system/health',         icon: Heart,      label: 'Состояние системы' },
+      { to: '/system/feature-flags',  icon: ToggleLeft, label: 'Feature flags' },
+      { to: '/queues',                icon: ListTodo,   label: 'Очереди (Bull)' },
     ],
   },
 ]
@@ -76,8 +94,14 @@ export default function DashboardLayout() {
     navigate('/login')
   }
 
+  const openSearch = () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
+  }
+
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
+      <CommandPalette />
+
       {/* Sidebar */}
       <aside
         className="w-[216px] shrink-0 fixed top-0 left-0 bottom-0 z-50 flex flex-col"
@@ -95,8 +119,9 @@ export default function DashboardLayout() {
             </div>
           </div>
 
-          {/* Search hint */}
+          {/* Search hint — opens command palette */}
           <button
+            onClick={openSearch}
             className="w-full flex items-center gap-2 px-2.5 h-8 rounded-md text-xs transition-colors"
             style={{
               background: 'var(--surface2)',
@@ -225,6 +250,7 @@ export default function DashboardLayout() {
 
       {/* Main */}
       <main className="ml-[216px] flex-1 min-h-screen">
+        <ImpersonationBanner />
         <Outlet />
       </main>
     </div>

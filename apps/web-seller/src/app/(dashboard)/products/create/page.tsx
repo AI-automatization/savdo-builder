@@ -10,43 +10,8 @@ import { track } from '../../../../lib/analytics';
 import { ImageUploader } from '../../../../components/image-uploader';
 import { Select } from '../../../../components/select';
 import { DisplayTypeSelector } from '../../../../components/display-type-selector';
+import { titlePlaceholder, descriptionPlaceholder } from '../../../../lib/product-examples';
 import type { ProductDisplayType } from 'types';
-
-// Example titles keyed by global-category slug. Unknown slugs fall back to
-// a neutral "товар категории: {name}" hint — so new categories auto-work
-// without a code change.
-const TITLE_EXAMPLES_BY_SLUG: Record<string, string> = {
-  'electronics':   'Например: iPhone 15 Pro 128 GB',
-  'phones':        'Например: iPhone 15 Pro 128 GB',
-  'smartphones':   'Например: Samsung Galaxy S24',
-  'laptops':       'Например: MacBook Pro 14 M3',
-  'computers':     'Например: ПК i7 / 32GB RAM / RTX 4070',
-  'tv':            'Например: Samsung Smart TV 55"',
-  'audio':         'Например: AirPods Pro 2',
-  'cameras':       'Например: Canon EOS R50',
-  'appliances':    'Например: Стиральная машина Bosch 7кг',
-  'clothing':      'Например: Футболка Nike, размер M',
-  'shoes':         'Например: Кроссовки Nike Air Max 90',
-  'bags':          'Например: Сумка через плечо, кожа',
-  'accessories':   'Например: Часы Casio G-Shock',
-  'furniture':     'Например: Офисное кресло с сеткой',
-  'beds':          'Например: Кровать двуспальная 160×200',
-  'books':         'Например: Мастер и Маргарита, Булгаков',
-  'bicycles':      'Например: Велосипед Trek Marlin 7',
-  'outdoor':       'Например: Палатка 3-местная',
-  'toys':          'Например: LEGO Classic 11019',
-  'beauty':        'Например: Крем для лица Nivea 50ml',
-};
-
-const DESCRIPTION_EXAMPLES_BY_SLUG: Record<string, string> = {
-  'clothing':    'Материал, состав, размерная сетка, страна производства...',
-  'shoes':       'Материал верха и подошвы, сезон, страна производства...',
-  'electronics': 'Характеристики, комплектация, гарантия...',
-  'phones':      'Объём памяти, цвет, состояние, комплектация, гарантия...',
-  'laptops':     'Процессор, ОЗУ, диск, экран, состояние...',
-  'furniture':   'Материал, размеры, цвет, сборка...',
-  'books':       'Автор, жанр, год, язык, состояние...',
-};
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
 // до тех пор, пока Полат не уберёт их из seed'а на бэке
@@ -59,17 +24,6 @@ const HIDDEN_CATEGORY_SLUGS = new Set([
 const HIDDEN_CATEGORY_NAME_RE = /(авто|мотоц|avtomo|mototsik)/i;
 function isHiddenCategory(cat: { slug: string; nameRu: string }): boolean {
   return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.nameRu);
-}
-
-function titlePlaceholder(categoryName?: string | null, slug?: string | null): string {
-  if (slug && TITLE_EXAMPLES_BY_SLUG[slug]) return TITLE_EXAMPLES_BY_SLUG[slug];
-  if (categoryName) return `Например: товар из категории «${categoryName}»`;
-  return 'Название товара';
-}
-
-function descriptionPlaceholder(slug?: string | null): string {
-  if (slug && DESCRIPTION_EXAMPLES_BY_SLUG[slug]) return DESCRIPTION_EXAMPLES_BY_SLUG[slug];
-  return 'Подробное описание товара...';
 }
 
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
@@ -185,7 +139,7 @@ export default function CreateProductPage() {
 
       {/* Form card */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="rounded-lg p-6 flex flex-col gap-5" style={card}>
+        <div className="rounded-xl p-6 flex flex-col gap-5" style={card}>
 
           {/* Photo + main fields row */}
           <div className="flex items-start gap-4">
@@ -363,7 +317,7 @@ export default function CreateProductPage() {
             type="submit"
             disabled={isSubmitting || create.isPending}
             className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{ background: colors.accent, color: colors.bg }}
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             {create.isPending ? 'Создание...' : 'Создать товар'}
           </button>

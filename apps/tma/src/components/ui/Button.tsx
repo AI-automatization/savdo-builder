@@ -12,7 +12,7 @@ export function Button({ variant = 'primary', children, className = '', ...rest 
     ghost: 'text-white/60 border border-white/10',
   };
   const bg = variant === 'primary'
-    ? { background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }
+    ? { background: 'var(--tg-accent)' }
     : {};
 
   return (

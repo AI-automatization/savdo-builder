@@ -5,9 +5,12 @@ import { track } from '@/lib/analytics';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { showToast } from '@/components/ui/Toast';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Spinner } from '@/components/ui/Spinner';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { WishlistButton } from '@/components/ui/WishlistButton';
+import { ProductReviews } from '@/components/reviews/ProductReviews';
 import { glass } from '@/lib/styles';
+import { clickableA11y } from '@/lib/a11y';
 import {
   findVariantBySelection,
   initialSelectionFromVariants,
@@ -40,6 +43,9 @@ interface Product {
   attributes?: ProductAttribute[];
   store?: { name: string; slug: string };
   globalCategory?: { id: string; nameRu: string } | null;
+  // FEAT-008: денормализованные агрегаты отзывов
+  avgRating?: number | string | null;
+  reviewCount?: number;
 }
 
 export default function ProductPage() {
@@ -62,8 +68,10 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (!slug || !id) return;
-    api<Product>(`/stores/${slug}/products/${id}`)
+    const ac = new AbortController();
+    api<Product>(`/stores/${slug}/products/${id}`, { signal: ac.signal })
       .then((p) => {
+        if (ac.signal.aborted) return;
         setProduct(p);
         if (trackedRef.current !== p.id) {
           trackedRef.current = p.id;
@@ -78,8 +86,9 @@ export default function ProductPage() {
           setSelectedVariantId(firstInStock?.id ?? null);
         }
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!ac.signal.aborted) setError(true); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [slug, id]);
 
   const selectedVariant = hasGroups
@@ -190,9 +199,17 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      
-        <div className="flex justify-center py-10"><Spinner size={32} /></div>
-      
+      <div className="flex flex-col gap-4">
+        <Skeleton style={{ aspectRatio: '1/1', borderRadius: 16, width: '100%' }} />
+        <Skeleton style={{ height: 24, width: '70%' }} />
+        <Skeleton style={{ height: 28, width: '40%' }} />
+        <div className="flex flex-col gap-2 mt-2">
+          <Skeleton style={{ height: 14, width: '95%' }} />
+          <Skeleton style={{ height: 14, width: '85%' }} />
+          <Skeleton style={{ height: 14, width: '60%' }} />
+        </div>
+        <Skeleton style={{ height: 48, marginTop: 8 }} />
+      </div>
     );
   }
 
@@ -202,7 +219,7 @@ export default function ProductPage() {
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>😕</span>
           <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Товар не найден</p>
-          <button onClick={() => navigate(-1)} style={{ color: '#A855F7', fontSize: 14 }}>← Назад</button>
+          <button onClick={() => navigate(-1)} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← Назад</button>
         </div>
       
     );
@@ -227,60 +244,96 @@ export default function ProductPage() {
     touchStartX.current = null;
   };
 
-  return (
-    
-      <div className="flex flex-col gap-4 pb-24">
-        {/* Gallery */}
-        {displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
-          <div
-            className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
-            style={{ aspectRatio: '1' }}
-            onClick={() => setActiveImage(0)}
-          >
-            {images.slice(0, 4).map((url, idx) => (
-              <div key={idx} className="relative overflow-hidden bg-white/5">
-                <img src={url} alt="" className="w-full h-full object-cover" style={{ aspectRatio: '1' }} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            className="rounded-2xl overflow-hidden relative"
-            style={{ ...glass, aspectRatio: viewportWidth >= 560 ? '4/3' : '1' }}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          >
-            {images.length ? (
-              <img
-                src={images[activeImage]}
-                alt={product.title}
-                className="w-full h-full object-cover"
-                style={{ userSelect: 'none' }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center" style={{ fontSize: 48 }}>📦</div>
-            )}
+  const isWide = (viewportWidth ?? 0) >= 1024;
+  const galleryAspect = isWide ? '1' : (viewportWidth >= 560 ? '4/3' : '1');
 
-            {/* Dot indicators */}
-            {displayType !== 'SINGLE' && images.length > 1 && (
-              <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
-                {images.map((_, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      width: idx === activeImage ? 16 : 6,
-                      height: 6,
-                      borderRadius: 3,
-                      background: idx === activeImage ? '#A855F7' : 'rgba(255,255,255,0.40)',
-                      transition: 'width 0.2s ease, background 0.2s ease',
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+  const galleryNode = (
+    displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
+      <div
+        {...clickableA11y(() => setActiveImage(0))}
+        aria-label="Открыть фото товара"
+        className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
+        style={{ aspectRatio: '1' }}
+      >
+        {images.slice(0, 4).map((url, idx) => (
+          <div key={idx} className="relative overflow-hidden bg-white/5">
+            <img src={url} alt="" className="w-full h-full object-cover" style={{ aspectRatio: '1' }} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div
+        className="rounded-2xl overflow-hidden relative"
+        style={{ ...glass, aspectRatio: galleryAspect }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <ProductImage
+          src={images[activeImage]}
+          alt={product.title}
+          emptyVariant="no-photo"
+          imgStyle={{ userSelect: 'none' }}
+        />
+
+        {/* Dot indicators */}
+        {displayType !== 'SINGLE' && images.length > 1 && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+            {images.map((_, idx) => (
+              <span
+                key={idx}
+                style={{
+                  width: idx === activeImage ? 16 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: idx === activeImage ? 'var(--tg-accent)' : 'rgba(255,255,255,0.40)',
+                  transition: 'width 0.2s ease, background 0.2s ease',
+                }}
+              />
+            ))}
           </div>
         )}
 
+        {/* Desktop thumbnail strip — click to switch image */}
+        {isWide && images.length > 1 && displayType !== 'SINGLE' && (
+          <div
+            className="absolute left-2 bottom-2 right-2 flex gap-2 overflow-x-auto pointer-events-auto"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {images.map((url, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => { e.stopPropagation(); setActiveImage(idx); }}
+                style={{
+                  flexShrink: 0,
+                  width: 56, height: 56, borderRadius: 10, overflow: 'hidden',
+                  border: idx === activeImage ? '2px solid var(--tg-accent)' : '2px solid rgba(255,255,255,0.20)',
+                  background: 'rgba(0,0,0,0.45)',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s ease, transform 0.12s ease',
+                }}
+              >
+                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  );
+
+  return (
+
+      <div
+        className={isWide ? 'grid gap-8 pb-24' : 'flex flex-col gap-4 pb-24'}
+        style={isWide ? { gridTemplateColumns: '5fr 4fr', alignItems: 'start' } : undefined}
+      >
+        {/* Gallery — sticky on desktop */}
+        <div style={isWide ? { position: 'sticky', top: 16 } : undefined}>
+          {galleryNode}
+        </div>
+
+        {/* Info column */}
+        <div className="flex flex-col gap-4">
         {/* Info */}
         <div className="flex flex-col gap-2">
           <div className="flex items-start gap-3">
@@ -291,12 +344,12 @@ export default function ProductPage() {
           </div>
           {product.globalCategory && (
             <span className="self-start text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: 'rgba(167,139,250,0.12)', color: '#A855F7', border: '1px solid rgba(167,139,250,0.25)' }}>
+              style={{ background: 'var(--tg-accent-bg)', color: 'var(--tg-accent)', border: '1px solid var(--tg-accent-border)' }}>
               {product.globalCategory.nameRu}
             </span>
           )}
           <div className="flex items-center gap-3 flex-wrap">
-            <p className="text-xl font-bold" style={{ color: '#A855F7' }}>
+            <p className="text-xl font-bold" style={{ color: 'var(--tg-accent)' }}>
               {unitPrice.toLocaleString('ru')} сум
             </p>
             {selectedVariant && !isOutOfStock && selectedVariant.stockQuantity <= 5 && (
@@ -336,9 +389,9 @@ export default function ProductPage() {
                         onClick={() => handleOptionSelect(g.id, val.id)}
                         className="px-3.5 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-40"
                         style={{
-                          background: isSel ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.05)',
-                          border:     isSel ? '1px solid rgba(167,139,250,0.45)' : '1px solid rgba(255,255,255,0.10)',
-                          color:      isSel ? '#A855F7' : 'rgba(255,255,255,0.75)',
+                          background: isSel ? 'var(--tg-accent-dim)' : 'rgba(255,255,255,0.05)',
+                          border:     isSel ? '1px solid var(--tg-accent-border)' : '1px solid rgba(255,255,255,0.10)',
+                          color:      isSel ? 'var(--tg-accent)' : 'rgba(255,255,255,0.75)',
                           textDecoration: avail ? undefined : 'line-through',
                           cursor:     avail ? 'pointer' : 'not-allowed',
                         }}
@@ -375,9 +428,9 @@ export default function ProductPage() {
                     onClick={() => setSelectedVariantId(v.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
                     style={{
-                      background: active ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.05)',
-                      border: active ? '1px solid rgba(167,139,250,0.45)' : '1px solid rgba(255,255,255,0.10)',
-                      color: active ? '#A855F7' : 'rgba(255,255,255,0.70)',
+                      background: active ? 'var(--tg-accent-dim)' : 'rgba(255,255,255,0.05)',
+                      border: active ? '1px solid var(--tg-accent-border)' : '1px solid rgba(255,255,255,0.10)',
+                      color: active ? 'var(--tg-accent)' : 'rgba(255,255,255,0.70)',
                     }}
                   >
                     {v.titleOverride ?? `#${v.id.slice(-4)}`}
@@ -445,7 +498,15 @@ export default function ProductPage() {
         >
           💬 {contacting ? 'Открываем чат...' : 'Задать вопрос продавцу'}
         </button>
+
+        {/* FEAT-008: отзывы */}
+        <ProductReviews
+          productId={product.id}
+          initialAvg={product.avgRating != null ? Number(product.avgRating) : null}
+          initialCount={product.reviewCount}
+        />
+        </div>
       </div>
-    
+
   );
 }

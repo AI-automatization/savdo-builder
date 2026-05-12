@@ -6,6 +6,8 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImageCropper } from '@/components/ui/ImageCropper';
+import { Select } from '@/components/ui/Select';
+import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
 interface SizeRow {
@@ -20,8 +22,22 @@ interface StoreCategory {
 
 interface GlobalCategory {
   id: string;
+  slug?: string;
   nameRu: string;
   parentId?: string | null;
+  level?: number;
+  isLeaf?: boolean;
+  iconEmoji?: string | null;
+}
+
+interface CategoryFilter {
+  key: string;
+  nameRu: string;
+  nameUz: string;
+  fieldType: 'text' | 'number' | 'select' | 'boolean' | 'color' | 'multi_select';
+  options: string[] | null;
+  unit?: string | null;
+  isRequired?: boolean;
 }
 
 interface AttrRow {
@@ -53,19 +69,26 @@ export default function AddProductPage() {
   ]);
   const [sizeInput, setSizeInput] = useState('');
 
-  // Фото
+  // Фото — массив (TMA-MULTI-PHOTO-001). До 8 штук, первое = primary.
   const fileRef                         = useRef<HTMLInputElement>(null);
-  const [photoFile, setPhotoFile]       = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [photoFiles, setPhotoFiles]     = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cropSrc, setCropSrc]           = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number>(-1);
+  const MAX_PHOTOS = 8;
 
   // Категории
   const [categories, setCategories]           = useState<StoreCategory[]>([]);
   const [storeCategoryId, setStoreCategoryId] = useState<string>('');
   const [globalCategories, setGlobalCategories]   = useState<GlobalCategory[]>([]);
   const [globalCategoryId, setGlobalCategoryId]   = useState<string>('');
+  const [categoryFilters, setCategoryFilters] = useState<CategoryFilter[]>([]);
+  const [attrValues, setAttrValues] = useState<Record<string, string | boolean>>({});
+  // TMA-DYNAMIC-VARIANT-FILTERS-001: multi_select поля категории формируют
+  // ProductOptionGroup + ProductVariant matrix. Map: filterKey → { selectedValues, stockByValue }.
+  const [variantOptions, setVariantOptions] = useState<Record<string, { selected: string[]; stock: Record<string, number> }>>({});
   const [attrs, setAttrs] = useState<AttrRow[]>([]);
   const [attrName, setAttrName] = useState('');
   const [attrValue, setAttrValue] = useState('');
@@ -81,10 +104,53 @@ export default function AddProductPage() {
     return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(() => navigate('/seller/products')); };
   }, [navigate, tg]);
 
+  const catsAbortRef = useRef<AbortController | null>(null);
+  const filtersAbortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
-    api<StoreCategory[]>('/seller/categories').then(setCategories).catch(() => {});
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {});
+    catsAbortRef.current?.abort();
+    const ac = new AbortController();
+    catsAbortRef.current = ac;
+    api<StoreCategory[]>('/seller/categories', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setCategories(c); })
+      .catch((err: unknown) => {
+        if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+        showToast('Не удалось загрузить разделы магазина', 'error');
+      });
+    // Используем дерево с level/isLeaf/iconEmoji для cascade-modal
+    api<GlobalCategory[]>('/storefront/categories/tree', { signal: ac.signal })
+      .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
+      .catch(() => {
+        if (ac.signal.aborted) return;
+        // Fallback: если эндпоинта нет (старая api версия) — обычный flat список
+        api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+          .then((c) => { if (!ac.signal.aborted) setGlobalCategories(c); })
+          .catch((err: unknown) => {
+            if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+            showToast('Не удалось загрузить категории', 'error');
+          });
+      });
+    return () => ac.abort();
   }, []);
+
+  // При выборе типа товара — загружаем характеристики этой категории
+  useEffect(() => {
+    filtersAbortRef.current?.abort();
+    if (!globalCategoryId) {
+      setCategoryFilters([]);
+      setAttrValues({});
+      setVariantOptions({});
+      return;
+    }
+    const cat = globalCategories.find((c) => c.id === globalCategoryId);
+    if (!cat?.slug) return;
+    const ac = new AbortController();
+    filtersAbortRef.current = ac;
+    api<CategoryFilter[]>(`/storefront/categories/${cat.slug}/filters`, { signal: ac.signal })
+      .then((f) => { if (!ac.signal.aborted) setCategoryFilters(f); })
+      .catch(() => { if (!ac.signal.aborted) setCategoryFilters([]); });
+    return () => ac.abort();
+  }, [globalCategoryId, globalCategories]);
 
   const inputStyle = {
     ...glass,
@@ -97,9 +163,30 @@ export default function AddProductPage() {
     borderRadius: 12,
   } as const;
 
+  // Категория имеет multi_select поля → они сами формируют варианты с
+  // запасом per option. Хардкод-toggle "Товар с размерами" в этом случае
+  // скрыт чтобы не дублировать (TMA-DYNAMIC-VARIANT-FILTERS-001).
+  const multiSelectFilters = categoryFilters.filter((f) => f.fieldType === 'multi_select');
+  const hasDynamicVariants = multiSelectFilters.some(
+    (f) => (variantOptions[f.key]?.selected.length ?? 0) > 0,
+  );
+
+  // Required-характеристики типа товара должны быть заполнены
+  const missingRequiredFilters = categoryFilters
+    .filter((f) => f.isRequired)
+    .filter((f) => {
+      if (f.fieldType === 'boolean') return false; // boolean всегда есть
+      if (f.fieldType === 'multi_select') {
+        return (variantOptions[f.key]?.selected.length ?? 0) === 0;
+      }
+      const v = attrValues[f.key];
+      return v === undefined || v === '' || v === null;
+    });
+
   const isValid = title.trim().length >= 2 && Number(price) > 0 &&
     !!globalCategoryId &&
-    (!hasSizes || sizes.length > 0);
+    missingRequiredFilters.length === 0 &&
+    (hasDynamicVariants || !hasSizes || sizes.length > 0);
 
   const addSize = () => {
     const label = sizeInput.trim().toUpperCase();
@@ -123,6 +210,10 @@ export default function AddProductPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (fileRef.current) fileRef.current.value = '';
+    if (photoFiles.length >= MAX_PHOTOS) {
+      setError(`Максимум ${MAX_PHOTOS} фото на товар`);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => setCropSrc(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -130,38 +221,74 @@ export default function AddProductPage() {
 
   const handleCropConfirm = (croppedFile: File) => {
     setCropSrc('');
-    setPhotoFile(croppedFile);
+    setPhotoFiles((prev) => [...prev, croppedFile]);
     const url = URL.createObjectURL(croppedFile);
-    setPhotoPreview(url);
+    setPhotoPreviews((prev) => [...prev, url]);
   };
 
-  const removePhoto = () => {
-    setPhotoFile(null);
-    setPhotoPreview('');
-    setCropSrc('');
-    setUploadProgress(0);
-    setPhotoUploading(false);
+  const removePhoto = (index: number) => {
+    setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+    setPhotoPreviews((prev) => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const uploadPhotoForProduct = async (pid: string, file: File): Promise<void> => {
-    setPhotoUploading(true);
+  const movePhoto = (from: number, to: number) => {
+    if (to < 0 || to >= photoFiles.length) return;
+    setPhotoFiles((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+    setPhotoPreviews((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  // Загружает одно фото и возвращает mediaFileId (для batch upload в submit).
+  const uploadPhoto = async (file: File, idx: number): Promise<string> => {
+    setUploadingIndex(idx);
     setUploadProgress(0);
+    const form = new FormData();
+    form.append('file', file);
+    form.append('purpose', 'product_image');
+    const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
+      '/media/upload',
+      form,
+      setUploadProgress,
+    );
+    return mediaFileId;
+  };
+
+  const uploadPhotosForProduct = async (pid: string): Promise<void> => {
+    setPhotoUploading(true);
     try {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('purpose', 'product_image');
-      const { mediaFileId } = await apiUpload<{ mediaFileId: string; url: string }>(
-        '/media/upload',
-        form,
-        setUploadProgress,
-      );
-      await api(`/seller/products/${pid}/images`, {
-        method: 'POST',
-        body: { mediaId: mediaFileId },
-      });
+      for (let i = 0; i < photoFiles.length; i++) {
+        try {
+          const mediaId = await uploadPhoto(photoFiles[i], i);
+          // POST в /seller/products/:id/images — первое фото primary.
+          await api(`/seller/products/${pid}/images`, {
+            method: 'POST',
+            body: { mediaId, isPrimary: i === 0, sortOrder: i },
+          });
+        } catch (err) {
+          // TMA-PHOTO-UPLOAD-DIAG-001: показываем конкретную причину фейла
+          // (storage unavailable / mime not allowed / size too big / 502).
+          // Раньше генерик «Не удалось» — продавец не знал что делать.
+          const reason = err instanceof Error ? err.message : 'неизвестная ошибка';
+          throw new Error(`Фото #${i + 1}: ${reason}`);
+        }
+      }
     } finally {
       setPhotoUploading(false);
+      setUploadingIndex(-1);
     }
   };
 
@@ -171,6 +298,12 @@ export default function AddProductPage() {
     setError('');
     try {
       // 1. Создать товар
+      // Собираем характеристики (только заполненные значения)
+      const filledAttrs: Record<string, string | boolean | number> = {};
+      for (const [k, v] of Object.entries(attrValues)) {
+        if (v === '' || v === null || v === undefined) continue;
+        filledAttrs[k] = v;
+      }
       const product = await api<{ id: string }>('/seller/products', {
         method: 'POST',
         body: {
@@ -179,20 +312,82 @@ export default function AddProductPage() {
           basePrice: Number(price),
           ...(storeCategoryId ? { storeCategoryId } : {}),
           ...(globalCategoryId ? { globalCategoryId } : {}),
+          ...(Object.keys(filledAttrs).length > 0 ? { attributesJson: filledAttrs } : {}),
         },
       });
       const pid = product.id;
       const sku = slugify(title);
 
-      if (hasSizes && sizes.length > 0) {
-        // 2а. Создать группу "Размер"
+      if (hasDynamicVariants) {
+        // 2а. Динамические варианты из multi_select полей категории
+        // (TMA-DYNAMIC-VARIANT-FILTERS-001). Поддерживаем несколько групп
+        // (если категория имеет 2+ multi_select — Размер × Цвет = matrix).
+        const activeGroups = multiSelectFilters
+          .filter((f) => (variantOptions[f.key]?.selected.length ?? 0) > 0);
+
+        // Создаём группы и значения параллельно (для одной группы — порядок
+        // сохраняется через sortOrder).
+        const groupValueMap: Record<string, { groupId: string; valueIds: Record<string, string> }> = {};
+        for (let g = 0; g < activeGroups.length; g++) {
+          const f = activeGroups[g];
+          const group = await api<{ id: string }>(`/seller/products/${pid}/option-groups`, {
+            method: 'POST',
+            body: { name: f.nameRu, code: f.key, sortOrder: g },
+          });
+          const valueIds: Record<string, string> = {};
+          const sel = variantOptions[f.key].selected;
+          for (let i = 0; i < sel.length; i++) {
+            const opt = sel[i];
+            const val = await api<{ id: string }>(`/seller/products/${pid}/option-groups/${group.id}/values`, {
+              method: 'POST',
+              body: { value: opt, code: opt, sortOrder: i },
+            });
+            valueIds[opt] = val.id;
+          }
+          groupValueMap[f.key] = { groupId: group.id, valueIds };
+        }
+
+        // Cartesian product: создаём по варианту на каждую комбинацию.
+        // Для одной группы — стандарт (один опшн на вариант).
+        // Для двух групп — каждая комбинация делит общий stock пополам поровну
+        // как fallback (точная matrix-разбивка stock — отдельная UI задача).
+        function cartesian(keys: string[]): string[][] {
+          if (keys.length === 0) return [[]];
+          const [first, ...rest] = keys;
+          const sub = cartesian(rest);
+          return variantOptions[first].selected.flatMap((v) =>
+            sub.map((tail) => [v, ...tail]),
+          );
+        }
+        const groupKeys = activeGroups.map((f) => f.key);
+        const combinations = cartesian(groupKeys);
+
+        for (let i = 0; i < combinations.length; i++) {
+          const combo = combinations[i];
+          // stock: для одной группы берём stock конкретной option; для нескольких
+          // распределяем equally — продавец потом доуточнит в EditProductPage.
+          const stockQuantity = combo.length === 1
+            ? (variantOptions[activeGroups[0].key].stock[combo[0]] ?? 0)
+            : Math.floor(
+                combo.reduce((sum, v, idx) => sum + (variantOptions[activeGroups[idx].key].stock[v] ?? 0), 0)
+                / combo.length,
+              );
+          const optionValueIds = combo.map((v, idx) => groupValueMap[activeGroups[idx].key].valueIds[v]);
+          const variantSku = `${sku}-${combo.join('-')}`;
+          await api(`/seller/products/${pid}/variants`, {
+            method: 'POST',
+            body: { sku: variantSku, stockQuantity, optionValueIds },
+          });
+        }
+      } else if (hasSizes && sizes.length > 0) {
+        // 2а (legacy). Хардкод-блок "Товар с размерами" — fallback если в
+        // категории нет multi_select. Будет удалён после миграции seed на
+        // CategoryFilter с multi_select для всех категорий с размерами.
         const group = await api<{ id: string }>(`/seller/products/${pid}/option-groups`, {
           method: 'POST',
           body: { name: 'Размер', code: 'size', sortOrder: 0 },
         });
         const gid = group.id;
-
-        // 2б. Создать значения и варианты
         for (let i = 0; i < sizes.length; i++) {
           const sz = sizes[i];
           const val = await api<{ id: string }>(`/seller/products/${pid}/option-groups/${gid}/values`, {
@@ -209,38 +404,49 @@ export default function AddProductPage() {
           });
         }
       } else {
-        // 2б. Простой вариант без размеров
+        // 2б. Простой вариант без вариативности
         await api(`/seller/products/${pid}/variants`, {
           method: 'POST',
           body: { sku, stockQuantity: Math.max(0, Number(stock) || 0) },
         });
       }
 
-      // 3. Сохранить атрибуты
+      // 3. Сохранить атрибуты. Если часть упала — товар уже создан,
+      // не блокируем UX, переводим в редактор для retry.
+      const failedAttrs: string[] = [];
       for (let i = 0; i < attrs.length; i++) {
         const a = attrs[i];
         if (a.name.trim() && a.value.trim()) {
-          await api(`/seller/products/${pid}/attributes`, {
-            method: 'POST',
-            body: { name: a.name.trim(), value: a.value.trim(), sortOrder: i },
-          }).catch(() => {});
+          try {
+            await api(`/seller/products/${pid}/attributes`, {
+              method: 'POST',
+              body: { name: a.name.trim(), value: a.value.trim(), sortOrder: i },
+            });
+          } catch {
+            failedAttrs.push(a.name.trim());
+          }
         }
       }
+      if (failedAttrs.length > 0) {
+        showToast(`⚠️ Не сохранились характеристики: ${failedAttrs.join(', ')}. Добавьте в редакторе.`);
+      }
 
-      // 4. Загрузить фото если выбрано (отдельный try — ошибка фото не отменяет товар)
-      if (photoFile) {
+      // 4. Загрузить фото (TMA-MULTI-PHOTO-001: массив, не одно). Ошибка
+      // фото не отменяет товар — переход в редактор для retry.
+      if (photoFiles.length > 0) {
         try {
-          await uploadPhotoForProduct(pid, photoFile);
+          await uploadPhotosForProduct(pid);
         } catch (photoErr: unknown) {
           const isStorageDown = photoErr instanceof ApiError && photoErr.status === 503;
+          // TMA-PHOTO-UPLOAD-DIAG-001: настоящий error.message теперь
+          // включает причину (см. uploadPhotosForProduct).
+          const detail = photoErr instanceof Error ? photoErr.message : 'часть фото не загружена';
           tg?.HapticFeedback.notificationOccurred('warning');
-          // Показываем ошибку фото и переходим в редактор товара
-          // чтобы пользователь мог попробовать загрузить фото там
           navigate(`/seller/products/${pid}/edit`, {
             state: {
               photoError: isStorageDown
                 ? 'Загрузка фото временно недоступна — попробуйте позже'
-                : 'Фото не загружено — попробуйте добавить здесь',
+                : `${detail}. Попробуйте добавить здесь.`,
             },
           });
           return;
@@ -266,6 +472,35 @@ export default function AddProductPage() {
     }
   };
 
+  // TMA-SELLER-MAIN-BUTTON-001: MainButton как primary CTA для длинной формы.
+  // Default action — publish=true (Опубликовать). Draft через обычную inline-кнопку.
+  // Disable пока validation не пройдёт или идёт upload фото.
+  useEffect(() => {
+    if (!tg) return;
+    const label = saving
+      ? 'Создаём...'
+      : photoUploading
+        ? 'Загрузка фото...'
+        : 'Опубликовать товар';
+    tg.MainButton.setText(label);
+    tg.MainButton.show();
+    const canSubmit = isValid && !saving && !photoUploading;
+    if (canSubmit) {
+      const onClick = () => handleSave(true);
+      tg.MainButton.enable?.();
+      tg.MainButton.onClick(onClick);
+      return () => {
+        tg.MainButton.offClick(onClick);
+        tg.MainButton.hide();
+      };
+    } else {
+      tg.MainButton.disable?.();
+      return () => {
+        tg.MainButton.hide();
+      };
+    }
+  }, [tg, isValid, saving, photoUploading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       {cropSrc && (
@@ -276,7 +511,7 @@ export default function AddProductPage() {
         />
       )}
     
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
           Новый товар
         </h1>
@@ -381,13 +616,153 @@ export default function AddProductPage() {
             selectedId={globalCategoryId || null}
             onSelect={(id) => setGlobalCategoryId(id ?? '')}
             onClose={() => setShowGlobalCatModal(false)}
+            leafOnly
           />
         )}
 
-        {/* Характеристики товара */}
+        {/* Динамические характеристики из CategoryFilter */}
+        {globalCategoryId && categoryFilters.length > 0 && (
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Характеристики этого типа
+            </label>
+            {categoryFilters.map((f) => (
+              <div key={f.key} className="flex flex-col gap-1.5">
+                <label className="text-[11px]" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  {f.nameRu}
+                  {f.unit && <span style={{ color: 'rgba(255,255,255,0.35)' }}> ({f.unit})</span>}
+                  {f.isRequired && <span style={{ color: '#f87171' }}> *</span>}
+                </label>
+                {f.fieldType === 'select' && f.options ? (
+                  <Select
+                    value={String(attrValues[f.key] ?? '')}
+                    onChange={(v) => setAttrValues((prev) => ({ ...prev, [f.key]: v }))}
+                    options={f.options.map((opt) => ({
+                      value: opt,
+                      label: f.unit ? `${opt} ${f.unit}` : opt,
+                    }))}
+                    placeholder="— выберите —"
+                    clearable={!f.isRequired}
+                    ariaLabel={f.nameRu}
+                  />
+                ) : f.fieldType === 'boolean' ? (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(attrValues[f.key])}
+                      onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.checked }))}
+                    />
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.70)' }}>Да</span>
+                  </label>
+                ) : f.fieldType === 'number' ? (
+                  <input
+                    type="number"
+                    value={String(attrValues[f.key] ?? '')}
+                    onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder={f.unit ? `например 32 ${f.unit}` : ''}
+                    style={{ ...inputStyle, padding: '10px 14px', fontSize: 13 }}
+                  />
+                ) : f.fieldType === 'multi_select' && f.options ? (
+                  // Несколько значений = варианты товара. Показываем chips-выбор +
+                  // под ним блок «Остаток по {nameRu}» с input на каждое выбранное.
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      Отметьте все варианты которые есть в наличии
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {f.options.map((opt) => {
+                        const cur = variantOptions[f.key];
+                        const active = cur?.selected.includes(opt) ?? false;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              setVariantOptions((prev) => {
+                                const cur = prev[f.key] ?? { selected: [], stock: {} };
+                                const isOn = cur.selected.includes(opt);
+                                const nextSel = isOn
+                                  ? cur.selected.filter((s) => s !== opt)
+                                  : [...cur.selected, opt];
+                                const nextStock = { ...cur.stock };
+                                if (isOn) delete nextStock[opt]; else nextStock[opt] ??= 0;
+                                return { ...prev, [f.key]: { selected: nextSel, stock: nextStock } };
+                              });
+                            }}
+                            style={{
+                              minHeight: 36,
+                              padding: '6px 12px',
+                              borderRadius: 10,
+                              border: `1px solid ${active ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
+                              background: active ? 'rgba(167,139,250,0.20)' : 'rgba(255,255,255,0.05)',
+                              color: active ? '#A855F7' : 'rgba(255,255,255,0.70)',
+                              fontSize: 13,
+                              fontWeight: active ? 600 : 500,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {opt}{f.unit ? ` ${f.unit}` : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(variantOptions[f.key]?.selected.length ?? 0) > 0 && (
+                      <div className="flex flex-col gap-1.5 mt-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          Остаток по {f.nameRu.toLowerCase()}
+                        </p>
+                        {variantOptions[f.key].selected.map((opt) => (
+                          <div key={opt} className="flex items-center gap-2">
+                            <div
+                              className="flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{
+                                minWidth: 44, height: 36, padding: '0 8px', borderRadius: 8,
+                                background: 'rgba(167,139,250,0.15)',
+                                border: '1px solid rgba(167,139,250,0.25)',
+                                color: '#A855F7',
+                              }}
+                            >
+                              {opt}{f.unit ? ` ${f.unit}` : ''}
+                            </div>
+                            <input
+                              inputMode="numeric"
+                              value={variantOptions[f.key].stock[opt] || ''}
+                              onChange={(e) => {
+                                const n = Math.max(0, Number(e.target.value) || 0);
+                                setVariantOptions((prev) => ({
+                                  ...prev,
+                                  [f.key]: {
+                                    ...prev[f.key],
+                                    stock: { ...prev[f.key].stock, [opt]: n },
+                                  },
+                                }));
+                              }}
+                              placeholder="0"
+                              style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+                            />
+                            <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <input
+                    value={String(attrValues[f.key] ?? '')}
+                    onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder=""
+                    style={{ ...inputStyle, padding: '10px 14px', fontSize: 13 }}
+                  />
+                )}
+              </div>
+            ))}
+          </GlassCard>
+        )}
+
+        {/* Дополнительные характеристики (свободная форма) */}
         <GlassCard className="p-4 flex flex-col gap-3">
           <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            Характеристики
+            Доп. характеристики
           </label>
           {attrs.map((a) => (
             <div key={a.id} className="flex items-center gap-2">
@@ -434,69 +809,129 @@ export default function AddProductPage() {
           </div>
         </GlassCard>
 
-        {/* Фото товара */}
+        {/* Фото товара (TMA-MULTI-PHOTO-001) — массив до 8 шт, первое = главное */}
         <GlassCard className="p-4 flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            Фото товара
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Фото товара {photoPreviews.length > 0 && (
+                <span style={{ color: 'rgba(167,139,250,0.65)' }}>· {photoPreviews.length}/{MAX_PHOTOS}</span>
+              )}
+            </p>
+          </div>
 
-          {photoPreview ? (
-            <div className="flex items-start gap-3">
-              <img
-                src={photoPreview}
-                alt="preview"
-                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
-              />
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  {photoFile?.name}
-                </p>
-                {photoUploading && (
-                  <div className="flex flex-col gap-1">
-                    <div
+          {photoPreviews.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {photoPreviews.map((preview, idx) => (
+                <div
+                  key={preview}
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '1/1',
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    border: idx === 0 ? '2px solid rgba(168,85,247,0.55)' : '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <img
+                    src={preview}
+                    alt={`фото ${idx + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                  {idx === 0 && (
+                    <span
                       style={{
-                        height: 4, borderRadius: 4,
-                        background: 'rgba(255,255,255,0.10)',
-                        overflow: 'hidden',
+                        position: 'absolute', top: 4, left: 4,
+                        background: 'rgba(168,85,247,0.85)', color: '#fff',
+                        fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, letterSpacing: 0.3,
                       }}
                     >
-                      <div
-                        style={{
-                          height: '100%',
-                          width: `${uploadProgress}%`,
-                          background: 'linear-gradient(90deg, #7C3AED, #A855F7)',
-                          transition: 'width 0.2s',
-                          borderRadius: 4,
-                        }}
-                      />
+                      ГЛАВНОЕ
+                    </span>
+                  )}
+                  {photoUploading && uploadingIndex === idx && (
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: 'rgba(0,0,0,0.55)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      flexDirection: 'column', gap: 4,
+                    }}>
+                      <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>{uploadProgress}%</span>
                     </div>
-                    <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.70)' }}>
-                      {uploadProgress}%
-                    </p>
-                  </div>
-                )}
-                <button
-                  onClick={removePhoto}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
-                >
-                  <span className="text-xs" style={{ color: 'rgba(248,113,113,0.65)' }}>✕ Удалить</span>
-                </button>
-              </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(idx)}
+                    aria-label="Удалить"
+                    style={{
+                      position: 'absolute', top: 4, right: 4,
+                      width: 24, height: 24, borderRadius: 12,
+                      background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.18)',
+                      color: 'rgba(255,255,255,0.92)', fontSize: 13, lineHeight: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕
+                  </button>
+                  {photoPreviews.length > 1 && (
+                    <div style={{ position: 'absolute', bottom: 4, left: 4, display: 'flex', gap: 3 }}>
+                      <button
+                        type="button"
+                        onClick={() => movePhoto(idx, idx - 1)}
+                        disabled={idx === 0}
+                        aria-label="Влево"
+                        style={{
+                          width: 22, height: 22, borderRadius: 11,
+                          background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
+                          color: 'rgba(255,255,255,0.85)', fontSize: 11, padding: 0,
+                          opacity: idx === 0 ? 0.4 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        ◀
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => movePhoto(idx, idx + 1)}
+                        disabled={idx === photoPreviews.length - 1}
+                        aria-label="Вправо"
+                        style={{
+                          width: 22, height: 22, borderRadius: 11,
+                          background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
+                          color: 'rgba(255,255,255,0.85)', fontSize: 11, padding: 0,
+                          opacity: idx === photoPreviews.length - 1 ? 0.4 : 1,
+                          cursor: idx === photoPreviews.length - 1 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        ▶
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : (
+          )}
+
+          {photoPreviews.length < MAX_PHOTOS && (
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
+              disabled={photoUploading}
               style={{
                 border: '1px dashed rgba(167,139,250,0.30)',
                 borderRadius: 12,
-                padding: '20px 0',
+                padding: photoPreviews.length === 0 ? '20px 0' : '14px 0',
                 background: 'rgba(167,139,250,0.05)',
-                cursor: 'pointer',
+                cursor: photoUploading ? 'wait' : 'pointer',
                 width: '100%',
+                opacity: photoUploading ? 0.6 : 1,
               }}
             >
-              <p className="text-sm" style={{ color: 'rgba(167,139,250,0.70)' }}>📷 Выбрать фото</p>
-              <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>JPG, PNG, WEBP</p>
+              <p className="text-sm" style={{ color: 'rgba(167,139,250,0.80)' }}>
+                {photoPreviews.length === 0 ? '📷 Добавить фото' : '➕ Добавить ещё фото'}
+              </p>
+              <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                JPG, PNG, WEBP · до {MAX_PHOTOS} шт
+              </p>
             </button>
           )}
 
@@ -509,7 +944,9 @@ export default function AddProductPage() {
           />
         </GlassCard>
 
-        {/* Остаток / размеры */}
+        {/* Остаток / размеры. Показываем только если категория НЕ предоставляет
+            multi_select-фильтры (тогда варианты строятся динамически выше). */}
+        {multiSelectFilters.length === 0 && (
         <GlassCard className="p-4 flex flex-col gap-4">
           {/* Переключатель размеров */}
           <button
@@ -627,6 +1064,7 @@ export default function AddProductPage() {
             </div>
           )}
         </GlassCard>
+        )}
 
         {error && (
           <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 13, textAlign: 'center' }}>{error}</p>

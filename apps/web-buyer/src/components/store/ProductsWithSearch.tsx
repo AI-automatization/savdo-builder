@@ -45,12 +45,12 @@ export default function ProductsWithSearch({ products, storeSlug }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по товарам..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none focus:ring-2 transition-shadow"
+            className="w-full pl-10 pr-4 py-2.5 rounded-md text-sm outline-none focus:ring-2 transition-shadow"
             style={{
               background: colors.surface,
               border: `1px solid ${colors.border}`,
-              color: colors.textPrimary,
-              ['--tw-ring-color' as string]: colors.accentBorder,
+              color: colors.textBody,
+              ['--tw-ring-color' as string]: colors.brandBorder,
             }}
           />
         </div>
@@ -64,7 +64,7 @@ export default function ProductsWithSearch({ products, storeSlug }: Props) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 lg:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3.5">
           {filtered.map((product) => (
             <ProductCard key={product.id} product={product} storeSlug={storeSlug} />
           ))}

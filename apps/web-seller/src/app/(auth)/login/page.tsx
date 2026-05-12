@@ -63,7 +63,7 @@ export default function LoginPage() {
 
   const primaryBtn = (active: boolean): React.CSSProperties =>
     active
-      ? { background: colors.accent, color: colors.bg }
+      ? { background: colors.accent, color: colors.accentTextOnBg }
       : { background: colors.surfaceMuted, color: colors.textDim, cursor: "not-allowed", border: `1px solid ${colors.border}` };
 
   return (
@@ -76,7 +76,7 @@ export default function LoginPage() {
             className="w-16 h-16 rounded-lg flex items-center justify-center text-3xl mx-auto mb-3"
             style={{ background: colors.accent }}
           >
-            <ShoppingCart size={28} color={colors.bg} />
+            <ShoppingCart size={28} color={colors.accentTextOnBg} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: colors.brand }}>Savdo</h1>
           <p className="text-sm mt-1" style={{ color: colors.textMuted }}>Панель продавца</p>
@@ -139,11 +139,11 @@ export default function LoginPage() {
 
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Введите код</h2>
               <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
-                Отправили SMS на +998 {phone}
+                Код отправлен в Telegram-бот @savdo_builderBOT
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>
-                Код из SMS
+                Код из Telegram
               </label>
               <input
                 type="text"

@@ -1,20 +1,9 @@
 import { useState } from 'react'
 import { MessageSquare, RefreshCw, Trash2, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
-
-function toast(msg: string) {
-  const el = document.createElement('div')
-  el.textContent = msg
-  Object.assign(el.style, {
-    position: 'fixed', bottom: '24px', right: '24px', zIndex: '9999',
-    background: 'rgba(30,30,40,0.95)', color: '#fff', padding: '10px 18px',
-    borderRadius: '10px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.12)',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-  })
-  document.body.appendChild(el)
-  setTimeout(() => el.remove(), 2500)
-}
+import { confirmDialog } from '../components/admin/ConfirmDialog'
 
 interface ThreadRow {
   id: string
@@ -76,14 +65,20 @@ export default function ChatsPage() {
 
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Удалить этот диалог и все его сообщения?')) return
+    const ok = await confirmDialog({
+      title: 'Удалить диалог?',
+      body: 'Все сообщения треда будут удалены безвозвратно. Восстановить нельзя.',
+      confirmText: 'Удалить',
+      danger: true,
+    })
+    if (!ok) return
     setDeletingId(id)
     try {
       await api.delete(`/api/v1/admin/chat/threads/${id}`)
       if (selectedId === id) { setSelectedId(null); setDetail(null) }
-      toast('✅ Диалог удалён')
+      toast.success('Диалог удалён')
       refetch()
-    } catch { toast('❌ Не удалось удалить') }
+    } catch { toast.error('Не удалось удалить') }
     finally { setDeletingId(null) }
   }
 

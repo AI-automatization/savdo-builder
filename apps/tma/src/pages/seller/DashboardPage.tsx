@@ -1,11 +1,13 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
+import { StatsCardSkeleton, OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { Sticker } from '@/components/ui/Sticker';
+import { ProductImage } from '@/components/ui/ProductImage';
+import { SellerAnalyticsCard } from '@/components/seller/SellerAnalyticsCard';
 import { useTelegram } from '@/providers/TelegramProvider';
 
 function GearIcon() {
@@ -48,14 +50,19 @@ export default function DashboardPage() {
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
     setLoading(true);
 
     // Promise.allSettled — не падает если один из запросов вернул ошибку
     Promise.allSettled([
-      api<PagedResponse<Order>>('/seller/orders?limit=5'),
-      api<{ products: unknown[]; total: number }>('/seller/products?limit=1'),
+      api<PagedResponse<Order>>('/seller/orders?limit=5', { signal: ac.signal, forceFresh: true }),
+      api<{ products: unknown[]; total: number }>('/seller/products?limit=1', { signal: ac.signal }),
     ]).then(([ordersResult, productsResult]) => {
+      if (ac.signal.aborted) return;
       if (ordersResult.status === 'fulfilled') {
         setOrders(ordersResult.value.data ?? []);
         setOrderCount(ordersResult.value.meta?.total ?? 0);
@@ -63,7 +70,9 @@ export default function DashboardPage() {
       if (productsResult.status === 'fulfilled') {
         setProductCount(productsResult.value.total ?? 0);
       }
-    }).finally(() => setLoading(false));
+    }).finally(() => { if (!ac.signal.aborted) setLoading(false); });
+
+    return () => ac.abort();
   }, [authVersion]);
 
   const pendingCount = orderCount != null
@@ -80,10 +89,16 @@ export default function DashboardPage() {
     <>
       <div className="flex items-center gap-2">
         <div className="section-label flex-1 min-w-0">Последние заказы</div>
-        <button onClick={() => navigate('/seller/orders')} className="text-xs shrink-0" style={{ color: '#A855F7' }}>
+        <button onClick={() => navigate('/seller/orders')} className="text-xs shrink-0" style={{ color: 'var(--tg-accent)' }}>
           Все →
         </button>
       </div>
+
+      {loading && (
+        <div className="flex flex-col gap-2">
+          {[1, 2, 3].map((i) => <OrderRowSkeleton key={i} />)}
+        </div>
+      )}
 
       {!loading && orders.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-8">
@@ -93,46 +108,51 @@ export default function DashboardPage() {
       )}
 
       <div className="flex flex-col gap-2">
-        {orders.map((o) => (
-          <GlassCard
-            key={o.id}
-            className="flex items-center gap-3 px-3 py-3"
-            onClick={() => navigate('/seller/orders')}
-            style={{ cursor: 'pointer' }}
-          >
-            <div
-              className="shrink-0 w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center"
-              style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
+        {orders.map((o) => {
+          const orderShort = o.orderNumber?.replace(/^ORD-/, '') ?? o.id.slice(-6).toUpperCase();
+          const dt = new Date(o.createdAt);
+          const dateLabel = dt.toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+          const timeLabel = dt.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+          // Polat 06.05: одно «Футблока» в превью неинформативно — показываем
+          // номер заказа + время, а название товара во второй строке как контекст.
+          return (
+            <GlassCard
+              key={o.id}
+              className="flex items-center gap-3 px-3 py-3"
+              onClick={() => navigate(`/seller/orders?openId=${o.id}`)}
+              style={{ cursor: 'pointer' }}
             >
-              {o.preview?.imageUrl ? (
-                <img src={o.preview.imageUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span style={{ fontSize: 18 }}>📦</span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
-                  {o.preview?.title ?? `#${o.orderNumber ?? o.id.slice(-6)}`}
-                  {o.preview && o.preview.itemCount > 1 && (
-                    <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.90)' }}>
-                      +{o.preview.itemCount - 1}
-                    </span>
-                  )}
-                </p>
-                <Badge status={o.status} />
+              <div
+                className="shrink-0 w-10 h-10 rounded-xl overflow-hidden"
+                style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.18)' }}
+              >
+                <ProductImage src={o.preview?.imageUrl} emptyVariant="thumbnail" hideLabel />
               </div>
-              <div className="flex items-center justify-between mt-0.5">
-                <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                  {new Date(o.createdAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
-                </p>
-                <p className="text-xs font-bold" style={{ color: '#A855F7' }}>
-                  {Number(o.totalAmount).toLocaleString('ru')} сум
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                    Заказ #{orderShort}
+                  </p>
+                  <Badge status={o.status} />
+                </div>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    {o.preview?.title ?? '—'}
+                    {o.preview && o.preview.itemCount > 1 && (
+                      <span style={{ color: 'rgba(167,139,250,0.85)' }}> +{o.preview.itemCount - 1}</span>
+                    )}
+                  </p>
+                  <p className="text-xs font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
+                    {Number(o.totalAmount).toLocaleString('ru')} сум
+                  </p>
+                </div>
+                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
+                  {dateLabel} · {timeLabel}
                 </p>
               </div>
-            </div>
-          </GlassCard>
-        ))}
+            </GlassCard>
+          );
+        })}
       </div>
     </>
   );
@@ -144,7 +164,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 14px rgba(168,85,247,.40)' }}
+            style={{ background: 'var(--tg-accent)', boxShadow: '0 4px 14px var(--tg-accent-glow)' }}
           >
             <Sticker emoji="🏪" size={26} />
           </div>
@@ -172,7 +192,9 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-4">
               {/* Stats */}
               {loading ? (
-                <div className="flex justify-center py-4"><Spinner /></div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[1, 2, 3].map((i) => <StatsCardSkeleton key={i} />)}
+                </div>
               ) : (
                 <div className="grid grid-cols-3 gap-3">
                   {statsCards.map((s) => (
@@ -208,7 +230,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => navigate('/seller/products')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
-                  style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)' }}
+                  style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
                 >
                   <span style={{ fontSize: 28 }}>📦</span> Мои товары
                 </button>
@@ -234,6 +256,9 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 28 }}>🏪</span> Мой магазин
                 </button>
               </div>
+
+              {/* FEAT-006-FE: analytics dashboard */}
+              <SellerAnalyticsCard />
             </div>
 
             {/* Right column — recent orders */}
@@ -245,7 +270,9 @@ export default function DashboardPage() {
           /* ── Mobile: single column ── */
           <>
             {loading ? (
-              <div className="flex justify-center py-4"><Spinner /></div>
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3].map((i) => <StatsCardSkeleton key={i} />)}
+              </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 {statsCards.map((s) => (
@@ -280,7 +307,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => navigate('/seller/products')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
-                style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)' }}
+                style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
               >
                 <span>📦</span> Мои товары
               </button>
@@ -306,6 +333,9 @@ export default function DashboardPage() {
                 <span>🏪</span> Мой магазин
               </button>
             </div>
+
+            {/* FEAT-006-FE: analytics dashboard */}
+            <SellerAnalyticsCard />
 
             {ordersList}
           </>

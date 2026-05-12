@@ -11,9 +11,9 @@ import { card, cardMuted, colors, inputStyle } from '@/lib/styles';
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }> = {
   [OrderStatus.PENDING]:    { label: 'Ожидает',     color: colors.warning },
-  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён', color: '#60A5FA' },
+  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён', color: colors.info },
   [OrderStatus.PROCESSING]: { label: 'Обработка',   color: colors.accent },
-  [OrderStatus.SHIPPED]:    { label: 'В пути',       color: '#818CF8' },
+  [OrderStatus.SHIPPED]:    { label: 'В пути',       color: colors.info },
   [OrderStatus.DELIVERED]:  { label: 'Доставлен',   color: colors.success },
   [OrderStatus.CANCELLED]:  { label: 'Отменён',     color: colors.danger },
 };
@@ -243,7 +243,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               onClick={() => handleForward(next.status)}
               disabled={pending}
               className="px-4 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: colors.accent, color: colors.bg }}
+              style={{ background: colors.accent, color: colors.accentTextOnBg }}
             >
               {pending ? '...' : next.label}
             </button>

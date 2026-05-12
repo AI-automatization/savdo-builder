@@ -8,6 +8,8 @@ interface SeedCategory {
   parentSlug: string | null;
   level: number;
   sortOrder: number;
+  iconEmoji?: string;
+  isLeaf?: boolean; // если не задано — вычислится автоматически (нет детей → leaf)
 }
 
 interface SeedFilter {
@@ -15,21 +17,24 @@ interface SeedFilter {
   key: string;
   nameRu: string;
   nameUz: string;
-  fieldType: 'TEXT' | 'SELECT' | 'NUMBER' | 'BOOLEAN';
+  fieldType: 'TEXT' | 'SELECT' | 'NUMBER' | 'BOOLEAN' | 'COLOR' | 'MULTI_SELECT';
   options?: string[];
   unit?: string;
   sortOrder: number;
+  isRequired?: boolean;
+  isFilterable?: boolean;
 }
 
 const CATEGORIES: SeedCategory[] = [
-  // ── Level 0 (root) ──────────────────────────────────────────────────────────
-  { slug: 'electronics',  nameRu: 'Электроника',         nameUz: 'Elektronika',        parentSlug: null, level: 0, sortOrder: 10 },
-  { slug: 'appliances',   nameRu: 'Бытовая техника',     nameUz: 'Maishiy texnika',    parentSlug: null, level: 0, sortOrder: 20 },
-  { slug: 'clothing',     nameRu: 'Одежда',              nameUz: 'Kiyimlar',           parentSlug: null, level: 0, sortOrder: 30 },
-  // automotive removed — platform is not for vehicle sales
-  { slug: 'furniture',    nameRu: 'Мебель',              nameUz: 'Mebel',              parentSlug: null, level: 0, sortOrder: 50 },
-  { slug: 'books',        nameRu: 'Книги',               nameUz: 'Kitoblar',           parentSlug: null, level: 0, sortOrder: 60 },
-  { slug: 'outdoor',      nameRu: 'На открытом воздухе', nameUz: 'Ochiq havoda',       parentSlug: null, level: 0, sortOrder: 70 },
+  // ── Level 0 (root, "Отрасль") ──────────────────────────────────────────────
+  { slug: 'electronics',  nameRu: 'Электроника',         nameUz: 'Elektronika',        parentSlug: null, level: 0, sortOrder: 10, iconEmoji: '📱' },
+  { slug: 'appliances',   nameRu: 'Бытовая техника',     nameUz: 'Maishiy texnika',    parentSlug: null, level: 0, sortOrder: 20, iconEmoji: '🏠' },
+  { slug: 'clothing',     nameRu: 'Одежда',              nameUz: 'Kiyimlar',           parentSlug: null, level: 0, sortOrder: 30, iconEmoji: '👕' },
+  { slug: 'beauty',       nameRu: 'Красота и уход',      nameUz: 'Go\'zallik va parvarish', parentSlug: null, level: 0, sortOrder: 40, iconEmoji: '💄' },
+  { slug: 'furniture',    nameRu: 'Мебель',              nameUz: 'Mebel',              parentSlug: null, level: 0, sortOrder: 50, iconEmoji: '🛋️' },
+  { slug: 'books',        nameRu: 'Книги',               nameUz: 'Kitoblar',           parentSlug: null, level: 0, sortOrder: 60, iconEmoji: '📚' },
+  { slug: 'outdoor',      nameRu: 'Спорт и отдых',       nameUz: 'Sport va dam olish', parentSlug: null, level: 0, sortOrder: 70, iconEmoji: '🏃' },
+  { slug: 'kids',         nameRu: 'Детям',               nameUz: 'Bolalar uchun',      parentSlug: null, level: 0, sortOrder: 80, iconEmoji: '🧸' },
 
   // ── Level 1 — Electronics ────────────────────────────────────────────────────
   { slug: 'phones',                 nameRu: 'Телефоны',                nameUz: 'Telefonlar',            parentSlug: 'electronics', level: 1, sortOrder: 10 },
@@ -67,9 +72,42 @@ const CATEGORIES: SeedCategory[] = [
   // ── Level 1 — Outdoor ────────────────────────────────────────────────────────
   { slug: 'bikes', nameRu: 'Велосипеды', nameUz: 'Velosipedlar', parentSlug: 'outdoor', level: 1, sortOrder: 10 },
 
-  // ── Level 2 ───────────────────────────────────────────────────────────────────
-  { slug: 'smartphones',   nameRu: 'Смартфоны',        nameUz: 'Smartfonlar', parentSlug: 'phones', level: 2, sortOrder: 10 },
-  { slug: 'pc_components', nameRu: 'Комплектующие ПК', nameUz: 'PK qismlari', parentSlug: 'pc',     level: 2, sortOrder: 10 },
+  // ── Level 2 — Electronics leafs ─────────────────────────────────────────────
+  { slug: 'smartphones',          nameRu: 'Смартфоны',          nameUz: 'Smartfonlar',         parentSlug: 'phones',  level: 2, sortOrder: 10 },
+  { slug: 'feature_phones',       nameRu: 'Кнопочные телефоны', nameUz: 'Tugmali telefonlar',  parentSlug: 'phones',  level: 2, sortOrder: 20 },
+  { slug: 'gaming_laptops',       nameRu: 'Игровые ноутбуки',   nameUz: 'O\'yin noutbuklari',  parentSlug: 'laptops', level: 2, sortOrder: 10 },
+  { slug: 'business_laptops',     nameRu: 'Офисные ноутбуки',   nameUz: 'Ofis noutbuklari',    parentSlug: 'laptops', level: 2, sortOrder: 20 },
+  { slug: 'pc_components',        nameRu: 'Комплектующие ПК',   nameUz: 'PK qismlari',         parentSlug: 'pc',      level: 2, sortOrder: 10 },
+  { slug: 'headphones',           nameRu: 'Наушники',           nameUz: 'Naushniklar',         parentSlug: 'audio',   level: 2, sortOrder: 10 },
+  { slug: 'speakers',             nameRu: 'Колонки',            nameUz: 'Karnaylar',           parentSlug: 'audio',   level: 2, sortOrder: 20 },
+
+  // ── Level 2 — Appliances leafs ──────────────────────────────────────────────
+  { slug: 'microwaves',     nameRu: 'Микроволновки',  nameUz: 'Mikroto\'lqinli pechlar', parentSlug: 'kitchen', level: 2, sortOrder: 10 },
+  { slug: 'blenders',       nameRu: 'Блендеры',       nameUz: 'Blenderlar',              parentSlug: 'kitchen', level: 2, sortOrder: 20 },
+  { slug: 'kettles',        nameRu: 'Электрочайники', nameUz: 'Elektr choynaklar',       parentSlug: 'kitchen', level: 2, sortOrder: 30 },
+
+  // ── Level 2 — Clothing leafs ───────────────────────────────────────────────
+  { slug: 'mens_tshirts',   nameRu: 'Мужские футболки',     nameUz: 'Erkak futbolkalari',  parentSlug: 'mens_clothing',   level: 2, sortOrder: 10 },
+  { slug: 'mens_jeans',     nameRu: 'Мужские джинсы',       nameUz: 'Erkak jinslari',      parentSlug: 'mens_clothing',   level: 2, sortOrder: 20 },
+  { slug: 'mens_jackets',   nameRu: 'Мужские куртки',       nameUz: 'Erkak kurtkalar',     parentSlug: 'mens_clothing',   level: 2, sortOrder: 30 },
+  { slug: 'womens_dresses', nameRu: 'Женские платья',       nameUz: 'Ayol koylaklari',     parentSlug: 'womens_clothing', level: 2, sortOrder: 10 },
+  { slug: 'womens_tshirts', nameRu: 'Женские футболки',     nameUz: 'Ayol futbolkalari',   parentSlug: 'womens_clothing', level: 2, sortOrder: 20 },
+  { slug: 'womens_jeans',   nameRu: 'Женские джинсы',       nameUz: 'Ayol jinslari',       parentSlug: 'womens_clothing', level: 2, sortOrder: 30 },
+
+  // ── Level 2 — Shoes leafs ──────────────────────────────────────────────────
+  { slug: 'sneakers',  nameRu: 'Кроссовки', nameUz: 'Krossovkalar', parentSlug: 'shoes', level: 2, sortOrder: 10 },
+  { slug: 'boots',     nameRu: 'Ботинки',   nameUz: 'Botinkalar',   parentSlug: 'shoes', level: 2, sortOrder: 20 },
+  { slug: 'casual_shoes', nameRu: 'Туфли',  nameUz: 'Tuflilar',     parentSlug: 'shoes', level: 2, sortOrder: 30 },
+
+  // ── Level 1 — Beauty (новая отрасль) ────────────────────────────────────────
+  { slug: 'perfume',           nameRu: 'Парфюмерия',          nameUz: 'Parfyumeriya',         parentSlug: 'beauty', level: 1, sortOrder: 10 },
+  { slug: 'face_care',         nameRu: 'Уход за лицом',       nameUz: 'Yuz parvarishi',       parentSlug: 'beauty', level: 1, sortOrder: 20 },
+  { slug: 'decorative_makeup', nameRu: 'Декоративная косметика', nameUz: 'Dekorativ kosmetika', parentSlug: 'beauty', level: 1, sortOrder: 30 },
+
+  // ── Level 1 — Kids (новая отрасль) ─────────────────────────────────────────
+  { slug: 'toys',         nameRu: 'Игрушки',           nameUz: 'O\'yinchoqlar',         parentSlug: 'kids', level: 1, sortOrder: 10 },
+  { slug: 'baby_food',    nameRu: 'Детское питание',   nameUz: 'Bolalar oziq-ovqati',   parentSlug: 'kids', level: 1, sortOrder: 20 },
+  { slug: 'baby_clothes', nameRu: 'Одежда для младенцев', nameUz: 'Chaqaloqlar kiyimi', parentSlug: 'kids', level: 1, sortOrder: 30 },
 ];
 
 const COLORS_RU = ['Чёрный', 'Белый', 'Серый', 'Синий', 'Красный', 'Зелёный', 'Золотой', 'Серебристый', 'Розовый', 'Жёлтый', 'Другой'];
@@ -214,6 +252,89 @@ const CATEGORY_FILTERS: SeedFilter[] = [
   { categorySlug: 'bikes', key: 'color',  nameRu: 'Цвет',     nameUz: 'Rang',     fieldType: 'SELECT', options: COLORS_RU, sortOrder: 30 },
   { categorySlug: 'bikes', key: 'frame',  nameRu: 'Рама',     nameUz: 'Rama',     fieldType: 'SELECT', options: ['13','15','17','19','21'], unit: 'дюйм', sortOrder: 40 },
   { categorySlug: 'bikes', key: 'wheels', nameRu: 'Колёса',   nameUz: 'G\'ildirak',fieldType: 'SELECT', options: ['20','24','26','27.5','28','29'], unit: 'дюйм', sortOrder: 50 },
+
+  // ── Игровые ноутбуки ─────────────────────────────────────────────────────
+  { categorySlug: 'gaming_laptops', key: 'brand', nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['ASUS','MSI','Acer','Lenovo','HP','Dell','Apple'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'gaming_laptops', key: 'cpu',   nameRu: 'Процессор', nameUz: 'Protsessor', fieldType: 'SELECT', options: ['Intel Core i5','Intel Core i7','Intel Core i9','AMD Ryzen 5','AMD Ryzen 7','AMD Ryzen 9'], sortOrder: 20, isRequired: true },
+  { categorySlug: 'gaming_laptops', key: 'ram',   nameRu: 'ОЗУ', nameUz: 'RAM', fieldType: 'SELECT', options: ['8','16','32','64'], unit: 'GB', sortOrder: 30, isRequired: true },
+  { categorySlug: 'gaming_laptops', key: 'ssd',   nameRu: 'SSD', nameUz: 'SSD', fieldType: 'SELECT', options: ['256','512','1024','2048'], unit: 'GB', sortOrder: 40 },
+  { categorySlug: 'gaming_laptops', key: 'gpu',   nameRu: 'Видеокарта', nameUz: 'Videokarta', fieldType: 'SELECT', options: ['RTX 3050','RTX 3060','RTX 3070','RTX 3080','RTX 4060','RTX 4070','RTX 4080','RTX 4090','Radeon RX'], sortOrder: 50, isRequired: true },
+  { categorySlug: 'gaming_laptops', key: 'screen',nameRu: 'Диагональ', nameUz: 'Diagonal', fieldType: 'SELECT', options: ['14','15.6','16','17.3'], unit: 'inch', sortOrder: 60 },
+
+  // ── Office laptops ─────────────────────────────────────────────────────────
+  { categorySlug: 'business_laptops', key: 'brand', nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['Apple','Lenovo','HP','Dell','ASUS','Acer','Huawei'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'business_laptops', key: 'ram',   nameRu: 'ОЗУ', nameUz: 'RAM', fieldType: 'SELECT', options: ['4','8','16','32'], unit: 'GB', sortOrder: 20, isRequired: true },
+  { categorySlug: 'business_laptops', key: 'ssd',   nameRu: 'SSD', nameUz: 'SSD', fieldType: 'SELECT', options: ['128','256','512','1024'], unit: 'GB', sortOrder: 30 },
+  { categorySlug: 'business_laptops', key: 'screen',nameRu: 'Диагональ', nameUz: 'Diagonal', fieldType: 'SELECT', options: ['13','13.3','14','15.6','16'], unit: 'inch', sortOrder: 40 },
+
+  // ── Headphones ─────────────────────────────────────────────────────────────
+  { categorySlug: 'headphones', key: 'brand',    nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['Apple','Sony','Bose','JBL','Samsung','Xiaomi','Marshall','Beats'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'headphones', key: 'type',     nameRu: 'Тип', nameUz: 'Turi', fieldType: 'SELECT', options: ['Накладные','Внутриканальные','Полноразмерные'], sortOrder: 20, isRequired: true },
+  { categorySlug: 'headphones', key: 'wireless', nameRu: 'Беспроводные', nameUz: 'Simsiz', fieldType: 'BOOLEAN', sortOrder: 30 },
+  { categorySlug: 'headphones', key: 'anc',      nameRu: 'Шумоподавление', nameUz: 'Shovqin bostirish', fieldType: 'BOOLEAN', sortOrder: 40 },
+  { categorySlug: 'headphones', key: 'color',    nameRu: 'Цвет', nameUz: 'Rang', fieldType: 'SELECT', options: COLORS_RU, sortOrder: 50 },
+
+  // ── Speakers ────────────────────────────────────────────────────────────────
+  { categorySlug: 'speakers', key: 'brand',    nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['JBL','Sony','Bose','Marshall','Xiaomi','Harman Kardon','Другой'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'speakers', key: 'power',    nameRu: 'Мощность', nameUz: 'Quvvat', fieldType: 'NUMBER', unit: 'W', sortOrder: 20 },
+  { categorySlug: 'speakers', key: 'wireless', nameRu: 'Беспроводная', nameUz: 'Simsiz', fieldType: 'BOOLEAN', sortOrder: 30 },
+
+  // ── Microwaves ──────────────────────────────────────────────────────────────
+  { categorySlug: 'microwaves', key: 'brand',  nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['Samsung','LG','Bosch','Panasonic','Midea','Другой'], sortOrder: 10 },
+  { categorySlug: 'microwaves', key: 'volume', nameRu: 'Объём', nameUz: 'Hajm', fieldType: 'NUMBER', unit: 'L', sortOrder: 20 },
+  { categorySlug: 'microwaves', key: 'power',  nameRu: 'Мощность', nameUz: 'Quvvat', fieldType: 'NUMBER', unit: 'W', sortOrder: 30 },
+  { categorySlug: 'microwaves', key: 'grill',  nameRu: 'Гриль', nameUz: 'Grill', fieldType: 'BOOLEAN', sortOrder: 40 },
+
+  // ── Refrigerators ──────────────────────────────────────────────────────────
+  { categorySlug: 'refrigerators', key: 'brand',    nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['Samsung','LG','Bosch','Indesit','Beko','Atlant','Другой'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'refrigerators', key: 'volume',   nameRu: 'Общий объём', nameUz: 'Umumiy hajm', fieldType: 'NUMBER', unit: 'L', sortOrder: 20 },
+  { categorySlug: 'refrigerators', key: 'no_frost', nameRu: 'No Frost', nameUz: 'No Frost', fieldType: 'BOOLEAN', sortOrder: 30 },
+  { categorySlug: 'refrigerators', key: 'inverter', nameRu: 'Инверторный компрессор', nameUz: 'Inverter kompressor', fieldType: 'BOOLEAN', sortOrder: 40 },
+  { categorySlug: 'refrigerators', key: 'color',    nameRu: 'Цвет', nameUz: 'Rang', fieldType: 'SELECT', options: COLORS_RU, sortOrder: 50 },
+
+  // ── Mens T-shirts ─────────────────────────────────────────────────────────
+  { categorySlug: 'mens_tshirts', key: 'size',     nameRu: 'Размер', nameUz: 'O\'lcham', fieldType: 'SELECT', options: ['XS','S','M','L','XL','XXL','XXXL'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'mens_tshirts', key: 'material', nameRu: 'Материал', nameUz: 'Material', fieldType: 'SELECT', options: ['Хлопок','Полиэстер','Хлопок+Полиэстер','Лён','Шерсть'], sortOrder: 20 },
+  { categorySlug: 'mens_tshirts', key: 'color',    nameRu: 'Цвет', nameUz: 'Rang', fieldType: 'SELECT', options: COLORS_RU, sortOrder: 30, isRequired: true },
+  { categorySlug: 'mens_tshirts', key: 'sleeve',   nameRu: 'Рукав', nameUz: 'Yeng', fieldType: 'SELECT', options: ['Короткий','Длинный','Без рукавов'], sortOrder: 40 },
+
+  // ── Mens Jeans ─────────────────────────────────────────────────────────────
+  { categorySlug: 'mens_jeans', key: 'waist_size', nameRu: 'Размер талии', nameUz: 'Bel o\'lchami', fieldType: 'SELECT', options: ['28','30','32','34','36','38','40','42'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'mens_jeans', key: 'length',     nameRu: 'Длина по ноге', nameUz: 'Oyoq uzunligi', fieldType: 'SELECT', options: ['30','32','34','36'], sortOrder: 20 },
+  { categorySlug: 'mens_jeans', key: 'fit',        nameRu: 'Посадка', nameUz: 'O\'rnashuv', fieldType: 'SELECT', options: ['Skinny','Slim','Regular','Relaxed','Wide'], sortOrder: 30 },
+  { categorySlug: 'mens_jeans', key: 'color',      nameRu: 'Цвет деним', nameUz: 'Denim rangi', fieldType: 'SELECT', options: ['Тёмно-синий','Светло-синий','Чёрный','Серый','Белый','Цветной'], sortOrder: 40 },
+
+  // ── Womens Dresses ────────────────────────────────────────────────────────
+  { categorySlug: 'womens_dresses', key: 'size',     nameRu: 'Размер', nameUz: 'O\'lcham', fieldType: 'SELECT', options: ['XS','S','M','L','XL','XXL'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'womens_dresses', key: 'length',   nameRu: 'Длина', nameUz: 'Uzunlik', fieldType: 'SELECT', options: ['Мини','Миди','Макси'], sortOrder: 20 },
+  { categorySlug: 'womens_dresses', key: 'material', nameRu: 'Материал', nameUz: 'Material', fieldType: 'SELECT', options: ['Хлопок','Шёлк','Полиэстер','Шифон','Атлас','Другой'], sortOrder: 30 },
+  { categorySlug: 'womens_dresses', key: 'color',    nameRu: 'Цвет', nameUz: 'Rang', fieldType: 'SELECT', options: COLORS_RU, sortOrder: 40, isRequired: true },
+  { categorySlug: 'womens_dresses', key: 'occasion', nameRu: 'Повод', nameUz: 'Holat', fieldType: 'SELECT', options: ['Повседневное','Вечернее','Свадебное','Деловое','Спорт'], sortOrder: 50 },
+
+  // ── Sneakers ───────────────────────────────────────────────────────────────
+  { categorySlug: 'sneakers', key: 'size_eu',   nameRu: 'Размер EU', nameUz: 'EU o\'lcham', fieldType: 'SELECT', options: ['35','36','37','38','39','40','41','42','43','44','45','46'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'sneakers', key: 'gender',    nameRu: 'Пол', nameUz: 'Jins', fieldType: 'SELECT', options: ['Мужские','Женские','Унисекс','Детские'], sortOrder: 20, isRequired: true },
+  { categorySlug: 'sneakers', key: 'brand',     nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['Nike','Adidas','Puma','New Balance','Reebok','Converse','Vans','ASICS','Другой'], sortOrder: 30 },
+  { categorySlug: 'sneakers', key: 'color',     nameRu: 'Цвет', nameUz: 'Rang', fieldType: 'SELECT', options: COLORS_RU, sortOrder: 40, isRequired: true },
+  { categorySlug: 'sneakers', key: 'season',    nameRu: 'Сезон', nameUz: 'Mavsum', fieldType: 'SELECT', options: ['Лето','Демисезон','Зима','Всесезонный'], sortOrder: 50 },
+
+  // ── Boots ──────────────────────────────────────────────────────────────────
+  { categorySlug: 'boots', key: 'size_eu',   nameRu: 'Размер EU', nameUz: 'EU o\'lcham', fieldType: 'SELECT', options: ['35','36','37','38','39','40','41','42','43','44','45','46'], sortOrder: 10, isRequired: true },
+  { categorySlug: 'boots', key: 'gender',    nameRu: 'Пол', nameUz: 'Jins', fieldType: 'SELECT', options: ['Мужские','Женские','Унисекс'], sortOrder: 20, isRequired: true },
+  { categorySlug: 'boots', key: 'material',  nameRu: 'Материал', nameUz: 'Material', fieldType: 'SELECT', options: ['Кожа','Замша','Текстиль','Эко-кожа'], sortOrder: 30 },
+  { categorySlug: 'boots', key: 'season',    nameRu: 'Сезон', nameUz: 'Mavsum', fieldType: 'SELECT', options: ['Зима','Демисезон','Утеплённые'], sortOrder: 40 },
+  { categorySlug: 'boots', key: 'waterproof',nameRu: 'Водозащита', nameUz: 'Suv o\'tkazmaslik', fieldType: 'BOOLEAN', sortOrder: 50 },
+
+  // ── Perfume ────────────────────────────────────────────────────────────────
+  { categorySlug: 'perfume', key: 'brand',  nameRu: 'Бренд', nameUz: 'Brend', fieldType: 'SELECT', options: ['Chanel','Dior','Tom Ford','Gucci','Armani','Versace','Yves Saint Laurent','Другой'], sortOrder: 10 },
+  { categorySlug: 'perfume', key: 'volume', nameRu: 'Объём', nameUz: 'Hajm', fieldType: 'SELECT', options: ['30','50','75','100','125'], unit: 'ml', sortOrder: 20, isRequired: true },
+  { categorySlug: 'perfume', key: 'type',   nameRu: 'Тип', nameUz: 'Turi', fieldType: 'SELECT', options: ['EDP (Eau de Parfum)','EDT (Eau de Toilette)','Parfum','Cologne'], sortOrder: 30 },
+  { categorySlug: 'perfume', key: 'gender', nameRu: 'Пол', nameUz: 'Jins', fieldType: 'SELECT', options: ['Женский','Мужской','Унисекс'], sortOrder: 40, isRequired: true },
+
+  // ── Toys ───────────────────────────────────────────────────────────────────
+  { categorySlug: 'toys', key: 'age_from', nameRu: 'Возраст от', nameUz: 'Yoshdan', fieldType: 'SELECT', options: ['0','1','3','5','7','10','12','14'], unit: 'лет', sortOrder: 10 },
+  { categorySlug: 'toys', key: 'age_to',   nameRu: 'Возраст до', nameUz: 'Yoshgacha', fieldType: 'SELECT', options: ['1','3','5','7','10','12','14','18'], unit: 'лет', sortOrder: 20 },
+  { categorySlug: 'toys', key: 'type',     nameRu: 'Тип', nameUz: 'Turi', fieldType: 'SELECT', options: ['Конструкторы','Куклы','Машинки','Мягкие','Развивающие','Настольные','Другое'], sortOrder: 30 },
 ];
 
 @Injectable()
@@ -247,12 +368,27 @@ export class GlobalCategoriesSeedService implements OnModuleInit {
     const slugToId = new Map<string, string>();
     const sorted = [...CATEGORIES].sort((a, b) => a.level - b.level);
 
+    // Pre-compute "has children" чтобы решить isLeaf автоматически
+    const hasChildren = new Set<string>();
+    for (const cat of sorted) if (cat.parentSlug) hasChildren.add(cat.parentSlug);
+
     for (const cat of sorted) {
       const parentId = cat.parentSlug ? (slugToId.get(cat.parentSlug) ?? null) : null;
+      const isLeaf = cat.isLeaf ?? !hasChildren.has(cat.slug);
+      const data = {
+        slug: cat.slug,
+        nameRu: cat.nameRu,
+        nameUz: cat.nameUz,
+        sortOrder: cat.sortOrder,
+        level: cat.level,
+        isLeaf,
+        iconEmoji: cat.iconEmoji ?? null,
+        isActive: true,
+      };
       const record = await this.prisma.globalCategory.upsert({
         where: { slug: cat.slug },
-        update: { nameRu: cat.nameRu, nameUz: cat.nameUz, sortOrder: cat.sortOrder, isActive: true },
-        create: { slug: cat.slug, nameRu: cat.nameRu, nameUz: cat.nameUz, parentId, sortOrder: cat.sortOrder, isActive: true },
+        update: data,
+        create: { ...data, parentId },
       });
       slugToId.set(cat.slug, record.id);
     }
@@ -263,10 +399,20 @@ export class GlobalCategoriesSeedService implements OnModuleInit {
 
   async seedFilters(): Promise<number> {
     for (const f of CATEGORY_FILTERS) {
+      const data = {
+        nameRu: f.nameRu,
+        nameUz: f.nameUz,
+        fieldType: f.fieldType,
+        options: f.options ? JSON.stringify(f.options) : null,
+        unit: f.unit ?? null,
+        sortOrder: f.sortOrder,
+        isRequired: f.isRequired ?? false,
+        isFilterable: f.isFilterable ?? true,
+      };
       await this.prisma.categoryFilter.upsert({
         where: { categorySlug_key: { categorySlug: f.categorySlug, key: f.key } },
-        update: { nameRu: f.nameRu, nameUz: f.nameUz, fieldType: f.fieldType, options: f.options ? JSON.stringify(f.options) : null, unit: f.unit ?? null, sortOrder: f.sortOrder },
-        create: { categorySlug: f.categorySlug, key: f.key, nameRu: f.nameRu, nameUz: f.nameUz, fieldType: f.fieldType, options: f.options ? JSON.stringify(f.options) : null, unit: f.unit ?? null, sortOrder: f.sortOrder },
+        update: data,
+        create: { categorySlug: f.categorySlug, key: f.key, ...data },
       });
     }
 

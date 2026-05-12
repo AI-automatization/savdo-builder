@@ -7,4 +7,7 @@ export const storageConfig = registerAs('storage', () => ({
   bucketPublic: process.env.STORAGE_BUCKET_PUBLIC ?? 'savdo-public',
   bucketPrivate: process.env.STORAGE_BUCKET_PRIVATE ?? 'savdo-private',
   publicUrl: process.env.STORAGE_PUBLIC_URL,
+  // SigV4 region. R2 принимает 'auto', Supabase требует реальный
+  // project region (us-east-1 / eu-west-1 / etc — смотри dashboard).
+  region: process.env.STORAGE_REGION ?? 'us-east-1',
 }));

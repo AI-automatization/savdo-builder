@@ -10,8 +10,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ModerationActionType, ModerationCaseStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { GetModerationQueueUseCase } from './use-cases/get-moderation-queue.use-case';
@@ -22,8 +25,10 @@ import { TakeActionDto } from './dto/take-action.dto';
 import { ListCasesDto } from './dto/list-cases.dto';
 import { ModerationRepository } from './repositories/moderation.repository';
 
+@ApiTags('moderation')
+@ApiBearerAuth('jwt')
 @Controller('admin/moderation')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 @Roles('ADMIN')
 export class ModerationController {
   constructor(
@@ -109,13 +114,13 @@ export class ModerationController {
     if (!modCase) {
       return { success: false, error: 'Case not found' };
     }
-    await this.moderationRepo.updateCaseStatus(id, 'closed');
+    await this.moderationRepo.updateCaseStatus(id, ModerationCaseStatus.CLOSED);
     await this.moderationRepo.addAction({
       caseId: id,
       entityType: modCase.entityType,
       entityId: modCase.entityId,
       adminUserId: user.sub,
-      actionType: 'CLOSE',
+      actionType: ModerationActionType.CLOSE,
       comment: 'Case closed manually by admin',
     });
     await this.moderationRepo.writeAuditLog({
@@ -143,13 +148,13 @@ export class ModerationController {
     if (!modCase) {
       return { success: false, error: 'Case not found' };
     }
-    await this.moderationRepo.updateCaseStatus(id, 'open');
+    await this.moderationRepo.updateCaseStatus(id, ModerationCaseStatus.OPEN);
     await this.moderationRepo.addAction({
       caseId: id,
       entityType: modCase.entityType,
       entityId: modCase.entityId,
       adminUserId: user.sub,
-      actionType: 'REOPEN',
+      actionType: ModerationActionType.REOPEN,
       comment: 'Case reopened by admin',
     });
     await this.moderationRepo.writeAuditLog({

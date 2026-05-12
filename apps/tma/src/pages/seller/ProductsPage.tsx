@@ -1,19 +1,15 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
-import { getImageUrl } from '@/lib/imageUrl';
+import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
-
-interface ProductImage {
-  id: string;
-  isPrimary: boolean;
-  media: { objectKey: string };
-}
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
+import { ProductImage } from '@/components/ui/ProductImage';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
+import { showToast } from '@/components/ui/Toast';
 
 interface Product {
   id: string;
@@ -22,7 +18,12 @@ interface Product {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'HIDDEN_BY_ADMIN';
   description: string | null;
   storeCategoryId?: string | null;
-  images?: ProductImage[];
+  // TMA-MEDIA-USE-API-URL-001: backend `seller/products` мапит objectKey →
+  // absolute URL через resolveImageUrl (учитывает bucket=telegram → /media/proxy
+  // и R2 → CDN). Используем готовый массив, не вызываем getImageUrl() на
+  // фронте — иначе для tg-файлов он возвращал '' и фото не отображались.
+  mediaUrls?: string[];
+  totalStock?: number;
 }
 
 interface StoreCategory {
@@ -32,7 +33,14 @@ interface StoreCategory {
 
 export default function SellerProductsPage() {
   const navigate = useNavigate();
-  const { tg } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
+  // На мобиле — всегда 2 колонки (как Wildberries/Ozon), даёт ясную картинку,
+  // короткий список 1xN раньше казался ленточным и непонятным.
+  const gridCols =
+    viewportWidth >= 1536 ? 'grid-cols-5' :
+    viewportWidth >= 1280 ? 'grid-cols-4' :
+    viewportWidth >= 1024 ? 'grid-cols-3' :
+    'grid-cols-2';
   const { authVersion } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -42,25 +50,31 @@ export default function SellerProductsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const load = useCallback(() => {
+  const abortRef = useRef<AbortController | null>(null);
+  const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
     Promise.all([
-      api<{ products: Product[]; total: number }>('/seller/products?limit=50'),
-      api<StoreCategory[]>('/seller/categories'),
+      api<{ products: Product[]; total: number }>('/seller/products?limit=50', { signal }),
+      api<StoreCategory[]>('/seller/categories', { signal }),
     ])
       .then(([res, cats]) => {
+        if (signal?.aborted) return;
         setProducts(res?.products ?? []);
         setCategories(cats ?? []);
       })
-      .catch(() => setError('Не удалось загрузить товары'))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!signal?.aborted) setError('Не удалось загрузить товары'); })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
   }, []);
 
   useEffect(() => {
-    load();
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    load(ac.signal);
     tg?.BackButton.show();
-    tg?.BackButton.onClick(() => navigate('/seller'));
-    return () => { tg?.BackButton.hide(); tg?.BackButton.offClick(() => navigate('/seller')); };
+    const goBack = () => navigate('/seller');
+    tg?.BackButton.onClick(goBack);
+    return () => { ac.abort(); tg?.BackButton.hide(); tg?.BackButton.offClick(goBack); };
   }, [load, navigate, tg, authVersion]);
 
   const toggleStatus = async (product: Product) => {
@@ -84,7 +98,12 @@ export default function SellerProductsPage() {
   };
 
   const archiveProduct = async (product: Product) => {
-    if (!window.confirm(`Архивировать «${product.title}»?\n\nТовар исчезнет из магазина, но сохранится в истории заказов.`)) return;
+    const ok = await confirmDialog({
+      title: `Архивировать «${product.title}»?`,
+      body: 'Товар исчезнет из магазина, но сохранится в истории заказов.',
+      confirmText: 'Архивировать',
+    });
+    if (!ok) return;
     setTogglingId(product.id);
     try {
       await api(`/seller/products/${product.id}/status`, {
@@ -97,14 +116,20 @@ export default function SellerProductsPage() {
       );
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
-      window.alert('Не удалось архивировать товар');
+      showToast('Не удалось архивировать товар', 'error');
     } finally {
       setTogglingId(null);
     }
   };
 
   const deleteProduct = async (product: Product) => {
-    if (!window.confirm(`Удалить «${product.title}» навсегда?\n\nЭто действие нельзя отменить.`)) return;
+    const ok = await confirmDialog({
+      title: `Удалить «${product.title}» навсегда?`,
+      body: 'Это действие нельзя отменить.',
+      confirmText: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     setTogglingId(product.id);
     try {
       await api(`/seller/products/${product.id}`, { method: 'DELETE' });
@@ -113,7 +138,7 @@ export default function SellerProductsPage() {
     } catch (err) {
       tg?.HapticFeedback.notificationOccurred('error');
       const msg = err instanceof Error ? err.message : 'Не удалось удалить товар';
-      window.alert(msg);
+      showToast(msg, 'error');
     } finally {
       setTogglingId(null);
     }
@@ -128,7 +153,11 @@ export default function SellerProductsPage() {
   return (
     
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        {/* На мобиле paddingRight=56px чтобы кнопка «+» не попала под Telegram MainBar (крестик ✕) */}
+        <div
+          className="flex items-center justify-between"
+          style={{ paddingRight: viewportWidth < 768 ? 56 : 0 }}
+        >
           <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
             Товары{' '}
             {products.length > 0 && (
@@ -144,62 +173,66 @@ export default function SellerProductsPage() {
 
         {/* Category filter — WB/Uzum style horizontal chips */}
         {!loading && categories.length > 0 && (
-          <div
-            className="flex gap-2 overflow-x-auto pb-0.5"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {/* "Все" chip */}
-            <button
-              onClick={() => setActiveCat('')}
-              className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-              style={{
-                background: !activeCat ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${!activeCat ? 'rgba(124,58,237,0.60)' : 'rgba(255,255,255,0.10)'}`,
-                color: !activeCat ? '#A855F7' : 'rgba(255,255,255,0.50)',
-              }}
+          <div className="scroll-fade-x">
+            <div
+              className="flex gap-2 overflow-x-auto scroll-snap-x pb-0.5"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              Все
-            </button>
-            {categories.map((cat) => {
-              const active = activeCat === cat.id;
-              const count = products.filter((p) => p.storeCategoryId === cat.id).length;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCat(active ? '' : cat.id)}
-                  className="shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-                  style={{
-                    background: active ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.06)',
-                    border: `1px solid ${active ? 'rgba(124,58,237,0.60)' : 'rgba(255,255,255,0.10)'}`,
-                    color: active ? '#A855F7' : 'rgba(255,255,255,0.50)',
-                  }}
-                >
-                  {cat.name}
-                  {count > 0 && (
-                    <span
-                      className="text-[10px] font-bold px-1 rounded-full"
-                      style={{
-                        background: active ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.08)',
-                        color: active ? '#A855F7' : 'rgba(255,255,255,0.35)',
-                      }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+              {/* "Все" chip */}
+              <button
+                onClick={() => setActiveCat('')}
+                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${!activeCat ? 'chip-active' : ''}`}
+                style={activeCat ? {
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'rgba(255,255,255,0.50)',
+                } : undefined}
+              >
+                Все
+              </button>
+              {categories.map((cat) => {
+                const active = activeCat === cat.id;
+                const count = products.filter((p) => p.storeCategoryId === cat.id).length;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCat(active ? '' : cat.id)}
+                    className={`shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${active ? 'chip-active' : ''}`}
+                    style={!active ? {
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      color: 'rgba(255,255,255,0.50)',
+                    } : undefined}
+                  >
+                    {cat.name}
+                    {count > 0 && (
+                      <span
+                        className="text-[10px] font-bold px-1 rounded-full"
+                        style={{
+                          background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
+                          color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {loading && (
-          <div className="flex justify-center py-10"><Spinner size={32} /></div>
+          <div className={gridCols ? `grid ${gridCols} gap-3` : 'flex flex-col gap-2'}>
+            {Array.from({ length: gridCols ? 8 : 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+          </div>
         )}
 
         {!loading && error && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{error}</p>
-            <Button variant="ghost" className="mt-3" onClick={load}>Повторить</Button>
+            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>Повторить</Button>
           </GlassCard>
         )}
 
@@ -222,91 +255,102 @@ export default function SellerProductsPage() {
           </div>
         )}
 
-        {!loading && filtered.map((product) => {
-          const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
-          const thumbUrl = primaryImage ? getImageUrl(primaryImage.media.objectKey) : '';
-          return (
-            <GlassCard
-              key={product.id}
-              className="p-4 flex items-center gap-3 cursor-pointer active:opacity-70"
-              onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden"
-                style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.20)' }}
-              >
-                {thumbUrl ? (
-                  <img src={thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  '🛍'
-                )}
-              </div>
+        {!loading && filtered.length > 0 && gridCols && (
+          <div className={`grid ${gridCols} gap-3`}>
+            {filtered.map((product) => {
+              const thumbUrl = product.mediaUrls?.[0] ?? '';
+              return (
+                <GlassCard
+                  key={product.id}
+                  className="p-3 flex flex-col gap-2 cursor-pointer active:opacity-70"
+                  onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                  onPointerEnter={() => {
+                    prefetch(`/seller/products/${product.id}`);
+                    prefetch(`/seller/products/${product.id}/attributes`);
+                  }}
+                >
+                  <div className="w-full aspect-square rounded-xl overflow-hidden relative"
+                    style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.18)' }}>
+                    <ProductImage src={thumbUrl} alt={product.title} emptyVariant="no-photo" />
+                    {typeof product.totalStock === 'number' && product.totalStock <= 0 && (
+                      <div style={{ position: 'absolute', left: 6, top: 6, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', letterSpacing: 0.3 }}>
+                        НЕТ В НАЛИЧИИ
+                      </div>
+                    )}
+                    {typeof product.totalStock === 'number' && product.totalStock > 0 && product.totalStock <= 5 && (
+                      <div style={{ position: 'absolute', left: 6, top: 6, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'rgba(251,191,36,0.92)', color: '#1a1208', letterSpacing: 0.3 }}>
+                        ОСТАЛОСЬ {product.totalStock}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold" style={{
+                    color: 'rgba(255,255,255,0.92)',
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                  }}>
+                    {product.title}
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold" style={{ color: 'var(--tg-accent)' }}>{price(product)}</p>
+                    <Badge status={product.status} />
+                  </div>
+                  {typeof product.totalStock === 'number' && (
+                    <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'rgba(255,255,255,0.40)' }}>
+                      {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-1.5 mt-auto pt-1">
+                    {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleStatus(product); }}
+                        disabled={togglingId === product.id}
+                        title={product.status === 'ACTIVE' ? 'Снять с публикации' : 'Опубликовать'}
+                        style={{
+                          flex: 1, height: 32, borderRadius: 10, border: 'none',
+                          background: product.status === 'ACTIVE' ? 'rgba(248,113,113,0.15)' : 'rgba(52,211,153,0.15)',
+                          color: product.status === 'ACTIVE' ? '#f87171' : '#34d399',
+                          fontSize: 13, fontWeight: 600,
+                          cursor: togglingId === product.id ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {togglingId === product.id ? '…' : product.status === 'ACTIVE' ? '⏸ Скрыть' : '▶ Опубл.'}
+                      </button>
+                    )}
+                    {(product.status === 'ACTIVE' || product.status === 'DRAFT') && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); archiveProduct(product); }}
+                        disabled={togglingId === product.id}
+                        title="Архивировать"
+                        style={{
+                          width: 32, height: 32, borderRadius: 10, border: 'none',
+                          background: 'rgba(251,191,36,0.15)',
+                          color: '#fbbf24', fontSize: 13,
+                          cursor: togglingId === product.id ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}
+                      >📥</button>
+                    )}
+                    {product.status !== 'ACTIVE' && product.status !== 'HIDDEN_BY_ADMIN' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteProduct(product); }}
+                        disabled={togglingId === product.id}
+                        title="Удалить навсегда"
+                        style={{
+                          width: 32, height: 32, borderRadius: 10, border: 'none',
+                          background: 'rgba(248,113,113,0.15)',
+                          color: '#f87171', fontSize: 13,
+                          cursor: togglingId === product.id ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}
+                      >🗑</button>
+                    )}
+                  </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+        )}
 
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
-                  {product.title}
-                </p>
-                <p className="text-[11px]" style={{ color: 'rgba(167,139,250,0.80)' }}>
-                  {price(product)}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Badge status={product.status} />
-                {product.status !== 'HIDDEN_BY_ADMIN' && product.status !== 'ARCHIVED' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleStatus(product); }}
-                    disabled={togglingId === product.id}
-                    title={product.status === 'ACTIVE' ? 'Снять с публикации' : 'Опубликовать'}
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: product.status === 'ACTIVE' ? 'rgba(248,113,113,0.15)' : 'rgba(52,211,153,0.15)',
-                      color: product.status === 'ACTIVE' ? '#f87171' : '#34d399',
-                      fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    {togglingId === product.id ? '…' : product.status === 'ACTIVE' ? '⏸' : '▶'}
-                  </button>
-                )}
-                {(product.status === 'ACTIVE' || product.status === 'DRAFT') && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); archiveProduct(product); }}
-                    disabled={togglingId === product.id}
-                    title="Архивировать"
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: 'rgba(251,191,36,0.15)',
-                      color: '#fbbf24', fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    📥
-                  </button>
-                )}
-                {product.status !== 'ACTIVE' && product.status !== 'HIDDEN_BY_ADMIN' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteProduct(product); }}
-                    disabled={togglingId === product.id}
-                    title="Удалить навсегда"
-                    style={{
-                      width: 32, height: 32, borderRadius: 10, border: 'none',
-                      background: 'rgba(248,113,113,0.15)',
-                      color: '#f87171', fontSize: 14,
-                      cursor: togglingId === product.id ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    🗑
-                  </button>
-                )}
-              </div>
-            </GlassCard>
-          );
-        })}
       </div>
-    
+
   );
 }

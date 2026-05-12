@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_FILTER } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { appConfig } from './config/app.config';
 import { dbConfig } from './config/db.config';
 import { redisConfig } from './config/redis.config';
@@ -13,6 +13,7 @@ import { featuresConfig } from './config/features.config';
 import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/prisma.module';
 import { RedisModule } from './shared/redis.module';
+import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { SellersModule } from './modules/sellers/sellers.module';
@@ -30,6 +31,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { QueuesModule } from './queues/queues.module';
@@ -42,9 +44,12 @@ import { QueuesModule } from './queues/queues.module';
       validationSchema: envValidationSchema,
     }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
+    // Глобальный rate-limit. По умолчанию 120 req/60s на IP. Перебивается
+    // @Throttle на конкретных endpoint'ах (OTP, login, upload — жёстче).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     DatabaseModule,
     RedisModule,
+    IdempotencyModule,
     QueuesModule,
     AuthModule,
     UsersModule,
@@ -63,10 +68,14 @@ import { QueuesModule } from './queues/queues.module';
     ModerationModule,
     AnalyticsModule,
     WishlistModule,
+    ReviewsModule,
     HealthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    // Глобальный ThrottlerGuard — без него @Throttle декораторы не работают.
+    // ВНИМАНИЕ: до этого коммита @Throttle({...}) на sendMessage был silent no-op.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

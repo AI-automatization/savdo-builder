@@ -1,25 +1,123 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* ──────────────────────────────────────────────────────────────────────────────
+   Theme tokens — buyer
+   Single source of truth for both light & dark themes.
+   Values must mirror `apps/web-buyer/src/lib/styles.ts` 1-to-1 for `:root`.
+   Dark theme overrides via `[data-theme="dark"]`.
+   See `docs/design/liquid-authority.md` for the broader system.
+   ─────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #FAFAF7;
-  --foreground: #0F1115;
+  /* ── Light — Soft Color Lifestyle ─────────────────────────────────────── */
+  /* Neutral base */
+  --color-bg:                #FBF7F0;
+  --color-surface:           #FFFFFF;
+  --color-surface-muted:     #FBF7F0;
+  --color-surface-elevated:  #FFFFFF;
+  --color-surface-sunken:    #F4EEE0;
+  --color-divider:           #EFE8DA;     /* structural separators (dividers, hr) */
+  --color-border:            #EFE8DA;     /* interactive element edges (inputs, buttons, cards) */
+  --color-border-strong:     #D8CFB8;
+  --color-text-primary:      #1F1A12;
+  --color-text-muted:        #8A7D6A;
+  --color-text-dim:          #B5A88E;
+  --color-text-body:         #3D3525;
+  --color-text-strong:       #1F1A12;
+
+  /* Brand — terracotta default (per-store override planned) */
+  --color-brand:             #7C3F2E;
+  --color-brand-hover:       #6A3526;
+  --color-brand-muted:       rgba(124,63,46,0.06);
+  --color-brand-border:      rgba(124,63,46,0.15);
+  --color-brand-text-on-bg:  #FBF7F0;
+
+  /* Accent — alias for brand to keep existing components working */
+  --color-accent:            var(--color-brand);
+  --color-accent-hover:      var(--color-brand-hover);
+  --color-accent-muted:      var(--color-brand-muted);
+  --color-accent-border:     var(--color-brand-border);
+  --color-accent-text-on-bg: var(--color-brand-text-on-bg);
+
+  /* Semantic */
+  --color-success:           #4A6B45;
+  --color-warning:           #9C7A2E;
+  --color-danger:            #8B3A3A;
+  --color-telegram:          #2AABEE;
+  --color-skeleton:          #EFE8DA;
+
   color-scheme: light;
 }
 
+[data-theme="dark"] {
+  /* ── Dark — Soft Color Lifestyle (warm near-black + lifted terracotta) ──── */
+  /* Inverted lightness, warmth preserved (no cold slate). Brand lifted in
+     lightness for visibility on dark surface; brand-text-on-bg flips to white. */
+  /* Neutral base */
+  --color-bg:                #16120D;     /* warm near-black, deep brown-tinted */
+  --color-surface:           #221C16;     /* one step lighter than bg */
+  --color-surface-muted:     #1E1812;     /* between bg and surface */
+  --color-surface-elevated:  #2A231C;     /* popovers, modals — elevated */
+  --color-surface-sunken:    #100E09;     /* deeper than bg, inset cards */
+  --color-divider:           rgba(245,239,227,0.08);
+  --color-border:            rgba(245,239,227,0.12);
+  --color-border-strong:     rgba(245,239,227,0.22);
+  --color-text-primary:      #F5EFE3;     /* warm off-white */
+  --color-text-muted:        #A89B85;     /* warm tan-grey */
+  --color-text-dim:          #7A6F5E;
+  --color-text-body:         #D9CEB9;     /* lighter cream for body */
+  --color-text-strong:       #F5EFE3;
+
+  /* Brand — terracotta lifted for dark contrast (5:1 vs white text) */
+  --color-brand:             #A05A45;
+  --color-brand-hover:       #B36850;
+  --color-brand-muted:       rgba(160,90,69,0.18);
+  --color-brand-border:      rgba(160,90,69,0.42);
+  --color-brand-text-on-bg:  #FFFFFF;
+
+  /* Accent — alias for brand to keep existing components working */
+  --color-accent:            var(--color-brand);
+  --color-accent-hover:      var(--color-brand-hover);
+  --color-accent-muted:      var(--color-brand-muted);
+  --color-accent-border:     var(--color-brand-border);
+  --color-accent-text-on-bg: var(--color-brand-text-on-bg);
+
+  /* Semantic — lifted lightness for dark visibility */
+  --color-success:           #7A9B72;
+  --color-warning:           #D9A95C;
+  --color-danger:            #C56666;
+  --color-telegram:          #38BDF8;
+  --color-skeleton:          rgba(245,239,227,0.06);
+
+  color-scheme: dark;
+}
+
+/* Tailwind v4 — expose tokens as utilities (bg-bg, text-fg, etc.) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-primary);
+  --font-sans: var(--font-inter);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text-body);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* Hide horizontal-scroll scrollbars on category chip rows */
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Theme-aware soft hover — slight contrast against current surface in either
+   theme. Use for icon buttons / row hovers / emoji-tab items. */
+.hover-soft { transition: background-color 150ms; }
+.hover-soft:hover { background-color: color-mix(in srgb, var(--color-text-primary) 8%, transparent); }
+
+/* Honor reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+}

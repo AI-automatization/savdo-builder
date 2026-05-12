@@ -1,12 +1,16 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ChatMessageType } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChatRepository } from '../repositories/chat.repository';
 
 export interface GetThreadMessagesInput {
   threadId: string;
-  readerUserId: string;
+  /** Buyer profile id юзера (если есть). Юзер — участник если thread.buyerId === buyerProfileId. */
+  buyerProfileId?: string;
+  /** Seller profile id юзера (если есть). Юзер — участник если thread.sellerId === sellerProfileId. */
+  sellerProfileId?: string;
   limit?: number;
   before?: string;
 }
@@ -19,6 +23,9 @@ export interface MappedChatMessage {
   createdAt: string;
   editedAt: string | null;
   isDeleted: boolean;
+  mediaUrl?: string | null;
+  messageType?: ChatMessageType;
+  parentMessage?: { id: string; text: string; senderRole: 'BUYER' | 'SELLER' } | null;
 }
 
 export interface GetThreadMessagesOutput {
@@ -56,10 +63,10 @@ export class GetThreadMessagesUseCase {
       );
     }
 
-    const isParticipant =
-      thread.buyerId === input.readerUserId || thread.sellerId === input.readerUserId;
+    const isBuyer = !!input.buyerProfileId && thread.buyerId === input.buyerProfileId;
+    const isSeller = !!input.sellerProfileId && thread.sellerId === input.sellerProfileId;
 
-    if (!isParticipant) {
+    if (!isBuyer && !isSeller) {
       throw new DomainException(
         ErrorCode.NOT_THREAD_PARTICIPANT,
         'You are not a participant of this thread',
@@ -68,7 +75,7 @@ export class GetThreadMessagesUseCase {
     }
 
     // Mark thread as read (fire-and-forget — не блокирует ответ)
-    const role = thread.buyerId === input.readerUserId ? 'buyer' : 'seller';
+    const role = isBuyer ? 'buyer' : 'seller';
     void this.chatRepo.markAsRead(input.threadId, role).catch((err: unknown) => {
       this.logger.warn(`markAsRead failed: ${err instanceof Error ? err.message : String(err)}`);
     });
@@ -82,15 +89,43 @@ export class GetThreadMessagesUseCase {
     const hasMore = raw.length > limit;
     const slice = hasMore ? raw.slice(0, limit) : raw;
 
-    const messages: MappedChatMessage[] = slice.map((m) => ({
-      id: m.id,
-      threadId: m.threadId,
-      text: m.isDeleted ? '' : (m.body ?? ''),
-      senderRole: m.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
-      editedAt: (m as any).editedAt ? new Date((m as any).editedAt).toISOString() : null,
-      isDeleted: m.isDeleted,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+
+    // Resolve parent message previews in batch (избежать N+1)
+    const parentIds = Array.from(
+      new Set(
+        slice
+          .map((m) => (m as any).parentMessageId as string | null)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const parents = parentIds.length
+      ? await this.chatRepo.findMessagesByIds(parentIds)
+      : [];
+    const parentsById = new Map(parents.map((p) => [p.id, p]));
+
+    const messages: MappedChatMessage[] = slice.map((m) => {
+      const mAny = m as any;
+      const parent = mAny.parentMessageId ? parentsById.get(mAny.parentMessageId) : null;
+      return {
+        id: m.id,
+        threadId: m.threadId,
+        text: m.isDeleted ? '' : (m.body ?? ''),
+        senderRole: m.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+        editedAt: mAny.editedAt ? new Date(mAny.editedAt).toISOString() : null,
+        isDeleted: m.isDeleted,
+        createdAt: m.createdAt.toISOString(),
+        mediaUrl: mAny.mediaId ? `${appUrl}/api/v1/media/proxy/${mAny.mediaId}` : null,
+        messageType: m.messageType,
+        parentMessage: parent
+          ? {
+              id: parent.id,
+              text: parent.isDeleted ? '' : ((parent as any).body ?? ''),
+              senderRole: parent.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
+            }
+          : null,
+      };
+    });
 
     return { messages, hasMore };
   }

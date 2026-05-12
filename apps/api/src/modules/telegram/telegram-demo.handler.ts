@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TelegramBotService, InlineButton, WebAppButton } from './services/telegram-bot.service';
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
+import { escapeTgHtml } from '../../shared/telegram-html';
+import { maskPhone } from '../../shared/pii';
 
 // ── Redis keys ────────────────────────────────────────────────────────────────
 const TTL_LONG  = 365 * 24 * 60 * 60; // 1 год — привязка телефона
@@ -87,14 +89,14 @@ export class TelegramDemoHandler {
   // /start — точка входа
   // ─────────────────────────────────────────────────────────────────────────
 
-  async handleStart(chatId: string, firstName?: string): Promise<void> {
+  async handleStart(chatId: string, firstName?: string, startParam?: string): Promise<void> {
     const user = await this.resolveUser(chatId);
 
     if (!user) {
       // Новый пользователь — просим телефон
       await this.bot.sendMessage(
         chatId,
-        `👋 Привет${firstName ? `, <b>${firstName}</b>` : ''}!\n\nДобро пожаловать в <b>Savdo</b> — маркетплейс в Telegram.\n\nДля входа поделитесь номером телефона:`,
+        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nДобро пожаловать в <b>Savdo</b> — маркетплейс в Telegram.\n\nДля входа поделитесь номером телефона:`,
         { parseMode: 'HTML' },
       );
       await this.bot.sendContactRequest(chatId);
@@ -106,16 +108,28 @@ export class TelegramDemoHandler {
     if (user.phone.startsWith('tg_')) {
       await this.bot.sendMessage(
         chatId,
-        `👋 Привет${firstName ? `, <b>${firstName}</b>` : ''}!\n\nВы уже вошли через наше приложение. Для полноценной работы с ботом поделитесь номером телефона:`,
+        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nВы уже вошли через наше приложение. Для полноценной работы с ботом поделитесь номером телефона:`,
         { parseMode: 'HTML' },
       );
       await this.bot.sendContactRequest(chatId);
       return;
     }
 
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+
+    // TMA-BECOME-SELLER-CTA-001: deep-link из TMA "Стать продавцом".
+    // Whitelist строгий — любой другой param игнорируется, идёт обычный flow.
+    if (startParam === 'become_seller' && !seller) {
+      // Реальный аккаунт с телефоном, но без seller-профиля → запускаем регистрацию.
+      // Phone уже подтверждён → пропускаем contact request, переиспользуем существующий 3-step flow.
+      await this.setTmp(chatId, 'phone', user.phone);
+      await this.setTmp(chatId, 'firstName', firstName ?? '');
+      await this.startSellerRegistration(chatId);
+      return;
+    }
+
     // Обычный пользователь — показываем меню
     const displayName = firstName ?? user.phone;
-    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (seller) {
       await this.showSellerMenu(chatId, displayName);
     } else {
@@ -207,7 +221,7 @@ export class TelegramDemoHandler {
           });
         });
 
-        this.logger.log(`Linked telegramId=${chatId} to user id=${existing.id} phone=${normalized}`);
+        this.logger.log(`Linked telegramId=${chatId} to user id=${existing.id} phone=${maskPhone(normalized)}`);
       }
 
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
@@ -245,7 +259,7 @@ export class TelegramDemoHandler {
           });
         }
         // Продавец — проверяем есть ли магазин
-        const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+        const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } });
         if (store) {
           await this.showSellerMenu(chatId, firstName ?? normalized);
         } else {
@@ -306,7 +320,7 @@ export class TelegramDemoHandler {
       },
     });
 
-    this.logger.log(`Registered buyer userId=${user.id} phone=${phone}`);
+    this.logger.log(`Registered buyer userId=${user.id} phone=${maskPhone(phone)}`);
     await this.showBuyerMenu(chatId, firstName || phone);
   }
 
@@ -367,39 +381,71 @@ export class TelegramDemoHandler {
       .slice(0, 40) + '-' + Date.now().toString(36);
 
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          phone,
-          role: 'SELLER',
-          isPhoneVerified: true,
-          telegramId: BigInt(chatId),
-          seller: {
-            create: {
-              fullName: sellerName,
-              sellerType: 'individual',
-              telegramUsername: username || '',
-              telegramChatId: BigInt(chatId),
-              telegramNotificationsActive: true,
-              store: {
-                create: {
-                  name: storeName,
-                  slug,
-                  description: description || null,
-                  city: 'Tashkent',
-                  telegramContactLink: username ? `https://t.me/${username}` : '',
-                  status: 'DRAFT',
-                },
-              },
-            },
+      // TMA-BECOME-SELLER-CTA-001 (12.05.2026): purchaser уже может быть зарегистрирован
+      // как BUYER через TMA. Старый `user.create` падал на unique(phone) → 500. Теперь:
+      // - если user существует и уже seller → no-op + меню (защита от двойной регистрации)
+      // - если user существует как buyer → upgrade role + create seller/store (buyer-запись
+      //   сохраняется — пользователь сможет покупать в чужих магазинах)
+      // - если user не существует → классический create (новый flow через /start)
+      const sellerNested = {
+        fullName: sellerName,
+        sellerType: 'individual',
+        telegramUsername: username || '',
+        telegramChatId: BigInt(chatId),
+        telegramNotificationsActive: true,
+        store: {
+          create: {
+            name: storeName,
+            slug,
+            description: description || null,
+            city: 'Tashkent',
+            telegramContactLink: username ? `https://t.me/${username}` : '',
+            status: 'DRAFT' as const,
           },
         },
+      };
+
+      const existing = await this.prisma.user.findUnique({
+        where: { phone },
+        include: { seller: { select: { id: true } } },
       });
 
-      this.logger.log(`Registered seller userId=${user.id} store=${slug}`);
+      let userId: string;
+      if (existing?.seller) {
+        // Уже продавец — повторный вход не должен дублировать запись.
+        await this.bot.sendMessage(chatId, '✅ Вы уже зарегистрированы как продавец.');
+        await this.showSellerMenu(chatId, sellerName);
+        return;
+      }
+
+      if (existing) {
+        const updated = await this.prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            role: 'SELLER',
+            telegramId: BigInt(chatId),
+            seller: { create: sellerNested },
+          },
+        });
+        userId = updated.id;
+        this.logger.log(`Upgraded buyer → seller userId=${userId} store=${slug}`);
+      } else {
+        const created = await this.prisma.user.create({
+          data: {
+            phone,
+            role: 'SELLER',
+            isPhoneVerified: true,
+            telegramId: BigInt(chatId),
+            seller: { create: sellerNested },
+          },
+        });
+        userId = created.id;
+        this.logger.log(`Registered seller userId=${userId} store=${slug}`);
+      }
 
       await this.bot.sendInlineKeyboard(
         chatId,
-        `🎉 <b>Магазин создан!</b>\n\n🏪 ${storeName}\n🔗 savdo.uz/${slug}\n\nТеперь настройте Telegram-канал для автопостинга товаров:`,
+        `🎉 <b>Магазин создан!</b>\n\n🏪 ${escapeTgHtml(storeName)}\n🔗 savdo.uz/${escapeTgHtml(slug)}\n\nТеперь настройте Telegram-канал для автопостинга товаров:`,
         [
           [{ text: '📢 Привязать TG канал', callback_data: 'seller_link_channel' }],
           [{ text: '⏭ Пропустить',         callback_data: 'seller_skip_channel'  }],
@@ -423,7 +469,7 @@ export class TelegramDemoHandler {
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!seller) { await this.handleStart(chatId); return; }
 
-    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } });
     if (!store) {
       // Нет магазина — сначала создаём
       await this.setState(chatId, 'seller_create_store_name');
@@ -476,7 +522,7 @@ export class TelegramDemoHandler {
       await this.setState(chatId, 'awaiting_channel');
       await this.bot.sendMessage(
         chatId,
-        `✅ Магазин <b>${name}</b> создан!\n\n📢 <b>Теперь привяжем Telegram-канал</b>\n\n1. Добавьте бота как <b>администратора</b> в ваш канал\n2. Отправьте сюда <b>username канала</b>, например:\n\n<code>@mystore_channel</code>`,
+        `✅ Магазин <b>${escapeTgHtml(name)}</b> создан!\n\n📢 <b>Теперь привяжем Telegram-канал</b>\n\n1. Добавьте бота как <b>администратора</b> в ваш канал\n2. Отправьте сюда <b>username канала</b>, например:\n\n<code>@mystore_channel</code>`,
         { parseMode: 'HTML' },
       );
     } catch (err) {
@@ -512,7 +558,7 @@ export class TelegramDemoHandler {
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!seller) { await this.handleStart(chatId); return; }
 
-    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id } });
+    const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } });
     if (!store) {
       // Этого не должно быть (handleLinkChannel теперь создаёт store заранее),
       // но на всякий случай — предлагаем создать
@@ -546,7 +592,8 @@ export class TelegramDemoHandler {
   // ─────────────────────────────────────────────────────────────────────────
 
   async postProductToChannel(storeId: string, productId: string): Promise<void> {
-    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    // DB-AUDIT-001-07: не публикуем товары удалённого магазина в TG-канал
+    const store = await this.prisma.store.findFirst({ where: { id: storeId, deletedAt: null } });
     if (!store?.telegramChannelId) return;
 
     const product = await this.prisma.product.findUnique({
@@ -561,7 +608,7 @@ export class TelegramDemoHandler {
     if (!product) return;
 
     const price = `${Number(String(product.basePrice ?? 0)).toLocaleString('ru')} сум`;
-    const caption = `🛍 <b>${product.title}</b>\n\n${product.description ? `📝 ${product.description}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${store.name}`;
+    const caption = `🛍 <b>${escapeTgHtml(product.title)}</b>\n\n${product.description ? `📝 ${escapeTgHtml(product.description)}\n\n` : ''}💰 Цена: <b>${price}</b>\n\n🏪 Магазин: ${escapeTgHtml(store.name)}`;
 
     const tmaUrl = process.env.TMA_URL ?? '';
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
@@ -624,7 +671,7 @@ export class TelegramDemoHandler {
     ];
     await this.bot.sendWithWebApp(
       chatId,
-      `👋 <b>${name || 'Продавец'}</b>, панель управления:\n\n💡 <i>Для удобного управления товарами используйте приложение</i>`,
+      `👋 <b>${name ? escapeTgHtml(name) : 'Продавец'}</b>, панель управления:\n\n💡 <i>Для удобного управления товарами используйте приложение</i>`,
       rows,
       'HTML',
     );
@@ -639,7 +686,7 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
 
     // Deep link в TMA сразу на страницу товаров
     const deepLink = tmaUrl ? `${tmaUrl}` : null;
@@ -652,7 +699,7 @@ export class TelegramDemoHandler {
       : 0;
 
     const text = store
-      ? `📦 <b>Мои товары — ${store.name}</b>\n\nВсего товаров: <b>${productCount}</b>\n\n<i>Управляйте товарами, добавляйте новые и публикуйте их прямо в приложении. При публикации товар автоматически появится в вашем Telegram-канале.</i>`
+      ? `📦 <b>Мои товары — ${escapeTgHtml(store.name)}</b>\n\nВсего товаров: <b>${productCount}</b>\n\n<i>Управляйте товарами, добавляйте новые и публикуйте их прямо в приложении. При публикации товар автоматически появится в вашем Telegram-канале.</i>`
       : `📦 <b>Товары</b>\n\n<i>Создайте магазин чтобы добавлять товары.</i>`;
 
     await this.bot.sendToChannel(
@@ -687,7 +734,7 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
     if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
 
     const orders = await this.prisma.order.findMany({
@@ -715,16 +762,16 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
     if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
 
     const channel = store.telegramChannelId
-      ? `\n📢 Канал: ${store.telegramChannelTitle ?? store.telegramChannelId}`
+      ? `\n📢 Канал: ${escapeTgHtml(store.telegramChannelTitle ?? store.telegramChannelId)}`
       : `\n📢 Канал: не привязан`;
 
     await this.bot.sendMessage(
       chatId,
-      `🏪 <b>${store.name}</b>\n🔗 savdo.uz/${store.slug}\n📌 Статус: ${store.status}${channel}`,
+      `🏪 <b>${escapeTgHtml(store.name)}</b>\n🔗 savdo.uz/${escapeTgHtml(store.slug)}\n📌 Статус: ${store.status}${channel}`,
       { parseMode: 'HTML' },
     );
   }
@@ -734,7 +781,7 @@ export class TelegramDemoHandler {
     if (!user) { await this.handleStart(chatId); return; }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
-    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id } }) : null;
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
     if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
 
     const [productCount, orderCount] = await Promise.all([
@@ -744,7 +791,7 @@ export class TelegramDemoHandler {
 
     await this.bot.sendMessage(
       chatId,
-      `📊 <b>Статистика «${store.name}»</b>\n\n📦 Товаров: <b>${productCount}</b>\n🛒 Всего заказов: <b>${orderCount}</b>`,
+      `📊 <b>Статистика «${escapeTgHtml(store.name)}»</b>\n\n📦 Товаров: <b>${productCount}</b>\n🛒 Всего заказов: <b>${orderCount}</b>`,
       { parseMode: 'HTML' },
     );
   }
@@ -761,7 +808,7 @@ export class TelegramDemoHandler {
       [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
       [{ text: '📦 Мои заказы',   callback_data: 'buyer_orders'     }],
     ];
-    await this.bot.sendWithWebApp(chatId, `👋 Привет, <b>${name}</b>!`, rows, 'HTML');
+    await this.bot.sendWithWebApp(chatId, `👋 Привет, <b>${escapeTgHtml(name)}</b>!`, rows, 'HTML');
   }
 
   async handleBuyerFindStore(chatId: string): Promise<void> {
@@ -772,11 +819,11 @@ export class TelegramDemoHandler {
   async handleStoreSlugInput(chatId: string, slug: string): Promise<void> {
     await this.clearState(chatId);
 
-    const store = await this.prisma.store.findUnique({ where: { slug: slug.trim().toLowerCase() } });
+    const store = await this.prisma.store.findFirst({ where: { slug: slug.trim().toLowerCase(), deletedAt: null } });
     if (!store) {
       await this.bot.sendInlineKeyboard(
         chatId,
-        `❌ Магазин <code>${slug}</code> не найден.`,
+        `❌ Магазин <code>${escapeTgHtml(slug)}</code> не найден.`,
         [[{ text: '🔍 Искать снова', callback_data: 'buyer_find_store' }]],
         'HTML',
       );
@@ -790,7 +837,7 @@ export class TelegramDemoHandler {
     });
 
     const productLines = products.length
-      ? products.map((p, i) => `${i + 1}. <b>${p.title}</b> — ${Number(String(p.basePrice ?? 0)).toLocaleString('ru')} сум`).join('\n')
+      ? products.map((p, i) => `${i + 1}. <b>${escapeTgHtml(p.title)}</b> — ${Number(String(p.basePrice ?? 0)).toLocaleString('ru')} сум`).join('\n')
       : '📭 Товаров пока нет';
 
     const tmaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
@@ -799,7 +846,7 @@ export class TelegramDemoHandler {
       ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
       : tmaUrl;
     await this.bot.sendToChannel(chatId, // sendToChannel работает и для личных чатов
-      `🏪 <b>${store.name}</b>\n\n${store.description ? `${store.description}\n\n` : ''}<b>Товары:</b>\n${productLines}`,
+      `🏪 <b>${escapeTgHtml(store.name)}</b>\n\n${store.description ? `${escapeTgHtml(store.description)}\n\n` : ''}<b>Товары:</b>\n${productLines}`,
       [[{ text: '🛒 Открыть магазин', url: storeLink }]],
       'HTML',
     );

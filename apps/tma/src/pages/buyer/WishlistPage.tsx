@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { WishlistButton } from '@/components/ui/WishlistButton';
-import type { WishlistItem } from 'types';
-import { setLocalFlag } from '@/lib/wishlist';
+import { ProductImage } from '@/components/ui/ProductImage';
+import { showToast } from '@/components/ui/Toast';
+import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
+import { clickableA11y } from '@/lib/a11y';
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -22,7 +24,10 @@ export default function WishlistPage() {
         setItems(data);
         for (const it of data) setLocalFlag(it.productId, true);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        showToast('Не удалось загрузить избранное', 'error');
+      })
       .finally(() => setLoading(false));
   }, [authenticated]);
 
@@ -36,9 +41,11 @@ export default function WishlistPage() {
   }, [authenticated, loading]);
 
   const cols =
-    viewportWidth >= 960 ? 'grid-cols-5' :
-    viewportWidth >= 768 ? 'grid-cols-4' :
-    viewportWidth >= 560 ? 'grid-cols-3' : 'grid-cols-2';
+    viewportWidth >= 1536 ? 'grid-cols-7' :
+    viewportWidth >= 1280 ? 'grid-cols-6' :
+    viewportWidth >= 1024 ? 'grid-cols-5' :
+    viewportWidth >= 768  ? 'grid-cols-4' :
+    viewportWidth >= 560  ? 'grid-cols-3' : 'grid-cols-2';
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,7 +54,7 @@ export default function WishlistPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold text-gradient">Избранное</h1>
           {!loading && items.length > 0 && (
-            <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <p className="text-xs font-medium" style={{ color: 'var(--tg-text-muted)' }}>
               {items.length} {items.length === 1 ? 'товар' : items.length < 5 ? 'товара' : 'товаров'}
             </p>
           )}
@@ -63,7 +70,9 @@ export default function WishlistPage() {
       )}
 
       {authenticated && loading && (
-        <div className="flex justify-center py-10"><Spinner /></div>
+        <div className={`grid ${cols} gap-3`}>
+          {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+        </div>
       )}
 
       {authenticated && !loading && items.length === 0 && (
@@ -82,26 +91,21 @@ export default function WishlistPage() {
             return (
               <div
                 key={it.id}
-                onClick={() => navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`)}
+                {...clickableA11y(() => navigate(`/buyer/store/${p.storeSlug}/product/${p.id}`))}
+                aria-label={`Открыть товар ${p.title}`}
                 style={{
                   borderRadius: 14,
                   overflow: 'hidden',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--tg-surface)',
+                  border: '1px solid var(--tg-border-soft)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
                   opacity: p.isAvailable ? 1 : 0.55,
                 }}
               >
-                <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
-                  {url ? (
-                    <img src={url} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-                      📦
-                    </div>
-                  )}
+                <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'var(--tg-surface-hover)', position: 'relative' }}>
+                  <ProductImage src={url} alt={p.title} emptyVariant="product-empty" />
                   <div style={{ position: 'absolute', top: 6, right: 6 }}>
                     <WishlistButton productId={p.id} variant="card" />
                   </div>
@@ -118,16 +122,16 @@ export default function WishlistPage() {
                 </div>
                 <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
                   <p style={{
-                    fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.88)',
+                    fontSize: 12, fontWeight: 600, color: 'var(--tg-text-primary)',
                     lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>
                     {p.title}
                   </p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#A855F7' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--tg-accent)' }}>
                     {Number(p.basePrice).toLocaleString('ru')} {p.currencyCode === 'UZS' ? 'сум' : p.currencyCode}
                   </p>
                   <p style={{
-                    fontSize: 10, color: 'rgba(255,255,255,0.35)',
+                    fontSize: 10, color: 'var(--tg-text-muted)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     🏪 {p.storeName}

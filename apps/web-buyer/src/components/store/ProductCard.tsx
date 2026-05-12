@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { ProductListItem } from "types";
 import { ProductStatus } from "types";
-import { ShoppingBag, Layers } from "lucide-react";
+import { ShoppingBag, Layers, Heart } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { useAuth } from "@/lib/auth/context";
+import { useToggleWishlist, useWishlistIds } from "@/hooks/use-wishlist";
 
 type Props = {
   product: ProductListItem;
@@ -13,10 +18,34 @@ type Props = {
 const MAX_DOTS = 5;
 
 export default function ProductCard({ product, storeSlug }: Props) {
-  const mediaUrls =
-    (product as unknown as { images?: Array<{ url: string }> }).images?.map((i) => i.url)
-    ?? product.mediaUrls
-    ?? [];
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const wishlistIds = useWishlistIds();
+  const toggleWishlist = useToggleWishlist();
+
+  // Server-sent flag (auth'd storefront feed) wins; client cache is the fallback
+  // for cards rendered from a non-feed source (cart, recent stores, etc).
+  const inWishlist = product.inWishlist ?? wishlistIds.has(product.id);
+
+  function handleHeartClick(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      router.push('/wishlist');
+      return;
+    }
+    if (toggleWishlist.isPending) return;
+    toggleWishlist.mutate({ productId: product.id, inWishlist });
+  }
+
+  // ProductListItem декларирует оба поля (API-PRODUCT-LIST-IMAGES-CONTRACT-001,
+  // закрыто Полатом 08.05.2026). Берём images когда есть — это canonical shape
+  // на storefront feed; mediaUrls — fallback для callsite'ов, которые могут
+  // строить ProductListItem из других источников (не storefront).
+  const mediaUrls = (product.images?.length
+    ? product.images.map((i) => i.url)
+    : product.mediaUrls ?? []
+  ).filter((u) => u.length > 0);
   const isUnavailable = product.status !== ProductStatus.ACTIVE || !product.isVisible;
   const displayType = product.displayType ?? 'SINGLE';
 
@@ -25,20 +54,19 @@ export default function ProductCard({ product, storeSlug }: Props) {
 
   return (
     <Link href={`/${storeSlug}/products/${product.id}`} className="block group">
-      <div
-        className="rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-active:scale-[0.98]"
-        style={{
-          background: colors.surface,
-          border: `1px solid ${colors.border}`,
-        }}
-      >
+      <div className="overflow-hidden h-full flex flex-col transition-transform duration-150 group-hover:-translate-y-0.5 group-active:scale-[0.98]">
         {/* Image area */}
         <div
-          className="aspect-square relative flex items-center justify-center select-none overflow-hidden"
-          style={{ background: colors.surfaceMuted }}
+          className="aspect-square relative flex items-center justify-center select-none overflow-hidden rounded-md"
+          style={{ background: colors.surfaceSunken }}
         >
           {mediaUrls.length === 0 ? (
-            <ShoppingBag size={32} style={{ color: colors.textDim }} />
+            <div className="flex flex-col items-center gap-1.5 px-3 text-center">
+              <ShoppingBag size={26} style={{ color: colors.textMuted, opacity: 0.55 }} />
+              <span className="text-[10px] font-medium tracking-wide uppercase" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                Без фото
+              </span>
+            </div>
           ) : useCollage ? (
             <CollageGrid urls={mediaUrls} alt={product.title} />
           ) : (
@@ -64,7 +92,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
                   style={{
                     width: i === 0 ? 10 : 5,
                     height: 5,
-                    background: i === 0 ? colors.accent : 'rgba(255,255,255,0.85)',
+                    background: i === 0 ? colors.brand : 'rgba(255,255,255,0.85)',
                     boxShadow: '0 0 4px rgba(0,0,0,0.20)',
                   }}
                 />
@@ -77,9 +105,9 @@ export default function ProductCard({ product, storeSlug }: Props) {
             <div
               className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
               style={{
-                background: colors.surface,
-                color: colors.accent,
-                border: `1px solid ${colors.accentBorder}`,
+                background: colors.brandTextOnBg,
+                color: colors.brand,
+                border: `1px solid ${colors.brandBorder}`,
                 zIndex: 1,
               }}
             >
@@ -87,6 +115,27 @@ export default function ProductCard({ product, storeSlug }: Props) {
               {product.variantCount}
             </div>
           )}
+
+          {/* Wishlist heart */}
+          <button
+            type="button"
+            onClick={handleHeartClick}
+            aria-label={inWishlist ? "Убрать из избранного" : "В избранное"}
+            aria-pressed={inWishlist}
+            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
+            style={{
+              background: 'rgba(255,255,255,0.85)',
+              color: inWishlist ? colors.brand : colors.textBody,
+              zIndex: 4,
+              opacity: toggleWishlist.isPending ? 0.6 : 1,
+            }}
+          >
+            <Heart
+              size={16}
+              fill={inWishlist ? "currentColor" : "none"}
+              strokeWidth={inWishlist ? 0 : 1.75}
+            />
+          </button>
 
           {/* Out of stock overlay */}
           {isUnavailable && (
@@ -96,7 +145,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
             >
               <span
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
+                style={{ background: colors.brandTextOnBg, color: colors.textBody, border: `1px solid ${colors.border}` }}
               >
                 Нет в наличии
               </span>
@@ -105,15 +154,12 @@ export default function ProductCard({ product, storeSlug }: Props) {
         </div>
 
         {/* Info */}
-        <div className="p-3 flex flex-col gap-1.5 flex-1">
-          <p className="text-sm font-medium leading-snug line-clamp-2" style={{ color: colors.textPrimary }}>
+        <div className="pt-2 flex flex-col gap-0.5 flex-1">
+          <p className="text-[12px] md:text-[13px] leading-snug line-clamp-2" style={{ color: colors.textBody }}>
             {product.title}
           </p>
-          <div className="mt-auto">
-            <span className="text-base font-bold" style={{ color: colors.accent }}>
-              {Number(product.basePrice).toLocaleString("ru-RU")}
-            </span>
-            <span className="text-xs ml-1" style={{ color: colors.textMuted }}>сум</span>
+          <div className="text-[13px] font-bold mt-auto" style={{ color: colors.textStrong }}>
+            {Number(product.basePrice).toLocaleString("ru-RU")} <span className="font-normal text-[11px]" style={{ color: colors.textMuted }}>сум</span>
           </div>
         </div>
       </div>
@@ -140,7 +186,7 @@ function CollageGrid({ urls, alt }: { urls: string[]; alt: string }) {
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              <ShoppingBag size={14} style={{ color: colors.textDim }} />
+              <ShoppingBag size={14} style={{ color: colors.textMuted }} />
             </div>
           )}
         </div>

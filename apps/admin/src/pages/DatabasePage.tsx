@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react'
-import { Database, Search, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, X, Check, AlertTriangle, RefreshCw, Lock, Eye, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Database, Search, Edit2, Trash2, Plus, X, Check, AlertTriangle, RefreshCw, Lock, Eye, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { PaginationBar } from '../components/admin/PaginationBar'
+
+type DbFieldType = 'string' | 'text' | 'number' | 'boolean' | 'datetime' | 'json' | 'enum'
+
+interface DbFieldMeta {
+  name: string
+  type: DbFieldType
+  nullable: boolean
+  enumValues?: string[]
+}
 
 interface TableMeta {
   table: string
   count: number
   readonly: boolean
   writableFields: string[]
+  fieldMetas?: DbFieldMeta[]
 }
 
 interface TableData {
@@ -17,6 +28,7 @@ interface TableData {
   page: number
   totalPages: number
   writableFields: string[]
+  fieldMetas?: DbFieldMeta[]
   readonly: boolean
 }
 
@@ -175,17 +187,170 @@ function RowDetailPanel({ row, writableFields, isReadonly, onEdit, onDelete, onC
   )
 }
 
+// ── Field Input — рендерит input в зависимости от meta.type ─────────────────
+
+const baseInputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8,
+  border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)',
+  fontSize: 13, outline: 'none',
+}
+
+/** Конвертация ISO/Date в формат `YYYY-MM-DDTHH:mm` для `<input type="datetime-local">`. */
+function toDatetimeLocal(val: string | undefined): string {
+  if (!val) return ''
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return ''
+  // Local time (без смещения), padStart до 2 цифр
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function FieldInput({ meta, value, onChange }: {
+  meta: DbFieldMeta
+  value: string
+  onChange: (v: string) => void
+}) {
+  // Boolean → 2 кнопки (true/false) + кнопка очистить (если nullable)
+  if (meta.type === 'boolean') {
+    return (
+      <div style={{ display: 'flex', gap: 8 }}>
+        {(['true', 'false'] as const).map(opt => (
+          <button key={opt} type="button" onClick={() => onChange(opt)}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 8,
+              border: `1px solid ${value === opt ? (opt === 'true' ? '#10B981' : '#EF4444') : 'var(--border)'}`,
+              background: value === opt ? (opt === 'true' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)') : 'var(--surface2)',
+              color: value === opt ? (opt === 'true' ? '#10B981' : '#EF4444') : 'var(--text-muted)',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            {opt}
+          </button>
+        ))}
+        {meta.nullable && (
+          <button type="button" onClick={() => onChange('')}
+            title="Очистить (null)"
+            style={{ width: 36, padding: '8px 0', borderRadius: 8,
+              border: `1px solid ${value === '' ? 'var(--primary)' : 'var(--border)'}`,
+              background: value === '' ? 'rgba(99,102,241,0.1)' : 'var(--surface2)',
+              color: value === '' ? 'var(--primary)' : 'var(--text-dim)',
+              fontSize: 13, cursor: 'pointer' }}>
+            ∅
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  // Enum → <select> + опция "(пусто)" если nullable
+  if (meta.type === 'enum') {
+    return (
+      <select value={value} onChange={e => onChange(e.target.value)} style={baseInputStyle}>
+        {meta.nullable && <option value="">— не задано —</option>}
+        {(meta.enumValues ?? []).map(v => (
+          <option key={v} value={v}>{v}</option>
+        ))}
+      </select>
+    )
+  }
+
+  // Datetime → <input type="datetime-local">
+  if (meta.type === 'datetime') {
+    return (
+      <input type="datetime-local" value={toDatetimeLocal(value)}
+        onChange={e => onChange(e.target.value)}
+        style={baseInputStyle} />
+    )
+  }
+
+  // Number → <input type="number">
+  if (meta.type === 'number') {
+    return (
+      <input type="number" value={value} onChange={e => onChange(e.target.value)}
+        style={baseInputStyle} placeholder={meta.nullable ? 'оставьте пустым = null' : '0'} />
+    )
+  }
+
+  // Json → <textarea> с auto-pretty при потере фокуса
+  if (meta.type === 'json') {
+    const onBlur = () => {
+      if (!value.trim()) return
+      try {
+        const parsed = JSON.parse(value)
+        const pretty = JSON.stringify(parsed, null, 2)
+        if (pretty !== value) onChange(pretty)
+      } catch { /* invalid JSON — оставляем как есть, валидация на бэке */ }
+    }
+    return (
+      <textarea value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
+        rows={6} spellCheck={false}
+        style={{ ...baseInputStyle, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
+        placeholder={meta.nullable ? '{ } или оставить пустым = null' : '{ }'} />
+    )
+  }
+
+  // Text (long) → <textarea>
+  if (meta.type === 'text') {
+    return (
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={4}
+        style={{ ...baseInputStyle, resize: 'vertical' }} />
+    )
+  }
+
+  // String → <input type="text">
+  return (
+    <input value={value} onChange={e => onChange(e.target.value)} style={baseInputStyle}
+      placeholder={meta.nullable ? 'оставьте пустым = null' : ''} />
+  )
+}
+
+function fieldLabel(meta: DbFieldMeta): string {
+  const typeBadge = meta.type === 'string' ? '' : ` · ${meta.type}`
+  const nullBadge = meta.nullable ? '' : ' · required'
+  return `${meta.name}${typeBadge}${nullBadge}`
+}
+
 // ── Edit Modal ────────────────────────────────────────────────────────────────
 
-function EditModal({ row, writableFields, onSave, onCancel }: {
+function fallbackMeta(field: string, val: unknown): DbFieldMeta {
+  // Если бэк не прислал fieldMetas (старая версия API) — выводим тип по runtime-значению.
+  if (typeof val === 'boolean') return { name: field, type: 'boolean', nullable: true }
+  if (typeof val === 'number')  return { name: field, type: 'number',  nullable: true }
+  if (val && typeof val === 'object') return { name: field, type: 'json', nullable: true }
+  return { name: field, type: 'string', nullable: true }
+}
+
+/** Сериализация поля для отправки на сервер. JSON должен парситься на стороне фронта. */
+function serializeForSubmit(meta: DbFieldMeta, raw: string): unknown {
+  if (raw === '' && meta.nullable) return null
+  if (meta.type === 'json') {
+    if (!raw.trim()) return meta.nullable ? null : raw
+    try { return JSON.parse(raw) } catch { return raw } // оставим строку — бэк отдаст 400
+  }
+  if (meta.type === 'datetime') {
+    if (!raw) return meta.nullable ? null : raw
+    return new Date(raw).toISOString()
+  }
+  return raw
+}
+
+function EditModal({ row, writableFields, fieldMetas, onSave, onCancel }: {
   row: Record<string, unknown>
   writableFields: string[]
+  fieldMetas?: DbFieldMeta[]
   onSave: (data: Record<string, unknown>) => Promise<void>
   onCancel: () => void
 }) {
+  const metaMap = new Map<string, DbFieldMeta>(
+    (fieldMetas ?? []).map(m => [m.name, m]),
+  )
+  const resolveMeta = (f: string): DbFieldMeta => metaMap.get(f) ?? fallbackMeta(f, row[f])
+
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
-    writableFields.forEach(f => { init[f] = row[f] != null ? String(row[f]) : '' })
+    writableFields.forEach(f => {
+      const v = row[f]
+      if (v == null) init[f] = ''
+      else if (typeof v === 'object') init[f] = JSON.stringify(v, null, 2)
+      else init[f] = String(v)
+    })
     return init
   })
   const [saving, setSaving] = useState(false)
@@ -193,22 +358,23 @@ function EditModal({ row, writableFields, onSave, onCancel }: {
 
   const handleSave = async () => {
     setSaving(true); setErr(null)
-    try { await onSave(values) }
+    try {
+      const payload: Record<string, unknown> = {}
+      for (const f of writableFields) {
+        payload[f] = serializeForSubmit(resolveMeta(f), values[f] ?? '')
+      }
+      await onSave(payload)
+    }
     catch (e: any) { setErr(e.message ?? 'Ошибка') }
     finally { setSaving(false) }
   }
 
-  const isBool = (field: string) => {
-    const v = row[field]
-    return typeof v === 'boolean' || values[field] === 'true' || values[field] === 'false'
-  }
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 540, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Редактировать</h3>
-          <button onClick={onCancel} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+          <button onClick={onCancel} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -218,30 +384,19 @@ function EditModal({ row, writableFields, onSave, onCancel }: {
           </div>
         </div>
 
-        {writableFields.map(field => (
-          <div key={field} style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>{field}</div>
-            {isBool(field) ? (
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['true', 'false'].map(opt => (
-                  <button key={opt} onClick={() => setValues(v => ({ ...v, [field]: opt }))}
-                    style={{ flex: 1, padding: '8px 0', borderRadius: 8,
-                      border: `1px solid ${values[field] === opt ? (opt === 'true' ? '#10B981' : '#EF4444') : 'var(--border)'}`,
-                      background: values[field] === opt ? (opt === 'true' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)') : 'var(--surface2)',
-                      color: values[field] === opt ? (opt === 'true' ? '#10B981' : '#EF4444') : 'var(--text-muted)',
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                    {opt}
-                  </button>
-                ))}
+        {writableFields.map(field => {
+          const meta = resolveMeta(field)
+          return (
+            <div key={field} style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
+                {fieldLabel(meta)}
               </div>
-            ) : (
-              <input value={values[field]} onChange={e => setValues(v => ({ ...v, [field]: e.target.value }))}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
-            )}
-          </div>
-        ))}
+              <FieldInput meta={meta} value={values[field] ?? ''} onChange={v => setValues(prev => ({ ...prev, [field]: v }))} />
+            </div>
+          )
+        })}
 
-        {err && <div style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{err}</div>}
+        {err && <div role="alert" style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{err}</div>}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>Отмена</button>
@@ -256,14 +411,27 @@ function EditModal({ row, writableFields, onSave, onCancel }: {
 
 // ── Insert Modal ──────────────────────────────────────────────────────────────
 
-function InsertModal({ writableFields, onSave, onCancel }: {
+function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
   writableFields: string[]
+  fieldMetas?: DbFieldMeta[]
   onSave: (data: Record<string, unknown>) => Promise<void>
   onCancel: () => void
 }) {
+  const metaMap = new Map<string, DbFieldMeta>(
+    (fieldMetas ?? []).map(m => [m.name, m]),
+  )
+  const resolveMeta = (f: string): DbFieldMeta =>
+    metaMap.get(f) ?? { name: f, type: 'string', nullable: true }
+
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
-    writableFields.forEach(f => { init[f] = '' })
+    writableFields.forEach(f => {
+      const meta = resolveMeta(f)
+      // Дефолт по типу (улучшает UX): boolean → 'false', enum → первое значение
+      if (meta.type === 'boolean') init[f] = ''
+      else if (meta.type === 'enum' && meta.enumValues?.length && !meta.nullable) init[f] = meta.enumValues[0]
+      else init[f] = ''
+    })
     return init
   })
   const [saving, setSaving] = useState(false)
@@ -271,26 +439,40 @@ function InsertModal({ writableFields, onSave, onCancel }: {
 
   const handleSave = async () => {
     setSaving(true); setErr(null)
-    try { await onSave(values) }
+    try {
+      const payload: Record<string, unknown> = {}
+      for (const f of writableFields) {
+        const v = values[f] ?? ''
+        const meta = resolveMeta(f)
+        // Не отправляем пустые поля если они optional — пусть Prisma применит default.
+        if (v === '' && meta.nullable) continue
+        payload[f] = serializeForSubmit(meta, v)
+      }
+      await onSave(payload)
+    }
     catch (e: any) { setErr(e.message ?? 'Ошибка') }
     finally { setSaving(false) }
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 540, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Добавить запись</h3>
-          <button onClick={onCancel} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+          <button onClick={onCancel} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
-        {writableFields.map(field => (
-          <div key={field} style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{field}</div>
-            <input value={values[field]} onChange={e => setValues(v => ({ ...v, [field]: e.target.value }))}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
-          </div>
-        ))}
-        {err && <div style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{err}</div>}
+        {writableFields.map(field => {
+          const meta = resolveMeta(field)
+          return (
+            <div key={field} style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
+                {fieldLabel(meta)}
+              </div>
+              <FieldInput meta={meta} value={values[field] ?? ''} onChange={v => setValues(prev => ({ ...prev, [field]: v }))} />
+            </div>
+          )
+        })}
+        {err && <div role="alert" style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{err}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>Отмена</button>
           <button onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
@@ -379,6 +561,8 @@ export default function DatabasePage() {
   const currentTableMeta = tablesData?.find(t => t.table === activeTable)
   const writableFields = currentTableMeta?.writableFields ?? []
   const isReadonly = currentTableMeta?.readonly ?? true
+  // Берём fieldMetas из rowsData (свежее), иначе из tablesData (load-time)
+  const fieldMetas = rowsData?.fieldMetas ?? currentTableMeta?.fieldMetas
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -546,18 +730,15 @@ export default function DatabasePage() {
 
             {/* Pagination */}
             {rowsData && rowsData.totalPages > 1 && (
-              <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Стр. {rowsData.page} из {rowsData.totalPages} · {rowsData.total} записей</span>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === 1 ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 12, cursor: page === 1 ? 'default' : 'pointer' }}>
-                    <ChevronLeft size={13} /> Назад
-                  </button>
-                  <button onClick={() => setPage(p => Math.min(rowsData.totalPages, p + 1))} disabled={page === rowsData.totalPages}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === rowsData.totalPages ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 12, cursor: page === rowsData.totalPages ? 'default' : 'pointer' }}>
-                    Вперёд <ChevronRight size={13} />
-                  </button>
-                </div>
+              <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+                <PaginationBar
+                  page={rowsData.page}
+                  totalPages={rowsData.totalPages}
+                  total={rowsData.total}
+                  itemsLabel="записей"
+                  compact
+                  onPageChange={setPage}
+                />
               </div>
             )}
           </>
@@ -578,12 +759,12 @@ export default function DatabasePage() {
 
       {/* Edit Modal */}
       {editRow && (
-        <EditModal row={editRow} writableFields={writableFields} onSave={handleSaveEdit} onCancel={() => setEditRow(null)} />
+        <EditModal row={editRow} writableFields={writableFields} fieldMetas={fieldMetas} onSave={handleSaveEdit} onCancel={() => setEditRow(null)} />
       )}
 
       {/* Insert Modal */}
       {showInsert && (
-        <InsertModal writableFields={writableFields} onSave={handleInsert} onCancel={() => setShowInsert(false)} />
+        <InsertModal writableFields={writableFields} fieldMetas={fieldMetas} onSave={handleInsert} onCancel={() => setShowInsert(false)} />
       )}
 
       {/* Delete Confirm */}

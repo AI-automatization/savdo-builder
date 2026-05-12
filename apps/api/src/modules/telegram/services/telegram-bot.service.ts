@@ -247,51 +247,84 @@ export class TelegramBotService implements OnApplicationBootstrap {
     }
   }
 
+  /**
+   * Send a media group of PHOTOS to a channel (Telegram API: sendMediaGroup, type='photo').
+   *
+   * Каждый элемент `photos[]` — это либо:
+   *   - photo file_id (из ответа sendPhoto/photo[].file_id), либо
+   *   - публичный HTTPS URL фото (Telegram скачает и сам обработает).
+   *
+   * ⚠️ Document file_id из sendDocument upload здесь НЕ работает. Используй
+   * `ChannelMediaResolverService.resolveForChannelSend()` чтобы получить
+   * правильный photo-источник.
+   *
+   * Возвращает массив `photo.file_id` из ответа Telegram (для каждого photo
+   * в группе) — позволяет закэшировать photoFileId для следующих публикаций.
+   * При ошибке возвращает `null` и логирует.
+   */
   async sendMediaGroupToChannel(
     channelId: string,
-    fileIds: string[],
+    photos: string[],
     caption: string,
     parseMode?: 'HTML' | 'Markdown',
-  ): Promise<void> {
-    if (!this.botToken || fileIds.length < 2) return;
-    const media = fileIds.slice(0, 10).map((fileId, i) => ({
-      type: 'photo',
-      media: fileId,
+  ): Promise<string[] | null> {
+    if (!this.botToken || photos.length < 2) return null;
+    const media = photos.slice(0, 10).map((src, i) => ({
+      type: 'photo' as const,
+      media: src,
       ...(i === 0 ? { caption, ...(parseMode ? { parse_mode: parseMode } : {}) } : {}),
     }));
     try {
-      await axios.post(`${this.apiBase}/sendMediaGroup`, { chat_id: channelId, media });
+      const res = await axios.post<{ result?: Array<{ photo?: Array<{ file_id: string }> }> }>(
+        `${this.apiBase}/sendMediaGroup`,
+        { chat_id: channelId, media },
+      );
+      // sendMediaGroup возвращает массив messages, каждый с photo[] (sizes).
+      // Берём самый большой размер (последний в массиве) для file_id-кэша.
+      return (res.data.result ?? [])
+        .map((m) => m.photo?.[m.photo.length - 1]?.file_id ?? '')
+        .filter(Boolean);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`sendMediaGroupToChannel failed for ${channelId}: ${msg}`);
-      // Fallback to single photo
-      await this.sendPhotoToChannel(channelId, fileIds[0], caption, undefined, parseMode);
+      return null;
     }
   }
 
-  /** Send a document (by Telegram file_id) to a channel with a caption.
-   *  file_id must be from sendDocument upload — cannot be used with sendPhoto. */
+  /**
+   * Send a single PHOTO to a channel via Telegram API sendPhoto.
+   *
+   * `photo` — это либо photo file_id, либо публичный HTTPS URL.
+   * ⚠️ Document file_id здесь не сработает (API ограничение).
+   *
+   * Возвращает `photo.file_id` (наибольший размер) из ответа Telegram,
+   * либо `null` при ошибке.
+   */
   async sendPhotoToChannel(
     channelId: string,
-    fileId: string,
+    photo: string,
     caption: string,
     urlButtons?: Array<Array<{ text: string; url: string }>>,
     parseMode?: 'HTML' | 'Markdown',
-  ): Promise<void> {
-    if (!this.botToken) return;
+  ): Promise<string | null> {
+    if (!this.botToken) return null;
     try {
-      await axios.post(`${this.apiBase}/sendDocument`, {
-        chat_id: channelId,
-        document: fileId,
-        caption,
-        ...(parseMode ? { parse_mode: parseMode } : {}),
-        ...(urlButtons ? { reply_markup: { inline_keyboard: urlButtons } } : {}),
-      });
+      const res = await axios.post<{ result?: { photo?: Array<{ file_id: string }> } }>(
+        `${this.apiBase}/sendPhoto`,
+        {
+          chat_id: channelId,
+          photo,
+          caption,
+          ...(parseMode ? { parse_mode: parseMode } : {}),
+          ...(urlButtons ? { reply_markup: { inline_keyboard: urlButtons } } : {}),
+        },
+      );
+      const sizes = res.data.result?.photo ?? [];
+      return sizes[sizes.length - 1]?.file_id ?? null;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`sendDocumentToChannel failed for ${channelId}: ${msg}`);
-      // Fallback — отправить без фото
-      await this.sendToChannel(channelId, caption, urlButtons, parseMode);
+      this.logger.error(`sendPhotoToChannel failed for ${channelId}: ${msg}`);
+      return null;
     }
   }
 }

@@ -7,6 +7,7 @@ import { useSellerOrders } from '../../../hooks/use-orders';
 import { useSellerSummary } from '../../../hooks/use-analytics';
 import { OrderStatus, StoreStatus } from 'types';
 import { track } from '../../../lib/analytics';
+import { buyerStoreUrl } from '@/lib/buyer-url';
 import { Package, Eye, Link2, Clock, Plus, ClipboardList, BarChart3 } from 'lucide-react';
 import { card, cardMuted, colors } from '@/lib/styles';
 
@@ -14,9 +15,9 @@ import { card, cardMuted, colors } from '@/lib/styles';
 
 const STATUS_COLORS: Record<string, string> = {
   [OrderStatus.PENDING]:    colors.warning,
-  [OrderStatus.CONFIRMED]:  "#60A5FA",
+  [OrderStatus.CONFIRMED]:  colors.info,
   [OrderStatus.PROCESSING]: colors.accent,
-  [OrderStatus.SHIPPED]:    colors.accent,
+  [OrderStatus.SHIPPED]:    colors.info,
   [OrderStatus.DELIVERED]:  colors.success,
   [OrderStatus.CANCELLED]:  colors.danger,
 };
@@ -71,7 +72,7 @@ export default function DashboardPage() {
 
   function handleCopyLink() {
     if (!store) return;
-    const url = `${process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'}/${store.slug}`;
+    const url = buyerStoreUrl(store.slug);
     navigator.clipboard.writeText(url).then(() => {
       track.storeLinkCopied(store.id);
       setCopied(true);

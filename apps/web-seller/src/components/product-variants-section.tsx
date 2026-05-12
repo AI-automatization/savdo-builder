@@ -10,6 +10,7 @@ import {
 } from '../hooks/use-products';
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
+import { ConfirmModal } from './confirm-modal';
 
 const glass = card;
 
@@ -236,7 +237,7 @@ function InlineVariantForm({
 
       {/* Row 3: active toggle + buttons */}
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-white">
+        <label className="flex items-center gap-2 cursor-pointer select-none text-sm" style={{ color: colors.textPrimary }}>
           <input
             type="checkbox"
             className="sr-only peer"
@@ -284,6 +285,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding]       = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const hasOptions = optionGroups.length > 0;
 
@@ -340,13 +342,15 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
     setEditingId(null);
   }
 
-  async function handleDelete(variantId: string) {
-    if (!confirm('Удалить вариант?')) return;
+  async function performDelete() {
+    const variantId = confirmId;
+    if (!variantId) return;
     setDeletingId(variantId);
     try {
       await remove.mutateAsync({ productId, variantId });
     } finally {
       setDeletingId(null);
+      setConfirmId(null);
     }
   }
 
@@ -395,7 +399,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
 
               {/* Name + stock */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">
+                <p className="text-sm truncate" style={{ color: colors.textPrimary }}>
                   {variantLabel(v)}
                 </p>
                 {subLabel && v.titleOverride && (
@@ -424,7 +428,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                     className="text-xs transition-opacity opacity-30 hover:opacity-70 disabled:opacity-20"
                     style={{ color: colors.danger }}
                     disabled={deletingId === v.id}
-                    onClick={() => handleDelete(v.id)}
+                    onClick={() => setConfirmId(v.id)}
                   >
                     {deletingId === v.id ? '…' : <Trash2 size={14} />}
                   </button>
@@ -471,6 +475,16 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
           + Добавить вариант
         </button>
       )}
+
+      <ConfirmModal
+        open={confirmId !== null}
+        title="Удалить вариант?"
+        confirmLabel="Удалить"
+        danger
+        loading={confirmId !== null && deletingId === confirmId}
+        onConfirm={performDelete}
+        onClose={() => setConfirmId(null)}
+      />
     </div>
   );
 }

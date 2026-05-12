@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ChatMessage, ChatThread, ThreadType, Seller, Store, Buyer, User } from '@prisma/client';
+import { ChatMessage, ChatMessageType, ChatThread, ThreadType, Seller, Store, Buyer, User } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 
 export type ThreadWithMessages = ChatThread & {
@@ -21,7 +21,10 @@ export interface CreateThreadData {
 export interface AddMessageData {
   threadId: string;
   senderUserId: string;
-  body: string;
+  body?: string | null;
+  parentMessageId?: string | null;
+  mediaId?: string | null;
+  messageType?: ChatMessageType;
 }
 
 @Injectable()
@@ -69,7 +72,21 @@ export class ChatRepository {
       orderBy: { lastMessageAt: 'desc' },
       include: {
         seller: { include: { store: { select: { id: true, name: true, slug: true } } } },
-        product: { select: { title: true } },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            basePrice: true,
+            salePrice: true,
+            images: {
+              orderBy: { sortOrder: 'asc' },
+              take: 1,
+              select: {
+                media: { select: { id: true, objectKey: true, bucket: true } },
+              },
+            },
+          },
+        },
         order: { select: { orderNumber: true } },
         messages: {
           where: { isDeleted: false },
@@ -87,7 +104,21 @@ export class ChatRepository {
       orderBy: { lastMessageAt: 'desc' },
       include: {
         buyer: { include: { user: { select: { phone: true } } } },
-        product: { select: { title: true } },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            basePrice: true,
+            salePrice: true,
+            images: {
+              orderBy: { sortOrder: 'asc' },
+              take: 1,
+              select: {
+                media: { select: { id: true, objectKey: true, bucket: true } },
+              },
+            },
+          },
+        },
         order: { select: { orderNumber: true } },
         messages: {
           where: { isDeleted: false },
@@ -112,15 +143,26 @@ export class ChatRepository {
     });
   }
 
+  async findMessageById(id: string): Promise<ChatMessage | null> {
+    return this.prisma.chatMessage.findUnique({ where: { id } });
+  }
+
+  async findMessagesByIds(ids: string[]): Promise<ChatMessage[]> {
+    if (!ids.length) return [];
+    return this.prisma.chatMessage.findMany({ where: { id: { in: ids } } });
+  }
+
   async addMessage(data: AddMessageData): Promise<ChatMessage> {
     return this.prisma.$transaction(async (tx) => {
       const message = await tx.chatMessage.create({
         data: {
           threadId: data.threadId,
           senderUserId: data.senderUserId,
-          messageType: 'text',
-          body: data.body,
-        },
+          messageType: data.messageType ?? (data.mediaId ? ChatMessageType.IMAGE : ChatMessageType.TEXT),
+          body: data.body ?? null,
+          ...(data.parentMessageId ? { parentMessageId: data.parentMessageId } : {}),
+          ...(data.mediaId ? { mediaId: data.mediaId } : {}),
+        } as any,
       });
 
       await tx.chatThread.update({

@@ -9,6 +9,7 @@ import { useUpdateSellerProfile } from '../../../hooks/use-seller';
 import { useCreateProduct } from '../../../hooks/use-products';
 import { useAuth } from '../../../lib/auth/context';
 import { applySeller } from '../../../lib/api/seller.api';
+import { buyerHostDisplay } from '../../../lib/buyer-url';
 import { track } from '../../../lib/analytics';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ function ProgressBar({ step }: { step: number }) {
                     ? colors.accentMuted
                     : colors.surfaceMuted,
                 border: active ? `1px solid ${colors.accentBorder}` : `1px solid ${colors.border}`,
-                color: done ? colors.bg : active ? colors.accent : colors.textDim,
+                color: done ? colors.accentTextOnBg : active ? colors.accent : colors.textDim,
               }}
             >
               {done ? (
@@ -104,7 +105,7 @@ function ProgressBar({ step }: { step: number }) {
             {i < STEPS.length - 1 && (
               <div
                 className="flex-1 h-px mx-1"
-                style={{ background: done ? colors.accent : colors.surfaceElevated }}
+                style={{ background: done ? colors.accent : colors.border }}
               />
             )}
           </div>
@@ -130,7 +131,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold text-white mb-1">Создайте магазин</h1>
+        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Создайте магазин</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
           Придумайте название — покупатели увидят его первым
         </p>
@@ -159,7 +160,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
             className="px-3 py-[0.625rem] text-sm flex-shrink-0"
             style={{ background: colors.surfaceMuted, color: colors.textDim, borderRight: `1px solid ${colors.border}` }}
           >
-            savdo.uz/
+            {buyerHostDisplay()}/
           </span>
           <input
             className="flex-1 px-3 py-[0.625rem] text-sm focus:outline-none"
@@ -176,15 +177,15 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
         <FieldError message={errors.slug?.message} />
         {name && !errors.slug && (
           <p className="mt-1 text-xs" style={{ color: colors.textDim }}>
-            savdo.uz/{watch('slug')}
+            {buyerHostDisplay()}/{watch('slug')}
           </p>
         )}
       </div>
 
       <button
         type="submit"
-        className="w-full py-3 rounded-xl text-sm font-semibold text-white"
-        style={{ background: colors.accent, color: colors.bg }}
+        className="w-full py-3 rounded-xl text-sm font-semibold"
+        style={{ background: colors.accent, color: colors.accentTextOnBg }}
       >
         Далее →
       </button>
@@ -216,7 +217,7 @@ function Step2({
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold text-white mb-1">Контакты</h1>
+        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Контакты</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
           Покупатели свяжутся с вами через Telegram
         </p>
@@ -295,8 +296,8 @@ function Step2({
         <button
           type="submit"
           disabled={isLoading}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-          style={{ background: colors.accent, color: colors.bg }}
+          className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
+          style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
           {isLoading ? 'Создание...' : 'Далее →'}
         </button>
@@ -330,7 +331,7 @@ function Step3({
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold text-white mb-1">Первый товар</h1>
+        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Первый товар</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
           Добавьте хотя бы один товар, чтобы магазин выглядел живым
         </p>
@@ -378,8 +379,8 @@ function Step3({
         <button
           type="submit"
           disabled={isLoading}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-          style={{ background: colors.accent, color: colors.bg }}
+          className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
+          style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
           {isLoading ? 'Сохранение...' : 'Далее →'}
         </button>
@@ -417,13 +418,13 @@ function Step4({
       <div className="text-center">
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4"
-          style={{ background: colors.accent, color: colors.bg }}
+          style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
-          <Rocket size={28} color="#fff" />
+          <Rocket size={28} color={colors.accentTextOnBg} />
         </div>
-        <h1 className="text-xl font-bold text-white mb-1">Почти готово!</h1>
+        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Почти готово!</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
-          Отправьте магазин <span style={{ color: "#A78BFA" }}>{storeName}</span> на проверку — после одобрения он станет доступен покупателям
+          Отправьте магазин <span style={{ color: colors.accent }}>{storeName}</span> на проверку — после одобрения он станет доступен покупателям
         </p>
       </div>
 
@@ -458,8 +459,8 @@ function Step4({
         <button
           onClick={onSubmit}
           disabled={isLoading}
-          className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-          style={{ background: colors.accent, color: colors.bg }}
+          className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
+          style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
           {isLoading ? 'Отправка...' : 'Отправить на проверку'}
         </button>
@@ -585,7 +586,7 @@ export default function OnboardingPage() {
           className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
           style={{ background: colors.accent }}
         >
-          <ShoppingCart size={16} color="#fff" />
+          <ShoppingCart size={16} color={colors.accentTextOnBg} />
         </div>
         <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
       </div>

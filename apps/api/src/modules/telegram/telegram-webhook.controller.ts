@@ -42,8 +42,20 @@ export class TelegramWebhookController {
     @Body() update: TelegramUpdate,
     @Headers('x-telegram-bot-api-secret-token') secretToken?: string,
   ) {
+    // SEC: AUDIT-API-SEC-2026-05-06 → API-WEBHOOK-SECRET-OPTIONAL-001 fix.
+    // Fail-closed: в production без TELEGRAM_WEBHOOK_SECRET вообще
+    // не запускаем handler. Иначе атакер мог посылать fake updates →
+    // выполнение действий от лица любого chatId.
     const expected = this.config.get<string>('telegram.webhookSecret');
-    if (expected && secretToken !== expected) return { ok: true };
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
+    if (isProd && !expected) {
+      this.logger.error('TELEGRAM_WEBHOOK_SECRET не выставлен в production — webhook отключён');
+      return { ok: true };
+    }
+    if (expected && secretToken !== expected) {
+      this.logger.warn(`Webhook отклонён: invalid secret token (got=${secretToken ? 'present' : 'missing'})`);
+      return { ok: true };
+    }
 
     try {
       if (update.callback_query) {
@@ -73,9 +85,12 @@ export class TelegramWebhookController {
     const firstName = msg.from.first_name;
     const username  = msg.from.username;
 
-    // /start | /menu
-    if (msg.text === '/start' || msg.text === '/menu') {
-      await this.demo.handleStart(chatId, firstName);
+    // /start | /menu | /start <param> (deep-link, e.g. ?start=become_seller)
+    if (msg.text === '/start' || msg.text === '/menu' || msg.text?.startsWith('/start ')) {
+      const startParam = msg.text?.startsWith('/start ')
+        ? msg.text.slice('/start '.length).trim().slice(0, 64) // hard cap для безопасности
+        : undefined;
+      await this.demo.handleStart(chatId, firstName, startParam);
       return;
     }
 

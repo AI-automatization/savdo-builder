@@ -94,7 +94,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
             width: 320,
             background: colors.surface,
             border: `1px solid ${colors.borderStrong}`,
-            boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
+            boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
           }}
         >
           {/* Tabs */}
@@ -129,7 +129,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
                     onPick(e);
                     // keep open so the user can pick several in a row
                   }}
-                  className="w-9 h-9 flex items-center justify-center rounded-md text-xl transition-colors hover:bg-white/5"
+                  className="w-9 h-9 flex items-center justify-center rounded-md text-xl transition-colors row-hoverable"
                   style={{ background: 'transparent' }}
                   aria-label={e}
                 >

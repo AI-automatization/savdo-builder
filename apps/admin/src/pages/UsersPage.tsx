@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Phone, Search, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react'
+import { Users, Phone, Search, MessageCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface UserRow {
   id: string
@@ -205,26 +206,8 @@ export default function UsersPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            Стр. {page} из {totalPages} · {total} записей
-          </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === 1 ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 13, cursor: page === 1 ? 'default' : 'pointer' }}
-            >
-              <ChevronLeft size={14} /> Назад
-            </button>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: page === totalPages ? 'var(--text-dim)' : 'var(--text-muted)', fontSize: 13, cursor: page === totalPages ? 'default' : 'pointer' }}
-            >
-              Вперёд <ChevronRight size={14} />
-            </button>
-          </div>
+        <div style={{ marginTop: 16 }}>
+          <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
         </div>
       )}
     </div>

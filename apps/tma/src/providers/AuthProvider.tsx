@@ -3,6 +3,7 @@ import { useTelegram } from './TelegramProvider';
 import { authenticateWithTelegram } from '@/lib/auth';
 import { setUnauthorizedHandler, setToken } from '@/lib/api';
 import { hydrateWishlist } from '@/lib/wishlist';
+import { syncCartToBackend, resetCartSync } from '@/lib/cartSync';
 
 interface User {
   id: string;
@@ -55,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Hydrate wishlist cache for buyers — non-blocking, errors swallowed inside.
       if (res.user.role === 'BUYER') {
         void hydrateWishlist();
+        // TMA-CART-API-SYNC-001: одноразовый sync localStorage → backend после login.
+        // Idempotent через флаг savdo_cart_synced; sbroshen в logout.
+        void syncCartToBackend();
       }
     } else {
       setState(prev => ({ ...prev, user: null, loading: false, authenticated: false }));
@@ -63,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setToken(null);
+    resetCartSync();
     setState(prev => ({ ...prev, user: null, loading: false, authenticated: false }));
   }, []);
 

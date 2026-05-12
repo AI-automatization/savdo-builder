@@ -4,10 +4,13 @@ import {
   Post,
   Body,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { ConfirmCheckoutDto } from './dto/confirm-checkout.dto';
@@ -16,7 +19,11 @@ import { ConfirmCheckoutUseCase } from './use-cases/confirm-checkout.use-case';
 import { UsersRepository } from '../users/repositories/users.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+import { Idempotent } from '../../common/idempotency/idempotent.decorator';
+import { IdempotencyInterceptor } from '../../common/idempotency/idempotency.interceptor';
 
+@ApiTags('buyer')
+@ApiBearerAuth('jwt')
 @Controller('checkout')
 @UseGuards(JwtAuthGuard)
 export class CheckoutController {
@@ -40,6 +47,14 @@ export class CheckoutController {
 
   @Post('confirm')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // защита от спама заказов
+  @Idempotent()
+  @UseInterceptors(IdempotencyInterceptor)
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'Опциональный ключ once-only execution. Повторный запрос с тем же ключом + userId в течение 24h вернёт закэшированный ответ. Формат: 8-128 символов [A-Za-z0-9_:.-].',
+  })
   async confirm(
     @CurrentUser() user: JwtPayload,
     @Body() dto: ConfirmCheckoutDto,
@@ -61,6 +76,8 @@ export class CheckoutController {
       deliveryAddress: dto.deliveryAddress,
       buyerNote: dto.buyerNote,
       deliveryFee: dto.deliveryFee,
+      customerFullName: dto.customerFullName,
+      customerPhone: dto.customerPhone,
     });
   }
 

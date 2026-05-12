@@ -1,9 +1,15 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useTelegram } from '@/providers/TelegramProvider';
+import { SIDEBAR_WIDTH } from '@/components/layout/Sidebar';
 
-interface CategoryItem {
+export interface CategoryItem {
   id: string;
   nameRu: string;
   parentId?: string | null;
+  level?: number;
+  isLeaf?: boolean;
+  iconEmoji?: string | null;
 }
 
 interface Props {
@@ -12,78 +18,121 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onClose: () => void;
+  /**
+   * Если true — выбрать можно только лист (isLeaf=true). Не-листы работают как
+   * navigational дрилдаун. Используется для добавления товара (категория должна
+   * быть конечной, чтобы знать набор характеристик).
+   */
+  leafOnly?: boolean;
 }
 
-export function CategoryModal({ title, items, selectedId, onSelect, onClose }: Props) {
+export function CategoryModal({ title, items, selectedId, onSelect, onClose, leafOnly = false }: Props) {
   const [search, setSearch] = useState('');
+  const [drilldownId, setDrilldownId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // TMA-RESPONSIVE-DESKTOP-001: на desktop sidebar 220px виден слева, не перекрываем.
+  const { viewportWidth } = useTelegram();
+  const sidebarOffset = (viewportWidth ?? 0) >= 768 ? SIDEBAR_WIDTH : 0;
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 80);
     return () => clearTimeout(t);
   }, []);
 
-  const { roots, childrenMap } = useMemo(() => {
-    const roots: CategoryItem[] = [];
-    const childrenMap = new Map<string, CategoryItem[]>();
-
+  const childrenMap = useMemo(() => {
+    const map = new Map<string | null, CategoryItem[]>();
     for (const item of items) {
-      if (!item.parentId) {
-        roots.push(item);
-      } else {
-        const arr = childrenMap.get(item.parentId) ?? [];
-        arr.push(item);
-        childrenMap.set(item.parentId, arr);
-      }
+      const key = item.parentId ?? null;
+      const arr = map.get(key) ?? [];
+      arr.push(item);
+      map.set(key, arr);
     }
-    return { roots, childrenMap };
+    return map;
   }, [items]);
+
+  // Полный путь для item (breadcrumb)
+  const getBreadcrumb = (item: CategoryItem): string[] => {
+    const path: string[] = [item.nameRu];
+    let cur = item;
+    while (cur.parentId) {
+      const parent = items.find((c) => c.id === cur.parentId);
+      if (!parent) break;
+      path.unshift(parent.nameRu);
+      cur = parent;
+    }
+    return path;
+  };
 
   const query = search.trim().toLowerCase();
 
+  // Search: при leafOnly показываем только leaf-категории; иначе все
   const flatFiltered = useMemo(() => {
     if (!query) return null;
-    return items.filter((c) => c.nameRu.toLowerCase().includes(query));
-  }, [query, items]);
+    return items
+      .filter((c) => c.nameRu.toLowerCase().includes(query))
+      .filter((c) => !leafOnly || c.isLeaf);
+  }, [query, items, leafOnly]);
 
-  const parentNameOf = (item: CategoryItem) => {
-    if (!item.parentId) return null;
-    return items.find((c) => c.id === item.parentId)?.nameRu ?? null;
-  };
+  // Текущий уровень в дереве (по drilldown)
+  const currentNode = drilldownId ? items.find((c) => c.id === drilldownId) ?? null : null;
+  const currentChildren = childrenMap.get(drilldownId) ?? [];
 
-  const Row = ({ item, indent = false }: { item: CategoryItem; indent?: boolean }) => {
+  const Row = ({ item, indent = 0 }: { item: CategoryItem; indent?: number }) => {
     const active = item.id === selectedId;
+    const children = childrenMap.get(item.id) ?? [];
+    const hasChildren = children.length > 0;
+    const canSelect = !leafOnly || item.isLeaf || !hasChildren;
+    const isDrilldown = leafOnly && hasChildren;
+
     return (
       <button
-        key={item.id}
-        onClick={() => { onSelect(item.id); onClose(); }}
+        onClick={() => {
+          if (isDrilldown) {
+            setDrilldownId(item.id);
+            setSearch('');
+            return;
+          }
+          if (canSelect) {
+            onSelect(item.id);
+            onClose();
+          }
+        }}
         className="w-full flex items-center justify-between transition-all active:opacity-70"
         style={{
-          padding: indent ? '11px 20px 11px 36px' : '12px 20px',
+          padding: `12px ${20 + indent * 14}px 12px ${20 + indent * 14}px`,
           background: active ? 'rgba(167,139,250,0.12)' : 'transparent',
           borderBottom: '1px solid rgba(255,255,255,0.04)',
           textAlign: 'left',
         }}
       >
-        <div className="flex flex-col min-w-0">
-          {flatFiltered && parentNameOf(item) && (
-            <span className="text-[10px] mb-0.5 truncate" style={{ color: 'rgba(255,255,255,0.30)' }}>
-              {parentNameOf(item)}
-            </span>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {item.iconEmoji && (
+            <span style={{ fontSize: 20, flexShrink: 0 }}>{item.iconEmoji}</span>
           )}
-          <span className="text-sm truncate" style={{ color: active ? '#A855F7' : 'rgba(255,255,255,0.85)' }}>
-            {item.nameRu}
-          </span>
+          <div className="flex flex-col min-w-0">
+            {flatFiltered && (
+              <span className="text-[10px] mb-0.5 truncate" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                {getBreadcrumb(item).slice(0, -1).join(' › ') || ' '}
+              </span>
+            )}
+            <span className="text-sm truncate" style={{ color: active ? 'var(--tg-accent)' : 'rgba(255,255,255,0.85)' }}>
+              {item.nameRu}
+            </span>
+          </div>
         </div>
-        {active && <span style={{ color: '#A855F7', fontSize: 15, flexShrink: 0, marginLeft: 8 }}>✓</span>}
+        {active && <span style={{ color: 'var(--tg-accent)', fontSize: 15, flexShrink: 0, marginLeft: 8 }}>✓</span>}
+        {isDrilldown && !active && <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: 16, flexShrink: 0, marginLeft: 8 }}>›</span>}
       </button>
     );
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  // Polat 07.05: portal в body — backdrop-filter в GlassCard ловит fixed.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)' }}
+      className="fixed inset-0 z-[9999] flex flex-col"
+      style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)', left: sidebarOffset }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -96,8 +145,22 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose }: P
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>{title}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {currentNode && (
+              <button
+                onClick={() => setDrilldownId(currentNode.parentId ?? null)}
+                className="text-base"
+                style={{ color: 'rgba(255,255,255,0.70)' }}
+                aria-label="Назад"
+              >
+                ‹
+              </button>
+            )}
+            <span className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
+              {currentNode ? currentNode.nameRu : title}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             {selectedId && (
               <button
                 onClick={() => { onSelect(null); onClose(); }}
@@ -117,6 +180,13 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose }: P
           </div>
         </div>
 
+        {/* Breadcrumb для drilldown */}
+        {currentNode && !flatFiltered && (
+          <div className="px-5 py-2 text-[11px] truncate" style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.40)' }}>
+            {getBreadcrumb(currentNode).join(' › ')}
+          </div>
+        )}
+
         {/* Search */}
         <div className="px-4 pt-3 pb-2">
           <div className="relative">
@@ -130,7 +200,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose }: P
               ref={inputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск категории..."
+              placeholder={leafOnly ? 'Найти конкретный тип товара...' : 'Поиск категории...'}
               style={{
                 width: '100%',
                 background: 'rgba(255,255,255,0.07)',
@@ -156,7 +226,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose }: P
 
         {/* List */}
         <div className="overflow-y-auto flex flex-col pb-6">
-          {/* Search results — flat */}
+          {/* Search results — flat with breadcrumb */}
           {flatFiltered && (
             flatFiltered.length === 0 ? (
               <p className="text-center py-10 text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>
@@ -167,35 +237,24 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose }: P
             )
           )}
 
-          {/* Normal tree view */}
-          {!flatFiltered && roots.map((root) => {
-            const children = childrenMap.get(root.id) ?? [];
-            const hasChildren = children.length > 0;
+          {/* Drilldown view (current level children) */}
+          {!flatFiltered && currentNode && (
+            currentChildren.length === 0 ? (
+              <p className="text-center py-10 text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                Нет подкатегорий
+              </p>
+            ) : (
+              currentChildren.map((item) => <Row key={item.id} item={item} />)
+            )
+          )}
 
-            return (
-              <div key={root.id}>
-                {/* Root category header */}
-                <div
-                  className="px-5 py-2 flex items-center gap-2"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    {root.nameRu}
-                  </span>
-                </div>
-
-                {/* Children (selectable) */}
-                {hasChildren ? (
-                  children.map((child) => <Row key={child.id} item={child} indent />)
-                ) : (
-                  /* Root with no children is itself selectable */
-                  <Row item={root} indent />
-                )}
-              </div>
-            );
-          })}
+          {/* Root view (level 0) */}
+          {!flatFiltered && !currentNode && (
+            (childrenMap.get(null) ?? []).map((item) => <Row key={item.id} item={item} />)
+          )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

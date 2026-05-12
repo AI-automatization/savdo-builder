@@ -7,10 +7,11 @@ import { OrderStatus, DeliveryType, ThreadType } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
 import { useBuyerSocket } from "@/hooks/use-buyer-socket";
 import { track } from "@/lib/analytics";
-import { ArrowLeft, CheckCircle, Truck, Package, Frown, MessageSquare, MapPin, Send, Hourglass } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowLeft, Package, Frown, MessageSquare, MapPin, Send } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import { colors } from "@/lib/styles";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const toNum = (v: unknown): number => {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
@@ -18,8 +19,10 @@ const toNum = (v: unknown): number => {
   if (v && typeof v === "object") { const n = Number(String(v)); return Number.isFinite(n) ? n : 0; }
   return 0;
 };
-const fmt = (n: unknown) => toNum(n).toLocaleString("ru-RU");
+const formatPrice = (n: unknown) => toNum(n).toLocaleString("ru-RU");
 const shortId = (id: string) => id.slice(-6).toUpperCase();
+
+// ── Types + normalize ────────────────────────────────────────────────────────
 
 type NormalizedItem = {
   id: string;
@@ -33,6 +36,7 @@ type NormalizedAddress = { street: string; city: string; region?: string } | und
 type NormalizedStore = { name?: string; telegramContactLink?: string | null } | null;
 type NormalizedOrder = {
   id: string;
+  orderNumber?: string;
   status: OrderStatus;
   storeId: string;
   store: NormalizedStore;
@@ -51,9 +55,10 @@ function normalizeOrder(raw: any): NormalizedOrder {
       ? { street: raw.addressLine1 ?? '', city: raw.city ?? '', region: raw.region ?? undefined }
       : undefined);
   return {
-    id: raw.id,
+    id: raw.id ?? '',
+    orderNumber: raw.orderNumber ?? '',
     status: raw.status,
-    storeId: raw.storeId,
+    storeId: raw.storeId ?? '',
     store: raw.store ?? null,
     items: rawItems.map((it: any): NormalizedItem => ({
       id: it.id,
@@ -71,54 +76,159 @@ function normalizeOrder(raw: any): NormalizedOrder {
   };
 }
 
-const PROGRESS_STEPS: { key: OrderStatus; label: string; icon: LucideIcon }[] = [
-  { key: OrderStatus.PENDING, label: "Ожидает", icon: Hourglass },
-  { key: OrderStatus.CONFIRMED, label: "Подтверждён", icon: CheckCircle },
-  { key: OrderStatus.SHIPPED, label: "В пути", icon: Truck },
-  { key: OrderStatus.DELIVERED, label: "Доставлен", icon: Package },
+// ── Status meta ──────────────────────────────────────────────────────────────
+
+type StatusTone = "success" | "brand" | "warning" | "muted";
+
+const STATUS_META: Record<string, { label: string; eta: string; tone: StatusTone }> = {
+  [OrderStatus.PENDING]:    { label: "Ожидает подтверждения", eta: "Продавец скоро рассмотрит заказ",       tone: "warning" },
+  [OrderStatus.CONFIRMED]:  { label: "Подтверждён",            eta: "Магазин готовит ваш заказ",            tone: "brand"   },
+  [OrderStatus.PROCESSING]: { label: "В обработке",            eta: "Идёт сборка заказа",                   tone: "brand"   },
+  [OrderStatus.SHIPPED]:    { label: "В пути",                  eta: "Курьер скоро привезёт",                tone: "brand"   },
+  [OrderStatus.DELIVERED]:  { label: "Доставлен",               eta: "Спасибо за покупку",                   tone: "success" },
+  [OrderStatus.CANCELLED]:  { label: "Отменён",                 eta: "Заказ был отменён",                    tone: "muted"   },
+};
+
+const TONE_COLORS: Record<StatusTone, { bg: string; fg: string }> = {
+  success: { bg: "rgba(74,107,69,0.12)",  fg: colors.success },
+  brand:   { bg: colors.brandMuted,       fg: colors.brand   },
+  warning: { bg: "rgba(156,122,46,0.12)", fg: colors.warning },
+  muted:   { bg: colors.surfaceSunken,    fg: colors.textMuted },
+};
+
+// ── Timeline ─────────────────────────────────────────────────────────────────
+
+const TIMELINE: { key: OrderStatus; label: string }[] = [
+  { key: OrderStatus.PENDING,    label: "Заказ оформлен"          },
+  { key: OrderStatus.CONFIRMED,  label: "Подтверждён продавцом"   },
+  { key: OrderStatus.PROCESSING, label: "Сборка заказа"           },
+  { key: OrderStatus.SHIPPED,    label: "Передан курьеру"         },
+  { key: OrderStatus.DELIVERED,  label: "Доставлен"               },
 ];
 
-const ACTIVE_STEP: Record<string, number> = {
+const STATUS_INDEX: Record<string, number> = {
   [OrderStatus.PENDING]: 0,
   [OrderStatus.CONFIRMED]: 1,
-  [OrderStatus.PROCESSING]: 1,
-  [OrderStatus.SHIPPED]: 2,
-  [OrderStatus.DELIVERED]: 3,
+  [OrderStatus.PROCESSING]: 2,
+  [OrderStatus.SHIPPED]: 3,
+  [OrderStatus.DELIVERED]: 4,
 };
 
-const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  [OrderStatus.PENDING]: { label: "Ожидает", color: "#D97706", bg: "rgba(217,119,6,0.10)" },
-  [OrderStatus.CONFIRMED]: { label: "Подтверждён", color: "#0EA5E9", bg: "rgba(14,165,233,0.10)" },
-  [OrderStatus.PROCESSING]: { label: "В обработке", color: colors.accent, bg: colors.accentMuted },
-  [OrderStatus.SHIPPED]: { label: "В пути", color: "#6366F1", bg: "rgba(99,102,241,0.10)" },
-  [OrderStatus.DELIVERED]: { label: "Доставлен", color: colors.success, bg: "rgba(22,163,74,0.10)" },
-  [OrderStatus.CANCELLED]: { label: "Отменён", color: colors.danger, bg: "rgba(220,38,38,0.10)" },
-};
-
-function Section({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+function StatusPill({ status }: { status: OrderStatus }) {
+  const meta = STATUS_META[status] ?? { label: status, tone: "muted" as StatusTone };
+  const c = TONE_COLORS[meta.tone];
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
-      <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${colors.divider}` }}>
-        <span style={{ color: colors.accent }}>{icon}</span>
-        <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>{label}</span>
+    <span
+      className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+      style={{ background: c.bg, color: c.fg }}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+function StatusHero({ order }: { order: NormalizedOrder }) {
+  const meta = STATUS_META[order.status] ?? STATUS_META[OrderStatus.PENDING];
+  const cancelled = order.status === OrderStatus.CANCELLED;
+
+  if (cancelled) {
+    return (
+      <div className="px-4 py-5" style={{ background: colors.surfaceSunken }}>
+        <div className="text-[10px] tracking-[0.18em] uppercase mb-1.5" style={{ color: colors.textMuted }}>
+          — Статус
+        </div>
+        <div className="text-lg font-bold mb-1" style={{ color: colors.textStrong }}>
+          {meta.label}
+        </div>
+        <div className="text-[11px]" style={{ color: colors.textMuted }}>
+          {meta.eta}
+        </div>
       </div>
-      <div className="px-4 py-3 flex flex-col gap-3">{children}</div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-5" style={{ background: colors.brand, color: colors.brandTextOnBg }}>
+      <div className="text-[10px] tracking-[0.18em] uppercase opacity-70 mb-1.5">
+        — Статус
+      </div>
+      <div className="text-lg font-bold mb-1">
+        {meta.label}
+      </div>
+      <div className="text-[11px] opacity-85">
+        {meta.eta}
+      </div>
     </div>
   );
 }
+
+function Timeline({ status }: { status: OrderStatus }) {
+  if (status === OrderStatus.CANCELLED) return null;
+  const currentIdx = STATUS_INDEX[status] ?? 0;
+
+  return (
+    <div className="px-4 py-5" style={{ background: colors.surface }}>
+      <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
+        — Этапы
+      </div>
+      {TIMELINE.map((step, i) => {
+        const completed = i < currentIdx;
+        const current = i === currentIdx;
+        const upcoming = i > currentIdx;
+        return (
+          <div key={step.key} className="flex items-start gap-3">
+            <div className="flex flex-col items-center" style={{ minHeight: i === TIMELINE.length - 1 ? "auto" : 36 }}>
+              <div
+                className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0${current ? " animate-pulse" : ""}`}
+                style={{
+                  background: completed || current ? colors.brand : colors.divider,
+                  color: colors.brandTextOnBg,
+                }}
+              >
+                {completed ? "✓" : current ? "●" : ""}
+              </div>
+              {i < TIMELINE.length - 1 && (
+                <div
+                  className="w-px flex-1 min-h-[18px]"
+                  style={{ background: completed ? colors.brand : colors.divider }}
+                />
+              )}
+            </div>
+            <div className="flex-1 pb-3">
+              <div
+                className="text-xs font-semibold"
+                style={{
+                  color: current
+                    ? colors.brand
+                    : completed
+                      ? colors.textStrong
+                      : colors.textMuted,
+                  opacity: upcoming ? 0.7 : 1,
+                }}
+              >
+                {step.label}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function PageSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="h-6 w-40 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
-      <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
-        {[100, 60, 80].map((w, i) => (
-          <div key={i} className="h-3 rounded-full animate-pulse" style={{ width: w, background: colors.surfaceMuted }} />
-        ))}
-      </div>
+    <div className="px-4 py-5 flex flex-col gap-3">
+      <div className="h-5 w-48 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
+      <div className="h-3 w-32 rounded-full animate-pulse" style={{ background: colors.surfaceMuted }} />
+      <div className="h-3 w-40 rounded-full animate-pulse mt-3" style={{ background: colors.surfaceMuted }} />
     </div>
   );
 }
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -129,127 +239,70 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [chatOpen, setChatOpen] = useState(false);
 
   const order = rawOrder ? normalizeOrder(rawOrder) : null;
-
-  const currentStep = order ? (ACTIVE_STEP[order.status] ?? 0) : 0;
   const isCancelled = order?.status === OrderStatus.CANCELLED;
   const canCancel = order && [OrderStatus.PENDING, OrderStatus.CONFIRMED].includes(order.status);
   const subtotal = order?.items.reduce((s, it) => s + it.subtotal, 0) ?? 0;
-  const statusCfg = order ? (STATUS_LABEL[order.status] ?? { label: order.status, color: colors.textPrimary, bg: colors.surfaceMuted }) : null;
+  const totalQty = order?.items.reduce((s, i) => s + (i.quantity ?? 0), 0) ?? 0;
 
   return (
-    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textPrimary }}>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-5 pb-44 md:pb-12">
-        {/* Top bar */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link
-            href="/orders"
-            className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:bg-black/5"
-            style={{ background: colors.surface, border: `1px solid ${colors.border}`, color: colors.textPrimary }}
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <h1 className="flex-1 text-xl sm:text-2xl font-bold tracking-tight" style={{ color: colors.textPrimary }}>
-            Заказ #{order ? shortId(order.id) : "…"}
-          </h1>
-          {statusCfg && (
-            <span
-              className="text-xs font-medium px-3 py-1 rounded-full shrink-0"
-              style={{ background: statusCfg.bg, color: statusCfg.color }}
-            >
-              {statusCfg.label}
-            </span>
-          )}
-        </div>
+    <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
+      {/* Header bar */}
+      <div
+        className="flex items-center gap-2.5 px-4 py-3 border-b"
+        style={{ background: colors.surface, borderColor: colors.divider }}
+      >
+        <Link
+          href="/orders"
+          className="w-8 h-8 flex items-center justify-center rounded-md transition-colors"
+          style={{ color: colors.textBody }}
+          aria-label="Назад"
+        >
+          <ArrowLeft size={18} />
+        </Link>
+        <h1 className="flex-1 text-[15px] font-bold" style={{ color: colors.textStrong }}>
+          Заказ #{order ? (order.orderNumber ?? shortId(order.id)) : "…"}
+        </h1>
+        {order && <StatusPill status={order.status} />}
+      </div>
 
+      <div className="max-w-3xl mx-auto pb-44 md:pb-12">
         {isLoading && <PageSkeleton />}
 
         {isError && (
-          <div className="text-center py-16">
-            <Frown size={32} style={{ color: colors.textDim }} className="mb-3 mx-auto" />
+          <div className="text-center py-16 px-4">
+            <Frown size={28} style={{ color: colors.textDim }} className="mb-3 mx-auto" />
             <p className="text-sm" style={{ color: colors.danger }}>Не удалось загрузить заказ</p>
-            <Link href="/orders" className="text-xs mt-3 inline-block" style={{ color: colors.accent }}>← Назад к заказам</Link>
+            <Link href="/orders" className="text-xs mt-3 inline-block font-semibold" style={{ color: colors.brand }}>
+              ← Назад к заказам
+            </Link>
           </div>
         )}
 
         {order && (
-          <div className="flex flex-col gap-4">
-            {!isCancelled && (
-              <div
-                className="rounded-2xl px-4 pt-4 pb-5"
-                style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-              >
-                <div className="flex justify-between mb-3">
-                  {PROGRESS_STEPS.map((step, i) => (
-                    <span
-                      key={step.key}
-                      className="text-[10px] font-medium text-center flex-1"
-                      style={{ color: i <= currentStep ? colors.accent : colors.textDim }}
-                    >
-                      {step.label}
-                    </span>
-                  ))}
-                </div>
-                <div className="relative flex items-center">
-                  <div className="absolute left-0 right-0 h-[2px] rounded-full" style={{ background: colors.surfaceMuted }} />
-                  <div
-                    className="absolute left-0 h-[2px] rounded-full transition-all duration-500"
-                    style={{
-                      background: colors.accent,
-                      width: `${(currentStep / (PROGRESS_STEPS.length - 1)) * 100}%`,
-                    }}
-                  />
-                  <div className="relative flex justify-between w-full">
-                    {PROGRESS_STEPS.map((step, i) => {
-                      const done = i < currentStep;
-                      const current = i === currentStep;
-                      return (
-                        <div key={step.key} className="flex flex-col items-center">
-                          <div
-                            className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300"
-                            style={
-                              current
-                                ? { background: colors.accent, border: `2px solid ${colors.surface}`, boxShadow: `0 0 0 3px ${colors.accentMuted}` }
-                                : done
-                                  ? { background: colors.accent, border: `2px solid ${colors.accent}` }
-                                  : { background: colors.surface, border: `2px solid ${colors.borderStrong}` }
-                            }
-                          >
-                            {done && (
-                              <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
-                                <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="flex justify-between mt-2.5">
-                  {PROGRESS_STEPS.map((step, i) => (
-                    <span key={step.key} className="flex-1 flex justify-center" style={{ color: i <= currentStep ? colors.accent : colors.textDim, opacity: i <= currentStep ? 1 : 0.6 }}>
-                      <step.icon size={16} />
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+          <>
+            <StatusHero order={order} />
 
-            {/* Store card */}
+            <Timeline status={order.status} />
+
+            <div style={{ height: 1, background: colors.divider }} className="mx-4" />
+
+            {/* Store row */}
             {order.store && (
               <div
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+                className="flex items-center gap-3 px-4 py-4"
+                style={{ background: colors.surface }}
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0"
-                  style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+                  style={{ background: colors.brand, color: colors.brandTextOnBg }}
                 >
-                  {order.store.name?.charAt(0)?.toUpperCase() ?? '?'}
+                  {order.store.name?.charAt(0)?.toUpperCase() ?? "?"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: colors.textPrimary }}>{order.store.name ?? 'Магазин'}</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: colors.textDim }}>Магазин</p>
+                  <p className="text-[13px] font-semibold truncate" style={{ color: colors.textStrong }}>
+                    {order.store.name ?? "Магазин"}
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>Продавец</p>
                 </div>
                 {order.store.telegramContactLink && (
                   <a
@@ -257,140 +310,191 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => track.chatStarted(order.storeId, "order")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-opacity hover:opacity-90"
-                    style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-opacity hover:opacity-80"
+                    style={{ background: colors.brandMuted, color: colors.brand }}
                   >
-                    <Send size={12} />
+                    <Send size={11} />
                     Написать
                   </a>
                 )}
               </div>
             )}
 
+            <div style={{ height: 1, background: colors.divider }} className="mx-4" />
+
             {/* Items */}
-            <Section label="Товары" icon={<Package size={14} />}>
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
-                  >
-                    <Package size={16} style={{ color: colors.textDim }} />
+            <div className="px-4 py-4" style={{ background: colors.surface }}>
+              <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
+                — Товары · {totalQty} шт
+              </div>
+              <div className="flex flex-col gap-3">
+                {order.items.map((item) => (
+                  <div key={item.id} className="flex items-start gap-3">
+                    <div
+                      className="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0"
+                      style={{ background: colors.surfaceSunken }}
+                    >
+                      <Package size={16} style={{ color: colors.textDim }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs leading-snug" style={{ color: colors.textStrong }}>
+                        {item.title}
+                      </p>
+                      {item.variantTitle && (
+                        <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
+                          {item.variantTitle}
+                        </p>
+                      )}
+                      <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
+                        {item.quantity} × {formatPrice(item.unitPrice)}
+                      </p>
+                    </div>
+                    <span className="text-[13px] font-bold flex-shrink-0" style={{ color: colors.textStrong }}>
+                      {formatPrice(item.subtotal)}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-snug" style={{ color: colors.textPrimary }}>{item.title}</p>
-                    {item.variantTitle && (
-                      <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>{item.variantTitle}</p>
-                    )}
-                    <p className="text-[11px] mt-0.5" style={{ color: colors.textDim }}>{item.quantity} шт.</p>
-                  </div>
-                  <span className="text-sm font-semibold flex-shrink-0" style={{ color: colors.accent }}>
-                    {fmt(item.subtotal)} сум
-                  </span>
-                </div>
-              ))}
-            </Section>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ height: 1, background: colors.divider }} className="mx-4" />
 
             {/* Delivery */}
-            <Section label="Доставка" icon={<MapPin size={14} />}>
+            <div className="px-4 py-4" style={{ background: colors.surface }}>
+              <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
+                — Доставка
+              </div>
               {order.deliveryType === DeliveryType.DELIVERY ? (
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex-shrink-0" style={{ color: colors.accent }}><MapPin size={14} /></span>
+                <div className="flex items-start gap-2.5">
+                  <MapPin size={14} className="mt-0.5 flex-shrink-0" style={{ color: colors.brand }} />
                   <div>
-                    <p className="text-[11px] mb-0.5" style={{ color: colors.textDim }}>Адрес доставки</p>
-                    <p className="text-sm" style={{ color: colors.textPrimary }}>{order.deliveryAddress?.street ?? '—'}, {order.deliveryAddress?.city ?? '—'}</p>
+                    <p className="text-xs" style={{ color: colors.textStrong }}>
+                      {order.deliveryAddress?.street ?? "—"}
+                      {order.deliveryAddress?.city ? `, ${order.deliveryAddress.city}` : ""}
+                    </p>
                     {order.deliveryAddress?.region && (
-                      <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{order.deliveryAddress.region}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
+                        {order.deliveryAddress.region}
+                      </p>
                     )}
                   </div>
                 </div>
               ) : (
-                <p className="text-sm" style={{ color: colors.textPrimary }}>Самовывоз</p>
+                <p className="text-xs" style={{ color: colors.textStrong }}>Самовывоз</p>
               )}
               {order.buyerNote && (
-                <div className="pt-2" style={{ borderTop: `1px solid ${colors.divider}` }}>
-                  <p className="text-[11px] mb-0.5" style={{ color: colors.textDim }}>Комментарий</p>
-                  <p className="text-sm" style={{ color: colors.textPrimary }}>{order.buyerNote}</p>
+                <div className="mt-3 pt-3" style={{ borderTop: `1px dashed ${colors.divider}` }}>
+                  <p className="text-[10px] mb-1" style={{ color: colors.textMuted }}>Комментарий покупателя</p>
+                  <p className="text-xs" style={{ color: colors.textBody }}>{order.buyerNote}</p>
                 </div>
               )}
-            </Section>
+            </div>
+
+            <div style={{ height: 1, background: colors.divider }} className="mx-4" />
 
             {/* Total */}
-            <div
-              className="rounded-2xl px-4 py-3 flex flex-col gap-2"
-              style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: colors.textDim }}>Итого к оплате</p>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: colors.textMuted }}>Товары ({order.items.reduce((s, i) => s + (i.quantity ?? 0), 0)} шт.)</span>
-                <span style={{ color: colors.textPrimary }}>{fmt(subtotal)} сум</span>
+            <div className="px-4 py-4" style={{ background: colors.surface }}>
+              <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
+                — Итого
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs mb-1.5">
+                <span style={{ color: colors.textMuted }}>Товары · {totalQty} шт</span>
+                <span style={{ color: colors.textBody }}>{formatPrice(subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-xs mb-1.5">
                 <span style={{ color: colors.textMuted }}>Доставка</span>
-                <span style={{ color: colors.textPrimary }}>{fmt(order.deliveryFee)} сум</span>
+                <span style={{ color: colors.textBody }}>{formatPrice(order.deliveryFee)}</span>
               </div>
-              <div className="flex justify-between items-center pt-2 mt-1" style={{ borderTop: `1px solid ${colors.divider}` }}>
-                <span className="text-base font-semibold" style={{ color: colors.textPrimary }}>К оплате</span>
-                <span className="text-base font-bold" style={{ color: colors.accent }}>{fmt(order.totalAmount)} сум</span>
+              <div
+                className="flex justify-between items-baseline pt-2.5 mt-2"
+                style={{ borderTop: `1px dashed ${colors.divider}` }}
+              >
+                <span className="text-sm font-bold" style={{ color: colors.textStrong }}>К оплате</span>
+                <span className="text-base font-bold" style={{ color: colors.textStrong }}>
+                  {formatPrice(order.totalAmount)} сум
+                </span>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
-      {/* Sticky CTA */}
-      {order && !isCancelled && (
-        <div className="fixed left-0 right-0 px-4 md:bottom-6 md:left-auto md:right-6 md:max-w-md" style={{ bottom: 76, zIndex: 50 }}>
-          <div className="max-w-md mx-auto flex flex-col gap-2.5">
-            <button
-              onClick={() => {
-                track.chatStarted(order.storeId, "order");
-                setChatOpen(true);
-              }}
-              className="w-full py-3.5 rounded-2xl text-[15px] font-semibold tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-              style={{ background: colors.accent, color: colors.accentTextOnBg, boxShadow: `0 8px 24px ${colors.accentMuted}` }}
-            >
-              <MessageSquare size={18} />
-              Чат по заказу
-            </button>
-            {order.store?.telegramContactLink && (
+      {/* Sticky CTA bar */}
+      {order && (
+        <div
+          className="fixed left-0 right-0 px-4 md:bottom-6 md:left-auto md:right-6 md:max-w-md"
+          style={{ bottom: 76, zIndex: 51 }}
+        >
+          <div className="max-w-md mx-auto flex flex-col gap-2">
+            {!isCancelled && (
+              <button
+                onClick={() => {
+                  track.chatStarted(order.storeId, "order");
+                  setChatOpen(true);
+                }}
+                className="w-full py-3.5 rounded-md text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                style={{ background: colors.brand, color: colors.brandTextOnBg }}
+              >
+                <MessageSquare size={16} />
+                Чат по заказу
+              </button>
+            )}
+
+            {isCancelled && (
+              <Link
+                href="/"
+                className="w-full py-3.5 rounded-md text-sm font-bold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                style={{ background: colors.brand, color: colors.brandTextOnBg }}
+              >
+                К магазинам
+              </Link>
+            )}
+
+            {order.store?.telegramContactLink && !isCancelled && (
               <a
                 href={order.store.telegramContactLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => track.chatStarted(order.storeId, "order")}
-                className="w-full py-2.5 rounded-2xl text-sm font-medium tracking-wide flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                style={{ background: `linear-gradient(135deg, ${colors.telegram} 0%, #1d6fa4 100%)`, color: "#FFFFFF" }}
+                className="w-full py-2.5 rounded-md text-xs font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                style={{ background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }}
               >
-                <Send size={14} />
-                Открыть Telegram
+                <Send size={12} />
+                Открыть в Telegram
               </a>
             )}
+
             {canCancel && !confirmCancel && (
               <button
                 onClick={() => setConfirmCancel(true)}
-                className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90"
-                style={{ background: 'rgba(220,38,38,0.08)', color: colors.danger, border: `1px solid rgba(220,38,38,0.30)` }}
+                className="w-full py-2.5 rounded-md text-xs font-semibold transition-opacity hover:opacity-90"
+                style={{ background: "transparent", color: colors.danger, border: `1px solid ${colors.danger}` }}
               >
                 Отменить заказ
               </button>
             )}
+
             {canCancel && confirmCancel && (
-              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'rgba(220,38,38,0.06)', border: `1px solid rgba(220,38,38,0.30)` }}>
-                <p className="text-sm text-center" style={{ color: colors.textPrimary }}>Отменить заказ #{shortId(order.id)}?</p>
-                <div className="flex gap-2.5">
+              <div
+                className="rounded-md p-3.5 flex flex-col gap-2.5"
+                style={{ background: colors.surface, border: `1px solid ${colors.danger}` }}
+              >
+                <p className="text-xs text-center" style={{ color: colors.textStrong }}>
+                  Отменить заказ #{order.orderNumber ?? shortId(order.id)}?
+                </p>
+                <div className="flex gap-2">
                   <button
                     onClick={() => setConfirmCancel(false)}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                    style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
+                    className="flex-1 py-2 rounded-md text-[11px] font-semibold"
+                    style={{ background: colors.surfaceSunken, color: colors.textBody }}
                   >
                     Назад
                   </button>
                   <button
                     onClick={() => cancelOrder.mutate({ id: order.id })}
                     disabled={cancelOrder.isPending}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
-                    style={{ background: colors.danger, color: '#FFFFFF' }}
+                    className="flex-1 py-2 rounded-md text-[11px] font-semibold disabled:opacity-40"
+                    style={{ background: colors.danger, color: colors.brandTextOnBg }}
                   >
                     {cancelOrder.isPending ? "..." : "Да, отменить"}
                   </button>
@@ -407,7 +511,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <ChatComposerModal
           contextType={ThreadType.ORDER}
           contextId={order.id}
-          title={`Заказ #${shortId(order.id)}`}
+          title={`Заказ #${order.orderNumber ?? shortId(order.id)}`}
           onClose={() => setChatOpen(false)}
         />
       )}

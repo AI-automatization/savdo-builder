@@ -1,4 +1,6 @@
 import { Controller, Post, Get, Body, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -13,6 +15,8 @@ import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 
+@ApiTags('auth')
+@ApiBearerAuth('jwt')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -26,12 +30,14 @@ export class AuthController {
 
   @Post('telegram')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // TMA initData verify: до 10/мин
   async telegramAuthHandler(@Body() dto: TelegramAuthDto) {
     return this.telegramAuth.execute(dto.initData);
   }
 
   @Post('request-otp')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // защита от OTP-bomb: 5/мин на IP
   async requestOtpHandler(@Body() dto: RequestOtpDto) {
     const result = await this.requestOtp.execute(dto.phone, dto.purpose);
     return { message: 'OTP sent', expiresAt: result.expiresAt };
@@ -39,6 +45,7 @@ export class AuthController {
 
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // brute-force OTP: 10/мин
   async verifyOtpHandler(@Body() dto: VerifyOtpDto, @Req() req: Request) {
     return this.verifyOtp.execute(dto.phone, dto.code, dto.purpose, {
       ipAddress: req.ip,
@@ -48,6 +55,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async refreshHandler(@Body() dto: RefreshTokenDto) {
     return this.refreshSession.execute(dto.refreshToken);
   }
