@@ -101,6 +101,16 @@ export class CreateReviewUseCase {
 
     await this.reviewsRepo.refreshProductAggregate(orderItem.productId);
 
+    // MARKETING-VERIFIED-SELLER-001: каскадно обновить Store-aggregate.
+    // Берём storeId из product (orderItem не имеет прямой relation на store).
+    const product = await this.prisma.product.findUnique({
+      where: { id: orderItem.productId },
+      select: { storeId: true },
+    });
+    if (product?.storeId) {
+      await this.reviewsRepo.refreshStoreAggregate(product.storeId);
+    }
+
     this.logger.log(`Review ${review.id} created on product ${orderItem.productId} by buyer ${buyerId}`);
 
     return {

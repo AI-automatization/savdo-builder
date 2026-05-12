@@ -1,0 +1,11 @@
+-- FEAT-TG-CHANNEL-PHOTO-001: фото в TG-канал продавца должно отправляться
+-- через sendPhoto (открытое изображение), а не sendDocument (файл с превью).
+--
+-- Telegram API ограничение: file_id, полученный через sendDocument upload,
+-- НЕЛЬЗЯ передать в sendPhoto. Поэтому при первой публикации в канал мы
+-- получаем второй file_id через sendPhoto и сохраняем его здесь.
+--
+-- Existing data: все строки получат NULL — это нормально. Lazy backfill
+-- в PostProductToChannelUseCase: при первой публикации скачаем по document
+-- file_id и зальём заново как photo → запишем сюда.
+ALTER TABLE "media_files" ADD COLUMN "photoFileId" TEXT NULL;

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { InAppNotificationType } from '@prisma/client';
 import { NotificationRepository } from '../repositories/notification.repository';
 import {
   QUEUE_IN_APP_NOTIFICATIONS,
@@ -132,7 +133,7 @@ export class NotificationService {
    */
   notifyInApp(
     userId: string,
-    type: string,
+    type: InAppNotificationType,
     title: string,
     body: string,
     data?: object,
@@ -156,7 +157,7 @@ export class NotificationService {
    */
   async createInAppDirect(
     userId: string,
-    type: string,
+    type: InAppNotificationType,
     title: string,
     body: string,
     data?: object,

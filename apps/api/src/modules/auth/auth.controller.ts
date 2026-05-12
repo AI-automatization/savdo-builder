@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { RequestOtpDto } from './dto/request-otp.dto';
@@ -14,6 +15,8 @@ import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 
+@ApiTags('auth')
+@ApiBearerAuth('jwt')
 @Controller('auth')
 export class AuthController {
   constructor(

@@ -209,8 +209,8 @@ export default function SellerProductsPage() {
                       <span
                         className="text-[10px] font-bold px-1 rounded-full"
                         style={{
-                          background: active ? 'rgba(168,85,247,0.32)' : 'rgba(255,255,255,0.08)',
-                          color: active ? '#F3E8FF' : 'rgba(255,255,255,0.35)',
+                          background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
+                          color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
                         }}
                       >
                         {count}
@@ -290,7 +290,7 @@ export default function SellerProductsPage() {
                     {product.title}
                   </p>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold" style={{ color: '#A855F7' }}>{price(product)}</p>
+                    <p className="text-sm font-bold" style={{ color: 'var(--tg-accent)' }}>{price(product)}</p>
                     <Badge status={product.status} />
                   </div>
                   {typeof product.totalStock === 'number' && (

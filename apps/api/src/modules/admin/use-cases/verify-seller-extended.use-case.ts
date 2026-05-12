@@ -1,10 +1,11 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { SellerVerificationStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
-const VALID_STATUSES = ['UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED', 'SUSPENDED'] as const;
-export type VerificationStatus = typeof VALID_STATUSES[number];
+const VALID_STATUSES = Object.values(SellerVerificationStatus);
+export type VerificationStatus = SellerVerificationStatus;
 
 interface VerifyInput {
   adminUserId: string;       // User.id админа (для audit)
@@ -30,7 +31,7 @@ export class VerifySellerExtendedUseCase {
       );
     }
 
-    if ((input.status === 'REJECTED' || input.status === 'SUSPENDED') && !input.reason?.trim()) {
+    if ((input.status === SellerVerificationStatus.REJECTED || input.status === SellerVerificationStatus.SUSPENDED) && !input.reason?.trim()) {
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
         `Reason is required for ${input.status}`,
@@ -49,14 +50,14 @@ export class VerifySellerExtendedUseCase {
     const updated = await this.prisma.seller.update({
       where: { id: input.sellerId },
       data: {
-        verificationStatus: input.status as any,
+        verificationStatus: input.status,
         // SUSPENDED → блокируем продавца, его магазин невидим
-        ...(input.status === 'SUSPENDED' && {
+        ...(input.status === SellerVerificationStatus.SUSPENDED && {
           isBlocked: true,
           blockedReason: input.reason ?? 'Suspended by admin',
         }),
         // VERIFIED → разблокируем
-        ...(input.status === 'VERIFIED' && { isBlocked: false, blockedReason: null }),
+        ...(input.status === SellerVerificationStatus.VERIFIED && { isBlocked: false, blockedReason: null }),
       },
     });
 

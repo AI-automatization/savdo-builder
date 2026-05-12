@@ -493,7 +493,7 @@ export default function SellerChatPage() {
                       .catch(() => showToast('❌ Не удалось скопировать', 'error'));
                   }}
                   className="text-[11px] px-2 py-1 rounded-lg"
-                  style={{ background: 'rgba(124,58,237,0.20)', border: '1px solid rgba(124,58,237,0.30)', color: '#a78bfa' }}
+                  style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   Копировать
                 </button>
@@ -539,11 +539,11 @@ export default function SellerChatPage() {
                     className="rounded-xl overflow-hidden"
                     style={{
                       background: m.id.startsWith('temp_')
-                        ? 'rgba(124,58,237,0.20)'
+                        ? 'var(--tg-accent-bg)'
                         : m.senderRole === 'SELLER'
-                          ? 'rgba(124,58,237,0.30)'
+                          ? 'var(--tg-accent-dim)'
                           : 'rgba(255,255,255,0.08)',
-                      border: `1px solid ${m.senderRole === 'SELLER' ? 'rgba(124,58,237,0.40)' : 'rgba(255,255,255,0.12)'}`,
+                      border: `1px solid ${m.senderRole === 'SELLER' ? 'var(--tg-accent-border)' : 'rgba(255,255,255,0.12)'}`,
                       color: 'rgba(255,255,255,0.88)',
                       opacity: m.id.startsWith('temp_') ? 0.7 : 1,
                     }}
@@ -554,11 +554,11 @@ export default function SellerChatPage() {
                           className="px-2 py-1 rounded-md text-[11px] truncate"
                           style={{
                             background: 'rgba(255,255,255,0.08)',
-                            borderLeft: '3px solid rgba(168,85,247,0.70)',
+                            borderLeft: '3px solid var(--tg-accent)',
                             color: 'rgba(255,255,255,0.65)',
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: 'rgba(168,85,247,0.95)' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--tg-accent)' }}>
                             ↩ {m.parentMessage.senderRole === 'SELLER' ? 'Вы' : 'Покупатель'}
                           </span>
                           <span className="ml-1.5">{m.parentMessage.text.slice(0, 60) || '📷 Фото'}</span>
@@ -597,10 +597,10 @@ export default function SellerChatPage() {
           {(activeThread?.status === 'OPEN' || !activeThread) ? (
             <div className="flex flex-col gap-1.5 pt-2 shrink-0">
               {replyTo && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(168,85,247,0.12)', borderLeft: '3px solid rgba(168,85,247,0.70)' }}>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--tg-accent-bg)', borderLeft: '3px solid var(--tg-accent)' }}>
                   <span style={{ fontSize: 16 }}>↩</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold" style={{ color: 'rgba(168,85,247,0.95)' }}>
+                    <p className="text-[10px] font-semibold" style={{ color: 'var(--tg-accent)' }}>
                       Ответ {replyTo.senderRole === 'SELLER' ? 'себе' : 'покупателю'}
                     </p>
                     <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>{replyTo.text || '📷 Фото'}</p>
@@ -667,7 +667,7 @@ export default function SellerChatPage() {
                   onClick={() => { if (!editingId) emitTyping(false); (editingId ? submitEdit : sendMsg)(); }}
                   disabled={editingId ? !editText.trim() : (!text.trim() || sending)}
                   aria-label={editingId ? 'Сохранить' : 'Отправить'}
-                  style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(124,58,237,0.40)', border: '1px solid rgba(124,58,237,0.50)', color: '#fff', fontSize: 18, cursor: 'pointer', opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4, minWidth: 46 }}
+                  style={{ padding: '10px 16px', borderRadius: 12, background: 'var(--tg-accent)', border: '1px solid var(--tg-accent-border)', color: '#fff', fontSize: 18, cursor: 'pointer', opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4, minWidth: 46 }}
                 >
                   {editingId ? '✓' : (sending ? <Spinner size={14} /> : '➤')}
                 </button>
@@ -731,7 +731,7 @@ export default function SellerChatPage() {
           <button
             onClick={loadThreads}
             className="text-xs font-semibold py-2 px-4 rounded-full"
-            style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.35)', color: '#A855F7' }}
+            style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
           >
             ↻ Повторить
           </button>
@@ -767,7 +767,7 @@ export default function SellerChatPage() {
               {unread > 0 && (
                 <span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
-                  style={{ background: '#A855F7', color: '#fff' }}
+                  style={{ background: 'var(--tg-accent)', color: '#fff' }}
                 >
                   {unread > 9 ? '9+' : unread}
                 </span>
@@ -785,7 +785,7 @@ export default function SellerChatPage() {
                 )}
               </div>
               {ctx && (
-                <p className="text-[11px] truncate" style={{ color: 'rgba(168,85,247,0.85)' }}>
+                <p className="text-[11px] truncate" style={{ color: 'var(--tg-accent)' }}>
                   {ctx}
                 </p>
               )}

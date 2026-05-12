@@ -3,6 +3,7 @@ import { TelegramBotService, InlineButton, WebAppButton } from './services/teleg
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
 import { escapeTgHtml } from '../../shared/telegram-html';
+import { maskPhone } from '../../shared/pii';
 
 // ── Redis keys ────────────────────────────────────────────────────────────────
 const TTL_LONG  = 365 * 24 * 60 * 60; // 1 год — привязка телефона
@@ -88,7 +89,7 @@ export class TelegramDemoHandler {
   // /start — точка входа
   // ─────────────────────────────────────────────────────────────────────────
 
-  async handleStart(chatId: string, firstName?: string): Promise<void> {
+  async handleStart(chatId: string, firstName?: string, startParam?: string): Promise<void> {
     const user = await this.resolveUser(chatId);
 
     if (!user) {
@@ -114,9 +115,21 @@ export class TelegramDemoHandler {
       return;
     }
 
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+
+    // TMA-BECOME-SELLER-CTA-001: deep-link из TMA "Стать продавцом".
+    // Whitelist строгий — любой другой param игнорируется, идёт обычный flow.
+    if (startParam === 'become_seller' && !seller) {
+      // Реальный аккаунт с телефоном, но без seller-профиля → запускаем регистрацию.
+      // Phone уже подтверждён → пропускаем contact request, переиспользуем существующий 3-step flow.
+      await this.setTmp(chatId, 'phone', user.phone);
+      await this.setTmp(chatId, 'firstName', firstName ?? '');
+      await this.startSellerRegistration(chatId);
+      return;
+    }
+
     // Обычный пользователь — показываем меню
     const displayName = firstName ?? user.phone;
-    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (seller) {
       await this.showSellerMenu(chatId, displayName);
     } else {
@@ -208,7 +221,7 @@ export class TelegramDemoHandler {
           });
         });
 
-        this.logger.log(`Linked telegramId=${chatId} to user id=${existing.id} phone=${normalized}`);
+        this.logger.log(`Linked telegramId=${chatId} to user id=${existing.id} phone=${maskPhone(normalized)}`);
       }
 
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
@@ -307,7 +320,7 @@ export class TelegramDemoHandler {
       },
     });
 
-    this.logger.log(`Registered buyer userId=${user.id} phone=${phone}`);
+    this.logger.log(`Registered buyer userId=${user.id} phone=${maskPhone(phone)}`);
     await this.showBuyerMenu(chatId, firstName || phone);
   }
 
@@ -368,35 +381,67 @@ export class TelegramDemoHandler {
       .slice(0, 40) + '-' + Date.now().toString(36);
 
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          phone,
-          role: 'SELLER',
-          isPhoneVerified: true,
-          telegramId: BigInt(chatId),
-          seller: {
-            create: {
-              fullName: sellerName,
-              sellerType: 'individual',
-              telegramUsername: username || '',
-              telegramChatId: BigInt(chatId),
-              telegramNotificationsActive: true,
-              store: {
-                create: {
-                  name: storeName,
-                  slug,
-                  description: description || null,
-                  city: 'Tashkent',
-                  telegramContactLink: username ? `https://t.me/${username}` : '',
-                  status: 'DRAFT',
-                },
-              },
-            },
+      // TMA-BECOME-SELLER-CTA-001 (12.05.2026): purchaser уже может быть зарегистрирован
+      // как BUYER через TMA. Старый `user.create` падал на unique(phone) → 500. Теперь:
+      // - если user существует и уже seller → no-op + меню (защита от двойной регистрации)
+      // - если user существует как buyer → upgrade role + create seller/store (buyer-запись
+      //   сохраняется — пользователь сможет покупать в чужих магазинах)
+      // - если user не существует → классический create (новый flow через /start)
+      const sellerNested = {
+        fullName: sellerName,
+        sellerType: 'individual',
+        telegramUsername: username || '',
+        telegramChatId: BigInt(chatId),
+        telegramNotificationsActive: true,
+        store: {
+          create: {
+            name: storeName,
+            slug,
+            description: description || null,
+            city: 'Tashkent',
+            telegramContactLink: username ? `https://t.me/${username}` : '',
+            status: 'DRAFT' as const,
           },
         },
+      };
+
+      const existing = await this.prisma.user.findUnique({
+        where: { phone },
+        include: { seller: { select: { id: true } } },
       });
 
-      this.logger.log(`Registered seller userId=${user.id} store=${slug}`);
+      let userId: string;
+      if (existing?.seller) {
+        // Уже продавец — повторный вход не должен дублировать запись.
+        await this.bot.sendMessage(chatId, '✅ Вы уже зарегистрированы как продавец.');
+        await this.showSellerMenu(chatId, sellerName);
+        return;
+      }
+
+      if (existing) {
+        const updated = await this.prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            role: 'SELLER',
+            telegramId: BigInt(chatId),
+            seller: { create: sellerNested },
+          },
+        });
+        userId = updated.id;
+        this.logger.log(`Upgraded buyer → seller userId=${userId} store=${slug}`);
+      } else {
+        const created = await this.prisma.user.create({
+          data: {
+            phone,
+            role: 'SELLER',
+            isPhoneVerified: true,
+            telegramId: BigInt(chatId),
+            seller: { create: sellerNested },
+          },
+        });
+        userId = created.id;
+        this.logger.log(`Registered seller userId=${userId} store=${slug}`);
+      }
 
       await this.bot.sendInlineKeyboard(
         chatId,

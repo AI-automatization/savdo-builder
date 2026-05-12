@@ -9,6 +9,7 @@ import { useUpdateSellerProfile } from '../../../hooks/use-seller';
 import { useCreateProduct } from '../../../hooks/use-products';
 import { useAuth } from '../../../lib/auth/context';
 import { applySeller } from '../../../lib/api/seller.api';
+import { buyerHostDisplay } from '../../../lib/buyer-url';
 import { track } from '../../../lib/analytics';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -159,7 +160,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
             className="px-3 py-[0.625rem] text-sm flex-shrink-0"
             style={{ background: colors.surfaceMuted, color: colors.textDim, borderRight: `1px solid ${colors.border}` }}
           >
-            savdo.uz/
+            {buyerHostDisplay()}/
           </span>
           <input
             className="flex-1 px-3 py-[0.625rem] text-sm focus:outline-none"
@@ -176,7 +177,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
         <FieldError message={errors.slug?.message} />
         {name && !errors.slug && (
           <p className="mt-1 text-xs" style={{ color: colors.textDim }}>
-            savdo.uz/{watch('slug')}
+            {buyerHostDisplay()}/{watch('slug')}
           </p>
         )}
       </div>

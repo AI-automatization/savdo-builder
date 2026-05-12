@@ -6,11 +6,16 @@ import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.de
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { ReplaceDirectionsDto } from './dto/replace-directions.dto';
+import { UpdateChannelTemplateDto } from './dto/update-channel-template.dto';
 import { CreateStoreUseCase } from './use-cases/create-store.use-case';
 import { UpdateStoreUseCase } from './use-cases/update-store.use-case';
 import { SubmitStoreForReviewUseCase } from './use-cases/submit-store-for-review.use-case';
 import { PublishStoreUseCase } from './use-cases/publish-store.use-case';
 import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
+import { UpdateChannelTemplateUseCase } from './use-cases/update-channel-template.use-case';
+import { TriggerChannelTestPostUseCase } from './use-cases/trigger-channel-test-post.use-case';
+import { PreviewChannelPostUseCase } from '../products/use-cases/preview-channel-post.use-case';
+import { ChannelTemplateService } from '../products/services/channel-template.service';
 import { StoresRepository } from './repositories/stores.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { PrismaService } from '../../database/prisma.service';
@@ -27,6 +32,9 @@ export class StoresController {
     private readonly submitForReview: SubmitStoreForReviewUseCase,
     private readonly publishStore: PublishStoreUseCase,
     private readonly unpublishStore: UnpublishStoreUseCase,
+    private readonly updateChannelTemplate: UpdateChannelTemplateUseCase,
+    private readonly triggerTestPost: TriggerChannelTestPostUseCase,
+    private readonly previewChannelPost: PreviewChannelPostUseCase,
     private readonly storesRepo: StoresRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly prisma: PrismaService,
@@ -85,6 +93,46 @@ export class StoresController {
   @HttpCode(HttpStatus.OK)
   async unpublishHandler(@CurrentUser() user: JwtPayload) {
     return this.unpublishStore.execute(user.sub);
+  }
+
+  // ─── TG-канал: шаблон поста + контакты + тестовая публикация ──────────
+  // FEAT-TG-CHANNEL-TEMPLATE-001. UI: apps/tma/.../seller/settings/channel.
+
+  @Get('channel-template')
+  async getChannelTemplate(@CurrentUser() user: JwtPayload) {
+    const store = await this.requireMyStore(user.sub);
+    const data = await this.storesRepo.findChannelTemplate(store.id);
+    return {
+      ...data,
+      defaultTemplate: ChannelTemplateService.DEFAULT_TEMPLATE,
+    };
+  }
+
+  @Patch('channel-template')
+  async patchChannelTemplate(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateChannelTemplateDto,
+  ) {
+    return this.updateChannelTemplate.execute(user.sub, dto);
+  }
+
+  @Post('channel-template/preview')
+  @HttpCode(HttpStatus.OK)
+  async previewChannelTemplate(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { template?: string; productId?: string },
+  ) {
+    return this.previewChannelPost.execute({
+      sellerUserId: user.sub,
+      templateOverride: body.template,
+      productId: body.productId,
+    });
+  }
+
+  @Post('channel-test-post')
+  @HttpCode(HttpStatus.OK)
+  async sendTestChannelPost(@CurrentUser() user: JwtPayload) {
+    return this.triggerTestPost.execute(user.sub);
   }
 
   // ─── Store directions (many-to-many GlobalCategory) ─────────────────────────

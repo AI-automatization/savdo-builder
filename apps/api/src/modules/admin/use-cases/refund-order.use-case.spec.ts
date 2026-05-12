@@ -16,6 +16,10 @@ describe('RefundOrderUseCase', () => {
   let prisma: {
     order: { findUnique: jest.Mock; update: jest.Mock };
     orderRefund: { findMany: jest.Mock; create: jest.Mock };
+    // INV-O04 stock release deps:
+    orderItem: { findMany: jest.Mock };
+    productVariant: { update: jest.Mock };
+    inventoryMovement: { create: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -29,6 +33,12 @@ describe('RefundOrderUseCase', () => {
         findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn(),
       },
+      // INV-O04: при full refund use-case делает orderItem.findMany +
+      // productVariant.update + inventoryMovement.create. Default empty
+      // items list — для частичных refund'ов код этот блок не выполняет.
+      orderItem: { findMany: jest.fn().mockResolvedValue([]) },
+      productVariant: { update: jest.fn().mockResolvedValue(undefined) },
+      inventoryMovement: { create: jest.fn().mockResolvedValue(undefined) },
       // $transaction(callback) — синхронно выполняем callback с tx=prisma
       $transaction: jest.fn().mockImplementation(async (cb) => cb(prisma)),
     };
@@ -195,6 +205,50 @@ describe('RefundOrderUseCase', () => {
     it('order.update НЕ вызывается', async () => {
       await useCase.execute({ adminId: 'a1', orderId: 'o1', reason: 'partial', amount: 300 });
       expect(prisma.order.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('INV-O04 stock release (full refund)', () => {
+    beforeEach(() => {
+      setOrder({ totalAmount: 1000 });
+      prisma.orderRefund.create.mockResolvedValue({
+        id: 'r1', orderId: 'o1', amount: '1000', reason: 'fraud', createdAt: new Date(),
+      });
+    });
+
+    it('full refund возвращает stock на каждый OrderItem с variantId', async () => {
+      prisma.orderItem.findMany.mockResolvedValue([
+        { productId: 'p-1', variantId: 'v-1', quantity: 3 },
+        { productId: 'p-2', variantId: 'v-2', quantity: 1 },
+      ]);
+      await useCase.execute({ adminId: 'a1', orderId: 'o1', reason: 'fraud' });
+
+      expect(prisma.orderItem.findMany).toHaveBeenCalledWith({
+        where: { orderId: 'o1', variantId: { not: null }, productId: { not: null } },
+        select: { productId: true, variantId: true, quantity: true },
+      });
+      expect(prisma.productVariant.update).toHaveBeenCalledWith({
+        where: { id: 'v-1' },
+        data: { stockQuantity: { increment: 3 } },
+      });
+      expect(prisma.productVariant.update).toHaveBeenCalledWith({
+        where: { id: 'v-2' },
+        data: { stockQuantity: { increment: 1 } },
+      });
+      expect(prisma.inventoryMovement.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('partial refund НЕ возвращает stock', async () => {
+      prisma.orderItem.findMany.mockResolvedValue([{ productId: 'p-1', variantId: 'v-1', quantity: 3 }]);
+      await useCase.execute({ adminId: 'a1', orderId: 'o1', reason: 'partial', amount: 300 });
+      expect(prisma.productVariant.update).not.toHaveBeenCalled();
+      expect(prisma.inventoryMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('order без variants → no-op (digital product)', async () => {
+      prisma.orderItem.findMany.mockResolvedValue([]);
+      await useCase.execute({ adminId: 'a1', orderId: 'o1', reason: 'r' });
+      expect(prisma.productVariant.update).not.toHaveBeenCalled();
     });
   });
 

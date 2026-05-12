@@ -5,6 +5,7 @@ import { TokenService } from '../services/token.service';
 import { RedisService } from '../../../shared/redis.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { maskPhone } from '../../../shared/pii';
 
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
@@ -102,7 +103,7 @@ export class TelegramAuthUseCase {
           await this.authRepo.clearTelegramIdIfGhost(telegramId);
           // Привязываем telegramId к существующему web-аккаунту
           resolvedUser = await this.authRepo.linkTelegramId(byPhone.id, telegramId);
-          this.logger.log(`Linked telegramId=${telegramId} to existing user phone=${phoneFromBot}`);
+          this.logger.log(`Linked telegramId=${telegramId} to existing user phone=${maskPhone(phoneFromBot)}`);
         } else if (byPhone) {
           resolvedUser = byPhone;
         }

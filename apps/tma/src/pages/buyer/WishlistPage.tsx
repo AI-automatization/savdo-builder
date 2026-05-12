@@ -54,7 +54,7 @@ export default function WishlistPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold text-gradient">Избранное</h1>
           {!loading && items.length > 0 && (
-            <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <p className="text-xs font-medium" style={{ color: 'var(--tg-text-muted)' }}>
               {items.length} {items.length === 1 ? 'товар' : items.length < 5 ? 'товара' : 'товаров'}
             </p>
           )}
@@ -96,15 +96,15 @@ export default function WishlistPage() {
                 style={{
                   borderRadius: 14,
                   overflow: 'hidden',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--tg-surface)',
+                  border: '1px solid var(--tg-border-soft)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
                   opacity: p.isAvailable ? 1 : 0.55,
                 }}
               >
-                <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
+                <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'var(--tg-surface-hover)', position: 'relative' }}>
                   <ProductImage src={url} alt={p.title} emptyVariant="product-empty" />
                   <div style={{ position: 'absolute', top: 6, right: 6 }}>
                     <WishlistButton productId={p.id} variant="card" />
@@ -122,16 +122,16 @@ export default function WishlistPage() {
                 </div>
                 <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
                   <p style={{
-                    fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.88)',
+                    fontSize: 12, fontWeight: 600, color: 'var(--tg-text-primary)',
                     lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>
                     {p.title}
                   </p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#A855F7' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--tg-accent)' }}>
                     {Number(p.basePrice).toLocaleString('ru')} {p.currencyCode === 'UZS' ? 'сум' : p.currencyCode}
                   </p>
                   <p style={{
-                    fontSize: 10, color: 'rgba(255,255,255,0.35)',
+                    fontSize: 10, color: 'var(--tg-text-muted)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     🏪 {p.storeName}

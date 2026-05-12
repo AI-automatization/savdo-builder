@@ -75,7 +75,7 @@ export function SellerAnalyticsCard() {
               className="px-2.5 py-1 rounded-lg text-[10px] font-semibold"
               style={
                 period === p.value
-                  ? { background: 'rgba(168,85,247,0.25)', border: '1px solid rgba(168,85,247,0.40)', color: '#A855F7' }
+                  ? { background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }
                   : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
               }
             >
@@ -121,7 +121,7 @@ export function SellerAnalyticsCard() {
                   <span className="text-[11px] shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>
                     × {p.quantity}
                   </span>
-                  <span className="text-xs font-bold shrink-0" style={{ color: '#A855F7' }}>
+                  <span className="text-xs font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
                     {fmt(p.revenue)}
                   </span>
                 </div>

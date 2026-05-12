@@ -2,15 +2,13 @@ import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Order } from '@prisma/client';
 import { CartRepository } from '../../cart/repositories/cart.repository';
-import { ProductsRepository } from '../../products/repositories/products.repository';
-import { VariantsRepository } from '../../products/repositories/variants.repository';
 import { CheckoutRepository } from '../repositories/checkout.repository';
+import { ValidateCartItemsService } from '../services/validate-cart-items.service';
 import { OrdersGateway } from '../../../socket/orders.gateway';
 import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { DeliveryAddressDto } from '../dto/confirm-checkout.dto';
-import { toNum } from '../../cart/cart.mapper';
 
 export interface ConfirmCheckoutInput {
   buyerId: string;
@@ -36,9 +34,8 @@ export class ConfirmCheckoutUseCase {
 
   constructor(
     private readonly cartRepo: CartRepository,
-    private readonly productsRepo: ProductsRepository,
-    private readonly variantsRepo: VariantsRepository,
     private readonly checkoutRepo: CheckoutRepository,
+    private readonly validateItems: ValidateCartItemsService,
     private readonly config: ConfigService,
     private readonly ordersGateway: OrdersGateway,
     private readonly tgNotifier: SellerNotificationService,
@@ -86,122 +83,30 @@ export class ConfirmCheckoutUseCase {
       );
     }
 
-    // Validate all items — collect failures before aborting
-    const validatedItems: Array<{
-      productId: string;
-      variantId?: string;
-      productTitleSnapshot: string;
-      variantLabelSnapshot?: string;
-      skuSnapshot?: string;
-      unitPriceSnapshot: number;
-      quantity: number;
-      lineTotalAmount: number;
-    }> = [];
-
-    const invalidItems: Array<{ productId: string; variantId: string | null; reason: string }> = [];
-
-    for (const cartItem of cart.items) {
-      const product = await this.productsRepo.findById(cartItem.productId);
-
-      if (!product) {
-        invalidItems.push({
-          productId: cartItem.productId,
-          variantId: cartItem.variantId ?? null,
-          reason: 'Product not found',
-        });
-        continue;
-      }
-
-      if ((product as any).status !== 'ACTIVE') {
-        invalidItems.push({
-          productId: cartItem.productId,
-          variantId: cartItem.variantId ?? null,
-          reason: 'Product is no longer active',
-        });
-        continue;
-      }
-
-      let unitPrice = toNum(cartItem.unitPriceSnapshot);
-      let variantLabelSnapshot: string | undefined;
-      let skuSnapshot: string | undefined;
-      let itemInvalid = false;
-
-      if (cartItem.variantId) {
-        const variant = await this.variantsRepo.findById(cartItem.variantId);
-
-        if (!variant) {
-          invalidItems.push({
-            productId: cartItem.productId,
-            variantId: cartItem.variantId,
-            reason: 'Variant not found',
-          });
-          itemInvalid = true;
-        } else if ((variant as any).productId !== cartItem.productId) {
-          invalidItems.push({
-            productId: cartItem.productId,
-            variantId: cartItem.variantId,
-            reason: 'Variant does not belong to this product',
-          });
-          itemInvalid = true;
-        } else if (!(variant as any).isActive) {
-          invalidItems.push({
-            productId: cartItem.productId,
-            variantId: cartItem.variantId,
-            reason: 'Variant is no longer available',
-          });
-          itemInvalid = true;
-        } else if ((variant as any).stockQuantity < cartItem.quantity) {
-          invalidItems.push({
-            productId: cartItem.productId,
-            variantId: cartItem.variantId,
-            reason: `Insufficient stock: available ${(variant as any).stockQuantity}, requested ${cartItem.quantity}`,
-          });
-          itemInvalid = true;
-        } else {
-          if (
-            (variant as any).priceOverride !== null &&
-            (variant as any).priceOverride !== undefined
-          ) {
-            unitPrice = toNum((variant as any).priceOverride);
-          }
-          const optionValues = (variant as any).optionValues ?? [];
-          if (optionValues.length > 0) {
-            variantLabelSnapshot = optionValues
-              .map((ov: any) => ov.optionValue?.value ?? '')
-              .filter(Boolean)
-              .join(' / ');
-          } else if ((variant as any).titleOverride) {
-            variantLabelSnapshot = (variant as any).titleOverride;
-          }
-          skuSnapshot = (variant as any).sku ?? undefined;
-        }
-      }
-
-      if (!itemInvalid) {
-        validatedItems.push({
-          productId: cartItem.productId,
-          variantId: cartItem.variantId ?? undefined,
-          productTitleSnapshot: (product as any).title,
-          variantLabelSnapshot,
-          skuSnapshot,
-          unitPriceSnapshot: unitPrice,
-          quantity: cartItem.quantity,
-          lineTotalAmount: unitPrice * cartItem.quantity,
-        });
-      }
-    }
-
-    if (invalidItems.length > 0) {
-      throw new DomainException(
-        ErrorCode.CHECKOUT_ITEMS_UNAVAILABLE,
-        'Some cart items are no longer available',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-        { invalidItems } as unknown as Record<string, unknown>,
-      );
-    }
+    // Re-validate каждый item: product ACTIVE, variant принадлежит product +
+    // isActive + stockQuantity. Может бросить CHECKOUT_ITEMS_UNAVAILABLE с
+    // массивом invalidItems (UI показывает все сразу).
+    const validatedItems = await this.validateItems.validate(
+      cart.items.map((ci) => ({
+        productId: ci.productId,
+        variantId: ci.variantId ?? null,
+        quantity: ci.quantity,
+        unitPriceSnapshot: ci.unitPriceSnapshot,
+      })),
+    );
 
     const subtotalAmount = validatedItems.reduce((sum, item) => sum + item.lineTotalAmount, 0);
-    const deliveryFeeAmount = input.deliveryFee ?? 0;
+
+    // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend сам считает deliveryFee
+    // из store.deliverySettings. Раньше buyer мог прислать `deliveryFee: 0`
+    // и платить без доставки. Теперь input.deliveryFee игнорируется (DTO
+    // оставлен для backward-compat). 'manual' = 0 (продавец сам выставит
+    // при confirm заказа), 'none' = 0, 'fixed' = fixedDeliveryFee ?? 0.
+    const ds = store.deliverySettings;
+    const deliveryFeeAmount =
+      ds?.deliveryFeeType === 'fixed' && ds.fixedDeliveryFee != null
+        ? Number(String(ds.fixedDeliveryFee))
+        : 0;
     const totalAmount = subtotalAmount + deliveryFeeAmount;
 
     const firstName = buyerWithUser.firstName ?? '';

@@ -1,5 +1,27 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-12] [P3-004-FLOATING-POINT] WIP — isSale/discountPercent
+- **Статус:** 🟡 НЕ ДЕПЛОИТЬ, локальный commit `e56c5bc` на main (не push)
+- **Что случилось:** реализовал P3-004 (isSale + discountPercent в API ответах).
+  `ProductPresenterService.computeSale` + `priceFields` helper, применено в 7
+  mapper'ах (storefront + products controllers + featured use-case). Тип
+  `ProductListItem` расширен (`isSale`, `discountPercent`, опц. `oldPrice`,
+  `salePrice`).
+- **Проблема:** 4 теста падают из-за JS floating-point.
+  `(1 - 80/100) * 100 = 19.999...` → `Math.floor` = **19** вместо **20**.
+- **Что сделать (10 минут):**
+  В `ProductPresenterService.computeSale` поменять формулу с
+  `Math.floor((1 - sale/base) * 100)` на:
+  ```ts
+  const pct = Math.floor(((base - sale) / base) * 100);
+  // или ещё устойчивее (integer arithmetic):
+  const pct = Math.floor(((base - sale) * 100) / base);
+  ```
+  Это даст ровные числа 20/30/50/65% как ожидают тесты.
+- **После фикса:** прогнать `npx jest src/modules/products/services/product-presenter.service.spec.ts`
+  → должно быть 15/15 passed. Потом `npx jest` (full suite) → должен остаться
+  53/699 + новый файл = 54/714. Тогда push main + merge → api → push api.
+
 Формат записи:
 ```
 ## [ДАТА] [ID] Описание
@@ -7,6 +29,29 @@
 - **Что случилось:** ...
 - **Что сделано:** ...
 ```
+
+## [12.05.2026] [PROD-ADMIN-MFA-DEPLOY] MfaSetupPage показывает старый endpoint
+- **Статус:** 🟡 Deploy mismatch (код в main исправен, prod не задеплоен)
+- **URL:** `https://adminsb.up.railway.app/security/mfa`
+- **Что случилось:** UI показывает «Cannot GET /api/v1/admin/auth/mfa/status». Этот endpoint не существует. Fix был в commit `7b6a149` (Wave 1 P0): заменён на `GET /admin/auth/me`.
+- **Текущий код в репо** (`apps/admin/src/pages/MfaSetupPage.tsx:36`): уже использует `/api/v1/admin/auth/me` ✅
+- **Проблема:** Railway service `adminsb` не подтянул последний main. Возможные причины: watchPatterns не покрывает `apps/admin/src/pages/`, failed deploy, CDN cache.
+- **Что сделать:** force-redeploy admin service через Railway UI или empty commit. Код не править — он правильный.
+
+## [12.05.2026] [PROD-BULL-BOARD-STATIC-401] Bull Board зависает на «Loading»
+- **Статус:** 🟡 Root cause найден, fix готов локально (ждёт push+deploy)
+- **URL:** `https://savdo-api-production.up.railway.app/api/v1/admin/queues?token=...`
+- **Что случилось:** Admin SPA редиректит на Bull Board UI, первый GET с `?token=` проходит, но static assets (`/static/css/main.css`, `lib-react.js`, `logo.svg`) возвращают 401. Browser: «Refused to apply style ... MIME type text/html».
+- **Root cause:** middleware (`apps/api/src/main.ts:133`) требует token в `?query` или `Authorization: Bearer`. Browser `<link rel=stylesheet>` НЕ передаёт ни query ни headers → 401 на каждый asset.
+- **Что сделано:** добавлен cookie-based fallback `bull-board-token` (HttpOnly + SameSite=Strict + Secure в prod, TTL 30 мин). Первый request с `?token=` ставит cookie, дальше browser шлёт cookie на static assets.
+- **Требует:** push + deploy API service (savdo-api).
+
+## [12.05.2026] [ADMIN-ROLE-PERMISSION-CHECK] «Admin permission 'admin:read' required»
+- **Статус:** ✅ By design (не баг)
+- **URL:** `https://adminsb.up.railway.app/admins`
+- **Что случилось:** Page показывает «Admin permission 'admin:read' required (your role: admin)». Список администраторов пустой.
+- **Root cause:** API-RBAC-MICRO-PERMISSIONS-001 (Wave 6 06.05.2026) ввёл AdminPermissionGuard. Endpoint `GET /admin/admins` требует `admin:read` permission, который есть только у `adminRole='super_admin'`. Текущий админ имеет `adminRole='admin'` — не super_admin.
+- **Что делать:** Если нужен доступ — повысить роль через `PATCH /admin/admins/:id/role` со стороны существующего super_admin (или через `pnpm db:studio` руками). Это правильное поведение для безопасности.
 
 ## 2026-05-08 [SIGNAL] Параллельная сессия (otplib v13 upgrade) — закончила работу
 

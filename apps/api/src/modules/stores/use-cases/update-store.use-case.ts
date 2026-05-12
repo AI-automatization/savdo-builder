@@ -22,6 +22,7 @@ export class UpdateStoreUseCase {
     primaryGlobalCategoryId?: string;
     deliveryFeeType?: 'fixed' | 'manual' | 'none';
     deliveryFeeAmount?: number;
+    autoPostProductsToChannel?: boolean;
   }) {
     const seller = await this.sellersRepo.findByUserId(userId);
     if (!seller) throw new DomainException(ErrorCode.NOT_FOUND, 'Seller not found', HttpStatus.NOT_FOUND);

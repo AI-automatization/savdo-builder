@@ -15,6 +15,10 @@ interface Store {
   status: string;
   city: string | null;
   telegramContactLink: string | null;
+  // MARKETING-VERIFIED-SELLER-001
+  isVerified?: boolean;
+  avgRating?: number | string | null;
+  reviewCount?: number;
 }
 
 interface GlobalCategory {
@@ -113,10 +117,27 @@ export default function StoresPage() {
     return () => clearTimeout(t);
   }, [productsQuery]);
 
+  // TMA-STORES-CATS-RACE-001 (12.05.2026): был race — `catsLoaded.current = true`
+  // ставился до fetch, и при network error флаг оставался true → категории
+  // никогда не перезагружались. + не было AbortController, setGlobalCategories
+  // мог сработать после unmount. Fix: AbortController + сброс флага на error
+  // (но не при abort — это намеренная отмена).
   useEffect(() => {
     if (tab !== 'products' || catsLoaded.current) return;
     catsLoaded.current = true;
-    api<GlobalCategory[]>('/storefront/categories').then(setGlobalCategories).catch(() => {/* best-effort: category filters are supplementary */});
+    const ac = new AbortController();
+    api<GlobalCategory[]>('/storefront/categories', { signal: ac.signal })
+      .then((data) => {
+        if (ac.signal.aborted) return;
+        setGlobalCategories(data);
+      })
+      .catch((err: unknown) => {
+        if (ac.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
+        // best-effort: category filters are supplementary. Сбрасываем флаг,
+        // чтобы следующий tab-switch попробовал ещё раз.
+        catsLoaded.current = false;
+      });
+    return () => ac.abort();
   }, [tab]);
 
   const productsAbortRef = useRef<AbortController | null>(null);
@@ -156,14 +177,14 @@ export default function StoresPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)', boxShadow: '0 4px 14px rgba(168,85,247,.40)' }}
+            style={{ background: 'var(--tg-accent)', boxShadow: '0 4px 14px var(--tg-accent-glow)' }}
           >
             <Sticker emoji="🛒" size={26} />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-gradient">Savdo</h1>
             {user && (
-              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
                 Привет, {user.first_name} 👋
               </p>
             )}
@@ -171,7 +192,7 @@ export default function StoresPage() {
           <button
             onClick={() => navigate('/buyer/wishlist')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 15 }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', fontSize: 15 }}
             aria-label="Избранное"
           >
             ❤️
@@ -179,7 +200,7 @@ export default function StoresPage() {
           <button
             onClick={() => navigate('/buyer/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.50)', fontSize: 16 }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)', fontSize: 16 }}
           >
             ⚙️
           </button>
@@ -188,7 +209,7 @@ export default function StoresPage() {
         {/* Tab switcher */}
         <div
           className="flex rounded-xl p-0.5 gap-1"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border-soft)' }}
         >
           {(['stores', 'products'] as const).map((t) => (
             <button
@@ -196,9 +217,9 @@ export default function StoresPage() {
               onClick={() => setTab(t)}
               className="flex-1 py-2 rounded-[10px] text-xs font-semibold transition-all"
               style={{
-                background: tab === t ? 'rgba(168,85,247,0.25)' : 'transparent',
-                color: tab === t ? '#A855F7' : 'rgba(255,255,255,0.45)',
-                border: `1px solid ${tab === t ? 'rgba(168,85,247,0.35)' : 'transparent'}`,
+                background: tab === t ? 'var(--tg-accent-dim)' : 'transparent',
+                color: tab === t ? 'var(--tg-accent)' : 'var(--tg-text-muted)',
+                border: `1px solid ${tab === t ? 'var(--tg-accent-border)' : 'transparent'}`,
               }}
             >
               {t === 'stores' ? '🏪 Магазины' : '📦 Товары'}
@@ -208,7 +229,7 @@ export default function StoresPage() {
 
         {/* Search */}
         <div className="relative">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--tg-text-dim)' }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
           <input
@@ -218,9 +239,9 @@ export default function StoresPage() {
             placeholder={tab === 'stores' ? 'Поиск магазинов...' : 'Поиск товаров...'}
             className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none"
             style={{
-              background: 'rgba(255,255,255,0.07)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              color: 'rgba(255,255,255,0.90)',
+              background: 'var(--tg-surface-hover)',
+              border: '1px solid var(--tg-border)',
+              color: 'var(--tg-text-primary)',
             }}
           />
         </div>
@@ -233,9 +254,9 @@ export default function StoresPage() {
                 onClick={() => setActiveCat(null)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === null ? 'chip-active' : ''}`}
                 style={activeCat !== null ? {
-                  background: 'rgba(255,255,255,0.07)',
-                  color: 'rgba(255,255,255,0.55)',
-                  border: '1px solid rgba(255,255,255,0.10)',
+                  background: 'var(--tg-surface-hover)',
+                  color: 'var(--tg-text-secondary)',
+                  border: '1px solid var(--tg-border)',
                   whiteSpace: 'nowrap',
                 } : { whiteSpace: 'nowrap' }}
               >
@@ -247,9 +268,9 @@ export default function StoresPage() {
                   onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
                   className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${activeCat === cat.id ? 'chip-active' : ''}`}
                   style={activeCat !== cat.id ? {
-                    background: 'rgba(255,255,255,0.07)',
-                    color: 'rgba(255,255,255,0.55)',
-                    border: '1px solid rgba(255,255,255,0.10)',
+                    background: 'var(--tg-surface-hover)',
+                    color: 'var(--tg-text-secondary)',
+                    border: '1px solid var(--tg-border)',
                     whiteSpace: 'nowrap',
                   } : { whiteSpace: 'nowrap' }}
                 >
@@ -274,9 +295,9 @@ export default function StoresPage() {
                   onClick={() => setSort(s.value)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium ${sort === s.value ? 'chip-active-cyan' : ''}`}
                   style={sort !== s.value ? {
-                    background: 'rgba(255,255,255,0.06)',
-                    color: 'rgba(255,255,255,0.45)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--tg-surface-hover)',
+                    color: 'var(--tg-text-muted)',
+                    border: '1px solid var(--tg-border-soft)',
                   } : undefined}
                 >
                   {s.label}
@@ -300,9 +321,9 @@ export default function StoresPage() {
                 onChange={(e) => setPriceMin(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder="Цена от"
                 className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+                style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: 12 }}>—</span>
+              <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>—</span>
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -310,9 +331,9 @@ export default function StoresPage() {
                 onChange={(e) => setPriceMax(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder="до"
                 className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}
+                style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'rgba(255,255,255,0.40)', fontSize: 11 }}>сум</span>
+              <span style={{ color: 'var(--tg-text-muted)', fontSize: 11 }}>сум</span>
             </div>
           </div>
         )}
@@ -331,15 +352,15 @@ export default function StoresPage() {
             {!storesLoading && storesError && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
-                <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-                <button onClick={loadStores} className="text-xs" style={{ color: '#A855F7' }}>Попробовать снова</button>
+                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Не удалось загрузить магазины</p>
+                <button onClick={loadStores} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
               </div>
             )}
 
             {!storesLoading && !storesError && !filteredStores.length && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="🏪" size={56} />
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+                <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
                   {storesQuery.trim() ? 'Ничего не найдено' : 'Магазинов пока нет'}
                 </p>
               </div>
@@ -362,24 +383,45 @@ export default function StoresPage() {
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold uppercase"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(168,85,247,0.20) 100%)',
-                    border: '1px solid rgba(168,85,247,0.28)',
-                    color: '#A855F7',
+                    background: 'var(--tg-accent-dim)',
+                    border: '1px solid var(--tg-accent-border)',
+                    color: 'var(--tg-accent)',
                     fontSize: 17,
                   }}
                 >
                   {store.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>{store.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
+                    {/* MARKETING-VERIFIED-SELLER-001: verified badge */}
+                    {store.isVerified && (
+                      <span
+                        className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+                        style={{ background: 'rgba(37,99,235,0.20)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.45)' }}
+                        title="Проверенный магазин"
+                        aria-label="Проверенный магазин"
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </div>
                   {store.description && (
-                    <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>{store.description}</p>
+                    <p className="text-xs truncate mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>{store.description}</p>
                   )}
-                  {store.city && (
-                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(168,85,247,0.65)' }}>
-                      📍 {store.city}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {store.city && (
+                      <p className="text-[11px]" style={{ color: 'var(--tg-accent)' }}>
+                        📍 {store.city}
+                      </p>
+                    )}
+                    {/* MARKETING-VERIFIED-SELLER-001: rating + review count */}
+                    {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
+                      <p className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>
+                        ⭐ {Number(store.avgRating).toFixed(1)} <span style={{ color: 'var(--tg-text-dim)' }}>({store.reviewCount})</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {store.telegramContactLink && (
@@ -392,7 +434,7 @@ export default function StoresPage() {
                       ✈️
                     </button>
                   )}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: 'var(--tg-text-dim)' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </div>
@@ -419,7 +461,7 @@ export default function StoresPage() {
             {!productsLoading && products.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="📦" size={56} />
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+                <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
                   {debouncedQuery || activeCat ? 'Ничего не найдено' : 'Товаров пока нет'}
                 </p>
               </div>

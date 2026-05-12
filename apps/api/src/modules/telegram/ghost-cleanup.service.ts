@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../database/prisma.service';
+import { maskPhone } from '../../shared/pii';
 import { deleteGhostUser } from './telegram-demo.handler';
 
 
@@ -55,7 +56,7 @@ export class GhostCleanupService {
 
         if (hasOrders) {
           // Не удаляем ghost с заказами — данные ценные, нужна ручная проверка
-          this.logger.warn(`Ghost userId=${ghost.id} phone=${ghost.phone} has orders — skipping`);
+          this.logger.warn(`Ghost userId=${ghost.id} phone=${maskPhone(ghost.phone)} has orders — skipping`);
           skipped++;
           continue;
         }
@@ -89,7 +90,7 @@ export class GhostCleanupService {
           await deleteGhostUser(tx, ghost.id, ghost.buyer?.id ?? null);
         });
 
-        this.logger.log(`Ghost cleanup: deleted userId=${ghost.id} phone=${ghost.phone}`);
+        this.logger.log(`Ghost cleanup: deleted userId=${ghost.id} phone=${maskPhone(ghost.phone)}`);
         deleted++;
       } catch (err) {
         this.logger.error(`Ghost cleanup: failed for userId=${ghost.id}: ${err}`);
