@@ -96,24 +96,27 @@ export default function CartPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => updateQty(item.productId, -1)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                aria-label="Уменьшить количество"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-base"
                 style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.60)' }}
               >
                 −
               </button>
-              <span className="text-sm font-bold w-5 text-center" style={{ color: 'rgba(255,255,255,0.80)' }}>
+              <span className="text-sm font-bold w-6 text-center" style={{ color: 'rgba(255,255,255,0.80)' }}>
                 {item.qty}
               </span>
               <button
                 onClick={() => updateQty(item.productId, 1)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                aria-label="Увеличить количество"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-base"
                 style={{ background: 'rgba(167,139,250,0.25)', color: '#A855F7' }}
               >
                 +
               </button>
               <button
                 onClick={() => removeItem(item.productId)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-sm ml-1"
+                aria-label="Удалить из корзины"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-base ml-1"
                 style={{ color: 'rgba(239,68,68,0.70)' }}
               >
                 ✕
