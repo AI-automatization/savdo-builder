@@ -15,6 +15,7 @@ import {
   OTP_CODE_REF_TTL_SECONDS,
   type OtpSendTelegramJobData,
 } from '../../../queues/otp.jobs';
+import { maskPhone } from '../../../shared/pii';
 
 const OTP_VERIFY_ATTEMPTS_KEY = (phone: string) => `otp:attempts:${phone}`;
 const OTP_MAX_ATTEMPTS = 5;
@@ -87,7 +88,7 @@ export class OtpService {
 
     if (devMode) {
       // SEC-003: never log the actual code — only confirm delivery attempt
-      this.logger.warn(`[DEV OTP] Sending code to phone=${phone}`);
+      this.logger.warn(`[DEV OTP] Sending code to phone=${maskPhone(phone)}`);
       const chatId = await this.redis.get(TELEGRAM_CHAT_ID_KEY(phone));
       if (chatId) {
         const codeRef = await this.stashCodeInRedis(code);
@@ -110,7 +111,7 @@ export class OtpService {
     const codeRef = await this.stashCodeInRedis(code);
     const jobData: OtpSendTelegramJobData = { chatId, phone, codeRef };
     await this.otpQueue.add(OTP_JOB_SEND_TELEGRAM, jobData, { priority: 1 });
-    this.logger.log(`OTP queued for phone=${phone}`);
+    this.logger.log(`OTP queued for phone=${maskPhone(phone)}`);
   }
 
   /**

@@ -3,6 +3,7 @@ import { TelegramBotService, InlineButton, WebAppButton } from './services/teleg
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
 import { escapeTgHtml } from '../../shared/telegram-html';
+import { maskPhone } from '../../shared/pii';
 
 // ── Redis keys ────────────────────────────────────────────────────────────────
 const TTL_LONG  = 365 * 24 * 60 * 60; // 1 год — привязка телефона
@@ -220,7 +221,7 @@ export class TelegramDemoHandler {
           });
         });
 
-        this.logger.log(`Linked telegramId=${chatId} to user id=${existing.id} phone=${normalized}`);
+        this.logger.log(`Linked telegramId=${chatId} to user id=${existing.id} phone=${maskPhone(normalized)}`);
       }
 
       const seller = await this.prisma.seller.findUnique({ where: { userId: existing.id } });
@@ -319,7 +320,7 @@ export class TelegramDemoHandler {
       },
     });
 
-    this.logger.log(`Registered buyer userId=${user.id} phone=${phone}`);
+    this.logger.log(`Registered buyer userId=${user.id} phone=${maskPhone(phone)}`);
     await this.showBuyerMenu(chatId, firstName || phone);
   }
 

@@ -3,6 +3,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { TelegramBotService } from '../modules/telegram/services/telegram-bot.service';
 import { RedisService } from '../shared/redis.service';
+import { maskPhone } from '../shared/pii';
 import { QUEUE_OTP } from './queues.module';
 import {
   OTP_JOB_SEND_TELEGRAM,
@@ -55,7 +56,7 @@ export class OtpProcessor extends WorkerHost {
     if (!code) {
       // TTL истёк (10 мин) или processor запустился повторно после успешной
       // отправки (ref удалён). Не fatal — warn и skip.
-      this.logger.warn(`OtpProcessor: codeRef expired/missing for phone=${phone} — skipping`);
+      this.logger.warn(`OtpProcessor: codeRef expired/missing for phone=${maskPhone(phone)} — skipping`);
       return;
     }
 
@@ -66,7 +67,7 @@ export class OtpProcessor extends WorkerHost {
   }
 
   private async send(chatId: string, phone: string, code: string, attemptsMade: number): Promise<void> {
-    this.logger.log(`Sending OTP to phone=${phone} chatId=${chatId} attempt=${attemptsMade + 1}`);
+    this.logger.log(`Sending OTP to phone=${maskPhone(phone)} chatId=${chatId} attempt=${attemptsMade + 1}`);
 
     await this.telegramBot.sendMessage(
       chatId,
@@ -74,6 +75,6 @@ export class OtpProcessor extends WorkerHost {
       { parseMode: 'HTML' },
     );
 
-    this.logger.log(`OTP sent OK to phone=${phone}`);
+    this.logger.log(`OTP sent OK to phone=${maskPhone(phone)}`);
   }
 }
