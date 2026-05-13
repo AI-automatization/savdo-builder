@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import {
   getStoreBySlug,
   getCategories,
@@ -11,7 +11,10 @@ import {
   getCategoriesTree,
   getPlatformFeed,
   getStorefrontStoreWithTrust,
+  getStoresCatalog,
+  getProductsCatalog,
   type PlatformFeedParams,
+  type ProductsCatalogParams,
 } from '../lib/api/storefront.api';
 
 export const storefrontKeys = {
@@ -24,6 +27,9 @@ export const storefrontKeys = {
   productReviews: (id: string, page: number) => ['product-reviews', id, page] as const,
   featured: ['featured'] as const,
   platformFeed: (filters?: object) => ['platform-feed', filters] as const,
+  storesCatalog: ['storefront', 'stores-catalog'] as const,
+  productsCatalog: (params: Omit<ProductsCatalogParams, 'page' | 'limit'>) =>
+    ['storefront', 'products-catalog', params] as const,
 };
 
 export function useStoreBySlug(slug: string) {
@@ -120,5 +126,39 @@ export function useStoreWithTrust(slug: string) {
     queryFn: () => getStorefrontStoreWithTrust(slug),
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ── Catalog: stores ──────────────────────────────────────────────────────────
+
+export function useStoresCatalog() {
+  return useQuery({
+    queryKey: storefrontKeys.storesCatalog,
+    queryFn: getStoresCatalog,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ── Catalog: products (infinite) ─────────────────────────────────────────────
+
+export const PRODUCTS_CATALOG_PAGE_SIZE = 24;
+
+export function useProductsCatalog(
+  params: Omit<ProductsCatalogParams, 'page' | 'limit'>,
+) {
+  return useInfiniteQuery({
+    queryKey: storefrontKeys.productsCatalog(params),
+    queryFn: ({ pageParam }) =>
+      getProductsCatalog({
+        ...params,
+        page: pageParam,
+        limit: PRODUCTS_CATALOG_PAGE_SIZE,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (last, all) =>
+      last.data.length === PRODUCTS_CATALOG_PAGE_SIZE ? all.length + 1 : undefined,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
