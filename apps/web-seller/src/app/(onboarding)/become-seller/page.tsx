@@ -101,7 +101,7 @@ export default function BecomeSellerPage() {
           style={{
             background: colors.surfaceMuted,
             border: `1px solid ${colors.border}`,
-            color: colors.textBody,
+            color: colors.textPrimary,
           }}
         >
           Перейти к покупкам
