@@ -620,30 +620,11 @@ export default function ProductPage() {
                   </div>
                 )}
 
-                {/* ── Secondary CTA: Спросить у продавца ─────────────────── */}
-                {!isLoading && product && (
-                  <button
-                    onClick={() => {
-                      track.chatStarted(product.storeId, "product");
-                      setChatOpen(true);
-                    }}
-                    className="w-full text-sm font-semibold flex items-center justify-center gap-2 rounded transition-opacity hover:opacity-90"
-                    style={{
-                      padding: '12px 16px',
-                      background: 'transparent',
-                      border: `1px solid ${colors.brand}`,
-                      color: colors.brand,
-                    }}
-                  >
-                    <MessageSquare size={16} />
-                    💬 Спросить у продавца
-                  </button>
-                )}
 
-                {/* ── Desktop CTAs (qty + В корзину) ─────────────────────── */}
+                {/* ── Desktop CTAs (qty + В корзину + Обсудить) ─────────── */}
                 {!isLoading && (
                   <div className="hidden md:flex flex-col gap-3">
-                    <div className="flex gap-2.5 items-center">
+                    <div className="flex gap-2 items-center">
                       <QtyStepper
                         qty={qty}
                         onDec={() => setQty(q => Math.max(1, q - 1))}
@@ -655,7 +636,7 @@ export default function ProductPage() {
                         className="flex-1 text-sm font-bold transition-all active:scale-[0.98]"
                         style={{
                           padding: '12px 14px',
-                          borderRadius: 4,
+                          borderRadius: 6,
                           background: isCtaDisabled ? colors.surfaceMuted : colors.brand,
                           color: isCtaDisabled ? colors.textDim : colors.brandTextOnBg,
                           border: isCtaDisabled ? `1px solid ${colors.border}` : 'none',
@@ -664,6 +645,25 @@ export default function ProductPage() {
                         }}
                       >
                         {ctaLabel()}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!product) return;
+                          track.chatStarted(product.storeId, "product");
+                          setChatOpen(true);
+                        }}
+                        aria-label="Обсудить с продавцом"
+                        className="text-sm font-bold flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                        style={{
+                          padding: '12px 16px',
+                          borderRadius: 6,
+                          background: colors.accent,
+                          color: colors.accentTextOnBg,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <MessageSquare size={16} />
+                        Обсудить
                       </button>
                     </div>
                   </div>
