@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-05-13 (Азим) — Part 4: MARKETING-VERIFIED-SELLER-001 web-buyer Frontend (Tasks 15-19)
+
+### ✅ [MARKETING-VERIFIED-SELLER-001 FE] Product detail refactor — seller card up + Обсудить primary 🟠
+
+- **Важность:** 🟠
+- **Дата:** 13.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/components/store/VerifiedBadge.tsx` (новый)
+  - `apps/web-buyer/src/components/store/StoreRating.tsx` (новый)
+  - `apps/web-buyer/src/components/store/StoreCard.tsx` (новый, card+compact variants)
+  - `apps/web-buyer/src/components/store/SellerCard.tsx` (новый, thin wrapper)
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` (re-order + CTA promotion)
+- **Что сделано:** Product page seller card перемещён между title-block и variant pickers (раньше был в конце правой колонки как мини-блок с initial-letter avatar и `→`). Новый `SellerCard` показывает логотип/название/город + `VerifiedBadge` ✓ (когда `store.isVerified=true`) + `StoreRating` ★ X.X · N отзывов (когда `reviewCount > 0`). Trust signals — через `useStoreWithTrust(slug)` (workaround пока Полат не сделает `API-PRODUCT-STORE-TRUST-SIGNALS-001`). «Обсудить» поднят в primary CTA row рядом с «В корзину» (filled accent), на mobile — sticky icon-only кнопка 48×48. 5 коммитов `1800f84`, `cbe60e3`, `bf647c2`, `1cabd33`, `d65319e` на ветке web-buyer.
+
+---
+
 ## 2026-05-13 (Азим) — Part 3: MARKETING-HOMEPAGE-DISCOVERY-001 Frontend (Tasks 7-13)
 
 ### ✅ [MARKETING-HOMEPAGE-DISCOVERY-001 FE] Homepage Discovery — 7 компонентов + page rewrite 🔴
