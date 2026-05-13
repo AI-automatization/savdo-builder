@@ -14,6 +14,27 @@
   --error:   #EF4444;
   --warning: #F59E0B;
 
+  /* ── ADMIN-DESIGN-TOKENS-SURFACE-001: semantic surface tokens ─────
+     Заменяют hardcoded `rgba(239,68,68,0.08)` и т.п. на 4 уровня
+     прозрачности (faint / soft / strong) для трёх семантических цветов.
+     Light theme переопределяет соответствующие RGB-каналы (см. ниже). */
+  --surface-error:        rgba(239,68,68,0.08);
+  --surface-error-soft:   rgba(239,68,68,0.12);
+  --surface-error-strong: rgba(239,68,68,0.20);
+  --border-error:         rgba(239,68,68,0.30);
+  --border-error-soft:    rgba(239,68,68,0.20);
+
+  --surface-warning:        rgba(251,191,36,0.10);
+  --surface-warning-soft:   rgba(251,191,36,0.15);
+  --surface-warning-strong: rgba(251,191,36,0.25);
+  --border-warning:         rgba(251,191,36,0.30);
+
+  --surface-success:        rgba(34,197,94,0.08);
+  --surface-success-soft:   rgba(34,197,94,0.12);
+  --surface-success-strong: rgba(34,197,94,0.20);
+  --border-success:         rgba(34,197,94,0.30);
+  --border-success-soft:    rgba(34,197,94,0.20);
+
   --text:       #F1F5F9;
   --text-muted: #94A3B8;
   --text-dim:   #475569;
@@ -34,6 +55,24 @@
   --success: #16A34A;
   --error:   #DC2626;
   --warning: #D97706;
+
+  /* Light theme — снижаем непрозрачность чтобы не «забивать» белый фон */
+  --surface-error:        rgba(220,38,38,0.06);
+  --surface-error-soft:   rgba(220,38,38,0.10);
+  --surface-error-strong: rgba(220,38,38,0.18);
+  --border-error:         rgba(220,38,38,0.25);
+  --border-error-soft:    rgba(220,38,38,0.18);
+
+  --surface-warning:        rgba(217,119,6,0.08);
+  --surface-warning-soft:   rgba(217,119,6,0.12);
+  --surface-warning-strong: rgba(217,119,6,0.22);
+  --border-warning:         rgba(217,119,6,0.28);
+
+  --surface-success:        rgba(22,163,74,0.06);
+  --surface-success-soft:   rgba(22,163,74,0.10);
+  --surface-success-strong: rgba(22,163,74,0.18);
+  --border-success:         rgba(22,163,74,0.25);
+  --border-success-soft:    rgba(22,163,74,0.18);
 
   --text:       #0F172A;
   --text-muted: #64748B;
@@ -61,4 +100,69 @@ body {
 
 @layer base {
   * { border-color: var(--border); }
+}
+
+/* ── ADMIN-THEME-VARS-MIGRATE-001: button/badge/dialog variants via vars ── */
+@layer components {
+  .btn-base { color: var(--text); }
+  .btn-base:focus-visible { box-shadow: 0 0 0 1px var(--primary); }
+
+  .btn-primary   { background: var(--primary); color: #fff; }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface2); }
+
+  .btn-ghost { color: var(--text-muted); background: transparent; }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+
+  .btn-danger {
+    background: var(--surface-error);
+    color: var(--error);
+    border: 1px solid var(--border-error-soft);
+  }
+  .btn-danger:hover:not(:disabled) { background: var(--surface-error-strong); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+
+  /* Badge variants */
+  .badge-default {
+    background: var(--surface);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .badge-success {
+    background: var(--surface-success);
+    color: var(--success);
+    border: 1px solid var(--border-success-soft);
+  }
+  .badge-warning {
+    background: var(--surface-warning);
+    color: var(--warning);
+    border: 1px solid var(--border-warning);
+  }
+  .badge-danger {
+    background: var(--surface-error);
+    color: var(--error);
+    border: 1px solid var(--border-error-soft);
+  }
+  .badge-info {
+    background: var(--primary-dim);
+    color: var(--primary);
+    border: 1px solid var(--primary-dim);
+  }
+  .badge-muted {
+    background: var(--bg);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
 }

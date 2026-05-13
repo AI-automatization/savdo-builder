@@ -106,6 +106,7 @@ export default function DashboardLayout() {
       <aside
         className="w-[216px] shrink-0 fixed top-0 left-0 bottom-0 z-50 flex flex-col"
         style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)' }}
+        aria-label="Главная навигация"
       >
         {/* Logo */}
         <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -139,7 +140,8 @@ export default function DashboardLayout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-3 overflow-y-auto">
+        <nav className="flex-1 px-2 py-3 overflow-y-auto" aria-label="Разделы">
+
           {NAV_DATA.map(({ group, items }) => (
             <div key={group} className="mb-4">
               <p
@@ -212,6 +214,8 @@ export default function DashboardLayout() {
             onClick={toggleTheme}
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors"
             style={{ color: 'var(--text-muted)', cursor: 'pointer' }}
+            aria-label={dark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+            aria-pressed={dark}
             onMouseEnter={e => {
               e.currentTarget.style.background = 'var(--surface2)'
               e.currentTarget.style.color = 'var(--text)'
@@ -222,8 +226,8 @@ export default function DashboardLayout() {
             }}
           >
             {dark
-              ? <Sun size={15} style={{ color: 'var(--text-dim)' }} />
-              : <Moon size={15} style={{ color: 'var(--text-dim)' }} />
+              ? <Sun size={15} style={{ color: 'var(--text-dim)' }} aria-hidden="true" />
+              : <Moon size={15} style={{ color: 'var(--text-dim)' }} aria-hidden="true" />
             }
             {dark ? 'Светлая тема' : 'Тёмная тема'}
           </button>
@@ -233,8 +237,9 @@ export default function DashboardLayout() {
             onClick={logout}
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors"
             style={{ color: 'var(--text-muted)', cursor: 'pointer' }}
+            aria-label="Выйти из админки"
             onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(239,68,68,0.06)'
+              e.currentTarget.style.background = 'var(--surface-error)'
               e.currentTarget.style.color = 'var(--error)'
             }}
             onMouseLeave={e => {
@@ -242,14 +247,14 @@ export default function DashboardLayout() {
               e.currentTarget.style.color = 'var(--text-muted)'
             }}
           >
-            <LogOut size={15} style={{ color: 'var(--text-dim)' }} />
+            <LogOut size={15} style={{ color: 'var(--text-dim)' }} aria-hidden="true" />
             Выйти
           </button>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="ml-[216px] flex-1 min-h-screen">
+      <main className="ml-[216px] flex-1 min-h-screen" id="main" aria-label="Содержимое">
         <ImpersonationBanner />
         <Outlet />
       </main>
