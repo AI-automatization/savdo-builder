@@ -9,10 +9,14 @@ import { useStoreCategories, useGlobalCategories } from '../../../../hooks/use-s
 import { track } from '../../../../lib/analytics';
 import { MultiImageUploader, type MultiImageItem } from '../../../../components/multi-image-uploader';
 import { ProductAttributesSection, type AttributeItem } from '../../../../components/product-attributes-section';
+import { CategoryFiltersSection, type FilterValue } from '../../../../components/category-filters-section';
+import { VariantsMatrixBuilder, type VariantCell } from '../../../../components/variants-matrix-builder';
 import { Select } from '../../../../components/select';
 import { DisplayTypeSelector } from '../../../../components/display-type-selector';
 import { titlePlaceholder, descriptionPlaceholder } from '../../../../lib/product-examples';
-import { addProductImage, createProductAttribute } from '../../../../lib/api/products.api';
+import { addProductImage, createProductAttribute, createVariant } from '../../../../lib/api/products.api';
+import { createOptionGroup, createOptionValue } from '../../../../lib/api/product-options.api';
+import { useCategoryFilters } from '../../../../hooks/use-category-filters';
 import type { ProductDisplayType } from 'types';
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
@@ -65,6 +69,9 @@ export default function CreateProductPage() {
 
   const [images, setImages] = useState<MultiImageItem[]>([]);
   const [attributes, setAttributes] = useState<AttributeItem[]>([]);
+  const [filterValues, setFilterValues] = useState<Record<string, FilterValue>>({});
+  const [variantSelection, setVariantSelection] = useState<Record<string, string[]>>({});
+  const [variantCells, setVariantCells] = useState<Record<string, VariantCell>>({});
 
   const { data: categories = [] } = useStoreCategories();
   const { data: globalCategoriesRaw = [] } = useGlobalCategories();
@@ -94,6 +101,10 @@ export default function CreateProductPage() {
   const titleHint       = titlePlaceholder(pickedCategory?.nameRu, pickedCategory?.slug);
   const descriptionHint = descriptionPlaceholder(pickedCategory?.slug);
 
+  // Подгружаем фильтры выбранной категории.
+  const filtersQuery = useCategoryFilters(pickedCategory?.slug ?? null);
+  const categoryFilters = filtersQuery.data ?? [];
+
   async function onSubmit(values: CreateProductForm) {
     const product = await create.mutateAsync({
       title:            values.title,
@@ -121,19 +132,100 @@ export default function CreateProductPage() {
       }),
     );
 
-    const validAttrs = attributes.filter((a) => a.name.trim() && a.value.trim());
-    const attrPromises = validAttrs.map((a, idx) =>
-      createProductAttribute(productId, {
-        name:  a.name.trim(),
-        value: a.value.trim(),
-        sortOrder: idx,
-      }).catch((err) => {
+    // Free-form attributes + category filter values (как attributes).
+    const freeAttrs = attributes
+      .filter((a) => a.name.trim() && a.value.trim())
+      .map((a, idx) => ({ name: a.name.trim(), value: a.value.trim(), sortOrder: idx }));
+
+    const filterAttrs = Object.entries(filterValues)
+      .filter(([, v]) => v !== '' && v !== null && v !== undefined && v !== false)
+      .map(([key, value], idx) => {
+        const filter = categoryFilters.find((f) => f.key === key);
+        return {
+          name: filter?.nameRu ?? key,
+          value: typeof value === 'boolean' ? (value ? 'Да' : 'Нет') : String(value),
+          sortOrder: 100 + idx,
+        };
+      });
+
+    const attrPromises = [...freeAttrs, ...filterAttrs].map((a) =>
+      createProductAttribute(productId, a).catch((err) => {
         console.error(`Attribute "${a.name}" failed`, err);
         return null;
       }),
     );
 
     await Promise.all([...photoPromises, ...attrPromises]);
+
+    // Option groups + variants matrix (только multi_select фильтры с ≥1 выбранным значением).
+    const multiFilters = categoryFilters.filter(
+      (f) => f.fieldType === 'multi_select' && (variantSelection[f.key]?.length ?? 0) > 0,
+    );
+
+    if (multiFilters.length > 0) {
+      // Generate code-friendly slug from arbitrary value.
+      const toCode = (s: string) =>
+        s.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') ||
+        `v${Date.now()}`;
+
+      const groupsByKey: Record<string, { groupId: string; valueIdMap: Record<string, string> }> = {};
+      for (let i = 0; i < multiFilters.length; i++) {
+        const f = multiFilters[i];
+        const selectedVals = variantSelection[f.key]!;
+        try {
+          const group = await createOptionGroup(productId, {
+            name: f.nameRu,
+            code: f.key,
+            sortOrder: i,
+          });
+          const valueIdMap: Record<string, string> = {};
+          for (let j = 0; j < selectedVals.length; j++) {
+            const val = selectedVals[j];
+            try {
+              const created = await createOptionValue(productId, group.id, {
+                value: val,
+                code: toCode(val),
+                sortOrder: j,
+              });
+              valueIdMap[val] = created.id;
+            } catch (err) {
+              console.error(`Option value "${val}" failed`, err);
+            }
+          }
+          groupsByKey[f.key] = { groupId: group.id, valueIdMap };
+        } catch (err) {
+          console.error(`Option group "${f.nameRu}" failed`, err);
+        }
+      }
+
+      // Создаём варианты по матрице.
+      const baseSku = (values.sku || `P-${productId.slice(0, 6)}`).toUpperCase();
+      for (const [label, cell] of Object.entries(variantCells)) {
+        const parts = label.split(' / ');
+        const optionValueIds: string[] = [];
+        let okay = true;
+        for (let i = 0; i < multiFilters.length; i++) {
+          const f = multiFilters[i];
+          const map = groupsByKey[f.key]?.valueIdMap;
+          const id = map?.[parts[i]];
+          if (!id) { okay = false; break; }
+          optionValueIds.push(id);
+        }
+        if (!okay) continue;
+
+        const sku = `${baseSku}-${parts.map((p) => toCode(p)).join('-')}`;
+        try {
+          await createVariant(productId, {
+            sku,
+            stockQuantity: cell.stockQuantity,
+            priceOverride: cell.priceOverride && cell.priceOverride > 0 ? cell.priceOverride : undefined,
+            optionValueIds,
+          });
+        } catch (err) {
+          console.error(`Variant "${label}" failed`, err);
+        }
+      }
+    }
 
     track.productCreated(product.storeId, product.id);
     router.push('/products');
@@ -277,6 +369,39 @@ export default function CreateProductPage() {
               {...register('description')}
             />
           </div>
+
+          {/* Dynamic category filters — после выбора категории */}
+          {pickedCategory && filtersQuery.isLoading && (
+            <p className="text-xs" style={{ color: colors.textDim }}>
+              Загружаем характеристики категории…
+            </p>
+          )}
+          {pickedCategory && categoryFilters.length > 0 && (
+            <>
+              <div>
+                <Label>Характеристики «{pickedCategory.nameRu}»</Label>
+                <CategoryFiltersSection
+                  filters={categoryFilters}
+                  values={filterValues}
+                  onChange={setFilterValues}
+                />
+              </div>
+
+              {/* Variants matrix — только если у категории есть multi_select фильтры */}
+              {categoryFilters.some((f) => f.fieldType === 'multi_select') && (
+                <div>
+                  <Label>Варианты товара (опц.)</Label>
+                  <VariantsMatrixBuilder
+                    filters={categoryFilters}
+                    selection={variantSelection}
+                    onChangeSelection={setVariantSelection}
+                    variants={variantCells}
+                    onChangeVariants={setVariantCells}
+                  />
+                </div>
+              )}
+            </>
+          )}
 
           {/* Store category — optional sub-grouping inside the seller's own store */}
           {categories.length > 0 && (
