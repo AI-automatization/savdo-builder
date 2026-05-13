@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRequestOtp, useVerifyOtp } from '@/hooks/use-auth';
 import { colors } from '@/lib/styles';
+import { PhoneInput, isValidUzPhone } from '@/components/PhoneInput';
 
 type OtpStep = 'phone' | 'code';
 
@@ -64,11 +65,10 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
         >
           {step === 'phone' ? (
             <>
-              <input
-                type="tel"
+              <PhoneInput
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+998 90 000 00 00"
+                onChange={setPhone}
+                onEnter={handleSend}
                 className="h-11 px-4 rounded text-sm w-full focus:outline-none focus:ring-2"
                 style={{
                   background: colors.surfaceMuted,
@@ -76,11 +76,10 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
                   color: colors.textPrimary,
                   ['--tw-ring-color' as string]: colors.accentBorder,
                 }}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               />
               <button
                 onClick={handleSend}
-                disabled={!phone.trim() || requestOtp.isPending}
+                disabled={!isValidUzPhone(phone) || requestOtp.isPending}
                 className="h-11 rounded text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
                 style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
