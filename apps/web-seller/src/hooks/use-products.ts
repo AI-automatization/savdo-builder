@@ -15,6 +15,7 @@ import {
   deleteVariant,
   adjustStock,
 } from '../lib/api/products.api';
+import { useAuth } from '../lib/auth/context';
 
 export const productKeys = {
   all: ['products'] as const,
@@ -30,18 +31,21 @@ export function useSellerProducts(params?: {
   globalCategoryId?: string;
   storeCategoryId?: string;
 }) {
+  const { user } = useAuth();
   return useQuery({
     queryKey: productKeys.list(params),
     queryFn: () => getSellerProducts(params),
     staleTime: 2 * 60 * 1000,
+    enabled: !!user && user.role === 'SELLER',
   });
 }
 
 export function useSellerProduct(id: string) {
+  const { user } = useAuth();
   return useQuery<Product>({
     queryKey: productKeys.detail(id),
     queryFn: () => getSellerProduct(id),
-    enabled: !!id,
+    enabled: !!id && !!user && user.role === 'SELLER',
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -89,10 +93,11 @@ export function useDeleteProduct() {
 // ── Variants ───────────────────────────────────────────────────────────────────
 
 export function useProductVariants(productId: string) {
+  const { user } = useAuth();
   return useQuery({
     queryKey: productKeys.variants(productId),
     queryFn: () => getProductVariants(productId),
-    enabled: !!productId,
+    enabled: !!productId && !!user && user.role === 'SELLER',
     staleTime: 3 * 60 * 1000,
   });
 }

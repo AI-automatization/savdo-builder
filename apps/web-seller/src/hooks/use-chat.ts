@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ChatThread, MessagesResponse, SendMessageRequest } from 'types';
 import { getThreads, getMessages, sendMessage, resolveThread, deleteThread, deleteMessage, editMessage } from '../lib/api/chat.api';
 import { getSocket } from '../lib/socket';
+import { useAuth } from '../lib/auth/context';
 
 export const chatKeys = {
   threads: ['chat', 'threads'] as const,
@@ -12,10 +13,12 @@ export const chatKeys = {
 };
 
 export function useThreads() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: chatKeys.threads,
     queryFn: getThreads,
     staleTime: 30 * 1000,
+    enabled: !!user && user.role === 'SELLER',
   });
 }
 
@@ -27,10 +30,11 @@ export function useUnreadChatCount(): number {
 
 export function useMessages(threadId: string | null) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const query = useQuery({
     queryKey: chatKeys.messages(threadId ?? ''),
     queryFn: () => getMessages(threadId!),
-    enabled: !!threadId,
+    enabled: !!threadId && !!user && user.role === 'SELLER',
     staleTime: 30 * 1000,
   });
 

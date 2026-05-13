@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useStore } from '../../../hooks/use-seller';
 import { useSellerOrders } from '../../../hooks/use-orders';
 import { useSellerSummary } from '../../../hooks/use-analytics';
+import { useSellerProducts } from '../../../hooks/use-products';
 import { OrderStatus, StoreStatus } from 'types';
 import { track } from '../../../lib/analytics';
 import { buyerStoreUrl } from '@/lib/buyer-url';
@@ -68,7 +69,9 @@ export default function DashboardPage() {
   const { data: store, isLoading: storeLoading } = useStore();
   const { data: ordersData, isLoading: ordersLoading } = useSellerOrders({ limit: 5 });
   const { data: summary, isLoading: summaryLoading } = useSellerSummary();
+  const { data: products, isLoading: productsLoading } = useSellerProducts();
   const [copied, setCopied] = useState(false);
+  const hasNoProducts = !productsLoading && (products?.length ?? 0) === 0;
 
   function handleCopyLink() {
     if (!store) return;
@@ -102,6 +105,46 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Empty-state: no products yet */}
+      {hasNoProducts && store && (
+        <div className="rounded-2xl p-6" style={card}>
+          <div className="flex items-start gap-4">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: colors.accent }}
+            >
+              <Plus size={22} color={colors.accentTextOnBg} />
+            </div>
+            <div className="flex-1">
+              <h2
+                className="text-base font-bold mb-1"
+                style={{ color: colors.textPrimary }}
+              >
+                {store.status === StoreStatus.APPROVED
+                  ? 'Добавьте первый товар'
+                  : 'Магазин на проверке'}
+              </h2>
+              <p
+                className="text-sm mb-4"
+                style={{ color: colors.textMuted }}
+              >
+                {store.status === StoreStatus.APPROVED
+                  ? 'Покупатели уже могут зайти в ваш магазин. Добавьте товары чтобы они появились в каталоге.'
+                  : 'Пока ждём одобрения — добавьте свой первый товар. После одобрения он сразу будет доступен покупателям.'}
+              </p>
+              <Link
+                href="/products/create"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ background: colors.accent, color: colors.accentTextOnBg }}
+              >
+                <Plus size={16} />
+                Добавить товар
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Metrics grid */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

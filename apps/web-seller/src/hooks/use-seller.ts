@@ -19,14 +19,17 @@ import {
   uploadSellerAvatar,
 } from '../lib/api/seller.api';
 import type { SellerProfile } from 'types';
+import { useAuth } from '../lib/auth/context';
 
 // ── Profile ────────────────────────────────────────────────────────────────────
 
 export function useSellerProfile() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['seller', 'profile'],
     queryFn: getSellerProfile,
     staleTime: 5 * 60 * 1000,
+    enabled: !!user && user.role === 'SELLER',
   });
 }
 
@@ -53,11 +56,13 @@ export function useUploadSellerAvatar() {
 // ── Store ──────────────────────────────────────────────────────────────────────
 
 export function useStore(options?: { enabled?: boolean }) {
+  const { user } = useAuth();
+  const isSeller = !!user && user.role === 'SELLER';
   return useQuery({
     queryKey: ['seller', 'store'],
     queryFn: getStore,
     staleTime: 5 * 60 * 1000,
-    enabled: options?.enabled ?? true,
+    enabled: (options?.enabled ?? true) && isSeller,
   });
 }
 
@@ -112,10 +117,12 @@ export function useGlobalCategories() {
 }
 
 export function useStoreCategories() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['categories', 'store'],
     queryFn: getStoreCategories,
     staleTime: 10 * 60 * 1000,
+    enabled: !!user && user.role === 'SELLER',
   });
 }
 
