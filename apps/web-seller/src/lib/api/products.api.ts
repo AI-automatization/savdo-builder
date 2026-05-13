@@ -1,4 +1,4 @@
-import type { ProductListItem, Product, ProductVariant, ProductStatus, ProductDisplayType } from 'types';
+import type { ProductListItem, Product, ProductVariant, ProductAttribute, ProductStatus, ProductDisplayType } from 'types';
 import { apiClient } from './client';
 
 // ── Products ───────────────────────────────────────────────────────────────────
@@ -115,4 +115,53 @@ export async function adjustStock(
     { delta, reason },
   );
   return res.data;
+}
+
+// ── Product images ────────────────────────────────────────────────────────────
+
+export interface ProductImageItem {
+  id: string;
+  mediaId: string;
+  url?: string;
+  isPrimary: boolean;
+  sortOrder: number;
+}
+
+export async function addProductImage(
+  productId: string,
+  data: { mediaId: string; isPrimary?: boolean; sortOrder?: number },
+): Promise<ProductImageItem> {
+  const res = await apiClient.post<ProductImageItem>(
+    `/seller/products/${productId}/images`,
+    data,
+  );
+  return res.data;
+}
+
+export async function deleteProductImage(productId: string, imageId: string): Promise<void> {
+  await apiClient.delete(`/seller/products/${productId}/images/${imageId}`);
+}
+
+// ── Product attributes (free-form key/value) ──────────────────────────────────
+
+export async function getProductAttributes(productId: string): Promise<ProductAttribute[]> {
+  const res = await apiClient.get<ProductAttribute[]>(
+    `/seller/products/${productId}/attributes`,
+  );
+  return res.data;
+}
+
+export async function createProductAttribute(
+  productId: string,
+  data: { name: string; value: string; sortOrder?: number },
+): Promise<ProductAttribute> {
+  const res = await apiClient.post<ProductAttribute>(
+    `/seller/products/${productId}/attributes`,
+    data,
+  );
+  return res.data;
+}
+
+export async function deleteProductAttribute(productId: string, attributeId: string): Promise<void> {
+  await apiClient.delete(`/seller/products/${productId}/attributes/${attributeId}`);
 }
