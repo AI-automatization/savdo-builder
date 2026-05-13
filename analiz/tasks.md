@@ -56,7 +56,7 @@
 
 ## 🔴 P0 — Marketing blockers для launch (Полат + Азим, согласовать)
 
-- [~] **`MARKETING-HOMEPAGE-DISCOVERY-001`** 🔴 — **Backend (Полат) ✅ 12.05.2026** — `GET /storefront/featured` готов: `GetFeaturedStorefrontUseCase` возвращает `{topStores: 8, featuredProducts: 12}` с trust signals (isVerified/avgRating/reviewCount, isSale/discountPercent). Throttle 60/min, public endpoint, INV-S03 (store должен иметь ACTIVE product). Spec покрыт. **Frontend (Азим)** — `apps/web-buyer/src/app/(shop)/page.tsx` всё ещё форма ввода slug. Может теперь раскрывать homepage.
+- [x] **`MARKETING-HOMEPAGE-DISCOVERY-001`** ✅ 13.05.2026 — **Backend (Полат) ✅ 12.05.2026** + **Frontend (Азим) ✅ 13.05.2026** — slug-форма заменена на discovery page: HomeHero + HomeCategoryChips (?cat=) + HomeTopStores + HomeFeaturedFeed + RecentStores + HomeQuickLinks. 7 коммитов `eae0a1f`–`bec2d2d` на ветке web-buyer.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
 - [ ] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — schema bilingual (`nameRu` + `nameUz`), но фронт читает только `nameRu`. ~60% UZ market предпочитают узбекский. Нужна i18n инфра + перевод UI strings.
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.

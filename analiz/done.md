@@ -1,5 +1,30 @@
 # Done — Азим + Полат
 
+## 2026-05-13 (Азим) — Part 3: MARKETING-HOMEPAGE-DISCOVERY-001 Frontend (Tasks 7-13)
+
+### ✅ [MARKETING-HOMEPAGE-DISCOVERY-001 FE] Homepage Discovery — 7 компонентов + page rewrite 🔴
+
+- **Важность:** 🔴
+- **Дата:** 13.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/lib/storefront-adapters.ts` (новый)
+  - `apps/web-buyer/src/components/home/HomeHero.tsx` (новый)
+  - `apps/web-buyer/src/components/home/HomeCategoryChips.tsx` (новый)
+  - `apps/web-buyer/src/components/home/HomeTopStores.tsx` (новый)
+  - `apps/web-buyer/src/components/home/HomeFeaturedFeed.tsx` (новый)
+  - `apps/web-buyer/src/components/home/HomeQuickLinks.tsx` (новый)
+  - `apps/web-buyer/src/app/(shop)/page.tsx` (перезаписан)
+- **Что сделано:** Заменил slug-форму на discovery page. 7 коммитов:
+  `eae0a1f` adapter, `49e9818` HomeHero, `9ba1186` HomeCategoryChips,
+  `11343f2` HomeTopStores, `8a85c0d` HomeFeaturedFeed, `ca69cda` HomeQuickLinks,
+  `bec2d2d` page.tsx rewrite.
+  Страница: Hero (server SC, metadata/OG) + CategoryChips (?cat= URL filter) +
+  TopStores (8 карточек через /storefront/featured) + FeaturedFeed (featured или
+  platform-feed по категории) + RecentStores (localStorage, guards empty) +
+  QuickLinks (Orders/Chats). RecentStores.tsx уже имеет guard `if (!mounted || stores.length === 0) return null`.
+
+---
+
 ## 2026-05-12 (Полат) — Wave 10: MARKETING-CART-ABANDONMENT-001 + cleanup
 
 Закрыто 4 задачи в одном проходе.
