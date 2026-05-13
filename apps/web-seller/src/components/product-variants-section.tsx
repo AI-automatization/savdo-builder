@@ -7,6 +7,7 @@ import {
   useCreateVariant,
   useUpdateVariant,
   useDeleteVariant,
+  useAdjustStock,
 } from '../hooks/use-products';
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
@@ -397,7 +398,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                 style={{ background: v.isActive ? colors.success : colors.surfaceElevated }}
               />
 
-              {/* Name + stock */}
+              {/* Name */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate" style={{ color: colors.textPrimary }}>
                   {variantLabel(v)}
@@ -408,9 +409,18 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                   </p>
                 )}
                 <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
-                  {formatPrice(v.priceOverride)} · склад: {v.stockQuantity}
+                  {formatPrice(v.priceOverride)}
                 </p>
               </div>
+
+              {/* Inline stock editor */}
+              {editingId !== v.id && (
+                <InlineStockEditor
+                  productId={productId}
+                  variantId={v.id}
+                  current={Number(v.stockQuantity) || 0}
+                />
+              )}
 
               {/* Edit / Delete */}
               {editingId !== v.id && (
@@ -485,6 +495,73 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
         onConfirm={performDelete}
         onClose={() => setConfirmId(null)}
       />
+    </div>
+  );
+}
+
+// ── Inline stock editor (Phase 3) ─────────────────────────────────────────────
+
+function InlineStockEditor({
+  productId,
+  variantId,
+  current,
+}: {
+  productId: string;
+  variantId: string;
+  current: number;
+}) {
+  const [draft, setDraft] = useState(String(current));
+  const adjustStock = useAdjustStock();
+  const num = Number(draft);
+  const valid = Number.isFinite(num) && num >= 0;
+  const dirty = valid && num !== current;
+
+  async function save() {
+    if (!dirty || !valid) return;
+    const delta = num - current;
+    try {
+      await adjustStock.mutateAsync({
+        productId,
+        variantId,
+        delta,
+        reason: 'manual',
+      });
+    } catch (err) {
+      console.error('adjust stock failed', err);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1 flex-shrink-0">
+      <input
+        type="number"
+        min={0}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { if (!dirty) setDraft(String(current)); }}
+        className="text-xs"
+        style={{
+          width: 56,
+          padding: '0.25rem 0.4rem',
+          background: colors.surface,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '0.25rem',
+          color: colors.textPrimary,
+        }}
+        aria-label="Склад"
+      />
+      {dirty && (
+        <button
+          type="button"
+          onClick={save}
+          disabled={adjustStock.isPending}
+          className="px-1.5 py-0.5 rounded text-[10px] font-bold disabled:opacity-60"
+          style={{ background: colors.accent, color: colors.accentTextOnBg }}
+          aria-label="Сохранить склад"
+        >
+          {adjustStock.isPending ? '…' : '✓'}
+        </button>
+      )}
     </div>
   );
 }
