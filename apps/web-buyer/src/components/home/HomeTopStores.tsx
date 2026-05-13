@@ -1,6 +1,7 @@
 // apps/web-buyer/src/components/home/HomeTopStores.tsx
 'use client';
 
+import Link from 'next/link';
 import { useFeaturedStorefront } from '@/hooks/use-storefront';
 import { StoreCard } from '@/components/store/StoreCard';
 import { colors } from '@/lib/styles';
@@ -20,6 +21,13 @@ export function HomeTopStores() {
         >
           — Топ магазины
         </h2>
+        <Link
+          href="/stores"
+          className="text-xs font-semibold transition-opacity hover:opacity-80"
+          style={{ color: colors.brand }}
+        >
+          Все магазины →
+        </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {isLoading

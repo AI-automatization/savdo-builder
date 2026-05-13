@@ -39,6 +39,24 @@ export default function Header() {
           Savdo
         </Link>
 
+        {/* Catalog nav — desktop only */}
+        <nav className="hidden md:flex items-center gap-4 ml-2 flex-shrink-0">
+          <Link
+            href="/stores"
+            className="text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ color: colors.textBody }}
+          >
+            Магазины
+          </Link>
+          <Link
+            href="/products"
+            className="text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ color: colors.textBody }}
+          >
+            Товары
+          </Link>
+        </nav>
+
         {/* Search — grows */}
         <HeaderSearch />
 

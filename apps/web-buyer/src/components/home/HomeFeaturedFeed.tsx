@@ -1,6 +1,7 @@
 // apps/web-buyer/src/components/home/HomeFeaturedFeed.tsx
 'use client';
 
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import {
@@ -41,6 +42,13 @@ export function HomeFeaturedFeed() {
         >
           — {isFilterMode ? 'По категории' : 'Новинки'}
         </h2>
+        <Link
+          href={catSlug ? `/products?cat=${catSlug}` : '/products'}
+          className="text-xs font-semibold transition-opacity hover:opacity-80"
+          style={{ color: colors.brand }}
+        >
+          Все товары →
+        </Link>
       </div>
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
