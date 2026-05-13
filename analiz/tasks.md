@@ -103,7 +103,7 @@
 
 ## 🎨 P1 — Design quick wins (Полат + Азим)
 
-- [ ] **`DESIGN-PHONE-INPUT-PACKAGE-001`** — единый `<PhoneInput>` в `packages/ui` с маской `+998 XX XXX XX XX`, импорт в OtpGate (web-buyer) + login (web-seller) + checkout (tma) + login (admin).
+- [x] **`DESIGN-PHONE-INPUT-PACKAGE-001`** ✅ 14.05.2026 (Азим, web-* часть) — `PhoneInput` компонент с маской `+998 XX XXX XX XX` + utils (formatUzPhone/stripUzPhone/isValidUzPhone) в `apps/web-buyer/src/components/PhoneInput.tsx` и `apps/web-seller/src/components/PhoneInput.tsx`. value/onChange = E.164. Применён в OtpGate (web-buyer), /checkout (OTP + contact form), /profile (display), web-seller login. **TMA уже имеет свой phone.ts от Полата (Wave 7). Admin — зона Полата, отдельная задача.** Дубль buyer↔seller — sync вручную пока packages/ui не подключён через workspace deps (требует pnpm install).
 - [ ] **`DESIGN-SEMANTIC-COLORS-001`** — `packages/design-tokens/semantic.css` с `--success/--warning/--danger`. 4 разных hex для error в 4 apps.
 - [ ] **`DESIGN-TMA-BRAND-DIFF-001`** — buyer (orchid violet) vs seller (cyan) в TMA визуально не отличаются. Менять `BottomNav` accent по контексту.
 - [ ] **`DESIGN-A11Y-ARIA-LABELS-001`** — 21 icon-only button без `aria-label` (DatabasePage, ProductPage etc).

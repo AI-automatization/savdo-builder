@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — DESIGN-PHONE-INPUT-PACKAGE-001 (web-* часть)
+
+### ✅ [DESIGN-PHONE-INPUT-PACKAGE-001] PhoneInput с маской +998 XX XXX XX XX
+- **Важность:** 🟡 P1 design quick win
+- **Дата:** 14.05.2026
+- **Ветки:** `main` → web-buyer + web-seller (через FF merge)
+- **Файлы:**
+  - `apps/web-buyer/src/components/PhoneInput.tsx` (NEW)
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx` (EDIT — заменён `<input type=tel>` на `<PhoneInput>`)
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (EDIT — 2 phone inputs: OTP step + contact form)
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` (EDIT — display через formatUzPhone)
+  - `apps/web-seller/src/components/PhoneInput.tsx` (NEW — дубль buyer-копии)
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` (EDIT — заменён prefix `+998` + raw input на единый PhoneInput)
+- **Что сделано:**
+  - Компонент `<PhoneInput>` с маской `+998 XX XXX XX XX`. Внутри format/strip/validate. value+onChange работают в E.164 (`+998XXXXXXXXX`) — backend получает напрямую, без `+998${phone}` склейки.
+  - Disabled-state кнопок на `isValidUzPhone(phone)` вместо `.trim().length<9` (строгая проверка: 12 цифр).
+  - Display телефона на code-шаге и в /profile — через `formatUzPhone()`.
+  - aria-label="Телефон" + autoComplete="tel" + inputMode="tel" встроены.
+- **Что НЕ сделано:**
+  - **packages/ui подключение** — `@savdo/ui` сейчас не в dependencies web-* (только tokens/colors.ts существует, но не используется). Подключение требует `pnpm install` локально (Азим не разрешает). Пока — две идентичные копии в web-buyer и web-seller, sync вручную, с явным SYNC-комментарием в обоих файлах.
+  - **TMA** — Полат уже сделал `apps/tma/src/lib/phone.ts` (Wave 7, TMA-PHONE-MASK-001). Не дублируем.
+  - **Admin** — зона Полата.
+- **Verification:** `npx tsc --noEmit` чист на обоих апсах. Дев-сервер не запускал (memory feedback: не запускать монорепо локально).
+
 ## 2026-05-13 (Азим) — WEB-SELLER-PRODUCT-PARITY-001 (3 фазы)
 
 Полат сильно развил TMA AddProduct/EditProduct (multi-photo, dynamic filters, variants matrix, attributes, per-variant stock). Web-seller отставал. Цель — **функциональный паритет** (дизайн остаётся Liquid Authority).
