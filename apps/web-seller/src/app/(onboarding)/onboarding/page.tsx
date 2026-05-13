@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { Rocket, ShoppingCart } from 'lucide-react';
 import { useCreateStore, useSubmitStore, useStore } from '../../../hooks/use-seller';
 import { useUpdateSellerProfile } from '../../../hooks/use-seller';
-import { useCreateProduct } from '../../../hooks/use-products';
 import { useAuth } from '../../../lib/auth/context';
 import { applySeller } from '../../../lib/api/seller.api';
 import { buyerHostDisplay } from '../../../lib/buyer-url';
@@ -66,7 +65,6 @@ function ErrorBanner({ message }: { message?: string }) {
 const STEPS = [
   { label: "Магазин" },
   { label: "Контакты" },
-  { label: "Товар" },
   { label: "Готово" },
 ];
 
@@ -306,99 +304,7 @@ function Step2({
   );
 }
 
-// ── Step 3: First product ─────────────────────────────────────────────────────
-
-interface Step3Data {
-  title: string;
-  basePrice: number;
-}
-
-function Step3({
-  onNext,
-  onSkip,
-  onBack,
-  isLoading,
-  error,
-}: {
-  onNext: (data: Step3Data) => void;
-  onSkip: () => void;
-  onBack: () => void;
-  isLoading: boolean;
-  error?: string;
-}) {
-  const { register, handleSubmit, formState: { errors } } = useForm<Step3Data>({ defaultValues: { basePrice: 0 } });
-
-  return (
-    <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Первый товар</h1>
-        <p className="text-sm" style={{ color: colors.textMuted }}>
-          Добавьте хотя бы один товар, чтобы магазин выглядел живым
-        </p>
-      </div>
-
-      <div>
-        <Label required>Название товара</Label>
-        <input
-          className="focus:outline-none"
-          style={inputStyle}
-          placeholder="Например: iPhone 15 Pro"
-          {...register('title', { required: 'Введите название' })}
-        />
-        <FieldError message={errors.title?.message} />
-      </div>
-
-      <div>
-        <Label required>Цена (сум)</Label>
-        <input
-          type="number"
-          min={1}
-          className="focus:outline-none"
-          style={inputStyle}
-          placeholder="0"
-          {...register('basePrice', {
-            required: 'Укажите цену',
-            min: { value: 1, message: 'Цена должна быть больше 0' },
-            valueAsNumber: true,
-          })}
-        />
-        <FieldError message={errors.basePrice?.message} />
-      </div>
-
-      <ErrorBanner message={error} />
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-          style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
-        >
-          ← Назад
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
-          style={{ background: colors.accent, color: colors.accentTextOnBg }}
-        >
-          {isLoading ? 'Сохранение...' : 'Далее →'}
-        </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={onSkip}
-        className="text-xs text-center transition-opacity hover:opacity-80"
-        style={{ color: colors.textDim }}
-      >
-        Пропустить, добавлю позже
-      </button>
-    </form>
-  );
-}
-
-// ── Step 4: Submit for review ─────────────────────────────────────────────────
+// ── Step 3: Submit for review ─────────────────────────────────────────────────
 
 function Step4({
   storeName,
@@ -489,7 +395,6 @@ export default function OnboardingPage() {
 
   const createStore      = useCreateStore();
   const updateProfile    = useUpdateSellerProfile();
-  const createProduct    = useCreateProduct();
   const submitStore      = useSubmitStore();
 
   useEffect(() => {
@@ -545,22 +450,6 @@ export default function OnboardingPage() {
     }
   }
 
-  async function handleStep3(data: Step3Data) {
-    setError(undefined);
-    try {
-      const product = await createProduct.mutateAsync({
-        title:     data.title,
-        basePrice: Number(data.basePrice),
-        isVisible: true,
-      });
-      // store.id is in query cache after step 2
-      track.firstProductCreated(product.storeId, product.id);
-      setStep(3);
-    } catch {
-      setError('Не удалось сохранить товар.');
-    }
-  }
-
   async function handleSubmit() {
     setError(undefined);
     try {
@@ -605,16 +494,6 @@ export default function OnboardingPage() {
       )}
 
       {step === 2 && (
-        <Step3
-          onNext={handleStep3}
-          onSkip={() => setStep(3)}
-          onBack={() => setStep(1)}
-          isLoading={createProduct.isPending}
-          error={error}
-        />
-      )}
-
-      {step === 3 && (
         <Step4
           storeName={storeName}
           onSubmit={handleSubmit}
