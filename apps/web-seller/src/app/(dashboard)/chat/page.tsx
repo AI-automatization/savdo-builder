@@ -385,11 +385,11 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                     <button
                       type="button"
                       onClick={() => setOpenMenuId(showMenu ? null : m.id)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-60 hover:opacity-100 focus:opacity-100 active:opacity-100"
-                      style={{ background: colors.surfaceMuted, color: colors.textPrimary }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                      style={{ background: colors.surfaceMuted, color: colors.textPrimary, border: `1px solid ${colors.border}` }}
                       aria-label="Действия с сообщением"
                     >
-                      <MoreVertical size={13} />
+                      <MoreVertical size={15} />
                     </button>
                     {showMenu && (
                       <div
