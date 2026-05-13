@@ -13,6 +13,7 @@ import { track } from "@/lib/analytics";
 import type { CheckoutPreview, CheckoutPreviewItem, CartItem } from "types";
 import { ArrowLeft } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { PhoneInput, formatUzPhone, isValidUzPhone } from "@/components/PhoneInput";
 
 type DeliveryMode = "delivery" | "pickup";
 type PageStep = "otp-phone" | "otp-code" | "form";
@@ -155,9 +156,9 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
   const verifyOtp = useVerifyOtp();
 
   function handleSendOtp() {
-    if (phone.trim().length < 9) return;
+    if (!isValidUzPhone(phone)) return;
     requestOtp.mutate(
-      { phone: `+998${phone.replace(/\s/g, "")}`, purpose: "checkout" },
+      { phone, purpose: "checkout" },
       { onSuccess: () => setOtpStep("code") },
     );
   }
@@ -165,7 +166,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
   function handleVerify() {
     if (code.trim().length < 6) return;
     verifyOtp.mutate(
-      { phone: `+998${phone.replace(/\s/g, "")}`, code, purpose: "checkout" },
+      { phone, code, purpose: "checkout" },
       { onSuccess: () => onSuccess() },
     );
   }
@@ -179,7 +180,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
         <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
           {otpStep === "phone"
             ? "Для оформления заказа нужно подтвердить номер"
-            : `Код отправлен в Telegram на +998 ${phone}`}
+            : `Код отправлен в Telegram на ${formatUzPhone(phone)}`}
         </p>
       </div>
 
@@ -192,27 +193,17 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
             >
               Телефон
             </label>
-            <div className="flex items-center rounded-xl overflow-hidden" style={fieldStyle}>
-              <span
-                className="px-3 text-sm flex-shrink-0 h-[44px] flex items-center"
-                style={{ borderRight: `1px solid ${colors.border}`, color: colors.textMuted }}
-              >
-                +998
-              </span>
-              <input
-                type="tel"
-                placeholder="90 123 45 67"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
-                className="flex-1 px-3 h-[44px] text-sm bg-transparent"
-                style={{ color: colors.textPrimary, outline: "none" }}
-              />
-            </div>
+            <PhoneInput
+              value={phone}
+              onChange={setPhone}
+              onEnter={handleSendOtp}
+              className="w-full px-3 h-[44px] text-sm rounded-xl"
+              style={{ ...fieldStyle, color: colors.textPrimary }}
+            />
           </div>
           <ErrorBanner message={requestOtp.error?.message} />
           <button
-            disabled={phone.trim().length < 9 || requestOtp.isPending}
+            disabled={!isValidUzPhone(phone) || requestOtp.isPending}
             onClick={handleSendOtp}
             className="w-full py-3.5 rounded text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
@@ -415,7 +406,7 @@ export default function CheckoutPage() {
 
   // Display name for contacts step
   const displayName = contactName.trim() || (user as unknown as { name?: string })?.name || "";
-  const displayPhone = contactPhone || user?.phone || "";
+  const displayPhone = formatUzPhone(contactPhone || user?.phone || "");
   const contactsLine =
     displayName && displayPhone
       ? `${displayName} · ${displayPhone}`
@@ -506,11 +497,9 @@ export default function CheckoutPage() {
                     >
                       Телефон
                     </label>
-                    <input
-                      type="tel"
-                      placeholder="+998 90 123 45 67"
+                    <PhoneInput
                       value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
+                      onChange={setContactPhone}
                       className="w-full px-3 h-[44px] text-sm rounded-lg outline-none"
                       style={{
                         background: colors.surfaceMuted,
