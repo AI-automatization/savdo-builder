@@ -12,7 +12,10 @@ type SellerEvent =
   | { name: 'store_submitted_for_review';  payload: { store_id: string } }
   | { name: 'store_published';             payload: { store_id: string } }
   | { name: 'store_link_copied';           payload: { store_id: string } }
-  | { name: 'order_status_changed';        payload: { order_id: string; from: string; to: string } };
+  | { name: 'order_status_changed';        payload: { order_id: string; from: string; to: string } }
+  | { name: 'become_seller_intercept_shown';     payload: Record<string, never> }
+  | { name: 'become_seller_intercept_accepted';  payload: Record<string, never> }
+  | { name: 'become_seller_intercept_dismissed'; payload: Record<string, never> };
 
 function send(event: SellerEvent): void {
   if (process.env.NODE_ENV === 'development') {
@@ -54,4 +57,13 @@ export const track = {
 
   orderStatusChanged: (orderId: string, from: string, to: string) =>
     send({ name: 'order_status_changed', payload: { order_id: orderId, from, to } }),
+
+  becomeSellerInterceptShown: () =>
+    send({ name: 'become_seller_intercept_shown', payload: {} }),
+
+  becomeSellerInterceptAccepted: () =>
+    send({ name: 'become_seller_intercept_accepted', payload: {} }),
+
+  becomeSellerInterceptDismissed: () =>
+    send({ name: 'become_seller_intercept_dismissed', payload: {} }),
 };
