@@ -5,13 +5,14 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
-import { useProduct } from "@/hooks/use-storefront";
+import { useProduct, useStoreWithTrust } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus, ThreadType } from "types";
 import { track } from "@/lib/analytics";
 import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Heart, Minus, Plus } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import { ProductReviews } from "@/components/store/ProductReviews";
+import { SellerCard } from "@/components/store/SellerCard";
 import { colors } from "@/lib/styles";
 import { useAuth } from "@/lib/auth/context";
 import { useToggleWishlist, useWishlistIds } from "@/hooks/use-wishlist";
@@ -80,6 +81,7 @@ export default function ProductPage() {
   const id = params.id as string;
 
   const { data: product, isLoading, isError } = useProduct(id);
+  const storeFull = useStoreWithTrust(slug);
   const addToCart = useAddToCart();
   const { isAuthenticated } = useAuth();
   const wishlistIds = useWishlistIds();
