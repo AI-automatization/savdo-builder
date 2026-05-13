@@ -4,6 +4,7 @@
 // (chips/top stores/featured) — client с TanStack Query.
 
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { RecentStores } from '@/components/home/RecentStores';
 import { BottomNavBar } from '@/components/layout/BottomNavBar';
 import { HomeHero } from '@/components/home/HomeHero';
@@ -30,9 +31,14 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <HomeHero />
-      <HomeCategoryChips />
+      {/* useSearchParams внутри chips/featured требует Suspense для static pre-render (Next 16). */}
+      <Suspense fallback={null}>
+        <HomeCategoryChips />
+      </Suspense>
       <HomeTopStores />
-      <HomeFeaturedFeed />
+      <Suspense fallback={null}>
+        <HomeFeaturedFeed />
+      </Suspense>
       <div className="px-4 sm:px-6 mt-10 max-w-7xl mx-auto w-full">
         <RecentStores />
       </div>
