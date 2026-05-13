@@ -750,7 +750,7 @@ export default function ProductPage() {
           {/* ── Mobile sticky bottom CTA ──────────────────────────────────────── */}
           {!notFound && !isLoading && (
             <div
-              className="md:hidden sticky bottom-0 z-30 flex gap-2.5 p-3 border-t"
+              className="md:hidden sticky bottom-0 z-30 flex gap-2 p-3 border-t"
               style={{ background: colors.surfaceMuted, borderColor: colors.divider }}
             >
               <QtyStepper
@@ -764,7 +764,7 @@ export default function ProductPage() {
                 className="flex-1 text-sm font-bold transition-all active:scale-[0.98]"
                 style={{
                   padding: '12px 14px',
-                  borderRadius: 4,
+                  borderRadius: 6,
                   background: isCtaDisabled ? colors.surfaceMuted : colors.brand,
                   color: isCtaDisabled ? colors.textDim : colors.brandTextOnBg,
                   border: isCtaDisabled ? `1px solid ${colors.border}` : 'none',
@@ -773,6 +773,22 @@ export default function ProductPage() {
                 }}
               >
                 {ctaLabel()}
+              </button>
+              <button
+                onClick={() => {
+                  if (!product) return;
+                  track.chatStarted(product.storeId, "product");
+                  setChatOpen(true);
+                }}
+                aria-label="Обсудить с продавцом"
+                className="flex-shrink-0 w-12 h-12 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-[0.92]"
+                style={{
+                  background: colors.accent,
+                  color: colors.accentTextOnBg,
+                  borderRadius: 6,
+                }}
+              >
+                <MessageSquare size={20} />
               </button>
             </div>
           )}
