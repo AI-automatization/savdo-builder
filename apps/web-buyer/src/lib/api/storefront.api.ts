@@ -1,4 +1,9 @@
 import type { GlobalCategory, ProductListItem, Product, StorefrontStore } from 'types';
+import type {
+  FeaturedStorefrontResponse,
+  GlobalCategoryTreeItem,
+  StorefrontStoreWithTrust,
+} from '@/types/storefront';
 import { apiClient } from './client';
 
 export type { StorefrontStore };
@@ -79,5 +84,51 @@ export async function getProductReviews(
   const res = await apiClient.get<ProductReviewsResponse>(
     `/storefront/products/${productId}/reviews?page=${page}&limit=${limit}`,
   );
+  return res.data;
+}
+
+// ── Featured storefront (MARKETING-HOMEPAGE-DISCOVERY-001) ───────────────────
+
+export async function getFeaturedStorefront(): Promise<FeaturedStorefrontResponse> {
+  const res = await apiClient.get<FeaturedStorefrontResponse>('/storefront/featured');
+  return res.data;
+}
+
+// ── Categories tree (с iconEmoji) ────────────────────────────────────────────
+
+export async function getCategoriesTree(): Promise<GlobalCategoryTreeItem[]> {
+  const res = await apiClient.get<GlobalCategoryTreeItem[]>('/storefront/categories/tree');
+  return res.data;
+}
+
+// ── Platform-wide products feed (для category-filtered featured) ─────────────
+
+export interface PlatformFeedParams {
+  globalCategoryId?: string;
+  q?: string;
+  sort?: 'new' | 'price_asc' | 'price_desc';
+  limit?: number;
+}
+
+export async function getPlatformFeed(
+  params: PlatformFeedParams = {},
+): Promise<{ data: ProductListItem[]; total: number; page: number }> {
+  const search = new URLSearchParams();
+  if (params.globalCategoryId) search.set('globalCategoryId', params.globalCategoryId);
+  if (params.q) search.set('q', params.q);
+  if (params.sort) search.set('sort', params.sort);
+  if (params.limit) search.set('limit', String(params.limit));
+  const qs = search.toString();
+  const res = await apiClient.get<{
+    data: ProductListItem[];
+    meta: { total: number; page: number };
+  }>(qs ? `/storefront/products?${qs}` : `/storefront/products`);
+  return { data: res.data.data, total: res.data.meta.total, page: res.data.meta.page };
+}
+
+// ── Store с trust signals (для product page seller block) ────────────────────
+
+export async function getStorefrontStoreWithTrust(slug: string): Promise<StorefrontStoreWithTrust> {
+  const res = await apiClient.get<StorefrontStoreWithTrust>(`/storefront/stores/${slug}`);
   return res.data;
 }
