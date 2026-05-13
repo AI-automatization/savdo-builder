@@ -458,6 +458,19 @@ export default function ProductPage() {
                   </div>
                 )}
 
+                {/* ── Seller card (NEW position, выше variants — chat-first conversion) */}
+                {!isLoading && product && (
+                  <SellerCard
+                    slug={product.store.slug}
+                    name={product.store.name}
+                    city={product.store.city}
+                    logoUrl={product.store.logoUrl ?? storeFull.data?.logoUrl ?? null}
+                    isVerified={storeFull.data?.isVerified ?? false}
+                    avgRating={storeFull.data?.avgRating ?? null}
+                    reviewCount={storeFull.data?.reviewCount ?? 0}
+                  />
+                )}
+
                 {/* ── Variant pickers ─────────────────────────────────────── */}
                 {!isLoading && hasGroups && (
                   <div className="flex flex-col gap-4">
@@ -656,38 +669,6 @@ export default function ProductPage() {
                   </div>
                 )}
 
-                {/* ── Seller card ─────────────────────────────────────────── */}
-                {!isLoading && product && (
-                  <div
-                    className="p-4 rounded-md flex items-center gap-3"
-                    style={{ background: colors.surface }}
-                  >
-                    <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0"
-                      style={{ background: colors.brand, color: colors.brandTextOnBg }}
-                    >
-                      {storeName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{ color: colors.textStrong }}>
-                        {storeName}
-                      </div>
-                      {storeCity && (
-                        <div className="text-xs" style={{ color: colors.textMuted }}>
-                          {storeCity}
-                        </div>
-                      )}
-                    </div>
-                    <Link
-                      href={`/chats?storeId=${storeId}`}
-                      className="text-xs font-semibold flex-shrink-0"
-                      style={{ color: colors.brand }}
-                      aria-label="Написать продавцу"
-                    >
-                      →
-                    </Link>
-                  </div>
-                )}
               </div>
             </div>
           </div>
