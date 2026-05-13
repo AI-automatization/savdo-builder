@@ -12,7 +12,7 @@ import { useCart } from "@/hooks/use-cart";
 import { track } from "@/lib/analytics";
 import type { CheckoutPreview, CheckoutPreviewItem, CartItem } from "types";
 import { ArrowLeft } from "lucide-react";
-import { colors } from "@/lib/styles";
+import { colors, dangerTint, warningTint } from "@/lib/styles";
 import { PhoneInput, formatUzPhone, isValidUzPhone } from "@/components/PhoneInput";
 
 type DeliveryMode = "delivery" | "pickup";
@@ -80,8 +80,8 @@ function ErrorBanner({ message }: { message?: string }) {
     <div
       className="px-4 py-3 rounded-xl text-sm"
       style={{
-        background: "rgba(220,38,38,0.08)",
-        border: `1px solid rgba(220,38,38,0.30)`,
+        background: dangerTint(0.08),
+        border: `1px solid ${dangerTint(0.30)}`,
         color: colors.danger,
       }}
     >
@@ -676,8 +676,8 @@ export default function CheckoutPage() {
               <div
                 className="px-3 py-2.5 rounded-xl text-xs"
                 style={{
-                  background: "rgba(217,119,6,0.10)",
-                  border: `1px solid rgba(217,119,6,0.28)`,
+                  background: warningTint(0.10),
+                  border: `1px solid ${warningTint(0.28)}`,
                   color: colors.warning,
                 }}
               >
