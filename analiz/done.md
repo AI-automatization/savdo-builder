@@ -1,5 +1,43 @@
 # Done — Азим + Полат
 
+## 2026-05-13 (Полат) — Wave 12: MARKETING-LOCALIZATION-UZ-001 продолжение (TMA buyer pages)
+
+Продолжение Wave 11. Мигрировал основные buyer-страницы на `t()`,
+расширил словари (~75 новых ключей), добавил плюрализацию для русского.
+
+- **CartPage:** заголовок, пустая корзина, кнопки контакта продавца, MainButton
+  («Оформить — {total} {currency}»), aria-label на qty-кнопках,
+  localized `toLocaleString` (uz / ru), валюта через `t('common.currency')`.
+- **CheckoutPage:** все строки → `t()`, success screen, error states,
+  auth-warning, placeholder'ы инпутов, CTA с динамическим amount.
+- **OrdersPage:** заголовок + плюрализация `pluralOrders(N)` (1 заказ / 2 заказа / 5 заказов),
+  фильтры статусов (Все/Ожидают/Подтвержд./В пути/Доставлены/Отменены),
+  empty/error/auth states, review-модалка («Оцените товар»), Stars +
+  comment placeholder + Опубликовать. Узбекский всегда `{N} buyurtma`
+  (без плюрализации — у узбекского нет грамматики числа).
+- **WishlistPage:** заголовок + плюрализация товаров, badge "Недоступен",
+  empty states, цены через `fmt + common.currency`.
+- **ProductPage:** заголовок не найден, MainButton (Выберите вариант / Нет в наличии
+  / В корзину — N сум), stock badges, описание/характеристики/магазин labels,
+  CTA «Задать вопрос продавцу», chat prefill через локализованный template.
+
+**Технические решения:**
+- Простая плюрализация без `Intl.PluralRules` — runtime function в каждой
+  странице (`pluralOrders`/`pluralWishlist`) использует общие ключи
+  `.wordOne/.wordFew/.wordMany`. Для uz все три формы одинаковые.
+- `toLocaleString(locale === 'uz' ? 'uz' : 'ru')` для чисел — узбекская
+  локаль тоже использует пробел как тысячный разделитель.
+- `useEffect` deps с `locale` для MainButton — пересоздаём label при смене.
+- Все нормальные апострофы `o'` / `g'` в uz.ts проверены через grep, ровно 0.
+
+**Файлы:**
+- `apps/tma/src/lib/i18n/{ru,uz}.ts` (+75 ключей, общая валюта `common.currency`)
+- `apps/tma/src/pages/buyer/{CartPage,CheckoutPage,OrdersPage,WishlistPage,ProductPage}.tsx`
+
+**Tests:** `tsc --noEmit` clean.
+
+**Осталось:** Profile, ChatPage (buyer), все seller pages, admin, API уведомления.
+
 ## 2026-05-12 (Полат) — Wave 11: MARKETING-LOCALIZATION-UZ-001 (i18n infra + uzbek translator skill)
 
 Большая задача — research + reverse + skill + реализация инфры + TMA SettingsPage и StoresPage. Цель: 60% UZ-аудитория, предпочитающая узбекский, получает родной язык.
