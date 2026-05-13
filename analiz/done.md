@@ -1,5 +1,62 @@
 # Done — Азим + Полат
 
+## 2026-05-12 (Полат) — Wave 11: MARKETING-LOCALIZATION-UZ-001 (i18n infra + uzbek translator skill)
+
+Большая задача — research + reverse + skill + реализация инфры + TMA SettingsPage и StoresPage. Цель: 60% UZ-аудитория, предпочитающая узбекский, получает родной язык.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (partial) i18n инфра + skill + TMA migrate 🔴
+
+**Research / reverse-engineering Uzum, OLX UZ:**
+- Узбекистан официально перешёл на латиницу с 01.01.2023 (СМИ, маркетплейсы)
+- Стандарт e-commerce: товар на узбекском (Latin) + русский (Cyrillic). Кириллицу uz НЕ поддерживаем.
+- Ключевой символ — **обратный апостроф** `ʻ` (U+02BB), а не обычный `'`. GT почти всегда ставит обычный.
+
+**Skill записан для будущих сессий:**
+- `.claude/skills/uzbek-translator/SKILL.md` (~290 строк)
+- Активируется триггерами: "переведи на узбекский", "i18n uz", "локализация Узбекистан"
+- Алфавит, особые символы, типография апострофов, грамматика (агглютинация, падежи `-ga/-ni/-da/-dan`, императив `-ing`, притяжательные `-im/-ingiz`), множ. число `-lar`
+- E-commerce глоссарий: 60+ терминов (savat, savatga qoʻshish, buyurtma, yetkazib berish, toʻlov, manzil, doʻkon, sotuvchi, xaridor, mahsulot, chegirma, soʻm, ...)
+- Чек-лист перед коммитом + типичные ошибки Google Translate
+
+**TMA i18n инфра — zero-deps React Context:**
+- `apps/tma/src/lib/i18n/types.ts` — `Locale = 'ru' | 'uz'`, `SUPPORTED_LOCALES`, `DEFAULT_LOCALE`
+- `apps/tma/src/lib/i18n/ru.ts` (100+ ключей, default) и `uz.ts` (зеркало, проверено grep'ом на `o'`/`g'`)
+- `apps/tma/src/lib/i18n/I18nProvider.tsx` — Context + `useTranslation()` hook
+  - Auto-detect: `localStorage['savdo_locale']` → `tg.initDataUnsafe.user.language_code` → default (ru)
+  - `setLocale()` сохраняет в localStorage + обновляет `<html lang>` для a11y
+  - `t(key, vars)` поддерживает `{name}` интерполяцию + fallback на `ru` если ключ отсутствует в активной локали
+- `main.tsx`: `<I18nProvider>` обёрнут между `<TelegramProvider>` и `<ThemeProvider>` (нужен tgUser для language detection)
+
+**SettingsPage переведён + добавлен переключатель языка:**
+- Карточка «Язык / Til» с двумя кнопками `Русский` / `Oʻzbek`, haptic feedback при выборе
+- Все остальные строки на странице через `t()` — заголовок, аккаунт, тема, "Стать продавцом" CTA, "Telegram-бот", "Мои заказы", "Каталог", "Выйти"
+
+**StoresPage переведён (главная страница buyer):**
+- Приветствие `Salom, {name}!` через `t('auth.welcomeName', { name })`
+- Табы Магазины/Товары (`nav.stores` / `nav.products`)
+- Плейсхолдер поиска (контекстный — stores или products)
+- Sort labels (Новые / ↑ Цена / ↓ Цена)
+- Verified badge title + aria-label
+- Empty states + error states + retry
+
+**Файлы:**
+- `apps/tma/src/main.tsx` (Provider wiring)
+- `apps/tma/src/lib/i18n/{types,ru,uz,I18nProvider,index}.ts` (new)
+- `apps/tma/src/pages/buyer/SettingsPage.tsx`
+- `apps/tma/src/pages/buyer/StoresPage.tsx`
+- `.claude/skills/uzbek-translator/SKILL.md` (new — но `.claude/` в .gitignore, локальный)
+- `analiz/tasks.md`, `analiz/done.md`
+
+**Tests:** TypeScript `tsc --noEmit` чист. Runtime смок не делал (нужен Telegram WebApp env), переключатель собран минимально (Context value + map lookup).
+
+**Осталось (не блокер для запуска инфры):**
+- Мигрировать остальные TMA страницы (CartPage, CheckoutPage, OrdersPage, ProductPage, ProfilePage, WishlistPage, ChatPage)
+- Admin локализацию (Азим/Полат)
+- API Accept-Language header в `seller-notification.service` (узбекские тексты для seller TG-уведомлений)
+- Web-buyer / web-seller (зона Азима)
+
+**Важность:** 🔴 P0 — без инфры не запустить ни одну страницу на uz. Полный перевод дальше партиями.
+
 ## 2026-05-12 (Полат) — Wave 10: MARKETING-CART-ABANDONMENT-001 + cleanup
 
 Закрыто 4 задачи в одном проходе.
