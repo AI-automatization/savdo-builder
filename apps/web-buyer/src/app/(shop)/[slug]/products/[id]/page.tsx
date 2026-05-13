@@ -375,6 +375,8 @@ export default function ProductPage() {
                       <button
                         key={i}
                         onClick={() => setActiveImage(i)}
+                        aria-label={`Показать фото ${i + 1}`}
+                        aria-pressed={i === activeImage}
                         className="relative aspect-square overflow-hidden rounded transition-all"
                         style={{
                           background: colors.surfaceSunken,
@@ -396,6 +398,8 @@ export default function ProductPage() {
                       <button
                         key={i}
                         onClick={() => setActiveImage(i)}
+                        aria-label={`Показать фото ${i + 1}`}
+                        aria-pressed={i === activeImage}
                         className="w-16 h-16 rounded overflow-hidden relative flex-shrink-0 transition-all"
                         style={{
                           background: colors.surfaceSunken,
