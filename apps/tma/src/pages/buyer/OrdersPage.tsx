@@ -8,6 +8,7 @@ import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { Stars } from '@/components/ui/Stars';
 import { showToast } from '@/components/ui/Toast';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { useTranslation } from '@/lib/i18n';
 
 interface OrderItem {
   id: string;
@@ -36,14 +37,7 @@ interface PagedResponse {
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'all',       label: 'Все' },
-  { value: 'pending',   label: 'Ожидают' },
-  { value: 'confirmed', label: 'Подтвержд.' },
-  { value: 'shipped',   label: 'В пути' },
-  { value: 'delivered', label: 'Доставлены' },
-  { value: 'cancelled', label: 'Отменены' },
-];
+const STATUS_FILTERS: StatusFilter[] = ['all', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 
 function matchesFilter(status: string, filter: StatusFilter): boolean {
   if (filter === 'all') return true;
@@ -75,7 +69,22 @@ function compareOrders(a: Order, b: Order): number {
 export default function OrdersPage() {
   const { authenticated } = useAuth();
   const { viewportWidth } = useTelegram();
+  const { t, locale } = useTranslation();
   const isWide = (viewportWidth ?? 0) >= 1024;
+  const fmt = (n: number) => n.toLocaleString(locale === 'uz' ? 'uz' : 'ru');
+
+  // Локальная плюрализация заказов для русского (1 заказ / 2 заказа / 5 заказов).
+  // Узбекский всегда `{count} buyurtma` — в словаре все три формы одинаковые.
+  const pluralOrders = (count: number): string => {
+    const lastTwo = count % 100;
+    const lastOne = count % 10;
+    let form: 'wordOne' | 'wordFew' | 'wordMany';
+    if (lastTwo >= 11 && lastTwo <= 14) form = 'wordMany';
+    else if (lastOne === 1) form = 'wordOne';
+    else if (lastOne >= 2 && lastOne <= 4) form = 'wordFew';
+    else form = 'wordMany';
+    return t('orders.count', { count, word: t(`orders.${form}`) });
+  };
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -102,12 +111,12 @@ export default function OrdersPage() {
         body: { rating: reviewRating, comment: reviewComment.trim() || undefined },
       });
       setReviewedItems((prev) => new Set(prev).add(reviewing.itemId));
-      showToast('✅ Отзыв опубликован');
+      showToast(t('orders.reviewPublished'));
       setReviewing(null);
       setReviewRating(5);
       setReviewComment('');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Не удалось опубликовать отзыв';
+      const msg = err instanceof Error ? err.message : t('orders.reviewError');
       showToast(`❌ ${msg}`, 'error');
     } finally {
       setReviewSending(false);
@@ -165,7 +174,7 @@ export default function OrdersPage() {
       .catch((err: unknown) => {
         if (ac.signal.aborted) return;
         if (err instanceof Error && err.name === 'AbortError') return;
-        showToast('Не удалось подгрузить заказы', 'error');
+        showToast(t('orders.loadMoreError'), 'error');
       })
       .finally(() => { if (!ac.signal.aborted) setLoadingMore(false); });
   };
@@ -186,7 +195,7 @@ export default function OrdersPage() {
         .catch((err: unknown) => {
           if (ac.signal.aborted) return;
           if (err instanceof Error && err.name === 'AbortError') return;
-          showToast('Не удалось загрузить детали заказа', 'error');
+          showToast(t('orders.detailError'), 'error');
         })
         .finally(() => { if (!ac.signal.aborted) setDetailLoading(null); });
     }
@@ -199,10 +208,10 @@ export default function OrdersPage() {
         <div className="flex items-center gap-3">
           <div className="page-icon">📦</div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-gradient">Мои заказы</h1>
+            <h1 className="text-base font-bold text-gradient">{t('orders.title')}</h1>
             {!loading && orders.length > 0 && (
               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-muted)' }}>
-                {orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'}
+                {pluralOrders(orders.length)}
               </p>
             )}
           </div>
@@ -212,13 +221,13 @@ export default function OrdersPage() {
         {authenticated && !loading && orders.length > 0 && (
           <div className="scroll-fade-x -mx-4">
             <div className="flex gap-1.5 overflow-x-auto scroll-snap-x pb-0.5 px-4" style={{ scrollbarWidth: 'none' }}>
-              {STATUS_FILTERS.map((f) => {
-                const count = f.value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, f.value)).length;
-                const active = statusFilter === f.value;
+              {STATUS_FILTERS.map((value) => {
+                const count = value === 'all' ? orders.length : orders.filter((o) => matchesFilter(o.status, value)).length;
+                const active = statusFilter === value;
                 return (
                   <button
-                    key={f.value}
-                    onClick={() => setStatusFilter(f.value)}
+                    key={value}
+                    onClick={() => setStatusFilter(value)}
                     className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
                     style={!active ? {
                       background: 'var(--tg-surface-hover)',
@@ -226,7 +235,7 @@ export default function OrdersPage() {
                       color: 'var(--tg-text-muted)',
                     } : undefined}
                   >
-                    {f.label}
+                    {t(`orders.filter.${value}`)}
                     {count > 0 && (
                       <span
                         className="px-1.5 py-0 rounded-full text-[10px] font-bold"
@@ -253,7 +262,7 @@ export default function OrdersPage() {
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔒</span>
             <p className="text-xs text-center" style={{ color: 'var(--tg-text-muted)' }}>
-              Откройте через Telegram для просмотра заказов
+              {t('orders.authHint')}
             </p>
           </div>
         )}
@@ -267,13 +276,13 @@ export default function OrdersPage() {
         {authenticated && !loading && error && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
-            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Не удалось загрузить заказы</p>
+            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>{t('orders.loadError')}</p>
             <button
               onClick={() => { setLoading(true); fetchFirst(); }}
               className="text-xs"
               style={{ color: 'var(--tg-accent)' }}
             >
-              Попробовать снова
+              {t('common.retry')}
             </button>
           </div>
         )}
@@ -281,14 +290,14 @@ export default function OrdersPage() {
         {authenticated && !loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Заказов пока нет</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.empty')}</p>
           </div>
         )}
 
         {authenticated && !loading && !error && orders.length > 0 && [...orders].filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔍</span>
-            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Нет заказов в этой категории</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.emptyCategory')}</p>
           </div>
         )}
 
@@ -302,8 +311,9 @@ export default function OrdersPage() {
           // Теперь две строки — главное (номер + статус + сумма), мелкое (дата+время).
           const orderShort = o.orderNumber?.replace(/^ORD-/, '') ?? o.id.slice(-6).toUpperCase();
           const dt = new Date(o.createdAt);
-          const dateLabel = dt.toLocaleDateString('ru', { day: '2-digit', month: 'short' });
-          const timeLabel = dt.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+          const dateLocale = locale === 'uz' ? 'uz' : 'ru';
+          const dateLabel = dt.toLocaleDateString(dateLocale, { day: '2-digit', month: 'short' });
+          const timeLabel = dt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
           return (
             <GlassCard key={o.id} className="flex flex-col gap-0 overflow-hidden">
               <button
@@ -313,10 +323,10 @@ export default function OrdersPage() {
                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-bold truncate" style={{ color: 'var(--tg-text-primary)' }}>
-                      Заказ #{orderShort}
+                      {t('orders.orderNumber', { number: orderShort })}
                     </p>
                     <p className="text-sm font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
-                      {Number(o.totalAmount).toLocaleString('ru')} сум
+                      {fmt(Number(o.totalAmount))} {t('common.currency')}
                     </p>
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -365,7 +375,7 @@ export default function OrdersPage() {
                               </p>
                             </div>
                             <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--tg-text-secondary)' }}>
-                              {Number(item.lineTotalAmount).toLocaleString('ru')} сум
+                              {fmt(Number(item.lineTotalAmount))} {t('common.currency')}
                             </p>
                           </div>
                           {canReview && (
@@ -379,12 +389,12 @@ export default function OrdersPage() {
                               className="self-start text-[11px] font-semibold py-1 px-2.5 rounded-lg"
                               style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.30)', color: '#FBBF24' }}
                             >
-                              ⭐ Оценить товар
+                              {t('orders.rateProduct')}
                             </button>
                           )}
                           {reviewedItems.has(item.id) && (
                             <p className="text-[10px]" style={{ color: 'rgba(52,211,153,0.85)' }}>
-                              ✓ Отзыв опубликован
+                              {t('orders.reviewedShort')}
                             </p>
                           )}
                         </div>
@@ -392,7 +402,7 @@ export default function OrdersPage() {
                     })
                   ) : (
                     <p className="text-xs pt-2" style={{ color: 'var(--tg-text-muted)' }}>
-                      Нет данных о товарах
+                      {t('orders.noItems')}
                     </p>
                   )}
                 </div>
@@ -409,7 +419,7 @@ export default function OrdersPage() {
             className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50"
             style={{ background: 'var(--tg-accent-bg)', color: 'var(--tg-accent)', border: '1px solid var(--tg-accent-border)' }}
           >
-            {loadingMore ? <Spinner size={16} /> : 'Загрузить ещё'}
+            {loadingMore ? <Spinner size={16} /> : t('orders.loadMore')}
           </button>
         )}
       </div>
@@ -428,7 +438,7 @@ export default function OrdersPage() {
           >
             <div className="flex flex-col gap-1">
               <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>
-                Оцените товар
+                {t('orders.rateModalTitle')}
               </p>
               <p className="text-xs truncate" style={{ color: 'var(--tg-text-muted)' }}>
                 {reviewing.productTitle}
@@ -440,7 +450,7 @@ export default function OrdersPage() {
             <textarea
               value={reviewComment}
               onChange={(e) => setReviewComment(e.target.value)}
-              placeholder="Поделитесь впечатлением (необязательно)…"
+              placeholder={t('orders.commentPlaceholder')}
               rows={4}
               maxLength={2000}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
@@ -453,7 +463,7 @@ export default function OrdersPage() {
                 className="flex-1 py-3 rounded-xl text-sm font-semibold"
                 style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={submitReview}
@@ -466,7 +476,7 @@ export default function OrdersPage() {
                   opacity: reviewSending ? 0.5 : 1,
                 }}
               >
-                {reviewSending ? '...' : 'Опубликовать'}
+                {reviewSending ? '...' : t('orders.publish')}
               </button>
             </div>
           </div>
