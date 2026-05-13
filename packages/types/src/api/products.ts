@@ -52,6 +52,14 @@ export interface ProductListItem {
   title: string;
   description: string | null;
   basePrice: number;
+  /** P3-004: original price before discount, null if not on sale. */
+  oldPrice?: number | null;
+  /** P3-004: current sale price, null if not on sale. */
+  salePrice?: number | null;
+  /** P3-004: true when `salePrice < basePrice`. UI рендерит SALE-бэйдж. */
+  isSale: boolean;
+  /** P3-004: скидка % (floor, 1..99). null если !isSale. UI рендерит `-30%`. */
+  discountPercent: number | null;
   currencyCode: string;
   status: ProductStatus;
   isVisible: boolean;

@@ -104,9 +104,7 @@ export class ProductsController {
       const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.presenter.toPrice(oldPrice),
-        salePrice: this.presenter.toPrice(salePrice),
+        ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         variantCount: _count.variants,
         totalStock,
         mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
@@ -165,9 +163,7 @@ export class ProductsController {
     }));
     return {
       ...product,
-      basePrice: Number(product.basePrice),
-      oldPrice: this.presenter.toPrice(product.oldPrice),
-      salePrice: this.presenter.toPrice(product.salePrice),
+      ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
