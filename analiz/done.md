@@ -1,5 +1,62 @@
 # Done — Азим + Полат
 
+## 2026-05-13 (Азим) — WEB-BUYER-CATALOG-001 + WEB-SELLER-ONBOARDING-INTERCEPT-001
+
+Реакция на жалобы Полата (скрины 12.05 / 13.05). Адресует:
+- buyer не может найти магазины / товары без прямой ссылки → нужен каталог
+- buyer попадая в seller-кабинет молча кидается в `/onboarding` (форма создания магазина) без объяснения, рядом 401-spam от seller-хуков
+- создание товара зашито в seller-онбординг — добавляет friction и плодит огрызочные продукты
+
+### ✅ [WEB-BUYER-CATALOG-001] /stores + /products каталог
+- **Важность:** 🔴
+- **Дата:** 13.05.2026
+- **Ветка:** `web-buyer` (commits `6670451` → `ada8369`)
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/stores/page.tsx` (NEW)
+  - `apps/web-buyer/src/app/(shop)/products/page.tsx` (NEW)
+  - `apps/web-buyer/src/components/catalog/` — LoadMoreButton, EmptyState, StoresGrid, StoresFilters, ProductsGrid, ProductsFilters (6 NEW)
+  - `apps/web-buyer/src/hooks/use-storefront.ts` — `useStoresCatalog` + `useProductsCatalog` (infinite)
+  - `apps/web-buyer/src/lib/api/storefront.api.ts` — `getStoresCatalog` + `getProductsCatalog`
+  - `apps/web-buyer/src/lib/analytics.ts` — `stores_catalog_viewed` + `products_catalog_viewed`
+  - `apps/web-buyer/src/components/layout/Header.tsx` — desktop nav `Магазины` / `Товары`
+  - `apps/web-buyer/src/components/home/HomeTopStores.tsx` — «Все магазины →» link
+  - `apps/web-buyer/src/components/home/HomeFeaturedFeed.tsx` — «Все товары →» link
+- **Что сделано:**
+  - `/stores` — каталог всех опубликованных магазинов, client-side фильтры (город из ответа, verified-toggle, sort top/new/rating), URL state, плюрализация
+  - `/products` — каталог товаров с infinite scroll (24/page), category chips через `useGlobalCategoriesTree`, sort new/price_asc/price_desc, URL state
+  - Reuse `StoreCard` / `ProductCard` без изменений; общий `LoadMoreButton` и `EmptyState`
+  - Homepage: «Все →» ссылки рядом с h2 в Top stores / Featured feed; в Featured сохраняется `?cat=` при переходе
+  - Header (desktop): новые `Магазины` / `Товары` ссылки перед глобальным search. Mobile BottomNav без изменений
+  - Все Suspense-boundary для Next 16 `useSearchParams`
+  - Backend готов — без правок API
+
+### ✅ [WEB-SELLER-ONBOARDING-INTERCEPT-001] /become-seller intercept + -1 шаг + 401-spam fix
+- **Важность:** 🔴
+- **Дата:** 13.05.2026
+- **Ветка:** `web-seller` (commits `02ad31e` → `91c4b7b`)
+- **Файлы:**
+  - `apps/web-seller/src/app/(onboarding)/become-seller/page.tsx` (NEW)
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — redirect target
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — удалён Step3 (товар), STEPS 4→3
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — empty-state «Добавьте товар»
+  - `apps/web-seller/src/hooks/use-seller.ts` `use-chat.ts` `use-orders.ts` `use-products.ts` `use-notifications.ts` `use-analytics.ts` — auth guards
+  - `apps/web-seller/src/lib/analytics.ts` — `become_seller_intercept_*` events
+- **Что сделано:**
+  - **/become-seller** — friendly explainer для BUYER: «У вас ещё нет магазина», 3 CTA (Открыть магазин / Перейти к покупкам → savdo.uz / Выйти из аккаунта). Self-guard: SELLER со store → /dashboard; не залогинен → /login
+  - **Login redirect**: `verifyOtp.onSuccess` и `useEffect` теперь шлют не-SELLER на `/become-seller` вместо `/onboarding`
+  - **Onboarding**: удалён Step3 (~90 LOC) — создание товара выпилено. STEPS теперь `[Магазин, Контакты, Готово]`. Step4 (submit) рендерится на step===2
+  - **Dashboard empty-state**: блок с CTA «+Добавить товар» (→`/products/create`) пока `products.length === 0`. Текст адаптируется к store status (PENDING_REVIEW vs APPROVED)
+  - **401-spam fix**: все `useQuery` в seller-хуках получили `enabled: !!user && user.role === 'SELLER'`. Покрыто: `useSellerProfile`, `useStore`, `useStoreCategories`, `useThreads`, `useMessages`, `useSellerOrders`, `useSellerOrder`, `useSellerProducts`, `useSellerProduct`, `useProductVariants`, `useNotifications`, `useUnreadCount`, `useNotifPreferences`, `useSellerSummary`, `useSellerAnalytics`. Buyer на /become-seller и /onboarding больше не видит 401 в консоли
+
+### Spec + Plan (commits на ветке web-buyer)
+- `docs/superpowers/specs/2026-05-13-buyer-catalog-and-seller-onboarding-design.md` — `15d1113`
+- `docs/superpowers/plans/2026-05-13-buyer-catalog-and-seller-onboarding.md` — `3bd31a7`
+
+### Контракт-задача для Полата (P3, после launch)
+- `API-STORES-PAGINATION-001` — `/storefront/stores` сейчас `take: 50` в `findAllPublished` (stores.repository.ts:59). На 37 stores OK; при росте до 500+ нужна server-side pagination (`page`/`limit`). Frontend `/stores` уже готов потреблять paginated ответ.
+
+---
+
 ## 2026-05-13 (Полат) — Wave 12: MARKETING-LOCALIZATION-UZ-001 продолжение (TMA buyer pages)
 
 Продолжение Wave 11. Мигрировал основные buyer-страницы на `t()`,
