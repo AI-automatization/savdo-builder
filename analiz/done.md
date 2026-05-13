@@ -1,5 +1,52 @@
 # Done — Азим + Полат
 
+## 2026-05-13 (Азим) — WEB-SELLER-PRODUCT-PARITY-001 (3 фазы)
+
+Полат сильно развил TMA AddProduct/EditProduct (multi-photo, dynamic filters, variants matrix, attributes, per-variant stock). Web-seller отставал. Цель — **функциональный паритет** (дизайн остаётся Liquid Authority).
+
+### ✅ [WEB-SELLER-PRODUCT-PARITY-001] Multi-photo + attributes + filters + variants matrix + stock editor
+- **Важность:** 🟠 P1
+- **Дата:** 13.05.2026 (3 фазы за день)
+- **Ветка:** `web-seller` (8 коммитов `d51b552..bddc515`)
+- **Файлы:**
+  - `apps/web-seller/src/components/multi-image-uploader.tsx` (NEW)
+  - `apps/web-seller/src/components/product-attributes-section.tsx` (NEW)
+  - `apps/web-seller/src/components/category-filters-section.tsx` (NEW)
+  - `apps/web-seller/src/components/variants-matrix-builder.tsx` (NEW)
+  - `apps/web-seller/src/components/product-variants-section.tsx` (EDIT — inline stock editor)
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` (EDIT — multi-photo + attrs + filters + matrix)
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` (EDIT — multi-photo + attrs sync)
+  - `apps/web-seller/src/lib/api/products.api.ts` (EDIT — image + attribute helpers)
+  - `apps/web-seller/src/lib/api/storefront.api.ts` (NEW — getCategoryFilters)
+  - `apps/web-seller/src/hooks/use-category-filters.ts` (NEW)
+- **Phase 1 (multi-photo + attributes):**
+  - MultiImageUploader ≤8 фото, drag-reorder, primary marker, native file picker (без cropper'а — это touch-фича TMA)
+  - ProductAttributesSection free-form key/value pairs с +/− строк
+  - Create: parallel POST на /images (isPrimary для первого) + /attributes (только non-empty)
+  - Edit: diff prev/next → POST на added, DELETE на removed
+- **Phase 2 (filters + matrix):**
+  - useCategoryFilters → GET /storefront/categories/:slug/filters (cached 10min)
+  - CategoryFiltersSection — text/number/select/boolean/color → сохраняются как ProductAttribute
+  - VariantsMatrixBuilder — multi_select chips → cartesian product матрица с per-cell stock + priceOverride
+  - Create flow: после product → POST option-groups → POST option-values → POST variants matrix
+- **Phase 3 (stock editor):**
+  - InlineStockEditor в каждом variant row: compact input + ✓ кнопка
+  - useAdjustStock(delta = new - current, reason='manual')
+- **Что НЕ сделано:**
+  - PATCH images endpoint отсутствует у backend → reorder в edit-режиме не сохраняется (Create поддерживает) — отдельная задача `API-PRODUCT-IMAGES-PATCH-001` для Полата
+  - Store-категории CRUD (`WEB-SELLER-STORE-CATEGORIES-CRUD-001`) — отдельная задача
+  - VariantsMatrixBuilder в edit-режиме (после первого create варианты редактируются через старый ProductOptionGroupsSection / ProductVariantsSection)
+
+### Spec + Plan
+- `docs/superpowers/specs/2026-05-13-web-seller-product-feature-parity-design.md` (`3dfdc8c`)
+- `docs/superpowers/plans/2026-05-13-web-seller-product-feature-parity.md` (`692b835`)
+
+### Контракт-задачи для Полата (P3)
+- `API-PRODUCT-IMAGES-PATCH-001` — `PATCH /seller/products/:id/images/:imageId` для reorder/primary toggle без delete-recreate
+- `WEB-SELLER-STORE-CATEGORIES-CRUD-001` — UI для управления store-категориями (CRUD страница), сейчас seller может выбрать существующую, но не управлять списком
+
+---
+
 ## 2026-05-13 (Азим) — WEB-BUYER-CATALOG-001 + WEB-SELLER-ONBOARDING-INTERCEPT-001
 
 Реакция на жалобы Полата (скрины 12.05 / 13.05). Адресует:
