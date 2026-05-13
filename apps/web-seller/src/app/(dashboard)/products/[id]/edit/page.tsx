@@ -3,9 +3,17 @@
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct } from '../../../../../hooks/use-products';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct, productKeys } from '../../../../../hooks/use-products';
 import { useStoreCategories, useGlobalCategories } from '../../../../../hooks/use-seller';
-import { ImageUploader } from '../../../../../components/image-uploader';
+import { MultiImageUploader, type MultiImageItem } from '../../../../../components/multi-image-uploader';
+import { ProductAttributesSection, type AttributeItem } from '../../../../../components/product-attributes-section';
+import {
+  addProductImage,
+  deleteProductImage,
+  createProductAttribute,
+  deleteProductAttribute,
+} from '../../../../../lib/api/products.api';
 import { ProductStatus } from 'types';
 import type { ProductDisplayType } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
@@ -94,7 +102,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const displayType = watch('displayType');
 
-  const [mediaId, setMediaId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [images, setImages] = useState<MultiImageItem[]>([]);
+  // Map mediaId → ProductImage.id для удаления существующих фото.
+  const imageIdMapRef = useRef<Map<string, string>>(new Map());
+  const [attributes, setAttributes] = useState<AttributeItem[]>([]);
+
   const { data: categories = [] } = useStoreCategories();
   const { data: globalCategoriesRaw = [] } = useGlobalCategories();
   const globalCategories = useMemo(
@@ -126,8 +139,106 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       });
       setStoreCategoryId(product.storeCategoryId ?? null);
       initialCategoryIdRef.current = product.storeCategoryId ?? null;
+
+      // Init multi-image state from product.images (mediaUrls для URL, raw images
+      // через cast для доступа к id/mediaId — типы в packages/types минимальны,
+      // фактический API возвращает полную форму).
+      type RawImage = { id: string; mediaId: string; url?: string };
+      const rawImages = (product as unknown as { images?: RawImage[] }).images ?? [];
+      const items: MultiImageItem[] = rawImages.map((img, i) => ({
+        mediaId: img.mediaId ?? img.id,
+        previewUrl: img.url ?? product.mediaUrls?.[i] ?? '',
+      }));
+      setImages(items);
+
+      const map = new Map<string, string>();
+      for (const img of rawImages) {
+        const key = img.mediaId ?? img.id;
+        map.set(key, img.id);
+      }
+      imageIdMapRef.current = map;
+
+      // Init attributes
+      const items2: AttributeItem[] = (product.attributes ?? []).map((a) => ({
+        id: a.id,
+        name: a.name,
+        value: a.value,
+      }));
+      setAttributes(items2);
     }
   }, [product, reset]);
+
+  async function handleImagesChange(next: MultiImageItem[]) {
+    const prev = images;
+    setImages(next);
+
+    const prevIds = new Set(prev.map((i) => i.mediaId));
+    const nextIds = new Set(next.map((i) => i.mediaId));
+
+    // Added (есть в next, нет в prev) — POST на сервер
+    const added = next.filter((i) => !prevIds.has(i.mediaId));
+    for (const item of added) {
+      try {
+        const created = await addProductImage(id, {
+          mediaId:   item.mediaId,
+          isPrimary: next.findIndex((i) => i.mediaId === item.mediaId) === 0,
+          sortOrder: next.findIndex((i) => i.mediaId === item.mediaId),
+        });
+        // Сохранить id новой ProductImage для возможного будущего удаления.
+        imageIdMapRef.current.set(item.mediaId, created.id);
+      } catch (err) {
+        console.error(`add image failed`, err);
+      }
+    }
+
+    // Removed (есть в prev, нет в next) — DELETE на сервер
+    const removed = prev.filter((i) => !nextIds.has(i.mediaId));
+    for (const item of removed) {
+      const productImageId = imageIdMapRef.current.get(item.mediaId);
+      if (!productImageId) continue;
+      try {
+        await deleteProductImage(id, productImageId);
+        imageIdMapRef.current.delete(item.mediaId);
+      } catch (err) {
+        console.error(`delete image failed`, err);
+      }
+    }
+
+    // Reorder не поддерживается backend'ом — порядок останется как в product.images
+    // (по sortOrder при POST). API-PRODUCT-IMAGES-PATCH-001 в backlog.
+
+    queryClient.invalidateQueries({ queryKey: productKeys.detail(id) });
+  }
+
+  async function handleAttributesChange(next: AttributeItem[]) {
+    const prev = attributes;
+    setAttributes(next);
+
+    const prevById = new Map(prev.filter((a) => a.id).map((a) => [a.id!, a]));
+    const nextIds = new Set(next.filter((a) => a.id).map((a) => a.id!));
+
+    // Removed (был с id, теперь нет)
+    const removedIds = Array.from(prevById.keys()).filter((aid) => !nextIds.has(aid));
+    for (const aid of removedIds) {
+      try { await deleteProductAttribute(id, aid); }
+      catch (err) { console.error(`delete attribute failed`, err); }
+    }
+
+    // Added (нет id, есть непустые name+value)
+    const added = next.filter((a) => !a.id && a.name.trim() && a.value.trim());
+    for (let i = 0; i < added.length; i++) {
+      const a = added[i];
+      try {
+        await createProductAttribute(id, {
+          name: a.name.trim(),
+          value: a.value.trim(),
+          sortOrder: next.indexOf(a),
+        });
+      } catch (err) { console.error(`create attribute failed`, err); }
+    }
+
+    queryClient.invalidateQueries({ queryKey: productKeys.detail(id) });
+  }
 
   async function onSubmit(values: EditProductForm) {
     await update.mutateAsync({
@@ -137,7 +248,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       basePrice:        Number(values.basePrice),
       sku:              values.sku || undefined,
       isVisible:        values.isVisible,
-      mediaId:          mediaId ?? undefined,
+      // mediaId здесь не нужен — фото управляются через handleImagesChange (POST/DELETE).
       storeCategoryId:  storeCategoryId ?? undefined,
       globalCategoryId: values.globalCategoryId || undefined,
       displayType:      values.displayType,
@@ -246,17 +357,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="rounded-xl p-6 flex flex-col gap-5" style={glass}>
 
-          {/* Photo */}
+          {/* Photos */}
           <div>
             <Label>Фото товара</Label>
-            <div style={{ width: 100, height: 100 }}>
-              <ImageUploader
-                value={mediaId}
-                onChange={setMediaId}
-                purpose="product_image"
-                previewUrl={product?.mediaUrls?.[0] ?? null}
-              />
-            </div>
+            <MultiImageUploader value={images} onChange={handleImagesChange} maxFiles={8} />
           </div>
 
           {/* Display type */}
@@ -405,7 +509,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </button>
           <button
             type="submit"
-            disabled={!isDirty && storeCategoryId === initialCategoryIdRef.current && mediaId === null || isSubmitting || update.isPending}
+            disabled={(!isDirty && storeCategoryId === initialCategoryIdRef.current) || isSubmitting || update.isPending}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-40"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
@@ -423,6 +527,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         productSku={product.sku}
         optionGroups={product.optionGroups ?? []}
       />
+
+      {/* Attributes (free-form key/value) */}
+      <div className="mt-4 rounded-xl p-5 flex flex-col gap-3" style={glass}>
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
+          Характеристики
+        </p>
+        <ProductAttributesSection value={attributes} onChange={handleAttributesChange} />
+      </div>
 
       {/* Status & danger actions */}
       {!isHiddenByAdmin && (
