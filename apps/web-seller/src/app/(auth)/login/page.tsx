@@ -26,7 +26,7 @@ export default function LoginPage() {
     if (user.role === 'SELLER') {
       router.replace('/dashboard');
     } else {
-      router.replace('/onboarding');
+      router.replace('/become-seller');
     }
   }, [user, router]);
 
@@ -51,7 +51,7 @@ export default function LoginPage() {
           if (data.user.role === 'SELLER') {
             router.replace("/dashboard");
           } else {
-            router.replace("/onboarding");
+            router.replace("/become-seller");
           }
         },
       },
