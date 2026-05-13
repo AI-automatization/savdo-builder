@@ -106,7 +106,9 @@ export function usePlatformFeed(params: PlatformFeedParams) {
     queryKey: storefrontKeys.platformFeed(params),
     queryFn: () => getPlatformFeed(params),
     staleTime: 2 * 60 * 1000,
-    enabled: true,
+    // Запрос имеет смысл только при выбранной категории — иначе homepage
+    // показывает featured feed из useFeaturedStorefront, не platform feed.
+    enabled: !!params.globalCategoryId,
   });
 }
 

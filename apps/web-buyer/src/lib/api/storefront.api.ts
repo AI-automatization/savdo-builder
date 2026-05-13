@@ -130,5 +130,14 @@ export async function getPlatformFeed(
 
 export async function getStorefrontStoreWithTrust(slug: string): Promise<StorefrontStoreWithTrust> {
   const res = await apiClient.get<StorefrontStoreWithTrust>(`/storefront/stores/${slug}`);
-  return res.data;
+  // Defensive defaults: backend already returns trust signals (миграция 20260512160000),
+  // но кэш / устаревшие deploys могут вернуть response без них. Спред гарантирует
+  // что реальные значения от API перекроют дефолты, а потребители получат предсказуемый
+  // zero-state если поля отсутствуют.
+  return {
+    isVerified: false,
+    avgRating: null,
+    reviewCount: 0,
+    ...res.data,
+  };
 }
