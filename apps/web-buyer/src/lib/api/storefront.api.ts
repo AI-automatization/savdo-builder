@@ -129,15 +129,10 @@ export async function getPlatformFeed(
 // ── Store с trust signals (для product page seller block) ────────────────────
 
 export async function getStorefrontStoreWithTrust(slug: string): Promise<StorefrontStoreWithTrust> {
+  // Backend ships trust signals (миграция 20260512160000). Если они отсутствуют —
+  // null-guard на потребителе (SellerCard в product page читает через
+  // `storeFull.data?.isVerified ?? false`). Дублирующие defaults в getter
+  // дают TS-ошибку «specified more than once» — убраны.
   const res = await apiClient.get<StorefrontStoreWithTrust>(`/storefront/stores/${slug}`);
-  // Defensive defaults: backend already returns trust signals (миграция 20260512160000),
-  // но кэш / устаревшие deploys могут вернуть response без них. Спред гарантирует
-  // что реальные значения от API перекроют дефолты, а потребители получат предсказуемый
-  // zero-state если поля отсутствуют.
-  return {
-    isVerified: false,
-    avgRating: null,
-    reviewCount: 0,
-    ...res.data,
-  };
+  return res.data;
 }
