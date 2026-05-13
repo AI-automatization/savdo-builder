@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — DESIGN-SEMANTIC-COLORS-001 (theme-aware tints, hot-path)
+
+### ✅ [DESIGN-SEMANTIC-COLORS-001] dangerTint / warningTint / successTint helpers
+- **Важность:** 🟡 P1 design quick win
+- **Дата:** 14.05.2026
+- **Ветки:** `main` → web-buyer + web-seller (cherry-pick)
+- **Файлы (7):**
+  - `apps/web-buyer/src/app/globals.css` — `--color-success-rgb/-warning-rgb/-danger-rgb` для `:root` и `[data-theme=dark]`
+  - `apps/web-buyer/src/lib/styles.ts` — `dangerTint(o)/warningTint(o)/successTint(o)` helpers
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — checkout error banner + stock warning переведены
+  - `apps/web-seller/src/app/globals.css` — `--color-success-rgb/-warning-rgb/-danger-rgb/-info-rgb` для обоих тем
+  - `apps/web-seller/src/lib/styles.ts` — те же helpers
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — login error banner переведён
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — ErrorBanner переведён
+- **Что сделано:**
+  - **Theme-aware tints** через CSS color level 4 syntax `rgb(var(--color-X-rgb) / opacity)`. Раньше hardcoded `rgba(220,38,38,0.10)` не адаптировался при смене light↔dark, теперь — автоматически.
+  - **RGB-channels разные** для каждой темы (buyer light: `139,58,58` → dark `197,102,102`; seller light: `220,38,38` → dark `248,113,113`).
+  - Hot-path: видимые на каждой login/onboarding/checkout попытке — переведены.
+- **Что НЕ сделано (отдельная задача `DESIGN-SEMANTIC-COLORS-RGBA-002`, P3):**
+  - ~14 точек hardcoded `rgba(248,113,113,X)` в web-seller analytics/orders/notifications/products/chat и web-buyer chats. Helper готов — нужен mass-replace. Не блокер: цвета визуально совпадают, но light/dark не адаптируются.
+  - `packages/design-tokens` unified пакет **намеренно НЕ создаём** — Soft Color Lifestyle (buyer warm terracotta) и Liquid Authority (seller violet) by design разные.
+- **Verification:** `npx tsc --noEmit` чист в обоих апсах.
+
 ## 2026-05-14 (Азим) — DESIGN-A11Y-ARIA-LABELS-001 (web-* часть)
 
 ### ✅ [DESIGN-A11Y-ARIA-LABELS-001] A11y aria-labels на icon-only кнопках + decorative SVG
