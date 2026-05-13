@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — WEB-SELLER-STORE-CATEGORIES-CRUD-001
+
+### ✅ [WEB-SELLER-STORE-CATEGORIES-CRUD-001] Отдельная страница для CRUD категорий
+- **Важность:** 🟢 P3
+- **Дата:** 14.05.2026
+- **Ветка:** `main` → web-seller (cherry-pick)
+- **Файлы (2):**
+  - `apps/web-seller/src/app/(dashboard)/store/categories/page.tsx` (NEW, ~240 LOC) — отдельная страница `/store/categories`
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx` (REFACTOR) — StoreCategoriesSection (120 LOC) → компактная ссылка «Управление категориями» с count
+- **Что сделано:**
+  - List категорий с inline edit (click name → input, Enter to save, Escape to cancel)
+  - Add form вверху страницы (отдельный block с лейблом)
+  - Delete через `ConfirmModal` (раньше в Settings — без confirm)
+  - **Move up / move down arrows** — сортировка через swap sortOrder (новое — Settings секция не имела)
+  - Empty state «Пока нет категорий»
+  - Error banner через `dangerTint()` helpers
+  - aria-label на каждой кнопке (Pencil/Trash2/ArrowUp/ArrowDown) + aria-hidden на иконках
+- **Что НЕ сделано (nice-to-have):**
+  - Product count per category (нужен backend поддержка `_count.products` в response — Полату следует добавить если потом понадобится)
+  - Drag-and-drop reorder вместо arrow buttons (текущий swap достаточно для UZ-сценария)
+- **Verification:** `npx tsc --noEmit` чист.
+
 ## 2026-05-14 (Азим) — DESIGN-SEMANTIC-COLORS-001 (theme-aware tints, hot-path)
 
 ### ✅ [DESIGN-SEMANTIC-COLORS-001] dangerTint / warningTint / successTint helpers
