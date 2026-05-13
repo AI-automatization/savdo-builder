@@ -126,6 +126,53 @@ export async function getPlatformFeed(
   return { data: res.data.data, total: res.data.meta.total, page: res.data.meta.page };
 }
 
+// ── Stores catalog (вся витрина для /stores) ─────────────────────────────────
+
+export interface StoresCatalogItem {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: string;
+  city: string | null;
+  telegramContactLink: string | null;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  isVerified: boolean;
+  avgRating: number | null;
+  reviewCount: number;
+}
+
+export async function getStoresCatalog(): Promise<StoresCatalogItem[]> {
+  const res = await apiClient.get<{ data: StoresCatalogItem[] }>('/storefront/stores');
+  return res.data.data;
+}
+
+// ── Products catalog (всё, с пагинацией для /products) ───────────────────────
+
+export interface ProductsCatalogParams {
+  globalCategoryId?: string;
+  sort?: 'new' | 'price_asc' | 'price_desc';
+  page?: number;
+  limit?: number;
+}
+
+export async function getProductsCatalog(
+  params: ProductsCatalogParams = {},
+): Promise<{ data: ProductListItem[]; total: number; page: number }> {
+  const search = new URLSearchParams();
+  if (params.globalCategoryId) search.set('globalCategoryId', params.globalCategoryId);
+  if (params.sort) search.set('sort', params.sort);
+  if (params.page) search.set('page', String(params.page));
+  if (params.limit) search.set('limit', String(params.limit));
+  const qs = search.toString();
+  const res = await apiClient.get<{
+    data: ProductListItem[];
+    meta: { total: number; page: number };
+  }>(qs ? `/storefront/products?${qs}` : `/storefront/products`);
+  return { data: res.data.data, total: res.data.meta.total, page: res.data.meta.page };
+}
+
 // ── Store с trust signals (для product page seller block) ────────────────────
 
 export async function getStorefrontStoreWithTrust(slug: string): Promise<StorefrontStoreWithTrust> {
