@@ -493,11 +493,11 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                       <button
                         type="button"
                         onClick={() => setOpenMenuId(showMenu ? null : m.id)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-60 hover:opacity-100 focus:opacity-100"
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
                         style={{ background: colors.surface, color: colors.textStrong, border: `1px solid ${colors.border}` }}
                         aria-label="Действия с сообщением"
                       >
-                        <MoreVertical size={13} />
+                        <MoreVertical size={15} />
                       </button>
                       {showMenu && (
                         <div
