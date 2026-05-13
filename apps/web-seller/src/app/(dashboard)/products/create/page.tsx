@@ -7,10 +7,12 @@ import { Check } from 'lucide-react';
 import { useCreateProduct } from '../../../../hooks/use-products';
 import { useStoreCategories, useGlobalCategories } from '../../../../hooks/use-seller';
 import { track } from '../../../../lib/analytics';
-import { ImageUploader } from '../../../../components/image-uploader';
+import { MultiImageUploader, type MultiImageItem } from '../../../../components/multi-image-uploader';
+import { ProductAttributesSection, type AttributeItem } from '../../../../components/product-attributes-section';
 import { Select } from '../../../../components/select';
 import { DisplayTypeSelector } from '../../../../components/display-type-selector';
 import { titlePlaceholder, descriptionPlaceholder } from '../../../../lib/product-examples';
+import { addProductImage, createProductAttribute } from '../../../../lib/api/products.api';
 import type { ProductDisplayType } from 'types';
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
@@ -61,7 +63,8 @@ export default function CreateProductPage() {
   const router  = useRouter();
   const create  = useCreateProduct();
 
-  const [mediaId, setMediaId] = useState<string | null>(null);
+  const [images, setImages] = useState<MultiImageItem[]>([]);
+  const [attributes, setAttributes] = useState<AttributeItem[]>([]);
 
   const { data: categories = [] } = useStoreCategories();
   const { data: globalCategoriesRaw = [] } = useGlobalCategories();
@@ -98,11 +101,40 @@ export default function CreateProductPage() {
       basePrice:        Number(values.basePrice),
       sku:              values.sku || undefined,
       isVisible:        values.isVisible,
-      mediaId:          mediaId ?? undefined,
+      // mediaId больше не передаём — фото идут отдельным POST после product create
       storeCategoryId:  storeCategoryId ?? undefined,
       globalCategoryId: values.globalCategoryId || undefined,
       displayType:      values.displayType,
     });
+
+    const productId = product.id;
+
+    // Parallel: фото + атрибуты. Не валим product create если что-то упало.
+    const photoPromises = images.map((img, idx) =>
+      addProductImage(productId, {
+        mediaId: img.mediaId,
+        isPrimary: idx === 0,
+        sortOrder: idx,
+      }).catch((err) => {
+        console.error(`Image #${idx} failed`, err);
+        return null;
+      }),
+    );
+
+    const validAttrs = attributes.filter((a) => a.name.trim() && a.value.trim());
+    const attrPromises = validAttrs.map((a, idx) =>
+      createProductAttribute(productId, {
+        name:  a.name.trim(),
+        value: a.value.trim(),
+        sortOrder: idx,
+      }).catch((err) => {
+        console.error(`Attribute "${a.name}" failed`, err);
+        return null;
+      }),
+    );
+
+    await Promise.all([...photoPromises, ...attrPromises]);
+
     track.productCreated(product.storeId, product.id);
     router.push('/products');
   }
@@ -141,57 +173,54 @@ export default function CreateProductPage() {
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="rounded-xl p-6 flex flex-col gap-5" style={card}>
 
-          {/* Photo + main fields row */}
-          <div className="flex items-start gap-4">
-            <div style={{ width: 100, height: 100, flexShrink: 0 }}>
-              <ImageUploader
-                value={mediaId}
-                onChange={setMediaId}
-                purpose="product_image"
+          {/* Main fields */}
+          <div className="flex flex-col gap-4">
+            {/* Title */}
+            <div>
+              <Label>Название <span style={{ color: colors.danger }}>*</span></Label>
+              <input
+                className={inputFocusClass}
+                style={inputStyle}
+                placeholder={titleHint}
+                {...register('title', { required: 'Введите название товара' })}
               />
+              <FieldError message={errors.title?.message} />
             </div>
-            <div className="flex-1 flex flex-col gap-4">
-              {/* Title */}
+
+            {/* Price + SKU row */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Название <span style={{ color: colors.danger }}>*</span></Label>
+                <Label>Цена (сум) <span style={{ color: colors.danger }}>*</span></Label>
+                <input
+                  type="number"
+                  min={1}
+                  className={inputFocusClass}
+                  style={inputStyle}
+                  placeholder="10 000"
+                  {...register('basePrice', {
+                    required: 'Укажите цену',
+                    min: { value: 1, message: 'Цена должна быть больше 0' },
+                    valueAsNumber: true,
+                  })}
+                />
+                <FieldError message={errors.basePrice?.message} />
+              </div>
+              <div>
+                <Label>Артикул (SKU)</Label>
                 <input
                   className={inputFocusClass}
                   style={inputStyle}
-                  placeholder={titleHint}
-                  {...register('title', { required: 'Введите название товара' })}
+                  placeholder="SKU-001"
+                  {...register('sku')}
                 />
-                <FieldError message={errors.title?.message} />
-              </div>
-
-              {/* Price + SKU row */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Цена (сум) <span style={{ color: colors.danger }}>*</span></Label>
-                  <input
-                    type="number"
-                    min={1}
-                    className={inputFocusClass}
-                    style={inputStyle}
-                    placeholder="10 000"
-                    {...register('basePrice', {
-                      required: 'Укажите цену',
-                      min: { value: 1, message: 'Цена должна быть больше 0' },
-                      valueAsNumber: true,
-                    })}
-                  />
-                  <FieldError message={errors.basePrice?.message} />
-                </div>
-                <div>
-                  <Label>Артикул (SKU)</Label>
-                  <input
-                    className={inputFocusClass}
-                    style={inputStyle}
-                    placeholder="SKU-001"
-                    {...register('sku')}
-                  />
-                </div>
               </div>
             </div>
+          </div>
+
+          {/* Photos */}
+          <div>
+            <Label>Фото товара</Label>
+            <MultiImageUploader value={images} onChange={setImages} maxFiles={8} />
           </div>
 
           {/* Display type — how product photos render on storefront card */}
@@ -265,6 +294,12 @@ export default function CreateProductPage() {
               />
             </div>
           )}
+
+          {/* Attributes (free-form key/value) */}
+          <div>
+            <Label>Характеристики</Label>
+            <ProductAttributesSection value={attributes} onChange={setAttributes} />
+          </div>
 
           {/* Visible toggle */}
           <div className="flex items-center justify-between py-1">
