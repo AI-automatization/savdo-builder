@@ -1,5 +1,22 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — DESIGN-A11Y-ARIA-LABELS-001 (web-* часть)
+
+### ✅ [DESIGN-A11Y-ARIA-LABELS-001] A11y aria-labels на icon-only кнопках + decorative SVG
+- **Важность:** 🟡 P1 design quick win
+- **Дата:** 14.05.2026
+- **Ветки:** `main` → web-buyer + web-seller (cherry-pick)
+- **Файлы (6):**
+  - `apps/web-buyer/src/components/icons.tsx` — 10 shared SVG получили `aria-hidden="true"` + `focusable="false"` (декоративные, рядом всегда есть видимый текст — BottomNavBar таб, button label)
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `aria-current="page"` на активном табе; `aria-label` на Link теперь включает badge count (`"Корзина (3 непрочитанных)"`); badge span получил `aria-hidden="true"` (озвучен через label)
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — 2 thumbnail кнопки (desktop grid + mobile scroll) получили `aria-label="Показать фото N"` + `aria-pressed`. Раньше `<Image alt="">` внутри — кнопка была без accessible name
+  - `apps/web-seller/src/components/image-uploader.tsx` — X кнопка удаления получила `aria-label="Удалить фото"`
+  - `apps/web-seller/src/components/product-variants-section.tsx`, `product-option-groups-section.tsx` — X cancel получили `aria-label="Отмена"` (title уже был — но title не считается accessible name)
+- **Что НЕ сделано:**
+  - **Admin (DatabasePage и др.)** — зона Полата. Оригинальный отчёт упоминал 21 icon-only button по всей платформе; admin-часть — отдельный ticket.
+  - Полный audit lucide-react иконок в buttons с text-соседями — не критично (текст-сосед даёт accessible name автоматически), осталось как nice-to-have.
+- **Verification:** `npx tsc --noEmit` чист в обоих апсах.
+
 ## 2026-05-14 (Азим) — DESIGN-PHONE-INPUT-PACKAGE-001 (web-* часть)
 
 ### ✅ [DESIGN-PHONE-INPUT-PACKAGE-001] PhoneInput с маской +998 XX XXX XX XX
