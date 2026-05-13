@@ -63,12 +63,15 @@ export function BottomNavBar({
               <Link
                 key={key}
                 href={href}
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={badge != null && badge > 0 ? `${label} (${badge > 9 ? '9+ непрочитанных' : badge + ' непрочитанных'})` : label}
                 className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl"
               >
                 <div className="relative">
                   <span style={{ color: isActive ? colors.brand : colors.textMuted }}>{icon}</span>
                   {badge != null && badge > 0 && (
                     <span
+                      aria-hidden="true"
                       className="absolute -top-1 -right-1.5 min-w-[17px] h-[17px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold"
                       style={{ background: colors.brand, color: colors.brandTextOnBg }}
                     >
