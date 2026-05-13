@@ -1,14 +1,21 @@
-﻿import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/lib/i18n';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+
+const LOCALE_LABEL: Record<Locale, string> = {
+  ru: 'Русский',
+  uz: 'Oʻzbek',
+};
 
 export default function BuyerSettingsPage() {
   const { user, authenticated, logout } = useAuth();
   const { tg, user: tgUser } = useTelegram();
+  const { t, locale, setLocale } = useTranslation();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -28,12 +35,12 @@ export default function BuyerSettingsPage() {
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
 
-        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Настройки</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('settings.title')}</h1>
 
         {/* ── Аккаунт ── */}
         <GlassCard className="p-4 flex flex-col gap-3">
           <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-            Аккаунт
+            {t('settings.account')}
           </p>
 
           <div className="flex items-center gap-3">
@@ -61,7 +68,7 @@ export default function BuyerSettingsPage() {
                   )}
                 </>
               ) : (
-                <p className="text-sm" style={{ color: 'var(--tg-text-muted)' }}>Гость</p>
+                <p className="text-sm" style={{ color: 'var(--tg-text-muted)' }}>{t('auth.guest')}</p>
               )}
             </div>
             {authenticated && (
@@ -69,7 +76,7 @@ export default function BuyerSettingsPage() {
                 className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
                 style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
               >
-                Покупатель
+                {t('settings.role.buyer')}
               </span>
             )}
           </div>
@@ -78,11 +85,42 @@ export default function BuyerSettingsPage() {
         {/* ── Тема оформления ── */}
         <GlassCard className="p-4 flex flex-col gap-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-            Тема оформления
+            {t('settings.theme')}
           </p>
           <ThemeToggle />
           <p className="text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
-            Авто — синхронизация с Telegram. Можно зафиксировать вручную.
+            {t('settings.themeHint')}
+          </p>
+        </GlassCard>
+
+        {/* ── Язык / MARKETING-LOCALIZATION-UZ-001 ── */}
+        <GlassCard className="p-4 flex flex-col gap-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+            {t('settings.language')}
+          </p>
+          <div className="flex gap-2">
+            {SUPPORTED_LOCALES.map((l) => (
+              <button
+                key={l}
+                onClick={() => {
+                  tg?.HapticFeedback.selectionChanged();
+                  setLocale(l);
+                }}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold"
+                style={{
+                  background: locale === l ? 'var(--tg-accent-dim)' : 'var(--tg-surface-hover)',
+                  color: locale === l ? 'var(--tg-accent)' : 'var(--tg-text-secondary)',
+                  border: `1px solid ${locale === l ? 'var(--tg-accent-border)' : 'var(--tg-border-soft)'}`,
+                  minHeight: 40,
+                }}
+                aria-pressed={locale === l}
+              >
+                {LOCALE_LABEL[l]}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+            {t('settings.languageHint')}
           </p>
         </GlassCard>
 
@@ -90,15 +128,15 @@ export default function BuyerSettingsPage() {
         {canBecomeSeller && (
           <GlassCard className="p-4 flex flex-col gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-              Открыть свой магазин
+              {t('settings.becomeSeller')}
             </p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--tg-text-secondary)' }}>
-              Продавайте на Savdo: создайте магазин, добавьте товары и принимайте заказы в Telegram.
+              {t('settings.becomeSellerHint')}
             </p>
             <button
               type="button"
               onClick={handleBecomeSeller}
-              aria-label="Стать продавцом — продолжить в Telegram-боте"
+              aria-label={t('settings.becomeSellerCta')}
               className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
               style={{
                 background: 'linear-gradient(135deg, #06b6d4, #22d3ee)',
@@ -106,7 +144,7 @@ export default function BuyerSettingsPage() {
                 minHeight: 44,
               }}
             >
-              🏪 Стать продавцом
+              {t('settings.becomeSellerCta')}
             </button>
           </GlassCard>
         )}
@@ -114,7 +152,7 @@ export default function BuyerSettingsPage() {
         {/* ── Приложение ── */}
         <GlassCard className="p-4 flex flex-col gap-2">
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
-            Приложение
+            {t('settings.app')}
           </p>
 
           <button
@@ -123,7 +161,7 @@ export default function BuyerSettingsPage() {
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span className="flex items-center gap-3">
-              <span>🤖</span> Telegram-бот
+              <span>🤖</span> {t('settings.tgBot')}
             </span>
             <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>@{BOT_USERNAME} →</span>
           </button>
@@ -133,7 +171,7 @@ export default function BuyerSettingsPage() {
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
-            <span>📦</span> Мои заказы
+            <span>📦</span> {t('orders.title')}
           </button>
 
           <button
@@ -141,7 +179,7 @@ export default function BuyerSettingsPage() {
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
-            <span>🏪</span> Каталог магазинов
+            <span>🏪</span> {t('nav.stores')}
           </button>
 
           {authenticated && (
@@ -150,7 +188,7 @@ export default function BuyerSettingsPage() {
               className="flex items-center gap-3 py-2.5 text-sm"
               style={{ color: 'rgba(248,113,113,0.80)' }}
             >
-              <span>🚪</span> Выйти из аккаунта
+              <span>🚪</span> {t('auth.logout')}
             </button>
           )}
         </GlassCard>
@@ -160,6 +198,6 @@ export default function BuyerSettingsPage() {
         </p>
 
       </div>
-    
+
   );
 }

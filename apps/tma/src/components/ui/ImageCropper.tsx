@@ -86,7 +86,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
           justifyContent: 'space-between',
           gap: 12,
           background: 'rgba(0,0,0,0.55)',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid var(--tg-border-soft)',
         }}
       >
         <button
@@ -110,7 +110,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
         >
           ✕ Отменить
         </button>
-        <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: 15, fontWeight: 700, margin: 0, textAlign: 'center', flex: 1 }}>
+        <p style={{ color: 'var(--tg-text-primary)', fontSize: 15, fontWeight: 700, margin: 0, textAlign: 'center', flex: 1 }}>
           Кадрировать фото
         </p>
         {/* Spacer для симметрии (равен ширине Отменить ~110px) */}
@@ -118,7 +118,7 @@ export function ImageCropper({ imageSrc, onConfirm, onCancel }: Props) {
       </div>
 
       {/* Hint */}
-      <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 12, margin: '0 0 8px', flexShrink: 0 }}>
+      <p style={{ textAlign: 'center', color: 'var(--tg-text-muted)', fontSize: 12, margin: '0 0 8px', flexShrink: 0 }}>
         Перетащите и масштабируйте
       </p>
 

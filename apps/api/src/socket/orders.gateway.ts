@@ -98,9 +98,25 @@ export class OrdersGateway implements OnGatewayConnection {
     }
   }
 
+  /**
+   * API-WS-AUDIT-002: room name = `buyer:{User.id}` (не Buyer.id!).
+   *
+   * Принимаем оба ключа для backward-compat с web-buyer:
+   *   • `data.userId`  — предпочтительное (соответствует имени комнаты);
+   *   • `data.buyerId` — legacy alias, web-buyer всё ещё шлёт его (зона Азима,
+   *     апдейт фронта отдельно). При получении legacy — debug-лог, не warn,
+   *     чтобы не засорять prod-логи 100к юзеров.
+   *
+   * В обоих случаях значение **должно совпадать с user.sub** (User.id из JWT)
+   * — это main защита от join'а в чужую комнату. Если не совпало — silently
+   * return (НЕ disconnect, иначе ломаем переиспользование сокета).
+   *
+   * emit-сторона (`emitOrderStatusChangedToBuyer`) резолвит Buyer.id → User.id
+   * через DB lookup и шлёт в `buyer:{User.id}`.
+   */
   @SubscribeMessage('join-buyer-room')
   handleJoinBuyerRoom(
-    @MessageBody() data: { buyerId: string },
+    @MessageBody() data: { userId?: string; buyerId?: string },
     @ConnectedSocket() client: Socket,
   ): void {
     const user = client.data.user as JwtPayload | undefined;
@@ -108,18 +124,24 @@ export class OrdersGateway implements OnGatewayConnection {
       client.disconnect(true);
       return;
     }
-    if (!data?.buyerId || typeof data.buyerId !== 'string') {
-      this.logger.warn(`WS join-buyer-room rejected: invalid buyerId from user ${user.sub}`);
+
+    const requestedId = data?.userId ?? data?.buyerId;
+    if (!requestedId || typeof requestedId !== 'string') {
+      this.logger.warn(`WS join-buyer-room rejected: missing userId/buyerId from user ${user.sub}`);
       return;
     }
-    // buyer:{User.id} — клиент шлёт свой User.id, валидируем что совпадает.
-    // Если БЫ хоть отдалённо могли пройти Buyer.id вместо User.id — fail
-    // closed (не disconnect, чтоб не убивать переиспользование сокета).
-    if (user.sub !== data.buyerId) {
-      this.logger.warn(`WS join-buyer-room rejected: user ${user.sub} tried buyerId=${data.buyerId}`);
+
+    if (data?.buyerId && !data?.userId) {
+      // Telemetry: видим как часто фронт ещё на legacy ключе.
+      this.logger.debug(`WS join-buyer-room legacy field 'buyerId' used (user ${user.sub}) — рекомендуется 'userId'`);
+    }
+
+    if (user.sub !== requestedId) {
+      this.logger.warn(`WS join-buyer-room rejected: user ${user.sub} tried foreign id=${requestedId}`);
       return;
     }
-    const room = `buyer:${data.buyerId}`;
+
+    const room = `buyer:${user.sub}`;
     client.join(room);
     this.logger.debug(`Client ${client.id} joined room ${room}`);
   }

@@ -33,7 +33,7 @@ export function LoadingScreen() {
         <p className="text-gradient" style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em' }}>
           Savdo
         </p>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.12em', marginTop: 3 }}>
+        <p style={{ fontSize: 11, color: 'var(--tg-text-dim)', letterSpacing: '0.12em', marginTop: 3 }}>
           ЗАГРУЖАЕМ...
         </p>
       </div>
