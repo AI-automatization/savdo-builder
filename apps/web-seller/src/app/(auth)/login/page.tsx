@@ -7,6 +7,7 @@ import { ShoppingCart } from "lucide-react";
 import { useAuth } from "../../../lib/auth/context";
 import { track } from "../../../lib/analytics";
 import { card, colors, inputStyle as inputBase } from "@/lib/styles";
+import { PhoneInput, formatUzPhone, isValidUzPhone } from "../../../components/PhoneInput";
 
 const inputStyle: React.CSSProperties = {
   ...inputBase,
@@ -33,21 +34,20 @@ export default function LoginPage() {
   useEffect(() => { track.signupStarted('direct'); }, []);
 
   function handleSendOtp() {
-    if (phone.trim().length < 9) return;
+    if (!isValidUzPhone(phone)) return;
     requestOtp.mutate(
-      { phone: `+998${phone.replace(/\s/g, "")}`, purpose: "login" },
+      { phone, purpose: "login" },
       { onSuccess: () => setStep("otp") },
     );
   }
 
   function handleVerify() {
     if (otp.trim().length < 6) return;
-    const fullPhone = `+998${phone.replace(/\s/g, "")}`;
     verifyOtp.mutate(
-      { phone: fullPhone, code: otp, purpose: "login" },
+      { phone, code: otp, purpose: "login" },
       {
         onSuccess: (data) => {
-          track.otpVerified(fullPhone);
+          track.otpVerified(phone);
           if (data.user.role === 'SELLER') {
             router.replace("/dashboard");
           } else {
@@ -94,20 +94,13 @@ export default function LoginPage() {
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>
                 Телефон
               </label>
-              <div className="flex items-center rounded-md overflow-hidden mb-4" style={inputStyle}>
-                <span className="px-3 text-sm h-11 flex items-center flex-shrink-0" style={{ color: colors.textDim, borderRight: `1px solid ${colors.border}` }}>
-                  +998
-                </span>
-                <input
-                  type="tel"
-                  placeholder="90 123 45 67"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleSendOtp()}
-                  className="flex-1 px-3 h-11 text-sm bg-transparent"
-                  style={{ color: colors.textPrimary, outline: "none" }}
-                />
-              </div>
+              <PhoneInput
+                value={phone}
+                onChange={setPhone}
+                onEnter={handleSendOtp}
+                className="w-full px-3 h-11 text-sm rounded-md mb-4"
+                style={{ ...inputStyle, color: colors.textPrimary }}
+              />
 
               {sendError && (
                 <p className="text-xs mb-3 px-3 py-2 rounded-md" style={{ color: colors.danger, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)" }}>
@@ -117,9 +110,9 @@ export default function LoginPage() {
 
               <button
                 onClick={handleSendOtp}
-                disabled={requestOtp.isPending || phone.trim().length < 9}
+                disabled={requestOtp.isPending || !isValidUzPhone(phone)}
                 className="w-full h-11 rounded-md text-sm font-semibold transition-opacity active:scale-[0.98] hover:opacity-90"
-                style={primaryBtn(phone.trim().length >= 9 && !requestOtp.isPending)}
+                style={primaryBtn(isValidUzPhone(phone) && !requestOtp.isPending)}
               >
                 {requestOtp.isPending ? "Отправка..." : "Получить код"}
               </button>
@@ -131,10 +124,10 @@ export default function LoginPage() {
                 className="flex items-center gap-1.5 text-sm mb-4"
                 style={{ color: colors.textMuted }}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 </svg>
-                +998 {phone}
+                {formatUzPhone(phone)}
               </button>
 
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Введите код</h2>
