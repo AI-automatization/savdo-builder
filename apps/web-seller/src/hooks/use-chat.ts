@@ -40,13 +40,17 @@ export function useMessages(threadId: string | null) {
 
   // Backend auto-marks the thread as read on /messages fetch — mirror locally so
   // the sidebar badge updates without waiting for the threads-list staleTime.
+  // dataUpdatedAt в deps — чтобы effect срабатывал на КАЖДЫЙ успешный refetch
+  // (не только на первый), иначе после WS-invalidate threads может вернуть
+  // unread=1 если backend ещё не зафиксировал read.
   const isSuccess = query.isSuccess;
+  const dataUpdatedAt = query.dataUpdatedAt;
   useEffect(() => {
     if (!isSuccess || !threadId) return;
     queryClient.setQueryData<ChatThread[] | undefined>(chatKeys.threads, (old) =>
       old?.map((t) => (t.id === threadId ? { ...t, unreadCount: 0 } : t)),
     );
-  }, [isSuccess, threadId, queryClient]);
+  }, [isSuccess, threadId, queryClient, dataUpdatedAt]);
 
   return query;
 }
@@ -132,6 +136,11 @@ export function useChatSocket(threadId: string | null) {
     function onMessage() {
       queryClient.invalidateQueries({ queryKey: chatKeys.messages(threadId!) });
       queryClient.invalidateQueries({ queryKey: chatKeys.threads });
+      // User в треде — сразу сбрасываем unread, чтобы sidebar badge не «прыгал»
+      // если backend ещё не зафиксировал mark-as-read к моменту refetch'а threads.
+      queryClient.setQueryData<ChatThread[] | undefined>(chatKeys.threads, (old) =>
+        old?.map((t) => (t.id === threadId ? { ...t, unreadCount: 0 } : t)),
+      );
     }
 
     socket.on('chat:message', onMessage);
