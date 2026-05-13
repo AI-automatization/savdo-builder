@@ -69,9 +69,9 @@ export default function DashboardPage() {
   const { data: store, isLoading: storeLoading } = useStore();
   const { data: ordersData, isLoading: ordersLoading } = useSellerOrders({ limit: 5 });
   const { data: summary, isLoading: summaryLoading } = useSellerSummary();
-  const { data: products, isLoading: productsLoading } = useSellerProducts();
+  const { data: productsData, isLoading: productsLoading } = useSellerProducts();
   const [copied, setCopied] = useState(false);
-  const hasNoProducts = !productsLoading && (products?.length ?? 0) === 0;
+  const hasNoProducts = !productsLoading && (productsData?.total ?? 0) === 0;
 
   function handleCopyLink() {
     if (!store) return;
