@@ -6,7 +6,7 @@ import { useRequestOtp, useVerifyOtp } from "../../../hooks/use-auth";
 import { ShoppingCart } from "lucide-react";
 import { useAuth } from "../../../lib/auth/context";
 import { track } from "../../../lib/analytics";
-import { card, colors, inputStyle as inputBase } from "@/lib/styles";
+import { card, colors, dangerTint, inputStyle as inputBase } from "@/lib/styles";
 import { PhoneInput, formatUzPhone, isValidUzPhone } from "../../../components/PhoneInput";
 
 const inputStyle: React.CSSProperties = {
@@ -103,7 +103,7 @@ export default function LoginPage() {
               />
 
               {sendError && (
-                <p className="text-xs mb-3 px-3 py-2 rounded-md" style={{ color: colors.danger, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)" }}>
+                <p className="text-xs mb-3 px-3 py-2 rounded-md" style={{ color: colors.danger, background: dangerTint(0.10), border: `1px solid ${dangerTint(0.25)}` }}>
                   {sendError}
                 </p>
               )}
@@ -151,7 +151,7 @@ export default function LoginPage() {
               />
 
               {verifyError && (
-                <p className="text-xs mb-3 px-3 py-2 rounded-md" style={{ color: colors.danger, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)" }}>
+                <p className="text-xs mb-3 px-3 py-2 rounded-md" style={{ color: colors.danger, background: dangerTint(0.10), border: `1px solid ${dangerTint(0.25)}` }}>
                   {verifyError}
                 </p>
               )}
