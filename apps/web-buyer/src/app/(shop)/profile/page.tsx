@@ -19,11 +19,14 @@ import {
   Heart,
   Bell,
   ChevronRight,
+  Store,
+  ExternalLink,
 } from "lucide-react";
 import { colors } from "@/lib/styles";
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -204,6 +207,47 @@ function ProfileView() {
       <MenuRow icon={<Heart size={16} />} label="Избранное" sub={wishlistCount > 0 ? `${wishlistCount} ${wishlistCount === 1 ? "товар" : wishlistCount < 5 ? "товара" : "товаров"}` : "Пусто"} href="/wishlist" />
       <div style={{ height: 1, background: colors.divider }} className="mx-4" />
       <MenuRow icon={<Bell size={16} />} label="Уведомления" sub="История событий" href="/notifications" />
+
+      {/* Become seller — только для BUYER (SELLER уже имеет store; HYBRID/ADMIN скрыто) */}
+      {user?.role === 'BUYER' && (
+        <>
+          <SectionLabel>Развитие</SectionLabel>
+          <div className="px-4">
+            <div
+              className="rounded-md p-4 flex flex-col gap-3"
+              style={{ background: colors.brandMuted, border: `1px solid ${colors.brandBorder}` }}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0"
+                  style={{ background: colors.brand, color: colors.brandTextOnBg }}
+                >
+                  <Store size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold" style={{ color: colors.textStrong }}>
+                    Откройте свой магазин
+                  </p>
+                  <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: colors.textMuted }}>
+                    Запустите Telegram-storefront за 5 минут. Свой каталог, корзина, заказы — без сайта.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`https://t.me/${BOT_USERNAME}?start=become_seller`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-md text-[12px] font-semibold transition-opacity hover:opacity-90"
+                style={{ background: colors.brand, color: colors.brandTextOnBg }}
+                aria-label="Стать продавцом — продолжить в Telegram-боте"
+              >
+                Стать продавцом
+                <ExternalLink size={12} aria-hidden />
+              </a>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Logout */}
       <div className="px-4 py-6 mt-2">
