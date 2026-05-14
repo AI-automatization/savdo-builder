@@ -81,7 +81,7 @@ export function ConfirmContainer() {
         style={{
           background: 'var(--tg-card-bg, #1f2937)',
           color: 'var(--tg-text, #fff)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid var(--tg-border-soft)',
           boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -99,8 +99,8 @@ export function ConfirmContainer() {
             onClick={() => close(false)}
             className="px-4 py-2 rounded-xl text-sm font-medium"
             style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--tg-surface-hover)',
+              border: '1px solid var(--tg-border-soft)',
             }}
           >
             {cancelText}

@@ -89,3 +89,12 @@ export const pillActive = {
   border:     `1px solid ${colors.accentBorder}`,
   color:      colors.accent,
 } as const;
+
+// ── Semantic tints (theme-aware через RGB-channel CSS-vars) ──────────────────
+// Используем `rgb(var(--color-X-rgb) / α)` — CSS color level 4 syntax. Так
+// background-tint автоматически адаптируется к light/dark theme (значения RGB
+// разные в :root и [data-theme="dark"]).
+
+export const dangerTint  = (opacity = 0.10) => `rgb(var(--color-danger-rgb) / ${opacity})`;
+export const warningTint = (opacity = 0.10) => `rgb(var(--color-warning-rgb) / ${opacity})`;
+export const successTint = (opacity = 0.10) => `rgb(var(--color-success-rgb) / ${opacity})`;

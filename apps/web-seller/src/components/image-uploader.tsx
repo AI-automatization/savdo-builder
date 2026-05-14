@@ -162,9 +162,10 @@ export function ImageUploader({
         <button
           type="button"
           onClick={handleRemove}
+          aria-label="Удалить фото"
           style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: 'rgba(0,0,0,.65)', border: `1px solid ${colors.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: colors.textPrimary, cursor: 'pointer' }}
         >
-          <X size={14} />
+          <X size={14} aria-hidden="true" />
         </button>
         <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
       </div>

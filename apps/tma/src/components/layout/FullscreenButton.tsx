@@ -59,18 +59,18 @@ export function FullscreenButton() {
       title={isFullscreen ? 'Свернуть' : 'На весь экран'}
       className="fixed bottom-[5.25rem] right-3 z-50 w-8 h-8 flex items-center justify-center rounded-lg transition-all"
       style={{
-        background: 'rgba(255,255,255,0.08)',
-        border: '1px solid rgba(255,255,255,0.15)',
-        color: 'rgba(255,255,255,0.6)',
+        background: 'var(--tg-surface-hover)',
+        border: '1px solid var(--tg-border)',
+        color: 'var(--tg-text-secondary)',
         backdropFilter: 'blur(8px)',
       }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.16)';
-        (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.9)';
+        (e.currentTarget as HTMLButtonElement).style.background = 'var(--tg-border)';
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--tg-text-primary)';
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)';
-        (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)';
+        (e.currentTarget as HTMLButtonElement).style.background = 'var(--tg-surface-hover)';
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--tg-text-secondary)';
       }}
     >
       {isFullscreen ? <CollapseIcon /> : <ExpandIcon />}

@@ -25,7 +25,7 @@ function toSlug(name: string) {
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 
-import { card, colors, inputStyle as inputBase } from '@/lib/styles';
+import { card, colors, dangerTint, inputStyle as inputBase } from '@/lib/styles';
 const glass = card;
 
 const inputStyle: React.CSSProperties = {
@@ -54,7 +54,7 @@ function ErrorBanner({ message }: { message?: string }) {
   return (
     <div
       className="px-4 py-3 rounded-md text-sm"
-      style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: colors.danger }}
+      style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
     >
       {message}
     </div>

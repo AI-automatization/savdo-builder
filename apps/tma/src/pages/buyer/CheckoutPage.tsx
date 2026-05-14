@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { glass } from '@/lib/styles';
 import { type CartItem, getCart, clearCart } from '@/lib/cart';
 import { formatUzPhone, stripPhone, isValidUzPhone } from '@/lib/phone';
+import { useTranslation } from '@/lib/i18n';
+import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
 
 interface SuccessOrder {
   id: string;
@@ -20,6 +22,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { tg } = useTelegram();
   const { authenticated, user } = useAuth();
+  const { t, locale } = useTranslation();
   const [items] = useState<CartItem[]>(getCart);
   const [name, setName] = useState('');
   // TMA-PHONE-MASK-001: маска `+998 XX XXX XX XX`. State хранит уже
@@ -35,6 +38,7 @@ export default function CheckoutPage() {
 
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
   const storeId = items[0]?.storeId;
+  const fmt = (n: number) => n.toLocaleString(locale === 'uz' ? 'uz' : 'ru');
 
   useEffect(() => {
     if (storeId && items.length) {
@@ -46,13 +50,13 @@ export default function CheckoutPage() {
 
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim()) {
-      setError('Заполните имя и телефон');
+      setError(t('checkout.fillNamePhone'));
       return;
     }
     // TMA-PHONE-MASK-001: validation через helper. Backend ждёт +998XXXXXXXXX
     // (E.164), маска `+998 XX XXX XX XX` визуальная — stripPhone снимает пробелы.
     if (!isValidUzPhone(phone)) {
-      setError('Введите 9 цифр после +998 (например, +998 90 123 45 67)');
+      setError(t('checkout.invalidPhoneFormat'));
       return;
     }
     const cleanPhone = stripPhone(phone);
@@ -85,7 +89,7 @@ export default function CheckoutPage() {
         totalAmount: Number(order.totalAmount ?? total),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка оформления');
+      setError(err instanceof Error ? err.message : t('checkout.submitError'));
       tg?.HapticFeedback.notificationOccurred('error');
     } finally {
       setSubmitting(false);
@@ -108,7 +112,7 @@ export default function CheckoutPage() {
         </div>
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold" style={{ color: 'var(--tg-text-primary)' }}>
-            Заказ оформлен!
+            {t('checkout.orderPlaced')}
           </h1>
           {successOrder.orderNumber && (
             <p className="text-xs font-mono" style={{ color: 'var(--tg-text-secondary)' }}>
@@ -118,14 +122,13 @@ export default function CheckoutPage() {
         </div>
         <GlassCard className="w-full p-4 flex flex-col gap-2">
           <div className="flex justify-between items-center">
-            <span className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>К оплате при получении</span>
+            <span className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>{t('checkout.payOnDelivery')}</span>
             <span className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>
-              {successOrder.totalAmount.toLocaleString('ru')} сум
+              {fmt(successOrder.totalAmount)} {t('common.currency')}
             </span>
           </div>
           <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tg-text-muted)' }}>
-            Продавец свяжется с вами для подтверждения. Уведомления о смене статуса
-            придут в Telegram.
+            {t('checkout.sellerWillContact')}
           </p>
         </GlassCard>
         <div className="flex flex-col gap-2 w-full">
@@ -133,14 +136,14 @@ export default function CheckoutPage() {
             className="w-full"
             onClick={() => navigate('/buyer/orders', { replace: true })}
           >
-            📦 Мои заказы
+            📦 {t('orders.title')}
           </Button>
           <Button
             variant="ghost"
             className="w-full"
             onClick={() => navigate('/buyer', { replace: true })}
           >
-            К магазинам
+            {t('cart.goToStores')}
           </Button>
         </div>
       </div>
@@ -152,8 +155,8 @@ export default function CheckoutPage() {
 
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 48 }}>🛒</span>
-          <p style={{ color: 'var(--tg-text-muted)' }}>Корзина пуста</p>
-          <Button variant="ghost" onClick={() => navigate('/buyer')}>К магазинам</Button>
+          <p style={{ color: 'var(--tg-text-muted)' }}>{t('cart.empty')}</p>
+          <Button variant="ghost" onClick={() => navigate('/buyer')}>{t('cart.goToStores')}</Button>
         </div>
 
     );
@@ -162,21 +165,21 @@ export default function CheckoutPage() {
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Оформление заказа</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('checkout.title')}</h1>
 
         <GlassCard className="p-4">
           <p className="text-xs font-semibold mb-2" style={{ color: 'var(--tg-text-secondary)' }}>
-            {items[0].storeName} — {items.length} товар(ов)
+            {t('checkout.itemsCount', { store: items[0].storeName ?? '', count: items.length })}
           </p>
           {items.map((i) => (
             <div key={i.productId} className="flex justify-between text-xs py-1" style={{ color: 'var(--tg-text-secondary)' }}>
               <span>{i.title} × {i.qty}</span>
-              <span>{(i.price * i.qty).toLocaleString('ru')} сум</span>
+              <span>{fmt(i.price * i.qty)} {t('common.currency')}</span>
             </div>
           ))}
           <div className="flex justify-between mt-2 pt-2" style={{ borderTop: '1px solid var(--tg-border-soft)' }}>
-            <span className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>Итого</span>
-            <span className="text-sm font-bold" style={{ color: 'var(--tg-accent)' }}>{total.toLocaleString('ru')} сум</span>
+            <span className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('cart.total')}</span>
+            <span className="text-sm font-bold" style={{ color: 'var(--tg-accent)' }}>{fmt(total)} {t('common.currency')}</span>
           </div>
         </GlassCard>
 
@@ -184,26 +187,27 @@ export default function CheckoutPage() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ваше имя"
+            placeholder={t('checkout.namePlaceholder')}
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
             style={{ ...glass, background: 'var(--tg-surface)' }}
           />
           <input
             value={phone}
             onChange={(e) => setPhone(formatUzPhone(e.target.value))}
-            placeholder="+998 90 123 45 67"
+            placeholder={t('checkout.phonePlaceholder')}
             inputMode="tel"
             autoComplete="tel"
             maxLength={17}
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
             style={{ ...glass, background: 'var(--tg-surface)' }}
           />
-          <input
+          {/* TMA-ADDRESS-AUTOCOMPLETE-001: Yandex Suggest для UZ-адресов.
+              Без API key — деградирует в обычный input. */}
+          <AddressAutocomplete
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Адрес доставки (необязательно)"
-            className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-            style={{ ...glass, background: 'var(--tg-surface)' }}
+            onChange={setAddress}
+            placeholder={t('checkout.addressPlaceholder')}
+            lang={locale === 'uz' ? 'uz_UZ' : 'ru_RU'}
           />
         </div>
 
@@ -218,11 +222,10 @@ export default function CheckoutPage() {
             }}
           >
             <p className="text-xs font-semibold" style={{ color: 'rgba(251,191,36,0.95)' }}>
-              ⚠️ Нужна авторизация
+              {t('checkout.authRequired')}
             </p>
             <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(251,191,36,0.70)' }}>
-              Откройте магазин через Telegram-бот @savdo_builderBOT — авторизация
-              произойдёт автоматически.
+              {t('checkout.authHintDetail')}
             </p>
           </div>
         )}
@@ -235,12 +238,12 @@ export default function CheckoutPage() {
           disabled={submitting || !authenticated}
         >
           {submitting
-            ? 'Оформляем...'
+            ? t('checkout.submitting')
             : !authenticated
-              ? 'Войдите через Telegram'
-              : `Подтвердить — ${total.toLocaleString('ru')} сум`}
+              ? t('checkout.authHint')
+              : t('checkout.confirmAmount', { total: fmt(total), currency: t('common.currency') })}
         </Button>
       </div>
-    
+
   );
 }

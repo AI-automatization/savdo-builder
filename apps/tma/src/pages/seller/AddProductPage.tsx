@@ -472,19 +472,38 @@ export default function AddProductPage() {
     }
   };
 
-  // TMA-SELLER-MAIN-BUTTON-001: MainButton как primary CTA для длинной формы.
-  // Default action — publish=true (Опубликовать). Draft через обычную inline-кнопку.
-  // Disable пока validation не пройдёт или идёт upload фото.
+  // TMA-SELLER-MAIN-BUTTON-002: MainButton текст меняется по стадии заполнения
+  // формы — пользователь видит чего не хватает, не «упирается» в disabled.
+  // Порядок проверок = логический порядок UI (сверху вниз):
+  //   1. category → 2. photo → 3. title → 4. price → 5. filters → 6. sizes → 7. submit
   useEffect(() => {
     if (!tg) return;
-    const label = saving
-      ? 'Создаём...'
-      : photoUploading
-        ? 'Загрузка фото...'
-        : 'Опубликовать товар';
+    let label: string;
+    let canSubmit = false;
+
+    if (saving) {
+      label = 'Создаём...';
+    } else if (photoUploading) {
+      label = 'Загрузка фото...';
+    } else if (!globalCategoryId) {
+      label = 'Выберите категорию';
+    } else if (photoPreviews.length === 0) {
+      label = 'Добавьте фото';
+    } else if (title.trim().length < 2) {
+      label = 'Введите название';
+    } else if (Number(price) <= 0) {
+      label = 'Укажите цену';
+    } else if (missingRequiredFilters.length > 0) {
+      label = `Заполните: ${missingRequiredFilters[0].label}`;
+    } else if (hasSizes && !hasDynamicVariants && sizes.length === 0) {
+      label = 'Добавьте размер';
+    } else {
+      label = 'Опубликовать товар';
+      canSubmit = isValid;
+    }
+
     tg.MainButton.setText(label);
     tg.MainButton.show();
-    const canSubmit = isValid && !saving && !photoUploading;
     if (canSubmit) {
       const onClick = () => handleSave(true);
       tg.MainButton.enable?.();
@@ -499,7 +518,8 @@ export default function AddProductPage() {
         tg.MainButton.hide();
       };
     }
-  }, [tg, isValid, saving, photoUploading]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tg, isValid, saving, photoUploading, globalCategoryId, photoPreviews.length, title, price, missingRequiredFilters.length, hasSizes, hasDynamicVariants, sizes.length]);
 
   return (
     <>

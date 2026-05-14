@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { ThreadRowSkeleton, ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { Sticker } from '@/components/ui/Sticker';
 import { ProductCard, type FeedProduct } from '@/components/ui/ProductCard';
+import { useTranslation } from '@/lib/i18n';
 
 interface Store {
   id: string;
@@ -29,6 +30,7 @@ interface GlobalCategory {
 export default function StoresPage() {
   const navigate = useNavigate();
   const { user, tg, viewportWidth } = useTelegram();
+  const { t } = useTranslation();
 
   // ── Tab ────────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState<'stores' | 'products'>('stores');
@@ -185,7 +187,7 @@ export default function StoresPage() {
             <h1 className="text-base font-bold text-gradient">Savdo</h1>
             {user && (
               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
-                Привет, {user.first_name} 👋
+                {t('auth.welcomeName', { name: user.first_name })} 👋
               </p>
             )}
           </div>
@@ -193,7 +195,7 @@ export default function StoresPage() {
             onClick={() => navigate('/buyer/wishlist')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', fontSize: 15 }}
-            aria-label="Избранное"
+            aria-label={t('nav.wishlist')}
           >
             ❤️
           </button>
@@ -211,18 +213,18 @@ export default function StoresPage() {
           className="flex rounded-xl p-0.5 gap-1"
           style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border-soft)' }}
         >
-          {(['stores', 'products'] as const).map((t) => (
+          {(['stores', 'products'] as const).map((tabKey) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className="flex-1 py-2 rounded-[10px] text-xs font-semibold transition-all"
               style={{
-                background: tab === t ? 'var(--tg-accent-dim)' : 'transparent',
-                color: tab === t ? 'var(--tg-accent)' : 'var(--tg-text-muted)',
-                border: `1px solid ${tab === t ? 'var(--tg-accent-border)' : 'transparent'}`,
+                background: tab === tabKey ? 'var(--tg-accent-dim)' : 'transparent',
+                color: tab === tabKey ? 'var(--tg-accent)' : 'var(--tg-text-muted)',
+                border: `1px solid ${tab === tabKey ? 'var(--tg-accent-border)' : 'transparent'}`,
               }}
             >
-              {t === 'stores' ? '🏪 Магазины' : '📦 Товары'}
+              {tabKey === 'stores' ? `🏪 ${t('nav.stores')}` : `📦 ${t('nav.products')}`}
             </button>
           ))}
         </div>
@@ -236,7 +238,7 @@ export default function StoresPage() {
             type="text"
             value={tab === 'stores' ? storesQuery : productsQuery}
             onChange={(e) => tab === 'stores' ? setStoresQuery(e.target.value) : setProductsQuery(e.target.value)}
-            placeholder={tab === 'stores' ? 'Поиск магазинов...' : 'Поиск товаров...'}
+            placeholder={tab === 'stores' ? t('stores.searchPlaceholder') : t('products.searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none"
             style={{
               background: 'var(--tg-surface-hover)',
@@ -286,9 +288,9 @@ export default function StoresPage() {
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 flex-wrap">
               {([
-                { value: 'new', label: 'Новые' },
-                { value: 'price_asc', label: '↑ Цена' },
-                { value: 'price_desc', label: '↓ Цена' },
+                { value: 'new', label: t('products.sortNew') },
+                { value: 'price_asc', label: t('products.sortPriceAsc') },
+                { value: 'price_desc', label: t('products.sortPriceDesc') },
               ] as const).map((s) => (
                 <button
                   key={s.value}
@@ -341,7 +343,7 @@ export default function StoresPage() {
         {/* ── Stores content ─────────────────────────────────────────────────── */}
         {tab === 'stores' && (
           <>
-            <div className="section-label">Магазины</div>
+            <div className="section-label">{t('stores.title')}</div>
 
             {storesLoading && (
               <div className="flex flex-col gap-2">
@@ -352,8 +354,8 @@ export default function StoresPage() {
             {!storesLoading && storesError && (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="⚠️" size={56} />
-                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Не удалось загрузить магазины</p>
-                <button onClick={loadStores} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
+                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>{t('error.network')}</p>
+                <button onClick={loadStores} className="text-xs" style={{ color: 'var(--tg-accent)' }}>{t('common.retry')}</button>
               </div>
             )}
 
@@ -361,7 +363,7 @@ export default function StoresPage() {
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="🏪" size={56} />
                 <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
-                  {storesQuery.trim() ? 'Ничего не найдено' : 'Магазинов пока нет'}
+                  {storesQuery.trim() ? t('stores.notFound') : t('stores.empty')}
                 </p>
               </div>
             )}
@@ -399,8 +401,8 @@ export default function StoresPage() {
                       <span
                         className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
                         style={{ background: 'rgba(37,99,235,0.20)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.45)' }}
-                        title="Проверенный магазин"
-                        aria-label="Проверенный магазин"
+                        title={t('stores.verifiedTitle')}
+                        aria-label={t('stores.verifiedTitle')}
                       >
                         ✓
                       </span>
@@ -411,13 +413,13 @@ export default function StoresPage() {
                   )}
                   <div className="flex items-center gap-2 mt-0.5">
                     {store.city && (
-                      <p className="text-[11px]" style={{ color: 'var(--tg-accent)' }}>
+                      <p className="text-xxs" style={{ color: 'var(--tg-accent)' }}>
                         📍 {store.city}
                       </p>
                     )}
                     {/* MARKETING-VERIFIED-SELLER-001: rating + review count */}
                     {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
-                      <p className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>
+                      <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
                         ⭐ {Number(store.avgRating).toFixed(1)} <span style={{ color: 'var(--tg-text-dim)' }}>({store.reviewCount})</span>
                       </p>
                     )}
@@ -462,7 +464,7 @@ export default function StoresPage() {
               <div className="flex flex-col items-center gap-2 py-10">
                 <Sticker emoji="📦" size={56} />
                 <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
-                  {debouncedQuery || activeCat ? 'Ничего не найдено' : 'Товаров пока нет'}
+                  {debouncedQuery || activeCat ? t('stores.notFound') : t('products.empty')}
                 </p>
               </div>
             )}
