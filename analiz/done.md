@@ -1,5 +1,24 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — WEB-BUYER-CARD-PAYMENT-DISABLE-001 (SEV-1 #3 от audit, quick fix)
+
+### ✅ [WEB-BUYER-CARD-PAYMENT-DISABLE-001] card payment → disabled + «Скоро» badge
+- **Важность:** 🔴 SEV-1 (pre-launch блокер из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `2d59047`)
+- **Файл:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (+6, −1)
+- **Что сделано:**
+  - В `paymentMethods[]` (line 272-277) `card` option: `disabled: false` → `disabled: true`, добавлен `badge: "Скоро"` (как у `online`).
+  - Inline комментарий с reference на `WEB-AUDIT-SYNC-IDEOLOGY-001` и `API-CHECKOUT-PAYMENT-METHOD-001` для будущих читателей.
+- **Контекст SEV-1:**
+  - До fix'а: `card` option был selectable, **но** `paymentMethod` selected state НИКОГДА не отправлялся в API. `confirm.mutateAsync(:383)` не передавал field, `CheckoutConfirmRequest` в packages/types не имеет поля, analytics (`:394`) hardcode'ит `"COD"`.
+  - Эффект: misleading UI — buyer выбирает «Картой курьеру», думает что заказ оформится с картой, но seller видит «cash» и ничего не знает.
+- **Quick fix vs полный fix:**
+  - **Quick fix (закрыто сейчас):** скрыть от buyer'а пока backend не готов. Default `paymentMethod = 'cash'` (line 324) — поток не сломан, никто card не выберет.
+  - **Полный fix (после Полата):** `API-CHECKOUT-PAYMENT-METHOD-001` — расширить `CheckoutConfirmRequest` с `paymentMethod: 'cash' | 'card' | 'online'`. Frontend передаёт selected, analytics использует actual value, backend сохраняет на Order. Web-seller увидит выбор покупателя.
+- **UI:** UI уже корректно отрабатывал `disabled` через `disabled={m.disabled}` + dashed border + opacity 0.55 + cursor-not-allowed. Никаких UI правок не нужно — только flag.
+- **Verification:** `npx tsc --noEmit` чист в web-buyer.
+
 ## 2026-05-14 (Азим) — WEB-BUYER-BECOME-SELLER-CTA-001 (SEV-1 #2 от audit)
 
 ### ✅ [WEB-BUYER-BECOME-SELLER-CTA-001] «Стать продавцом» CTA в /profile
