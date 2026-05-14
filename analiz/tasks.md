@@ -353,12 +353,54 @@
      - Custom payment flows вне Click/Payme плана
    - **Найди features которые web-* добавил БЕЗ обсуждения с Полатом** — может быть scope creep (новые страницы, features которых нет в `analiz/done.md` или roadmap'е).
 
+  **6. Cross-platform consistency (КЛЮЧЕВОЕ — добавлено Полатом 14.05.2026)**
+
+  Аудит НЕ должен быть только «web vs api». Сверь поведение web-* со ВСЕЙ платформой — TMA, Admin, Bot, schema. Цель — единая система, не 4 расходящихся продукта.
+
+  - **🔹 web-* ↔ TMA (`apps/tma`)** — buyer/seller flow должен быть консистентным.
+    - Та же модель данных у `Order` / `Cart` / `Product` / `Store`? Те же status'ы, те же поля.
+    - Те же бизнес-флоу: добавить в корзину, оформить заказ, отменить, оставить отзыв, написать продавцу. Web и TMA не должны делать «по-разному».
+    - Те же UI-токены / эмодзи / лейблы статусов? (PENDING / CONFIRMED / SHIPPED / DELIVERED / CANCELLED → одинаковый текст на обоих).
+    - Если TMA использует deep-link `?startapp=cart_<slug>` / `?startapp=product_<slug>_<id>` / `?startapp=become_seller` — web-* должна генерировать такие же ссылки в share-кнопках. Проверить `webStoreUrl`, `buyerHostDisplay` и подобные helpers.
+    - **Cart strategy:** TMA хранит cart в `localStorage` + sync через `POST /cart/bulk-merge` после login (TMA-CART-API-SYNC-001, Wave 8). Web-buyer — TanStack Query через `/cart` API. Кросс-канально должен видеться один cart после login. Если web-buyer создаёт **свой** cart минуя backend — это баг (нарушает кросс-канальность).
+    - **i18n:** TMA уже имеет ru/uz через `useTranslation` (`apps/tma/src/lib/i18n/`). Web-* должен (когда дойдёт) использовать те же ключи / тот же словарь. Если уже есть локальные ru-only строки — записать в audit как «нужен sync с TMA i18n keys».
+
+  - **🔹 web-* ↔ Admin (`apps/admin`)** — admin отображает то что web рендерит покупателям/продавцам.
+    - Статусы магазинов (DRAFT / PENDING_REVIEW / APPROVED / SUSPENDED / REJECTED / PUBLISHED) — одинаково отображаются?
+    - `isVerified` badge, `avgRating`, `reviewCount` — в admin StoresPage и web-buyer storefront должны рендериться одинаково.
+    - Order status transitions — переходы статусов admin должны быть отражены в web-buyer/web-seller views (полная state machine из `docs/V1.1/02_state_machines.md`).
+    - Если admin может suspend/reject store — web-* должен показать соответствующий empty state, а не «обычный 404».
+
+  - **🔹 web-* ↔ Bot (`apps/api/src/modules/telegram`)** — Telegram Bot отправляет уведомления о тех же событиях что web рендерит.
+    - Bot шлёт `order.created` → web-seller dashboard должен показывать тот же заказ.
+    - Bot `become_seller` deep-link flow — web-buyer должен иметь кнопку «Стать продавцом» с тем же endpoint'ом / deep-link'ом.
+    - `seller-notification.service` отправляет HTML-сообщения — формат текста (название статуса, валюта, plural form) должен совпадать с тем что web-seller показывает в своей UI.
+    - **OTP:** ТОЛЬКО `@savdo_builderBOT` — проверить что web-buyer / web-seller НЕ имеет SMS/Eskiz fallback (даже в .env / build-time флагах).
+
+  - **🔹 web-* ↔ packages/types** — single source of truth для DTO.
+    - Все `interface XXXResponse` / `XXXRequest` должны импортироваться из `@savdo/types` (или прямого пути).
+    - Локальный `apps/web-*/src/types/` — допустимо только для UI-specific types (например `ProductCardProps`), НЕ для API contracts.
+    - Если есть `interface Order` локально в web-* — это **bug** (canonical в `packages/types/src/api/orders.ts`).
+
+  - **🔹 web-* ↔ packages/db (Prisma schema)** — структура данных.
+    - Не делает ли web-* предположений о полях которых нет в Prisma модели?
+    - Не зовёт ли legacy поля (`store.coverUrl` когда уже `coverMediaId` + bucket resolution)?
+    - Сверить `Product` / `Store` / `Order` / `Cart` shape в web-* с `packages/db/prisma/schema.prisma`.
+
+  - **🔹 web-* ↔ Mobile (apps/mobile-*)** — Phase 3 заморожено, но **не должно быть конфликтов** для будущего.
+    - Если web-buyer создаёт API endpoints с предположением «это только для web», а потом Mobile тоже их будет звать — текстуальная архитектура должна это поддерживать. Аудит лёгкий: просто отметить «mobile-friendly» / «web-only» каждого endpoint.
+
+  **Метод сверки:** для каждого critical-flow (cart, checkout, order detail, become-seller, login-otp, chat) — нарисуй table «как делает web-buyer / web-seller / TMA / Admin / Bot» одну строку на flow. Найди расхождения. Расхождение = bug или intentional decision (если intentional — задокументировать ПОЧЕМУ).
+
+  **Доп. skills для cross-platform check:** `monorepo-navigator` (см. карту всех apps), `senior-fullstack` (backend↔frontend contracts), `database-schema-designer` (verify schema alignment), `incident-response` (если найдёшь расхождение — классифицировать как SEV-1/2/3/4 перед launch).
+
   **Deliverables (положить в `analiz/audits/web-sync-2026-05-14.md`):**
   1. **Часть 1 (Sync OK):** список того где web-* правильно следует архитектуре
   2. **Часть 2 (Issues found):** баги/scope-creep/dupes/dead requests — с severity 🔴/🟡/🟢
   3. **Часть 3 (Action items для Полата):** что удалить с `apps/api` (dead endpoints, ненужные fields)
   4. **Часть 4 (Action items для Азима):** что починить в `apps/web-*`
   5. **Часть 5 (Media audit):** список мест где web-* мог застрять на Telegram-bucket logic
+  6. **Часть 6 (Cross-platform consistency matrix):** таблица critical-flows × {web-buyer, web-seller, TMA, Admin, Bot}. Найденные расхождения → severity + рекомендация.
 
   **Skills к использованию:** `adversarial-reviewer` (критический самовзгляд), `tech-debt-tracker` (каталог дублей), `api-design-reviewer` (endpoint hygiene), `codebase-onboarding` (re-onboard в идеологию), `monorepo-navigator` (карта проекта), `pr-review-expert` (финальное ревью своих изменений за последние 2 недели).
 
