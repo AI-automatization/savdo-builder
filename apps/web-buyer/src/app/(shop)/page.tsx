@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen">
       <HomeHero />
       {/* useSearchParams внутри chips/featured требует Suspense для static pre-render (Next 16). */}
       <Suspense fallback={null}>
