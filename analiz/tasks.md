@@ -293,6 +293,79 @@
 
 - [ ] **`WEB-BUYER-REMOVE-USESTOREWITHTRUST-001`** 🟢 P3 cleanup — **от Полата 14.05.2026** после закрытия `API-PRODUCT-STORE-TRUST-SIGNALS-001` (коммит `b1aa682` в main + api): теперь `GET /storefront/products/:id` и `GET /stores/:slug/products/:id` возвращают `product.store` с trust signals (`isVerified`, `avgRating`, `reviewCount`) + `city/telegramContactLink/logoUrl`. Также обновлён `StoreRef` в `packages/types/src/api/stores.ts` — trust signals теперь mandatory. **Можно удалить:** (1) хук `useStoreWithTrust` (в web-buyer), (2) локальные расширения типов в `apps/web-buyer/src/types/storefront.ts`, (3) второй GET-запрос на `/storefront/stores/:slug` ради бейджа/рейтинга — теперь всё в `product.store` приходит за один запрос. После cleanup'а — отметить здесь как `[x]` + перенести в done.md.
 
+---
+
+### 🔴 P0 — для Азима: pre-launch sync audit (от Полата 14.05.2026)
+
+- [ ] **`WEB-AUDIT-SYNC-IDEOLOGY-001`** 🔴 — **полный аудит синхронности web-buyer + web-seller с идеологией и архитектурой проекта.** Перед production launch нужно убедиться что web-* не разошёлся с общим планом, не дублирует существующее, не обращается к мёртвым endpoints и не нарушает инвариантов.
+
+  **Что проверить (5 направлений):**
+
+  **1. Архитектурная синхронность (контракты + типы)**
+   - Все ли запросы web-* используют типы из `packages/types`? (НЕ локальные расширения, НЕ адаптеры)
+   - Найди места где есть хак-хуки/локальные интерфейсы которые ОБХОДЯТ канонические типы — как был `useStoreWithTrust` до `b1aa682`. Возможные кандидаты: order shapes, cart envelope, search hits.
+   - Проверь что `packages/types/src/api/*` импортируется напрямую, не через локальные ремапперы.
+
+  **2. Storage / Media audit — КРИТИЧЕСКИ ВАЖНО** ⚠️
+   - **Бэк ПОЛНОСТЬЮ перешёл с Telegram-bucket на Supabase R2.** Старая логика `objectKey` в Telegram-канале — отменена (`telegram-expired` bucket = броken file_id, не показывать). См. `apps/api/src/modules/products/services/product-presenter.service.ts:resolveImageUrl` для актуального flow:
+     ```
+     bucket === 'telegram'         → /api/v1/media/proxy/{id}  (legacy fallback ONLY для уже-загруженных)
+     bucket === 'telegram-expired' → '' (broken, hide)
+     default (r2 / supabase)       → STORAGE_PUBLIC_URL/{objectKey}
+     ```
+   - **Проверь web-* на:**
+     - Есть ли локальный resolve `mediaUrl` минующий backend-presenter? (frontend сам строит `https://your-bot-url/media/...` etc) — это **legacy** и работать не будет.
+     - Какие URLs реально приходят в `images[].url` / `mediaUrls[]` в product list/detail? Открой Network DevTools на staging, проверь префиксы.
+     - Если видишь `t.me/...` или `tg://...` или прямые ссылки на bot upload — это **bug**, фото должно приходить как `STORAGE_PUBLIC_URL/{objectKey}` resolved бэкендом.
+   - В `apps/web-buyer/.env` / `apps/web-seller/.env` — убери все `VITE_TG_BOT_URL` / `NEXT_PUBLIC_TG_BOT_URL` related env vars если они используются для media. Backend сам резолвит.
+
+  **3. Function duplication audit (`tech-debt-tracker` skill)**
+   - Найди дубли функций между web-buyer и web-seller которые должны быть в `packages/ui` или `packages/types`:
+     - Известно: `PhoneInput` — Полат уже перенёс в `packages/ui/components/`. См. `packages/ui/README.md` migration plan.
+     - Возможные кандидаты: `confirmDialog`, `showToast`, `formatUzPhone`, address utils, currency format, status badges, `dangerTint/warningTint/successTint`
+   - Найди функции которые web-* создаёт **локально**, хотя backend ИЛИ `packages/types` уже даёт (например, sale price calculation должна приходить из backend, не считаться на фронте).
+   - **Output:** список «duplicates to consolidate» с приоритетом.
+
+  **4. API endpoint hygiene (`api-design-reviewer` skill)**
+   - Прогрепай все `await api(` / `fetch(...)` calls в web-* и собери список запрашиваемых endpoints.
+   - Сверь с `apps/api/src/modules/*/{*.controller.ts}` — реально ли существуют?
+   - Найди:
+     - **Dead requests** — фронт зовёт endpoint которого нет (404 в Network)
+     - **Stale requests** — фронт зовёт legacy endpoint когда есть новый (например `/api/v1/orders` вместо `/api/v1/buyer/orders`)
+     - **Duplicate requests** — фронт делает 2 запроса где можно 1 (как было с `useStoreWithTrust`)
+   - **Output для Полата:** список endpoints что можно удалить с бэка (dead/stale). Полат удалит из `apps/api`.
+
+  **5. Ideology / scope-creep check (`adversarial-reviewer` + `codebase-onboarding` skills)**
+   - **Re-onboarding:** перечитай `CLAUDE.md` корневой + `docs/V1.1/01_domain_invariants.md` + `docs/V1.1/02_state_machines.md`.
+   - **Инварианты проекта** (нарушение = блокер для launch):
+     - INV-S01: один seller = один store
+     - INV-C01: корзина = один store
+     - INV-C03: состав заказа immutable после создания
+     - INV-O04: stock списывается при заказе, восстанавливается при отмене
+     - INV-A01: admin action пишет audit_log
+     - INV-A02: rejection требует comment
+     - **OTP только Telegram Bot — Eskiz/SMS ЗАПРЕЩЕНЫ**
+   - **Найди в web-***:
+     - Multi-store cart logic (нарушает INV-C01)
+     - Order edit UI (нарушает INV-C03 — можно только cancel + new)
+     - Любые SMS / Eskiz / Playmobile integrations (запрещено)
+     - Дополнительные user roles кроме BUYER/SELLER/ADMIN/HYBRID
+     - Custom payment flows вне Click/Payme плана
+   - **Найди features которые web-* добавил БЕЗ обсуждения с Полатом** — может быть scope creep (новые страницы, features которых нет в `analiz/done.md` или roadmap'е).
+
+  **Deliverables (положить в `analiz/audits/web-sync-2026-05-14.md`):**
+  1. **Часть 1 (Sync OK):** список того где web-* правильно следует архитектуре
+  2. **Часть 2 (Issues found):** баги/scope-creep/dupes/dead requests — с severity 🔴/🟡/🟢
+  3. **Часть 3 (Action items для Полата):** что удалить с `apps/api` (dead endpoints, ненужные fields)
+  4. **Часть 4 (Action items для Азима):** что починить в `apps/web-*`
+  5. **Часть 5 (Media audit):** список мест где web-* мог застрять на Telegram-bucket logic
+
+  **Skills к использованию:** `adversarial-reviewer` (критический самовзгляд), `tech-debt-tracker` (каталог дублей), `api-design-reviewer` (endpoint hygiene), `codebase-onboarding` (re-onboard в идеологию), `monorepo-navigator` (карта проекта), `pr-review-expert` (финальное ревью своих изменений за последние 2 недели).
+
+  **Срок:** ASAP перед production launch. Без этого аудита есть риск что web-* и backend разойдутся, и launch будет с broken images / 404 endpoints / нарушением INV-S01.
+
+  **После завершения:** Полат пройдёт по Action items части 3 и удалит то что не нужно с API.
+
 ### 🟡 P2 — для Полата (technical debt)
 
 - [x] **`API-WS-PUSH-NOTIFICATIONS-001`** ✅ 06.05.2026 — реализовано параллельной сессией: `chat.gateway.ts handleConnection` авто-join `user:${userId}`, `emitNotificationNew()` в `InAppNotificationProcessor` после create. Frontend `notifications.ts` слушает `notification:new`, fallback poll 5 мин на разрыв WS.
