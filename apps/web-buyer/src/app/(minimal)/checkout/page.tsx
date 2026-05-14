@@ -270,10 +270,15 @@ const paymentMethods: {
     disabled: false,
   },
   {
+    // SEV-1 от WEB-AUDIT-SYNC-IDEOLOGY-001: card option был selectable, но
+    // `paymentMethod` НИКОГДА не отправлялся в API (CheckoutConfirmRequest в
+    // packages/types не имеет поля). Misleading UI. Disabled до тех пор пока
+    // Полат не закроет API-CHECKOUT-PAYMENT-METHOD-001.
     id: "card",
     label: "Картой курьеру",
     sub: "UzCard / Humo POS-терминал",
-    disabled: false,
+    disabled: true,
+    badge: "Скоро",
   },
   {
     id: "online",
