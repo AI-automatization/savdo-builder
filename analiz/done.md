@@ -1,5 +1,26 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001 (SEV-1 #1 от audit)
+
+### ✅ [WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001] Trust signals на storefront /[slug]
+- **Важность:** 🔴 SEV-1 (pre-launch блокер из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `707f1d4`)
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` (+43, −1)
+- **Что сделано:**
+  - Inline trust row в hero brand-color column между `<h1>` и `<p>description</p>`
+  - ✓ pill «Проверенный» — если `store.isVerified`. Стиль: `rgba(251,247,240,0.18)` background + `0.28` border + `brandTextOnBg` text — light-on-dark для тёмно-коричневого hero
+  - ⭐ rating «X.X · N отзыв/отзыва/отзывов» — если `(store.reviewCount ?? 0) > 0 && store.avgRating != null`
+  - Локальный `pluralReviews()` helper (копия из `components/store/StoreRating.tsx`)
+  - Импорты `Check`, `Star` из lucide-react добавлены к существующему `Send`
+  - aria-label на pill + aria-label на rating span
+- **Почему не reuse `VerifiedBadge`/`StoreRating`:** оба компонента используют `colors.success`/`colors.textMuted`/`colors.textBody` — рассчитаны на light surface. На тёмно-коричневом `colors.brand` фоне hero они плохо читаются.
+- **Conditional render:** оба элемента показываются только при наличии данных. На текущем проде оба stores (`azim-mnx4na25`, `savdobuilder-mnvjz3cg`) `isVerified=false` и `reviewCount=0` — ничего не рендерится. Активируется когда:
+  - Полат verify-ит магазин через admin (`POST /admin/stores/:id/verify`)
+  - Появятся отзывы (review repository aggregate refresh)
+- **Парность:** TMA `StorePage.tsx:188` и admin `StoresPage.tsx:206` тоже отображают эти trust signals — теперь web-buyer консистентен.
+- **Verification:** `npx tsc --noEmit` чист в web-buyer. Smoke на проде: страница `/azim-mnx4na25` рендерится без ошибок (новый блок hidden из-за условий).
+
 ## 2026-05-14 (Азим) — WEB-AUDIT-SYNC-IDEOLOGY-001
 
 ### ✅ [WEB-AUDIT-SYNC-IDEOLOGY-001] Pre-launch sync audit web-* (4 параллельных агента)
