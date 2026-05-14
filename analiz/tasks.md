@@ -291,6 +291,8 @@
 
 - [x] **`WEB-BUYER-LINK-PRETTIFY-001`** ✅ 08.05.2026 — no-op после проверки. Длинных railway URL в web-buyer UI нет, `app/layout.tsx:16` уже на env-helper. Подробности в `analiz/done.md`.
 
+- [ ] **`WEB-BUYER-REMOVE-USESTOREWITHTRUST-001`** 🟢 P3 cleanup — **от Полата 14.05.2026** после закрытия `API-PRODUCT-STORE-TRUST-SIGNALS-001` (коммит `b1aa682` в main + api): теперь `GET /storefront/products/:id` и `GET /stores/:slug/products/:id` возвращают `product.store` с trust signals (`isVerified`, `avgRating`, `reviewCount`) + `city/telegramContactLink/logoUrl`. Также обновлён `StoreRef` в `packages/types/src/api/stores.ts` — trust signals теперь mandatory. **Можно удалить:** (1) хук `useStoreWithTrust` (в web-buyer), (2) локальные расширения типов в `apps/web-buyer/src/types/storefront.ts`, (3) второй GET-запрос на `/storefront/stores/:slug` ради бейджа/рейтинга — теперь всё в `product.store` приходит за один запрос. После cleanup'а — отметить здесь как `[x]` + перенести в done.md.
+
 ### 🟡 P2 — для Полата (technical debt)
 
 - [x] **`API-WS-PUSH-NOTIFICATIONS-001`** ✅ 06.05.2026 — реализовано параллельной сессией: `chat.gateway.ts handleConnection` авто-join `user:${userId}`, `emitNotificationNew()` в `InAppNotificationProcessor` после create. Frontend `notifications.ts` слушает `notification:new`, fallback poll 5 мин на разрыв WS.
