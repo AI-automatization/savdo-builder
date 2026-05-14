@@ -27,6 +27,10 @@
 
 ## 🔴 P0 — БЛОКЕРЫ ДЛЯ PRODUCTION (Полат)
 
+### Активные блокеры (новые)
+
+- [ ] **`API-CHECKOUT-CONFIRM-500-001`** 🔴 P0 BLOCKER (Полат) — **Buyer не может оформить заказ.** На проде `POST /api/v1/checkout/confirm` возвращает HTTP 500 «Internal server error» (повторяется). Azim воспроизвёл 14.05.2026 в web-buyer checkout. **Логи:** Railway `savdo-api-production` за последние часы — искать stack trace `[CheckoutController]` / `[CheckoutService]`. **Подозрения:** stock decrement INV-O04, Decimal arithmetic (см. P3-004 floating-point pattern в `analiz/logs.md`), DB constraint violation, transaction rollback, telegram notification job. **Зона:** `apps/api/src/modules/checkout/checkout.controller.ts` + `checkout.use-case.ts`. **Подробности:** `analiz/logs.md` под `[API-CHECKOUT-CONFIRM-500-001]`. Frontend defensive — error уже показывается через ErrorBanner, но без backend fix покупки не пройдут.
+
 ### QA findings — критичные баги первого дня prod
 
 - [x] **`API-STOCK-RACE-OVERSELL-001`** ✅ 10.05.2026 — atomic UPDATE с WHERE stockQuantity >= qty через $executeRaw. 0 rows affected → CHECKOUT_STOCK_INSUFFICIENT. Коммит `385246a`.

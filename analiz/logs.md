@@ -1,5 +1,23 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-14] [API-CHECKOUT-CONFIRM-500-001] 🔴 BLOCKER — buyer не может оформить заказ
+- **Статус:** 🔴 Баг — открыт, передан Полату как P0
+- **Что случилось:** Azim сообщил 14.05.2026 — на проде при оформлении заказа из web-buyer checkout `POST /api/v1/checkout/confirm` возвращает HTTP **500 Internal server error** (повторяется на нескольких попытках). Buyer не может завершить покупку.
+- **Где видно:**
+  - URL: `https://savdo-api-production.up.railway.app/api/v1/checkout/confirm`
+  - DevTools Console: `Failed to load resource: the server responded with a status of 500`
+  - Response body: `Internal server error`
+  - Trigger: финальная кнопка «Оформить заказ» в `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (`confirm.mutateAsync` line ~383)
+- **Что НЕ известно:** какой именно exception на бэке. Нужно смотреть Railway logs `savdo-api-production` за последние часы — искать stack trace с тегом `[CheckoutController]` или `[CheckoutService]`. Возможные подозрения:
+  - Order creation из cart bulk (race / stock / variant validation)
+  - Transaction rollback из-за нарушения `INV-O04` (stock decrement)
+  - Telegram notification job enqueue падает (но это обычно после 200 OK)
+  - DB constraint violation (например `order_currency_check` или подобный)
+  - Декорированные Decimal arithmetic (см. P3-004 floating-point bug в этом файле — pattern Полата)
+- **Зона:** `apps/api/src/modules/checkout/checkout.controller.ts` + `checkout.use-case.ts` + `orders.repository.ts`. **НЕ моя зона** — Полату.
+- **Передано:** ticket `API-CHECKOUT-CONFIRM-500-001` 🔴 P0 в `analiz/tasks.md` (секция «P0 — БЛОКЕРЫ ДЛЯ PRODUCTION»).
+- **Frontend defensive:** web-buyer уже показывает API error message в `ErrorBanner` (`page.tsx:330` setApiError), buyer хотя бы видит что оформить не получилось. Но без backend fix всё равно купить нельзя.
+
 ## [2026-05-12] [P3-004-FLOATING-POINT] WIP — isSale/discountPercent
 - **Статус:** 🟡 НЕ ДЕПЛОИТЬ, локальный commit `e56c5bc` на main (не push)
 - **Что случилось:** реализовал P3-004 (isSale + discountPercent в API ответах).
