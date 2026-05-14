@@ -7,7 +7,7 @@ import { Check, Link2, Send, Layers, Package } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
 import { buyerProductUrl } from '@/lib/buyer-url';
-import { card, colors, inputStyle } from '@/lib/styles';
+import { card, colors, dangerTint, inputStyle } from '@/lib/styles';
 
 const STATUS_LABELS: Record<string, string> = {
   [ProductStatus.ACTIVE]:         "Активен",
@@ -20,7 +20,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   [ProductStatus.ACTIVE]:         { bg: "rgba(52,211,153,.15)",   color: colors.success },
   [ProductStatus.DRAFT]:          { bg: "rgba(251,191,36,.13)",   color: colors.warning },
   [ProductStatus.ARCHIVED]:       { bg: colors.surfaceElevated,   color: colors.textDim },
-  [ProductStatus.HIDDEN_BY_ADMIN]:{ bg: "rgba(248,113,113,.13)",  color: colors.danger },
+  [ProductStatus.HIDDEN_BY_ADMIN]:{ bg: dangerTint(0.13),         color: colors.danger },
 };
 
 const STATUS_FILTERS: { key: ProductStatus | 'ALL'; label: string }[] = [
