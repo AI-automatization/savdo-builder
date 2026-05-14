@@ -325,7 +325,7 @@
 - [ ] **`ADMIN-STATUS-LABEL-PENDING-001`** 🟡 SEV-2 — Полату — `apps/admin/src/pages/OrdersPage.tsx:28` `PENDING: { label: 'Ожидание' }`. Везде `'Ожидает'`. Изменить.
 
 **Для Азима:**
-- [ ] **`WEB-BUYER-OTP-PURPOSE-FIX-001`** 🟢 SEV-3 — `apps/web-buyer/src/components/auth/OtpGate.tsx:28` хардкодит `purpose: 'checkout'` независимо от вызывающего контекста (включая `/orders`, `/profile`, `/wishlist`). Если backend rate-limit'ит per-purpose — неправильный счёт. Принимать `purpose` через props.
+- [x] **`WEB-BUYER-OTP-PURPOSE-FIX-001`** ✅ 14.05.2026 (Азим) — закрыто на ветке `web-buyer` (commit `e84598c`). Добавлен `purpose?: 'login' | 'register' | 'checkout'` prop с default `'login'`. Все 5 callsites (orders, wishlist, profile, chats, ChatComposerModal) наследуют 'login' default — semantic корректно. `(minimal)/checkout/page.tsx` имеет local OtpGate function — там `'checkout'` hardcode остаётся правильным. Подробности в `analiz/done.md`.
 
 **Для Полата (packages/types):**
 - [ ] **`API-TYPES-PROMOTE-FEATURED-STOREFRONT-001`** 🟢 SEV-3 — поднять `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`, `FeaturedTopStore`, `FeaturedProduct` из `apps/web-buyer/src/types/storefront.ts` в `packages/types/src/api/storefront.ts`. Азим обновит импорты после.

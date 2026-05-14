@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — WEB-BUYER-OTP-PURPOSE-FIX-001 (SEV-3 от audit)
+
+### ✅ [WEB-BUYER-OTP-PURPOSE-FIX-001] OtpGate purpose через props
+- **Важность:** 🟢 SEV-3 (cleanup из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `e84598c`)
+- **Файл:** `apps/web-buyer/src/components/auth/OtpGate.tsx` (+11, −3)
+- **Что сделано:**
+  - Добавлен `purpose?: 'login' | 'register' | 'checkout'` в `OtpGateProps` с default `'login'`
+  - Замена hardcoded `purpose: 'checkout'` в обоих `mutateAsync` calls на переменную `purpose`
+  - Inline комментарий с reference на причину
+- **Эффект:** все 5 callsites OtpGate (orders, wishlist, profile, chats, ChatComposerModal) теперь по умолчанию используют `'login'` — semantic корректно. Backend OTP rate-limits скоупятся per-purpose, теперь не путаются.
+- **Что НЕ затронуто:**
+  - `(minimal)/checkout/page.tsx` имеет local OtpGate function (не shared) — там `'checkout'` hardcode остаётся правильным (это и есть checkout flow).
+- **Verification:** `npx tsc --noEmit` чист.
+
 ## 2026-05-14 (Азим) — WEB-BUYER-CARD-PAYMENT-DISABLE-001 (SEV-1 #3 от audit, quick fix)
 
 ### ✅ [WEB-BUYER-CARD-PAYMENT-DISABLE-001] card payment → disabled + «Скоро» badge
