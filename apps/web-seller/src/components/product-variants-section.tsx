@@ -252,7 +252,7 @@ function InlineVariantForm({
         </label>
 
         <div className="flex gap-2">
-          <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена"><X size={14} /></button>
+          <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена" aria-label="Отмена"><X size={14} aria-hidden="true" /></button>
           <button
             type="button"
             style={confirmBtn}

@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories, useCreateStoreCategory, useUpdateStoreCategory, useDeleteStoreCategory } from '@/hooks/use-seller';
-import { X, Check, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories } from '@/hooks/use-seller';
+import { ChevronRight } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
-import type { Store, StoreCategory } from 'types';
+import type { Store } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
 import { Select, type SelectOption } from '@/components/select';
 import { card, colors, inputStyle as inputStyleBase } from '@/lib/styles';
@@ -70,225 +71,27 @@ function SavedBadge({ show }: { show: boolean }) {
 
 function StoreCategoriesSection() {
   const { data: categories = [], isLoading } = useStoreCategories();
-  const create = useCreateStoreCategory();
-  const update = useUpdateStoreCategory();
-  const remove = useDeleteStoreCategory();
-
-  const [editingId, setEditingId]     = useState<string | null>(null);
-  const [editValue, setEditValue]     = useState('');
-  const [adding, setAdding]           = useState(false);
-  const [newValue, setNewValue]       = useState('');
-  const [deletingId, setDeletingId]   = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const newInputRef = useRef<HTMLInputElement>(null);
-
-  function startEdit(cat: StoreCategory) {
-    setEditingId(cat.id);
-    setEditValue(cat.name);
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setEditValue('');
-  }
-
-  async function saveEdit(id: string) {
-    const name = editValue.trim();
-    if (!name) { cancelEdit(); return; }
-    try {
-      await update.mutateAsync({ id, name });
-      cancelEdit();
-    } catch {
-      // keep edit open; update.isError will be true (TanStack Query tracks it)
-    }
-  }
-
-  function startAdd() {
-    setAdding(true);
-    setNewValue('');
-  }
-
-  function cancelAdd() {
-    setAdding(false);
-    setNewValue('');
-  }
-
-  async function saveAdd() {
-    const name = newValue.trim();
-    if (!name) { cancelAdd(); return; }
-    try {
-      await create.mutateAsync({ name, sortOrder: categories.length + 1 });
-      cancelAdd();
-    } catch {
-      // keep add row open on failure
-    }
-  }
-
-  async function handleDelete(id: string) {
-    if (deletingId) return;
-    setDeleteError(null);
-    setDeletingId(id);
-    try {
-      await remove.mutateAsync(id);
-    } catch {
-      setDeleteError('Нельзя удалить категорию, к которой привязаны товары.');
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
-  useEffect(() => {
-    if (adding) newInputRef.current?.focus();
-  }, [adding]);
-
-  const rowInputStyle: React.CSSProperties = {
-    flex: 1,
-    background: colors.surfaceSunken,
-    border: `1px solid ${colors.accentBorder}`,
-    borderRadius: 6,
-    padding: '4px 8px',
-    fontSize: 13,
-    color: colors.textPrimary,
-    outline: 'none',
-  };
-
-  const confirmBtn: React.CSSProperties = {
-    fontSize: 12,
-    padding: '3px 8px',
-    borderRadius: 6,
-    color: colors.success,
-    background: 'rgba(52,211,153,0.12)',
-    border: '1px solid rgba(52,211,153,0.25)',
-    cursor: 'pointer',
-  };
-
-  const cancelBtn: React.CSSProperties = {
-    fontSize: 12,
-    padding: '3px 8px',
-    borderRadius: 6,
-    color: colors.textMuted,
-    background: colors.surfaceMuted,
-    border: `1px solid ${colors.border}`,
-    cursor: 'pointer',
-  };
-
-  const rowBorder = { borderBottom: `1px solid ${colors.divider}` };
-
-  if (isLoading) {
-    return (
-      <div className="rounded-lg overflow-hidden" style={card}>
-        <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
-          <div className="h-3.5 w-44 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
-        </div>
-        <div className="px-5 py-4 flex flex-col gap-2">
-          {[140, 100, 160].map((w, i) => (
-            <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: colors.surfaceSunken, width: w }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const count = categories.length;
 
   return (
     <Section title="Категории магазина">
-      {categories.length === 0 && !adding && (
-        <p className="text-xs py-1" style={{ color: colors.textDim }}>
-          Категории помогают покупателям ориентироваться в вашем магазине.
-        </p>
-      )}
-
-      {categories.map((cat) => (
-        <div key={cat.id} className="flex items-center gap-2 py-1.5" style={rowBorder}>
-          {editingId === cat.id ? (
-            <>
-              <input
-                autoFocus
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter')  saveEdit(cat.id);
-                  if (e.key === 'Escape') cancelEdit();
-                }}
-                style={rowInputStyle}
-              />
-              <button type="button" style={confirmBtn} onClick={() => saveEdit(cat.id)}><Check size={14} /></button>
-              <button
-                type="button"
-                style={cancelBtn}
-                onMouseDown={(e) => { e.preventDefault(); cancelEdit(); }}
-              >
-                <X size={14} />
-              </button>
-            </>
-          ) : (
-            <>
-              <span
-                className="flex-1 text-sm transition-colors"
-                onClick={() => !update.isPending && startEdit(cat)}
-                style={{ cursor: update.isPending ? 'default' : 'pointer', opacity: update.isPending ? 0.5 : 1, color: colors.textPrimary }}
-              >
-                {cat.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleDelete(cat.id)}
-                disabled={!!deletingId}
-                className="text-xs transition-opacity opacity-50 hover:opacity-90 disabled:opacity-20"
-                style={{ color: colors.danger }}
-                aria-label="Удалить"
-              >
-                <Trash2 size={14} />
-              </button>
-            </>
-          )}
+      <Link
+        href="/store/categories"
+        className="flex items-center gap-3 -mx-1 px-3 py-2.5 rounded-lg transition-colors row-hoverable"
+        style={{ color: colors.textPrimary }}
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Управление категориями</p>
+          <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
+            {isLoading
+              ? 'Загрузка…'
+              : count === 0
+                ? 'Группируйте товары на витрине магазина'
+                : `${count} ${count === 1 ? 'категория' : count < 5 ? 'категории' : 'категорий'} — открыть для редактирования`}
+          </p>
         </div>
-      ))}
-
-      {adding && (
-        <div className="flex items-center gap-2 py-1.5" style={rowBorder}>
-          <input
-            ref={newInputRef}
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter')  saveAdd();
-              if (e.key === 'Escape') cancelAdd();
-            }}
-            placeholder="Название категории"
-            style={rowInputStyle}
-          />
-          <button
-            type="button"
-            style={confirmBtn}
-            onClick={saveAdd}
-            disabled={create.isPending}
-          >
-            {create.isPending ? '...' : <Check size={14} />}
-          </button>
-          <button
-            type="button"
-            style={cancelBtn}
-            onMouseDown={(e) => { e.preventDefault(); cancelAdd(); }}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
-      {deleteError && (
-        <p className="text-xs mt-1" style={{ color: colors.danger }}>{deleteError}</p>
-      )}
-
-      {!adding && (
-        <button
-          type="button"
-          onClick={startAdd}
-          className="mt-1 text-xs font-semibold flex items-center gap-1.5 transition-opacity hover:opacity-80"
-          style={{ color: colors.accent }}
-        >
-          <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Добавить категорию
-        </button>
-      )}
+        <ChevronRight size={16} aria-hidden="true" style={{ color: colors.textDim }} />
+      </Link>
     </Section>
   );
 }

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 
 @Injectable()
@@ -52,11 +53,28 @@ export class WishlistRepository {
     return !!found;
   }
 
-  async create(buyerId: string, productId: string) {
+  async create(
+    buyerId: string,
+    productId: string,
+    snapshot?: { priceSnapshot?: Prisma.Decimal | number | null; inStockSnapshot?: boolean },
+  ) {
+    // MARKETING-WISHLIST-NOTIFY-001: при добавлении сохраняем snapshot
+    // цены и доступности — нужно для cron-нотификаций (price-drop /
+    // back-in-stock). Re-add (upsert update) тоже обновляет snapshot —
+    // иначе старая цена «застрянет».
+    const data = {
+      priceSnapshot: snapshot?.priceSnapshot ?? undefined,
+      inStockSnapshot: snapshot?.inStockSnapshot ?? undefined,
+    };
     return this.prisma.buyerWishlistItem.upsert({
       where: { buyerId_productId: { buyerId, productId } },
-      create: { buyerId, productId },
-      update: {},
+      create: { buyerId, productId, ...data },
+      update: {
+        ...data,
+        // Сбрасываем cooldown — после re-add можно снова получить nudge.
+        notifiedAt: null,
+        notifiedReason: null,
+      },
     });
   }
 
