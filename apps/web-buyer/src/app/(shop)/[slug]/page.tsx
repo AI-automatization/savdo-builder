@@ -19,7 +19,19 @@ const serverGetStoreBySlug = cache(rawGetStoreBySlug);
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
 import { colors } from "@/lib/styles";
-import { Send } from "lucide-react";
+import { Send, Check, Star } from "lucide-react";
+
+// Plural «отзыв / отзыва / отзывов» — копия из components/store/StoreRating.tsx
+// (тот компонент рассчитан на light surface; в hero brand-color column нужна
+// light-on-dark inline версия).
+function pluralReviews(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return 'отзывов';
+  if (mod10 === 1) return 'отзыв';
+  if (mod10 >= 2 && mod10 <= 4) return 'отзыва';
+  return 'отзывов';
+}
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
 
@@ -167,6 +179,36 @@ export default async function StorePage({
             <h1 className="text-2xl md:text-4xl font-bold leading-[1.05] tracking-tight mb-3">
               {store.name}
             </h1>
+            {(store.isVerified || ((store.reviewCount ?? 0) > 0 && store.avgRating != null)) && (
+              <div className="flex items-center gap-3 mb-4 text-[12px]">
+                {store.isVerified && (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold"
+                    style={{
+                      background: 'rgba(251,247,240,0.18)',
+                      border: '1px solid rgba(251,247,240,0.28)',
+                      color: colors.brandTextOnBg,
+                    }}
+                    aria-label="Проверенный магазин"
+                  >
+                    <Check size={12} strokeWidth={3} aria-hidden />
+                    <span>Проверенный</span>
+                  </span>
+                )}
+                {(store.reviewCount ?? 0) > 0 && store.avgRating != null && (
+                  <span
+                    className="inline-flex items-center gap-1.5"
+                    style={{ color: colors.brandTextOnBg }}
+                    aria-label={`Рейтинг ${store.avgRating.toFixed(1)} из 5, ${store.reviewCount} ${pluralReviews(store.reviewCount ?? 0)}`}
+                  >
+                    <Star size={13} fill={colors.brandTextOnBg} strokeWidth={0} aria-hidden />
+                    <span className="font-semibold">{store.avgRating.toFixed(1)}</span>
+                    <span className="opacity-75">·</span>
+                    <span className="opacity-75">{store.reviewCount} {pluralReviews(store.reviewCount ?? 0)}</span>
+                  </span>
+                )}
+              </div>
+            )}
             {store.description && (
               <p className="text-sm opacity-85 leading-relaxed mb-5 line-clamp-3 md:line-clamp-4">{store.description}</p>
             )}
