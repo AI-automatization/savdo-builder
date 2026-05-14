@@ -77,7 +77,7 @@ export class CartAbandonmentService {
         store: { select: { name: true, slug: true } },
         buyer: {
           select: {
-            user: { select: { telegramId: true } },
+            user: { select: { telegramId: true, languageCode: true } },
           },
         },
         items: {
@@ -133,6 +133,7 @@ export class CartAbandonmentService {
         total,
         currency: cart.currencyCode,
         cartDeepLink,
+        locale: cart.buyer?.user?.languageCode ?? 'ru',
       };
 
       await this.telegramQueue.add(TELEGRAM_JOB_CART_ABANDONED, data, {

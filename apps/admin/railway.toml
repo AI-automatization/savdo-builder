@@ -1,7 +1,9 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "apps/admin/Dockerfile"
-watchPatterns = ["apps/admin/**"]
+# DEVOPS-AUDIT-2026-05-14: + packages/types (admin импортирует DTO),
+# + packages/ui (после подключения @savdo/ui).
+watchPatterns = ["apps/admin/**", "packages/types/**", "packages/ui/**"]
 
 [deploy]
 healthcheckPath = "/"

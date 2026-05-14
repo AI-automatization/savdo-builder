@@ -72,7 +72,7 @@ export function SellerAnalyticsCard() {
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
-              className="px-2.5 py-1 rounded-lg text-[10px] font-semibold"
+              className="px-2.5 py-1 rounded-lg text-xxs font-semibold"
               style={
                 period === p.value
                   ? { background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }
@@ -110,7 +110,7 @@ export function SellerAnalyticsCard() {
 
           {data.topProducts.length > 0 && (
             <div className="flex flex-col gap-1">
-              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+              <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                 Топ товары
               </p>
               {data.topProducts.slice(0, 3).map((p) => (
@@ -118,7 +118,7 @@ export function SellerAnalyticsCard() {
                   <span className="text-xs truncate flex-1" style={{ color: 'var(--tg-text-secondary)' }}>
                     {p.title}
                   </span>
-                  <span className="text-[11px] shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
+                  <span className="text-xxs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                     × {p.quantity}
                   </span>
                   <span className="text-xs font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
@@ -165,7 +165,7 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+      <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
         Выручка по дням
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" aria-hidden>

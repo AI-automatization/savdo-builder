@@ -150,6 +150,8 @@ export const ru: Translations = {
   'orders.filter.shipped': 'В пути',
   'orders.filter.delivered': 'Доставлены',
   'orders.filter.cancelled': 'Отменены',
+  'orders.viewAll': 'Все',
+  'orders.recent': 'Последние заказы',
   'orders.status.PENDING': 'Ожидает',
   'orders.status.CONFIRMED': 'Подтверждён',
   'orders.status.PROCESSING': 'В обработке',
@@ -219,6 +221,56 @@ export const ru: Translations = {
   'seller.products': 'Товары',
   'seller.orders': 'Заказы',
   'seller.stats': 'Статистика',
+
+  // ── Seller dashboard ──────────────────────────────────────────────────
+  'seller.dashboard.title': 'Главная',
+  'seller.dashboard.greeting': 'Привет, {name}!',
+  'seller.dashboard.quickActions': 'Быстрые действия',
+  'seller.dashboard.addProduct': 'Добавить товар',
+  'seller.dashboard.viewOrders': 'Заказы',
+  'seller.dashboard.viewProducts': 'Товары',
+  'seller.dashboard.viewStore': 'Магазин',
+  'seller.dashboard.viewStats': 'Статистика',
+  'seller.dashboard.totalOrders': 'Всего заказов',
+  'seller.dashboard.totalProducts': 'Товаров',
+  'seller.dashboard.pending': 'Ожидают',
+  'seller.dashboard.revenue': 'Выручка',
+
+  // ── Seller products list ──────────────────────────────────────────────
+  'seller.products.title': 'Мои товары',
+  'seller.products.empty': 'У вас пока нет товаров',
+  'seller.products.addFirst': 'Добавить первый товар',
+  'seller.products.searchPlaceholder': 'Поиск по названию...',
+  'seller.products.filterAll': 'Все',
+  'seller.products.filterActive': 'Активные',
+  'seller.products.filterDraft': 'Черновики',
+  'seller.products.filterArchived': 'Архив',
+  'seller.products.confirmDelete': 'Удалить товар?',
+  'seller.products.confirmDeleteBody': 'Товар «{title}» будет удалён. Это действие нельзя отменить.',
+  'seller.products.deleteSuccess': '✅ Товар удалён',
+  'seller.products.deleteError': '❌ Не удалось удалить товар',
+  'seller.products.retry': 'Повторить',
+  'seller.products.allFilter': 'Все',
+
+  // ── Seller orders ─────────────────────────────────────────────────────
+  'seller.orders.title': 'Заказы',
+  'seller.orders.filterPending': 'Новые',
+  'seller.orders.filterActive': 'В работе',
+  'seller.orders.filterDelivered': 'Доставлены',
+  'seller.orders.filterCancelled': 'Отменены',
+  'seller.orders.customerPhoneNote': 'при заказе',
+  'seller.orders.accountPhoneNote': 'аккаунт',
+  'seller.orders.messagePlaceholder': 'Например: Здравствуйте! Уточните, пожалуйста, удобное время доставки.',
+
+  // ── Seller profile ────────────────────────────────────────────────────
+  'seller.profile.title': 'Профиль',
+  'seller.profile.openSite': 'Перейти на сайт магазина',
+
+  // ── Seller store ──────────────────────────────────────────────────────
+  'seller.store.title': 'Мой магазин',
+  'seller.store.creating': 'Создаём...',
+  'seller.store.createBtn': 'Создать магазин',
+  'seller.store.descPlaceholder': 'Описание',
 
   // ── Wishlist ──────────────────────────────────────────────────────────
   'wishlist.title': 'Избранное',

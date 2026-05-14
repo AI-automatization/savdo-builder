@@ -598,10 +598,10 @@ export default function EditProductPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-base font-bold mb-2" style={{ color: 'rgba(255,255,255,0.90)' }}>
+            <p className="text-base font-bold mb-2" style={{ color: 'var(--tg-text-primary)' }}>
               Удалить товар?
             </p>
-            <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.50)' }}>
+            <p className="text-sm mb-5" style={{ color: 'var(--tg-text-secondary)' }}>
               «{product?.title}» будет удалён без возможности восстановления.
             </p>
             <div className="flex gap-3">
@@ -631,7 +631,7 @@ export default function EditProductPage() {
       )}
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>
           Редактировать товар
         </h1>
 
@@ -664,7 +664,7 @@ export default function EditProductPage() {
                 <span style={{ fontSize: 18, lineHeight: 1.4 }}>🚫</span>
                 <div>
                   <p className="text-xs font-semibold" style={{ color: '#f87171' }}>Товар скрыт администратором</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: 'rgba(248,113,113,0.65)' }}>
+                  <p className="text-xxs mt-0.5" style={{ color: 'rgba(248,113,113,0.65)' }}>
                     Товар не виден покупателям. Вы можете отредактировать его данные или удалить.
                   </p>
                 </div>
@@ -674,7 +674,7 @@ export default function EditProductPage() {
             {/* Основная информация */}
             <GlassCard className="p-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                   Название *
                 </label>
                 <input
@@ -686,7 +686,7 @@ export default function EditProductPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                   Цена (сум) *
                 </label>
                 <input
@@ -699,7 +699,7 @@ export default function EditProductPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                   Описание
                 </label>
                 <textarea
@@ -719,7 +719,7 @@ export default function EditProductPage() {
             {/* Категория магазина */}
             {categories.length > 0 && (
               <GlassCard className="p-4 flex flex-col gap-2">
-                <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                   Категория магазина
                 </label>
                 <button
@@ -728,7 +728,7 @@ export default function EditProductPage() {
                   style={{
                     background: storeCategoryId ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.05)',
                     border: `1px solid ${storeCategoryId ? 'rgba(124,58,237,0.45)' : 'rgba(255,255,255,0.12)'}`,
-                    color: storeCategoryId ? '#A855F7' : 'rgba(255,255,255,0.40)',
+                    color: storeCategoryId ? '#A855F7' : 'var(--tg-text-muted)',
                   }}
                 >
                   <span>{categories.find((c) => c.id === storeCategoryId)?.name ?? 'Выберите категорию...'}</span>
@@ -739,7 +739,7 @@ export default function EditProductPage() {
 
             {/* Тип товара (GlobalCategory) — обязательно */}
             <GlassCard className="p-4 flex flex-col gap-2">
-              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                 Тип товара <span style={{ color: '#f87171' }}>*</span>
               </label>
               <button
@@ -748,7 +748,7 @@ export default function EditProductPage() {
                 style={{
                   background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.05)',
                   border: `1px solid ${globalCategoryId ? 'rgba(6,182,212,0.40)' : 'rgba(239,68,68,0.35)'}`,
-                  color: globalCategoryId ? '#22D3EE' : 'rgba(255,255,255,0.40)',
+                  color: globalCategoryId ? '#22D3EE' : 'var(--tg-text-muted)',
                 }}
               >
                 <span>{globalCategories.find((c) => c.id === globalCategoryId)?.nameRu ?? 'Выберите тип товара...'}</span>
@@ -780,12 +780,12 @@ export default function EditProductPage() {
 
             {/* Характеристики */}
             <GlassCard className="p-4 flex flex-col gap-3">
-              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                 Характеристики
               </label>
               {attrs.map((a) => (
                 <div key={a.id} className="flex items-center gap-2">
-                  <span className="text-xs flex-1 truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                  <span className="text-xs flex-1 truncate" style={{ color: 'var(--tg-text-secondary)' }}>
                     <b>{a.name}</b>: {a.value}
                   </span>
                   <button
@@ -830,7 +830,7 @@ export default function EditProductPage() {
             {/* Фото */}
             <GlassCard className="p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                   Фото товара
                 </p>
                 <button
@@ -975,7 +975,7 @@ export default function EditProductPage() {
             {/* Вид карточки */}
             {(product.images?.length ?? 0) > 0 && (
               <GlassCard className="p-4 flex flex-col gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                   Вид карточки
                 </p>
                 <div className="flex gap-2">
@@ -1014,7 +1014,7 @@ export default function EditProductPage() {
                       }}
                     >
                       <span style={{ fontSize: 18 }}>{opt.icon}</span>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: displayType === opt.value ? '#A855F7' : 'rgba(255,255,255,0.55)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: displayType === opt.value ? '#A855F7' : 'var(--tg-text-secondary)' }}>
                         {opt.label}
                       </span>
                     </button>
@@ -1026,7 +1026,7 @@ export default function EditProductPage() {
             {/* Остаток по вариантам */}
             {product.variants && product.variants.length > 0 && (
               <GlassCard className="p-4 flex flex-col gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                   Остаток на складе
                 </p>
                 {product.variants.map((v) => {
@@ -1061,7 +1061,7 @@ export default function EditProductPage() {
                         placeholder="0"
                         style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
                       />
-                      <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>
+                      <span className="text-xs shrink-0" style={{ color: 'var(--tg-text-dim)' }}>шт</span>
                       <button
                         onClick={() => handleStockSave(v)}
                         disabled={stockSaving === v.id || stockEdits[v.id] === String(v.stockQuantity)}

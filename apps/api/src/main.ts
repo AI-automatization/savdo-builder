@@ -10,14 +10,24 @@ import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { Queue } from 'bullmq';
+import { StructuredLogger } from './shared/structured-logger';
+import { ErrorReporter } from './shared/error-reporter';
 
 // Prisma returns BigInt for telegramId — JSON.stringify crashes without this polyfill
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
   return this.toString();
 };
 
+// API-SENTRY-001: init before bootstrap чтобы поймать ошибки даже на этапе
+// загрузки модулей. Lightweight reporter, см. shared/error-reporter.ts.
+ErrorReporter.init();
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // API-PINO-LOGGING-001: structured JSON logging в production (Railway).
+  // В dev — fallback на цветной ConsoleLogger.
+  const app = await NestFactory.create(AppModule, {
+    logger: new StructuredLogger(),
+  });
 
   app.setGlobalPrefix('api/v1');
 

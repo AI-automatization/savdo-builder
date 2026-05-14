@@ -81,7 +81,7 @@ export default function BuyerProfilePage() {
           </div>
           {authenticated && (
             <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+              className="text-xxs font-bold px-2 py-0.5 rounded-full shrink-0"
               style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
             >
               {t('profile.role.buyer')}
@@ -168,7 +168,7 @@ export default function BuyerProfilePage() {
           </div>
         )}
 
-        <p className="text-center text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+        <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           {t('profile.footer')}
         </p>
       </div>

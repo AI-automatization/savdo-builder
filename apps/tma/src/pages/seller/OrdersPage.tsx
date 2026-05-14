@@ -8,6 +8,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { useTranslation } from '@/lib/i18n';
 
 interface Order {
   id: string;
@@ -115,7 +116,9 @@ function cardAccent(status: string): { border: string; glow: string; opacity: nu
 export default function SellerOrdersPage() {
   const { tg, viewportWidth } = useTelegram();
   const navigate = useNavigate();
+  const { t, locale } = useTranslation();
   const isWide = (viewportWidth ?? 0) >= 1024;
+  const fmt = (n: number) => n.toLocaleString(locale === 'uz' ? 'uz' : 'ru');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -245,7 +248,7 @@ export default function SellerOrdersPage() {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Заказы</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.orders.title')}</h1>
 
         {/* Status filter tabs */}
         <div className="scroll-fade-x">
@@ -257,7 +260,7 @@ export default function SellerOrdersPage() {
                 <button
                   key={f.value}
                   onClick={() => setStatusFilter(f.value)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xxs font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
                   style={!active ? {
                     background: 'var(--tg-surface-hover)',
                     border: '1px solid var(--tg-border)',
@@ -267,7 +270,7 @@ export default function SellerOrdersPage() {
                   {f.label}
                   {count > 0 && (
                     <span
-                      className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                      className="px-1.5 py-0 rounded-full text-xxs font-bold"
                       style={{
                         background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
                         color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
@@ -301,21 +304,21 @@ export default function SellerOrdersPage() {
         {!loading && error && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
-            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Не удалось загрузить заказы</p>
-            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
+            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>{t('orders.loadError')}</p>
+            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: 'var(--tg-accent)' }}>{t('common.retry')}</button>
           </div>
         )}
 
         {!loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Заказов пока нет</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.empty')}</p>
           </div>
         )}
         {!loading && !error && orders.length > 0 && orders.filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔍</span>
-            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>Нет заказов в этой категории</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.emptyCategory')}</p>
           </div>
         )}
 
@@ -357,7 +360,7 @@ export default function SellerOrdersPage() {
                       <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                         {o.preview?.title ?? 'Без товаров'}
                         {o.preview && o.preview.itemCount > 1 && (
-                          <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
+                          <span className="ml-1.5 text-xxs font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
                             +{o.preview.itemCount - 1}
                           </span>
                         )}
@@ -367,7 +370,7 @@ export default function SellerOrdersPage() {
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2 min-w-0">
-                      <p className="text-[11px] truncate" style={{ color: 'var(--tg-text-muted)' }}>
+                      <p className="text-xxs truncate" style={{ color: 'var(--tg-text-muted)' }}>
                         #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
                         {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
                       </p>
@@ -447,7 +450,7 @@ export default function SellerOrdersPage() {
 
               {/* Покупатель */}
               <div className="flex flex-col gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
+                <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
                   👤 Покупатель
                 </p>
                 {detail.customerFullName && (
@@ -455,12 +458,12 @@ export default function SellerOrdersPage() {
                 )}
                 {detail.customerPhone && (
                   <a href={`tel:${detail.customerPhone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#22D3EE' }}>
-                    📞 {detail.customerPhone} <span style={{ fontSize: 10, opacity: 0.6 }}>при заказе</span>
+                    📞 {detail.customerPhone} <span style={{ fontSize: 10, opacity: 0.6 }}>{t('seller.orders.customerPhoneNote')}</span>
                   </a>
                 )}
                 {detail.buyer?.phone && detail.buyer.phone !== detail.customerPhone && (
                   <a href={`tel:${detail.buyer.phone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#A78BFA' }}>
-                    📱 {detail.buyer.phone} <span style={{ fontSize: 10, opacity: 0.6 }}>аккаунт</span>
+                    📱 {detail.buyer.phone} <span style={{ fontSize: 10, opacity: 0.6 }}>{t('seller.orders.accountPhoneNote')}</span>
                   </a>
                 )}
               </div>
@@ -468,7 +471,7 @@ export default function SellerOrdersPage() {
               {/* Товары */}
               {(detail.items ?? []).length > 0 && (
                 <div className="flex flex-col gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
                     📦 Товары
                   </p>
                   {(detail.items ?? []).map((item) => (
@@ -487,7 +490,7 @@ export default function SellerOrdersPage() {
               {/* Адрес */}
               {(detail.deliveryAddress?.city || detail.deliveryAddress?.street) && (
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>📍 Адрес</p>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>📍 Адрес</p>
                   <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>
                     {[detail.deliveryAddress.city, detail.deliveryAddress.region, detail.deliveryAddress.street].filter(Boolean).join(', ')}
                   </p>
@@ -497,14 +500,14 @@ export default function SellerOrdersPage() {
               {/* Комментарий */}
               {detail.buyerNote && (
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>💬 Комментарий</p>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>💬 Комментарий</p>
                   <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>{detail.buyerNote}</p>
                 </div>
               )}
 
               {/* Итого */}
               <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--tg-border-soft)' }}>
-                <span className="text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>Итого</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>{t('cart.total')}</span>
                 <span className="text-base font-bold" style={{ color: 'var(--tg-accent)' }}>
                   {Number(detail.totalAmount).toLocaleString('ru')} сум
                 </span>
@@ -538,7 +541,7 @@ export default function SellerOrdersPage() {
             <textarea
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
-              placeholder="Например: Здравствуйте! Уточните, пожалуйста, удобное время доставки."
+              placeholder={t('seller.orders.messagePlaceholder')}
               rows={4}
               maxLength={1000}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"

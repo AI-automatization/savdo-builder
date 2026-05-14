@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
+import { useTranslation } from '@/lib/i18n';
 import { glass } from '@/lib/styles';
 import { webStoreUrl } from '@/lib/webUrl';
 
@@ -28,6 +29,7 @@ export default function SellerStorePage() {
   const isDesktop = (viewportWidth ?? 0) >= 1024;
   const navigate = useNavigate();
   const { authVersion } = useAuth();
+  const { t } = useTranslation();
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -187,15 +189,15 @@ export default function SellerStorePage() {
     return (
       
         <div className="flex flex-col gap-4">
-          <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Мой магазин</h1>
+          <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.store.title')}</h1>
           <div
             className="flex flex-col items-center gap-4 py-8 px-4 rounded-2xl"
             style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
             <span style={{ fontSize: 44 }}>🏪</span>
             <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>Создайте свой магазин</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--tg-text-muted)' }}>Введите название чтобы начать продавать</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.createStore')}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--tg-text-muted)' }}>{t('seller.createStoreHint')}</p>
             </div>
             <div className="w-full flex flex-col gap-3">
               {[
@@ -226,7 +228,7 @@ export default function SellerStorePage() {
                   cursor: creating ? 'wait' : 'pointer',
                 }}
               >
-                {creating ? 'Создаём...' : 'Создать магазин'}
+                {creating ? t('seller.store.creating') : t('seller.store.createBtn')}
               </button>
             </div>
           </div>
@@ -241,7 +243,7 @@ export default function SellerStorePage() {
         style={isDesktop ? { gridTemplateColumns: '1.1fr 1fr', alignItems: 'start' } : undefined}
       >
         <h1 className="text-base font-bold" style={isDesktop ? { gridColumn: '1 / -1', color: 'var(--tg-text-primary)' } : { color: 'var(--tg-text-primary)' }}>
-          Мой магазин
+          {t('seller.store.title')}
         </h1>
 
         {/* Store info */}
@@ -259,7 +261,7 @@ export default function SellerStorePage() {
                 onClick={(e) => { e.preventDefault(); tg?.openLink?.(webStoreUrl(store.slug)); }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] mt-0.5 px-2 py-0.5 rounded-md"
+                className="inline-flex items-center gap-1 text-xxs mt-0.5 px-2 py-0.5 rounded-md"
                 style={{
                   color: 'var(--tg-accent)',
                   background: 'var(--tg-accent-bg)',
@@ -267,7 +269,7 @@ export default function SellerStorePage() {
                   textDecoration: 'none',
                   width: 'fit-content',
                 }}
-                aria-label="Перейти на сайт магазина"
+                aria-label={t('seller.profile.openSite')}
               >
                 ↗ Перейти на сайт
               </a>
@@ -298,14 +300,14 @@ export default function SellerStorePage() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Название магазина"
+              placeholder={t('seller.storeName')}
               className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
               style={{ ...glass, background: 'var(--tg-surface)' }}
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Описание"
+              placeholder={t('seller.store.descPlaceholder')}
               rows={3}
               className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none resize-none"
               style={{ ...glass, background: 'var(--tg-surface)' }}
@@ -314,7 +316,7 @@ export default function SellerStorePage() {
               <Button className="flex-1" onClick={save} disabled={saving}>
                 {saving ? 'Сохранение...' : 'Сохранить'}
               </Button>
-              <Button variant="ghost" onClick={() => setEditing(false)}>Отмена</Button>
+              <Button variant="ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</Button>
             </div>
           </div>
         ) : (
