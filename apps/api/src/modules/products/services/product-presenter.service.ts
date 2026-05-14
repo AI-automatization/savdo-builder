@@ -132,6 +132,47 @@ export class ProductPresenterService {
   }
 
   /**
+   * API-PRODUCT-STORE-TRUST-SIGNALS-001: маппер для embedded `product.store`
+   * detail-страницы — добавляет logoUrl и нормализует Decimal avgRating.
+   * Trust signals (`isVerified`, `avgRating`, `reviewCount`) приходят прямо
+   * из Prisma include — здесь только image-resolve и type-clean.
+   */
+  async mapProductStoreRef<T extends {
+    id: string;
+    name: string;
+    slug: string;
+    city: string | null;
+    telegramContactLink: string | null;
+    logoMediaId: string | null;
+    isVerified: boolean;
+    avgRating: { toString(): string } | number | null;
+    reviewCount: number;
+  }>(store: T): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    city: string | null;
+    telegramContactLink: string | null;
+    logoUrl: string | null;
+    isVerified: boolean;
+    avgRating: number | null;
+    reviewCount: number;
+  }> {
+    const { logoUrl } = await this.resolveStoreImageUrls(store.logoMediaId, null);
+    return {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      city: store.city,
+      telegramContactLink: store.telegramContactLink,
+      logoUrl,
+      isVerified: store.isVerified,
+      avgRating: store.avgRating != null ? Number(store.avgRating) : null,
+      reviewCount: store.reviewCount,
+    };
+  }
+
+  /**
    * Batch-вариант для списка магазинов: 1 SELECT на все logo/cover IDs.
    * Раньше per-store вызов давал N+1 (см. perf wave 4).
    */
