@@ -39,7 +39,7 @@ export default function BuyerSettingsPage() {
 
         {/* ── Аккаунт ── */}
         <GlassCard className="p-4 flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             {t('settings.account')}
           </p>
 
@@ -73,7 +73,7 @@ export default function BuyerSettingsPage() {
             </div>
             {authenticated && (
               <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                className="text-xxs font-bold px-2 py-0.5 rounded-full shrink-0"
                 style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
               >
                 {t('settings.role.buyer')}
@@ -84,18 +84,18 @@ export default function BuyerSettingsPage() {
 
         {/* ── Тема оформления ── */}
         <GlassCard className="p-4 flex flex-col gap-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             {t('settings.theme')}
           </p>
           <ThemeToggle />
-          <p className="text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
             {t('settings.themeHint')}
           </p>
         </GlassCard>
 
         {/* ── Язык / MARKETING-LOCALIZATION-UZ-001 ── */}
         <GlassCard className="p-4 flex flex-col gap-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             {t('settings.language')}
           </p>
           <div className="flex gap-2">
@@ -119,7 +119,7 @@ export default function BuyerSettingsPage() {
               </button>
             ))}
           </div>
-          <p className="text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
             {t('settings.languageHint')}
           </p>
         </GlassCard>
@@ -127,7 +127,7 @@ export default function BuyerSettingsPage() {
         {/* ── Стать продавцом ── */}
         {canBecomeSeller && (
           <GlassCard className="p-4 flex flex-col gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+            <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               {t('settings.becomeSeller')}
             </p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--tg-text-secondary)' }}>
@@ -151,7 +151,7 @@ export default function BuyerSettingsPage() {
 
         {/* ── Приложение ── */}
         <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
             {t('settings.app')}
           </p>
 
@@ -193,7 +193,7 @@ export default function BuyerSettingsPage() {
           )}
         </GlassCard>
 
-        <p className="text-center text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+        <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · v1.0
         </p>
 

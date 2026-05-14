@@ -199,7 +199,7 @@ export default function StorePage() {
               <div className="flex items-center gap-2 mt-0.5">
                 <button
                   onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
-                  className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                  className="text-xxs inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
                   style={{
                     color: 'var(--tg-accent)',
                     background: 'var(--tg-accent-bg)',
@@ -212,7 +212,7 @@ export default function StorePage() {
                 </button>
                 {/* MARKETING-VERIFIED-SELLER-001 */}
                 {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
-                  <span className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>
+                  <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
                     ⭐ {Number(store.avgRating).toFixed(1)} <span style={{ color: 'var(--tg-text-dim)' }}>({store.reviewCount})</span>
                   </span>
                 )}

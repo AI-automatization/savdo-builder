@@ -1,5 +1,122 @@
 # Done — Азим + Полат
 
+## 2026-05-13 (Полат) — Wave 14: P1 UX batch (8 tickets) + 2 deferred
+
+Большая партия: 4 admin (design tokens + a11y + tabs + buttons), 4 tma
+(typography + light theme partial + 2 MainButton + Yandex autocomplete +
+wishlist-notify cron). 2 breaking-change задачи отложены с обоснованием.
+
+### ✅ Wave 13 ([feat/admin]: design tokens + a11y) — закоммичено отдельно
+
+См. коммит `33a90b7`. 4 ADMIN-* задачи закрыты:
+- ADMIN-DESIGN-TOKENS-SURFACE-001 (12 semantic surface tokens × 2 темы)
+- ADMIN-THEME-VARS-MIGRATE-001 (Button/Badge через .btn-*/.badge-* классы на vars)
+- ADMIN-A11Y-MODAL-001 (DashboardLayout aria-label + theme toggle aria-pressed)
+- ADMIN-A11Y-TABS-OTP-001 (новый Tabs primitive + roving-tabindex в ModerationPage)
+
+### ✅ [TMA-TYPOGRAPHY-SCALE-001] (партиально, инфра) 🟠
+
+`tailwind.config.js` теперь использует CSS-vars для `theme.fontSize`:
+`text-xxs/-xs/-sm/-base/-lg/-xl/-2xl` все через `var(--t-*)` из index.css.
+Кастомный `text-xxs` (11px) для UI — раньше был `text-[11px]` хардкодом
+в 280+ местах. Десктопный override `@media (min-width: 1024px)` (1.05×
+scale). Migrate map в комментариях config'а. Мигрированы SettingsPage
+buyer / StoresPage / StorePage. Остальные 250+ — рутина по мере касания.
+
+### ✅ [TMA-LIGHT-THEME-MIGRATION-001] (партиально продолжение)
+
+Параллельная FG-TOKENS сессия закрыла 470 точек (waves 7-16). 13.05.2026
+точечно мигрировал text-цвета в seller/SettingsPage (15 точек: text-primary
+/secondary/muted/dim). Осталось ~117 точек surface/border тонкие эффекты
+в крупных seller-формах (Add/Edit/ChannelSettings) — не блокер.
+
+### ✅ [TMA-SELLER-MAIN-BUTTON-002/003] AddProductPage + EditProductPage 🟠
+
+**AddProductPage** (1069 LOC): MainButton текст по стадии заполнения:
+1. Выберите категорию → 2. Добавьте фото → 3. Введите название →
+4. Укажите цену → 5. Заполните: {filter-label} → 6. Добавьте размер →
+7. Опубликовать товар. Пользователь видит чего не хватает, не упирается
+в disabled.
+
+**EditProductPage** (1150 LOC): аналогично, упрощённо (нет photo/filters):
+1. Выберите категорию → 2. Введите название → 3. Укажите цену →
+4. Сохранить изменения.
+
+### ✅ [TMA-ADDRESS-AUTOCOMPLETE-001] Yandex Suggest для UZ-адресов 🟠
+
+`apps/tma/src/components/ui/AddressAutocomplete.tsx`:
+- REST endpoint `suggest-maps.yandex.ru/v1/suggest` (без полной Maps JS)
+- Bbox `55.99,37.18~73.16,45.59` — результаты только из Узбекистана
+- Debounce 300ms + AbortController на каждый запрос
+- Локаль `ru_RU`/`uz_UZ` авто из i18n locale
+- Grafefully degrades на обычный input если `VITE_YANDEX_MAPS_API_KEY` пуст
+- Dropdown с outside-click + Esc + клик-pick
+
+Подключено в `buyer/CheckoutPage` (`<AddressAutocomplete>` вместо `<input>`).
+
+### ✅ [MARKETING-WISHLIST-NOTIFY-001] price-drop + back-in-stock cron 🟠
+
+**Schema:** `BuyerWishlistItem.priceSnapshot/inStockSnapshot/notifiedAt/notifiedReason`
++ индекс `notifiedAt`. Migration `20260513150000_wishlist_notify_tracking`.
+
+**AddToWishlistUseCase** теперь сохраняет snapshot: priceSnapshot =
+salePrice ?? basePrice; inStockSnapshot = status==='ACTIVE' && isVisible
+&& (no variants || any variant with stock>0). При re-add (upsert update)
+snapshot обновляется + notifiedAt сбрасывается.
+
+**WishlistNotifyService** cron `@EVERY_4_HOURS`:
+- Сканирует кандидатов с заполненным snapshot, не ghost-аккаунты
+- PRICE_DROP: currentPrice < oldPrice × (1 - 0.10) — порог 10%
+- BACK_IN_STOCK: was OOS → now ACTIVE+stock
+- Idempotency: updateMany WHERE notifiedAt IS NULL OR < now-7d
+- Cooldown 7 дней между nudge per item
+- После nudge snapshot обновляется → следующий только при новом изменении
+- Env-flag `WISHLIST_NOTIFY_ENABLED=false` отключает
+
+**Jobs:** `TELEGRAM_JOB_WISHLIST_PRICE_DROP` / `_BACK_IN_STOCK` в processor:
+HTML-template с discount% (для price-drop) + inline-кнопка «🛍 Открыть
+товар» с deep-link `?startapp=product_<slug>_<id>`.
+
+**Tests:** spec +5 cases (price snapshot, salePrice priority, status≠ACTIVE,
+empty variants, no variants single-stock). Всего 17/17 wishlist-тестов passed.
+
+### ⏸️ Отложено с обоснованием
+
+- **API-WS-EVENTS-NAMING-001** — breaking для 4 фронтов одновременно.
+  Без feature-flag/dual-emit + sync с Азимом нельзя. План в `API-WS-EVENTS-DUAL-EMIT-001`.
+- **API-PAGINATION-ENVELOPE-001** — breaking для всех list endpoints.
+  Стратегия: dual-emit через query/header, миграция фронтов раздельно.
+
+### Файлы
+
+**Admin (Wave 13):**
+- `apps/admin/src/index.css` (+vars + @layer components)
+- `apps/admin/src/components/ui/{button,badge,tabs}.tsx`
+- `apps/admin/src/layouts/DashboardLayout.tsx`
+- `apps/admin/src/pages/{AdminUsers,AuditLogs,AnalyticsEvents,Broadcast,Moderation}Page.tsx`
+
+**TMA (Wave 14):**
+- `apps/tma/tailwind.config.js` (fontSize through vars)
+- `apps/tma/src/index.css` (+ typography vars + desktop override)
+- `apps/tma/src/pages/buyer/{SettingsPage,StoresPage,StorePage}.tsx` (text-xxs migrate)
+- `apps/tma/src/pages/seller/SettingsPage.tsx` (light theme text colors)
+- `apps/tma/src/pages/seller/AddProductPage.tsx` (MainButton stages)
+- `apps/tma/src/pages/seller/EditProductPage.tsx` (MainButton stages)
+- `apps/tma/src/components/ui/AddressAutocomplete.tsx` (new)
+- `apps/tma/src/pages/buyer/CheckoutPage.tsx` (integrate AddressAutocomplete)
+
+**API (Wave 14 backend):**
+- `packages/db/prisma/schema.prisma` (Wishlist snapshot fields)
+- `packages/db/prisma/migrations/20260513150000_wishlist_notify_tracking/`
+- `apps/api/src/queues/telegram-notification.processor.ts` (+2 job cases)
+- `apps/api/src/modules/wishlist/services/wishlist-notify.service.ts` (new)
+- `apps/api/src/modules/wishlist/wishlist.module.ts` (+BullModule + cron)
+- `apps/api/src/modules/wishlist/use-cases/add-to-wishlist.use-case.ts`
+- `apps/api/src/modules/wishlist/repositories/wishlist.repository.ts`
+- `apps/api/src/modules/wishlist/use-cases/wishlist.use-cases.spec.ts` (+5 cases)
+
+**Tests:** admin tsc clean, api tsc clean, 17/17 wishlist passed.
+
 ## 2026-05-13 (Полат) — Wave 12: MARKETING-LOCALIZATION-UZ-001 продолжение (TMA buyer pages)
 
 Продолжение Wave 11. Мигрировал основные buyer-страницы на `t()`,

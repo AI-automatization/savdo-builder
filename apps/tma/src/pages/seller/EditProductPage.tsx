@@ -392,15 +392,29 @@ export default function EditProductPage() {
     }
   };
 
-  // TMA-SELLER-MAIN-BUTTON-001: Telegram MainButton как primary CTA.
-  // Раньше «Сохранить» терялась в скролле длинной формы → плохой UX на mobile.
-  // MainButton всегда виден внизу экрана, привязан к viewport.
+  // TMA-SELLER-MAIN-BUTTON-003: MainButton текст по стадии валидации
+  // (как в AddProductPage). Пользователь видит чего не хватает.
   useEffect(() => {
     if (!tg) return;
-    const label = saving ? 'Сохраняем...' : 'Сохранить изменения';
+    let label: string;
+    let canSubmit = false;
+
+    if (saving) {
+      label = 'Сохраняем...';
+    } else if (!globalCategoryId) {
+      label = 'Выберите категорию';
+    } else if (title.trim().length < 2) {
+      label = 'Введите название';
+    } else if (Number(price) <= 0) {
+      label = 'Укажите цену';
+    } else {
+      label = 'Сохранить изменения';
+      canSubmit = isValid;
+    }
+
     tg.MainButton.setText(label);
     tg.MainButton.show();
-    if (isValid && !saving) {
+    if (canSubmit) {
       tg.MainButton.enable?.();
       tg.MainButton.onClick(handleSave);
       return () => {
@@ -413,7 +427,8 @@ export default function EditProductPage() {
         tg.MainButton.hide();
       };
     }
-  }, [tg, isValid, saving, title, description, price, storeCategoryId, globalCategoryId, displayType]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tg, isValid, saving, title, description, price, storeCategoryId, globalCategoryId, displayType]);
 
   const handleStatusChange = async (newStatus: 'DRAFT' | 'ACTIVE' | 'ARCHIVED') => {
     if (!id) return;

@@ -10,6 +10,7 @@ import { glass } from '@/lib/styles';
 import { type CartItem, getCart, clearCart } from '@/lib/cart';
 import { formatUzPhone, stripPhone, isValidUzPhone } from '@/lib/phone';
 import { useTranslation } from '@/lib/i18n';
+import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
 
 interface SuccessOrder {
   id: string;
@@ -200,12 +201,13 @@ export default function CheckoutPage() {
             className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
             style={{ ...glass, background: 'var(--tg-surface)' }}
           />
-          <input
+          {/* TMA-ADDRESS-AUTOCOMPLETE-001: Yandex Suggest для UZ-адресов.
+              Без API key — деградирует в обычный input. */}
+          <AddressAutocomplete
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={setAddress}
             placeholder={t('checkout.addressPlaceholder')}
-            className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-            style={{ ...glass, background: 'var(--tg-surface)' }}
+            lang={locale === 'uz' ? 'uz_UZ' : 'ru_RU'}
           />
         </div>
 

@@ -413,13 +413,13 @@ export default function StoresPage() {
                   )}
                   <div className="flex items-center gap-2 mt-0.5">
                     {store.city && (
-                      <p className="text-[11px]" style={{ color: 'var(--tg-accent)' }}>
+                      <p className="text-xxs" style={{ color: 'var(--tg-accent)' }}>
                         📍 {store.city}
                       </p>
                     )}
                     {/* MARKETING-VERIFIED-SELLER-001: rating + review count */}
                     {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
-                      <p className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>
+                      <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
                         ⭐ {Number(store.avgRating).toFixed(1)} <span style={{ color: 'var(--tg-text-dim)' }}>({store.reviewCount})</span>
                       </p>
                     )}
