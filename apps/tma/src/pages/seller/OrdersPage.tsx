@@ -257,7 +257,7 @@ export default function SellerOrdersPage() {
                 <button
                   key={f.value}
                   onClick={() => setStatusFilter(f.value)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xxs font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
                   style={!active ? {
                     background: 'var(--tg-surface-hover)',
                     border: '1px solid var(--tg-border)',
@@ -267,7 +267,7 @@ export default function SellerOrdersPage() {
                   {f.label}
                   {count > 0 && (
                     <span
-                      className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                      className="px-1.5 py-0 rounded-full text-xxs font-bold"
                       style={{
                         background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
                         color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
@@ -357,7 +357,7 @@ export default function SellerOrdersPage() {
                       <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                         {o.preview?.title ?? 'Без товаров'}
                         {o.preview && o.preview.itemCount > 1 && (
-                          <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
+                          <span className="ml-1.5 text-xxs font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
                             +{o.preview.itemCount - 1}
                           </span>
                         )}
@@ -367,7 +367,7 @@ export default function SellerOrdersPage() {
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2 min-w-0">
-                      <p className="text-[11px] truncate" style={{ color: 'var(--tg-text-muted)' }}>
+                      <p className="text-xxs truncate" style={{ color: 'var(--tg-text-muted)' }}>
                         #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
                         {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
                       </p>
@@ -447,7 +447,7 @@ export default function SellerOrdersPage() {
 
               {/* Покупатель */}
               <div className="flex flex-col gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
+                <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
                   👤 Покупатель
                 </p>
                 {detail.customerFullName && (
@@ -468,7 +468,7 @@ export default function SellerOrdersPage() {
               {/* Товары */}
               {(detail.items ?? []).length > 0 && (
                 <div className="flex flex-col gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
                     📦 Товары
                   </p>
                   {(detail.items ?? []).map((item) => (
@@ -487,7 +487,7 @@ export default function SellerOrdersPage() {
               {/* Адрес */}
               {(detail.deliveryAddress?.city || detail.deliveryAddress?.street) && (
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>📍 Адрес</p>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>📍 Адрес</p>
                   <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>
                     {[detail.deliveryAddress.city, detail.deliveryAddress.region, detail.deliveryAddress.street].filter(Boolean).join(', ')}
                   </p>
@@ -497,7 +497,7 @@ export default function SellerOrdersPage() {
               {/* Комментарий */}
               {detail.buyerNote && (
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>💬 Комментарий</p>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>💬 Комментарий</p>
                   <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>{detail.buyerNote}</p>
                 </div>
               )}

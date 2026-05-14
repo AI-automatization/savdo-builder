@@ -85,7 +85,7 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
 const inputStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.07)',
   border: '1px solid rgba(255,255,255,0.10)',
-  color: 'rgba(255,255,255,0.90)',
+  color: 'var(--tg-text-primary)',
 };
 
 export default function ChannelSettingsPage() {
@@ -316,37 +316,37 @@ export default function ChannelSettingsPage() {
         <button
           onClick={() => navigate(-1)}
           className="text-xs px-2 py-1 rounded-lg"
-          style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)' }}
+          style={{ color: 'var(--tg-text-secondary)', background: 'rgba(255,255,255,0.05)' }}
         >
           ← Назад
         </button>
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>
           Telegram канал
         </h1>
       </div>
 
       {/* ── Канал привязан? ── */}
       <GlassCard className="p-4 flex flex-col gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
           Привязка канала
         </p>
         {channelAttached ? (
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
+              <p className="text-sm font-medium truncate" style={{ color: 'var(--tg-text-primary)' }}>
                 ✅ {data?.telegramChannelTitle ?? data?.telegramChannelId}
               </p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
                 {data?.telegramChannelId}
               </p>
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
+            <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>
               Канал ещё не привязан.
             </p>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
               Откройте чат с <b>@savdo_builderBOT</b> → команда <code>/start</code> → «Привязать канал».
               Боту нужны права администратора в вашем канале.
             </p>
@@ -356,15 +356,15 @@ export default function ChannelSettingsPage() {
 
       {/* ── Авто-постинг ── */}
       <GlassCard className="p-4 flex flex-col gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
           Авто-постинг
         </p>
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.85)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--tg-text-primary)' }}>
               Публиковать товары автоматически
             </p>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
               При публикации товара бот сам отправит его в ваш канал с фото и кнопкой «Открыть».
             </p>
           </div>
@@ -378,16 +378,16 @@ export default function ChannelSettingsPage() {
 
       {/* ── Контакты для шаблона ── */}
       <GlassCard className="p-4 flex flex-col gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
           Контакты в посте
         </p>
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+        <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
           Подставляются в шаблон через <code>{'{{contact}}'}</code>, <code>{'{{instagram}}'}</code>, <code>{'{{tiktok}}'}</code>.
           Если пусто — используется ваша основная ссылка из TG-контакта.
         </p>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <label className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
             Телефон для заказов
           </label>
           <input
@@ -401,7 +401,7 @@ export default function ChannelSettingsPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <label className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
             Instagram (https://…)
           </label>
           <input
@@ -415,7 +415,7 @@ export default function ChannelSettingsPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <label className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
             TikTok (https://…)
           </label>
           <input
@@ -432,19 +432,19 @@ export default function ChannelSettingsPage() {
       {/* ── Шаблон поста ── */}
       <GlassCard className="p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Шаблон поста
           </p>
           <button
             onClick={resetToDefault}
-            className="text-[11px] px-2 py-1 rounded-lg"
+            className="text-xxs px-2 py-1 rounded-lg"
             style={{ color: ACCENT, background: 'rgba(168,85,247,0.10)' }}
           >
             Сбросить
           </button>
         </div>
 
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+        <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
           Поддерживается HTML (<code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;a&gt;</code>),
           переменные <code>{'{{var}}'}</code> и секции <code>{'{{#var}}…{{/var}}'}</code>.
         </p>
@@ -467,7 +467,7 @@ export default function ChannelSettingsPage() {
               type="button"
               onClick={() => insertVariable(v.label)}
               title={v.hint}
-              className="text-[11px] px-2 py-1 rounded-lg font-mono"
+              className="text-xxs px-2 py-1 rounded-lg font-mono"
               style={{
                 background: 'rgba(168,85,247,0.10)',
                 border: '1px solid rgba(168,85,247,0.25)',
@@ -483,11 +483,11 @@ export default function ChannelSettingsPage() {
       {/* ── Preview ── */}
       <GlassCard className="p-4 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Превью
           </p>
           {previewLoading && (
-            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.40)' }}>
+            <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
               рендерим…
             </span>
           )}
@@ -496,17 +496,17 @@ export default function ChannelSettingsPage() {
           <>
             <div
               className="text-sm whitespace-pre-wrap"
-              style={{ color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}
+              style={{ color: 'var(--tg-text-primary)', lineHeight: 1.5 }}
               dangerouslySetInnerHTML={{ __html: preview.caption }}
             />
             {preview.sampleProductTitle && (
-              <p className="text-[10px] mt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <p className="text-xxs mt-2" style={{ color: 'var(--tg-text-dim)' }}>
                 Образец на товаре: {preview.sampleProductTitle}
               </p>
             )}
           </>
         ) : (
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+          <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
             Превью появится здесь автоматически.
           </p>
         )}
@@ -514,10 +514,10 @@ export default function ChannelSettingsPage() {
 
       {/* ── Тестовый пост ── */}
       <GlassCard className="p-4 flex flex-col gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
           Тестовая публикация
         </p>
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+        <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
           Отправит ваш самый свежий опубликованный товар в канал по текущему сохранённому шаблону.
         </p>
         <button
@@ -528,14 +528,14 @@ export default function ChannelSettingsPage() {
             background: testing || !channelAttached || dirty
               ? 'rgba(255,255,255,0.06)'
               : `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`,
-            color: testing || !channelAttached || dirty ? 'rgba(255,255,255,0.30)' : '#fff',
+            color: testing || !channelAttached || dirty ? 'var(--tg-text-dim)' : '#fff',
             transition: 'all 0.15s',
           }}
         >
           {testing ? 'Отправляем…' : '📨 Отправить тестовый пост'}
         </button>
         {dirty && (
-          <p className="text-[11px]" style={{ color: '#FBBF24' }}>
+          <p className="text-xxs" style={{ color: '#FBBF24' }}>
             ⚠️ Есть несохранённые изменения — сохраните перед тестом.
           </p>
         )}
@@ -549,7 +549,7 @@ export default function ChannelSettingsPage() {
           className="w-full py-2.5 rounded-xl text-sm font-semibold"
           style={{
             background: saving || !dirty ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`,
-            color: saving || !dirty ? 'rgba(255,255,255,0.30)' : '#fff',
+            color: saving || !dirty ? 'var(--tg-text-dim)' : '#fff',
           }}
         >
           {saving ? 'Сохранение…' : 'Сохранить'}

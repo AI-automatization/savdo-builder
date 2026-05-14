@@ -62,7 +62,7 @@ export function ProductReviews({ productId, initialAvg, initialCount }: Props) {
           <span className="flex items-center gap-1.5">
             <Stars value={avg} size={13} />
             <span className="text-xs font-bold" style={{ color: '#FBBF24' }}>{avg.toFixed(1)}</span>
-            <span className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>· {total}</span>
+            <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>· {total}</span>
           </span>
         )}
       </div>
@@ -86,7 +86,7 @@ export function ProductReviews({ productId, initialAvg, initialCount }: Props) {
               {r.comment}
             </p>
           )}
-          <p className="text-[10px]" style={{ color: 'var(--tg-text-muted)' }}>
+          <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
             {new Date(r.createdAt).toLocaleDateString('ru', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>
         </div>

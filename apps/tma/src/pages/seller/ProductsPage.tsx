@@ -207,7 +207,7 @@ export default function SellerProductsPage() {
                     {cat.name}
                     {count > 0 && (
                       <span
-                        className="text-[10px] font-bold px-1 rounded-full"
+                        className="text-xxs font-bold px-1 rounded-full"
                         style={{
                           background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
                           color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
@@ -294,7 +294,7 @@ export default function SellerProductsPage() {
                     <Badge status={product.status} />
                   </div>
                   {typeof product.totalStock === 'number' && (
-                    <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'var(--tg-text-muted)' }}>
+                    <p className="text-xxs" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'var(--tg-text-muted)' }}>
                       {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
                     </p>
                   )}
