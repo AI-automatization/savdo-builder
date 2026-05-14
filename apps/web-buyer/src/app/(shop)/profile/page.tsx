@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
+import { formatUzPhone } from "@/components/PhoneInput";
 import { useAuth } from "@/lib/auth/context";
 import { useLogout, useUploadAvatar } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
@@ -159,7 +160,7 @@ function ProfileView() {
           </span>
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-bold truncate" style={{ color: colors.textStrong }}>{user?.phone}</p>
+          <p className="text-[15px] font-bold truncate" style={{ color: colors.textStrong }}>{user?.phone ? formatUzPhone(user.phone) : ""}</p>
           <button
             type="button"
             onClick={handlePickAvatar}

@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/admin/PageHeader'
 import { EmptyState } from '../components/admin/EmptyState'
 import { DialogShell } from '../components/admin/DialogShell'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface ModerationCase {
   id: string
@@ -157,43 +158,46 @@ export default function ModerationPage() {
 
       {(error || actionError) && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-5 text-[13px]"
-          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
+          style={{ background: 'var(--surface-error)', border: '1px solid var(--border-error-soft)', color: 'var(--error)' }}>
           <AlertCircle size={15} /> {error ?? actionError}
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {(['ALL', 'seller', 'store', 'CLOSED'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium"
-            style={{
-              cursor: 'pointer',
-              border: `1px solid ${tab === t ? 'var(--primary)' : 'var(--border)'}`,
-              background: tab === t ? 'var(--primary-dim)' : 'var(--surface)',
-              color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
-            }}
-          >
-            {t === 'seller' && <User size={13} />}
-            {t === 'store' && <Store size={13} />}
-            {t === 'CLOSED' && <FolderOpen size={13} />}
-            {t === 'ALL' ? 'Все' : t === 'seller' ? 'Продавцы' : t === 'store' ? 'Магазины' : 'Закрыты'}
-            {t !== 'CLOSED' && (
-              <span
-                className="text-[11px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{
-                  background: tab === t ? 'rgba(129,140,248,0.2)' : 'var(--surface2)',
-                  color: tab === t ? 'var(--primary)' : 'var(--text-muted)',
-                }}
-              >
-                {counts[t]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Tabs — ADMIN-A11Y-TABS-OTP-001: a11y tabs primitive с role=tablist/tab */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="mb-6">
+        <TabsList ariaLabel="Категория модерации">
+          {(['ALL', 'seller', 'store', 'CLOSED'] as const).map(tabKey => (
+            <TabsTrigger
+              key={tabKey}
+              value={tabKey}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium"
+              style={{
+                cursor: 'pointer',
+                border: `1px solid ${tab === tabKey ? 'var(--primary)' : 'var(--border)'}`,
+                background: tab === tabKey ? 'var(--primary-dim)' : 'var(--surface)',
+                color: tab === tabKey ? 'var(--primary)' : 'var(--text-muted)',
+              }}
+            >
+              {tabKey === 'seller' && <User size={13} aria-hidden="true" />}
+              {tabKey === 'store' && <Store size={13} aria-hidden="true" />}
+              {tabKey === 'CLOSED' && <FolderOpen size={13} aria-hidden="true" />}
+              {tabKey === 'ALL' ? 'Все' : tabKey === 'seller' ? 'Продавцы' : tabKey === 'store' ? 'Магазины' : 'Закрыты'}
+              {tabKey !== 'CLOSED' && (
+                <span
+                  className="text-[11px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: tab === tabKey ? 'rgba(129,140,248,0.2)' : 'var(--surface2)',
+                    color: tab === tabKey ? 'var(--primary)' : 'var(--text-muted)',
+                  }}
+                  aria-label={`${counts[tabKey]} элементов`}
+                >
+                  {counts[tabKey]}
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {/* Queue */}
       <div className="flex flex-col gap-2.5">

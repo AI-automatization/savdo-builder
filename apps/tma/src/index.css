@@ -5,6 +5,24 @@
 /* ── Theme variables ──────────────────────────────────────────────────────── */
 :root,
 :root[data-theme="dark"] {
+  /* TMA-TYPOGRAPHY-SCALE-001: типографический масштаб (используется через
+     `text-xxs/-xs/-sm/-base/-lg/-xl/-2xl` в Tailwind). См. tailwind.config.js
+     для маппинга. Desktop ≥1024 переопределяет ниже (1.05× scale). */
+  --t-xxs:  11px;
+  --t-xs:   12px;
+  --t-sm:   13px;
+  --t-base: 14px;
+  --t-lg:   16px;
+  --t-xl:   18px;
+  --t-2xl:  22px;
+  --t-xxs-lh:  1.4;
+  --t-xs-lh:   1.45;
+  --t-sm-lh:   1.5;
+  --t-base-lh: 1.5;
+  --t-lg-lh:   1.45;
+  --t-xl-lh:   1.35;
+  --t-2xl-lh:  1.3;
+
   --tg-bg:             #0B0E14;
   --tg-bg-gradient:    linear-gradient(160deg, #0B0E14 0%, #0D1120 45%, #0B0F1C 100%);
   --tg-surface:        rgba(255,255,255,0.055);
@@ -27,6 +45,20 @@
   --tg-warning:        #FBBF24;
   --tg-danger:         #EF4444;
   color-scheme: dark;
+}
+
+/* Desktop: чуть более крупный масштаб для большой плотности информации.
+   Не меняем на мобильном — там touch-friendly размеры важнее. */
+@media (min-width: 1024px) {
+  :root {
+    --t-xxs:  11.5px;
+    --t-xs:   12.5px;
+    --t-sm:   13.5px;
+    --t-base: 14.5px;
+    --t-lg:   17px;
+    --t-xl:   19px;
+    --t-2xl:  23px;
+  }
 }
 
 :root[data-theme="light"] {

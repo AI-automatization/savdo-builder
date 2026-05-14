@@ -3,16 +3,20 @@ import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
+// ADMIN-THEME-VARS-MIGRATE-001: variants теперь используют CSS-vars из index.css,
+// чтобы light theme работала автоматически. Hover/focus — через семантические
+// токены (--primary, --surface2, --surface-error). Indigo-цвет primary остался
+// тот же — заданный в --primary.
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 disabled:pointer-events-none disabled:opacity-50',
+  'btn-base inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default:   'bg-indigo-600 text-white shadow hover:bg-indigo-500',
-        secondary: 'bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700',
-        ghost:     'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
-        danger:    'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20',
-        outline:   'border border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800',
+        default:   'btn-primary',
+        secondary: 'btn-secondary',
+        ghost:     'btn-ghost',
+        danger:    'btn-danger',
+        outline:   'btn-outline',
       },
       size: {
         default: 'h-8 px-3 py-1.5',

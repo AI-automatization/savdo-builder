@@ -22,6 +22,8 @@ export const TELEGRAM_JOB_VERIFICATION_APPROVED = 'verification-approved';
 export const TELEGRAM_JOB_ORDER_STATUS_CHANGED = 'order-status-changed';
 export const TELEGRAM_JOB_CHAT_MESSAGE = 'chat-message';
 export const TELEGRAM_JOB_CART_ABANDONED = 'cart-abandoned';
+export const TELEGRAM_JOB_WISHLIST_PRICE_DROP = 'wishlist-price-drop';
+export const TELEGRAM_JOB_WISHLIST_BACK_IN_STOCK = 'wishlist-back-in-stock';
 
 export interface NotifyCartAbandonedData {
   cartId: string;
@@ -32,6 +34,19 @@ export interface NotifyCartAbandonedData {
   currency: string;
   /** Используется для TMA deep-link `?startapp=cart` (универсальный путь к корзине). */
   cartDeepLink: string;
+}
+
+export interface NotifyWishlistData {
+  wishlistItemId: string;
+  recipientChatId: string;
+  productTitle: string;
+  storeName: string;
+  storeSlug: string;
+  oldPrice: number;
+  newPrice: number;
+  currency: string;
+  /** Deep-link на ProductPage в TMA. */
+  productDeepLink: string;
 }
 
 const ORDER_STATUS_LABEL_BUYER: Record<string, string> = {
@@ -174,6 +189,51 @@ export class TelegramNotificationProcessor extends WorkerHost {
             replyMarkup: {
               inline_keyboard: [[
                 { text: '🛍 Открыть корзину', url: d.cartDeepLink },
+              ]],
+            },
+          });
+          break;
+        }
+
+        case TELEGRAM_JOB_WISHLIST_PRICE_DROP: {
+          // MARKETING-WISHLIST-NOTIFY-001 — товар из избранного подешевел.
+          // Cron уже выставил notifiedAt+reason в БД до постановки job'а.
+          const d = job.data as NotifyWishlistData;
+          const discountPct = d.oldPrice > 0
+            ? Math.round(((d.oldPrice - d.newPrice) / d.oldPrice) * 100)
+            : 0;
+          const text =
+            `💸 <b>Цена снижена на ${discountPct}%!</b>\n` +
+            `📦 ${escapeTgHtml(d.productTitle)}\n` +
+            `🏪 ${escapeTgHtml(d.storeName)}\n\n` +
+            `<s>${d.oldPrice.toLocaleString('ru')} ${d.currency}</s> → ` +
+            `<b>${d.newPrice.toLocaleString('ru')} ${d.currency}</b>`;
+
+          await this.telegramBot.sendMessage(d.recipientChatId, text, {
+            parseMode: 'HTML',
+            replyMarkup: {
+              inline_keyboard: [[
+                { text: '🛍 Открыть товар', url: d.productDeepLink },
+              ]],
+            },
+          });
+          break;
+        }
+
+        case TELEGRAM_JOB_WISHLIST_BACK_IN_STOCK: {
+          // MARKETING-WISHLIST-NOTIFY-001 — товар снова доступен.
+          const d = job.data as NotifyWishlistData;
+          const text =
+            `✨ <b>Товар снова в наличии!</b>\n` +
+            `📦 ${escapeTgHtml(d.productTitle)}\n` +
+            `🏪 ${escapeTgHtml(d.storeName)}\n\n` +
+            `Цена: <b>${d.newPrice.toLocaleString('ru')} ${d.currency}</b>`;
+
+          await this.telegramBot.sendMessage(d.recipientChatId, text, {
+            parseMode: 'HTML',
+            replyMarkup: {
+              inline_keyboard: [[
+                { text: '🛍 Открыть товар', url: d.productDeepLink },
               ]],
             },
           });
