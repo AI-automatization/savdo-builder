@@ -15,7 +15,7 @@ import {
   useDeleteMessage,
   useEditMessage,
 } from '@/hooks/use-chat';
-import { card, cardMuted, colors, inputStyle } from '@/lib/styles';
+import { card, cardMuted, colors, dangerTint, inputStyle } from '@/lib/styles';
 import { EmojiPicker } from '@/components/emoji-picker';
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
@@ -208,7 +208,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
           <button
             onClick={() => setConfirmDeleteThread(true)}
             className="w-8 h-8 rounded-xl flex items-center justify-center transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(248,113,113,0.10)', color: colors.danger, border: '1px solid rgba(248,113,113,0.18)' }}
+            style={{ background: dangerTint(0.1), color: colors.danger, border: `1px solid ${dangerTint(0.18)}` }}
             aria-label="Удалить чат"
             title="Удалить чат"
           >
@@ -242,7 +242,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                 onClick={() => handleDeleteMessage(confirmDeleteMsg)}
                 disabled={deleteMessageMutation.isPending}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                style={{ background: 'rgba(248,113,113,0.18)', color: colors.danger }}
+                style={{ background: dangerTint(0.18), color: colors.danger }}
               >
                 {deleteMessageMutation.isPending ? '...' : 'Удалить'}
               </button>
@@ -276,7 +276,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                 onClick={handleDeleteThread}
                 disabled={deleteThreadMutation.isPending}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                style={{ background: 'rgba(248,113,113,0.18)', color: colors.danger }}
+                style={{ background: dangerTint(0.18), color: colors.danger }}
               >
                 {deleteThreadMutation.isPending ? '...' : 'Удалить'}
               </button>

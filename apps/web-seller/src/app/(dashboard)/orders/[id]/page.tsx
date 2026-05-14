@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { OrderStatus } from 'types';
 import { useSellerOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
-import { card, cardMuted, colors, inputStyle } from '@/lib/styles';
+import { card, cardMuted, colors, dangerTint, inputStyle } from '@/lib/styles';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ function CancelModal({
             onClick={() => reason.trim() && onConfirm(reason.trim())}
             disabled={!reason.trim() || loading}
             className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
-            style={{ background: 'rgba(248,113,113,0.22)', color: colors.danger, border: `1px solid rgba(248,113,113,0.35)` }}
+            style={{ background: dangerTint(0.22), color: colors.danger, border: `1px solid ${dangerTint(0.35)}` }}
           >
             {loading ? 'Отмена...' : 'Отменить заказ'}
           </button>
@@ -253,7 +253,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               onClick={() => setShowCancel(true)}
               disabled={pending}
               className="px-4 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: 'rgba(248,113,113,0.12)', color: colors.danger, border: '1px solid rgba(248,113,113,0.25)' }}
+              style={{ background: dangerTint(0.12), color: colors.danger, border: `1px solid ${dangerTint(0.25)}` }}
             >
               Отменить
             </button>
