@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — WEB-BUYER-REMOVE-USESTOREWITHTRUST-001
+
+### ✅ [WEB-BUYER-REMOVE-USESTOREWITHTRUST-001] Cleanup useStoreWithTrust
+- **Важность:** 🟢 P3 cleanup
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `10f3bd0`) — main только статус-апдейт в analiz/*
+- **Контекст:** Полат 14.05.2026 закрыл `API-PRODUCT-STORE-TRUST-SIGNALS-001` (commit `b1aa682` в main): backend теперь возвращает `product.store: StoreRef` с mandatory `isVerified/avgRating/reviewCount`. Web-buyer'у больше не нужен второй request на `/storefront/stores/:slug` ради бейджа/рейтинга на product page seller card.
+- **Файлы (5):**
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — убран `useStoreWithTrust(slug)`, `<SellerCard>` читает `product.store.{isVerified,avgRating,reviewCount}` напрямую
+  - `apps/web-buyer/src/hooks/use-storefront.ts` — удалён `useStoreWithTrust` hook + `storeWithTrust` query key
+  - `apps/web-buyer/src/lib/api/storefront.api.ts` — удалена `getStorefrontStoreWithTrust` функция
+  - `apps/web-buyer/src/types/storefront.ts` — удалены `StoreTrustSignals` + `StorefrontStoreWithTrust` локальные расширения
+  - `packages/types/src/api/stores.ts` — подтянуто из main (StoreRef + Store с mandatory trust signals, StorefrontStore — optional для backward-compat кэша)
+- **Эффект:**
+  - −1 HTTP request на каждое product detail visit (раньше 2: `/products/:id` + `/stores/:slug`)
+  - −1 React Query cache entry, −1 hook, −1 API function, −2 локальных type definitions
+  - Trust signals теперь идут вместе с продуктом → no inconsistent loading states (раньше badge мог появиться позже названия магазина из-за второго запроса)
+- **Verification:** `npx tsc --noEmit` чист в web-buyer; grep `useStoreWithTrust|StoreTrustSignals|getStorefrontStoreWithTrust` в `apps/web-buyer/src` → 0 hits.
+- **Что НЕ затронуто:**
+  - `getStoreBySlug` / `useStoreBySlug` — отдельный use case (рендер каталога магазина `/[slug]/page.tsx`), оставлен.
+  - Backend изменения — Полатовские, в main, на web-buyer service-ветке backend файлы не нужны (Railway деплоит web-buyer Next.js, бэк отдельно из api/main).
+
 ## 2026-05-14 (Полат) — Wave 18: TMA seller pages i18n + Sentry-lite
 
 ### ✅ [MARKETING-LOCALIZATION-UZ-001] TMA seller pages i18n 🔴
