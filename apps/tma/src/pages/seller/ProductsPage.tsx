@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTranslation } from '@/lib/i18n';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -42,6 +43,7 @@ export default function SellerProductsPage() {
     viewportWidth >= 1024 ? 'grid-cols-3' :
     'grid-cols-2';
   const { authVersion } = useAuth();
+  const { t } = useTranslation();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
@@ -232,7 +234,7 @@ export default function SellerProductsPage() {
         {!loading && error && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{error}</p>
-            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>Повторить</Button>
+            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>{t('seller.products.retry')}</Button>
           </GlassCard>
         )}
 

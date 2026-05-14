@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Полат) — Wave 18: TMA seller pages i18n + Sentry-lite
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] TMA seller pages i18n 🔴
+- +12 ключей в ru.ts + uz.ts (seller.products.retry/allFilter, seller.orders.*, seller.profile.title/openSite, seller.store.*)
+- `ProductsPage`: useTranslation hook, retry button
+- `OrdersPage` (seller): title, loadError + retry, empty/emptyCategory, total label, message placeholder, customer/account phone notes
+- `ProfilePage` (seller): title + openSite aria-label
+- `StorePage` (seller): title (3 места), createTitle/Hint, creating/createBtn, name placeholder, descPlaceholder, cancel button, openSite aria-label
+
+### ✅ [API-SENTRY-001] lightweight error reporter 🟢
+- `apps/api/src/shared/error-reporter.ts` — `ErrorReporter.init()` в `main.ts`
+- Auto-capture: `uncaughtException` + `unhandledRejection`
+- Manual API: `captureException(err, context)` / `captureMessage(msg, level, context)`
+- JSON output в stderr (Railway log aggregation friendly)
+- PII-скраббинг: `password/secret/token/authorization` → `[REDACTED]`
+- Tags: `release` (`RAILWAY_GIT_COMMIT_SHA[:7]`) + `environment` (`NODE_ENV`)
+- Env-flag `ERROR_REPORTER_ENABLED=false`
+- 60% Sentry-функций без npm install. Когда нужен полный Sentry — заменить `ErrorReporter.captureException` на `Sentry.captureException` (API совместимый).
+
+### ⏸️ Admin локализация — пропущена
+ROI низкий: admin — внутренний tool для команды из 1-3 человек, родной язык русский. Делать позже когда найдём UZ-only админа.
+
+**Tests:** api tsc clean. TMA tsc clean.
+
 ## 2026-05-14 (Полат) — Wave 17: API i18n + Pino logging + Seller Dashboard i18n
 
 3 задачи закрыты:

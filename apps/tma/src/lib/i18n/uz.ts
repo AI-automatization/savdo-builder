@@ -252,6 +252,28 @@ export const uz: Translations = {
   'seller.products.confirmDeleteBody': '«{title}» mahsuloti oʻchiriladi. Bu amalni qaytarib boʻlmaydi.',
   'seller.products.deleteSuccess': '✅ Mahsulot oʻchirildi',
   'seller.products.deleteError': '❌ Mahsulotni oʻchirib boʻlmadi',
+  'seller.products.retry': 'Qayta urinish',
+  'seller.products.allFilter': 'Hammasi',
+
+  // ── Seller orders ─────────────────────────────────────────────────────
+  'seller.orders.title': 'Buyurtmalar',
+  'seller.orders.filterPending': 'Yangi',
+  'seller.orders.filterActive': 'Jarayonda',
+  'seller.orders.filterDelivered': 'Yetkazilgan',
+  'seller.orders.filterCancelled': 'Bekor qilingan',
+  'seller.orders.customerPhoneNote': 'buyurtma vaqtida',
+  'seller.orders.accountPhoneNote': 'akkaunt',
+  'seller.orders.messagePlaceholder': 'Masalan: Salom! Yetkazib berishning qulay vaqtini aniqlashtirib bering.',
+
+  // ── Seller profile ────────────────────────────────────────────────────
+  'seller.profile.title': 'Profil',
+  'seller.profile.openSite': 'Doʻkon saytiga oʻtish',
+
+  // ── Seller store ──────────────────────────────────────────────────────
+  'seller.store.title': 'Doʻkonim',
+  'seller.store.creating': 'Yaratilmoqda...',
+  'seller.store.createBtn': 'Doʻkon yaratish',
+  'seller.store.descPlaceholder': 'Tavsif',
 
   // ── Wishlist ──────────────────────────────────────────────────────────
   'wishlist.title': 'Sevimlilar',
