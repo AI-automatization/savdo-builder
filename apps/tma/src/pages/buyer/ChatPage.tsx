@@ -11,6 +11,7 @@ import { showToast } from '@/components/ui/Toast';
 import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
 import { clickableA11y } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n';
 
 interface ChatThread {
   id: string;
@@ -53,6 +54,7 @@ export default function BuyerChatPage() {
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
+  const { t } = useTranslation();
   const isDesktop = (viewportWidth ?? 0) >= 1024;
 
   // ── Thread list ──────────────────────────────────────────────────────────────
@@ -214,7 +216,7 @@ export default function BuyerChatPage() {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setText(msgText);
       tg?.HapticFeedback.notificationOccurred('error');
-      showToast('❌ Не удалось отправить', 'error');
+      showToast(t('chat.sendError'), 'error');
     } finally {
       setSending(false);
     }
@@ -300,9 +302,9 @@ export default function BuyerChatPage() {
     setReporting(true);
     try {
       await api(`/chat/messages/${reportTarget.id}/report`, { method: 'PATCH' });
-      showToast('✅ Жалоба отправлена');
+      showToast(t('chat.reportSent'));
     } catch {
-      showToast('❌ Не удалось отправить жалобу', 'error');
+      showToast(t('chat.reportError'), 'error');
     } finally {
       setReporting(false);
       setReportTarget(null);
@@ -388,7 +390,7 @@ export default function BuyerChatPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/buyer/chat', { replace: true })}
-                aria-label="Назад к диалогам"
+                aria-label={t('chat.backToThreads')}
                 style={{
                   width: 44,
                   height: 44,
@@ -408,7 +410,7 @@ export default function BuyerChatPage() {
               </button>
               <div className="flex flex-col min-w-0 flex-1">
                 <h2 className="text-sm font-bold truncate" style={{ color: 'var(--tg-text-primary)' }}>
-                  {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
+                  {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>{t('common.loading')}</span>}
                 </h2>
                 <div className="flex items-center gap-2">
                   {activeThread && (
@@ -449,7 +451,7 @@ export default function BuyerChatPage() {
             {!msgLoading && messages.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-12">
                 <span aria-hidden="true" style={{ fontSize: 36 }}>💬</span>
-                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Сообщений пока нет</p>
+                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>{t('chat.empty')}</p>
               </div>
             )}
             {messages.map((m) => (
@@ -527,7 +529,7 @@ export default function BuyerChatPage() {
                 >
                   {m.id.startsWith('temp_') ? '...' : timeStr(m.createdAt)}
                   {m.editedAt && !m.isDeleted && (
-                    <span style={{ fontStyle: 'italic' }}>· изменено</span>
+                    <span style={{ fontStyle: 'italic' }}>{t('chat.edited')}</span>
                   )}
                 </span>
               </div>
@@ -567,7 +569,7 @@ export default function BuyerChatPage() {
                     onClick={() => setReplyTo(null)}
                     className="w-6 h-6 rounded-full flex items-center justify-center"
                     style={{ background: 'var(--tg-border-soft)', color: 'var(--tg-text-secondary)', fontSize: 12 }}
-                    aria-label="Отменить ответ"
+                    aria-label={t('chat.cancelReply')}
                   >
                     ✕
                   </button>
@@ -580,12 +582,12 @@ export default function BuyerChatPage() {
                   style={{ background: 'rgba(34,211,238,0.12)', borderLeft: '3px solid rgba(34,211,238,0.70)' }}
                 >
                   <span style={{ fontSize: 16 }}>✎</span>
-                  <p className="flex-1 text-xs" style={{ color: '#22D3EE' }}>Редактирование сообщения</p>
+                  <p className="flex-1 text-xs" style={{ color: '#22D3EE' }}>{t('chat.editing')}</p>
                   <button
                     onClick={() => { setEditingId(null); setEditText(''); }}
                     className="w-6 h-6 rounded-full flex items-center justify-center"
                     style={{ background: 'var(--tg-border-soft)', color: 'var(--tg-text-secondary)', fontSize: 12 }}
-                    aria-label="Отменить"
+                    aria-label={t('chat.cancelEdit')}
                   >
                     ✕
                   </button>
@@ -609,7 +611,7 @@ export default function BuyerChatPage() {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingPhoto || sending}
-                      aria-label="Прикрепить фото"
+                      aria-label={t('chat.attachPhoto')}
                       style={{
                         padding: '10px 12px',
                         borderRadius: 12,
@@ -646,7 +648,7 @@ export default function BuyerChatPage() {
                       }
                     }
                   }}
-                  placeholder={editingId ? 'Изменить сообщение... (Enter ↵)' : 'Сообщение... (Enter ↵)'}
+                  placeholder={editingId ? t('chat.editPlaceholder') : t('chat.placeholder')}
                   style={{
                     flex: 1,
                     background: 'var(--tg-surface-hover)',
@@ -764,7 +766,7 @@ export default function BuyerChatPage() {
       {!loading && threadsError && (
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>⚠️</span>
-          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>Не удалось загрузить чаты</p>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>{t('chat.loadError')}</p>
           <button
             onClick={loadThreads}
             className="text-xs font-semibold py-2 px-4 rounded-full"
@@ -778,7 +780,7 @@ export default function BuyerChatPage() {
       {!loading && !threadsError && threads.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-16">
           <span aria-hidden="true" style={{ fontSize: 40 }}>💬</span>
-          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>Диалогов пока нет</p>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>{t('chat.noThreads')}</p>
         </div>
       )}
 

@@ -416,9 +416,10 @@ export default function StoreDetailPage() {
                             <button
                               onClick={() => setConfirmDeleteProduct(p.id)}
                               title="Удалить"
-                              style={{ display: 'flex', alignItems: 'center', padding: '4px 6px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'transparent', color: 'rgba(239,68,68,0.5)', cursor: 'pointer' }}
+                              aria-label="Удалить товар"
+                              style={{ display: 'flex', alignItems: 'center', padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border-error-soft)', background: 'transparent', color: 'var(--error)', opacity: 0.6, cursor: 'pointer' }}
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={12} aria-hidden="true" />
                             </button>
                           )}
                         </div>

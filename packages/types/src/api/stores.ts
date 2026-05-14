@@ -83,6 +83,12 @@ export interface StoreCategory {
   storeId: string;
   name: string;
   sortOrder: number;
+  /**
+   * Кол-во ACTIVE non-deleted товаров в категории.
+   * Возвращается из `GET /seller/categories` (nice-to-have от Азима).
+   * Опционально — старые ответы из других endpoints могут не содержать.
+   */
+  productCount?: number;
 }
 
 // ── Seller Profile ────────────────────────────────────────────────────────────

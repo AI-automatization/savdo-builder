@@ -1,5 +1,65 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Полат) — Wave 15: P2-P3 batch (5 tickets + i18n продолжение)
+
+5 быстрых задач + i18n миграция Profile/ChatPage buyer.
+
+### ✅ [API-N1-PRODUCTS-LIST-001] Opt-in pagination для /stores/:slug/products 🟢
+- `GET /stores/:slug/products` теперь поддерживает `?page=N&limit=N` query
+  params. Если переданы — envelope `{ data, meta: { total, page, limit } }`
+  через `findPublicByStoreIdPaginated`. Если нет — legacy raw array
+  (backward-compat, take=200 default).
+- Без breaking change для существующих consumers. Полная envelope-wide
+  migration отложена в `API-PAGINATION-ENVELOPE-001` (dual-emit + sync с Азимом).
+- **Файлы:** `apps/api/src/modules/products/storefront.controller.ts`.
+
+### ✅ [DESIGN-SEMANTIC-COLORS-001] admin часть (mirror Azim'овской web-* версии) 🟡
+- Новый `apps/admin/src/lib/styles.ts`:
+  - `dangerTint(o)/warningTint(o)/successTint(o)` через `color-mix(in srgb,
+    var(--error) X%, transparent)` (Chrome 111+/Safari 16.4+/FF 113+ — admin
+    desktop-only). Произвольная opacity без раздувания CSS-vars.
+  - Готовые `errorBanner()/successBanner()/warningBanner()` `CSSProperties`
+    для частых случаев (status + border + bg одним объектом).
+- **packages/design-tokens unified пакет НЕ создаём** — Soft Color Lifestyle
+  (buyer) и Liquid Authority (seller+admin) by design разные.
+
+### ✅ [DESIGN-A11Y-ARIA-LABELS-001] admin часть 🟡
+- AdminUsersPage delete button (с conditional aria-label «Нельзя удалить
+  Super Admin» / «Удалить доступ»)
+- CategoriesPage `ActionBtn` (aria-label = title + aria-hidden на children-иконке)
+- ChatsPage delete thread
+- DatabasePage: 2 кнопки в RowDetailPanel (delete/close) + 1 в actions
+  rows + 1 в error banner close
+- StoreDetailPage delete product
+- **Bonus:** все hardcoded `rgba(239,68,68,...)` в этих файлах заменены
+  на semantic vars (`var(--surface-error)`/`var(--border-error-soft)`/
+  `var(--error)`) из `ADMIN-DESIGN-TOKENS-SURFACE-001`.
+
+### ✅ [Nice-to-have от Азима] `_count.products` в /seller/categories 🟢
+- `StoreCategoriesRepository.findByStoreId` теперь делает `include: {
+  _count: { select: { products: { where: { status: ACTIVE, deletedAt: null } } } } }`
+- Возврат: `StoreCategoryWithCount[]` (`& { productCount: number }`)
+- В `packages/types/src/api/stores.ts` — `StoreCategory.productCount?: number`
+  (опционально для backward-compat с другими endpoints).
+- Один запрос, без N+1. Web-seller `/store/categories` теперь может
+  показывать счётчик товаров рядом с именем категории.
+- **Файлы:** `apps/api/src/modules/categories/repositories/store-categories.repository.ts`,
+  `apps/api/src/modules/categories/use-cases/get-store-categories.use-case.ts`,
+  `packages/types/src/api/stores.ts`.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] продолжение — Profile + ChatPage buyer 🔴
+- `buyer/ProfilePage` целиком переведена: header, аккаунт, «Хочешь
+  продавать?» card, действия (заказы, бот, выйти), guest banner,
+  CTA «Войти через @bot». +14 ключей profile.* / auth.guest*.
+- `buyer/ChatPage` (минимально): empty/error/no-threads states, edit
+  message banner, edited tag, attach photo / cancel reply / cancel edit
+  aria-labels, placeholder инпута, toast'ы send/report. +14 ключей chat.*.
+- **Файлы:** `apps/tma/src/lib/i18n/{ru,uz}.ts`, `apps/tma/src/pages/
+  buyer/{ProfilePage,ChatPage}.tsx`.
+
+**Tests:** api 74/74 (categories + products), tma `pnpm build` clean,
+admin tsc clean.
+
 ## 2026-05-14 (Полат) — API-PRODUCT-STORE-TRUST-SIGNALS-001 (контракт от Азима)
 
 ### ✅ [API-PRODUCT-STORE-TRUST-SIGNALS-001] Trust signals в Product.store 🟡

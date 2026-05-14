@@ -2,15 +2,36 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { StoreCategory } from '@prisma/client';
 
+export type StoreCategoryWithCount = StoreCategory & { productCount: number };
+
 @Injectable()
 export class StoreCategoriesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByStoreId(storeId: string): Promise<StoreCategory[]> {
-    return this.prisma.storeCategory.findMany({
+  /**
+   * Nice-to-have от Азима: возвращаем `productCount` (только ACTIVE,
+   * не soft-deleted) чтобы web-seller `/store/categories` мог показать
+   * счётчик товаров рядом с именем категории. Один запрос с
+   * `_count.products WHERE` — без N+1.
+   */
+  async findByStoreId(storeId: string): Promise<StoreCategoryWithCount[]> {
+    const rows = await this.prisma.storeCategory.findMany({
       where: { storeId },
       orderBy: { sortOrder: 'asc' },
+      include: {
+        _count: {
+          select: {
+            products: {
+              where: { status: 'ACTIVE', deletedAt: null },
+            },
+          },
+        },
+      },
     });
+    return rows.map(({ _count, ...rest }) => ({
+      ...rest,
+      productCount: _count.products,
+    }));
   }
 
   async findById(id: string): Promise<StoreCategory | null> {
