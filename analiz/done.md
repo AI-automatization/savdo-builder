@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — WEB-BUYER-BECOME-SELLER-CTA-001 (SEV-1 #2 от audit)
+
+### ✅ [WEB-BUYER-BECOME-SELLER-CTA-001] «Стать продавцом» CTA в /profile
+- **Важность:** 🔴 SEV-1 (pre-launch блокер из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `55c524b`)
+- **Файл:** `apps/web-buyer/src/app/(shop)/profile/page.tsx` (+44, импорты `Store` + `ExternalLink` из lucide-react, `BOT_USERNAME` const)
+- **Что сделано:**
+  - Brand-tinted promo card в `ProfileView` между секцией «Активность» и Logout block
+  - SectionLabel «Развитие» + card с `colors.brandMuted` background + `colors.brandBorder`
+  - Иконка `<Store>` 18px в brand-color круге, заголовок «Откройте свой магазин», sub «Запустите Telegram-storefront за 5 минут. Свой каталог, корзина, заказы — без сайта.»
+  - Filled accent button «Стать продавцом → 🔗» с deep-link `https://t.me/${BOT_USERNAME}?start=become_seller` (тот же endpoint что использует TMA `SettingsPage.tsx:22`)
+  - Conditional render: только `user?.role === 'BUYER'` (SELLER уже имеет store; HYBRID/ADMIN скрыто)
+  - aria-label на кнопке
+- **Поправка к Pillar 6 audit'у:**
+  - Агент сказал «0 occurrences `become_seller` / `applyAsSeller` в web-buyer» — это false positive потому что грепал на main. На ветке `web-buyer` `apps/web-buyer/src/components/home/HomeHero.tsx:42-50` уже имел «Стать продавцом» CTA в hero homepage (deep-link идентичный).
+  - Однако оригинальный finding всё равно валиден: logged-in BUYER на /profile (далеко от homepage hero) не имел visible пути upgrade. Теперь закрыт — оба места покрыты.
+- **Verification:** `npx tsc --noEmit` чист в web-buyer. Логика прозрачна: anonymous user видит OtpGate; BUYER видит promo card; SELLER не видит (return null от условия).
+- **Парность:** TMA `SettingsPage.tsx:101-110` имеет ту же кнопку (с эмодзи 🏪). Web-buyer теперь консистентен.
+
 ## 2026-05-14 (Азим) — WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001 (SEV-1 #1 от audit)
 
 ### ✅ [WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001] Trust signals на storefront /[slug]
