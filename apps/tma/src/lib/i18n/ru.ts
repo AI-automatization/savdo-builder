@@ -249,6 +249,28 @@ export const ru: Translations = {
   'seller.products.confirmDeleteBody': 'Товар «{title}» будет удалён. Это действие нельзя отменить.',
   'seller.products.deleteSuccess': '✅ Товар удалён',
   'seller.products.deleteError': '❌ Не удалось удалить товар',
+  'seller.products.retry': 'Повторить',
+  'seller.products.allFilter': 'Все',
+
+  // ── Seller orders ─────────────────────────────────────────────────────
+  'seller.orders.title': 'Заказы',
+  'seller.orders.filterPending': 'Новые',
+  'seller.orders.filterActive': 'В работе',
+  'seller.orders.filterDelivered': 'Доставлены',
+  'seller.orders.filterCancelled': 'Отменены',
+  'seller.orders.customerPhoneNote': 'при заказе',
+  'seller.orders.accountPhoneNote': 'аккаунт',
+  'seller.orders.messagePlaceholder': 'Например: Здравствуйте! Уточните, пожалуйста, удобное время доставки.',
+
+  // ── Seller profile ────────────────────────────────────────────────────
+  'seller.profile.title': 'Профиль',
+  'seller.profile.openSite': 'Перейти на сайт магазина',
+
+  // ── Seller store ──────────────────────────────────────────────────────
+  'seller.store.title': 'Мой магазин',
+  'seller.store.creating': 'Создаём...',
+  'seller.store.createBtn': 'Создать магазин',
+  'seller.store.descPlaceholder': 'Описание',
 
   // ── Wishlist ──────────────────────────────────────────────────────────
   'wishlist.title': 'Избранное',
