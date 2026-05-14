@@ -1,5 +1,45 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Азим) — WEB-AUDIT-SYNC-IDEOLOGY-001
+
+### ✅ [WEB-AUDIT-SYNC-IDEOLOGY-001] Pre-launch sync audit web-* (4 параллельных агента)
+- **Важность:** 🔴 P0
+- **Дата:** 14.05.2026
+- **Deliverable:** `analiz/audits/web-sync-2026-05-14.md` (~600 LOC)
+- **Метод:** 4 параллельных read-only агента (`Explore` + `feature-dev:code-explorer` + `feature-dev:code-reviewer`) на 6 pillars.
+- **Pillars / verdicts:**
+  1. Type sync — ✅ mostly clean (2 SEV-3 concerns: locals types + image cast)
+  2. Storage / Media — ✅ clean (0 critical; backend = единственный URL resolver)
+  3. Function duplication — 🟡 1 known dupe (PhoneInput triple, tracked)
+  4. API endpoint hygiene — ✅ ZERO ISSUES (0 dead/stale/duplicate)
+  5. Ideology / scope-creep — 🔴 1 invariant violation (INV-CH02 без ADR) + 1 SEV-1 (card payment misleading)
+  6. Cross-platform consistency — 🔴 3 SEV-1 (cart cross-channel, web-buyer trust signals, become-seller CTA) + 2 SEV-2 (status labels)
+- **Главный итог:** web-* архитектурно соответствует проекту. **Pre-launch блокеры — функциональные пробелы, не архитектурные баги.** 5 SEV-1 нужно закрыть до launch (3 = web-buyer фичи, 1 = TMA cart sync, 1 = ADR для chat edit/delete). 8 SEV-2/3 — tech-debt.
+- **Выписаны новые тикеты в `analiz/tasks.md`:**
+  - 🔴 `WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001` (Азим)
+  - 🔴 `WEB-BUYER-BECOME-SELLER-CTA-001` (Азим)
+  - 🔴 `WEB-BUYER-CARD-PAYMENT-DISABLE-001` (Азим, quick fix; full fix после Полата)
+  - 🔴 `TMA-CART-API-SYNC-001` (re-open для Полата)
+  - 🔴 `API-CHECKOUT-PAYMENT-METHOD-001` (Полат)
+  - 🔴 `ADR-CHAT-MESSAGE-EDIT-DELETE-001` (документация — все)
+  - 🟡 `STATUS-LABEL-CANONICAL-SHIPPED-001` (4-way label divergence)
+  - 🟡 `ADMIN-STATUS-LABEL-PENDING-001` (Полат, admin)
+  - 🟢 `WEB-BUYER-OTP-PURPOSE-FIX-001` (Азим)
+  - 🟢 `API-TYPES-PROMOTE-FEATURED-STOREFRONT-001` (Полат)
+  - 🟢 `API-PRODUCT-IMAGES-FULL-SHAPE-001` (Полат)
+  - 🟢 `API-STORE-DELIVERY-SETTINGS-TYPE-001` (Полат)
+- **Compliance OK (явно подтверждено):**
+  - 0 SMS / Eskiz / Playmobile / Twilio / AWS SNS — OTP только Telegram bot
+  - INV-C01 (cart=один store), INV-C03 (заказ immutable), INV-S01 (один seller=один store) — все соблюдены
+  - 0 unauthorized roles (только BUYER/SELLER/ADMIN/HYBRID)
+  - 0 gamification / loyalty / referral / affiliate features
+  - 0 admin-level features inside seller dashboard
+  - 100% type imports из packages/types (нет локальных `interface Order/Cart/Product`)
+  - 100% media URL resolution на backend (нет локальных `resolveMediaUrl()`, нет hardcoded supabase URLs)
+  - 100% delivery fee / stock / sale price / order status — из API
+- **Что НЕ scope creep (false positive от агента):** `MARKETING-REVIEWS-SHOW-001` (read-only product reviews UI) — закрыт 11.05.2026, агент это пропустил при поиске.
+- **Re-audit:** не нужен после закрытия SEV-1 + ADR — это точечные фиксы, не архитектурные.
+
 ## 2026-05-14 (Азим) — WEB-BUYER-REMOVE-USESTOREWITHTRUST-001
 
 ### ✅ [WEB-BUYER-REMOVE-USESTOREWITHTRUST-001] Cleanup useStoreWithTrust

@@ -298,116 +298,35 @@
 
 ### 🔴 P0 — для Азима: pre-launch sync audit (от Полата 14.05.2026)
 
-- [ ] **`WEB-AUDIT-SYNC-IDEOLOGY-001`** 🔴 — **полный аудит синхронности web-buyer + web-seller с идеологией и архитектурой проекта.** Перед production launch нужно убедиться что web-* не разошёлся с общим планом, не дублирует существующее, не обращается к мёртвым endpoints и не нарушает инвариантов.
+- [x] **`WEB-AUDIT-SYNC-IDEOLOGY-001`** ✅ 14.05.2026 (Азим, parallel agents) — полный отчёт в `analiz/audits/web-sync-2026-05-14.md`. **6 pillars × 4 параллельных read-only агента.** Verdict: web-* архитектурно соответствует проекту (media / API hygiene / type safety — clean). **Pre-launch блокеры — функциональные пробелы, не архитектурные баги:** 5 SEV-1 + 8 SEV-2/3. Все ticket'ы выписаны ниже (см. секции «P0 — pre-launch fixes от audit» и «P1 — pre-launch tech-debt от audit»).
 
-  **Что проверить (5 направлений):**
+### 🔴 P0 — pre-launch fixes от audit 14.05.2026
 
-  **1. Архитектурная синхронность (контракты + типы)**
-   - Все ли запросы web-* используют типы из `packages/types`? (НЕ локальные расширения, НЕ адаптеры)
-   - Найди места где есть хак-хуки/локальные интерфейсы которые ОБХОДЯТ канонические типы — как был `useStoreWithTrust` до `b1aa682`. Возможные кандидаты: order shapes, cart envelope, search hits.
-   - Проверь что `packages/types/src/api/*` импортируется напрямую, не через локальные ремапперы.
+**Для Азима (web-buyer):**
+- [ ] **`WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001`** 🔴 SEV-1 — `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` не рендерит `isVerified` ✓ + `avgRating` ⭐ + `reviewCount` (в TMA `StorePage:188` и admin `StoresPage:206` рендерится). Данные уже в response `serverGetStoreBySlug` после Полатовского `b1aa682`. Buyer на главной странице магазина не видит trust signals — breaks consistency. **Подсказка:** в product page `SellerCard` уже умеет — можно reuse.
+- [ ] **`WEB-BUYER-BECOME-SELLER-CTA-001`** 🔴 SEV-1 — 0 occurrences `become_seller` / `applyAsSeller` в `apps/web-buyer/src/`. TMA `SettingsPage.tsx:29` имеет «Стать продавцом» с deep-link `https://t.me/savdo_builderBOT?start=become_seller`. Bot ждёт. Web-buyer users без пути upgrade. Добавить ссылку (рекомендация: в `/profile`, fallback в `/orders` или header).
+- [ ] **`WEB-BUYER-CARD-PAYMENT-DISABLE-001`** 🔴 SEV-1 — в `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:272-277` payment option `card` имеет `disabled: false` и labelled «Картой курьеру / UzCard / Humo POS-терминал». **НО** `paymentMethod` selected state НЕ отправляется в API — `confirm.mutateAsync(:383)` не передаёт его, `CheckoutConfirmRequest` в packages/types не имеет поля, analytics (`:394`) hardcode'ит `"COD"`. Misleading UI: покупатель выбирает а ничего не происходит. Quick fix: `disabled: true` + «Скоро» badge до того как Полат добавит `paymentMethod` в контракт (см. `API-CHECKOUT-PAYMENT-METHOD-001` ниже).
 
-  **2. Storage / Media audit — КРИТИЧЕСКИ ВАЖНО** ⚠️
-   - **Бэк ПОЛНОСТЬЮ перешёл с Telegram-bucket на Supabase R2.** Старая логика `objectKey` в Telegram-канале — отменена (`telegram-expired` bucket = броken file_id, не показывать). См. `apps/api/src/modules/products/services/product-presenter.service.ts:resolveImageUrl` для актуального flow:
-     ```
-     bucket === 'telegram'         → /api/v1/media/proxy/{id}  (legacy fallback ONLY для уже-загруженных)
-     bucket === 'telegram-expired' → '' (broken, hide)
-     default (r2 / supabase)       → STORAGE_PUBLIC_URL/{objectKey}
-     ```
-   - **Проверь web-* на:**
-     - Есть ли локальный resolve `mediaUrl` минующий backend-presenter? (frontend сам строит `https://your-bot-url/media/...` etc) — это **legacy** и работать не будет.
-     - Какие URLs реально приходят в `images[].url` / `mediaUrls[]` в product list/detail? Открой Network DevTools на staging, проверь префиксы.
-     - Если видишь `t.me/...` или `tg://...` или прямые ссылки на bot upload — это **bug**, фото должно приходить как `STORAGE_PUBLIC_URL/{objectKey}` resolved бэкендом.
-   - В `apps/web-buyer/.env` / `apps/web-seller/.env` — убери все `VITE_TG_BOT_URL` / `NEXT_PUBLIC_TG_BOT_URL` related env vars если они используются для media. Backend сам резолвит.
+**Для Полата (TMA / API):**
+- [ ] **`TMA-CART-API-SYNC-001` (re-open)** 🔴 SEV-1 — TMA `apps/tma/src/lib/cart.ts` чисто localStorage. `apps/tma/src/pages/buyer/CartPage.tsx` не зовёт `POST /cart/bulk-merge` после login. **Cross-channel cart broken** (TMA → web-buyer = пустая корзина). Listed как Wave 8 в done но НЕ в коде. Implementation в `AuthProvider` mount или `CartPage` effect.
+- [ ] **`API-CHECKOUT-PAYMENT-METHOD-001`** 🔴 SEV-1 — расширить `CheckoutConfirmRequest` в `packages/types/src/api/cart.ts` с `paymentMethod: 'cash' | 'card' | 'online'`. Backend сохраняет на `Order`. Web-seller orders отображает. Web-buyer передаёт правильное значение из selector'а. Без этого web-buyer card-кнопка остаётся «misleading UI».
 
-  **3. Function duplication audit (`tech-debt-tracker` skill)**
-   - Найди дубли функций между web-buyer и web-seller которые должны быть в `packages/ui` или `packages/types`:
-     - Известно: `PhoneInput` — Полат уже перенёс в `packages/ui/components/`. См. `packages/ui/README.md` migration plan.
-     - Возможные кандидаты: `confirmDialog`, `showToast`, `formatUzPhone`, address utils, currency format, status badges, `dangerTint/warningTint/successTint`
-   - Найди функции которые web-* создаёт **локально**, хотя backend ИЛИ `packages/types` уже даёт (например, sale price calculation должна приходить из backend, не считаться на фронте).
-   - **Output:** список «duplicates to consolidate» с приоритетом.
+**Для всей команды (decision required):**
+- [ ] **`ADR-CHAT-MESSAGE-EDIT-DELETE-001`** 🔴 SEV-1 — `INV-CH02` («Удаление и редактирование сообщений не поддерживаются в MVP») нарушен: chat edit/delete shipped end-to-end (web-buyer + web-seller + backend). Реализовано в session 36 (26.04.2026), но **ADR в `docs/adr/` отсутствует**. Создать `docs/adr/00XX-chat-message-edit-delete-relaxation.md` с описанием: почему relaxed, soft-delete контракт (`is_deleted`?), окно времени для edit, audit-log. Без ADR это выглядит как scope creep.
 
-  **4. API endpoint hygiene (`api-design-reviewer` skill)**
-   - Прогрепай все `await api(` / `fetch(...)` calls в web-* и собери список запрашиваемых endpoints.
-   - Сверь с `apps/api/src/modules/*/{*.controller.ts}` — реально ли существуют?
-   - Найди:
-     - **Dead requests** — фронт зовёт endpoint которого нет (404 в Network)
-     - **Stale requests** — фронт зовёт legacy endpoint когда есть новый (например `/api/v1/orders` вместо `/api/v1/buyer/orders`)
-     - **Duplicate requests** — фронт делает 2 запроса где можно 1 (как было с `useStoreWithTrust`)
-   - **Output для Полата:** список endpoints что можно удалить с бэка (dead/stale). Полат удалит из `apps/api`.
+### 🟡 P1 — pre-launch tech-debt от audit 14.05.2026
 
-  **5. Ideology / scope-creep check (`adversarial-reviewer` + `codebase-onboarding` skills)**
-   - **Re-onboarding:** перечитай `CLAUDE.md` корневой + `docs/V1.1/01_domain_invariants.md` + `docs/V1.1/02_state_machines.md`.
-   - **Инварианты проекта** (нарушение = блокер для launch):
-     - INV-S01: один seller = один store
-     - INV-C01: корзина = один store
-     - INV-C03: состав заказа immutable после создания
-     - INV-O04: stock списывается при заказе, восстанавливается при отмене
-     - INV-A01: admin action пишет audit_log
-     - INV-A02: rejection требует comment
-     - **OTP только Telegram Bot — Eskiz/SMS ЗАПРЕЩЕНЫ**
-   - **Найди в web-***:
-     - Multi-store cart logic (нарушает INV-C01)
-     - Order edit UI (нарушает INV-C03 — можно только cancel + new)
-     - Любые SMS / Eskiz / Playmobile integrations (запрещено)
-     - Дополнительные user roles кроме BUYER/SELLER/ADMIN/HYBRID
-     - Custom payment flows вне Click/Payme плана
-   - **Найди features которые web-* добавил БЕЗ обсуждения с Полатом** — может быть scope creep (новые страницы, features которых нет в `analiz/done.md` или roadmap'е).
+**Status labels divergence (для всех):**
+- [ ] **`STATUS-LABEL-CANONICAL-SHIPPED-001`** 🟡 SEV-2 — `SHIPPED` имеет 4 разных перевода: web-* + TMA Badge: «В пути», TMA `ru.ts`: «Доставляется», admin: «Отправлен», bot: «🚚 отправлен». **Решение:** договориться на единый label (рекомендация — «В пути», buyer-facing). Полат правит admin / bot / TMA `ru.ts` после согласования.
+- [ ] **`ADMIN-STATUS-LABEL-PENDING-001`** 🟡 SEV-2 — Полату — `apps/admin/src/pages/OrdersPage.tsx:28` `PENDING: { label: 'Ожидание' }`. Везде `'Ожидает'`. Изменить.
 
-  **6. Cross-platform consistency (КЛЮЧЕВОЕ — добавлено Полатом 14.05.2026)**
+**Для Азима:**
+- [ ] **`WEB-BUYER-OTP-PURPOSE-FIX-001`** 🟢 SEV-3 — `apps/web-buyer/src/components/auth/OtpGate.tsx:28` хардкодит `purpose: 'checkout'` независимо от вызывающего контекста (включая `/orders`, `/profile`, `/wishlist`). Если backend rate-limit'ит per-purpose — неправильный счёт. Принимать `purpose` через props.
 
-  Аудит НЕ должен быть только «web vs api». Сверь поведение web-* со ВСЕЙ платформой — TMA, Admin, Bot, schema. Цель — единая система, не 4 расходящихся продукта.
-
-  - **🔹 web-* ↔ TMA (`apps/tma`)** — buyer/seller flow должен быть консистентным.
-    - Та же модель данных у `Order` / `Cart` / `Product` / `Store`? Те же status'ы, те же поля.
-    - Те же бизнес-флоу: добавить в корзину, оформить заказ, отменить, оставить отзыв, написать продавцу. Web и TMA не должны делать «по-разному».
-    - Те же UI-токены / эмодзи / лейблы статусов? (PENDING / CONFIRMED / SHIPPED / DELIVERED / CANCELLED → одинаковый текст на обоих).
-    - Если TMA использует deep-link `?startapp=cart_<slug>` / `?startapp=product_<slug>_<id>` / `?startapp=become_seller` — web-* должна генерировать такие же ссылки в share-кнопках. Проверить `webStoreUrl`, `buyerHostDisplay` и подобные helpers.
-    - **Cart strategy:** TMA хранит cart в `localStorage` + sync через `POST /cart/bulk-merge` после login (TMA-CART-API-SYNC-001, Wave 8). Web-buyer — TanStack Query через `/cart` API. Кросс-канально должен видеться один cart после login. Если web-buyer создаёт **свой** cart минуя backend — это баг (нарушает кросс-канальность).
-    - **i18n:** TMA уже имеет ru/uz через `useTranslation` (`apps/tma/src/lib/i18n/`). Web-* должен (когда дойдёт) использовать те же ключи / тот же словарь. Если уже есть локальные ru-only строки — записать в audit как «нужен sync с TMA i18n keys».
-
-  - **🔹 web-* ↔ Admin (`apps/admin`)** — admin отображает то что web рендерит покупателям/продавцам.
-    - Статусы магазинов (DRAFT / PENDING_REVIEW / APPROVED / SUSPENDED / REJECTED / PUBLISHED) — одинаково отображаются?
-    - `isVerified` badge, `avgRating`, `reviewCount` — в admin StoresPage и web-buyer storefront должны рендериться одинаково.
-    - Order status transitions — переходы статусов admin должны быть отражены в web-buyer/web-seller views (полная state machine из `docs/V1.1/02_state_machines.md`).
-    - Если admin может suspend/reject store — web-* должен показать соответствующий empty state, а не «обычный 404».
-
-  - **🔹 web-* ↔ Bot (`apps/api/src/modules/telegram`)** — Telegram Bot отправляет уведомления о тех же событиях что web рендерит.
-    - Bot шлёт `order.created` → web-seller dashboard должен показывать тот же заказ.
-    - Bot `become_seller` deep-link flow — web-buyer должен иметь кнопку «Стать продавцом» с тем же endpoint'ом / deep-link'ом.
-    - `seller-notification.service` отправляет HTML-сообщения — формат текста (название статуса, валюта, plural form) должен совпадать с тем что web-seller показывает в своей UI.
-    - **OTP:** ТОЛЬКО `@savdo_builderBOT` — проверить что web-buyer / web-seller НЕ имеет SMS/Eskiz fallback (даже в .env / build-time флагах).
-
-  - **🔹 web-* ↔ packages/types** — single source of truth для DTO.
-    - Все `interface XXXResponse` / `XXXRequest` должны импортироваться из `@savdo/types` (или прямого пути).
-    - Локальный `apps/web-*/src/types/` — допустимо только для UI-specific types (например `ProductCardProps`), НЕ для API contracts.
-    - Если есть `interface Order` локально в web-* — это **bug** (canonical в `packages/types/src/api/orders.ts`).
-
-  - **🔹 web-* ↔ packages/db (Prisma schema)** — структура данных.
-    - Не делает ли web-* предположений о полях которых нет в Prisma модели?
-    - Не зовёт ли legacy поля (`store.coverUrl` когда уже `coverMediaId` + bucket resolution)?
-    - Сверить `Product` / `Store` / `Order` / `Cart` shape в web-* с `packages/db/prisma/schema.prisma`.
-
-  - **🔹 web-* ↔ Mobile (apps/mobile-*)** — Phase 3 заморожено, но **не должно быть конфликтов** для будущего.
-    - Если web-buyer создаёт API endpoints с предположением «это только для web», а потом Mobile тоже их будет звать — текстуальная архитектура должна это поддерживать. Аудит лёгкий: просто отметить «mobile-friendly» / «web-only» каждого endpoint.
-
-  **Метод сверки:** для каждого critical-flow (cart, checkout, order detail, become-seller, login-otp, chat) — нарисуй table «как делает web-buyer / web-seller / TMA / Admin / Bot» одну строку на flow. Найди расхождения. Расхождение = bug или intentional decision (если intentional — задокументировать ПОЧЕМУ).
-
-  **Доп. skills для cross-platform check:** `monorepo-navigator` (см. карту всех apps), `senior-fullstack` (backend↔frontend contracts), `database-schema-designer` (verify schema alignment), `incident-response` (если найдёшь расхождение — классифицировать как SEV-1/2/3/4 перед launch).
-
-  **Deliverables (положить в `analiz/audits/web-sync-2026-05-14.md`):**
-  1. **Часть 1 (Sync OK):** список того где web-* правильно следует архитектуре
-  2. **Часть 2 (Issues found):** баги/scope-creep/dupes/dead requests — с severity 🔴/🟡/🟢
-  3. **Часть 3 (Action items для Полата):** что удалить с `apps/api` (dead endpoints, ненужные fields)
-  4. **Часть 4 (Action items для Азима):** что починить в `apps/web-*`
-  5. **Часть 5 (Media audit):** список мест где web-* мог застрять на Telegram-bucket logic
-  6. **Часть 6 (Cross-platform consistency matrix):** таблица critical-flows × {web-buyer, web-seller, TMA, Admin, Bot}. Найденные расхождения → severity + рекомендация.
-
-  **Skills к использованию:** `adversarial-reviewer` (критический самовзгляд), `tech-debt-tracker` (каталог дублей), `api-design-reviewer` (endpoint hygiene), `codebase-onboarding` (re-onboard в идеологию), `monorepo-navigator` (карта проекта), `pr-review-expert` (финальное ревью своих изменений за последние 2 недели).
-
-  **Срок:** ASAP перед production launch. Без этого аудита есть риск что web-* и backend разойдутся, и launch будет с broken images / 404 endpoints / нарушением INV-S01.
-
-  **После завершения:** Полат пройдёт по Action items части 3 и удалит то что не нужно с API.
+**Для Полата (packages/types):**
+- [ ] **`API-TYPES-PROMOTE-FEATURED-STOREFRONT-001`** 🟢 SEV-3 — поднять `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`, `FeaturedTopStore`, `FeaturedProduct` из `apps/web-buyer/src/types/storefront.ts` в `packages/types/src/api/storefront.ts`. Азим обновит импорты после.
+- [ ] **`API-PRODUCT-IMAGES-FULL-SHAPE-001`** 🟢 SEV-3 — расширить `ProductListItem.images` (и `Product.images`) в packages/types: `{ url: string }[]` → `{ id: string, mediaId: string, url: string, sortOrder?: number }[]`. После — Азим уберёт `as unknown as { images?: RawImage[] }` cast в `web-seller edit page:248`.
+- [ ] **`API-STORE-DELIVERY-SETTINGS-TYPE-001`** 🟢 SEV-3 — добавить `deliverySettings` field в Store type. Web-seller settings уберёт UI-specific extension `StoreWithDelivery`.
 
 ### 🟡 P2 — для Полата (technical debt)
 
