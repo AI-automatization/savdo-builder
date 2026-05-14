@@ -1,5 +1,52 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Полат) — Wave 16: 4 P1 design/UX задачи (полное закрытие)
+
+4 задачи закрыты за один проход.
+
+### ✅ [DESIGN-TMA-BRAND-DIFF-001] verified done 🎨
+Реализовано параллельной FG-TOKENS сессией ранее (Wave 7-12).
+- `index.css` имеет `[data-role="SELLER"]` override на `--tg-accent`
+- `AppShell.tsx:21` + `BottomNav.tsx:53` ставят `data-role={role}`
+- Buyer = orchid `#A855F7`, Seller = cyan `#22D3EE`
+- Light + dark theme overrides оба покрыты
+
+### ✅ [DESIGN-PHONE-INPUT-PACKAGE-001] packages/ui (Полат часть) 🎨
+- `packages/ui/components/PhoneInput.tsx` (NEW) — `forwardRef` + `formatUzPhone/stripUzPhone/isValidUzPhone`. value/onChange в E.164, маска `+998 XX XXX XX XX`.
+- `packages/ui/index.ts` экспортирует.
+- `packages/ui/package.json` — `peerDependencies.react: ^18||^19`.
+- `packages/ui/README.md` — migration plan для Азима: добавить `"@savdo/ui": "workspace:*"` в web-buyer + web-seller package.json → `pnpm install` → удалить дубли → заменить импорты на `'use client'` обёртку.
+- **Что НЕ сделал:** не подключал в apps/web-* (зона Азима, требует `pnpm install`).
+
+### ✅ [TMA-LIGHT-THEME-MIGRATION-001] +92 точки text-цветов 🟠
+Mass replace text-colors во всех 4 крупных seller-формах:
+- `seller/AddProductPage.tsx` (12 точек)
+- `seller/EditProductPage.tsx` (11)
+- `seller/ChannelSettingsPage.tsx` (26)
+- `seller/SettingsPage.tsx` — закрыто в Wave 14
+
+Map:
+```
+0.90/0.85/0.92 → var(--tg-text-primary)
+0.75/0.70/0.55/0.50/0.5 → var(--tg-text-secondary)
+0.45/0.40 → var(--tg-text-muted)
+0.35/0.30/0.25 → var(--tg-text-dim)
+```
+
+Остаётся ~40 точек surface/border (0.04-0.18 диапазон) — тонкие
+glass/backdrop эффекты, требуют визуального теста light theme.
+
+### ✅ [TMA-TYPOGRAPHY-SCALE-001] mass migrate text-[Npx] 🟠
+Sed batch замена во всех 20+ файлах:
+- `text-[10px]` → `text-xxs`
+- `text-[11px]` → `text-xxs`
+- `text-[12px]` → `text-xs`
+
+После: 0 хардкодов `text-[1[0-2]px]` осталось. ~50 редких
+`text-[Npx]` для специфичных значений (15-17px) — по мере касания.
+
+**Tests:** `pnpm tsc --noEmit` чист, `pnpm build` clean (297KB index gzip 93KB).
+
 ## 2026-05-14 (Полат) — Wave 15: P2-P3 batch (5 tickets + i18n продолжение)
 
 5 быстрых задач + i18n миграция Profile/ChatPage buyer.

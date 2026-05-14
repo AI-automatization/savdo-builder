@@ -425,7 +425,7 @@ export default function BuyerChatPage() {
               {activeThread?.storeSlug && (
                 <button
                   onClick={() => navigate(`/buyer/store/${activeThread.storeSlug}`)}
-                  className="text-[11px] px-3 py-1 rounded-lg shrink-0"
+                  className="text-xxs px-3 py-1 rounded-lg shrink-0"
                   style={{
                     background: 'var(--tg-accent-bg)',
                     border: '1px solid var(--tg-accent-border)',
@@ -494,7 +494,7 @@ export default function BuyerChatPage() {
                         className="px-3 pt-2"
                       >
                         <div
-                          className="px-2 py-1 rounded-md text-[11px] truncate"
+                          className="px-2 py-1 rounded-md text-xxs truncate"
                           style={{
                             background: 'var(--tg-border-soft)',
                             borderLeft: '3px solid var(--tg-accent)',
@@ -524,7 +524,7 @@ export default function BuyerChatPage() {
                   </div>
                 )}
                 <span
-                  className="text-[10px] mt-0.5 flex items-center gap-1"
+                  className="text-xxs mt-0.5 flex items-center gap-1"
                   style={{ color: 'var(--tg-text-dim)', alignSelf: m.senderRole === 'BUYER' ? 'flex-end' : 'flex-start' }}
                 >
                   {m.id.startsWith('temp_') ? '...' : timeStr(m.createdAt)}
@@ -558,7 +558,7 @@ export default function BuyerChatPage() {
                 >
                   <span style={{ fontSize: 16 }}>↩</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold" style={{ color: 'var(--tg-accent)' }}>
+                    <p className="text-xxs font-semibold" style={{ color: 'var(--tg-accent)' }}>
                       Ответ {replyTo.senderRole === 'BUYER' ? 'себе' : 'продавцу'}
                     </p>
                     <p className="text-xs truncate" style={{ color: 'var(--tg-text-secondary)' }}>
@@ -681,7 +681,7 @@ export default function BuyerChatPage() {
               </div>
             </div>
           ) : (
-            <div className="pt-2 text-center text-[12px] shrink-0" style={{ color: 'var(--tg-text-dim)' }}>
+            <div className="pt-2 text-center text-xs shrink-0" style={{ color: 'var(--tg-text-dim)' }}>
               Диалог закрыт продавцом — новые сообщения недоступны
             </div>
           )}
@@ -804,7 +804,7 @@ export default function BuyerChatPage() {
               <span style={{ color: ac.fg, fontSize: 16, fontWeight: 700 }}>{initial}</span>
               {unread > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-xxs font-bold"
                   style={{ background: 'var(--tg-accent)', color: '#fff' }}
                 >
                   {unread > 9 ? '9+' : unread}
@@ -817,13 +817,13 @@ export default function BuyerChatPage() {
                   {threadLabel(t)}
                 </p>
                 {t.lastMessageAt && (
-                  <span className="text-[10px] shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
+                  <span className="text-xxs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                     {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
                   </span>
                 )}
               </div>
               {ctx && (
-                <p className="text-[11px] truncate" style={{ color: 'var(--tg-accent)' }}>
+                <p className="text-xxs truncate" style={{ color: 'var(--tg-accent)' }}>
                   {ctx}
                 </p>
               )}

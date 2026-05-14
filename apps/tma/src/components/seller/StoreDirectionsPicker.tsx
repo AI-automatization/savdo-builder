@@ -94,15 +94,15 @@ export function StoreDirectionsPicker() {
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
             Направление магазина
           </p>
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
+          <p className="text-xxs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
             Помогает покупателям найти вас в каталоге
           </p>
         </div>
         <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+          className="text-xxs font-bold px-2 py-0.5 rounded-full shrink-0"
           style={{
             background: selected.length === MAX_DIRECTIONS ? 'rgba(239,68,68,0.15)' : 'var(--tg-accent-bg)',
             color: selected.length === MAX_DIRECTIONS ? '#f87171' : 'var(--tg-accent)',
@@ -228,7 +228,7 @@ export function StoreDirectionsPicker() {
                       {c.nameRu}
                     </span>
                     {isOn && (
-                      <span className="text-[10px] font-bold" style={{ color: 'var(--tg-accent)' }}>✓ выбрано</span>
+                      <span className="text-xxs font-bold" style={{ color: 'var(--tg-accent)' }}>✓ выбрано</span>
                     )}
                   </button>
                 );

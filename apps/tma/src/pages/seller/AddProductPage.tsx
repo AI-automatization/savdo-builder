@@ -532,14 +532,14 @@ export default function AddProductPage() {
       )}
     
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>
           Новый товар
         </h1>
 
         {/* Основная информация */}
         <GlassCard className="p-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               Название *
             </label>
             <input
@@ -551,7 +551,7 @@ export default function AddProductPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               Цена (сум) *
             </label>
             <input
@@ -564,7 +564,7 @@ export default function AddProductPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               Описание
             </label>
             <textarea
@@ -580,7 +580,7 @@ export default function AddProductPage() {
         {/* Категория магазина */}
         {categories.length > 0 && (
           <GlassCard className="p-4 flex flex-col gap-2">
-            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               Категория магазина
             </label>
             <button
@@ -589,7 +589,7 @@ export default function AddProductPage() {
               style={{
                 background: storeCategoryId ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.05)',
                 border: `1px solid ${storeCategoryId ? 'rgba(124,58,237,0.45)' : 'rgba(255,255,255,0.12)'}`,
-                color: storeCategoryId ? '#A855F7' : 'rgba(255,255,255,0.40)',
+                color: storeCategoryId ? '#A855F7' : 'var(--tg-text-muted)',
               }}
             >
               <span>{categories.find((c) => c.id === storeCategoryId)?.name ?? 'Выберите категорию...'}</span>
@@ -600,7 +600,7 @@ export default function AddProductPage() {
 
         {/* Тип товара (GlobalCategory) — обязательно */}
         <GlassCard className="p-4 flex flex-col gap-2">
-          <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Тип товара <span style={{ color: '#f87171' }}>*</span>
           </label>
           <button
@@ -609,7 +609,7 @@ export default function AddProductPage() {
             style={{
               background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.05)',
               border: `1px solid ${globalCategoryId ? 'rgba(6,182,212,0.40)' : 'rgba(239,68,68,0.35)'}`,
-              color: globalCategoryId ? '#22D3EE' : 'rgba(255,255,255,0.40)',
+              color: globalCategoryId ? '#22D3EE' : 'var(--tg-text-muted)',
             }}
           >
             <span>{globalCategories.find((c) => c.id === globalCategoryId)?.nameRu ?? 'Выберите тип товара...'}</span>
@@ -643,14 +643,14 @@ export default function AddProductPage() {
         {/* Динамические характеристики из CategoryFilter */}
         {globalCategoryId && categoryFilters.length > 0 && (
           <GlassCard className="p-4 flex flex-col gap-3">
-            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               Характеристики этого типа
             </label>
             {categoryFilters.map((f) => (
               <div key={f.key} className="flex flex-col gap-1.5">
-                <label className="text-[11px]" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                <label className="text-xxs" style={{ color: 'var(--tg-text-secondary)' }}>
                   {f.nameRu}
-                  {f.unit && <span style={{ color: 'rgba(255,255,255,0.35)' }}> ({f.unit})</span>}
+                  {f.unit && <span style={{ color: 'var(--tg-text-dim)' }}> ({f.unit})</span>}
                   {f.isRequired && <span style={{ color: '#f87171' }}> *</span>}
                 </label>
                 {f.fieldType === 'select' && f.options ? (
@@ -672,7 +672,7 @@ export default function AddProductPage() {
                       checked={Boolean(attrValues[f.key])}
                       onChange={(e) => setAttrValues((prev) => ({ ...prev, [f.key]: e.target.checked }))}
                     />
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.70)' }}>Да</span>
+                    <span className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>Да</span>
                   </label>
                 ) : f.fieldType === 'number' ? (
                   <input
@@ -686,7 +686,7 @@ export default function AddProductPage() {
                   // Несколько значений = варианты товара. Показываем chips-выбор +
                   // под ним блок «Остаток по {nameRu}» с input на каждое выбранное.
                   <div className="flex flex-col gap-2">
-                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
                       Отметьте все варианты которые есть в наличии
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -715,7 +715,7 @@ export default function AddProductPage() {
                               borderRadius: 10,
                               border: `1px solid ${active ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
                               background: active ? 'rgba(167,139,250,0.20)' : 'rgba(255,255,255,0.05)',
-                              color: active ? '#A855F7' : 'rgba(255,255,255,0.70)',
+                              color: active ? '#A855F7' : 'var(--tg-text-secondary)',
                               fontSize: 13,
                               fontWeight: active ? 600 : 500,
                               cursor: 'pointer',
@@ -728,7 +728,7 @@ export default function AddProductPage() {
                     </div>
                     {(variantOptions[f.key]?.selected.length ?? 0) > 0 && (
                       <div className="flex flex-col gap-1.5 mt-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                        <p className="text-xxs font-semibold uppercase tracking-wider" style={{ color: 'var(--tg-text-dim)' }}>
                           Остаток по {f.nameRu.toLowerCase()}
                         </p>
                         {variantOptions[f.key].selected.map((opt) => (
@@ -760,7 +760,7 @@ export default function AddProductPage() {
                               placeholder="0"
                               style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
                             />
-                            <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>
+                            <span className="text-xs shrink-0" style={{ color: 'var(--tg-text-dim)' }}>шт</span>
                           </div>
                         ))}
                       </div>
@@ -781,12 +781,12 @@ export default function AddProductPage() {
 
         {/* Дополнительные характеристики (свободная форма) */}
         <GlassCard className="p-4 flex flex-col gap-3">
-          <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Доп. характеристики
           </label>
           {attrs.map((a) => (
             <div key={a.id} className="flex items-center gap-2">
-              <span className="text-xs flex-1 truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
+              <span className="text-xs flex-1 truncate" style={{ color: 'var(--tg-text-secondary)' }}>
                 <b>{a.name}</b>: {a.value}
               </span>
               <button
@@ -832,7 +832,7 @@ export default function AddProductPage() {
         {/* Фото товара (TMA-MULTI-PHOTO-001) — массив до 8 шт, первое = главное */}
         <GlassCard className="p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               Фото товара {photoPreviews.length > 0 && (
                 <span style={{ color: 'rgba(167,139,250,0.65)' }}>· {photoPreviews.length}/{MAX_PHOTOS}</span>
               )}
@@ -886,7 +886,7 @@ export default function AddProductPage() {
                       position: 'absolute', top: 4, right: 4,
                       width: 24, height: 24, borderRadius: 12,
                       background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.18)',
-                      color: 'rgba(255,255,255,0.92)', fontSize: 13, lineHeight: 1,
+                      color: 'var(--tg-text-primary)', fontSize: 13, lineHeight: 1,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer',
                     }}
@@ -903,7 +903,7 @@ export default function AddProductPage() {
                         style={{
                           width: 22, height: 22, borderRadius: 11,
                           background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
-                          color: 'rgba(255,255,255,0.85)', fontSize: 11, padding: 0,
+                          color: 'var(--tg-text-primary)', fontSize: 11, padding: 0,
                           opacity: idx === 0 ? 0.4 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer',
                         }}
                       >
@@ -917,7 +917,7 @@ export default function AddProductPage() {
                         style={{
                           width: 22, height: 22, borderRadius: 11,
                           background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
-                          color: 'rgba(255,255,255,0.85)', fontSize: 11, padding: 0,
+                          color: 'var(--tg-text-primary)', fontSize: 11, padding: 0,
                           opacity: idx === photoPreviews.length - 1 ? 0.4 : 1,
                           cursor: idx === photoPreviews.length - 1 ? 'not-allowed' : 'pointer',
                         }}
@@ -949,7 +949,7 @@ export default function AddProductPage() {
               <p className="text-sm" style={{ color: 'rgba(167,139,250,0.80)' }}>
                 {photoPreviews.length === 0 ? '📷 Добавить фото' : '➕ Добавить ещё фото'}
               </p>
-              <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              <p className="text-xxs mt-1" style={{ color: 'var(--tg-text-dim)' }}>
                 JPG, PNG, WEBP · до {MAX_PHOTOS} шт
               </p>
             </button>
@@ -974,10 +974,10 @@ export default function AddProductPage() {
             className="flex items-center justify-between"
           >
             <div>
-              <p className="text-sm font-semibold text-left" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              <p className="text-sm font-semibold text-left" style={{ color: 'var(--tg-text-primary)' }}>
                 Товар с размерами
               </p>
-              <p className="text-[11px] text-left" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <p className="text-xxs text-left" style={{ color: 'var(--tg-text-dim)' }}>
                 {hasSizes ? 'Задать остаток по каждому размеру' : 'S / M / L / XL и т.д.'}
               </p>
             </div>
@@ -1029,7 +1029,7 @@ export default function AddProductPage() {
                     placeholder="0"
                     style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
                   />
-                  <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>шт</span>
+                  <span className="text-xs shrink-0" style={{ color: 'var(--tg-text-dim)' }}>шт</span>
                   <button
                     onClick={() => removeSize(sz.label)}
                     style={{ color: 'rgba(248,113,113,0.60)', fontSize: 16, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}
@@ -1068,7 +1068,7 @@ export default function AddProductPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <label className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
                 Количество в наличии
               </label>
               <div className="flex items-center gap-2">
@@ -1079,7 +1079,7 @@ export default function AddProductPage() {
                   placeholder="0"
                   style={{ ...inputStyle, flex: 1 }}
                 />
-                <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>шт</span>
+                <span className="text-xs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>шт</span>
               </div>
             </div>
           )}
@@ -1108,7 +1108,7 @@ export default function AddProductPage() {
           </Button>
         </div>
 
-        <p className="text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+        <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           При публикации товар автоматически появится в привязанном Telegram-канале
         </p>
       </div>

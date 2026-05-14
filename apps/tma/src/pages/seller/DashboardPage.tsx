@@ -136,7 +136,7 @@ export default function DashboardPage() {
                   <Badge status={o.status} />
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <p className="text-[11px] truncate" style={{ color: 'var(--tg-text-secondary)' }}>
+                  <p className="text-xxs truncate" style={{ color: 'var(--tg-text-secondary)' }}>
                     {o.preview?.title ?? '—'}
                     {o.preview && o.preview.itemCount > 1 && (
                       <span style={{ color: 'rgba(167,139,250,0.85)' }}> +{o.preview.itemCount - 1}</span>
@@ -146,7 +146,7 @@ export default function DashboardPage() {
                     {Number(o.totalAmount).toLocaleString('ru')} сум
                   </p>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{ color: 'var(--tg-text-dim)' }}>
+                <p className="text-xxs mt-0.5" style={{ color: 'var(--tg-text-dim)' }}>
                   {dateLabel} · {timeLabel}
                 </p>
               </div>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                       <span className="text-2xl font-bold" style={{ color: s.urgent ? '#EF4444' : 'var(--tg-text-primary)' }}>
                         {s.value}
                       </span>
-                      <span className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
+                      <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
                     </GlassCard>
                   ))}
                 </div>
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                     <span className="text-lg font-bold" style={{ color: s.urgent ? '#EF4444' : 'var(--tg-text-primary)' }}>
                       {s.value}
                     </span>
-                    <span className="text-[10px]" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
+                    <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
                   </GlassCard>
                 ))}
               </div>
