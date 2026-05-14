@@ -193,12 +193,15 @@ export class StorefrontController {
       ...img,
       url: this.presenter.resolveImageUrl(img.media),
     }));
+    // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
+    const storeRef = await this.presenter.mapProductStoreRef(product.store);
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
+      store: storeRef,
     };
   }
 
@@ -313,12 +316,15 @@ export class StorefrontController {
       ...img,
       url: this.presenter.resolveImageUrl(img.media),
     }));
+    // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
+    const storeRef = await this.presenter.mapProductStoreRef(product.store);
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
+      store: storeRef,
     };
   }
 

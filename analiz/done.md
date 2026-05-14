@@ -1,5 +1,37 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Полат) — API-PRODUCT-STORE-TRUST-SIGNALS-001 (контракт от Азима)
+
+### ✅ [API-PRODUCT-STORE-TRUST-SIGNALS-001] Trust signals в Product.store 🟡
+- **Важность:** 🟡 P1 (контракт-задача от Азима, коммит `508932d` от 13.05)
+- **Дата:** 14.05.2026
+- **Ветка:** main + api
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/products.repository.ts` —
+    `publicProductDetailInclude.store` теперь `select` с `id/name/slug/city/
+    telegramContactLink/logoMediaId` + trust signals `isVerified/avgRating/
+    reviewCount`. Был без `store` вообще.
+  - `apps/api/src/modules/products/services/product-presenter.service.ts` —
+    новый helper `mapProductStoreRef(store)`: resolveStoreImageUrls для
+    logoUrl + Number(avgRating) Decimal→number normalization.
+  - `apps/api/src/modules/products/storefront.controller.ts` —
+    оба endpoints (`GET /storefront/products/:id` + `GET /stores/:slug/
+    products/:id`) применяют `presenter.mapProductStoreRef` и эмиттят
+    `store: StoreRef` в response.
+  - `packages/types/src/api/stores.ts` —
+    - `StoreRef` расширен trust signals (mandatory).
+    - `Store` (full model) — trust signals mandatory.
+    - `StorefrontStore` — trust signals optional (backward-compat с
+      кэшированными ответами; новые `/storefront/stores/:slug` всегда
+      возвращают, см. `stores.repository.findBySlug`).
+- **Что закрывает на стороне Азима:**
+  - Можно удалить `useStoreWithTrust` hook
+  - Можно удалить локальные расширения `apps/web-buyer/src/types/storefront.ts`
+  - Второй request на `/storefront/stores/:slug` ради бейджа/рейтинга
+    больше не нужен — все trust signals приходят в `product.store`.
+- **Tests:** 62/62 products-теста passed (presenter, get-featured, change-status,
+  и др. — никаких регрессий). api `tsc --noEmit` clean.
+
 ## 2026-05-13 (Полат) — Wave 14: P1 UX batch (8 tickets) + 2 deferred
 
 Большая партия: 4 admin (design tokens + a11y + tabs + buttons), 4 tma

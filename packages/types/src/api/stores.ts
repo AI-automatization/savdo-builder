@@ -19,16 +19,28 @@ export interface Store {
   primaryGlobalCategoryId: string | null;
   createdAt: string;
   updatedAt: string;
+  // MARKETING-VERIFIED-SELLER-001 trust signals
+  isVerified: boolean;
+  avgRating: number | null;
+  reviewCount: number;
 }
 
-/** Compact store info embedded in product/order responses */
+/**
+ * Compact store info embedded в product/order responses.
+ * API-PRODUCT-STORE-TRUST-SIGNALS-001: включает trust signals чтобы фронт
+ * не делал второй request на `/storefront/stores/:slug` ради бейджа/рейтинга.
+ */
 export interface StoreRef {
   id: string;
   name: string;
   slug: string;
-  city: string;
+  city: string | null;
   telegramContactLink: string | null;
   logoUrl: string | null;
+  // Trust signals — нужны для product page (ProductCard, SellerCard).
+  isVerified: boolean;
+  avgRating: number | null;
+  reviewCount: number;
 }
 
 // ── Storefront Store (публичная витрина — для покупателей и TMA) ──────────────
@@ -43,6 +55,12 @@ export interface StorefrontStore {
   logoUrl: string | null;
   coverUrl: string | null;
   categories: Pick<StoreCategory, 'id' | 'name' | 'sortOrder'>[];
+  // MARKETING-VERIFIED-SELLER-001 trust signals (опционально для backward-compat
+  // со старыми кэшированными ответами; новые ответы /storefront/stores/:slug
+  // их всегда возвращают — см. stores.repository.findBySlug select).
+  isVerified?: boolean;
+  avgRating?: number | null;
+  reviewCount?: number;
 }
 
 // ── Global Category ───────────────────────────────────────────────────────────
