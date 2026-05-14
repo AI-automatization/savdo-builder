@@ -95,7 +95,7 @@ export class WishlistNotifyService {
         },
         buyer: {
           select: {
-            user: { select: { telegramId: true } },
+            user: { select: { telegramId: true, languageCode: true } },
           },
         },
       },
@@ -168,6 +168,7 @@ export class WishlistNotifyService {
         newPrice: currentPrice,
         currency: p.currencyCode,
         productDeepLink,
+        locale: item.buyer?.user?.languageCode ?? 'ru',
       };
 
       const jobName = reason === 'PRICE_DROP'

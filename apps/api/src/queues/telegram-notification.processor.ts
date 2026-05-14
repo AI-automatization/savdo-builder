@@ -14,6 +14,7 @@ import {
 } from '../modules/telegram/services/seller-notification.service';
 import { TELEGRAM_JOB_BROADCAST } from '../modules/admin/use-cases/broadcast.use-case';
 import { escapeTgHtml } from '../shared/telegram-html';
+import { t, fmt, currency as currencyLabel } from '../shared/i18n';
 
 export const TELEGRAM_JOB_NEW_ORDER = 'new-order';
 export const TELEGRAM_JOB_STORE_APPROVED = 'store-approved';
@@ -34,6 +35,8 @@ export interface NotifyCartAbandonedData {
   currency: string;
   /** Используется для TMA deep-link `?startapp=cart` (универсальный путь к корзине). */
   cartDeepLink: string;
+  /** MARKETING-LOCALIZATION-UZ-001: User.languageCode для локализации шаблона. */
+  locale?: string;
 }
 
 export interface NotifyWishlistData {
@@ -47,25 +50,12 @@ export interface NotifyWishlistData {
   currency: string;
   /** Deep-link на ProductPage в TMA. */
   productDeepLink: string;
+  /** MARKETING-LOCALIZATION-UZ-001: User.languageCode для локализации шаблона. */
+  locale?: string;
 }
 
-const ORDER_STATUS_LABEL_BUYER: Record<string, string> = {
-  PENDING:    '⏳ ожидает подтверждения',
-  CONFIRMED:  '✅ подтверждён продавцом',
-  PROCESSING: '📦 готовится к отправке',
-  SHIPPED:    '🚚 отправлен',
-  DELIVERED:  '🎉 доставлен',
-  CANCELLED:  '❌ отменён',
-};
-
-const ORDER_STATUS_LABEL_SELLER: Record<string, string> = {
-  PENDING:    '⏳ ожидает подтверждения',
-  CONFIRMED:  '✅ подтверждён',
-  PROCESSING: '📦 в обработке',
-  SHIPPED:    '🚚 отправлен',
-  DELIVERED:  '🎉 доставлен',
-  CANCELLED:  '❌ отменён покупателем',
-};
+// MARKETING-LOCALIZATION-UZ-001: order status labels теперь в `shared/i18n.ts`
+// через ключи `orders.status.{STATUS}.{role}`. См. `t()` ниже.
 
 @Processor(QUEUE_TELEGRAM_NOTIFICATIONS)
 export class TelegramNotificationProcessor extends WorkerHost {
@@ -83,11 +73,15 @@ export class TelegramNotificationProcessor extends WorkerHost {
       switch (job.name) {
         case TELEGRAM_JOB_NEW_ORDER: {
           const d = job.data as NotifyNewOrderData;
+          const loc = d.locale;
           const text =
-            `📦 Новый заказ #${d.orderNumber}\n` +
-            `Магазин: ${d.storeName}\n` +
-            `Товаров: ${d.itemCount}\n` +
-            `Сумма: ${d.total} ${d.currency}`;
+            t(loc, 'notify.newOrder.title', { orderNumber: d.orderNumber }) + '\n' +
+            t(loc, 'notify.newOrder.body', {
+              storeName: d.storeName,
+              itemCount: d.itemCount,
+              total: fmt(d.total, loc),
+              currency: currencyLabel(d.currency, loc),
+            });
           await this.telegramBot.sendMessage(`@${d.sellerTelegramUsername}`, text);
           break;
         }
@@ -96,17 +90,19 @@ export class TelegramNotificationProcessor extends WorkerHost {
           const d = job.data as NotifyStoreApprovedData;
           await this.telegramBot.sendMessage(
             `@${d.sellerTelegramUsername}`,
-            `✅ Ваш магазин «${d.storeName}» одобрен и теперь доступен покупателям!`,
+            t(d.locale, 'notify.storeApproved', { storeName: d.storeName }),
           );
           break;
         }
 
         case TELEGRAM_JOB_STORE_REJECTED: {
           const d = job.data as NotifyStoreRejectedData;
-          const reasonLine = d.reason ? `\nПричина: ${d.reason}` : '';
+          const reasonLine = d.reason
+            ? '\n' + t(d.locale, 'notify.storeRejected.reason', { reason: d.reason })
+            : '';
           await this.telegramBot.sendMessage(
             `@${d.sellerTelegramUsername}`,
-            `❌ Ваш магазин «${d.storeName}» отклонён.${reasonLine}`,
+            t(d.locale, 'notify.storeRejected.title', { storeName: d.storeName }) + reasonLine,
           );
           break;
         }
@@ -115,22 +111,26 @@ export class TelegramNotificationProcessor extends WorkerHost {
           const d = job.data as NotifyVerificationApprovedData;
           await this.telegramBot.sendMessage(
             `@${d.sellerTelegramUsername}`,
-            '✅ Ваш аккаунт продавца верифицирован. Теперь вы можете создать магазин.',
+            t(d.locale, 'notify.verificationApproved'),
           );
           break;
         }
 
         case TELEGRAM_JOB_ORDER_STATUS_CHANGED: {
           const d = job.data as NotifyOrderStatusChangedData;
-          const labelMap = d.recipientRole === 'BUYER' ? ORDER_STATUS_LABEL_BUYER : ORDER_STATUS_LABEL_SELLER;
-          const statusText = labelMap[d.newStatus] ?? d.newStatus;
-          const intro = d.recipientRole === 'BUYER'
-            ? `🛒 Ваш заказ #${d.orderNumber}`
-            : `📦 Заказ #${d.orderNumber}`;
-          const text =
-            `${intro} — ${statusText}\n` +
-            `Магазин: ${d.storeName}\n` +
-            `Сумма: ${d.total.toLocaleString('ru')} ${d.currency}`;
+          const loc = d.locale;
+          const role = d.recipientRole === 'BUYER' ? 'buyer' : 'seller';
+          const statusText = t(loc, `orders.status.${d.newStatus}.${role}`);
+          const templateKey = d.recipientRole === 'BUYER'
+            ? 'notify.orderStatus.buyer'
+            : 'notify.orderStatus.seller';
+          const text = t(loc, templateKey, {
+            orderNumber: d.orderNumber,
+            status: statusText,
+            storeName: d.storeName,
+            total: fmt(d.total, loc),
+            currency: currencyLabel(d.currency, loc),
+          });
           await this.telegramBot.sendMessage(d.recipientChatId, text);
           break;
         }
@@ -139,25 +139,33 @@ export class TelegramNotificationProcessor extends WorkerHost {
           // Polat 07.05: формат как нормальный мессенджер — bold заголовок,
           // понятный context, кнопка «Открыть чат» one-tap в TMA.
           const d = job.data as NotifyChatMessageData;
+          const loc = d.locale;
 
-          const senderLine = d.recipientRole === 'SELLER'
-            ? `от <b>${escapeTgHtml(d.senderName)}</b>` // продавцу: «от +99890...»
-            : `от <b>${escapeTgHtml(d.senderName)}</b>${d.storeName && d.storeName !== d.senderName ? ` · ${escapeTgHtml(d.storeName)}` : ''}`; // покупателю: «от Магазин»
+          const storeMeta =
+            d.recipientRole === 'BUYER' && d.storeName && d.storeName !== d.senderName
+              ? ` · ${escapeTgHtml(d.storeName)}`
+              : '';
+          const senderLineKey = d.recipientRole === 'SELLER'
+            ? 'notify.chat.fromSeller'
+            : 'notify.chat.fromBuyer';
+          const senderLine = t(loc, senderLineKey, {
+            senderName: escapeTgHtml(d.senderName),
+            storeMeta,
+          });
 
           const contextLine = d.productTitle
-            ? `\n📦 <i>${escapeTgHtml(d.productTitle)}</i>`
+            ? t(loc, 'notify.chat.context.product', { productTitle: escapeTgHtml(d.productTitle) })
             : d.orderNumber
-              ? `\n🧾 <i>Заказ #${escapeTgHtml(d.orderNumber.replace(/^ORD-/, ''))}</i>`
+              ? t(loc, 'notify.chat.context.order', { orderNumber: escapeTgHtml(d.orderNumber.replace(/^ORD-/, '')) })
               : '';
 
           const text =
-            `💬 <b>Новое сообщение</b>\n` +
-            `${senderLine}` +
-            `${contextLine}\n\n` +
+            t(loc, 'notify.chat.title') + '\n' +
+            senderLine +
+            contextLine + '\n\n' +
             `«${escapeTgHtml(d.messagePreview)}»`;
 
           // Кнопка-ссылка «Открыть чат» — глубокий линк через TMA startapp.
-          // Telegram при клике откроет наш Mini App с параметром chat_<threadId>.
           const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'savdo_builderBOT';
           const startapp = `chat_${d.threadId}`;
 
@@ -165,7 +173,7 @@ export class TelegramNotificationProcessor extends WorkerHost {
             parseMode: 'HTML',
             replyMarkup: {
               inline_keyboard: [[
-                { text: '✉️ Открыть чат', url: `https://t.me/${botUsername}?startapp=${startapp}` },
+                { text: t(loc, 'notify.chat.openButton'), url: `https://t.me/${botUsername}?startapp=${startapp}` },
               ]],
             },
           });
@@ -177,18 +185,22 @@ export class TelegramNotificationProcessor extends WorkerHost {
           // Один nudge на cart, cron уже выставил nudgeSentAt+nudgeCount в БД
           // до постановки job'а (idempotent — даже если job retry, не дублирует).
           const d = job.data as NotifyCartAbandonedData;
+          const loc = d.locale;
           const text =
-            `🛒 <b>Вы оставили товары в корзине</b>\n` +
-            `Магазин: ${escapeTgHtml(d.storeName)}\n` +
-            `Товаров: ${d.itemCount}\n` +
-            `Сумма: ${d.total.toLocaleString('ru')} ${d.currency}\n\n` +
-            `Завершите заказ за 30 секунд — товары всё ещё в наличии.`;
+            t(loc, 'notify.cartAbandoned.title') + '\n' +
+            t(loc, 'notify.cartAbandoned.body', {
+              storeName: escapeTgHtml(d.storeName),
+              itemCount: d.itemCount,
+              total: fmt(d.total, loc),
+              currency: currencyLabel(d.currency, loc),
+            }) + '\n\n' +
+            t(loc, 'notify.cartAbandoned.cta');
 
           await this.telegramBot.sendMessage(d.recipientChatId, text, {
             parseMode: 'HTML',
             replyMarkup: {
               inline_keyboard: [[
-                { text: '🛍 Открыть корзину', url: d.cartDeepLink },
+                { text: t(loc, 'notify.cartAbandoned.button'), url: d.cartDeepLink },
               ]],
             },
           });
@@ -199,21 +211,25 @@ export class TelegramNotificationProcessor extends WorkerHost {
           // MARKETING-WISHLIST-NOTIFY-001 — товар из избранного подешевел.
           // Cron уже выставил notifiedAt+reason в БД до постановки job'а.
           const d = job.data as NotifyWishlistData;
+          const loc = d.locale;
           const discountPct = d.oldPrice > 0
             ? Math.round(((d.oldPrice - d.newPrice) / d.oldPrice) * 100)
             : 0;
           const text =
-            `💸 <b>Цена снижена на ${discountPct}%!</b>\n` +
-            `📦 ${escapeTgHtml(d.productTitle)}\n` +
-            `🏪 ${escapeTgHtml(d.storeName)}\n\n` +
-            `<s>${d.oldPrice.toLocaleString('ru')} ${d.currency}</s> → ` +
-            `<b>${d.newPrice.toLocaleString('ru')} ${d.currency}</b>`;
+            t(loc, 'notify.priceDrop.title', { discountPct }) + '\n' +
+            t(loc, 'notify.priceDrop.body', {
+              productTitle: escapeTgHtml(d.productTitle),
+              storeName: escapeTgHtml(d.storeName),
+              oldPrice: fmt(d.oldPrice, loc),
+              newPrice: fmt(d.newPrice, loc),
+              currency: currencyLabel(d.currency, loc),
+            });
 
           await this.telegramBot.sendMessage(d.recipientChatId, text, {
             parseMode: 'HTML',
             replyMarkup: {
               inline_keyboard: [[
-                { text: '🛍 Открыть товар', url: d.productDeepLink },
+                { text: t(loc, 'notify.wishlist.openButton'), url: d.productDeepLink },
               ]],
             },
           });
@@ -223,17 +239,21 @@ export class TelegramNotificationProcessor extends WorkerHost {
         case TELEGRAM_JOB_WISHLIST_BACK_IN_STOCK: {
           // MARKETING-WISHLIST-NOTIFY-001 — товар снова доступен.
           const d = job.data as NotifyWishlistData;
+          const loc = d.locale;
           const text =
-            `✨ <b>Товар снова в наличии!</b>\n` +
-            `📦 ${escapeTgHtml(d.productTitle)}\n` +
-            `🏪 ${escapeTgHtml(d.storeName)}\n\n` +
-            `Цена: <b>${d.newPrice.toLocaleString('ru')} ${d.currency}</b>`;
+            t(loc, 'notify.backInStock.title') + '\n' +
+            t(loc, 'notify.backInStock.body', {
+              productTitle: escapeTgHtml(d.productTitle),
+              storeName: escapeTgHtml(d.storeName),
+              newPrice: fmt(d.newPrice, loc),
+              currency: currencyLabel(d.currency, loc),
+            });
 
           await this.telegramBot.sendMessage(d.recipientChatId, text, {
             parseMode: 'HTML',
             replyMarkup: {
               inline_keyboard: [[
-                { text: '🛍 Открыть товар', url: d.productDeepLink },
+                { text: t(loc, 'notify.wishlist.openButton'), url: d.productDeepLink },
               ]],
             },
           });

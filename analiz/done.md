@@ -1,5 +1,34 @@
 # Done — Азим + Полат
 
+## 2026-05-14 (Полат) — Wave 17: API i18n + Pino logging + Seller Dashboard i18n
+
+3 задачи закрыты:
+
+### ✅ [API i18n] Accept-Language для TG-уведомлений 🔴
+- `apps/api/src/shared/i18n.ts` (NEW): `t(locale, key, vars)` + `fmt(n, locale)` + `currency(code, locale)`. Полные dictionaries ru/uz для всех 9 типов notification:
+  newOrder, storeApproved/Rejected, verificationApproved, orderStatusChanged,
+  chatMessage, cartAbandoned, priceDrop, backInStock.
+  Узбекский — Latin с обратным апострофом `ʻ`.
+- `apps/api/src/queues/telegram-notification.processor.ts`: все 9 cases на `t()` + `fmt()` + `currency()`. Удалены legacy `ORDER_STATUS_LABEL_BUYER/SELLER` константы.
+- `seller-notification.service.ts`: все DTO теперь несут опциональный `locale?: string` (значение `User.languageCode`, default 'ru').
+- `cart-abandonment.service.ts` + `wishlist-notify.service.ts`: select `languageCode` из `buyer.user`, передают в job data.
+- **Поведение:** seller с `User.languageCode='uz'` получит TG-уведомления на узбекском. Default = ru.
+
+### ✅ [API-PINO-LOGGING-001] structured logging без зависимостей 🟢
+- `apps/api/src/shared/structured-logger.ts` — `ConsoleLogger` extension.
+- В `NODE_ENV=production`: emit single-line JSON `{ts, level, context, msg, trace}` через stdout (info/log/warn/debug/verbose) или stderr (error/fatal) — Railway log aggregation разделяет streams.
+- В dev: fallback на цветной NestJS ConsoleLogger.
+- `isLevelEnabled` override + `LOG_LEVEL` env для production tuning.
+- Подключено в `main.ts` через `NestFactory.create({ logger: new StructuredLogger() })`.
+- **Все существующие `Logger.log/warn/error` работают автоматически без правок** (StructuredLogger пробрасывает в super.log в dev, в JSON в prod).
+- **Pino не подключаем** — требует `pnpm install` (4 пакета). Wrapper даёт 80% value.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] Seller Dashboard + словарь seller 🟠
+- ru.ts + uz.ts: +24 ключа для seller (dashboard.title/greeting/quickActions/totalProducts/totalOrders/pending/revenue, products.title/empty/addFirst/filterActive/filterDraft/filterArchived/confirmDelete*, orders.viewAll/recent).
+- `seller/DashboardPage.tsx`: heading, statsCards labels (Товары/Заказы/Новые), greeting `Salom, {name}!`, orders.recent + orders.viewAll, empty state, currency, `orders.orderNumber` template.
+
+**Tests:** 74/74 api wishlist+cart passed. TMA tsc + build clean (300KB / 94KB gzip).
+
 ## 2026-05-14 (Полат) — Wave 16: 4 P1 design/UX задачи (полное закрытие)
 
 4 задачи закрыты за один проход.
