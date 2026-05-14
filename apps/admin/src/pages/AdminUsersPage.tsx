@@ -148,9 +148,10 @@ export default function AdminUsersPage() {
                       onClick={() => setRemoveTarget(admin)}
                       disabled={isSelf || admin.adminRole === 'super_admin'}
                       title={admin.adminRole === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ'}
+                      aria-label={admin.adminRole === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ администратора'}
                       style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border-error)', background: 'var(--surface-error)', color: 'var(--error)', fontSize: 12, fontWeight: 600, cursor: (isSelf || admin.adminRole === 'super_admin') ? 'not-allowed' : 'pointer', opacity: (isSelf || admin.adminRole === 'super_admin') ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={12} aria-hidden="true" />
                     </button>
                   </div>
                 )}
