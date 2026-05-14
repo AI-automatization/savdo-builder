@@ -6,14 +6,22 @@ import { colors } from '@/lib/styles';
 import { PhoneInput, isValidUzPhone } from '@/components/PhoneInput';
 
 type OtpStep = 'phone' | 'code';
+type OtpPurpose = 'login' | 'register' | 'checkout';
 
 interface OtpGateProps {
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
+  /**
+   * Backend rate-limits OTP per purpose. До этого все callsites хардкодили
+   * 'checkout' даже для /orders, /wishlist, /profile, /chats — что путало
+   * лимиты. Default 'login' для общих auth-gate сценариев; checkout flow
+   * имеет свою local OtpGate в (minimal)/checkout/page.tsx.
+   */
+  purpose?: OtpPurpose;
 }
 
-export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
+export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGateProps) {
   const [step, setStep] = useState<OtpStep>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -25,7 +33,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
   async function handleSend() {
     setError('');
     try {
-      await requestOtp.mutateAsync({ phone, purpose: 'checkout' });
+      await requestOtp.mutateAsync({ phone, purpose });
       setStep('code');
     } catch {
       setError('Не удалось отправить код. Проверьте номер.');
@@ -35,7 +43,7 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
   async function handleVerify() {
     setError('');
     try {
-      await verifyOtp.mutateAsync({ phone, code, purpose: 'checkout' });
+      await verifyOtp.mutateAsync({ phone, code, purpose });
     } catch {
       setError('Неверный код. Попробуйте ещё раз.');
     }
