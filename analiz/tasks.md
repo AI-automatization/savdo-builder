@@ -5,6 +5,31 @@
 
 ---
 
+# 🚨🚨🚨 ПОЛАТУ — СРОЧНО ПОСМОТРЕТЬ ПЕРВЫМ ДЕЛОМ (от 14.05.2026 ночь)
+
+## 🔴 P0 BLOCKER — `API-CHECKOUT-CONFIRM-500-001`
+
+**Buyer не может оформить заказ.** На проде `POST /api/v1/checkout/confirm` возвращает HTTP 500 «Internal server error» — Azim воспроизвёл вечером 14.05.2026 в web-buyer checkout.
+
+**Что нужно сделать:**
+1. Открыть Railway logs `savdo-api-production` за последние часы (с ~22:00 14.05.2026)
+2. Найти stack trace с `[CheckoutController]` или `[CheckoutService]`
+3. Подозрения (по убывающей вероятности):
+   - Decimal arithmetic floating-point (см. `analiz/logs.md` `P3-004-FLOATING-POINT` — твой же похожий pattern)
+   - Stock decrement INV-O04 (race / constraint violation)
+   - DB constraint violation на Order/OrderItem create
+   - Transaction rollback
+   - Telegram notification job enqueue падает
+4. Файлы: `apps/api/src/modules/checkout/checkout.controller.ts` + `checkout.use-case.ts` + `orders.repository.ts`
+
+**Frontend defensive уже работает** — Azim видит ErrorBanner с сообщением. Но до backend fix купить нельзя — это блокер launch'а.
+
+**Полные подробности:** `analiz/logs.md` под `[2026-05-14] [API-CHECKOUT-CONFIRM-500-001]`
+
+После fix — закрыть здесь как `[x]` + перенести в `analiz/done.md`.
+
+---
+
 # 🚨 PLATFORM AUDIT 10.05.2026 — Pre-launch findings (5 perspectives + endpoint inventory)
 
 > Полные отчёты от 5 параллельных аудит-агентов сохранены в conversation 10.05.2026.
