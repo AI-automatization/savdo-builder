@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
   const { isAuthenticated } = useAuth();
   const wishlistIds = useWishlistIds();
   const toggleWishlist = useToggleWishlist();
+  const [imageErrored, setImageErrored] = useState(false);
 
   // Server-sent flag (auth'd storefront feed) wins; client cache is the fallback
   // for cards rendered from a non-feed source (cart, recent stores, etc).
@@ -51,6 +53,9 @@ export default function ProductCard({ product, storeSlug }: Props) {
 
   const useCollage = displayType === 'COLLAGE_2X2' && mediaUrls.length >= 2;
   const showSliderDots = displayType === 'SLIDER' && mediaUrls.length > 1;
+  // Stale Supabase URLs (миграция R2/TG не покрыла старые записи) → 404 → onError
+  // → показываем тот же placeholder, что и при пустых mediaUrls.
+  const showPlaceholder = mediaUrls.length === 0 || (!useCollage && imageErrored);
 
   return (
     <Link href={`/${storeSlug}/products/${product.id}`} className="block group">
@@ -60,7 +65,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
           className="aspect-square relative flex items-center justify-center select-none overflow-hidden rounded-md"
           style={{ background: colors.surfaceSunken }}
         >
-          {mediaUrls.length === 0 ? (
+          {showPlaceholder ? (
             <div className="flex flex-col items-center gap-1.5 px-3 text-center">
               <ShoppingBag size={26} style={{ color: colors.textMuted, opacity: 0.55 }} />
               <span className="text-[10px] font-medium tracking-wide uppercase" style={{ color: colors.textMuted, opacity: 0.7 }}>
@@ -76,6 +81,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
               fill
               className="object-cover"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
+              onError={() => setImageErrored(true)}
             />
           )}
 
@@ -171,18 +177,26 @@ export default function ProductCard({ product, storeSlug }: Props) {
 
 function CollageGrid({ urls, alt }: { urls: string[]; alt: string }) {
   const cells = [0, 1, 2, 3].map((i) => urls[i] ?? null);
+  const [brokenCells, setBrokenCells] = useState<Set<number>>(new Set());
 
   return (
     <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
       {cells.map((url, i) => (
         <div key={i} className="relative overflow-hidden" style={{ background: colors.surfaceSunken }}>
-          {url ? (
+          {url && !brokenCells.has(i) ? (
             <Image
               src={url}
               alt={`${alt} — фото ${i + 1}`}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 25vw, 110px"
+              onError={() =>
+                setBrokenCells((prev) => {
+                  const next = new Set(prev);
+                  next.add(i);
+                  return next;
+                })
+              }
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
