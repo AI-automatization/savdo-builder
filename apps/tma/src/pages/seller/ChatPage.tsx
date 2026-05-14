@@ -461,7 +461,7 @@ export default function SellerChatPage() {
                 <button
                   onClick={resolveThread}
                   disabled={resolving}
-                  className="text-[11px] px-3 py-1 rounded-lg shrink-0"
+                  className="text-xxs px-3 py-1 rounded-lg shrink-0"
                   style={{
                     background: 'rgba(34,197,94,0.12)',
                     border: '1px solid rgba(34,197,94,0.25)',
@@ -492,7 +492,7 @@ export default function SellerChatPage() {
                       .then(() => showToast('✅ Скопировано'))
                       .catch(() => showToast('❌ Не удалось скопировать', 'error'));
                   }}
-                  className="text-[11px] px-2 py-1 rounded-lg"
+                  className="text-xxs px-2 py-1 rounded-lg"
                   style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   Копировать
@@ -551,7 +551,7 @@ export default function SellerChatPage() {
                     {m.parentMessage && (
                       <div className="px-3 pt-2">
                         <div
-                          className="px-2 py-1 rounded-md text-[11px] truncate"
+                          className="px-2 py-1 rounded-md text-xxs truncate"
                           style={{
                             background: 'var(--tg-border-soft)',
                             borderLeft: '3px solid var(--tg-accent)',
@@ -572,7 +572,7 @@ export default function SellerChatPage() {
                   </div>
                 )}
                 <span
-                  className="text-[10px] mt-0.5 flex items-center gap-1"
+                  className="text-xxs mt-0.5 flex items-center gap-1"
                   style={{ color: 'var(--tg-text-dim)', alignSelf: m.senderRole === 'SELLER' ? 'flex-end' : 'flex-start' }}
                 >
                   {m.id.startsWith('temp_') ? '...' : timeStr(m.createdAt)}
@@ -600,7 +600,7 @@ export default function SellerChatPage() {
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--tg-accent-bg)', borderLeft: '3px solid var(--tg-accent)' }}>
                   <span style={{ fontSize: 16 }}>↩</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold" style={{ color: 'var(--tg-accent)' }}>
+                    <p className="text-xxs font-semibold" style={{ color: 'var(--tg-accent)' }}>
                       Ответ {replyTo.senderRole === 'SELLER' ? 'себе' : 'покупателю'}
                     </p>
                     <p className="text-xs truncate" style={{ color: 'var(--tg-text-secondary)' }}>{replyTo.text || '📷 Фото'}</p>
@@ -674,7 +674,7 @@ export default function SellerChatPage() {
               </div>
             </div>
           ) : (
-            <div className="pt-2 text-center text-[12px] shrink-0" style={{ color: 'var(--tg-text-dim)' }}>
+            <div className="pt-2 text-center text-xs shrink-0" style={{ color: 'var(--tg-text-dim)' }}>
               Диалог закрыт — новые сообщения недоступны
             </div>
           )}
@@ -766,7 +766,7 @@ export default function SellerChatPage() {
               </span>
               {unread > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-xxs font-bold"
                   style={{ background: 'var(--tg-accent)', color: '#fff' }}
                 >
                   {unread > 9 ? '9+' : unread}
@@ -779,13 +779,13 @@ export default function SellerChatPage() {
                   {threadLabel(t)}
                 </p>
                 {t.lastMessageAt && (
-                  <span className="text-[10px] shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
+                  <span className="text-xxs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                     {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
                   </span>
                 )}
               </div>
               {ctx && (
-                <p className="text-[11px] truncate" style={{ color: 'var(--tg-accent)' }}>
+                <p className="text-xxs truncate" style={{ color: 'var(--tg-accent)' }}>
                   {ctx}
                 </p>
               )}

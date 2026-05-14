@@ -181,23 +181,23 @@ export default function SellerSettingsPage() {
 
         {/* ── Тема оформления ── */}
         <GlassCard className="p-4 flex flex-col gap-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Тема оформления
           </p>
           <ThemeToggle />
-          <p className="text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
             Авто — синхронизация с Telegram. Можно зафиксировать вручную.
           </p>
         </GlassCard>
 
         {/* ── Профиль ── */}
         <GlassCard className="p-4 flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Профиль
           </p>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>Имя</label>
+            <label className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>Имя</label>
             <input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -214,7 +214,7 @@ export default function SellerSettingsPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <p className="text-[11px]" style={{ color: 'var(--tg-text-muted)' }}>Тип продавца</p>
+            <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>Тип продавца</p>
             <div className="flex gap-2">
               {(['individual', 'business'] as const).map((t) => (
                 <button
@@ -257,7 +257,7 @@ export default function SellerSettingsPage() {
 
         {/* ── Уведомления ── */}
         <GlassCard className="p-4 flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Уведомления
           </p>
           <div className="flex items-center justify-between gap-3">
@@ -280,7 +280,7 @@ export default function SellerSettingsPage() {
         {/* ── Магазин ── */}
         {profile?.store && profile.store.status === 'APPROVED' && (
           <GlassCard className="p-4 flex flex-col gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+            <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               Магазин
             </p>
 
@@ -312,7 +312,7 @@ export default function SellerSettingsPage() {
 
         {/* ── Telegram канал ── */}
         <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
             Telegram канал
           </p>
           <button
@@ -330,7 +330,7 @@ export default function SellerSettingsPage() {
 
         {/* ── Прочее ── */}
         <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
             Прочее
           </p>
           <button
@@ -349,7 +349,7 @@ export default function SellerSettingsPage() {
           </button>
         </GlassCard>
 
-        <p className="text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.15)' }}>
+        <p className="text-center text-xxs" style={{ color: 'rgba(255,255,255,0.15)' }}>
           Savdo · v1.0
         </p>
 

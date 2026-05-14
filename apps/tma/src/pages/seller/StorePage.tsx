@@ -259,7 +259,7 @@ export default function SellerStorePage() {
                 onClick={(e) => { e.preventDefault(); tg?.openLink?.(webStoreUrl(store.slug)); }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] mt-0.5 px-2 py-0.5 rounded-md"
+                className="inline-flex items-center gap-1 text-xxs mt-0.5 px-2 py-0.5 rounded-md"
                 style={{
                   color: 'var(--tg-accent)',
                   background: 'var(--tg-accent-bg)',

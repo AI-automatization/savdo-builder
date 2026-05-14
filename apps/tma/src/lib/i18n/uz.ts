@@ -153,6 +153,8 @@ export const uz: Translations = {
   'orders.filter.shipped': 'Yoʻlda',
   'orders.filter.delivered': 'Yetkazilgan',
   'orders.filter.cancelled': 'Bekor qilingan',
+  'orders.viewAll': 'Hammasi',
+  'orders.recent': 'Soʻnggi buyurtmalar',
   'orders.status.PENDING': 'Kutilmoqda',
   'orders.status.CONFIRMED': 'Tasdiqlangan',
   'orders.status.PROCESSING': 'Tayyorlanmoqda',
@@ -222,6 +224,34 @@ export const uz: Translations = {
   'seller.products': 'Mahsulotlar',
   'seller.orders': 'Buyurtmalar',
   'seller.stats': 'Statistika',
+
+  // ── Seller dashboard ──────────────────────────────────────────────────
+  'seller.dashboard.title': 'Bosh sahifa',
+  'seller.dashboard.greeting': 'Salom, {name}!',
+  'seller.dashboard.quickActions': 'Tezkor amallar',
+  'seller.dashboard.addProduct': 'Mahsulot qoʻshish',
+  'seller.dashboard.viewOrders': 'Buyurtmalar',
+  'seller.dashboard.viewProducts': 'Mahsulotlar',
+  'seller.dashboard.viewStore': 'Doʻkon',
+  'seller.dashboard.viewStats': 'Statistika',
+  'seller.dashboard.totalOrders': 'Jami buyurtma',
+  'seller.dashboard.totalProducts': 'Mahsulotlar',
+  'seller.dashboard.pending': 'Kutilmoqda',
+  'seller.dashboard.revenue': 'Tushum',
+
+  // ── Seller products list ──────────────────────────────────────────────
+  'seller.products.title': 'Mahsulotlarim',
+  'seller.products.empty': 'Sizda hali mahsulotlar yoʻq',
+  'seller.products.addFirst': 'Birinchi mahsulotni qoʻshish',
+  'seller.products.searchPlaceholder': 'Nom boʻyicha qidirish...',
+  'seller.products.filterAll': 'Hammasi',
+  'seller.products.filterActive': 'Faol',
+  'seller.products.filterDraft': 'Qoralama',
+  'seller.products.filterArchived': 'Arxiv',
+  'seller.products.confirmDelete': 'Mahsulotni oʻchirish?',
+  'seller.products.confirmDeleteBody': '«{title}» mahsuloti oʻchiriladi. Bu amalni qaytarib boʻlmaydi.',
+  'seller.products.deleteSuccess': '✅ Mahsulot oʻchirildi',
+  'seller.products.deleteError': '❌ Mahsulotni oʻchirib boʻlmadi',
 
   // ── Wishlist ──────────────────────────────────────────────────────────
   'wishlist.title': 'Sevimlilar',

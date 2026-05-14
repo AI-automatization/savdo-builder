@@ -228,7 +228,7 @@ export default function OrdersPage() {
                   <button
                     key={value}
                     onClick={() => setStatusFilter(value)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xxs font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
                     style={!active ? {
                       background: 'var(--tg-surface-hover)',
                       border: '1px solid var(--tg-border)',
@@ -238,7 +238,7 @@ export default function OrdersPage() {
                     {t(`orders.filter.${value}`)}
                     {count > 0 && (
                       <span
-                        className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                        className="px-1.5 py-0 rounded-full text-xxs font-bold"
                         style={{
                           background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
                           color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
@@ -331,7 +331,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <Badge status={o.status} />
-                    <p className="text-[11px] shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
+                    <p className="text-xxs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                       {dateLabel} · {timeLabel}
                     </p>
                   </div>
@@ -386,14 +386,14 @@ export default function OrdersPage() {
                                 setReviewRating(5);
                                 setReviewComment('');
                               }}
-                              className="self-start text-[11px] font-semibold py-1 px-2.5 rounded-lg"
+                              className="self-start text-xxs font-semibold py-1 px-2.5 rounded-lg"
                               style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.30)', color: '#FBBF24' }}
                             >
                               {t('orders.rateProduct')}
                             </button>
                           )}
                           {reviewedItems.has(item.id) && (
-                            <p className="text-[10px]" style={{ color: 'rgba(52,211,153,0.85)' }}>
+                            <p className="text-xxs" style={{ color: 'rgba(52,211,153,0.85)' }}>
                               {t('orders.reviewedShort')}
                             </p>
                           )}

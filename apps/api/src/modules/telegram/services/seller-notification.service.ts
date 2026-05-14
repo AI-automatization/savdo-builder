@@ -12,6 +12,10 @@ import {
   TELEGRAM_JOB_CHAT_MESSAGE,
 } from '../../../queues/telegram-notification.processor';
 
+// MARKETING-LOCALIZATION-UZ-001: все notify-DTO теперь несут опциональный
+// `locale` (значение `User.languageCode`, default 'ru'). Caller use-case
+// должен resolve user.languageCode и пробросить.
+
 export interface NotifyNewOrderData {
   sellerTelegramUsername: string;
   orderNumber: string;
@@ -19,21 +23,25 @@ export interface NotifyNewOrderData {
   itemCount: number;
   total: number;
   currency: string;
+  locale?: string;
 }
 
 export interface NotifyStoreApprovedData {
   sellerTelegramUsername: string;
   storeName: string;
+  locale?: string;
 }
 
 export interface NotifyStoreRejectedData {
   sellerTelegramUsername: string;
   storeName: string;
   reason?: string;
+  locale?: string;
 }
 
 export interface NotifyVerificationApprovedData {
   sellerTelegramUsername: string;
+  locale?: string;
 }
 
 export interface NotifyOrderStatusChangedData {
@@ -47,6 +55,7 @@ export interface NotifyOrderStatusChangedData {
   newStatus: string;
   total: number;
   currency: string;
+  locale?: string;
 }
 
 export interface NotifyChatMessageData {
@@ -64,6 +73,7 @@ export interface NotifyChatMessageData {
   threadId: string;
   /** Кому идёт notification — определяет какой URL чата открывать. */
   recipientRole: 'BUYER' | 'SELLER';
+  locale?: string;
 }
 
 @Injectable()

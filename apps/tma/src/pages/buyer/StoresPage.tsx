@@ -399,7 +399,7 @@ export default function StoresPage() {
                     {/* MARKETING-VERIFIED-SELLER-001: verified badge */}
                     {store.isVerified && (
                       <span
-                        className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+                        className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-xxs font-bold"
                         style={{ background: 'rgba(37,99,235,0.20)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.45)' }}
                         title={t('stores.verifiedTitle')}
                         aria-label={t('stores.verifiedTitle')}

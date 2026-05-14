@@ -124,7 +124,7 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
 
             {/* Label */}
             <span
-              className="text-[10px] font-semibold truncate w-full text-center"
+              className="text-xxs font-semibold truncate w-full text-center"
               style={{
                 color: active ? 'var(--tg-accent)' : 'var(--tg-text-secondary)',
                 transition: 'color 0.15s',

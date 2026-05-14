@@ -127,7 +127,7 @@ export default function CheckoutPage() {
               {fmt(successOrder.totalAmount)} {t('common.currency')}
             </span>
           </div>
-          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tg-text-muted)' }}>
+          <p className="text-xxs leading-relaxed" style={{ color: 'var(--tg-text-muted)' }}>
             {t('checkout.sellerWillContact')}
           </p>
         </GlassCard>
@@ -224,7 +224,7 @@ export default function CheckoutPage() {
             <p className="text-xs font-semibold" style={{ color: 'rgba(251,191,36,0.95)' }}>
               {t('checkout.authRequired')}
             </p>
-            <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(251,191,36,0.70)' }}>
+            <p className="text-xxs leading-relaxed" style={{ color: 'rgba(251,191,36,0.70)' }}>
               {t('checkout.authHintDetail')}
             </p>
           </div>

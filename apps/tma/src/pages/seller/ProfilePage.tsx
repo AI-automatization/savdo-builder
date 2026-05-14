@@ -86,7 +86,7 @@ export default function SellerProfilePage() {
             )}
           </div>
           <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            className="text-xxs font-bold px-2 py-0.5 rounded-full"
             style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
           >
             Продавец
@@ -118,7 +118,7 @@ export default function SellerProfilePage() {
             <p className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
             <button
               onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
-              className="text-[11px] inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+              className="text-xxs inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
               style={{
                 color: 'var(--tg-accent)',
                 background: 'var(--tg-accent-bg)',
@@ -197,7 +197,7 @@ export default function SellerProfilePage() {
           </button>
         </GlassCard>
 
-        <p className="text-center text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
+        <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · Продавец
         </p>
       </div>
