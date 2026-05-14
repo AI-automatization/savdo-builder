@@ -10,7 +10,6 @@ import {
   getFeaturedStorefront,
   getCategoriesTree,
   getPlatformFeed,
-  getStorefrontStoreWithTrust,
   getStoresCatalog,
   getProductsCatalog,
   type PlatformFeedParams,
@@ -19,7 +18,6 @@ import {
 
 export const storefrontKeys = {
   store: (slug: string) => ['store', slug] as const,
-  storeWithTrust: (slug: string) => ['store-with-trust', slug] as const,
   categories: ['categories'] as const,
   categoriesTree: ['categories-tree'] as const,
   products: (storeId: string, filters?: object) => ['products', storeId, filters] as const,
@@ -115,17 +113,6 @@ export function usePlatformFeed(params: PlatformFeedParams) {
     // Запрос имеет смысл только при выбранной категории — иначе homepage
     // показывает featured feed из useFeaturedStorefront, не platform feed.
     enabled: !!params.globalCategoryId,
-  });
-}
-
-// ── Store с trust signals (для product page) ─────────────────────────────────
-
-export function useStoreWithTrust(slug: string) {
-  return useQuery({
-    queryKey: storefrontKeys.storeWithTrust(slug),
-    queryFn: () => getStorefrontStoreWithTrust(slug),
-    enabled: !!slug,
-    staleTime: 5 * 60 * 1000,
   });
 }
 

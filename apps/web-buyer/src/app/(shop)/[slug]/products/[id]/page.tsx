@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
-import { useProduct, useStoreWithTrust } from "@/hooks/use-storefront";
+import { useProduct } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus, ThreadType } from "types";
 import { track } from "@/lib/analytics";
@@ -81,7 +81,6 @@ export default function ProductPage() {
   const id = params.id as string;
 
   const { data: product, isLoading, isError } = useProduct(id);
-  const storeFull = useStoreWithTrust(slug);
   const addToCart = useAddToCart();
   const { isAuthenticated } = useAuth();
   const wishlistIds = useWishlistIds();
@@ -468,10 +467,10 @@ export default function ProductPage() {
                     slug={product.store.slug}
                     name={product.store.name}
                     city={product.store.city}
-                    logoUrl={product.store.logoUrl ?? storeFull.data?.logoUrl ?? null}
-                    isVerified={storeFull.data?.isVerified ?? false}
-                    avgRating={storeFull.data?.avgRating ?? null}
-                    reviewCount={storeFull.data?.reviewCount ?? 0}
+                    logoUrl={product.store.logoUrl}
+                    isVerified={product.store.isVerified}
+                    avgRating={product.store.avgRating}
+                    reviewCount={product.store.reviewCount}
                   />
                 )}
 

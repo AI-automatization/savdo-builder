@@ -3,18 +3,6 @@
 // Локальные расширения типов для web-buyer пока packages/types не догнан.
 // Полат может удалить, когда обновит StoreRef / Store / StorefrontStore
 // и добавит FeaturedStorefrontResponse / GlobalCategoryTreeItem.
-//
-// Зависимость: API-PRODUCT-STORE-TRUST-SIGNALS-001 (см. analiz/tasks.md).
-
-import type { StorefrontStore } from 'types';
-
-export interface StoreTrustSignals {
-  isVerified: boolean;
-  avgRating: number | null;
-  reviewCount: number;
-}
-
-export type StorefrontStoreWithTrust = StorefrontStore & StoreTrustSignals;
 
 export interface FeaturedTopStore {
   id: string;
