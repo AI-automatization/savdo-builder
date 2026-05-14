@@ -35,6 +35,22 @@ export const uz: Translations = {
   'nav.wishlist': 'Sevimlilar',
   'nav.products': 'Mahsulotlar',
   'nav.chats': 'Suhbatlar',
+
+  // ── Chat ──────────────────────────────────────────────────────────────
+  'chat.empty': 'Xabarlar hali yoʻq',
+  'chat.edited': '· tahrirlangan',
+  'chat.editing': 'Xabarni tahrirlash',
+  'chat.loadError': 'Suhbatlarni yuklab boʻlmadi',
+  'chat.noThreads': 'Suhbatlar hali yoʻq',
+  'chat.sendError': '❌ Yuborib boʻlmadi',
+  'chat.reportSent': '✅ Shikoyat yuborildi',
+  'chat.reportError': '❌ Shikoyatni yuborib boʻlmadi',
+  'chat.placeholder': 'Xabar... (Enter ↵)',
+  'chat.editPlaceholder': 'Xabarni oʻzgartirish... (Enter ↵)',
+  'chat.backToThreads': 'Suhbatlarga qaytish',
+  'chat.cancelReply': 'Javobni bekor qilish',
+  'chat.cancelEdit': 'Bekor qilish',
+  'chat.attachPhoto': 'Rasm biriktirish',
   'nav.dashboard': 'Bosh sahifa',
 
   // ── Auth ──────────────────────────────────────────────────────────────
@@ -43,6 +59,20 @@ export const uz: Translations = {
   'auth.register': 'Roʻyxatdan oʻtish',
   'auth.welcomeName': 'Salom, {name}!',
   'auth.guest': 'Mehmon',
+  'auth.guestSubtitle': 'Buyurtma berish uchun kiring',
+  'auth.guestBanner': 'Doʻkonlarni mehmon sifatida koʻrayapsiz. Buyurtma berish uchun Telegram orqali kiring.',
+  'auth.loginViaBot': '@{bot} orqali kirish',
+
+  // ── Profile ──────────────────────────────────────────────────────────
+  'profile.title': 'Profil',
+  'profile.actions': 'Amallar',
+  'profile.tgBotButton': 'Botga yozish (@{bot})',
+  'profile.becomeSellerTitle': 'Sotmoqchimisiz?',
+  'profile.becomeSellerSubtitle': 'Shu yerda oʻz doʻkoningizni oching',
+  'profile.becomeSellerApplying': 'Sotuvchi akkaunti yaratilmoqda...',
+  'profile.becomeSellerCta': 'Doʻkon ochish',
+  'profile.role.buyer': 'Xaridor',
+  'profile.footer': 'Savdo · Xaridor',
 
   // ── Cart ──────────────────────────────────────────────────────────────
   'cart.title': 'Savat',

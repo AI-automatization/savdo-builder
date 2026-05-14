@@ -33,6 +33,22 @@ export const ru: Translations = {
   'nav.wishlist': 'Избранное',
   'nav.products': 'Товары',
   'nav.chats': 'Чаты',
+
+  // ── Chat ──────────────────────────────────────────────────────────────
+  'chat.empty': 'Сообщений пока нет',
+  'chat.edited': '· изменено',
+  'chat.editing': 'Редактирование сообщения',
+  'chat.loadError': 'Не удалось загрузить чаты',
+  'chat.noThreads': 'Диалогов пока нет',
+  'chat.sendError': '❌ Не удалось отправить',
+  'chat.reportSent': '✅ Жалоба отправлена',
+  'chat.reportError': '❌ Не удалось отправить жалобу',
+  'chat.placeholder': 'Сообщение... (Enter ↵)',
+  'chat.editPlaceholder': 'Изменить сообщение... (Enter ↵)',
+  'chat.backToThreads': 'Назад к диалогам',
+  'chat.cancelReply': 'Отменить ответ',
+  'chat.cancelEdit': 'Отменить',
+  'chat.attachPhoto': 'Прикрепить фото',
   'nav.dashboard': 'Главная',
 
   // ── Auth ──────────────────────────────────────────────────────────────
@@ -41,6 +57,20 @@ export const ru: Translations = {
   'auth.register': 'Зарегистрироваться',
   'auth.welcomeName': 'Привет, {name}!',
   'auth.guest': 'Гость',
+  'auth.guestSubtitle': 'Войдите чтобы делать заказы',
+  'auth.guestBanner': 'Вы просматриваете магазины как гость. Для заказов нужно войти через Telegram.',
+  'auth.loginViaBot': 'Войти через @{bot}',
+
+  // ── Profile ──────────────────────────────────────────────────────────
+  'profile.title': 'Профиль',
+  'profile.actions': 'Действия',
+  'profile.tgBotButton': 'Написать боту (@{bot})',
+  'profile.becomeSellerTitle': 'Хочешь продавать?',
+  'profile.becomeSellerSubtitle': 'Открой свой магазин прямо здесь',
+  'profile.becomeSellerApplying': 'Создаём аккаунт продавца...',
+  'profile.becomeSellerCta': 'Открыть магазин',
+  'profile.role.buyer': 'Покупатель',
+  'profile.footer': 'Savdo · Покупатель',
 
   // ── Cart ──────────────────────────────────────────────────────────────
   'cart.title': 'Корзина',

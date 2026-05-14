@@ -1,15 +1,17 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { applyAsSeller } from '@/lib/auth';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useTranslation } from '@/lib/i18n';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
 
 export default function BuyerProfilePage() {
   const { user, authenticated, logout, reauth } = useAuth();
   const { tg, user: tgUser } = useTelegram();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [applying, setApplying] = useState(false);
 
@@ -47,7 +49,7 @@ export default function BuyerProfilePage() {
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Профиль</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('profile.title')}</h1>
 
         {/* Аккаунт */}
         <GlassCard className="p-4 flex items-center gap-3">
@@ -72,8 +74,8 @@ export default function BuyerProfilePage() {
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>Гость</p>
-                <p className="text-xs" style={{ color: 'var(--tg-text-dim)' }}>Войдите чтобы делать заказы</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>{t('auth.guest')}</p>
+                <p className="text-xs" style={{ color: 'var(--tg-text-dim)' }}>{t('auth.guestSubtitle')}</p>
               </>
             )}
           </div>
@@ -82,7 +84,7 @@ export default function BuyerProfilePage() {
               className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
               style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
             >
-              Покупатель
+              {t('profile.role.buyer')}
             </span>
           )}
         </GlassCard>
@@ -92,9 +94,9 @@ export default function BuyerProfilePage() {
           <GlassCard className="p-4 flex items-center gap-3">
             <span style={{ fontSize: 28 }}>🏪</span>
             <div className="flex-1">
-              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>Хочешь продавать?</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>{t('profile.becomeSellerTitle')}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
-                {applying ? 'Создаём аккаунт продавца...' : 'Открой свой магазин прямо здесь'}
+                {applying ? t('profile.becomeSellerApplying') : t('profile.becomeSellerSubtitle')}
               </p>
             </div>
             <button
@@ -108,7 +110,7 @@ export default function BuyerProfilePage() {
                 cursor: applying ? 'wait' : 'pointer',
               }}
             >
-              {applying ? '...' : 'Открыть магазин'}
+              {applying ? '...' : t('profile.becomeSellerCta')}
             </button>
           </GlassCard>
         )}
@@ -116,7 +118,7 @@ export default function BuyerProfilePage() {
         {/* Действия */}
         <GlassCard className="p-4 flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
-            Действия
+            {t('profile.actions')}
           </p>
 
           {authenticated && (
@@ -125,7 +127,7 @@ export default function BuyerProfilePage() {
               className="flex items-center gap-3 py-2.5 text-sm"
               style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
             >
-              <span>📦</span> Мои заказы
+              <span>📦</span> {t('orders.title')}
             </button>
           )}
 
@@ -134,7 +136,7 @@ export default function BuyerProfilePage() {
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
-            <span>🤖</span> Написать боту (@{BOT_USERNAME})
+            <span>🤖</span> {t('profile.tgBotButton', { bot: BOT_USERNAME })}
           </button>
 
           {authenticated && (
@@ -143,7 +145,7 @@ export default function BuyerProfilePage() {
               className="flex items-center gap-3 py-2.5 text-sm"
               style={{ color: 'rgba(248,113,113,0.75)' }}
             >
-              <span>🚪</span> Выйти из аккаунта
+              <span>🚪</span> {t('auth.logout')}
             </button>
           )}
         </GlassCard>
@@ -154,23 +156,22 @@ export default function BuyerProfilePage() {
             style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
             <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>
-              Вы просматриваете магазины как гость.<br />
-              Для заказов нужно войти через Telegram.
+              {t('auth.guestBanner')}
             </p>
             <button
               onClick={openBot}
               className="mt-3 text-sm font-semibold px-4 py-2 rounded-xl"
               style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
             >
-              Войти через @{BOT_USERNAME}
+              {t('auth.loginViaBot', { bot: BOT_USERNAME })}
             </button>
           </div>
         )}
 
         <p className="text-center text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
-          Savdo · Покупатель
+          {t('profile.footer')}
         </p>
       </div>
-    
+
   );
 }

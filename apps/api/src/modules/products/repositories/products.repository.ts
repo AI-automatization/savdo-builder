@@ -33,7 +33,10 @@ const sellerProductDetailInclude = Prisma.validator<Prisma.ProductInclude>()({
   globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
 });
 
-// Public detail — то же + attributes.
+// Public detail — то же + attributes + store (с trust signals).
+// API-PRODUCT-STORE-TRUST-SIGNALS-001: store включает isVerified/avgRating/
+// reviewCount + city/contact/logo, чтобы web-buyer product page не делала
+// второй запрос на /storefront/stores/:slug ради trust badges.
 const publicProductDetailInclude = Prisma.validator<Prisma.ProductInclude>()({
   images:   { orderBy: { sortOrder: 'asc' as const }, include: { media: true } },
   variants: {
@@ -47,6 +50,20 @@ const publicProductDetailInclude = Prisma.validator<Prisma.ProductInclude>()({
   },
   attributes: { orderBy: { sortOrder: 'asc' as const } },
   globalCategory: { select: { id: true, nameRu: true, nameUz: true } },
+  store: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      city: true,
+      telegramContactLink: true,
+      logoMediaId: true,
+      // Trust signals (MARKETING-VERIFIED-SELLER-001):
+      isVerified: true,
+      avgRating: true,
+      reviewCount: true,
+    },
+  },
 });
 
 // Search-результат — товар + первая картинка + ссылка на магазин (FEAT-001).

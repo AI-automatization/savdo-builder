@@ -162,12 +162,12 @@ function RowDetailPanel({ row, writableFields, isReadonly, onEdit, onDelete, onC
             </button>
           )}
           {!isReadonly && (
-            <button onClick={onDelete} style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Trash2 size={12} />
+            <button onClick={onDelete} aria-label="Удалить запись" style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid var(--border-error)', background: 'var(--surface-error)', color: 'var(--error)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 size={12} aria-hidden="true" />
             </button>
           )}
-          <button onClick={onClose} style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={13} />
+          <button onClick={onClose} aria-label="Закрыть панель" style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={13} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -660,9 +660,9 @@ export default function DatabasePage() {
             </div>
 
             {actionError && (
-              <div style={{ margin: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13, flexShrink: 0 }}>
-                <AlertTriangle size={13} /> {actionError}
-                <button onClick={() => setActionError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}><X size={13} /></button>
+              <div style={{ margin: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'var(--surface-error)', border: '1px solid var(--border-error-soft)', color: 'var(--error)', fontSize: 13, flexShrink: 0 }}>
+                <AlertTriangle size={13} aria-hidden="true" /> {actionError}
+                <button onClick={() => setActionError(null)} aria-label="Скрыть ошибку" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><X size={13} aria-hidden="true" /></button>
               </div>
             )}
 
@@ -713,9 +713,9 @@ export default function DatabasePage() {
                                 </button>
                               )}
                               {!isReadonly && (
-                                <button onClick={() => setDeleteConfirmId(String(row.id))} title="Удалить"
-                                  style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                  <Trash2 size={12} />
+                                <button onClick={() => setDeleteConfirmId(String(row.id))} title="Удалить" aria-label="Удалить запись"
+                                  style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid var(--border-error-soft)', background: 'var(--surface-error)', color: 'var(--error)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                  <Trash2 size={12} aria-hidden="true" />
                                 </button>
                               )}
                             </div>
