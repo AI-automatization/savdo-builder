@@ -101,7 +101,7 @@ function InlineTextForm({ initial, placeholder, saving, onSave, onCancel }: Inli
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKey}
       />
-      <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена"><X size={14} /></button>
+      <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена" aria-label="Отмена"><X size={14} aria-hidden="true" /></button>
       <button
         type="button"
         style={confirmBtn}

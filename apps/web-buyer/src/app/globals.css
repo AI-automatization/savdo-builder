@@ -47,6 +47,11 @@
   --color-telegram:          #2AABEE;
   --color-skeleton:          #EFE8DA;
 
+  /* Semantic RGB channels — для theme-aware tints через rgb(var(...) / opacity) */
+  --color-success-rgb:       74, 107, 69;
+  --color-warning-rgb:       156, 122, 46;
+  --color-danger-rgb:        139, 58, 58;
+
   color-scheme: light;
 }
 
@@ -89,6 +94,11 @@
   --color-danger:            #C56666;
   --color-telegram:          #38BDF8;
   --color-skeleton:          rgba(245,239,227,0.06);
+
+  /* Semantic RGB channels (dark theme — мягче для тёмного фона) */
+  --color-success-rgb:       122, 155, 114;
+  --color-warning-rgb:       217, 169, 92;
+  --color-danger-rgb:        197, 102, 102;
 
   color-scheme: dark;
 }
