@@ -412,19 +412,25 @@ function CategoryRow({ cat, depth, onEdit, onToggle, onDelete, onAddChild }: Row
 function ActionBtn({ onClick, title, danger, children }: {
   onClick: () => void; title: string; danger?: boolean; children: React.ReactNode
 }) {
+  // DESIGN-A11Y-ARIA-LABELS-001: aria-label = title (title не озвучивается
+  // скринридерами как accessible name). Icon-only кнопка — children это
+  // декоративная SVG, поэтому accessible name держим на button.
   return (
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
       className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
-      style={{ color: danger ? 'rgba(239,68,68,0.60)' : 'var(--text-dim)' }}
+      style={{ color: danger ? 'var(--error)' : 'var(--text-dim)', opacity: danger ? 0.7 : 1 }}
       onMouseEnter={e => {
-        e.currentTarget.style.background = danger ? 'rgba(239,68,68,0.08)' : 'var(--surface2)'
-        e.currentTarget.style.color = danger ? '#f87171' : 'var(--text)'
+        e.currentTarget.style.background = danger ? 'var(--surface-error)' : 'var(--surface2)'
+        e.currentTarget.style.color = danger ? 'var(--error)' : 'var(--text)'
+        e.currentTarget.style.opacity = '1'
       }}
       onMouseLeave={e => {
         e.currentTarget.style.background = ''
-        e.currentTarget.style.color = danger ? 'rgba(239,68,68,0.60)' : 'var(--text-dim)'
+        e.currentTarget.style.color = danger ? 'var(--error)' : 'var(--text-dim)'
+        e.currentTarget.style.opacity = danger ? '0.7' : '1'
       }}
     >
       {children}
