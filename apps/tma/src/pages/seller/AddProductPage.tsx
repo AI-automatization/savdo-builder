@@ -494,7 +494,7 @@ export default function AddProductPage() {
     } else if (Number(price) <= 0) {
       label = 'Укажите цену';
     } else if (missingRequiredFilters.length > 0) {
-      label = `Заполните: ${missingRequiredFilters[0].label}`;
+      label = `Заполните: ${missingRequiredFilters[0].nameRu}`;
     } else if (hasSizes && !hasDynamicVariants && sizes.length === 0) {
       label = 'Добавьте размер';
     } else {
