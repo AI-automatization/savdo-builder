@@ -1,63 +1,43 @@
-name: CD — Backend (Railway)
+# ⚠️ DEPRECATED — Railway деплоит через branch watch, не через CLI.
+#
+# Backend деплоится с ветки `api` автоматически (Railway service `api`
+# подписан на push в `api`). Этот workflow дублировал процесс и пытался
+# деплоить main → api service, что создавало конфликты с branch-watch'ем.
+#
+# Этот файл оставлен с `workflow_dispatch` чтобы можно было запустить
+# вручную из GitHub UI если когда-то понадобится — но автоматически
+# больше не триггерится.
+#
+# Для post-deploy notifications — настроить Railway → Webhooks → Telegram.
+# Для health check после деплоя — Railway healthcheck в `apps/api/railway.toml`
+# (`/api/v1/health`, timeout 300s).
+
+name: CD — Backend (Railway) [manual only]
 
 on:
-  workflow_run:
-    workflows: ["CI — Backend"]
-    branches: [main]
-    types: [completed]
+  workflow_dispatch:    # только manual trigger из GitHub UI
 
 jobs:
   deploy:
-    name: Deploy to Railway
+    name: Manual Deploy to Railway
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
     environment:
       name: production
       url: ${{ vars.RAILWAY_PUBLIC_URL }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Install Railway CLI
         run: npm install -g @railway/cli
-
       - name: Deploy
         run: railway up --service api --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for Railway to deploy..."
-          sleep 30
-
       - name: Health check
         run: |
+          sleep 30
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ vars.RAILWAY_PUBLIC_URL }}/api/v1/health)
           if [ "$STATUS" != "200" ]; then
             echo "Health check failed with status $STATUS"
             exit 1
           fi
           echo "Health check passed ✓"
-
-      - name: Notify on failure
-        if: failure()
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "chat_id": "${{ secrets.TELEGRAM_ALERT_CHAT_ID }}",
-              "text": "🔴 Deploy FAILED\nBranch: main\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
-
-      - name: Notify on success
-        if: success()
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "chat_id": "${{ secrets.TELEGRAM_ALERT_CHAT_ID }}",
-              "text": "✅ Deploy SUCCESS\nBranch: main\nCommit: ${{ github.sha }}"
-            }'
