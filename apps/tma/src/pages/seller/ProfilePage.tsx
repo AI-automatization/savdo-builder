@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { webStoreUrl } from '@/lib/webUrl';
+import { useTranslation } from '@/lib/i18n';
 
 interface Store {
   id: string;
@@ -25,6 +26,7 @@ export default function SellerProfilePage() {
   const { user, logout } = useAuth();
   const { tg, user: tgUser } = useTelegram();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [store, setStore] = useState<Store | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -64,7 +66,7 @@ export default function SellerProfilePage() {
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Профиль</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.profile.title')}</h1>
 
         {/* Telegram аккаунт */}
         <GlassCard className="p-4 flex items-center gap-3">
@@ -125,7 +127,7 @@ export default function SellerProfilePage() {
                 border: '1px solid var(--tg-accent-border)',
                 cursor: 'pointer',
               }}
-              aria-label="Перейти на сайт магазина"
+              aria-label={t('seller.profile.openSite')}
             >
               ↗ Перейти на сайт
             </button>
