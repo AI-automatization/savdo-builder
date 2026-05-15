@@ -235,28 +235,28 @@ export default function DashboardPage() {
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
                 >
-                  <span style={{ fontSize: 28 }}>📦</span> Мои товары
+                  <span style={{ fontSize: 28 }}>📦</span> {t('seller.dashboard.btnMyProducts')}
                 </button>
                 <button
                   onClick={() => navigate('/seller/products/add')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.22)' }}
                 >
-                  <span style={{ fontSize: 28 }}>➕</span> Добавить товар
+                  <span style={{ fontSize: 28 }}>➕</span> {t('seller.dashboard.btnAddProduct')}
                 </button>
                 <button
                   onClick={() => navigate('/seller/orders')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}
                 >
-                  <span style={{ fontSize: 28 }}>📋</span> Все заказы
+                  <span style={{ fontSize: 28 }}>📋</span> {t('seller.dashboard.btnAllOrders')}
                 </button>
                 <button
                   onClick={() => navigate('/seller/store')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.20)' }}
                 >
-                  <span style={{ fontSize: 28 }}>🏪</span> Мой магазин
+                  <span style={{ fontSize: 28 }}>🏪</span> {t('seller.dashboard.btnMyStore')}
                 </button>
               </div>
 
@@ -312,28 +312,28 @@ export default function DashboardPage() {
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
               >
-                <span>📦</span> Мои товары
+                <span>📦</span> {t('seller.dashboard.btnMyProducts')}
               </button>
               <button
                 onClick={() => navigate('/seller/products/add')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.22)' }}
               >
-                <span>➕</span> Добавить
+                <span>➕</span> {t('seller.dashboard.btnAddShort')}
               </button>
               <button
                 onClick={() => navigate('/seller/orders')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}
               >
-                <span>📋</span> Все заказы
+                <span>📋</span> {t('seller.dashboard.btnAllOrders')}
               </button>
               <button
                 onClick={() => navigate('/seller/store')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.20)' }}
               >
-                <span>🏪</span> Мой магазин
+                <span>🏪</span> {t('seller.dashboard.btnMyStore')}
               </button>
             </div>
 

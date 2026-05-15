@@ -100,7 +100,7 @@ export default function SellerStorePage() {
       .catch((err: unknown) => {
         if (signal.aborted) return;
         if (!(err instanceof ApiError && err.status === 404)) {
-          setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.');
+          setFetchError(t('seller.store.loadError'));
         }
       })
       .finally(() => { if (!signal.aborted) setLoading(false); });
@@ -133,9 +133,9 @@ export default function SellerStorePage() {
   };
 
   const handleCreateStore = async () => {
-    if (!newStoreName.trim()) { setCreateError('Введите название магазина'); return; }
-    if (!newStoreCity.trim()) { setCreateError('Введите город'); return; }
-    if (!newStoreTg.trim()) { setCreateError('Введите ссылку Telegram для связи'); return; }
+    if (!newStoreName.trim()) { setCreateError(t('seller.store.errNoName')); return; }
+    if (!newStoreCity.trim()) { setCreateError(t('seller.store.errNoCity')); return; }
+    if (!newStoreTg.trim()) { setCreateError(t('seller.store.errNoTg')); return; }
     setCreating(true);
     setCreateError('');
     try {
@@ -152,7 +152,7 @@ export default function SellerStorePage() {
       setDescription(created.description ?? '');
       tg?.HapticFeedback.notificationOccurred('success');
     } catch {
-      setCreateError('Не удалось создать магазин. Попробуйте снова.');
+      setCreateError(t('seller.store.createError'));
       tg?.HapticFeedback.notificationOccurred('error');
     } finally {
       setCreating(false);
@@ -178,7 +178,7 @@ export default function SellerStorePage() {
             }}
             style={{ padding: '8px 20px', borderRadius: 12, background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)', fontSize: 13, fontWeight: 600, border: '1px solid var(--tg-accent-border)' }}
           >
-            Попробовать снова
+            {t('common.retry')}
           </button>
         </div>
       
@@ -201,9 +201,9 @@ export default function SellerStorePage() {
             </div>
             <div className="w-full flex flex-col gap-3">
               {[
-                { value: newStoreName, set: setNewStoreName, placeholder: 'Название магазина', max: 255 },
-                { value: newStoreCity, set: setNewStoreCity, placeholder: 'Город (например: Ташкент)', max: 100 },
-                { value: newStoreTg,   set: setNewStoreTg,   placeholder: 'Telegram ссылка: @username или https://t.me/...', max: 200 },
+                { value: newStoreName, set: setNewStoreName, placeholder: t('seller.store.namePlaceholder'), max: 255 },
+                { value: newStoreCity, set: setNewStoreCity, placeholder: t('seller.store.cityPlaceholder'), max: 100 },
+                { value: newStoreTg,   set: setNewStoreTg,   placeholder: t('seller.store.tgLinkPlaceholder'), max: 200 },
               ].map((field) => (
                 <input
                   key={field.placeholder}
@@ -271,7 +271,7 @@ export default function SellerStorePage() {
                 }}
                 aria-label={t('seller.profile.openSite')}
               >
-                ↗ Перейти на сайт
+                {t('seller.store.openSite')}
               </a>
             </div>
             <Badge status={store.status} />
@@ -314,7 +314,7 @@ export default function SellerStorePage() {
             />
             <div className="flex gap-3">
               <Button className="flex-1" onClick={save} disabled={saving}>
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving ? t('seller.store.saving') : t('common.save')}
               </Button>
               <Button variant="ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</Button>
             </div>
@@ -322,10 +322,10 @@ export default function SellerStorePage() {
         ) : (
           <div className="flex flex-col gap-2">
             <Button variant="ghost" className="w-full" onClick={() => setEditing(true)}>
-              ✏️ Редактировать
+              ✏️ {t('common.edit')}
             </Button>
             <Button className="w-full" onClick={() => copyLink(store)}>
-              {copied ? '✅ Ссылка скопирована!' : '🔗 Скопировать ссылку'}
+              {copied ? t('seller.store.linkCopied') : t('seller.store.copyLink')}
             </Button>
             {(store.status === 'APPROVED' || store.isPublic) && (
               <Button
@@ -334,7 +334,7 @@ export default function SellerStorePage() {
                 onClick={() => togglePublish(store)}
                 disabled={publishing}
               >
-                {publishing ? '...' : store.isPublic ? '🔴 Скрыть магазин' : '🟢 Опубликовать магазин'}
+                {publishing ? '...' : store.isPublic ? t('seller.store.hide') : t('seller.store.publish')}
               </Button>
             )}
             <Button
@@ -342,7 +342,7 @@ export default function SellerStorePage() {
               className="w-full"
               onClick={() => navigate(`/buyer/store/${store.slug}`)}
             >
-              👁 Посмотреть каталог
+              {t('seller.store.viewCatalog')}
             </Button>
           </div>
         )}
