@@ -19,7 +19,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'orders.status.PENDING.buyer':    '⏳ ожидает подтверждения',
     'orders.status.CONFIRMED.buyer':  '✅ подтверждён продавцом',
     'orders.status.PROCESSING.buyer': '📦 готовится к отправке',
-    'orders.status.SHIPPED.buyer':    '🚚 отправлен',
+    'orders.status.SHIPPED.buyer':    '🚚 в пути',
     'orders.status.DELIVERED.buyer':  '🎉 доставлен',
     'orders.status.CANCELLED.buyer':  '❌ отменён',
 
@@ -27,7 +27,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'orders.status.PENDING.seller':    '⏳ ожидает подтверждения',
     'orders.status.CONFIRMED.seller':  '✅ подтверждён',
     'orders.status.PROCESSING.seller': '📦 в обработке',
-    'orders.status.SHIPPED.seller':    '🚚 отправлен',
+    'orders.status.SHIPPED.seller':    '🚚 в пути',
     'orders.status.DELIVERED.seller':  '🎉 доставлен',
     'orders.status.CANCELLED.seller':  '❌ отменён покупателем',
 

@@ -1,6 +1,6 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Order } from '@prisma/client';
+import { Order, PaymentMethod } from '@prisma/client';
 import { CartRepository } from '../../cart/repositories/cart.repository';
 import { CheckoutRepository } from '../repositories/checkout.repository';
 import { ValidateCartItemsService } from '../services/validate-cart-items.service';
@@ -8,7 +8,7 @@ import { OrdersGateway } from '../../../socket/orders.gateway';
 import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
-import { DeliveryAddressDto } from '../dto/confirm-checkout.dto';
+import { DeliveryAddressDto, PaymentMethod as PaymentMethodInput } from '../dto/confirm-checkout.dto';
 
 export interface ConfirmCheckoutInput {
   buyerId: string;
@@ -20,6 +20,31 @@ export interface ConfirmCheckoutInput {
   // BUG-WB-AUDIT-009: optional override от фронта (контактное лицо).
   customerFullName?: string;
   customerPhone?: string;
+  // API-CHECKOUT-PAYMENT-METHOD-001: способ оплаты (cash/card/online).
+  paymentMethod?: PaymentMethodInput;
+}
+
+/**
+ * API-CHECKOUT-PAYMENT-METHOD-001: маппинг request-enum → Prisma-enum.
+ *  cash   → COD (наличными при получении)
+ *  card   → MANUAL_TRANSFER (картой курьеру / при получении)
+ *  online → ONLINE (Click/Payme — только при PAYMENT_ONLINE_ENABLED)
+ */
+function resolvePaymentMethod(
+  input: PaymentMethodInput | undefined,
+  onlineEnabled: boolean,
+): PaymentMethod {
+  switch (input) {
+    case 'card':
+      return PaymentMethod.MANUAL_TRANSFER;
+    case 'online':
+      // Если онлайн-оплата выключена feature-flag'ом — деградируем на COD,
+      // а не падаем. Фронт всё равно показывает «online» как «Скоро».
+      return onlineEnabled ? PaymentMethod.ONLINE : PaymentMethod.COD;
+    case 'cash':
+    default:
+      return PaymentMethod.COD;
+  }
 }
 
 function generateOrderNumber(): string {
@@ -134,6 +159,10 @@ export class ConfirmCheckoutUseCase {
       region: input.deliveryAddress.region,
       addressLine1: input.deliveryAddress.street,
       items: validatedItems,
+      paymentMethod: resolvePaymentMethod(
+        input.paymentMethod,
+        this.config.get<boolean>('features.paymentOnlineEnabled', false),
+      ),
     });
 
     // Clear cart items and mark cart as converted

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useNotifications, useReadAll } from '../../../hooks/use-notifications';
 import type { NotificationItem } from '../../../lib/api/notifications.api';
 import { ShoppingCart, CheckCircle, AlertTriangle, Package, Bell } from 'lucide-react';
-import { card, cardMuted, colors } from '@/lib/styles';
+import { card, cardMuted, colors, dangerTint } from '@/lib/styles';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -150,7 +150,7 @@ export default function NotificationsPage() {
       ) : isError ? (
         <div
           className="rounded-lg px-5 py-4 text-sm"
-          style={{ background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.25)', color: colors.danger }}
+          style={{ background: dangerTint(0.1), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
         >
           Не удалось загрузить уведомления. Попробуйте обновить страницу.
         </div>
