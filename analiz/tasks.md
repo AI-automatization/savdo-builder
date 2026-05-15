@@ -34,21 +34,16 @@ root cause ещё не подтверждён.
 
 **Подробности:** `analiz/logs.md` под `[2026-05-15] [API-CHECKOUT-CONFIRM-500-001]`.
 
-## 🔴 P1 — `API-TYPES-PAYMENT-METHOD-COLLISION-001` — дубль экспорта `PaymentMethod`
+## ✅ P1 — `API-TYPES-PAYMENT-METHOD-COLLISION-001` — дубль экспорта `PaymentMethod` (ЗАКРЫТО 15.05.2026)
 
-- **Домен:** `packages/types` (Полат)
-- **Найдено:** Азимом 15.05.2026 при закрытии consumption-задач web-sync аудита.
-- **Проблема:** `tsc --noEmit` падает в web-buyer и web-seller —
-  `index.ts(11,1): error TS2308: Module './enums' has already exported a
-  member named 'PaymentMethod'`.
-- **Причина:** Wave 20 (`API-CHECKOUT-PAYMENT-METHOD-001`) добавил
-  `export type PaymentMethod = 'cash'|'card'|'online'` в `api/cart.ts:79`,
-  а в `enums.ts:50` уже есть `export enum PaymentMethod` (Prisma-enum
-  `COD|MANUAL_TRANSFER|ONLINE`). `index.ts` ре-экспортит оба → коллизия.
-- **Фикс:** переименовать request-тип в `cart.ts` (напр.
-  `CheckoutPaymentMethod` / `PaymentMethodInput`), обновить `ConfirmCheckoutDto`
-  и `resolvePaymentMethod()`. Прогнать `tsc` во всех фронтах.
-- **Эффект:** ломает строгий type-check всех потребителей `types`.
+- **Статус:** ✅ Закрыто Азимом аварийно 15.05.2026 (commit `c148a18`) —
+  **ломало Railway-сборку** web-buyer и web-seller (`next build` exit 1).
+- **Фикс:** `cart.ts` — `export type PaymentMethod` → `CheckoutPaymentMethod`.
+  Потребителей у типа не было (`apps/api` checkout — свой локальный тип +
+  Prisma-enum, web-* не импортили). `apps/api` не затронут.
+- **Полату на ревью:** изменён `packages/types` (его зона) в аварийном
+  порядке с согласия Азима — деплой обоих апов был мёртв. Если нужно другое
+  имя типа — переименовать свободно, внешних потребителей нет.
 - **Подробности:** `analiz/logs.md` под `[API-TYPES-PAYMENT-METHOD-COLLISION-001]`.
 
 ## 🟢 P3 — `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store`
