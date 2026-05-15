@@ -36,11 +36,12 @@ const STATS = [
   { key: 'orders',  label: 'Заказов',      icon: ShoppingCart, accent: 'text-sky-400',     dim: 'bg-sky-500/10',    to: '/orders' },
 ] as const
 
+// STATUS-LABEL-CANONICAL-* (web-sync audit 14.05.2026): единые лейблы.
 const ORDER_STATUS: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; label: string }> = {
-  PENDING:    { variant: 'warning', label: 'Ожидание' },
+  PENDING:    { variant: 'warning', label: 'Ожидает' },
   CONFIRMED:  { variant: 'info',    label: 'Подтверждён' },
   PROCESSING: { variant: 'info',    label: 'Обработка' },
-  SHIPPED:    { variant: 'info',    label: 'Отправлен' },
+  SHIPPED:    { variant: 'info',    label: 'В пути' },
   DELIVERED:  { variant: 'success', label: 'Доставлен' },
   CANCELLED:  { variant: 'danger',  label: 'Отменён' },
 }

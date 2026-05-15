@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Savdo Admin sub-mark — indigo (#818CF8). Внутренний инструмент,
+  Liquid Authority palette. Mark = shield + S inside (audit, security).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Savdo admin panel">
+  <title>Savdo Admin</title>
+  <defs>
+    <linearGradient id="savdoAdmin" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#0F172A"/>
+
+  <!-- Shield -->
+  <path d="M32 8 L52 14 V32 C52 44 42 52 32 56 C22 52 12 44 12 32 V14 Z"
+        fill="url(#savdoAdmin)"/>
+
+  <!-- "S" — bold Audited mark -->
+  <text x="32" y="40" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="22" font-weight="800"
+        fill="white">S</text>
+
+  <!-- Lock dot under -->
+  <circle cx="32" cy="46" r="2" fill="white" fill-opacity="0.7"/>
+</svg>

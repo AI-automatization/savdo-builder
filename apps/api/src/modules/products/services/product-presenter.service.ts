@@ -24,6 +24,52 @@ export class ProductPresenterService {
   }
 
   /**
+   * P3-004: считает trust-флаг скидки и процент.
+   *
+   * isSale: salePrice строго меньше basePrice (защита от 0-discount и negative).
+   * discountPercent: floor((1 - salePrice/basePrice) * 100), clamp в [1, 99].
+   *
+   * Если нет скидки — `{ isSale: false, discountPercent: null }`. Фронт
+   * использует это для бэйджа `SALE -30%` на ProductCard.
+   */
+  computeSale(
+    basePrice: unknown,
+    salePrice: unknown,
+  ): { isSale: boolean; discountPercent: number | null } {
+    const base = this.toPrice(basePrice);
+    const sale = this.toPrice(salePrice);
+    if (base === null || sale === null) return { isSale: false, discountPercent: null };
+    if (base <= 0) return { isSale: false, discountPercent: null };
+    if (sale <= 0 || sale >= base) return { isSale: false, discountPercent: null };
+    // Integer arithmetic перед делением — иначе floating-point: например
+    // `(1 - 80/100) * 100 = 19.999...` → floor = 19 вместо ожидаемого 20.
+    const pct = Math.floor(((base - sale) * 100) / base);
+    if (pct < 1) return { isSale: false, discountPercent: null };
+    return { isSale: true, discountPercent: Math.min(pct, 99) };
+  }
+
+  /**
+   * P3-004: shortcut для DTO spread — возвращает все price-поля + sale-флаги.
+   * Используется в product list/detail mappers, заменяет 3 строки бойлерплейта:
+   *   basePrice + oldPrice + salePrice → +isSale +discountPercent.
+   */
+  priceFields(basePrice: unknown, oldPrice: unknown, salePrice: unknown): {
+    basePrice: number;
+    oldPrice: number | null;
+    salePrice: number | null;
+    isSale: boolean;
+    discountPercent: number | null;
+  } {
+    const sale = this.computeSale(basePrice, salePrice);
+    return {
+      basePrice: Number(basePrice),
+      oldPrice: this.toPrice(oldPrice),
+      salePrice: this.toPrice(salePrice),
+      ...sale,
+    };
+  }
+
+  /**
    * Нормализация variant для DTO: Decimal → number, optionValues junctions → optionValueIds[].
    */
   normalizeVariant(variant: unknown): unknown {
@@ -48,7 +94,11 @@ export class ProductPresenterService {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
     // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' = TG getFile вернул 404, fileId мёртв навсегда.
-    if (m.bucket === 'telegram-expired') return '';
+    // API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001: 'broken' = Supabase objectKey
+    // указывает на несуществующий файл (миграция упала / file был удалён).
+    // AuditBrokenMediaUrlsUseCase помечает такие записи. Оба → '' (фронт
+    // показывает «Без фото» placeholder вместо broken <img>).
+    if (m.bucket === 'telegram-expired' || m.bucket === 'broken') return '';
     const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
     if (m.bucket === 'telegram') {
       return `${appUrl}/api/v1/media/proxy/${m.id}`;
@@ -83,6 +133,47 @@ export class ProductPresenterService {
     };
 
     return { logoUrl: resolve(logoMediaId), coverUrl: resolve(coverMediaId) };
+  }
+
+  /**
+   * API-PRODUCT-STORE-TRUST-SIGNALS-001: маппер для embedded `product.store`
+   * detail-страницы — добавляет logoUrl и нормализует Decimal avgRating.
+   * Trust signals (`isVerified`, `avgRating`, `reviewCount`) приходят прямо
+   * из Prisma include — здесь только image-resolve и type-clean.
+   */
+  async mapProductStoreRef<T extends {
+    id: string;
+    name: string;
+    slug: string;
+    city: string | null;
+    telegramContactLink: string | null;
+    logoMediaId: string | null;
+    isVerified: boolean;
+    avgRating: { toString(): string } | number | null;
+    reviewCount: number;
+  }>(store: T): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    city: string | null;
+    telegramContactLink: string | null;
+    logoUrl: string | null;
+    isVerified: boolean;
+    avgRating: number | null;
+    reviewCount: number;
+  }> {
+    const { logoUrl } = await this.resolveStoreImageUrls(store.logoMediaId, null);
+    return {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      city: store.city,
+      telegramContactLink: store.telegramContactLink,
+      logoUrl,
+      isVerified: store.isVerified,
+      avgRating: store.avgRating != null ? Number(store.avgRating) : null,
+      reviewCount: store.reviewCount,
+    };
   }
 
   /**

@@ -78,6 +78,7 @@ export class CheckoutController {
       deliveryFee: dto.deliveryFee,
       customerFullName: dto.customerFullName,
       customerPhone: dto.customerPhone,
+      paymentMethod: dto.paymentMethod,
     });
   }
 

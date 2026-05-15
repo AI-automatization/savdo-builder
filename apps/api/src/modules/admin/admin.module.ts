@@ -47,6 +47,7 @@ import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.
 import { RefundOrderUseCase } from './use-cases/refund-order.use-case';
 import { VerifySellerExtendedUseCase } from './use-cases/verify-seller-extended.use-case';
 import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
+import { AuditBrokenMediaUrlsUseCase } from './use-cases/audit-broken-media-urls.use-case';
 import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-market.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
@@ -103,6 +104,7 @@ import { MediaModule } from '../media/media.module';
     RefundOrderUseCase,
     VerifySellerExtendedUseCase,
     MigrateTgMediaToR2UseCase,
+    AuditBrokenMediaUrlsUseCase,
     ActivateSellerOnMarketUseCase,
   ],
 })

@@ -19,7 +19,7 @@ import {
   useEditMessage,
 } from "@/hooks/use-chat";
 import { ChevronRight, MessageSquare, MoreVertical, Package, Pencil, Search, Send, Store, Trash2 } from "lucide-react";
-import { colors } from "@/lib/styles";
+import { colors, dangerTint } from "@/lib/styles";
 import { EmojiPicker } from "@/components/emoji-picker";
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
@@ -291,7 +291,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
         <button
           onClick={() => setConfirmDeleteThread(true)}
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-opacity hover:opacity-80 flex-shrink-0"
-          style={{ background: "rgba(220,38,38,0.08)", color: colors.danger, border: "1px solid rgba(220,38,38,0.25)" }}
+          style={{ background: dangerTint(0.08), color: colors.danger, border: `1px solid ${dangerTint(0.25)}` }}
           aria-label="Удалить чат"
           title="Удалить чат"
         >

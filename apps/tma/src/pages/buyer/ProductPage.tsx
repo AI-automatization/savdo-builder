@@ -21,6 +21,7 @@ import {
   type VariantMin,
 } from '@/lib/variants';
 import { getCart, saveCart, isSameStore } from '@/lib/cart';
+import { useTranslation } from '@/lib/i18n';
 
 interface ProductAttribute {
   id: string;
@@ -52,6 +53,8 @@ export default function ProductPage() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
+  const { t, locale } = useTranslation();
+  const fmt = (n: number) => n.toLocaleString(locale === 'uz' ? 'uz' : 'ru');
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -120,16 +123,16 @@ export default function ProductPage() {
         body: {
           contextType: 'PRODUCT',
           contextId: product.id,
-          firstMessage: `Хочу уточнить по товару «${product.title}»`,
+          firstMessage: t('product.chatPrefill', { title: product.title }),
         },
       });
       navigate('/buyer/chat');
     } catch {
-      showToast('❌ Не удалось открыть чат', 'error');
+      showToast(t('product.chatOpenFailed'), 'error');
     } finally {
       setContacting(false);
     }
-  }, [product, contacting, navigate]);
+  }, [product, contacting, navigate, t]);
 
   const canAddToCart = !!product && !requiresVariantSelection && !isOutOfStock;
 
@@ -165,19 +168,19 @@ export default function ProductPage() {
 
     saveCart(cart);
     tg?.HapticFeedback.notificationOccurred('success');
-    showToast('✅ Добавлено в корзину');
+    showToast(t('product.addedToCart'));
     track.addToCart(product.storeId, product.id, variantId ?? null, 1);
     navigate('/buyer/cart');
-  }, [product, canAddToCart, selectedVariant?.id, unitPrice, slug, tg, navigate]);
+  }, [product, canAddToCart, selectedVariant?.id, unitPrice, slug, tg, navigate, t]);
 
   useEffect(() => {
     if (!tg || !product) return;
 
     const label = requiresVariantSelection
-      ? 'Выберите вариант'
+      ? t('product.selectVariant')
       : isOutOfStock
-      ? 'Нет в наличии'
-      : `В корзину — ${unitPrice.toLocaleString('ru')} сум`;
+      ? t('product.outOfStock')
+      : t('product.addToCartAmount', { price: fmt(unitPrice), currency: t('common.currency') });
 
     tg.MainButton.setText(label);
     tg.MainButton.show();
@@ -195,7 +198,9 @@ export default function ProductPage() {
         tg.MainButton.hide();
       };
     }
-  }, [tg, product, addToCart, selectedVariant?.id, unitPrice, requiresVariantSelection, isOutOfStock, canAddToCart]);
+    // locale в deps — после смены языка перерисовать текст MainButton.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tg, product, addToCart, selectedVariant?.id, unitPrice, requiresVariantSelection, isOutOfStock, canAddToCart, locale]);
 
   if (loading) {
     return (
@@ -215,13 +220,13 @@ export default function ProductPage() {
 
   if (error || !product) {
     return (
-      
+
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>😕</span>
-          <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 14 }}>Товар не найден</p>
-          <button onClick={() => navigate(-1)} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← Назад</button>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>{t('product.notFound')}</p>
+          <button onClick={() => navigate(-1)} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← {t('common.back')}</button>
         </div>
-      
+
     );
   }
 
@@ -251,7 +256,7 @@ export default function ProductPage() {
     displayType === 'COLLAGE_2X2' && images.length >= 2 ? (
       <div
         {...clickableA11y(() => setActiveImage(0))}
-        aria-label="Открыть фото товара"
+        aria-label={t('product.openPhoto')}
         className="grid grid-cols-2 gap-1 rounded-2xl overflow-hidden"
         style={{ aspectRatio: '1' }}
       >
@@ -285,7 +290,7 @@ export default function ProductPage() {
                   width: idx === activeImage ? 16 : 6,
                   height: 6,
                   borderRadius: 3,
-                  background: idx === activeImage ? 'var(--tg-accent)' : 'rgba(255,255,255,0.40)',
+                  background: idx === activeImage ? 'var(--tg-accent)' : 'var(--tg-text-muted)',
                   transition: 'width 0.2s ease, background 0.2s ease',
                 }}
               />
@@ -306,7 +311,7 @@ export default function ProductPage() {
                 style={{
                   flexShrink: 0,
                   width: 56, height: 56, borderRadius: 10, overflow: 'hidden',
-                  border: idx === activeImage ? '2px solid var(--tg-accent)' : '2px solid rgba(255,255,255,0.20)',
+                  border: idx === activeImage ? '2px solid var(--tg-accent)' : '2px solid var(--tg-border)',
                   background: 'rgba(0,0,0,0.45)',
                   cursor: 'pointer',
                   transition: 'border-color 0.15s ease, transform 0.12s ease',
@@ -337,7 +342,7 @@ export default function ProductPage() {
         {/* Info */}
         <div className="flex flex-col gap-2">
           <div className="flex items-start gap-3">
-            <h1 className="text-lg font-bold flex-1 min-w-0" style={{ color: 'rgba(255,255,255,0.92)' }}>
+            <h1 className="text-lg font-bold flex-1 min-w-0" style={{ color: 'var(--tg-text-primary)' }}>
               {product.title}
             </h1>
             <WishlistButton productId={product.id} variant="page" />
@@ -350,21 +355,21 @@ export default function ProductPage() {
           )}
           <div className="flex items-center gap-3 flex-wrap">
             <p className="text-xl font-bold" style={{ color: 'var(--tg-accent)' }}>
-              {unitPrice.toLocaleString('ru')} сум
+              {fmt(unitPrice)} {t('common.currency')}
             </p>
             {selectedVariant && !isOutOfStock && selectedVariant.stockQuantity <= 5 && (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' }}>
-                Осталось: {selectedVariant.stockQuantity} шт
+                {t('product.stockLow', { count: selectedVariant.stockQuantity })}
               </span>
             )}
             {selectedVariant && !isOutOfStock && selectedVariant.stockQuantity > 5 && (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(34,197,94,0.10)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.20)' }}>
-                В наличии: {selectedVariant.stockQuantity} шт
+                {t('product.stockOk', { count: selectedVariant.stockQuantity })}
               </span>
             )}
             {isOutOfStock && (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(239,68,68,0.10)', color: 'rgba(239,68,68,0.80)', border: '1px solid rgba(239,68,68,0.20)' }}>
-                Нет в наличии
+                {t('product.outOfStockBadge')}
               </span>
             )}
           </div>
@@ -375,7 +380,7 @@ export default function ProductPage() {
           <div className="flex flex-col gap-4">
             {optionGroups.map((g) => (
               <div key={g.id} className="flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
                   {g.name}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -389,9 +394,9 @@ export default function ProductPage() {
                         onClick={() => handleOptionSelect(g.id, val.id)}
                         className="px-3.5 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-40"
                         style={{
-                          background: isSel ? 'var(--tg-accent-dim)' : 'rgba(255,255,255,0.05)',
-                          border:     isSel ? '1px solid var(--tg-accent-border)' : '1px solid rgba(255,255,255,0.10)',
-                          color:      isSel ? 'var(--tg-accent)' : 'rgba(255,255,255,0.75)',
+                          background: isSel ? 'var(--tg-accent-dim)' : 'var(--tg-surface)',
+                          border:     isSel ? '1px solid var(--tg-accent-border)' : '1px solid var(--tg-border)',
+                          color:      isSel ? 'var(--tg-accent)' : 'var(--tg-text-secondary)',
                           textDecoration: avail ? undefined : 'line-through',
                           cursor:     avail ? 'pointer' : 'not-allowed',
                         }}
@@ -405,7 +410,7 @@ export default function ProductPage() {
             ))}
             {selectedVariant && isOutOfStock && (
               <p className="text-xs" style={{ color: '#fbbf24' }}>
-                Эта комбинация временно недоступна
+                {t('product.variantUnavailable')}
               </p>
             )}
           </div>
@@ -414,8 +419,8 @@ export default function ProductPage() {
         {/* Fallback: flat variants when product has no option groups */}
         {!hasGroups && activeVariants.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Вариант
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
+              {t('product.variantLabel')}
             </p>
             <div className="flex flex-wrap gap-2">
               {activeVariants.map((v) => {
@@ -428,9 +433,9 @@ export default function ProductPage() {
                     onClick={() => setSelectedVariantId(v.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
                     style={{
-                      background: active ? 'var(--tg-accent-dim)' : 'rgba(255,255,255,0.05)',
-                      border: active ? '1px solid var(--tg-accent-border)' : '1px solid rgba(255,255,255,0.10)',
-                      color: active ? 'var(--tg-accent)' : 'rgba(255,255,255,0.70)',
+                      background: active ? 'var(--tg-accent-dim)' : 'var(--tg-surface)',
+                      border: active ? '1px solid var(--tg-accent-border)' : '1px solid var(--tg-border)',
+                      color: active ? 'var(--tg-accent)' : 'var(--tg-text-secondary)',
                     }}
                   >
                     {v.titleOverride ?? `#${v.id.slice(-4)}`}
@@ -444,10 +449,10 @@ export default function ProductPage() {
         {/* Description */}
         {product.description && (
           <GlassCard className="p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Описание
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--tg-text-muted)' }}>
+              {t('product.descriptionLabel')}
             </p>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.70)' }}>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--tg-text-secondary)' }}>
               {product.description}
             </p>
           </GlassCard>
@@ -456,14 +461,14 @@ export default function ProductPage() {
         {/* Attributes / Characteristics */}
         {(product.attributes ?? []).length > 0 && (
           <GlassCard className="p-4 flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Характеристики
+            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-muted)' }}>
+              {t('product.attributesLabel')}
             </p>
             {(product.attributes ?? []).map((a) => (
               <div key={a.id} className="flex items-baseline justify-between gap-2">
-                <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>{a.name}</span>
-                <span className="flex-1 border-b border-dashed" style={{ borderColor: 'rgba(255,255,255,0.10)' }} />
-                <span className="text-xs font-medium shrink-0" style={{ color: 'rgba(255,255,255,0.80)' }}>{a.value}</span>
+                <span className="text-xs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>{a.name}</span>
+                <span className="flex-1 border-b border-dashed" style={{ borderColor: 'var(--tg-border)' }} />
+                <span className="text-xs font-medium shrink-0" style={{ color: 'var(--tg-text-primary)' }}>{a.value}</span>
               </div>
             ))}
           </GlassCard>
@@ -478,12 +483,12 @@ export default function ProductPage() {
           >
             <span style={{ fontSize: 20 }}>🏪</span>
             <div className="flex-1 min-w-0">
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>Магазин</p>
-              <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>{t('product.storeLabel')}</p>
+              <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                 {product.store.name}
               </p>
             </div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: 'var(--tg-text-dim)' }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </button>
@@ -494,9 +499,9 @@ export default function ProductPage() {
           onClick={handleContactSeller}
           disabled={contacting}
           className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-semibold disabled:opacity-50"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.70)' }}
+          style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)' }}
         >
-          💬 {contacting ? 'Открываем чат...' : 'Задать вопрос продавцу'}
+          💬 {contacting ? t('product.openingChat') : t('product.askSeller')}
         </button>
 
         {/* FEAT-008: отзывы */}

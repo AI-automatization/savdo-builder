@@ -11,6 +11,7 @@ import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
 import { clickableA11y } from '@/lib/a11y';
 import { webStoreUrl } from '@/lib/webUrl';
+import { useTranslation } from '@/lib/i18n';
 
 interface Product {
   id: string;
@@ -27,6 +28,10 @@ interface Store {
   name: string;
   slug: string;
   description: string | null;
+  // MARKETING-VERIFIED-SELLER-001
+  isVerified?: boolean;
+  avgRating?: number | string | null;
+  reviewCount?: number;
 }
 
 interface GlobalCategory {
@@ -38,6 +43,7 @@ export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
+  const { t, locale } = useTranslation();
   const gridCols =
     viewportWidth >= 1536 ? 'grid-cols-7' :
     viewportWidth >= 1280 ? 'grid-cols-6' :
@@ -95,12 +101,12 @@ export default function StorePage() {
     // silent reset терял товары без уведомления.
     const hasOtherStore = cart.length > 0 && cart[0].storeId !== store.id;
     if (hasOtherStore) {
-      const otherStoreName = cart[0].storeName ?? 'другого магазина';
+      const otherStoreName = cart[0].storeName ?? t('stores.otherStoreFallback');
       const ok = await confirmDialog({
-        title: 'Заменить корзину?',
-        body: `В корзине сейчас товары из «${otherStoreName}». Чтобы добавить товар из «${store.name}», нужно очистить старую корзину.`,
-        confirmText: 'Заменить',
-        cancelText: 'Отмена',
+        title: t('cart.replaceConfirm'),
+        body: t('cart.replaceBody', { store: otherStoreName, newStore: store.name }),
+        confirmText: t('cart.replace'),
+        cancelText: t('common.cancel'),
         danger: true,
       });
       if (!ok) {
@@ -117,7 +123,7 @@ export default function StorePage() {
         storeName: store.name,
       }]);
       tg?.HapticFeedback.notificationOccurred('success');
-      showToast('🛒 Корзина обновлена');
+      showToast(t('cart.updated'));
       track.addToCart(store.id, product.id, null, 1);
       return;
     }
@@ -137,7 +143,7 @@ export default function StorePage() {
       }]);
     }
     tg?.HapticFeedback.notificationOccurred('success');
-    showToast('✅ Добавлено в корзину');
+    showToast(t('product.addedToCart'));
     track.addToCart(store.id, product.id, null, 1);
   };
 
@@ -154,8 +160,8 @@ export default function StorePage() {
       
         <div className="flex flex-col items-center gap-3 py-16">
           <span aria-hidden="true" style={{ fontSize: 40 }}>😕</span>
-          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>Магазин не найден</p>
-          <button onClick={() => navigate('/buyer')} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← Назад</button>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>{t('stores.storeNotFound')}</p>
+          <button onClick={() => navigate('/buyer')} style={{ color: 'var(--tg-accent)', fontSize: 14 }}>← {t('common.back')}</button>
         </div>
       
     );
@@ -178,20 +184,41 @@ export default function StorePage() {
               {store.name.charAt(0)}
             </div>
             <div>
-              <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</h1>
-              <button
-                onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
-                className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
-                style={{
-                  color: 'var(--tg-accent)',
-                  background: 'var(--tg-accent-bg)',
-                  border: '1px solid var(--tg-accent-border)',
-                  cursor: 'pointer',
-                }}
-                aria-label="Перейти на сайт магазина"
-              >
-                ↗ Перейти на сайт
-              </button>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</h1>
+                {/* MARKETING-VERIFIED-SELLER-001 */}
+                {store.isVerified && (
+                  <span
+                    className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold"
+                    style={{ background: 'rgba(37,99,235,0.20)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.45)' }}
+                    title={t('stores.verifiedTitle')}
+                    aria-label={t('stores.verifiedTitle')}
+                  >
+                    ✓
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); tg?.openLink?.(webStoreUrl(store.slug)); }}
+                  className="text-xxs inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                  style={{
+                    color: 'var(--tg-accent)',
+                    background: 'var(--tg-accent-bg)',
+                    border: '1px solid var(--tg-accent-border)',
+                    cursor: 'pointer',
+                  }}
+                  aria-label={t('stores.openSiteAria')}
+                >
+                  ↗ {t('stores.openSiteShort')}
+                </button>
+                {/* MARKETING-VERIFIED-SELLER-001 */}
+                {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
+                  <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
+                    ⭐ {Number(store.avgRating).toFixed(1)} <span style={{ color: 'var(--tg-text-dim)' }}>({store.reviewCount})</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           {store.description && (
@@ -211,7 +238,7 @@ export default function StorePage() {
                   color: 'var(--tg-text-secondary)',
                 } : undefined}
               >
-                Все
+                {t('common.all')}
               </button>
               {globalCategories.map((c) => (
                 <button
@@ -232,14 +259,14 @@ export default function StorePage() {
         )}
 
         <div className="section-label">
-          Товары ({filtered.length}{activeCat && products.length !== filtered.length ? `/${products.length}` : ''})
+          {t('products.title')} ({filtered.length}{activeCat && products.length !== filtered.length ? `/${products.length}` : ''})
         </div>
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span aria-hidden="true" style={{ fontSize: 36 }}>📭</span>
             <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
-              {activeCat ? 'Нет товаров в этой категории' : 'Товаров пока нет'}
+              {activeCat ? t('stores.noProductsInCategory') : t('products.empty')}
             </p>
           </div>
         )}
@@ -262,11 +289,11 @@ export default function StorePage() {
               </p>
               <div className="flex items-center justify-between mt-auto">
                 <p className="text-xs font-bold" style={{ color: 'var(--tg-accent)' }}>
-                  {Number(p.basePrice).toLocaleString('ru')} сум
+                  {Number(p.basePrice).toLocaleString(locale === 'uz' ? 'uz' : 'ru')} {t('common.currency')}
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
-                  aria-label="Добавить в корзину"
+                  aria-label={t('cart.addToCart')}
                   className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold"
                   style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >

@@ -3,6 +3,21 @@ import { StoreRef } from './stores';
 
 export type ProductDisplayType = 'SLIDER' | 'SINGLE' | 'COLLAGE_2X2';
 
+/**
+ * Canonical image reference в product responses.
+ * API-PRODUCT-IMAGES-FULL-SHAPE-001: `url` всегда заполнен (resolved бэкендом);
+ * `id`/`mediaId`/`sortOrder`/`isPrimary` присутствуют в detail-ответах
+ * (seller product detail, storefront product detail), но могут отсутствовать
+ * в лёгких feed-ответах (storefront list, search).
+ */
+export interface ProductImageRef {
+  url: string;
+  id?: string;
+  mediaId?: string;
+  sortOrder?: number;
+  isPrimary?: boolean;
+}
+
 // ── Option Groups / Values ────────────────────────────────────────────────────
 
 export interface OptionValue {
@@ -52,6 +67,14 @@ export interface ProductListItem {
   title: string;
   description: string | null;
   basePrice: number;
+  /** P3-004: original price before discount, null if not on sale. */
+  oldPrice?: number | null;
+  /** P3-004: current sale price, null if not on sale. */
+  salePrice?: number | null;
+  /** P3-004: true when `salePrice < basePrice`. UI рендерит SALE-бэйдж. */
+  isSale: boolean;
+  /** P3-004: скидка % (floor, 1..99). null если !isSale. UI рендерит `-30%`. */
+  discountPercent: number | null;
   currencyCode: string;
   status: ProductStatus;
   isVisible: boolean;
@@ -65,10 +88,13 @@ export interface ProductListItem {
    */
   mediaUrls: string[];
   /**
-   * Canonical: каждый объект может расширяться (id, isPrimary etc).
-   * Для search/storefront feed.
+   * Canonical image objects.
+   * API-PRODUCT-IMAGES-FULL-SHAPE-001 (от Азима, web-sync audit 14.05.2026):
+   * расширено с `{ url }` до полного shape — `id`/`mediaId`/`sortOrder`
+   * опциональны (storefront feed может отдавать только url, product detail —
+   * всё). web-seller edit page больше не нуждается в `as` cast.
    */
-  images: { url: string }[];
+  images: ProductImageRef[];
   variantCount: number;
   displayType: ProductDisplayType;
   /**

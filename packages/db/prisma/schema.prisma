@@ -282,12 +282,23 @@ model BuyerWishlistItem {
   productId String
   createdAt DateTime @default(now())
 
+  // MARKETING-WISHLIST-NOTIFY-001: «снимок» цены и доступности на момент
+  // добавления в избранное — для детекции price-drop и back-in-stock.
+  // `notifiedAt` — когда отправили nudge (idempotency, cap 1 per cycle).
+  // `notifiedReason` — что нотифицировали в последний раз (для аналитики).
+  priceSnapshot   Decimal? @db.Decimal(12, 2)
+  inStockSnapshot Boolean? @default(true)
+  notifiedAt      DateTime?
+  notifiedReason  String?
+
   buyer   Buyer   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([buyerId, productId])
   @@index([buyerId])
   @@index([productId])
+  // Cron-сканер: PrimaryKey range scan на notifiedAt IS NULL.
+  @@index([notifiedAt])
   @@map("buyer_wishlist_items")
 }
 
@@ -731,6 +742,12 @@ model Cart {
   updatedAt    DateTime @updatedAt
   expiresAt    DateTime?
 
+  // MARKETING-CART-ABANDONMENT-001: тайминг для cron'а ремаркетинга.
+  // nudgeSentAt — когда отправили последний TG-nudge (не спамим).
+  // nudgeCount — сколько раз нудили (для аналитики и cap'а 1-2 раза).
+  nudgeSentAt  DateTime?
+  nudgeCount   Int      @default(0)
+
   buyer  Buyer?     @relation(fields: [buyerId], references: [id])
   store  Store      @relation(fields: [storeId], references: [id])
   items  CartItem[]
@@ -740,6 +757,8 @@ model Cart {
   @@index([sessionKey])
   @@index([storeId])
   @@index([status])
+  // Cart-abandonment scan: ACTIVE carts with stale updatedAt и нулевым/малым nudgeCount.
+  @@index([status, nudgeSentAt, updatedAt])
   @@map("carts")
 }
 

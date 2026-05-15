@@ -15,7 +15,7 @@ import { ErrorCode } from '../../shared/constants/error-codes';
 import { HttpStatus } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
-import { ProductsRepository } from './repositories/products.repository';
+import { ProductsRepository, PublicProductListItem } from './repositories/products.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
 import { ProductPresenterService } from './services/product-presenter.service';
@@ -137,9 +137,7 @@ export class StorefrontController {
       const { basePrice, oldPrice, salePrice, images, store, ...rest } = p;
       return {
         ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.presenter.toPrice(oldPrice),
-        salePrice: this.presenter.toPrice(salePrice),
+        ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
         store: store ? { id: store.id, name: store.name, slug: store.slug } : null,
       };
@@ -155,25 +153,52 @@ export class StorefrontController {
     @Param('slug') slug: string,
     @Query('globalCategoryId') globalCategoryId?: string,
     @Query('storeCategoryId') storeCategoryId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     const store = await this.storesRepo.findBySlug(slug);
     if (!store || !store.isPublic) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
-    const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
-    return products.map((p) => {
+
+    // API-N1-PRODUCTS-LIST-001: opt-in pagination — если фронт передал `page`
+    // или `limit`, возвращаем envelope `{ data, meta }`. Иначе legacy raw
+    // array до 200 items (backward-compat). Breaking envelope-wide migration
+    // отложена в API-PAGINATION-ENVELOPE-001.
+    const wantsPagination = page !== undefined || limit !== undefined;
+
+    const mapProduct = (p: PublicProductListItem) => {
       const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
       const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
       return {
         ...rest,
-        basePrice: Number(basePrice),
-        oldPrice: this.presenter.toPrice(oldPrice),
-        salePrice: this.presenter.toPrice(salePrice),
+        ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
         variantCount: _count.variants,
         totalStock,
       };
-    });
+    };
+
+    if (wantsPagination) {
+      const result = await this.productsRepo.findPublicByStoreIdPaginated(store.id, {
+        globalCategoryId,
+        storeCategoryId,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
+      });
+      return {
+        data: result.products.map(mapProduct),
+        meta: {
+          total: result.total,
+          page: page ? parseInt(page, 10) : 1,
+          limit: limit ? parseInt(limit, 10) : 20,
+        },
+      };
+    }
+
+    // Legacy path — без pagination, take=200 default.
+    const products = await this.productsRepo.findPublicByStoreId(store.id, { globalCategoryId, storeCategoryId });
+    return products.map(mapProduct);
   }
 
   @Get('stores/:slug/products/:id')
@@ -197,14 +222,15 @@ export class StorefrontController {
       ...img,
       url: this.presenter.resolveImageUrl(img.media),
     }));
+    // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
+    const storeRef = await this.presenter.mapProductStoreRef(product.store);
     return {
       ...product,
-      basePrice: Number(product.basePrice),
-      oldPrice: this.presenter.toPrice(product.oldPrice),
-      salePrice: this.presenter.toPrice(product.salePrice),
+      ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
+      store: storeRef,
     };
   }
 
@@ -256,9 +282,7 @@ export class StorefrontController {
         const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
-          basePrice: Number(basePrice),
-          oldPrice: this.presenter.toPrice(oldPrice),
-          salePrice: this.presenter.toPrice(salePrice),
+          ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
           // API-PRODUCT-LIST-IMAGES-CONTRACT-001: оба поля.
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
@@ -285,9 +309,7 @@ export class StorefrontController {
         const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
         return {
           ...rest,
-          basePrice: Number(basePrice),
-          oldPrice: this.presenter.toPrice(oldPrice),
-          salePrice: this.presenter.toPrice(salePrice),
+          ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
           variantCount: _count.variants,
@@ -323,14 +345,15 @@ export class StorefrontController {
       ...img,
       url: this.presenter.resolveImageUrl(img.media),
     }));
+    // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
+    const storeRef = await this.presenter.mapProductStoreRef(product.store);
     return {
       ...product,
-      basePrice: Number(product.basePrice),
-      oldPrice: this.presenter.toPrice(product.oldPrice),
-      salePrice: this.presenter.toPrice(product.salePrice),
+      ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
       images,
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
+      store: storeRef,
     };
   }
 

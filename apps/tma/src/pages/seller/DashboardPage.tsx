@@ -9,6 +9,7 @@ import { Sticker } from '@/components/ui/Sticker';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { SellerAnalyticsCard } from '@/components/seller/SellerAnalyticsCard';
 import { useTelegram } from '@/providers/TelegramProvider';
+import { useTranslation } from '@/lib/i18n';
 
 function GearIcon() {
   return (
@@ -43,6 +44,8 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, viewportWidth } = useTelegram();
   const { authVersion } = useAuth();
+  const { t, locale } = useTranslation();
+  const fmt = (n: number) => n.toLocaleString(locale === 'uz' ? 'uz' : 'ru');
   const isDesktop = (viewportWidth ?? 0) >= 768;
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -80,17 +83,17 @@ export default function DashboardPage() {
     : 0;
 
   const statsCards = [
-    { label: 'Товары', value: productCount ?? '—', icon: '📦', path: '/seller/products', urgent: false },
-    { label: 'Заказы', value: orderCount   ?? '—', icon: '🛒', path: '/seller/orders',   urgent: false },
-    { label: 'Новые',  value: pendingCount,         icon: '🔔', path: '/seller/orders',   urgent: pendingCount > 0 },
+    { label: t('seller.dashboard.totalProducts'), value: productCount ?? '—', icon: '📦', path: '/seller/products', urgent: false },
+    { label: t('seller.dashboard.totalOrders'),   value: orderCount   ?? '—', icon: '🛒', path: '/seller/orders',   urgent: false },
+    { label: t('seller.dashboard.pending'),       value: pendingCount,         icon: '🔔', path: '/seller/orders',   urgent: pendingCount > 0 },
   ];
 
   const ordersList = (
     <>
       <div className="flex items-center gap-2">
-        <div className="section-label flex-1 min-w-0">Последние заказы</div>
+        <div className="section-label flex-1 min-w-0">{t('orders.recent')}</div>
         <button onClick={() => navigate('/seller/orders')} className="text-xs shrink-0" style={{ color: 'var(--tg-accent)' }}>
-          Все →
+          {t('orders.viewAll')} →
         </button>
       </div>
 
@@ -103,7 +106,7 @@ export default function DashboardPage() {
       {!loading && orders.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-8">
           <Sticker emoji="📭" size={56} />
-          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
+          <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.empty')}</p>
         </div>
       )}
 
@@ -130,23 +133,23 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
-                    Заказ #{orderShort}
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>
+                    {t('orders.orderNumber', { number: orderShort })}
                   </p>
                   <Badge status={o.status} />
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  <p className="text-xxs truncate" style={{ color: 'var(--tg-text-secondary)' }}>
                     {o.preview?.title ?? '—'}
                     {o.preview && o.preview.itemCount > 1 && (
                       <span style={{ color: 'rgba(167,139,250,0.85)' }}> +{o.preview.itemCount - 1}</span>
                     )}
                   </p>
                   <p className="text-xs font-bold shrink-0" style={{ color: 'var(--tg-accent)' }}>
-                    {Number(o.totalAmount).toLocaleString('ru')} сум
+                    {fmt(Number(o.totalAmount))} {t('common.currency')}
                   </p>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
+                <p className="text-xxs mt-0.5" style={{ color: 'var(--tg-text-dim)' }}>
                   {dateLabel} · {timeLabel}
                 </p>
               </div>
@@ -169,17 +172,17 @@ export default function DashboardPage() {
             <Sticker emoji="🏪" size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-gradient">Панель продавца</h1>
+            <h1 className="text-base font-bold text-gradient">{t('seller.dashboard.title')}</h1>
             {user && (
-              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                Привет, {user.first_name} 👋
+              <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
+                {t('seller.dashboard.greeting', { name: user.first_name })} 👋
               </p>
             )}
           </div>
           <button
             onClick={() => navigate('/seller/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.50)' }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)' }}
           >
             <GearIcon />
           </button>
@@ -216,10 +219,10 @@ export default function DashboardPage() {
                           }} />
                         )}
                       </div>
-                      <span className="text-2xl font-bold" style={{ color: s.urgent ? '#EF4444' : 'rgba(255,255,255,0.90)' }}>
+                      <span className="text-2xl font-bold" style={{ color: s.urgent ? '#EF4444' : 'var(--tg-text-primary)' }}>
                         {s.value}
                       </span>
-                      <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
+                      <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
                     </GlassCard>
                   ))}
                 </div>
@@ -232,28 +235,28 @@ export default function DashboardPage() {
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
                 >
-                  <span style={{ fontSize: 28 }}>📦</span> Мои товары
+                  <span style={{ fontSize: 28 }}>📦</span> {t('seller.dashboard.btnMyProducts')}
                 </button>
                 <button
                   onClick={() => navigate('/seller/products/add')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.22)' }}
                 >
-                  <span style={{ fontSize: 28 }}>➕</span> Добавить товар
+                  <span style={{ fontSize: 28 }}>➕</span> {t('seller.dashboard.btnAddProduct')}
                 </button>
                 <button
                   onClick={() => navigate('/seller/orders')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}
                 >
-                  <span style={{ fontSize: 28 }}>📋</span> Все заказы
+                  <span style={{ fontSize: 28 }}>📋</span> {t('seller.dashboard.btnAllOrders')}
                 </button>
                 <button
                   onClick={() => navigate('/seller/store')}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl text-sm font-semibold text-white"
                   style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.20)' }}
                 >
-                  <span style={{ fontSize: 28 }}>🏪</span> Мой магазин
+                  <span style={{ fontSize: 28 }}>🏪</span> {t('seller.dashboard.btnMyStore')}
                 </button>
               </div>
 
@@ -294,10 +297,10 @@ export default function DashboardPage() {
                         }} />
                       )}
                     </div>
-                    <span className="text-lg font-bold" style={{ color: s.urgent ? '#EF4444' : 'rgba(255,255,255,0.90)' }}>
+                    <span className="text-lg font-bold" style={{ color: s.urgent ? '#EF4444' : 'var(--tg-text-primary)' }}>
                       {s.value}
                     </span>
-                    <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.40)' }}>{s.label}</span>
+                    <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>{s.label}</span>
                   </GlassCard>
                 ))}
               </div>
@@ -309,28 +312,28 @@ export default function DashboardPage() {
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
               >
-                <span>📦</span> Мои товары
+                <span>📦</span> {t('seller.dashboard.btnMyProducts')}
               </button>
               <button
                 onClick={() => navigate('/seller/products/add')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.22)' }}
               >
-                <span>➕</span> Добавить
+                <span>➕</span> {t('seller.dashboard.btnAddShort')}
               </button>
               <button
                 onClick={() => navigate('/seller/orders')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}
               >
-                <span>📋</span> Все заказы
+                <span>📋</span> {t('seller.dashboard.btnAllOrders')}
               </button>
               <button
                 onClick={() => navigate('/seller/store')}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.20)' }}
               >
-                <span>🏪</span> Мой магазин
+                <span>🏪</span> {t('seller.dashboard.btnMyStore')}
               </button>
             </div>
 

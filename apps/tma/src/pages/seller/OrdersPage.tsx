@@ -8,6 +8,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { useTranslation } from '@/lib/i18n';
 
 interface Order {
   id: string;
@@ -109,13 +110,15 @@ function cardAccent(status: string): { border: string; glow: string; opacity: nu
   if (status === 'CONFIRMED' || status === 'PROCESSING') return { border: 'rgba(34,211,238,0.40)', glow: '0 0 18px rgba(34,211,238,0.14)', opacity: 1 };
   if (status === 'SHIPPED')    return { border: 'rgba(168,85,247,0.40)', glow: '0 0 16px rgba(168,85,247,0.14)', opacity: 1 };
   if (status === 'DELIVERED')  return { border: 'rgba(52,211,153,0.30)', glow: 'none', opacity: 1 };
-  return { border: 'rgba(255,255,255,0.06)', glow: 'none', opacity: 0.55 };
+  return { border: 'var(--tg-surface-hover)', glow: 'none', opacity: 0.55 };
 }
 
 export default function SellerOrdersPage() {
   const { tg, viewportWidth } = useTelegram();
   const navigate = useNavigate();
+  const { t, locale } = useTranslation();
   const isWide = (viewportWidth ?? 0) >= 1024;
+  const fmt = (n: number) => n.toLocaleString(locale === 'uz' ? 'uz' : 'ru');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -245,7 +248,7 @@ export default function SellerOrdersPage() {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>Заказы</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.orders.title')}</h1>
 
         {/* Status filter tabs */}
         <div className="scroll-fade-x">
@@ -257,20 +260,20 @@ export default function SellerOrdersPage() {
                 <button
                   key={f.value}
                   onClick={() => setStatusFilter(f.value)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xxs font-semibold whitespace-nowrap shrink-0 transition-all ${active ? 'chip-active' : ''}`}
                   style={!active ? {
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    color: 'rgba(255,255,255,0.45)',
+                    background: 'var(--tg-surface-hover)',
+                    border: '1px solid var(--tg-border)',
+                    color: 'var(--tg-text-muted)',
                   } : undefined}
                 >
                   {f.label}
                   {count > 0 && (
                     <span
-                      className="px-1.5 py-0 rounded-full text-[10px] font-bold"
+                      className="px-1.5 py-0 rounded-full text-xxs font-bold"
                       style={{
-                        background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
-                        color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
+                        background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
+                        color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
                         minWidth: 18,
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -301,21 +304,21 @@ export default function SellerOrdersPage() {
         {!loading && error && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>⚠️</span>
-            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Не удалось загрузить заказы</p>
-            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: 'var(--tg-accent)' }}>Попробовать снова</button>
+            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>{t('orders.loadError')}</p>
+            <button onClick={() => { setLoading(true); fetchOrders(); }} className="text-xs" style={{ color: 'var(--tg-accent)' }}>{t('common.retry')}</button>
           </div>
         )}
 
         {!loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Заказов пока нет</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.empty')}</p>
           </div>
         )}
         {!loading && !error && orders.length > 0 && orders.filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
           <div className="flex flex-col items-center gap-2 py-10">
             <span style={{ fontSize: 36 }}>🔍</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Нет заказов в этой категории</p>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.emptyCategory')}</p>
           </div>
         )}
 
@@ -354,20 +357,20 @@ export default function SellerOrdersPage() {
 
                   <div className="min-w-0 flex-1 flex flex-col gap-1">
                     <div className="flex items-baseline justify-between gap-2 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.92)' }}>
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                         {o.preview?.title ?? 'Без товаров'}
                         {o.preview && o.preview.itemCount > 1 && (
-                          <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
+                          <span className="ml-1.5 text-xxs font-semibold" style={{ color: 'rgba(167,139,250,0.95)' }}>
                             +{o.preview.itemCount - 1}
                           </span>
                         )}
                       </p>
                       <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--tg-accent)' }}>
-                        {Number(o.totalAmount).toLocaleString('ru')} сум
+                        {fmt(Number(o.totalAmount))} {t('common.currency')}
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2 min-w-0">
-                      <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                      <p className="text-xxs truncate" style={{ color: 'var(--tg-text-muted)' }}>
                         #{shortOrderNumber(o)} · {shortDate(o.createdAt)}
                         {o.buyer?.phone ? ` · ${o.buyer.phone}` : ''}
                       </p>
@@ -416,7 +419,7 @@ export default function SellerOrdersPage() {
                 <button
                   onClick={() => setShowCancelled(true)}
                   className="self-start text-xs font-semibold py-2 px-4 rounded-full transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.50)' }}
+                  style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)', color: 'var(--tg-text-secondary)' }}
                 >
                   ↓ Показать {cancelledHidden} {cancelledHidden === 1 ? 'отменённый' : 'отменённых'}
                 </button>
@@ -440,27 +443,27 @@ export default function SellerOrdersPage() {
             <div className="px-5 py-4 flex flex-col gap-5 pb-8">
               {/* Дата и время */}
               {detail.createdAt && (
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
                   🕐 {new Date(detail.createdAt).toLocaleString('ru', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
               )}
 
               {/* Покупатель */}
               <div className="flex flex-col gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
                   👤 Покупатель
                 </p>
                 {detail.customerFullName && (
-                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>{detail.customerFullName}</p>
+                  <p className="text-sm" style={{ color: 'var(--tg-text-primary)' }}>{detail.customerFullName}</p>
                 )}
                 {detail.customerPhone && (
                   <a href={`tel:${detail.customerPhone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#22D3EE' }}>
-                    📞 {detail.customerPhone} <span style={{ fontSize: 10, opacity: 0.6 }}>при заказе</span>
+                    📞 {detail.customerPhone} <span style={{ fontSize: 10, opacity: 0.6 }}>{t('seller.orders.customerPhoneNote')}</span>
                   </a>
                 )}
                 {detail.buyer?.phone && detail.buyer.phone !== detail.customerPhone && (
                   <a href={`tel:${detail.buyer.phone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#A78BFA' }}>
-                    📱 {detail.buyer.phone} <span style={{ fontSize: 10, opacity: 0.6 }}>аккаунт</span>
+                    📱 {detail.buyer.phone} <span style={{ fontSize: 10, opacity: 0.6 }}>{t('seller.orders.accountPhoneNote')}</span>
                   </a>
                 )}
               </div>
@@ -468,16 +471,16 @@ export default function SellerOrdersPage() {
               {/* Товары */}
               {(detail.items ?? []).length > 0 && (
                 <div className="flex flex-col gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
                     📦 Товары
                   </p>
                   {(detail.items ?? []).map((item) => (
                     <div key={item.id} className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm flex-1 truncate" style={{ color: 'rgba(255,255,255,0.80)' }}>
+                      <span className="text-sm flex-1 truncate" style={{ color: 'var(--tg-text-primary)' }}>
                         {item.title}{item.variantTitle ? ` · ${item.variantTitle}` : ''} × {item.quantity}
                       </span>
                       <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--tg-accent)' }}>
-                        {Number(item.subtotal).toLocaleString('ru')} сум
+                        {fmt(Number(item.subtotal))} {t('common.currency')}
                       </span>
                     </div>
                   ))}
@@ -487,8 +490,8 @@ export default function SellerOrdersPage() {
               {/* Адрес */}
               {(detail.deliveryAddress?.city || detail.deliveryAddress?.street) && (
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>📍 Адрес</p>
-                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>📍 Адрес</p>
+                  <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>
                     {[detail.deliveryAddress.city, detail.deliveryAddress.region, detail.deliveryAddress.street].filter(Boolean).join(', ')}
                   </p>
                 </div>
@@ -497,16 +500,16 @@ export default function SellerOrdersPage() {
               {/* Комментарий */}
               {detail.buyerNote && (
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>💬 Комментарий</p>
-                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>{detail.buyerNote}</p>
+                  <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>💬 Комментарий</p>
+                  <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>{detail.buyerNote}</p>
                 </div>
               )}
 
               {/* Итого */}
-              <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Итого</span>
+              <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--tg-border-soft)' }}>
+                <span className="text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>{t('cart.total')}</span>
                 <span className="text-base font-bold" style={{ color: 'var(--tg-accent)' }}>
-                  {Number(detail.totalAmount).toLocaleString('ru')} сум
+                  {fmt(Number(detail.totalAmount))} {t('common.currency')}
                 </span>
               </div>
 
@@ -532,23 +535,23 @@ export default function SellerOrdersPage() {
           onClose={() => { setChatOrderId(null); setChatMessage(''); }}
         >
           <div className="px-5 py-4 flex flex-col gap-3 pb-6">
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
               Покупатель получит уведомление в Telegram и сможет ответить из своей вкладки «Чаты».
             </p>
             <textarea
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
-              placeholder="Например: Здравствуйте! Уточните, пожалуйста, удобное время доставки."
+              placeholder={t('seller.orders.messagePlaceholder')}
               rows={4}
               maxLength={1000}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
+              style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => { setChatOrderId(null); setChatMessage(''); }}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
+                style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
               >
                 Отмена
               </button>

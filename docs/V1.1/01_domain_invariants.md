@@ -89,8 +89,11 @@
 **INV-CH01** — Chat thread привязан к конкретному product или order.
 > `thread_type` определяет тип: `product` → `product_id NOT NULL`, `order` → `order_id NOT NULL`. Thread без контекста не создаётся.
 
-**INV-CH02** — Chat messages — append-only в MVP.
-> Удаление и редактирование сообщений не поддерживаются в MVP. `chat_messages.is_deleted` зарезервировано для будущего.
+**INV-CH02** — Chat messages — soft-mutable в пределах ADR-007.
+> Физически append-only (нет hard-delete `DELETE FROM`). Edit — только автор,
+> окно 15 минут, text-only, ставит `editedAt`. Delete — только автор, soft
+> (`chat_messages.is_deleted = true` + обнуление текста). См. `docs/adr/ADR-007`.
+> Обновлено 15.05.2026 — ранее «append-only, edit/delete не поддерживаются».
 
 **INV-CH03** — Участники thread определяются при создании.
 > Buyer и seller определяются при создании thread и не меняются.

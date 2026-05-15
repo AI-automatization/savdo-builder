@@ -20,6 +20,7 @@ import { ErrorCode } from '../../shared/constants/error-codes';
 import { AdminRepository } from './repositories/admin.repository';
 import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
 import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
+import { AuditBrokenMediaUrlsUseCase } from './use-cases/audit-broken-media-urls.use-case';
 
 /**
  * AdminOpsController — devops/sysadmin утилиты.
@@ -39,6 +40,7 @@ export class AdminOpsController {
     private readonly adminRepo: AdminRepository,
     private readonly getSystemHealthUseCase: GetSystemHealthUseCase,
     private readonly migrateTgMediaUseCase: MigrateTgMediaToR2UseCase,
+    private readonly auditBrokenMediaUseCase: AuditBrokenMediaUrlsUseCase,
   ) {}
 
   private async requireAdmin(user: JwtPayload) {
@@ -99,6 +101,39 @@ export class AdminOpsController {
       entityType: 'media',
       entityId: 'batch',
       payload: { limit: parsedLimit, ...result },
+    });
+    return result;
+  }
+
+  // ── Broken Supabase URL audit ───────────────────────────────────────────
+  // API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001: помечает MediaFile с мёртвыми
+  // Supabase URL'ами bucket='broken' → resolveImageUrl вернёт '' → фронт
+  // покажет «Без фото». Запускать батчами после миграции TG→Supabase.
+  @Post('media/audit-broken-urls')
+  @AdminPermission('media:migrate')
+  async auditBrokenMediaUrls(
+    @Query('limit') limit: string | undefined,
+    @Query('cursor') cursor: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.requireAdmin(user);
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const result = await this.auditBrokenMediaUseCase.execute({
+      limit: parsedLimit,
+      cursorId: cursor,
+    });
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'media.audit.broken_urls',
+      entityType: 'media',
+      entityId: 'batch',
+      payload: {
+        limit: parsedLimit ?? null,
+        cursor: cursor ?? null,
+        scanned: result.scanned,
+        broken: result.broken,
+        nextCursor: result.nextCursor,
+      },
     });
     return result;
   }

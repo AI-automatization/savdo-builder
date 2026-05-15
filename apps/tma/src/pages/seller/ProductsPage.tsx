@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTranslation } from '@/lib/i18n';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -42,6 +43,7 @@ export default function SellerProductsPage() {
     viewportWidth >= 1024 ? 'grid-cols-3' :
     'grid-cols-2';
   const { authVersion } = useAuth();
+  const { t } = useTranslation();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
@@ -158,10 +160,10 @@ export default function SellerProductsPage() {
           className="flex items-center justify-between"
           style={{ paddingRight: viewportWidth < 768 ? 56 : 0 }}
         >
-          <h1 className="text-base font-bold" style={{ color: 'rgba(255,255,255,0.90)' }}>
+          <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>
             Товары{' '}
             {products.length > 0 && (
-              <span style={{ color: 'rgba(255,255,255,0.40)', fontWeight: 400 }}>
+              <span style={{ color: 'var(--tg-text-muted)', fontWeight: 400 }}>
                 ({filtered.length}{activeCat ? `/${products.length}` : ''})
               </span>
             )}
@@ -183,9 +185,9 @@ export default function SellerProductsPage() {
                 onClick={() => setActiveCat('')}
                 className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${!activeCat ? 'chip-active' : ''}`}
                 style={activeCat ? {
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  color: 'rgba(255,255,255,0.50)',
+                  background: 'var(--tg-surface-hover)',
+                  border: '1px solid var(--tg-border)',
+                  color: 'var(--tg-text-secondary)',
                 } : undefined}
               >
                 Все
@@ -199,18 +201,18 @@ export default function SellerProductsPage() {
                     onClick={() => setActiveCat(active ? '' : cat.id)}
                     className={`shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${active ? 'chip-active' : ''}`}
                     style={!active ? {
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      color: 'rgba(255,255,255,0.50)',
+                      background: 'var(--tg-surface-hover)',
+                      border: '1px solid var(--tg-border)',
+                      color: 'var(--tg-text-secondary)',
                     } : undefined}
                   >
                     {cat.name}
                     {count > 0 && (
                       <span
-                        className="text-[10px] font-bold px-1 rounded-full"
+                        className="text-xxs font-bold px-1 rounded-full"
                         style={{
-                          background: active ? 'var(--tg-accent-bg)' : 'rgba(255,255,255,0.08)',
-                          color: active ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.35)',
+                          background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
+                          color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
                         }}
                       >
                         {count}
@@ -232,14 +234,14 @@ export default function SellerProductsPage() {
         {!loading && error && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{error}</p>
-            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>Повторить</Button>
+            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>{t('seller.products.retry')}</Button>
           </GlassCard>
         )}
 
         {!loading && !error && products.length === 0 && (
           <GlassCard className="p-8 flex flex-col items-center gap-3">
             <span style={{ fontSize: 40 }}>📦</span>
-            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 14, textAlign: 'center' }}>
+            <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14, textAlign: 'center' }}>
               Товаров пока нет.<br />Добавьте первый!
             </p>
             <Button onClick={() => navigate('/seller/products/add')}>+ Добавить товар</Button>
@@ -249,7 +251,7 @@ export default function SellerProductsPage() {
         {!loading && !error && products.length > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8">
             <span style={{ fontSize: 36 }}>🏷️</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
               В этой категории нет товаров
             </p>
           </div>
@@ -284,7 +286,7 @@ export default function SellerProductsPage() {
                     )}
                   </div>
                   <p className="text-sm font-semibold" style={{
-                    color: 'rgba(255,255,255,0.92)',
+                    color: 'var(--tg-text-primary)',
                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>
                     {product.title}
@@ -294,7 +296,7 @@ export default function SellerProductsPage() {
                     <Badge status={product.status} />
                   </div>
                   {typeof product.totalStock === 'number' && (
-                    <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'rgba(255,255,255,0.40)' }}>
+                    <p className="text-xxs" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'var(--tg-text-muted)' }}>
                       {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
                     </p>
                   )}

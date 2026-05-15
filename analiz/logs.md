@@ -1,5 +1,95 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] ✅ Исправлено — деплой триггернут version-bump'ом
+- **Статус:** ✅ Исправлено (Полат, 15.05.2026). Деплой запущен без ручного Redeploy.
+- **Что случилось:** Railway сервис `telegram-app` упал на сборке —
+  `No start command detected`, build driver = Railpack (auto-detect),
+  а не Dockerfile. Railpack видит pnpm-workspace из 8 пакетов и не знает
+  что TMA — статический Vite SPA.
+- **Root cause:** сервис `telegram-app` имеет Root Directory = корень репо
+  и читал корневой `railway.toml`. Wave 19 DevOps audit (commit `68d1389`)
+  удалил корневой `railway.toml` как «конфликтующий» — но для ветки `tma`
+  это был рабочий конфиг (`builder=DOCKERFILE` → `apps/tma/Dockerfile`).
+  Без него Railway свалился на Railpack.
+- **Что сделано:**
+  1. Восстановлен корневой `railway.toml` на ветке `tma` (commit `798f720`).
+  2. **Catch-22:** `798f720` менял только `railway.toml`, а `watchPatterns`
+     покрывали лишь `apps/tma/**` / `packages/*` → Railway пропустил деплой
+     («No changes to watched files»). Активным остался build 21h-давности.
+  3. В `watchPatterns` добавлен `railway.toml` (commit `6a39a06`) — чтобы
+     правки конфига впредь триггерили деплой.
+  4. **Bootstrap без ручного Redeploy** (commit `0c57bad`): bump версии
+     `apps/tma/package.json` 0.1.0 → 0.1.1. Этот коммит трогает `apps/tma/**`
+     → попадает под текущие watchPatterns → Railway ЗАПУСКАЕТ деплой (не
+     skip) → читает восстановленный `railway.toml` → собирает через
+     Dockerfile. Так разорван catch-22 без доступа к Railway-дашборду.
+- **Проверить на Railway:** `telegram-app` → Deployments — новый деплой на
+  коммите `0c57bad` должен идти с build driver **Dockerfile** (не Railpack)
+  и пройти healthcheck `/`. После него все будущие `apps/tma/**` и
+  `railway.toml` правки деплоятся авто.
+- **Урок:** перед удалением деплой-конфига проверять, какой сервис его
+  читает. `watchPatterns` должны включать сам `railway.toml`. Коммит-только-
+  конфиг не самотриггерится — нужен parallel-change в watched-путях.
+
+## [2026-05-15] [API-CHECKOUT-CONFIRM-500-001] 🟡 ЧАСТИЧНО — fault-isolation side-effects (Полат)
+- **Статус:** 🟡 Defensive fix задеплоен, root cause ещё под вопросом
+- **Что сделано (Полат, 15.05.2026):**
+  1. **Fault-isolation post-commit.** `confirm-checkout.use-case.ts` после
+     `createOrder()` делал clearCart + markCartConverted + WS-emit + TG-notify
+     БЕЗ защиты. Если WS-сервер не инициализирован (`this.server` undefined)
+     или Redis-glitch на cart-update — buyer получал 500, **хотя заказ уже
+     создан и stock списан**. Каждый side-effect обёрнут в try/catch → заказ
+     возвращается с 201 даже при сбое нотификаций. Коммит `aec25e5`.
+  2. **Диагностика.** API-SENTRY-001: `GlobalExceptionFilter` теперь репортит
+     любой 5xx в `ErrorReporter` (stderr, structured JSON, с method/path/
+     userId). Коммит `faaa36c`. После redeploy `api` ветки следующий 500 на
+     `/checkout/confirm` оставит полный stack trace в Railway stderr.
+- **Что НЕ закрыто:** если 500 происходит ВНУТРИ транзакции `createOrder()`
+  (DB constraint, stock race, Decimal) — этот фикс не помогает (заказ честно
+  не создаётся). Нужно: redeploy `api` → поймать stack trace из ErrorReporter
+  → дотянуть root cause. Статически код checkout валиден (21/21 тестов).
+- **Зона:** `apps/api/src/modules/checkout/`. Полат.
+
+## [2026-05-14] [API-CHECKOUT-CONFIRM-500-001] 🔴 BLOCKER — buyer не может оформить заказ
+- **Статус:** 🔴 Баг — открыт, передан Полату как P0
+- **Что случилось:** Azim сообщил 14.05.2026 — на проде при оформлении заказа из web-buyer checkout `POST /api/v1/checkout/confirm` возвращает HTTP **500 Internal server error** (повторяется на нескольких попытках). Buyer не может завершить покупку.
+- **Где видно:**
+  - URL: `https://savdo-api-production.up.railway.app/api/v1/checkout/confirm`
+  - DevTools Console: `Failed to load resource: the server responded with a status of 500`
+  - Response body: `Internal server error`
+  - Trigger: финальная кнопка «Оформить заказ» в `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (`confirm.mutateAsync` line ~383)
+- **Что НЕ известно:** какой именно exception на бэке. Нужно смотреть Railway logs `savdo-api-production` за последние часы — искать stack trace с тегом `[CheckoutController]` или `[CheckoutService]`. Возможные подозрения:
+  - Order creation из cart bulk (race / stock / variant validation)
+  - Transaction rollback из-за нарушения `INV-O04` (stock decrement)
+  - Telegram notification job enqueue падает (но это обычно после 200 OK)
+  - DB constraint violation (например `order_currency_check` или подобный)
+  - Декорированные Decimal arithmetic (см. P3-004 floating-point bug в этом файле — pattern Полата)
+- **Зона:** `apps/api/src/modules/checkout/checkout.controller.ts` + `checkout.use-case.ts` + `orders.repository.ts`. **НЕ моя зона** — Полату.
+- **Передано:** ticket `API-CHECKOUT-CONFIRM-500-001` 🔴 P0 в `analiz/tasks.md` (секция «P0 — БЛОКЕРЫ ДЛЯ PRODUCTION»).
+- **Frontend defensive:** web-buyer уже показывает API error message в `ErrorBanner` (`page.tsx:330` setApiError), buyer хотя бы видит что оформить не получилось. Но без backend fix всё равно купить нельзя.
+
+## [2026-05-12] [P3-004-FLOATING-POINT] WIP — isSale/discountPercent
+- **Статус:** 🟡 НЕ ДЕПЛОИТЬ, локальный commit `e56c5bc` на main (не push)
+- **Что случилось:** реализовал P3-004 (isSale + discountPercent в API ответах).
+  `ProductPresenterService.computeSale` + `priceFields` helper, применено в 7
+  mapper'ах (storefront + products controllers + featured use-case). Тип
+  `ProductListItem` расширен (`isSale`, `discountPercent`, опц. `oldPrice`,
+  `salePrice`).
+- **Проблема:** 4 теста падают из-за JS floating-point.
+  `(1 - 80/100) * 100 = 19.999...` → `Math.floor` = **19** вместо **20**.
+- **Что сделать (10 минут):**
+  В `ProductPresenterService.computeSale` поменять формулу с
+  `Math.floor((1 - sale/base) * 100)` на:
+  ```ts
+  const pct = Math.floor(((base - sale) / base) * 100);
+  // или ещё устойчивее (integer arithmetic):
+  const pct = Math.floor(((base - sale) * 100) / base);
+  ```
+  Это даст ровные числа 20/30/50/65% как ожидают тесты.
+- **После фикса:** прогнать `npx jest src/modules/products/services/product-presenter.service.spec.ts`
+  → должно быть 15/15 passed. Потом `npx jest` (full suite) → должен остаться
+  53/699 + новый файл = 54/714. Тогда push main + merge → api → push api.
+
 Формат записи:
 ```
 ## [ДАТА] [ID] Описание

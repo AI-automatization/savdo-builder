@@ -11,6 +11,7 @@ import { showToast } from '@/components/ui/Toast';
 import { SocketStatusBadge } from '@/components/ui/SocketStatusBadge';
 import { glass } from '@/lib/styles';
 import { clickableA11y } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n';
 
 interface ChatThread {
   id: string;
@@ -53,6 +54,7 @@ export default function BuyerChatPage() {
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
   const { tg, viewportWidth } = useTelegram();
+  const { t, locale } = useTranslation();
   const isDesktop = (viewportWidth ?? 0) >= 1024;
 
   // ── Thread list ──────────────────────────────────────────────────────────────
@@ -110,7 +112,7 @@ export default function BuyerChatPage() {
         if (ac.signal.aborted) return;
         if (err instanceof Error && err.name === 'AbortError') return;
         setThreadsError(true);
-        const msg = err instanceof Error ? err.message : 'Не удалось загрузить чаты';
+        const msg = err instanceof Error ? err.message : t('chat.loadError');
         showToast(`❌ ${msg}`, 'error');
       })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
@@ -214,7 +216,7 @@ export default function BuyerChatPage() {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setText(msgText);
       tg?.HapticFeedback.notificationOccurred('error');
-      showToast('❌ Не удалось отправить', 'error');
+      showToast(t('chat.sendError'), 'error');
     } finally {
       setSending(false);
     }
@@ -241,7 +243,7 @@ export default function BuyerChatPage() {
       setReplyTo(null);
       tg?.HapticFeedback.notificationOccurred('success');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Не удалось отправить фото';
+      const msg = err instanceof Error ? err.message : t('chat.photoSendError');
       showToast(`❌ ${msg}`, 'error');
       tg?.HapticFeedback.notificationOccurred('error');
     } finally {
@@ -264,7 +266,7 @@ export default function BuyerChatPage() {
       });
       tg?.HapticFeedback.notificationOccurred('success');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Не удалось изменить';
+      const msg = err instanceof Error ? err.message : t('chat.editError');
       showToast(`❌ ${msg}`, 'error');
       tg?.HapticFeedback.notificationOccurred('error');
     }
@@ -278,7 +280,7 @@ export default function BuyerChatPage() {
       await api(`/chat/threads/${threadId}/messages/${id}`, { method: 'DELETE' });
       tg?.HapticFeedback.notificationOccurred('success');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Не удалось удалить';
+      const msg = err instanceof Error ? err.message : t('chat.deleteError');
       showToast(`❌ ${msg}`, 'error');
     }
   };
@@ -300,9 +302,9 @@ export default function BuyerChatPage() {
     setReporting(true);
     try {
       await api(`/chat/messages/${reportTarget.id}/report`, { method: 'PATCH' });
-      showToast('✅ Жалоба отправлена');
+      showToast(t('chat.reportSent'));
     } catch {
-      showToast('❌ Не удалось отправить жалобу', 'error');
+      showToast(t('chat.reportError'), 'error');
     } finally {
       setReporting(false);
       setReportTarget(null);
@@ -310,18 +312,18 @@ export default function BuyerChatPage() {
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const threadLabel = (t: ChatThread) => {
-    if (t.storeName) return t.storeName;
-    if (t.productTitle) return `Товар: ${t.productTitle}`;
-    if (t.orderNumber) return `Заказ: ${t.orderNumber}`;
-    return 'Диалог';
+  const threadLabel = (thread: ChatThread) => {
+    if (thread.storeName) return thread.storeName;
+    if (thread.productTitle) return t('chat.threadProduct', { title: thread.productTitle });
+    if (thread.orderNumber) return t('chat.threadOrder', { number: thread.orderNumber });
+    return t('chat.threadFallback');
   };
 
   // Контекст thread'а: буква бренда магазина для аватарки + 2-я строка с
   // продукт/заказ если они дополняют storeName (раньше storeName съедал контекст).
-  const threadContext = (t: ChatThread): string | null => {
-    if (t.storeName && t.productTitle) return `📦 ${t.productTitle}`;
-    if (t.storeName && t.orderNumber) return `🧾 Заказ #${t.orderNumber.replace(/^ORD-/, '')}`;
+  const threadContext = (thread: ChatThread): string | null => {
+    if (thread.storeName && thread.productTitle) return `📦 ${thread.productTitle}`;
+    if (thread.storeName && thread.orderNumber) return `🧾 ${t('chat.orderShort', { number: thread.orderNumber.replace(/^ORD-/, '') })}`;
     return null;
   };
   const avatarColors = [
@@ -348,23 +350,23 @@ export default function BuyerChatPage() {
           >
             <div
               className="w-full rounded-t-2xl p-5 flex flex-col gap-4"
-              style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)' }}
+              style={{ background: '#1a1035', border: '1px solid var(--tg-border)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <p className="text-sm font-semibold text-center" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                Пожаловаться на сообщение?
+              <p className="text-sm font-semibold text-center" style={{ color: 'var(--tg-text-primary)' }}>
+                {t('chat.reportConfirm')}
               </p>
               <p className="text-xs text-center px-4 py-2 rounded-xl truncate"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.50)' }}>
+                style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}>
                 «{reportTarget.text.slice(0, 80)}{reportTarget.text.length > 80 ? '…' : ''}»
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setReportTarget(null)}
                   className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.60)' }}
+                  style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
                 >
-                  Отмена
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={submitReport}
@@ -372,7 +374,7 @@ export default function BuyerChatPage() {
                   className="flex-1 py-3 rounded-xl text-sm font-semibold"
                   style={{ background: 'rgba(239,68,68,0.20)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}
                 >
-                  {reporting ? '...' : 'Пожаловаться'}
+                  {reporting ? '...' : t('chat.report')}
                 </button>
               </div>
             </div>
@@ -384,18 +386,18 @@ export default function BuyerChatPage() {
           style={{ height: 'calc(var(--tg-viewport-stable-height, 100dvh) - 7.5rem)' }}
         >
           {/* Header */}
-          <div className="pb-2 mb-2 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="pb-2 mb-2 shrink-0" style={{ borderBottom: '1px solid var(--tg-border-soft)' }}>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/buyer/chat', { replace: true })}
-                aria-label="Назад к диалогам"
+                aria-label={t('chat.backToThreads')}
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: 12,
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  color: 'rgba(255,255,255,0.70)',
+                  background: 'var(--tg-surface-hover)',
+                  border: '1px solid var(--tg-border)',
+                  color: 'var(--tg-text-secondary)',
                   fontSize: 22,
                   display: 'flex',
                   alignItems: 'center',
@@ -407,14 +409,14 @@ export default function BuyerChatPage() {
                 ‹
               </button>
               <div className="flex flex-col min-w-0 flex-1">
-                <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                  {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
+                <h2 className="text-sm font-bold truncate" style={{ color: 'var(--tg-text-primary)' }}>
+                  {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>{t('common.loading')}</span>}
                 </h2>
                 <div className="flex items-center gap-2">
                   {activeThread && (
-                    <span className="text-xs" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
+                    <span className="text-xs" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'var(--tg-text-secondary)' }}>
                       <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
-                      {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                      {activeThread.status === 'OPEN' ? t('chat.statusOpen') : t('chat.statusClosed')}
                     </span>
                   )}
                   <SocketStatusBadge />
@@ -423,7 +425,7 @@ export default function BuyerChatPage() {
               {activeThread?.storeSlug && (
                 <button
                   onClick={() => navigate(`/buyer/store/${activeThread.storeSlug}`)}
-                  className="text-[11px] px-3 py-1 rounded-lg shrink-0"
+                  className="text-xxs px-3 py-1 rounded-lg shrink-0"
                   style={{
                     background: 'var(--tg-accent-bg)',
                     border: '1px solid var(--tg-accent-border)',
@@ -449,7 +451,7 @@ export default function BuyerChatPage() {
             {!msgLoading && messages.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-12">
                 <span aria-hidden="true" style={{ fontSize: 36 }}>💬</span>
-                <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Сообщений пока нет</p>
+                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>{t('chat.empty')}</p>
               </div>
             )}
             {messages.map((m) => (
@@ -466,9 +468,9 @@ export default function BuyerChatPage() {
                   <div
                     className="px-3 py-2 rounded-xl text-xs italic"
                     style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      color: 'rgba(255,255,255,0.40)',
+                      background: 'var(--tg-surface)',
+                      border: '1px solid var(--tg-border-soft)',
+                      color: 'var(--tg-text-muted)',
                     }}
                   >
                     🗑 Сообщение удалено
@@ -481,9 +483,9 @@ export default function BuyerChatPage() {
                         ? 'var(--tg-accent-bg)'
                         : m.senderRole === 'BUYER'
                           ? 'var(--tg-accent-dim)'
-                          : 'rgba(255,255,255,0.08)',
-                      border: `1px solid ${m.senderRole === 'BUYER' ? 'var(--tg-accent-border)' : 'rgba(255,255,255,0.12)'}`,
-                      color: 'rgba(255,255,255,0.88)',
+                          : 'var(--tg-border-soft)',
+                      border: `1px solid ${m.senderRole === 'BUYER' ? 'var(--tg-accent-border)' : 'var(--tg-border)'}`,
+                      color: 'var(--tg-text-primary)',
                       opacity: m.id.startsWith('temp_') ? 0.7 : 1,
                     }}
                   >
@@ -492,17 +494,17 @@ export default function BuyerChatPage() {
                         className="px-3 pt-2"
                       >
                         <div
-                          className="px-2 py-1 rounded-md text-[11px] truncate"
+                          className="px-2 py-1 rounded-md text-xxs truncate"
                           style={{
-                            background: 'rgba(255,255,255,0.08)',
+                            background: 'var(--tg-border-soft)',
                             borderLeft: '3px solid var(--tg-accent)',
-                            color: 'rgba(255,255,255,0.65)',
+                            color: 'var(--tg-text-secondary)',
                           }}
                         >
                           <span style={{ fontWeight: 600, color: 'var(--tg-accent)' }}>
-                            ↩ {m.parentMessage.senderRole === 'BUYER' ? 'Вы' : 'Продавец'}
+                            ↩ {m.parentMessage.senderRole === 'BUYER' ? t('chat.fromYou') : t('chat.fromSeller')}
                           </span>
-                          <span className="ml-1.5">{m.parentMessage.text.slice(0, 60) || '📷 Фото'}</span>
+                          <span className="ml-1.5">{m.parentMessage.text.slice(0, 60) || t('chat.photoMessage')}</span>
                         </div>
                       </div>
                     )}
@@ -522,19 +524,19 @@ export default function BuyerChatPage() {
                   </div>
                 )}
                 <span
-                  className="text-[10px] mt-0.5 flex items-center gap-1"
-                  style={{ color: 'rgba(255,255,255,0.30)', alignSelf: m.senderRole === 'BUYER' ? 'flex-end' : 'flex-start' }}
+                  className="text-xxs mt-0.5 flex items-center gap-1"
+                  style={{ color: 'var(--tg-text-dim)', alignSelf: m.senderRole === 'BUYER' ? 'flex-end' : 'flex-start' }}
                 >
                   {m.id.startsWith('temp_') ? '...' : timeStr(m.createdAt)}
                   {m.editedAt && !m.isDeleted && (
-                    <span style={{ fontStyle: 'italic' }}>· изменено</span>
+                    <span style={{ fontStyle: 'italic' }}>{t('chat.edited')}</span>
                   )}
                 </span>
               </div>
             ))}
             {isOtherTyping && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 self-start rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.06)', maxWidth: 100 }}
+                style={{ background: 'var(--tg-surface-hover)', maxWidth: 100 }}
                 aria-live="polite"
               >
                 <span className="typing-dot" style={{ animationDelay: '0ms' }} />
@@ -556,18 +558,18 @@ export default function BuyerChatPage() {
                 >
                   <span style={{ fontSize: 16 }}>↩</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold" style={{ color: 'var(--tg-accent)' }}>
-                      Ответ {replyTo.senderRole === 'BUYER' ? 'себе' : 'продавцу'}
+                    <p className="text-xxs font-semibold" style={{ color: 'var(--tg-accent)' }}>
+                      {replyTo.senderRole === 'BUYER' ? t('chat.replyToSelf') : t('chat.replyToSeller')}
                     </p>
-                    <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                      {replyTo.text || '📷 Фото'}
+                    <p className="text-xs truncate" style={{ color: 'var(--tg-text-secondary)' }}>
+                      {replyTo.text || t('chat.photoMessage')}
                     </p>
                   </div>
                   <button
                     onClick={() => setReplyTo(null)}
                     className="w-6 h-6 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}
-                    aria-label="Отменить ответ"
+                    style={{ background: 'var(--tg-border-soft)', color: 'var(--tg-text-secondary)', fontSize: 12 }}
+                    aria-label={t('chat.cancelReply')}
                   >
                     ✕
                   </button>
@@ -580,12 +582,12 @@ export default function BuyerChatPage() {
                   style={{ background: 'rgba(34,211,238,0.12)', borderLeft: '3px solid rgba(34,211,238,0.70)' }}
                 >
                   <span style={{ fontSize: 16 }}>✎</span>
-                  <p className="flex-1 text-xs" style={{ color: '#22D3EE' }}>Редактирование сообщения</p>
+                  <p className="flex-1 text-xs" style={{ color: '#22D3EE' }}>{t('chat.editing')}</p>
                   <button
                     onClick={() => { setEditingId(null); setEditText(''); }}
                     className="w-6 h-6 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}
-                    aria-label="Отменить"
+                    style={{ background: 'var(--tg-border-soft)', color: 'var(--tg-text-secondary)', fontSize: 12 }}
+                    aria-label={t('chat.cancelEdit')}
                   >
                     ✕
                   </button>
@@ -609,13 +611,13 @@ export default function BuyerChatPage() {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingPhoto || sending}
-                      aria-label="Прикрепить фото"
+                      aria-label={t('chat.attachPhoto')}
                       style={{
                         padding: '10px 12px',
                         borderRadius: 12,
-                        background: 'rgba(255,255,255,0.07)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: 'rgba(255,255,255,0.70)',
+                        background: 'var(--tg-surface-hover)',
+                        border: '1px solid var(--tg-border)',
+                        color: 'var(--tg-text-secondary)',
                         fontSize: 18,
                         cursor: uploadingPhoto ? 'wait' : 'pointer',
                         opacity: uploadingPhoto ? 0.5 : 1,
@@ -646,11 +648,11 @@ export default function BuyerChatPage() {
                       }
                     }
                   }}
-                  placeholder={editingId ? 'Изменить сообщение... (Enter ↵)' : 'Сообщение... (Enter ↵)'}
+                  placeholder={editingId ? t('chat.editPlaceholder') : t('chat.placeholder')}
                   style={{
                     flex: 1,
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'var(--tg-surface-hover)',
+                    border: '1px solid var(--tg-border)',
                     borderRadius: 12,
                     color: '#fff',
                     fontSize: 14,
@@ -661,7 +663,7 @@ export default function BuyerChatPage() {
                 <button
                   onClick={() => { if (!editingId) emitTyping(false); (editingId ? submitEdit : sendMsg)(); }}
                   disabled={editingId ? !editText.trim() : (!text.trim() || sending)}
-                  aria-label={editingId ? 'Сохранить' : 'Отправить сообщение'}
+                  aria-label={editingId ? t('common.save') : t('chat.sendAria')}
                   style={{
                     padding: '10px 16px',
                     borderRadius: 12,
@@ -679,8 +681,8 @@ export default function BuyerChatPage() {
               </div>
             </div>
           ) : (
-            <div className="pt-2 text-center text-[12px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
-              Диалог закрыт продавцом — новые сообщения недоступны
+            <div className="pt-2 text-center text-xs shrink-0" style={{ color: 'var(--tg-text-dim)' }}>
+              {t('chat.closedNotice')}
             </div>
           )}
 
@@ -693,53 +695,53 @@ export default function BuyerChatPage() {
             >
               <div
                 className="w-full rounded-t-2xl flex flex-col"
-                style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)', maxWidth: 600, margin: '0 auto' }}
+                style={{ background: '#1a1035', border: '1px solid var(--tg-border)', maxWidth: 600, margin: '0 auto' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex justify-center pt-3 pb-1">
-                  <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} />
+                  <div className="w-10 h-1 rounded-full" style={{ background: 'var(--tg-text-dim)' }} />
                 </div>
                 <div className="flex flex-col">
                   <button
                     onClick={() => { setReplyTo(actionTarget); setActionTarget(null); }}
                     className="text-left px-5 py-3 text-sm flex items-center gap-3"
-                    style={{ color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                    style={{ color: 'var(--tg-text-primary)', borderBottom: '1px solid var(--tg-border-soft)' }}
                   >
-                    <span>↩</span> Ответить
+                    <span>↩</span> {t('chat.reply')}
                   </button>
                   {canEditMessage(actionTarget) && (
                     <button
                       onClick={() => { setEditingId(actionTarget.id); setEditText(actionTarget.text); setActionTarget(null); }}
                       className="text-left px-5 py-3 text-sm flex items-center gap-3"
-                      style={{ color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                      style={{ color: 'var(--tg-text-primary)', borderBottom: '1px solid var(--tg-border-soft)' }}
                     >
-                      <span>✎</span> Изменить
+                      <span>✎</span> {t('common.edit')}
                     </button>
                   )}
                   {actionTarget.senderRole === 'BUYER' && (
                     <button
                       onClick={() => { deleteMsg(actionTarget.id); setActionTarget(null); }}
                       className="text-left px-5 py-3 text-sm flex items-center gap-3"
-                      style={{ color: '#f87171', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                      style={{ color: '#f87171', borderBottom: '1px solid var(--tg-border-soft)' }}
                     >
-                      <span>🗑</span> Удалить
+                      <span>🗑</span> {t('common.delete')}
                     </button>
                   )}
                   {actionTarget.senderRole === 'SELLER' && (
                     <button
                       onClick={() => { setReportTarget(actionTarget); setActionTarget(null); }}
                       className="text-left px-5 py-3 text-sm flex items-center gap-3"
-                      style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                      style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
                     >
-                      <span>⚠️</span> Пожаловаться
+                      <span>⚠️</span> {t('chat.report')}
                     </button>
                   )}
                   <button
                     onClick={() => setActionTarget(null)}
                     className="text-center px-5 py-3 text-sm font-semibold"
-                    style={{ color: 'rgba(255,255,255,0.55)' }}
+                    style={{ color: 'var(--tg-text-secondary)' }}
                   >
-                    Отмена
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -755,8 +757,8 @@ export default function BuyerChatPage() {
   // ════════════════════════════════════════════════════════════════════════════
   const threadList = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-base font-bold mb-2" style={{ color: 'rgba(255,255,255,0.90)' }}>
-        Сообщения
+      <h1 className="text-base font-bold mb-2" style={{ color: 'var(--tg-text-primary)' }}>
+        {t('chat.messagesTitle')}
       </h1>
 
       {loading && [1, 2, 3].map((i) => <ThreadRowSkeleton key={i} />)}
@@ -764,13 +766,13 @@ export default function BuyerChatPage() {
       {!loading && threadsError && (
         <div className="flex flex-col items-center gap-3 py-16">
           <span style={{ fontSize: 40 }}>⚠️</span>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Не удалось загрузить чаты</p>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>{t('chat.loadError')}</p>
           <button
             onClick={loadThreads}
             className="text-xs font-semibold py-2 px-4 rounded-full"
             style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
           >
-            ↻ Повторить
+            ↻ {t('chat.retry')}
           </button>
         </div>
       )}
@@ -778,20 +780,20 @@ export default function BuyerChatPage() {
       {!loading && !threadsError && threads.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-16">
           <span aria-hidden="true" style={{ fontSize: 40 }}>💬</span>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Диалогов пока нет</p>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>{t('chat.noThreads')}</p>
         </div>
       )}
 
-      {threads.map((t) => {
-        const ctx = threadContext(t);
-        const ac = avatarStyle(t.id);
-        const unread = t.unreadCount ?? 0;
-        const initial = (t.storeName ?? threadLabel(t)).charAt(0).toUpperCase();
+      {threads.map((thread) => {
+        const ctx = threadContext(thread);
+        const ac = avatarStyle(thread.id);
+        const unread = thread.unreadCount ?? 0;
+        const initial = (thread.storeName ?? threadLabel(thread)).charAt(0).toUpperCase();
         return (
           <div
-            key={t.id}
-            {...clickableA11y(() => navigate(`/buyer/chat/${t.id}`))}
-            aria-label={`Чат: ${threadLabel(t)}${unread > 0 ? `, ${unread} непрочитанных` : ''}`}
+            key={thread.id}
+            {...clickableA11y(() => navigate(`/buyer/chat/${thread.id}`))}
+            aria-label={`${t('chat.ariaChatWith', { name: threadLabel(thread) })}${unread > 0 ? `, ${t('chat.unreadCount', { count: unread })}` : ''}`}
             className="flex items-start gap-3 p-3.5 rounded-2xl cursor-pointer active:opacity-70 transition-all"
             style={glass}
           >
@@ -802,7 +804,7 @@ export default function BuyerChatPage() {
               <span style={{ color: ac.fg, fontSize: 16, fontWeight: 700 }}>{initial}</span>
               {unread > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-xxs font-bold"
                   style={{ background: 'var(--tg-accent)', color: '#fff' }}
                 >
                   {unread > 9 ? '9+' : unread}
@@ -811,22 +813,22 @@ export default function BuyerChatPage() {
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold truncate" style={{ color: unread > 0 ? '#fff' : 'rgba(255,255,255,0.88)' }}>
-                  {threadLabel(t)}
+                <p className="text-sm font-semibold truncate" style={{ color: unread > 0 ? '#fff' : 'var(--tg-text-primary)' }}>
+                  {threadLabel(thread)}
                 </p>
-                {t.lastMessageAt && (
-                  <span className="text-[10px] shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                    {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
+                {thread.lastMessageAt && (
+                  <span className="text-xxs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
+                    {new Date(thread.lastMessageAt).toLocaleDateString(locale === 'uz' ? 'uz' : 'ru', { day: '2-digit', month: '2-digit' })}
                   </span>
                 )}
               </div>
               {ctx && (
-                <p className="text-[11px] truncate" style={{ color: 'var(--tg-accent)' }}>
+                <p className="text-xxs truncate" style={{ color: 'var(--tg-accent)' }}>
                   {ctx}
                 </p>
               )}
-              <p className="text-xs truncate" style={{ color: unread > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.50)', fontWeight: unread > 0 ? 500 : 400 }}>
-                {t.lastMessage ?? (t.status === 'OPEN' ? 'Диалог открыт' : '🔒 Закрыт')}
+              <p className="text-xs truncate" style={{ color: unread > 0 ? 'var(--tg-text-primary)' : 'var(--tg-text-secondary)', fontWeight: unread > 0 ? 500 : 400 }}>
+                {thread.lastMessage ?? (thread.status === 'OPEN' ? t('chat.threadOpen') : t('chat.threadClosedShort'))}
               </p>
             </div>
           </div>
@@ -848,13 +850,13 @@ export default function BuyerChatPage() {
         <div
           className="rounded-3xl flex flex-col items-center justify-center gap-3"
           style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px dashed rgba(255,255,255,0.08)',
+            background: 'var(--tg-surface)',
+            border: '1px dashed var(--tg-border-soft)',
           }}
         >
           <span aria-hidden="true" style={{ fontSize: 56, opacity: 0.35 }}>💬</span>
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            Выберите диалог слева
+          <p className="text-sm" style={{ color: 'var(--tg-text-muted)' }}>
+            {t('chat.selectThread')}
           </p>
         </div>
       </div>

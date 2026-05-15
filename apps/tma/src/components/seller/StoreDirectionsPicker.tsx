@@ -94,15 +94,15 @@ export function StoreDirectionsPicker() {
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.40)' }}>
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-muted)' }}>
             Направление магазина
           </p>
-          <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <p className="text-xxs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
             Помогает покупателям найти вас в каталоге
           </p>
         </div>
         <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+          className="text-xxs font-bold px-2 py-0.5 rounded-full shrink-0"
           style={{
             background: selected.length === MAX_DIRECTIONS ? 'rgba(239,68,68,0.15)' : 'var(--tg-accent-bg)',
             color: selected.length === MAX_DIRECTIONS ? '#f87171' : 'var(--tg-accent)',
@@ -181,7 +181,7 @@ export function StoreDirectionsPicker() {
             <div className="flex items-start gap-2 px-3 py-2 rounded-lg"
               style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}>
               <span aria-hidden>💡</span>
-              <p className="text-xs flex-1" style={{ color: 'rgba(255,255,255,0.75)' }}>
+              <p className="text-xs flex-1" style={{ color: 'var(--tg-text-secondary)' }}>
                 Тапай чтобы добавить или убрать. <b style={{ color: '#22D3EE' }}>Сохраняется автоматически</b> — отдельная кнопка не нужна. Можно выбрать до {MAX_DIRECTIONS}.
               </p>
             </div>
@@ -192,14 +192,14 @@ export function StoreDirectionsPicker() {
               placeholder="🔍 Поиск направления…"
               className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
               style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.10)',
-                color: 'rgba(255,255,255,0.90)',
+                background: 'var(--tg-surface-hover)',
+                border: '1px solid var(--tg-border)',
+                color: 'var(--tg-text-primary)',
               }}
             />
 
             {filteredAvailable.length === 0 && (
-              <p className="text-xs text-center py-6" style={{ color: 'rgba(255,255,255,0.40)' }}>
+              <p className="text-xs text-center py-6" style={{ color: 'var(--tg-text-muted)' }}>
                 Ничего не найдено
               </p>
             )}
@@ -215,9 +215,9 @@ export function StoreDirectionsPicker() {
                     disabled={saving || (!isOn && selected.length >= MAX_DIRECTIONS)}
                     className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl transition-all"
                     style={{
-                      background: isOn ? 'var(--tg-accent-dim)' : 'rgba(255,255,255,0.04)',
-                      border: `1.5px solid ${isOn ? 'var(--tg-accent)' : 'rgba(255,255,255,0.08)'}`,
-                      color: isOn ? 'var(--tg-accent-text)' : 'rgba(255,255,255,0.85)',
+                      background: isOn ? 'var(--tg-accent-dim)' : 'var(--tg-surface)',
+                      border: `1.5px solid ${isOn ? 'var(--tg-accent)' : 'var(--tg-border-soft)'}`,
+                      color: isOn ? 'var(--tg-accent-text)' : 'var(--tg-text-primary)',
                       minHeight: 84,
                       cursor: saving ? 'wait' : 'pointer',
                       opacity: !isOn && selected.length >= MAX_DIRECTIONS ? 0.4 : 1,
@@ -228,7 +228,7 @@ export function StoreDirectionsPicker() {
                       {c.nameRu}
                     </span>
                     {isOn && (
-                      <span className="text-[10px] font-bold" style={{ color: 'var(--tg-accent)' }}>✓ выбрано</span>
+                      <span className="text-xxs font-bold" style={{ color: 'var(--tg-accent)' }}>✓ выбрано</span>
                     )}
                   </button>
                 );

@@ -29,9 +29,20 @@ describe('AddToWishlistUseCase', () => {
   let wishlistRepo: { create: jest.Mock };
   let prisma: { product: { findFirst: jest.Mock } };
 
+  // MARKETING-WISHLIST-NOTIFY-001: product now selected with price+status+
+  // variants for snapshot. Default mock = ACTIVE+visible+1 in-stock variant.
+  const baseProductMock = {
+    id: 'p-1',
+    basePrice: 100000,
+    salePrice: null,
+    status: 'ACTIVE',
+    isVisible: true,
+    variants: [{ stockQuantity: 5 }],
+  };
+
   beforeEach(() => {
     wishlistRepo = { create: jest.fn().mockResolvedValue({ id: 'w-1' }) };
-    prisma = { product: { findFirst: jest.fn().mockResolvedValue({ id: 'p-1' }) } };
+    prisma = { product: { findFirst: jest.fn().mockResolvedValue(baseProductMock) } };
     useCase = new AddToWishlistUseCase(
       wishlistRepo as unknown as WishlistRepository,
       prisma as unknown as PrismaService,
@@ -44,17 +55,59 @@ describe('AddToWishlistUseCase', () => {
     expect(wishlistRepo.create).not.toHaveBeenCalled();
   });
 
-  it('happy path → wishlistRepo.create(buyerId, productId)', async () => {
+  it('happy path → wishlistRepo.create с snapshot', async () => {
     const result = await useCase.execute('b-1', 'p-1');
     expect(result).toEqual({ id: 'w-1' });
-    expect(wishlistRepo.create).toHaveBeenCalledWith('b-1', 'p-1');
+    expect(wishlistRepo.create).toHaveBeenCalledWith('b-1', 'p-1', {
+      priceSnapshot: 100000,
+      inStockSnapshot: true,
+    });
+  });
+
+  it('salePrice имеет приоритет над basePrice в priceSnapshot', async () => {
+    prisma.product.findFirst.mockResolvedValue({ ...baseProductMock, salePrice: 75000 });
+    await useCase.execute('b-1', 'p-1');
+    expect(wishlistRepo.create).toHaveBeenCalledWith('b-1', 'p-1', expect.objectContaining({
+      priceSnapshot: 75000,
+    }));
+  });
+
+  it('inStockSnapshot=false если status≠ACTIVE', async () => {
+    prisma.product.findFirst.mockResolvedValue({ ...baseProductMock, status: 'DRAFT' });
+    await useCase.execute('b-1', 'p-1');
+    expect(wishlistRepo.create).toHaveBeenCalledWith('b-1', 'p-1', expect.objectContaining({
+      inStockSnapshot: false,
+    }));
+  });
+
+  it('inStockSnapshot=false если все варианты пусты', async () => {
+    prisma.product.findFirst.mockResolvedValue({ ...baseProductMock, variants: [{ stockQuantity: 0 }] });
+    await useCase.execute('b-1', 'p-1');
+    expect(wishlistRepo.create).toHaveBeenCalledWith('b-1', 'p-1', expect.objectContaining({
+      inStockSnapshot: false,
+    }));
+  });
+
+  it('inStockSnapshot=true если нет вариантов (single-stock product)', async () => {
+    prisma.product.findFirst.mockResolvedValue({ ...baseProductMock, variants: [] });
+    await useCase.execute('b-1', 'p-1');
+    expect(wishlistRepo.create).toHaveBeenCalledWith('b-1', 'p-1', expect.objectContaining({
+      inStockSnapshot: true,
+    }));
   });
 
   it('фильтрует soft-deleted (deletedAt IS NULL)', async () => {
     await useCase.execute('b-1', 'p-1');
     expect(prisma.product.findFirst).toHaveBeenCalledWith({
       where: { id: 'p-1', deletedAt: null },
-      select: { id: true },
+      select: expect.objectContaining({
+        id: true,
+        basePrice: true,
+        salePrice: true,
+        status: true,
+        isVisible: true,
+        variants: expect.any(Object),
+      }),
     });
   });
 });

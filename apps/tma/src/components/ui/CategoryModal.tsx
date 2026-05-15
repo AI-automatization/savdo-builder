@@ -101,7 +101,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
         style={{
           padding: `12px ${20 + indent * 14}px 12px ${20 + indent * 14}px`,
           background: active ? 'rgba(167,139,250,0.12)' : 'transparent',
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          borderBottom: '1px solid var(--tg-surface)',
           textAlign: 'left',
         }}
       >
@@ -111,17 +111,17 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
           )}
           <div className="flex flex-col min-w-0">
             {flatFiltered && (
-              <span className="text-[10px] mb-0.5 truncate" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              <span className="text-xxs mb-0.5 truncate" style={{ color: 'var(--tg-text-dim)' }}>
                 {getBreadcrumb(item).slice(0, -1).join(' › ') || ' '}
               </span>
             )}
-            <span className="text-sm truncate" style={{ color: active ? 'var(--tg-accent)' : 'rgba(255,255,255,0.85)' }}>
+            <span className="text-sm truncate" style={{ color: active ? 'var(--tg-accent)' : 'var(--tg-text-primary)' }}>
               {item.nameRu}
             </span>
           </div>
         </div>
         {active && <span style={{ color: 'var(--tg-accent)', fontSize: 15, flexShrink: 0, marginLeft: 8 }}>✓</span>}
-        {isDrilldown && !active && <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: 16, flexShrink: 0, marginLeft: 8 }}>›</span>}
+        {isDrilldown && !active && <span style={{ color: 'var(--tg-text-dim)', fontSize: 16, flexShrink: 0, marginLeft: 8 }}>›</span>}
       </button>
     );
   };
@@ -139,24 +139,24 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
         className="mt-auto flex flex-col rounded-t-3xl"
         style={{
           background: 'linear-gradient(160deg, #13111f 0%, #1a1635 100%)',
-          border: '1px solid rgba(255,255,255,0.10)',
+          border: '1px solid var(--tg-border)',
           maxHeight: '85vh',
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--tg-border-soft)' }}>
           <div className="flex items-center gap-2 min-w-0">
             {currentNode && (
               <button
                 onClick={() => setDrilldownId(currentNode.parentId ?? null)}
                 className="text-base"
-                style={{ color: 'rgba(255,255,255,0.70)' }}
+                style={{ color: 'var(--tg-text-secondary)' }}
                 aria-label="Назад"
               >
                 ‹
               </button>
             )}
-            <span className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>
+            <span className="text-sm font-bold truncate" style={{ color: 'var(--tg-text-primary)' }}>
               {currentNode ? currentNode.nameRu : title}
             </span>
           </div>
@@ -173,7 +173,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
             <button
               onClick={onClose}
               className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
-              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.50)' }}
+              style={{ background: 'var(--tg-border-soft)', color: 'var(--tg-text-secondary)' }}
             >
               ✕
             </button>
@@ -182,7 +182,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
 
         {/* Breadcrumb для drilldown */}
         {currentNode && !flatFiltered && (
-          <div className="px-5 py-2 text-[11px] truncate" style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.40)' }}>
+          <div className="px-5 py-2 text-xxs truncate" style={{ background: 'var(--tg-surface)', color: 'var(--tg-text-muted)' }}>
             {getBreadcrumb(currentNode).join(' › ')}
           </div>
         )}
@@ -192,7 +192,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
           <div className="relative">
             <span
               className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
-              style={{ color: 'rgba(255,255,255,0.30)' }}
+              style={{ color: 'var(--tg-text-dim)' }}
             >
               🔍
             </span>
@@ -203,8 +203,8 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
               placeholder={leafOnly ? 'Найти конкретный тип товара...' : 'Поиск категории...'}
               style={{
                 width: '100%',
-                background: 'rgba(255,255,255,0.07)',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'var(--tg-surface-hover)',
+                border: '1px solid var(--tg-border)',
                 borderRadius: 10,
                 color: '#fff',
                 fontSize: 14,
@@ -216,7 +216,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
               <button
                 onClick={() => setSearch('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-                style={{ color: 'rgba(255,255,255,0.30)' }}
+                style={{ color: 'var(--tg-text-dim)' }}
               >
                 ✕
               </button>
@@ -229,7 +229,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
           {/* Search results — flat with breadcrumb */}
           {flatFiltered && (
             flatFiltered.length === 0 ? (
-              <p className="text-center py-10 text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              <p className="text-center py-10 text-sm" style={{ color: 'var(--tg-text-dim)' }}>
                 Ничего не найдено
               </p>
             ) : (
@@ -240,7 +240,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
           {/* Drilldown view (current level children) */}
           {!flatFiltered && currentNode && (
             currentChildren.length === 0 ? (
-              <p className="text-center py-10 text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              <p className="text-center py-10 text-sm" style={{ color: 'var(--tg-text-dim)' }}>
                 Нет подкатегорий
               </p>
             ) : (

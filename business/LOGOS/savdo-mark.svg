@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Savdo — primary brand mark (knot / handle of a shopping bag).
+  Geometric, Telegram-friendly (читается в 16×16 favicon до 512×512 app icon).
+  Brand gradient: violet → cyan (buyer + seller combined).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Savdo">
+  <title>Savdo</title>
+  <defs>
+    <linearGradient id="savdoBrand" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square base — для app icon / Telegram-bot avatar -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#savdoBrand)"/>
+
+  <!-- Shopping bag handle (top arc) -->
+  <path d="M22 22 V18 C22 12.5 26.5 8 32 8 C37.5 8 42 12.5 42 18 V22"
+        fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Bag body — stylized rectangle with subtle taper -->
+  <path d="M16 22 H48 L46 52 C45.5 54.5 43.5 56 41 56 H23 C20.5 56 18.5 54.5 18 52 Z"
+        fill="white" fill-opacity="0.95"/>
+
+  <!-- "S" mark inside the bag (initials) -->
+  <text x="32" y="44" text-anchor="middle"
+        font-family="ui-rounded, system-ui, sans-serif"
+        font-size="20" font-weight="800"
+        fill="url(#savdoBrand)">S</text>
+</svg>

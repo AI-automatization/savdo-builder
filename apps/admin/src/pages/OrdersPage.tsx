@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DialogShell } from '../components/admin/DialogShell'
 import { Input } from '@/components/ui/input'
+import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface Store { id: string; name: string; slug: string }
 interface Order {
@@ -23,11 +24,13 @@ interface Order {
 }
 interface OrdersResponse { orders: Order[]; total: number }
 
+// STATUS-LABEL-CANONICAL-* (от Азима, web-sync audit 14.05.2026):
+// единые лейблы по всей платформе — PENDING='Ожидает', SHIPPED='В пути'.
 const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; label: string }> = {
-  PENDING:    { variant: 'warning', label: 'Ожидание' },
+  PENDING:    { variant: 'warning', label: 'Ожидает' },
   CONFIRMED:  { variant: 'info',    label: 'Подтверждён' },
   PROCESSING: { variant: 'info',    label: 'Обработка' },
-  SHIPPED:    { variant: 'info',    label: 'Отправлен' },
+  SHIPPED:    { variant: 'info',    label: 'В пути' },
   DELIVERED:  { variant: 'success', label: 'Доставлен' },
   CANCELLED:  { variant: 'danger',  label: 'Отменён' },
 }
@@ -35,8 +38,8 @@ const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | '
 const STATUSES = ['', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
 const FILTER_LABEL: Record<string, string> = {
   '': 'Все',
-  PENDING: 'Ожидание', CONFIRMED: 'Подтверждены', PROCESSING: 'В обработке',
-  SHIPPED: 'Отправлены', DELIVERED: 'Доставлены', CANCELLED: 'Отменены',
+  PENDING: 'Ожидают', CONFIRMED: 'Подтверждены', PROCESSING: 'В обработке',
+  SHIPPED: 'В пути', DELIVERED: 'Доставлены', CANCELLED: 'Отменены',
 }
 
 const TERMINAL = new Set(['DELIVERED', 'CANCELLED'])
@@ -235,16 +238,10 @@ export default function OrdersPage() {
           </tbody>
         </table>
 
-        {/* Pagination */}
+        {/* Pagination — ADMIN-PAGINATION-DISABLED-001: unified via PaginationBar */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Стр. {page} из {totalPages} · {total} заказов
-            </span>
-            <div className="flex gap-1.5">
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Назад</Button>
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Вперёд →</Button>
-            </div>
+          <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel="заказов" />
           </div>
         )}
       </div>

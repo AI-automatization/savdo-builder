@@ -381,21 +381,21 @@ export default function SellerChatPage() {
           >
             <div
               className="w-full rounded-t-2xl p-5 flex flex-col gap-4"
-              style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)' }}
+              style={{ background: '#1a1035', border: '1px solid var(--tg-border)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <p className="text-sm font-semibold text-center" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              <p className="text-sm font-semibold text-center" style={{ color: 'var(--tg-text-primary)' }}>
                 Пожаловаться на сообщение?
               </p>
               <p className="text-xs text-center px-4 py-2 rounded-xl truncate"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.50)' }}>
+                style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}>
                 «{reportTarget.text.slice(0, 80)}{reportTarget.text.length > 80 ? '…' : ''}»
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setReportTarget(null)}
                   className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.60)' }}
+                  style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
                 >
                   Отмена
                 </button>
@@ -417,7 +417,7 @@ export default function SellerChatPage() {
           style={{ height: 'calc(var(--tg-viewport-stable-height, 100dvh) - 7.5rem)' }}
         >
           {/* Header */}
-          <div className="pb-2 mb-2 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="pb-2 mb-2 shrink-0" style={{ borderBottom: '1px solid var(--tg-border-soft)' }}>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setShowBuyerInfo(false); navigate('/seller/chat', { replace: true }); }}
@@ -426,9 +426,9 @@ export default function SellerChatPage() {
                   width: 44,
                   height: 44,
                   borderRadius: 12,
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  color: 'rgba(255,255,255,0.70)',
+                  background: 'var(--tg-surface-hover)',
+                  border: '1px solid var(--tg-border)',
+                  color: 'var(--tg-text-secondary)',
                   fontSize: 22,
                   display: 'flex',
                   alignItems: 'center',
@@ -443,12 +443,12 @@ export default function SellerChatPage() {
                 onClick={() => setShowBuyerInfo((v) => !v)}
                 className="flex flex-col min-w-0 flex-1 text-left"
               >
-                <h2 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                <h2 className="text-sm font-bold truncate" style={{ color: 'var(--tg-text-primary)' }}>
                   {activeThread ? threadLabel(activeThread) : <span style={{ opacity: 0.4 }}>Загрузка...</span>}
                 </h2>
                 <div className="flex items-center gap-2 min-w-0">
                   {activeThread && (
-                    <span className="text-xs truncate" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'rgba(255,255,255,0.55)' }}>
+                    <span className="text-xs truncate" style={{ color: activeThread.status === 'OPEN' ? '#22D3EE' : 'var(--tg-text-secondary)' }}>
                       <span aria-hidden="true">{activeThread.status === 'OPEN' ? '✓ ' : '🔒 '}</span>
                       {activeThread.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
                       {activeThread.productTitle && ` · ${activeThread.productTitle}`}
@@ -461,7 +461,7 @@ export default function SellerChatPage() {
                 <button
                   onClick={resolveThread}
                   disabled={resolving}
-                  className="text-[11px] px-3 py-1 rounded-lg shrink-0"
+                  className="text-xxs px-3 py-1 rounded-lg shrink-0"
                   style={{
                     background: 'rgba(34,197,94,0.12)',
                     border: '1px solid rgba(34,197,94,0.25)',
@@ -478,11 +478,11 @@ export default function SellerChatPage() {
             {showBuyerInfo && activeThread?.buyerPhone && (
               <div
                 className="mt-2 px-3 py-2 rounded-xl flex items-center justify-between gap-3"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)' }}
               >
                 <div>
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>Покупатель</p>
-                  <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace' }}>
+                  <p className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>Покупатель</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)', fontFamily: 'monospace' }}>
                     {activeThread.buyerPhone}
                   </p>
                 </div>
@@ -492,7 +492,7 @@ export default function SellerChatPage() {
                       .then(() => showToast('✅ Скопировано'))
                       .catch(() => showToast('❌ Не удалось скопировать', 'error'));
                   }}
-                  className="text-[11px] px-2 py-1 rounded-lg"
+                  className="text-xxs px-2 py-1 rounded-lg"
                   style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   Копировать
@@ -514,7 +514,7 @@ export default function SellerChatPage() {
             {!msgLoading && messages.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-12">
                 <span aria-hidden="true" style={{ fontSize: 36 }}>💬</span>
-                <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 13 }}>Сообщений пока нет</p>
+                <p style={{ color: 'var(--tg-text-secondary)', fontSize: 13 }}>Сообщений пока нет</p>
               </div>
             )}
             {messages.map((m) => (
@@ -530,7 +530,7 @@ export default function SellerChatPage() {
                 {m.isDeleted ? (
                   <div
                     className="px-3 py-2 rounded-xl text-xs italic"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.40)' }}
+                    style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)', color: 'var(--tg-text-muted)' }}
                   >
                     🗑 Сообщение удалено
                   </div>
@@ -542,20 +542,20 @@ export default function SellerChatPage() {
                         ? 'var(--tg-accent-bg)'
                         : m.senderRole === 'SELLER'
                           ? 'var(--tg-accent-dim)'
-                          : 'rgba(255,255,255,0.08)',
-                      border: `1px solid ${m.senderRole === 'SELLER' ? 'var(--tg-accent-border)' : 'rgba(255,255,255,0.12)'}`,
-                      color: 'rgba(255,255,255,0.88)',
+                          : 'var(--tg-border-soft)',
+                      border: `1px solid ${m.senderRole === 'SELLER' ? 'var(--tg-accent-border)' : 'var(--tg-border)'}`,
+                      color: 'var(--tg-text-primary)',
                       opacity: m.id.startsWith('temp_') ? 0.7 : 1,
                     }}
                   >
                     {m.parentMessage && (
                       <div className="px-3 pt-2">
                         <div
-                          className="px-2 py-1 rounded-md text-[11px] truncate"
+                          className="px-2 py-1 rounded-md text-xxs truncate"
                           style={{
-                            background: 'rgba(255,255,255,0.08)',
+                            background: 'var(--tg-border-soft)',
                             borderLeft: '3px solid var(--tg-accent)',
-                            color: 'rgba(255,255,255,0.65)',
+                            color: 'var(--tg-text-secondary)',
                           }}
                         >
                           <span style={{ fontWeight: 600, color: 'var(--tg-accent)' }}>
@@ -572,8 +572,8 @@ export default function SellerChatPage() {
                   </div>
                 )}
                 <span
-                  className="text-[10px] mt-0.5 flex items-center gap-1"
-                  style={{ color: 'rgba(255,255,255,0.30)', alignSelf: m.senderRole === 'SELLER' ? 'flex-end' : 'flex-start' }}
+                  className="text-xxs mt-0.5 flex items-center gap-1"
+                  style={{ color: 'var(--tg-text-dim)', alignSelf: m.senderRole === 'SELLER' ? 'flex-end' : 'flex-start' }}
                 >
                   {m.id.startsWith('temp_') ? '...' : timeStr(m.createdAt)}
                   {m.editedAt && !m.isDeleted && <span style={{ fontStyle: 'italic' }}>· изменено</span>}
@@ -582,7 +582,7 @@ export default function SellerChatPage() {
             ))}
             {isOtherTyping && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 self-start rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.06)', maxWidth: 100 }}
+                style={{ background: 'var(--tg-surface-hover)', maxWidth: 100 }}
                 aria-live="polite"
               >
                 <span className="typing-dot" style={{ animationDelay: '0ms' }} />
@@ -600,19 +600,19 @@ export default function SellerChatPage() {
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--tg-accent-bg)', borderLeft: '3px solid var(--tg-accent)' }}>
                   <span style={{ fontSize: 16 }}>↩</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold" style={{ color: 'var(--tg-accent)' }}>
+                    <p className="text-xxs font-semibold" style={{ color: 'var(--tg-accent)' }}>
                       Ответ {replyTo.senderRole === 'SELLER' ? 'себе' : 'покупателю'}
                     </p>
-                    <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>{replyTo.text || '📷 Фото'}</p>
+                    <p className="text-xs truncate" style={{ color: 'var(--tg-text-secondary)' }}>{replyTo.text || '📷 Фото'}</p>
                   </div>
-                  <button onClick={() => setReplyTo(null)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 12 }} aria-label="Отменить ответ">✕</button>
+                  <button onClick={() => setReplyTo(null)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'var(--tg-border-soft)', color: 'var(--tg-text-secondary)', fontSize: 12 }} aria-label="Отменить ответ">✕</button>
                 </div>
               )}
               {editingId && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(34,211,238,0.12)', borderLeft: '3px solid rgba(34,211,238,0.70)' }}>
                   <span style={{ fontSize: 16 }}>✎</span>
                   <p className="flex-1 text-xs" style={{ color: '#22D3EE' }}>Редактирование сообщения</p>
-                  <button onClick={() => { setEditingId(null); setEditText(''); }} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 12 }} aria-label="Отменить">✕</button>
+                  <button onClick={() => { setEditingId(null); setEditText(''); }} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'var(--tg-border-soft)', color: 'var(--tg-text-secondary)', fontSize: 12 }} aria-label="Отменить">✕</button>
                 </div>
               )}
               <div className="flex gap-2">
@@ -633,7 +633,7 @@ export default function SellerChatPage() {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingPhoto || sending}
                       aria-label="Прикрепить фото"
-                      style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.70)', fontSize: 18, cursor: uploadingPhoto ? 'wait' : 'pointer', opacity: uploadingPhoto ? 0.5 : 1 }}
+                      style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)', fontSize: 18, cursor: uploadingPhoto ? 'wait' : 'pointer', opacity: uploadingPhoto ? 0.5 : 1 }}
                     >
                       {uploadingPhoto ? '⏳' : '📎'}
                     </button>
@@ -661,7 +661,7 @@ export default function SellerChatPage() {
                     }
                   }}
                   placeholder={editingId ? 'Изменить сообщение... (Enter ↵)' : 'Сообщение... (Enter ↵)'}
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#fff', fontSize: 14, padding: '10px 14px', outline: 'none' }}
+                  style={{ flex: 1, background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', borderRadius: 12, color: '#fff', fontSize: 14, padding: '10px 14px', outline: 'none' }}
                 />
                 <button
                   onClick={() => { if (!editingId) emitTyping(false); (editingId ? submitEdit : sendMsg)(); }}
@@ -674,7 +674,7 @@ export default function SellerChatPage() {
               </div>
             </div>
           ) : (
-            <div className="pt-2 text-center text-[12px] shrink-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            <div className="pt-2 text-center text-xs shrink-0" style={{ color: 'var(--tg-text-dim)' }}>
               Диалог закрыт — новые сообщения недоступны
             </div>
           )}
@@ -682,28 +682,28 @@ export default function SellerChatPage() {
           {/* Action menu */}
           {actionTarget && (
             <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={() => setActionTarget(null)}>
-              <div className="w-full rounded-t-2xl flex flex-col" style={{ background: '#1a1035', border: '1px solid rgba(255,255,255,0.10)', maxWidth: 600, margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
-                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} /></div>
+              <div className="w-full rounded-t-2xl flex flex-col" style={{ background: '#1a1035', border: '1px solid var(--tg-border)', maxWidth: 600, margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: 'var(--tg-text-dim)' }} /></div>
                 <div className="flex flex-col">
-                  <button onClick={() => { setReplyTo(actionTarget); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <button onClick={() => { setReplyTo(actionTarget); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: 'var(--tg-text-primary)', borderBottom: '1px solid var(--tg-border-soft)' }}>
                     <span>↩</span> Ответить
                   </button>
                   {canEditMessage(actionTarget) && (
-                    <button onClick={() => { setEditingId(actionTarget.id); setEditText(actionTarget.text); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button onClick={() => { setEditingId(actionTarget.id); setEditText(actionTarget.text); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: 'var(--tg-text-primary)', borderBottom: '1px solid var(--tg-border-soft)' }}>
                       <span>✎</span> Изменить
                     </button>
                   )}
                   {actionTarget.senderRole === 'SELLER' && (
-                    <button onClick={() => { deleteMsg(actionTarget.id); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: '#f87171', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button onClick={() => { deleteMsg(actionTarget.id); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: '#f87171', borderBottom: '1px solid var(--tg-border-soft)' }}>
                       <span>🗑</span> Удалить
                     </button>
                   )}
                   {actionTarget.senderRole === 'BUYER' && (
-                    <button onClick={() => { setReportTarget(actionTarget); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: 'rgba(255,255,255,0.70)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button onClick={() => { setReportTarget(actionTarget); setActionTarget(null); }} className="text-left px-5 py-3 text-sm flex items-center gap-3" style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}>
                       <span>⚠️</span> Пожаловаться
                     </button>
                   )}
-                  <button onClick={() => setActionTarget(null)} className="text-center px-5 py-3 text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Отмена</button>
+                  <button onClick={() => setActionTarget(null)} className="text-center px-5 py-3 text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>Отмена</button>
                 </div>
               </div>
             </div>
@@ -718,7 +718,7 @@ export default function SellerChatPage() {
   // ════════════════════════════════════════════════════════════════════════════
   const threadList = (
     <div className="flex flex-col gap-2">
-      <h1 className="text-base font-bold mb-2" style={{ color: 'rgba(255,255,255,0.90)' }}>
+      <h1 className="text-base font-bold mb-2" style={{ color: 'var(--tg-text-primary)' }}>
         Сообщения
       </h1>
 
@@ -727,7 +727,7 @@ export default function SellerChatPage() {
       {!loading && threadsError && (
         <div className="flex flex-col items-center gap-3 py-16">
           <span aria-hidden="true" style={{ fontSize: 40 }}>⚠️</span>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Не удалось загрузить чаты</p>
+          <p style={{ color: 'var(--tg-text-secondary)', fontSize: 14 }}>Не удалось загрузить чаты</p>
           <button
             onClick={loadThreads}
             className="text-xs font-semibold py-2 px-4 rounded-full"
@@ -741,7 +741,7 @@ export default function SellerChatPage() {
       {!loading && !threadsError && threads.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-16">
           <span style={{ fontSize: 40 }}>💬</span>
-          <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: 14 }}>Диалогов пока нет</p>
+          <p style={{ color: 'var(--tg-text-muted)', fontSize: 14 }}>Диалогов пока нет</p>
         </div>
       )}
 
@@ -766,7 +766,7 @@ export default function SellerChatPage() {
               </span>
               {unread > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-xxs font-bold"
                   style={{ background: 'var(--tg-accent)', color: '#fff' }}
                 >
                   {unread > 9 ? '9+' : unread}
@@ -775,21 +775,21 @@ export default function SellerChatPage() {
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold truncate" style={{ color: unread > 0 ? '#fff' : 'rgba(255,255,255,0.88)' }}>
+                <p className="text-sm font-semibold truncate" style={{ color: unread > 0 ? '#fff' : 'var(--tg-text-primary)' }}>
                   {threadLabel(t)}
                 </p>
                 {t.lastMessageAt && (
-                  <span className="text-[10px] shrink-0" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                  <span className="text-xxs shrink-0" style={{ color: 'var(--tg-text-muted)' }}>
                     {new Date(t.lastMessageAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
                   </span>
                 )}
               </div>
               {ctx && (
-                <p className="text-[11px] truncate" style={{ color: 'var(--tg-accent)' }}>
+                <p className="text-xxs truncate" style={{ color: 'var(--tg-accent)' }}>
                   {ctx}
                 </p>
               )}
-              <p className="text-xs truncate" style={{ color: unread > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.50)', fontWeight: unread > 0 ? 500 : 400 }}>
+              <p className="text-xs truncate" style={{ color: unread > 0 ? 'var(--tg-text-primary)' : 'var(--tg-text-secondary)', fontWeight: unread > 0 ? 500 : 400 }}>
                 {t.lastMessage ?? (t.status === 'OPEN' ? 'Диалог открыт' : '🔒 Закрыт')}
               </p>
             </div>
@@ -812,12 +812,12 @@ export default function SellerChatPage() {
         <div
           className="rounded-3xl flex flex-col items-center justify-center gap-3"
           style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px dashed rgba(255,255,255,0.08)',
+            background: 'var(--tg-surface)',
+            border: '1px dashed var(--tg-border-soft)',
           }}
         >
           <span aria-hidden="true" style={{ fontSize: 56, opacity: 0.35 }}>💬</span>
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <p className="text-sm" style={{ color: 'var(--tg-text-muted)' }}>
             Выберите диалог слева
           </p>
         </div>
