@@ -1,7 +1,7 @@
 # Logs — локальные тесты и баги
 
-## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] ✅ Исправлено — TMA не деплоился
-- **Статус:** ✅ Исправлено (Полат, 15.05.2026)
+## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] 🟡 Конфиг восстановлен — ждёт ручного Redeploy
+- **Статус:** 🟡 Код-фикс готов, нужен ОДИН ручной Redeploy в Railway (Полат, 15.05.2026)
 - **Что случилось:** Railway сервис `telegram-app` упал на сборке —
   `No start command detected`, build driver = Railpack (auto-detect),
   а не Dockerfile. Railpack видит pnpm-workspace из 8 пакетов и не знает
@@ -11,11 +11,20 @@
   удалил корневой `railway.toml` как «конфликтующий» — но для ветки `tma`
   это был рабочий конфиг (`builder=DOCKERFILE` → `apps/tma/Dockerfile`).
   Без него Railway свалился на Railpack.
-- **Что сделано:** восстановлен корневой `railway.toml` на ветке `tma`
-  (commit `798f720`). Живёт только на `tma` — main держит файл вне
-  трекинга. api/admin не затронуты (у них свой механизм конфига).
+- **Что сделано:**
+  1. Восстановлен корневой `railway.toml` на ветке `tma` (commit `798f720`).
+  2. **Catch-22:** `798f720` менял только `railway.toml`, а `watchPatterns`
+     покрывали лишь `apps/tma/**` / `packages/*` → Railway пропустил деплой
+     («No changes to watched files»). Активным остался build 21h-давности.
+  3. В `watchPatterns` добавлен `railway.toml` (commit `6a39a06`) — чтобы
+     правки конфига впредь триггерили деплой.
+- **Что осталось:** оба фикс-коммита меняют только `railway.toml`, поэтому
+  старые watchPatterns их пропускают. **Нужен ОДИН ручной Redeploy** в
+  Railway (telegram-app → последний коммит `tma` → ⋮ → Redeploy). После
+  него: build пойдёт через Dockerfile, новые watchPatterns вступят в силу,
+  TMA получит i18n-правки Wave 21, дальше всё авто.
 - **Урок:** перед удалением деплой-конфига проверять, какой сервис его
-  читает. `railway.toml` в корне деплой-ветки ≠ мусор.
+  читает. `watchPatterns` должны включать сам `railway.toml`.
 
 ## [2026-05-15] [API-CHECKOUT-CONFIRM-500-001] 🟡 ЧАСТИЧНО — fault-isolation side-effects (Полат)
 - **Статус:** 🟡 Defensive fix задеплоен, root cause ещё под вопросом
