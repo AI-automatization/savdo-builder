@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-05-15 (Азим) — Consumption-задачи web-sync аудита (3 типовых дубля убраны)
+
+Полат в Wave 20 поднял типы в `packages/types`; закрыл фронтовую часть —
+подключение и удаление локальных дублей. Сервис-ветки `web-buyer` / `web-seller`
+сначала синхронизированы с `main` (merge, конфликт `railway.toml` разрешён в
+пользу веток — per-branch deploy config).
+
+### ✅ [API-TYPES-PROMOTE-FEATURED-STOREFRONT-001 FE] storefront-типы из packages/types 🟢
+- **Важность:** 🟢 (tech-debt из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 15.05.2026
+- **Ветка:** `web-buyer` (merge `b237f76` + `refactor`-коммит)
+- **Файлы:** `apps/web-buyer/src/lib/api/storefront.api.ts`,
+  `apps/web-buyer/src/lib/storefront-adapters.ts`,
+  удалён `apps/web-buyer/src/types/storefront.ts`
+- **Что сделано:** `FeaturedTopStore` / `FeaturedProduct` /
+  `FeaturedStorefrontResponse` / `GlobalCategoryTreeItem` теперь импортируются
+  из `types`. Локальный дубль (byte-identical) удалён.
+
+### ✅ [API-PRODUCT-IMAGES-FULL-SHAPE-001 FE] ProductImageRef — убран double-cast 🟢
+- **Важность:** 🟢
+- **Дата:** 15.05.2026
+- **Ветка:** `web-seller` (merge `b187ae1` + `refactor`-коммит `59ca414`)
+- **Файл:** `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
+- **Что сделано:** убран `as unknown as { images?: RawImage[] }` double-cast +
+  локальный тип `RawImage`. `product.images` теперь типизирован
+  `ProductImageRef[]`. `id/mediaId` в типе optional (ради feed-ответов) →
+  добавлены `?? ''` и guard для `Map<string,string>`.
+
+### ✅ [API-STORE-DELIVERY-SETTINGS-TYPE-001 FE] StoreDeliverySettings (частично) 🟢
+- **Важность:** 🟢
+- **Дата:** 15.05.2026
+- **Ветка:** `web-seller` (commit `59ca414`)
+- **Файл:** `apps/web-seller/src/app/(dashboard)/settings/page.tsx`
+- **Что сделано:** `StoreWithDelivery` ссылается на канонический
+  `StoreDeliverySettings` вместо ad-hoc inline-литерала.
+- **Не закрыто полностью:** Полат добавил `deliverySettings` только в
+  `StorefrontStore`, не в `Store` → extension-обёртка пока остаётся. Follow-up
+  `API-STORE-TYPE-DELIVERY-SETTINGS-001` в tasks.md.
+
+### 🔴 Найден баг: [API-TYPES-PAYMENT-METHOD-COLLISION-001]
+При прогоне `tsc` обнаружен дубль экспорта `PaymentMethod` в `packages/types`
+(`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
+Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
+
 ## 2026-05-15 (Полат) — Wave 22: TMA buyer i18n + TMA deploy fix
 
 ### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA buyer pages) 🔴

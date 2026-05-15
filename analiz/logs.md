@@ -1,5 +1,25 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-15] [API-TYPES-PAYMENT-METHOD-COLLISION-001] 🔴 Баг — дубль экспорта `PaymentMethod` в packages/types
+- **Статус:** 🔴 Баг — заведено Полату (зона `packages/types`), не правил сам.
+- **Что случилось:** `tsc --noEmit` в web-buyer И web-seller падает одной
+  ошибкой:
+  `packages/types/src/index.ts(11,1): error TS2308: Module './enums' has
+  already exported a member named 'PaymentMethod'.`
+- **Root cause:** Полат в Wave 20 (`API-CHECKOUT-PAYMENT-METHOD-001`) добавил
+  `export type PaymentMethod = 'cash' | 'card' | 'online'` в
+  `packages/types/src/api/cart.ts:79`. Но в `packages/types/src/enums.ts:50`
+  уже есть `export enum PaymentMethod { COD, MANUAL_TRANSFER, ONLINE }`
+  (Prisma-enum). `index.ts` делает `export *` из обоих → имя коллидирует.
+- **Эффект:** ломает type-check всех фронтов, потребляющих `types`
+  (web-buyer, web-seller, admin, tma). Сборка Next.js может пройти (своя
+  конфигурация TS), но `tsc` строго — нет.
+- **Что сделано:** обнаружено при закрытии 3 consumption-задач web-sync
+  аудита. НЕ исправлял — `packages/types` правит только Полат (CLAUDE.md).
+- **Что нужно Полату:** переименовать request-enum, чтобы не конфликтовал с
+  Prisma-enum. Напр. `CheckoutPaymentMethod` или `PaymentMethodInput` в
+  `cart.ts`, обновить `ConfirmCheckoutDto` и `resolvePaymentMethod()`.
+
 ## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] ✅ Исправлено — деплой триггернут version-bump'ом
 - **Статус:** ✅ Исправлено (Полат, 15.05.2026). Деплой запущен без ручного Redeploy.
 - **Что случилось:** Railway сервис `telegram-app` упал на сборке —

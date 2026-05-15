@@ -69,14 +69,18 @@ export interface CheckoutPreview {
 }
 
 /**
- * Способ оплаты заказа.
+ * Способ оплаты заказа (request-side enum для checkout).
  * API-CHECKOUT-PAYMENT-METHOD-001 (от Азима, web-sync audit 14.05.2026).
  *  - `cash`   — наличными при получении (COD), доступно всегда
  *  - `card`   — картой при получении / курьеру
  *  - `online` — онлайн через Click/Payme (требует PAYMENT_ONLINE_ENABLED;
  *               пока не реализовано — фронт показывает «Скоро»)
+ *
+ * Назван `CheckoutPaymentMethod`, чтобы не коллидировать с Prisma-enum
+ * `PaymentMethod` (COD/MANUAL_TRANSFER/ONLINE) из `enums.ts` — оба
+ * ре-экспортятся через `index.ts` (TS2308). См. API-TYPES-PAYMENT-METHOD-COLLISION-001.
  */
-export type PaymentMethod = 'cash' | 'card' | 'online';
+export type CheckoutPaymentMethod = 'cash' | 'card' | 'online';
 
 export interface CheckoutConfirmRequest {
   deliveryAddress: DeliveryAddress;
@@ -90,5 +94,5 @@ export interface CheckoutConfirmRequest {
    * Способ оплаты. Default `cash` если не передан (backward-compat со старыми
    * клиентами). `online` принимается только при PAYMENT_ONLINE_ENABLED.
    */
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: CheckoutPaymentMethod;
 }
