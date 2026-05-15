@@ -94,7 +94,11 @@ export class ProductPresenterService {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
     // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' = TG getFile вернул 404, fileId мёртв навсегда.
-    if (m.bucket === 'telegram-expired') return '';
+    // API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001: 'broken' = Supabase objectKey
+    // указывает на несуществующий файл (миграция упала / file был удалён).
+    // AuditBrokenMediaUrlsUseCase помечает такие записи. Оба → '' (фронт
+    // показывает «Без фото» placeholder вместо broken <img>).
+    if (m.bucket === 'telegram-expired' || m.bucket === 'broken') return '';
     const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
     if (m.bucket === 'telegram') {
       return `${appUrl}/api/v1/media/proxy/${m.id}`;
