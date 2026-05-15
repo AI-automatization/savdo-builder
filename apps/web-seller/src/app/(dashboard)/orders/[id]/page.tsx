@@ -48,9 +48,6 @@ function fmt(n: unknown) {
   return toNum(n).toLocaleString('ru-RU') + ' сум';
 }
 
-function shortId(id: string) {
-  return id.length > 8 ? id.slice(-6).toUpperCase() : id;
-}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -215,7 +212,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Заказ #{shortId(order.id)}</h1>
+            <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Заказ {order.orderNumber}</h1>
             <span
               className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
               style={{ background: cfg.color + '22', color: cfg.color }}

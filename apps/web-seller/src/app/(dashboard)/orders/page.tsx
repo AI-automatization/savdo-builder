@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { OrderStatus } from 'types';
 import { X, Package } from 'lucide-react';
@@ -60,10 +60,6 @@ function getAddr(o: OrderListItem) {
   };
 }
 
-function shortId(id: string) {
-  return id.length > 8 ? id.slice(-6).toUpperCase() : id;
-}
-
 // ── Cancel Modal ────────────────────────────────────────────────────────────────
 
 function CancelModal({
@@ -82,7 +78,7 @@ function CancelModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.65)' }}>
       <div className="w-full max-w-md rounded-lg p-6 flex flex-col gap-4 shadow-2xl" style={card}>
-        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>Отменить заказ #{shortId(order.id)}</h2>
+        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>Отменить заказ {order.orderNumber}</h2>
         <p className="text-sm" style={{ color: colors.textMuted }}>
           {(() => { const a = getAddr(order); return `${a.city ?? '—'}, ${a.street ?? '—'}`; })()}
         </p>
@@ -152,7 +148,7 @@ function OrderRow({
     >
       {/* ID */}
       <Link href={`/orders/${order.id}`} className="hidden sm:block text-xs font-mono transition-opacity hover:opacity-70" style={{ color: colors.textDim }}>
-        #{shortId(order.id)}
+        {order.orderNumber}
       </Link>
 
       {/* Preview + address */}
@@ -186,7 +182,7 @@ function OrderRow({
               )}
             </div>
             <p className="text-xs mt-0.5 truncate" style={{ color: colors.textDim }}>
-              {(() => { const a = getAddr(order); return `${a.city ?? '—'} · ${a.street ?? '—'}`; })()} · #{shortId(order.id)}
+              {(() => { const a = getAddr(order); return `${a.city ?? '—'} · ${a.street ?? '—'}`; })()} · {order.orderNumber}
             </p>
           </div>
         </Link>
@@ -270,18 +266,30 @@ export default function OrdersPage() {
   });
   const updateStatus = useUpdateOrderStatus();
 
-  // Accumulate pages; reset on filter change
+  // Accumulate pages. lastAppendedPage защищает от дублей: фоновый рефетч
+  // текущей страницы (>1) раньше повторно делал [...prev, ...data.data].
+  const lastAppendedPage = useRef(0);
   useEffect(() => {
     if (!data?.data) return;
-    setAccOrders((prev) => (page === 1 ? data.data : [...prev, ...data.data]));
+    if (page === 1) {
+      setAccOrders(data.data);
+      lastAppendedPage.current = 1;
+    } else if (page > lastAppendedPage.current) {
+      setAccOrders((prev) => [...prev, ...data.data]);
+      lastAppendedPage.current = page;
+    } else {
+      // Рефетч уже загруженной страницы — обновляем строки на месте, без дублей.
+      const incoming = new Map(data.data.map((o) => [o.id, o]));
+      setAccOrders((prev) => prev.map((o) => incoming.get(o.id) ?? o));
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.data]);
+  }, [data?.data, page]);
 
   const q = searchQuery.trim().toLowerCase().replace(/^#/, '');
   const searchFiltered = q
     ? accOrders.filter((o) => {
         const a = getAddr(o);
-        return shortId(o.id).toLowerCase().includes(q) ||
+        return o.orderNumber.toLowerCase().includes(q) ||
           (a.city?.toLowerCase() ?? '').includes(q) ||
           (a.street?.toLowerCase() ?? '').includes(q) ||
           (o.preview?.title?.toLowerCase() ?? '').includes(q);

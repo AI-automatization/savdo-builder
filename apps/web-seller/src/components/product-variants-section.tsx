@@ -287,6 +287,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
   const [adding, setAdding]       = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const hasOptions = optionGroups.length > 0;
 
@@ -302,9 +303,26 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
 
   async function handleAdd(f: VariantForm) {
     if (!f.sku.trim()) return;
+    setAddError(null);
     const optionValueIds = hasOptions
       ? Object.values(f.optionSelection).filter(Boolean)
       : undefined;
+
+    // Не создаём дубль варианта с той же комбинацией опций — backend может
+    // либо принять дубль, либо отдать невнятную 500.
+    if (optionValueIds && optionValueIds.length > 0) {
+      const dupe = variants.some((v) => {
+        const ex = v.optionValueIds ?? [];
+        return (
+          ex.length === optionValueIds.length &&
+          ex.every((x) => optionValueIds.includes(x))
+        );
+      });
+      if (dupe) {
+        setAddError('Вариант с такой комбинацией опций уже есть.');
+        return;
+      }
+    }
 
     // If seller left title empty but picked options, derive a human label
     // ("S · Красный") so buyer-side chips don't fall back to SKU.
@@ -416,6 +434,10 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
               {/* Inline stock editor */}
               {editingId !== v.id && (
                 <InlineStockEditor
+                  // key включает stockQuantity → после успешного adjustStock и
+                  // рефетча компонент перемонтируется со свежим current,
+                  // dirty сбрасывается, повторное применение delta невозможно.
+                  key={`${v.id}-${v.stockQuantity}`}
                   productId={productId}
                   variantId={v.id}
                   current={Number(v.stockQuantity) || 0}
@@ -462,14 +484,19 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
 
       {/* Add form */}
       {adding && (
-        <InlineVariantForm
-          initial={emptyForm(productSku ? `${productSku}-V${variants.length + 1}` : undefined)}
-          saving={create.isPending}
-          onSave={handleAdd}
-          onCancel={() => setAdding(false)}
-          optionGroups={optionGroups}
-          hideOptions={false}
-        />
+        <>
+          <InlineVariantForm
+            initial={emptyForm(productSku ? `${productSku}-V${variants.length + 1}` : undefined)}
+            saving={create.isPending}
+            onSave={handleAdd}
+            onCancel={() => { setAdding(false); setAddError(null); }}
+            optionGroups={optionGroups}
+            hideOptions={false}
+          />
+          {addError && (
+            <p className="text-xs" style={{ color: colors.danger }}>{addError}</p>
+          )}
+        </>
       )}
 
       {/* Add button */}
@@ -479,7 +506,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
           className="text-xs font-semibold transition-opacity hover:opacity-80 text-left mt-1 disabled:opacity-40"
           style={{ color: colors.accent }}
           disabled={!canAdd}
-          onClick={() => { setEditingId(null); setAdding(true); }}
+          onClick={() => { setEditingId(null); setAddError(null); setAdding(true); }}
           title={!canAdd ? 'Сначала добавьте значения в группы опций' : undefined}
         >
           + Добавить вариант

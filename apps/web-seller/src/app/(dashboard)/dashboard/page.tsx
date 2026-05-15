@@ -68,6 +68,9 @@ function Skeleton({ className }: { className?: string }) {
 export default function DashboardPage() {
   const { data: store, isLoading: storeLoading } = useStore();
   const { data: ordersData, isLoading: ordersLoading } = useSellerOrders({ limit: 5 });
+  // Отдельный запрос на счётчик PENDING: limit:5 у списка занижал KPI при >5
+  // ожидающих заказов. meta.total даёт полное число без выгрузки всех строк.
+  const { data: pendingData } = useSellerOrders({ status: OrderStatus.PENDING, limit: 1 });
   const { data: summary, isLoading: summaryLoading } = useSellerSummary();
   const { data: productsData, isLoading: productsLoading } = useSellerProducts();
   const [copied, setCopied] = useState(false);
@@ -84,7 +87,7 @@ export default function DashboardPage() {
   }
 
   const orders = ordersData?.data ?? [];
-  const pendingCount = orders.filter(o => o.status === OrderStatus.PENDING).length;
+  const pendingCount = pendingData?.meta.total ?? 0;
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
