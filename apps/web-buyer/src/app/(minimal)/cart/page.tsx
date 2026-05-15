@@ -175,7 +175,18 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
             </div>
           ) : (
             <>
-              <QtyStepper value={item.quantity} onChange={adjustQty} />
+              <div className="flex items-center gap-2.5">
+                <QtyStepper value={item.quantity} onChange={adjustQty} />
+                <button
+                  type="button"
+                  onClick={() => remove.mutate(item.id)}
+                  disabled={busy}
+                  className="text-[10px] disabled:opacity-40"
+                  style={{ color: colors.textMuted, background: "transparent", border: "none" }}
+                >
+                  Удалить
+                </button>
+              </div>
               <div className="text-[13px] md:text-sm font-bold" style={{ color: colors.textStrong }}>
                 {fmt(itemSubtotal(item))} сум
               </div>

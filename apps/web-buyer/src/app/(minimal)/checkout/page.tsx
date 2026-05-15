@@ -11,7 +11,7 @@ import { useCheckoutPreview, useConfirmCheckout } from "@/hooks/use-checkout";
 import { useCart } from "@/hooks/use-cart";
 import { track } from "@/lib/analytics";
 import type { CheckoutPreview, CheckoutPreviewItem, CartItem } from "types";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { colors, dangerTint, warningTint } from "@/lib/styles";
 import { PhoneInput, formatUzPhone, isValidUzPhone } from "@/components/PhoneInput";
 
@@ -458,8 +458,49 @@ export default function CheckoutPage() {
         </div>
       )}
 
+      {/* ── Preview error ──────────────────────────────────────────────────── */}
+      {pageStep === "form" && preview.isError && (
+        <div className="max-w-md mx-auto px-4 pt-6 pb-10">
+          <div
+            className="rounded-2xl p-6 flex flex-col items-center text-center gap-3"
+            style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+          >
+            <AlertCircle size={32} style={{ color: colors.danger }} />
+            <h2 className="text-base font-bold" style={{ color: colors.textStrong }}>
+              Не удалось загрузить заказ
+            </h2>
+            <p className="text-sm" style={{ color: colors.textMuted }}>
+              Проверьте соединение и попробуйте снова. Если корзина пуста —
+              вернитесь и добавьте товары.
+            </p>
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => preview.refetch()}
+                disabled={preview.isFetching}
+                className="px-4 py-2.5 text-sm font-bold rounded-lg disabled:opacity-50"
+                style={{ background: colors.brand, color: colors.brandTextOnBg }}
+              >
+                {preview.isFetching ? "Загрузка…" : "Повторить"}
+              </button>
+              <Link
+                href="/cart"
+                className="px-4 py-2.5 text-sm font-semibold rounded-lg"
+                style={{
+                  background: colors.surfaceMuted,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textPrimary,
+                }}
+              >
+                В корзину
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Main form ──────────────────────────────────────────────────────── */}
-      {pageStep === "form" && (
+      {pageStep === "form" && !preview.isError && (
         <div className="md:grid md:grid-cols-[7fr_5fr] md:gap-6 md:p-6 max-w-5xl mx-auto">
           {/* Left column — 3 step cards */}
           <div className="px-4 pt-4 pb-4 md:px-0 md:pt-0 flex flex-col gap-3">
