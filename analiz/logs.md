@@ -1,5 +1,32 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-15] [API-TYPES-PAYMENT-METHOD-COLLISION-001] ✅ Исправлено — дубль экспорта `PaymentMethod` в packages/types
+- **Статус:** ✅ Исправлено (Азим, 15.05.2026, аварийный фикс с согласия Азима).
+  Тип `PaymentMethod` в `cart.ts` переименован в `CheckoutPaymentMethod`
+  (commit `c148a18` на main, смержено в web-buyer/web-seller). `tsc --noEmit`
+  чист в обоих апах, Railway-сборка разблокирована.
+- **Что случилось:** `next build` (с type-check) в web-buyer И web-seller
+  падал на Railway одной ошибкой:
+  `packages/types/src/index.ts(11,1): error TS2308: Module './enums' has
+  already exported a member named 'PaymentMethod'.`
+- **Root cause:** Полат в Wave 20 (`API-CHECKOUT-PAYMENT-METHOD-001`) добавил
+  `export type PaymentMethod = 'cash' | 'card' | 'online'` в
+  `packages/types/src/api/cart.ts:79`. Но в `packages/types/src/enums.ts:50`
+  уже есть `export enum PaymentMethod { COD, MANUAL_TRANSFER, ONLINE }`
+  (Prisma-enum). `index.ts` делает `export *` из обоих → имя коллидирует.
+- **Эффект:** `next build` падал → Railway-деплой web-buyer и web-seller
+  обрывался (build daemon exit 1). Production-блокер обоих апов.
+- **Root cause обнаружения:** до merge 15.05 сервис-ветки имели старый
+  `packages/types` без типа из `cart.ts`. Sync-merge затащил Полатовский
+  `packages/types` с коллизией → деплой сломался.
+- **Фикс:** `cart.ts` — `export type PaymentMethod` → `CheckoutPaymentMethod`
+  (request-side enum). `CheckoutConfirmRequest.paymentMethod` обновлён.
+  Потребителей у типа не было: `apps/api` checkout использует свой локальный
+  тип + Prisma-enum, web-* не импортили. Изменение изолировано в `cart.ts` —
+  `apps/api` не затронут (нет конфликта с активным P0 checkout 500 Полата).
+- **На ревью Полату:** изменён `packages/types` (его зона) в аварийном
+  порядке. Если нужно другое имя — переименовать, потребителей нет.
+
 ## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] ✅ Исправлено — деплой триггернут version-bump'ом
 - **Статус:** ✅ Исправлено (Полат, 15.05.2026). Деплой запущен без ручного Redeploy.
 - **Что случилось:** Railway сервис `telegram-app` упал на сборке —

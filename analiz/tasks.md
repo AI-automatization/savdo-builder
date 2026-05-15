@@ -34,6 +34,75 @@ root cause ещё не подтверждён.
 
 **Подробности:** `analiz/logs.md` под `[2026-05-15] [API-CHECKOUT-CONFIRM-500-001]`.
 
+## ✅ P1 — `API-TYPES-PAYMENT-METHOD-COLLISION-001` — дубль экспорта `PaymentMethod` (ЗАКРЫТО 15.05.2026)
+
+- **Статус:** ✅ Закрыто Азимом аварийно 15.05.2026 (commit `c148a18`) —
+  **ломало Railway-сборку** web-buyer и web-seller (`next build` exit 1).
+- **Фикс:** `cart.ts` — `export type PaymentMethod` → `CheckoutPaymentMethod`.
+  Потребителей у типа не было (`apps/api` checkout — свой локальный тип +
+  Prisma-enum, web-* не импортили). `apps/api` не затронут.
+- **Полату на ревью:** изменён `packages/types` (его зона) в аварийном
+  порядке с согласия Азима — деплой обоих апов был мёртв. Если нужно другое
+  имя типа — переименовать свободно, внешних потребителей нет.
+- **Подробности:** `analiz/logs.md` под `[API-TYPES-PAYMENT-METHOD-COLLISION-001]`.
+
+## 🟢 P3 — `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store`
+
+- **Домен:** `packages/types` (Полат)
+- **Детали:** Wave 20 добавил `deliverySettings?: StoreDeliverySettings` только
+  в `StorefrontStore`. Seller-эндпоинт `GET /seller/store` тоже возвращает
+  nested `deliverySettings` (`stores.repository.ts` include), но интерфейс
+  `Store` его не моделирует. Из-за этого в web-seller `settings/page.tsx`
+  остаётся UI-extension `StoreWithDelivery = Store & { deliverySettings? }`.
+- **Фикс:** добавить `deliverySettings?: StoreDeliverySettings` в `Store`.
+  После — Азим уберёт `StoreWithDelivery` полностью.
+
+---
+
+# 🚨 QA-АУДИТ web-buyer + web-seller (15.05.2026) — pre-launch баги
+
+> Полный отчёт: `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`
+> (6 параллельных read-only агентов). **~20 🔴 багов + ~30 🟡 недочётов.**
+> Вердикт: к запуску в текущем виде НЕ готово.
+
+## 🔴 `WEB-QA-BUGFIX-2026-05-15` — блокеры запуска (Азим, web-buyer + web-seller)
+
+**Волна 1 ✅ 15.05.2026** — `123b70a` (web-buyer) + `73ff29f` (web-seller).
+Закрыты: `WB-B02`, `WB-B04`, `WS-B01`, `WS-B02`, `WS-B04`, `WS-B05`, `WS-B06`,
+`WS-B09`, `WS-B10` (`WS-B03` покрыт существующим guard). Детали — `analiz/done.md`.
+
+**Осталось из 🔴:**
+- ⏳ `WB-B01` доставка не считается — ждёт `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
+  (Полат, контракт preview).
+
+**Волна 2 ✅ 15.05.2026** — `fb5febf` (web-buyer) + `47ea98d` (web-seller).
+Закрыты: `WB-B05/B06/B11/B12/B13` (чат/уведомления + checkout auth), error-UI
+каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
+
+**Статус:** все 🔴-блокеры (кроме `WB-B01`, ждёт Полата) и 🟡-волна закрыты.
+Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
+дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+
+## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат)
+
+- **Домен:** `packages/types` (Полат)
+- **Проблема:** фронт держит `as unknown as`/`as any` касты поверх рассинхрона
+  типов с реальными ответами API: web-buyer ~9 точек (`store.slug`, `itemCount`,
+  `name`, `stock`), web-seller — `OrderListItem` не содержит адресных полей
+  `city`/`addressLine1`, хотя API их отдаёт.
+- **Фикс:** свести DTO в `packages/types` с фактическими ответами, чтобы фронт
+  убрал касты.
+
+## 🟡 `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат)
+
+- **Домен:** `apps/api` checkout + `packages/types` (Полат)
+- **Проблема:** web-buyer checkout (`WB-B01`) пытается прочитать `deliveryFee` из
+  ответа `/checkout/preview`, но в типе `CheckoutPreview` такого поля нет.
+  Доставка нигде не считается и не списывается.
+- **Нужно:** подтвердить — возвращает ли `/checkout/preview` рассчитанную плату
+  за доставку, под каким именем; добавить поле в `CheckoutPreview`. Без этого
+  Азим не может закрыть `WB-B01`.
+
 ---
 
 # 🚨 PLATFORM AUDIT 10.05.2026 — Pre-launch findings (5 perspectives + endpoint inventory)
@@ -359,9 +428,9 @@ root cause ещё не подтверждён.
 - [x] **`WEB-BUYER-OTP-PURPOSE-FIX-001`** ✅ 14.05.2026 (Азим) — закрыто на ветке `web-buyer` (commit `e84598c`). Добавлен `purpose?: 'login' | 'register' | 'checkout'` prop с default `'login'`. Все 5 callsites (orders, wishlist, profile, chats, ChatComposerModal) наследуют 'login' default — semantic корректно. `(minimal)/checkout/page.tsx` имеет local OtpGate function — там `'checkout'` hardcode остаётся правильным. Подробности в `analiz/done.md`.
 
 **Для Полата (packages/types):**
-- [x] **`API-TYPES-PROMOTE-FEATURED-STOREFRONT-001`** ✅ 15.05.2026 (Полат) — создан `packages/types/src/api/storefront.ts` с `FeaturedTopStore`, `FeaturedProduct`, `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`. Экспорт в `index.ts`. **Азим:** обнови импорты в web-buyer → удали локальный `src/types/storefront.ts`.
-- [x] **`API-PRODUCT-IMAGES-FULL-SHAPE-001`** ✅ 15.05.2026 (Полат) — новый тип `ProductImageRef { url: string; id?: string; mediaId?: string; sortOrder?: number; isPrimary?: boolean }` в `packages/types/src/api/products.ts`. `ProductListItem.images` и `Product.images` теперь `ProductImageRef[]`. `id/mediaId/sortOrder` optional — feed-ответы могут отдавать только url, detail — всё. **Азим:** убери `as unknown as { images?: RawImage[] }` cast в `web-seller edit page`.
-- [x] **`API-STORE-DELIVERY-SETTINGS-TYPE-001`** ✅ 15.05.2026 (Полат) — тип `StoreDeliverySettings { supportsDelivery, supportsPickup, deliveryFeeType: 'fixed'|'manual'|'none', fixedDeliveryFee, deliveryNotes, pickupNotes }` в `stores.ts`. `StorefrontStore.deliverySettings?` (optional). **Азим:** убери UI-extension `StoreWithDelivery`.
+- [x] **`API-TYPES-PROMOTE-FEATURED-STOREFRONT-001`** ✅ 15.05.2026 (Полат) — создан `packages/types/src/api/storefront.ts` с `FeaturedTopStore`, `FeaturedProduct`, `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`. Экспорт в `index.ts`. **Азим ✅ 15.05.2026** — импорты обновлены, локальный `apps/web-buyer/src/types/storefront.ts` удалён (commit на ветке `web-buyer`).
+- [x] **`API-PRODUCT-IMAGES-FULL-SHAPE-001`** ✅ 15.05.2026 (Полат) — новый тип `ProductImageRef { url: string; id?: string; mediaId?: string; sortOrder?: number; isPrimary?: boolean }` в `packages/types/src/api/products.ts`. `ProductListItem.images` и `Product.images` теперь `ProductImageRef[]`. `id/mediaId/sortOrder` optional — feed-ответы могут отдавать только url, detail — всё. **Азим ✅ 15.05.2026** — `as unknown as { images?: RawImage[] }` double-cast убран в `web-seller products/[id]/edit/page.tsx`, `product.images` теперь типизирован (commit на ветке `web-seller`).
+- [x] **`API-STORE-DELIVERY-SETTINGS-TYPE-001`** ✅ 15.05.2026 (Полат) — тип `StoreDeliverySettings { supportsDelivery, supportsPickup, deliveryFeeType: 'fixed'|'manual'|'none', fixedDeliveryFee, deliveryNotes, pickupNotes }` в `stores.ts`. `StorefrontStore.deliverySettings?` (optional). **Азим ✅ 15.05.2026 (частично)** — `StoreWithDelivery` в `web-seller settings/page.tsx` теперь ссылается на канонический `StoreDeliverySettings` вместо ad-hoc inline-литерала. Полностью убрать extension нельзя: `deliverySettings` добавлен только в `StorefrontStore`, не в `Store` → заведён follow-up `API-STORE-TYPE-DELIVERY-SETTINGS-001` Полату.
 
 ### 🟡 P2 — для Полата (technical debt)
 

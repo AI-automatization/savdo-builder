@@ -1,5 +1,126 @@
 # Done — Азим + Полат
 
+## 2026-05-15 (Азим) — QA-аудит wave 2: 🟡 «сильно желательно»
+
+Коммиты `fb5febf` (ветка web-buyer), `47ea98d` (ветка web-seller).
+`tsc --noEmit` чист в обоих апах.
+
+### ✅ web-buyer (`fb5febf`)
+- **WB-B05** — checkout: протухший токен запирал на форме (`confirm` молча
+  401). Слушатель `savdo:auth:expired` → возврат на OTP-шаг. Убран мёртвый
+  `isAuthed`.
+- **WB-B06** — chats: удаление открытого треда перекидывало в чужой чат.
+  Авто-выбор `threads[0]` теперь только при первой загрузке (ref-guard).
+- **WB-B11** — `use-chat`: входящее сообщение помечало тред прочитанным даже
+  при свёрнутой вкладке → терялся unread. Гейт по `document.visibilityState`.
+- **WB-B12** — `use-notifications`: `readAll` давал flicker (unread→read).
+  `onMutate` с оптимистичным `isRead=true`.
+- **WB-B13** — notifications: строка не-order уведомления имела `cursor-pointer`,
+  но клик — no-op. cursor/hover/onClick только при наличии цели.
+- **error-UI** — каталоги `/stores` и `/products` игнорировали `isError` →
+  сбой сети показывался как «пусто». Добавлен error-state + «Повторить»
+  (`refetch`); `EmptyState` расширен опциональным `onCta`.
+- **Файлы:** `hooks/use-chat.ts`, `hooks/use-notifications.ts`,
+  `app/(shop)/{chats,notifications,stores,products}/page.tsx`,
+  `app/(minimal)/checkout/page.tsx`, `components/catalog/EmptyState.tsx`.
+
+### ✅ web-seller (`47ea98d`)
+- **WS-B07** — `InlineStockEditor`: `draft` не ре-синхронизировался с `current`
+  после `adjustStock` → возможно двойное применение delta. `key` с
+  `stockQuantity` → remount после рефетча.
+- **WS-B08** — варианты: дубль с той же комбинацией опций не блокировался.
+  Проверка `optionValueIds` + inline-ошибка.
+- **WS-B16** — orders: аккумулятор страниц дублировал строки при фоновом
+  рефетче текущей страницы (>1). `lastAppendedPage`-ref: append только для
+  новой страницы, рефетч обновляет строки на месте.
+- **WS-B17** — dashboard: «Ожидают обработки» считался по 5 загруженным
+  строкам → занижение при >5. Отдельный запрос `status=PENDING` → `meta.total`.
+- **WS-B19** — orders + order detail: показывали `shortId(id)` вместо
+  канонического `orderNumber` (продавец видел не тот «номер», что покупатель/
+  уведомления/Telegram). Везде → `orderNumber`, поиск тоже.
+- **Файлы:** `components/product-variants-section.tsx`,
+  `app/(dashboard)/orders/page.tsx`, `orders/[id]/page.tsx`, `dashboard/page.tsx`.
+
+## 2026-05-15 (Азим) — QA-аудит wave 1: 🔴 блокеры запуска
+
+Закрыты 🔴-блокеры из `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+Коммиты `123b70a` (ветка web-buyer), `73ff29f` (ветка web-seller).
+
+### ✅ web-buyer (`123b70a`)
+- **WB-B02** — в корзине у in-stock товара не было кнопки удаления (степпер не
+  доходит до 0). Добавлена «Удалить» рядом со степпером.
+- **WB-B04** — при сбое `/checkout/preview` показывалась форма с «0 сум» без
+  объяснения. Добавлен error-state (`AlertCircle` + «Повторить» через
+  `preview.refetch()` + «В корзину»); форма скрыта при `preview.isError`.
+- **Файлы:** `app/(minimal)/cart/page.tsx`, `app/(minimal)/checkout/page.tsx`.
+
+### ✅ web-seller (`73ff29f`)
+- **WS-B01** — refresh-interceptor скипал OTP по несуществующему `/auth/otp/`
+  → неверный код ломал логин. → `/auth/request-otp` + `/auth/verify-otp`.
+- **WS-B02** — онбординг: `createStore`+`updateProfile` в `Promise.all`, при
+  сбое профиля retry падал дублём (INV-S01). → последовательно, профиль
+  non-fatal.
+- **WS-B04** — edit page: при сбое add/remove фото UI расходился с сервером.
+  → сверка: упавший add убирается, упавший delete возвращается + ошибка.
+- **WS-B05** — edit page: drag-реордер фото молча не сохранялся (нет backend
+  PATCH). → `MultiImageUploader` проп `reorderable`; edit передаёт `false`.
+- **WS-B06** — ключ варианта `join('/')/split('/')` ломался на значении опции
+  с `« / »`. → `VARIANT_LABEL_SEP` (U+001F) + `variantLabelDisplay()`.
+- **WS-B09** — атрибуты слали POST на каждый символ, без id-writeback → дубли.
+  → дебаунс 700мс + in-flight lock + запись id обратно.
+- **WS-B10** — create product: сбой фото/вариантов давал молчаливый «успех».
+  → подсчёт сбоев + экран «Товар создан, но не сохранилось …».
+- **Файлы:** `lib/api/client.ts`, `app/(onboarding)/onboarding/page.tsx`,
+  `app/(dashboard)/products/[id]/edit/page.tsx`, `products/create/page.tsx`,
+  `components/multi-image-uploader.tsx`, `components/variants-matrix-builder.tsx`.
+
+**Verification:** `npx tsc --noEmit` чист в обоих апах.
+**Не закрыт из 🔴:** `WB-B01` (доставка) — ждёт контракт preview от Полата.
+
+## 2026-05-15 (Азим) — Consumption-задачи web-sync аудита (3 типовых дубля убраны)
+
+Полат в Wave 20 поднял типы в `packages/types`; закрыл фронтовую часть —
+подключение и удаление локальных дублей. Сервис-ветки `web-buyer` / `web-seller`
+сначала синхронизированы с `main` (merge, конфликт `railway.toml` разрешён в
+пользу веток — per-branch deploy config).
+
+### ✅ [API-TYPES-PROMOTE-FEATURED-STOREFRONT-001 FE] storefront-типы из packages/types 🟢
+- **Важность:** 🟢 (tech-debt из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 15.05.2026
+- **Ветка:** `web-buyer` (merge `b237f76` + `refactor`-коммит)
+- **Файлы:** `apps/web-buyer/src/lib/api/storefront.api.ts`,
+  `apps/web-buyer/src/lib/storefront-adapters.ts`,
+  удалён `apps/web-buyer/src/types/storefront.ts`
+- **Что сделано:** `FeaturedTopStore` / `FeaturedProduct` /
+  `FeaturedStorefrontResponse` / `GlobalCategoryTreeItem` теперь импортируются
+  из `types`. Локальный дубль (byte-identical) удалён.
+
+### ✅ [API-PRODUCT-IMAGES-FULL-SHAPE-001 FE] ProductImageRef — убран double-cast 🟢
+- **Важность:** 🟢
+- **Дата:** 15.05.2026
+- **Ветка:** `web-seller` (merge `b187ae1` + `refactor`-коммит `59ca414`)
+- **Файл:** `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
+- **Что сделано:** убран `as unknown as { images?: RawImage[] }` double-cast +
+  локальный тип `RawImage`. `product.images` теперь типизирован
+  `ProductImageRef[]`. `id/mediaId` в типе optional (ради feed-ответов) →
+  добавлены `?? ''` и guard для `Map<string,string>`.
+
+### ✅ [API-STORE-DELIVERY-SETTINGS-TYPE-001 FE] StoreDeliverySettings (частично) 🟢
+- **Важность:** 🟢
+- **Дата:** 15.05.2026
+- **Ветка:** `web-seller` (commit `59ca414`)
+- **Файл:** `apps/web-seller/src/app/(dashboard)/settings/page.tsx`
+- **Что сделано:** `StoreWithDelivery` ссылается на канонический
+  `StoreDeliverySettings` вместо ad-hoc inline-литерала.
+- **Не закрыто полностью:** Полат добавил `deliverySettings` только в
+  `StorefrontStore`, не в `Store` → extension-обёртка пока остаётся. Follow-up
+  `API-STORE-TYPE-DELIVERY-SETTINGS-001` в tasks.md.
+
+### 🔴 Найден баг: [API-TYPES-PAYMENT-METHOD-COLLISION-001]
+При прогоне `tsc` обнаружен дубль экспорта `PaymentMethod` в `packages/types`
+(`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
+Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
+
 ## 2026-05-15 (Полат) — Wave 22: TMA buyer i18n + TMA deploy fix
 
 ### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA buyer pages) 🔴
