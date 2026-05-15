@@ -209,6 +209,8 @@ export class ConfirmCheckoutUseCase {
         itemCount: validatedItems.length,
         total: totalAmount,
         currency: cart.currencyCode,
+        // MARKETING-LOCALIZATION-UZ-001: уведомление на языке продавца.
+        locale: store.seller.user.languageCode ?? undefined,
       });
     } catch (err) {
       ErrorReporter.captureException(err, {

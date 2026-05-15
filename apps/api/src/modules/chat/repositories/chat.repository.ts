@@ -4,8 +4,9 @@ import { PrismaService } from '../../../database/prisma.service';
 
 export type ThreadWithMessages = ChatThread & {
   messages: ChatMessage[];
-  seller: Seller & { store: Store | null };
-  buyer: (Buyer & { user: Pick<User, 'phone' | 'telegramId'> }) | null;
+  // MARKETING-LOCALIZATION-UZ-001: user.languageCode для локализации TG-уведомлений.
+  seller: Seller & { store: Store | null; user: Pick<User, 'languageCode'> };
+  buyer: (Buyer & { user: Pick<User, 'phone' | 'telegramId' | 'languageCode'> }) | null;
   product: { title: string } | null;
   order: { orderNumber: string } | null;
 };
@@ -40,11 +41,11 @@ export class ChatRepository {
           orderBy: { createdAt: 'asc' },
         },
         seller: {
-          include: { store: true },
+          include: { store: true, user: { select: { languageCode: true } } },
         },
         buyer: {
           include: {
-            user: { select: { phone: true, telegramId: true } },
+            user: { select: { phone: true, telegramId: true, languageCode: true } },
           },
         },
         product: { select: { title: true } },

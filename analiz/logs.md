@@ -1,5 +1,36 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] ✅ Исправлено — деплой триггернут version-bump'ом
+- **Статус:** ✅ Исправлено (Полат, 15.05.2026). Деплой запущен без ручного Redeploy.
+- **Что случилось:** Railway сервис `telegram-app` упал на сборке —
+  `No start command detected`, build driver = Railpack (auto-detect),
+  а не Dockerfile. Railpack видит pnpm-workspace из 8 пакетов и не знает
+  что TMA — статический Vite SPA.
+- **Root cause:** сервис `telegram-app` имеет Root Directory = корень репо
+  и читал корневой `railway.toml`. Wave 19 DevOps audit (commit `68d1389`)
+  удалил корневой `railway.toml` как «конфликтующий» — но для ветки `tma`
+  это был рабочий конфиг (`builder=DOCKERFILE` → `apps/tma/Dockerfile`).
+  Без него Railway свалился на Railpack.
+- **Что сделано:**
+  1. Восстановлен корневой `railway.toml` на ветке `tma` (commit `798f720`).
+  2. **Catch-22:** `798f720` менял только `railway.toml`, а `watchPatterns`
+     покрывали лишь `apps/tma/**` / `packages/*` → Railway пропустил деплой
+     («No changes to watched files»). Активным остался build 21h-давности.
+  3. В `watchPatterns` добавлен `railway.toml` (commit `6a39a06`) — чтобы
+     правки конфига впредь триггерили деплой.
+  4. **Bootstrap без ручного Redeploy** (commit `0c57bad`): bump версии
+     `apps/tma/package.json` 0.1.0 → 0.1.1. Этот коммит трогает `apps/tma/**`
+     → попадает под текущие watchPatterns → Railway ЗАПУСКАЕТ деплой (не
+     skip) → читает восстановленный `railway.toml` → собирает через
+     Dockerfile. Так разорван catch-22 без доступа к Railway-дашборду.
+- **Проверить на Railway:** `telegram-app` → Deployments — новый деплой на
+  коммите `0c57bad` должен идти с build driver **Dockerfile** (не Railpack)
+  и пройти healthcheck `/`. После него все будущие `apps/tma/**` и
+  `railway.toml` правки деплоятся авто.
+- **Урок:** перед удалением деплой-конфига проверять, какой сервис его
+  читает. `watchPatterns` должны включать сам `railway.toml`. Коммит-только-
+  конфиг не самотриггерится — нужен parallel-change в watched-путях.
+
 ## [2026-05-15] [API-CHECKOUT-CONFIRM-500-001] 🟡 ЧАСТИЧНО — fault-isolation side-effects (Полат)
 - **Статус:** 🟡 Defensive fix задеплоен, root cause ещё под вопросом
 - **Что сделано (Полат, 15.05.2026):**
