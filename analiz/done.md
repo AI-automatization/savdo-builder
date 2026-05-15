@@ -1,5 +1,65 @@
 # Done — Азим + Полат
 
+## 2026-05-15 (Полат) — Wave 20: Action items от web-sync audit (6 задач + ADR)
+
+Закрыты все Action items для Полата из `analiz/audits/web-sync-2026-05-14.md`
+(Часть 3). 1 оказалась false positive.
+
+### ✅ [TMA-CART-API-SYNC-001] re-open → false positive 🔴
+Азим в аудите написал «cart sync не в коде». Проверка: `apps/tma/src/lib/
+cartSync.ts` существует, `syncCartToBackend()` вызывается в `AuthProvider.tsx:61`
+после BUYER auth. `POST /cart/bulk-merge` идёт. Cross-channel cart работает.
+Азим смотрел `cart.ts` (localStorage helper) + `CartPage.tsx`, не нашёл хук
+в AuthProvider. Реально implemented в Wave 8. Ничего не менял.
+
+### ✅ [API-CHECKOUT-PAYMENT-METHOD-001] 🔴
+- `packages/types/src/api/cart.ts` — новый `PaymentMethod = 'cash'|'card'|'online'`,
+  `CheckoutConfirmRequest.paymentMethod?`.
+- `confirm-checkout.dto.ts` — `@IsIn(PAYMENT_METHODS)` валидация.
+- `confirm-checkout.use-case.ts` — `resolvePaymentMethod()` маппит request-enum →
+  Prisma-enum: `cash→COD`, `card→MANUAL_TRANSFER`, `online→ONLINE` (при
+  `PAYMENT_ONLINE_ENABLED`, иначе degrade COD).
+- `checkout.repository.ts` — `CreateOrderData.paymentMethod`, `createOrder`
+  сохраняет на Order (`data.paymentMethod ?? COD`).
+- `checkout.controller.ts` — прокидывает `dto.paymentMethod`.
+- 59/59 checkout-тестов passed.
+
+### ✅ [ADMIN-STATUS-LABEL-PENDING-001] + [STATUS-LABEL-CANONICAL-SHIPPED-001] 🟡
+Единые лейблы по платформе:
+- `PENDING` = «Ожидает» (admin OrdersPage STATUS_CFG + DashboardPage; FILTER_LABEL «Ожидают»)
+- `SHIPPED` = «В пути» / uz «Yoʻlda»:
+  - admin: `OrdersPage.tsx`, `DashboardPage.tsx`, `StatusBadge.tsx`
+  - TMA: `i18n/ru.ts` + `uz.ts` `orders.status.SHIPPED`
+  - API: `shared/i18n.ts` (buyer+seller `🚚 в пути`), `telegram-demo.handler.ts` (`🚚 В пути`)
+  - web-* + TMA Badge уже были «В пути».
+
+### ✅ [API-TYPES-PROMOTE-FEATURED-STOREFRONT-001] 🟢
+Создан `packages/types/src/api/storefront.ts`: `FeaturedTopStore`,
+`FeaturedProduct`, `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`.
+Экспорт в `index.ts`. Подняты из локального web-buyer файла.
+
+### ✅ [API-PRODUCT-IMAGES-FULL-SHAPE-001] 🟢
+Новый `ProductImageRef { url; id?; mediaId?; sortOrder?; isPrimary? }`.
+`ProductListItem.images` + `Product.images` теперь `ProductImageRef[]`.
+
+### ✅ [API-STORE-DELIVERY-SETTINGS-TYPE-001] 🟢
+Тип `StoreDeliverySettings` в `stores.ts`. `StorefrontStore.deliverySettings?`.
+
+### ✅ [ADR-007] Chat message edit/delete 📋
+`docs/adr/ADR-007_chat_message_edit_delete.md` (Accepted задним числом —
+фича от session 36, 26.04). Edit: автор, 15-мин окно, text-only. Delete:
+автор, soft (`is_deleted`). `INV-CH02` переформулирован: «soft-mutable в
+пределах ADR-007» вместо «append-only».
+
+**Файлы:** `packages/types/src/api/{cart,products,stores,storefront}.ts` + `index.ts`,
+`apps/api/src/modules/checkout/{dto/confirm-checkout.dto,use-cases/confirm-checkout.use-case,
+repositories/checkout.repository,checkout.controller}.ts`, `apps/api/src/shared/i18n.ts`,
+`apps/api/src/modules/telegram/telegram-demo.handler.ts`, `apps/admin/src/pages/{Orders,Dashboard}Page.tsx`,
+`apps/admin/src/components/admin/StatusBadge.tsx`, `apps/tma/src/lib/i18n/{ru,uz}.ts`,
+`docs/adr/ADR-007_chat_message_edit_delete.md`, `docs/V1.1/01_domain_invariants.md`.
+
+**Tests:** api/admin/tma `tsc` clean, 59/59 checkout passed.
+
 ## 2026-05-14 (Азим) — WEB-BUYER-OTP-PURPOSE-FIX-001 (SEV-3 от audit)
 
 ### ✅ [WEB-BUYER-OTP-PURPOSE-FIX-001] OtpGate purpose через props

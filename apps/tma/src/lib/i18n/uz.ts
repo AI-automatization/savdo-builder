@@ -158,7 +158,7 @@ export const uz: Translations = {
   'orders.status.PENDING': 'Kutilmoqda',
   'orders.status.CONFIRMED': 'Tasdiqlangan',
   'orders.status.PROCESSING': 'Tayyorlanmoqda',
-  'orders.status.SHIPPED': 'Yetkazilmoqda',
+  'orders.status.SHIPPED': 'Yoʻlda',
   'orders.status.DELIVERED': 'Yetkazib berildi',
   'orders.status.CANCELLED': 'Bekor qilindi',
 

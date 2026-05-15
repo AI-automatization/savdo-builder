@@ -17,7 +17,7 @@ const KEY_TMP   = (chatId: string, field: string) => `tg:tmp:${chatId}:${field}`
 const ORDER_LABEL: Record<string, string> = {
   PENDING:   '🟡 Ожидает',
   CONFIRMED: '🔵 Подтверждён',
-  SHIPPED:   '🚚 Доставляется',
+  SHIPPED:   '🚚 В пути',
   DELIVERED: '✅ Доставлен',
   CANCELLED: '❌ Отменён',
 };
