@@ -7,13 +7,19 @@
 # Удалён по ошибке в Wave 19 DevOps audit (commit 68d1389) → деплой TMA
 # сломался 15.05.2026. Восстановлен. НЕ удалять и НЕ мержить в main
 # (main держит railway.toml вне трекинга, у каждой деплой-ветки свой).
+#
+# ВАЖНО: после изменения этого файла нужен ОДИН ручной Redeploy в Railway —
+# коммит, меняющий только railway.toml, попадает под watchPatterns ниже
+# лишь начиная со следующего деплоя (chicken-and-egg).
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "apps/tma/Dockerfile"
 # DEVOPS-AUDIT-2026-05-14: + packages/types (пересборка при изменении DTO),
 # + packages/ui (на будущее, сейчас TMA не зависит).
-watchPatterns = ["apps/tma/**", "packages/types/**", "packages/ui/**"]
+# 15.05.2026: + railway.toml — иначе правка самого конфига не триггерит
+# деплой («No changes to watched files»).
+watchPatterns = ["apps/tma/**", "packages/types/**", "packages/ui/**", "railway.toml"]
 
 [deploy]
 healthcheckPath = "/"
