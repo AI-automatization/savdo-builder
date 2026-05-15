@@ -59,6 +59,47 @@ root cause ещё не подтверждён.
 
 ---
 
+# 🚨 QA-АУДИТ web-buyer + web-seller (15.05.2026) — pre-launch баги
+
+> Полный отчёт: `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`
+> (6 параллельных read-only агентов). **~20 🔴 багов + ~30 🟡 недочётов.**
+> Вердикт: к запуску в текущем виде НЕ готово.
+
+## 🔴 `WEB-QA-BUGFIX-2026-05-15` — блокеры запуска (Азим, web-buyer + web-seller)
+
+Закрыть до запуска (ID из аудита):
+- **web-buyer:** `WB-B01` доставка не считается (money), `WB-B02` нельзя удалить
+  товар из корзины, `WB-B04` нет error-UI на checkout.
+- **web-seller:** `WS-B01` неверный OTP ломает логин, `WS-B02` онбординг-ловушка,
+  `WS-B03/B04/B05` потеря фото, `WS-B06` data-corruption вариантов на `" / "`,
+  `WS-B09` дубли атрибутов (POST-per-keystroke), `WS-B10` create product —
+  молчаливый partial-success.
+- **Сильно желательно:** чат/уведомления (`WB-B05/B06/B11/B12/B13`),
+  `WS-B07/B08/B16/B17/B19`, error-UI вместо «пусто».
+- **Детали и file:line** — в файле аудита. Разбить на fix-волны.
+
+## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат)
+
+- **Домен:** `packages/types` (Полат)
+- **Проблема:** фронт держит `as unknown as`/`as any` касты поверх рассинхрона
+  типов с реальными ответами API: web-buyer ~9 точек (`store.slug`, `itemCount`,
+  `name`, `stock`), web-seller — `OrderListItem` не содержит адресных полей
+  `city`/`addressLine1`, хотя API их отдаёт.
+- **Фикс:** свести DTO в `packages/types` с фактическими ответами, чтобы фронт
+  убрал касты.
+
+## 🟡 `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат)
+
+- **Домен:** `apps/api` checkout + `packages/types` (Полат)
+- **Проблема:** web-buyer checkout (`WB-B01`) пытается прочитать `deliveryFee` из
+  ответа `/checkout/preview`, но в типе `CheckoutPreview` такого поля нет.
+  Доставка нигде не считается и не списывается.
+- **Нужно:** подтвердить — возвращает ли `/checkout/preview` рассчитанную плату
+  за доставку, под каким именем; добавить поле в `CheckoutPreview`. Без этого
+  Азим не может закрыть `WB-B01`.
+
+---
+
 # 🚨 PLATFORM AUDIT 10.05.2026 — Pre-launch findings (5 perspectives + endpoint inventory)
 
 > Полные отчёты от 5 параллельных аудит-агентов сохранены в conversation 10.05.2026.
