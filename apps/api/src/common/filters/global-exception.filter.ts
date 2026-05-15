@@ -57,7 +57,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
    * сам ErrorReporter.scrubPII — здесь только не-чувствительные поля.
    */
   private requestContext(request: Request): Record<string, unknown> {
-    const userId = (request as Request & { user?: { id?: string } }).user?.id;
+    // request.user — это JwtPayload (Passport кладёт return из JwtStrategy.validate).
+    // userId лежит в `sub`, не в `id`.
+    const userId = (request as Request & { user?: { sub?: string } }).user?.sub;
     return {
       source: 'GlobalExceptionFilter',
       method: request?.method,

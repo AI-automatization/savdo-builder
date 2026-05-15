@@ -113,17 +113,27 @@ export class AdminOpsController {
   @AdminPermission('media:migrate')
   async auditBrokenMediaUrls(
     @Query('limit') limit: string | undefined,
+    @Query('cursor') cursor: string | undefined,
     @CurrentUser() user: JwtPayload,
   ) {
     await this.requireAdmin(user);
-    const parsedLimit = limit ? Number(limit) : 100;
-    const result = await this.auditBrokenMediaUseCase.execute(parsedLimit);
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const result = await this.auditBrokenMediaUseCase.execute({
+      limit: parsedLimit,
+      cursorId: cursor,
+    });
     await this.adminRepo.writeAuditLog({
       actorUserId: user.sub,
       action: 'media.audit.broken_urls',
       entityType: 'media',
       entityId: 'batch',
-      payload: { limit: parsedLimit, scanned: result.scanned, broken: result.broken },
+      payload: {
+        limit: parsedLimit ?? null,
+        cursor: cursor ?? null,
+        scanned: result.scanned,
+        broken: result.broken,
+        nextCursor: result.nextCursor,
+      },
     });
     return result;
   }
