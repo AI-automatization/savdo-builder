@@ -121,6 +121,15 @@
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
 
+## 2026-05-15 (Полат) — Wave 25: PATCH product image endpoint
+
+### ✅ [API-PRODUCT-IMAGES-PATCH-001] 🟢
+`PATCH /seller/products/:id/images/:imageId` — reorder (`sortOrder`) + toggle
+обложки (`isPrimary`). Раньше только POST/DELETE → web-seller edit не мог
+сохранить порядок фото (`WS-B05`). Ownership-проверка, 404 на чужое фото,
+400 если не передано ни одно поле, isPrimary=true снимает обложку с остальных.
+DTO `UpdateProductImageDto`. Коммит `788aeb3`, api tsc clean.
+
 ## 2026-05-15 (Полат) — Wave 24: checkout preview delivery fee + типы
 
 ### ✅ [API-CHECKOUT-PREVIEW-DELIVERY-FEE-001] 🔴 (разблокирует WB-B01)
