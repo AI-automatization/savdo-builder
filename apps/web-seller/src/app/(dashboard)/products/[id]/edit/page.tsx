@@ -104,9 +104,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const queryClient = useQueryClient();
   const [images, setImages] = useState<MultiImageItem[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
   // Map mediaId → ProductImage.id для удаления существующих фото.
   const imageIdMapRef = useRef<Map<string, string>>(new Map());
   const [attributes, setAttributes] = useState<AttributeItem[]>([]);
+  // Дебаунс серверной синхронизации атрибутов + защита от наслаивания POST'ов.
+  const attrSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attrSyncing = useRef(false);
+  const syncedAttrsRef = useRef<AttributeItem[]>([]);
 
   const { data: categories = [] } = useStoreCategories();
   const { data: globalCategoriesRaw = [] } = useGlobalCategories();
@@ -165,15 +170,27 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         value: a.value,
       }));
       setAttributes(items2);
+      syncedAttrsRef.current = items2;
     }
   }, [product, reset]);
+
+  // Снять отложенный attr-sync при размонтировании.
+  useEffect(() => () => {
+    if (attrSyncTimer.current) clearTimeout(attrSyncTimer.current);
+  }, []);
 
   async function handleImagesChange(next: MultiImageItem[]) {
     const prev = images;
     setImages(next);
+    setImageError(null);
 
     const prevIds = new Set(prev.map((i) => i.mediaId));
     const nextIds = new Set(next.map((i) => i.mediaId));
+
+    // Фото, чьи серверные операции упали — нужно откатить из UI, иначе
+    // продавец думает что фото сохранено/удалено, а на сервере иначе.
+    const failedAdds = new Set<string>();
+    const failedRemovals: MultiImageItem[] = [];
 
     // Added (есть в next, нет в prev) — POST на сервер
     const added = next.filter((i) => !prevIds.has(i.mediaId));
@@ -188,6 +205,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         imageIdMapRef.current.set(item.mediaId, created.id);
       } catch (err) {
         console.error(`add image failed`, err);
+        failedAdds.add(item.mediaId);
       }
     }
 
@@ -201,43 +219,81 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         imageIdMapRef.current.delete(item.mediaId);
       } catch (err) {
         console.error(`delete image failed`, err);
+        failedRemovals.push(item);
       }
     }
 
     // Reorder не поддерживается backend'ом — порядок останется как в product.images
     // (по sortOrder при POST). API-PRODUCT-IMAGES-PATCH-001 в backlog.
 
+    // Сверяем UI с реальностью сервера: убираем фото с упавшим add,
+    // возвращаем фото с упавшим delete.
+    if (failedAdds.size > 0 || failedRemovals.length > 0) {
+      setImages((cur) => {
+        const reconciled = cur.filter((i) => !failedAdds.has(i.mediaId));
+        for (const item of failedRemovals) {
+          if (!reconciled.some((i) => i.mediaId === item.mediaId)) {
+            reconciled.push(item);
+          }
+        }
+        return reconciled;
+      });
+      setImageError('Не все фото удалось сохранить — список обновлён, попробуйте ещё раз.');
+    }
+
     queryClient.invalidateQueries({ queryKey: productKeys.detail(id) });
   }
 
-  async function handleAttributesChange(next: AttributeItem[]) {
-    const prev = attributes;
+  function handleAttributesChange(next: AttributeItem[]) {
+    // Локальное состояние — сразу, ввод отзывчив.
     setAttributes(next);
+    // Серверная синхронизация — дебаунс 700мс. Раньше POST летел на КАЖДЫЙ
+    // символ: созданный атрибут не получал id обратно → следующий keystroke
+    // снова видел его как «added» → дубли в БД.
+    if (attrSyncTimer.current) clearTimeout(attrSyncTimer.current);
+    attrSyncTimer.current = setTimeout(() => { void syncAttributes(next); }, 700);
+  }
 
-    const prevById = new Map(prev.filter((a) => a.id).map((a) => [a.id!, a]));
-    const nextIds = new Set(next.filter((a) => a.id).map((a) => a.id!));
-
-    // Removed (был с id, теперь нет)
-    const removedIds = Array.from(prevById.keys()).filter((aid) => !nextIds.has(aid));
-    for (const aid of removedIds) {
-      try { await deleteProductAttribute(id, aid); }
-      catch (err) { console.error(`delete attribute failed`, err); }
+  async function syncAttributes(target: AttributeItem[]) {
+    // Не наслаиваем проходы — иначе тот же «added» создастся дважды.
+    if (attrSyncing.current) {
+      if (attrSyncTimer.current) clearTimeout(attrSyncTimer.current);
+      attrSyncTimer.current = setTimeout(() => { void syncAttributes(target); }, 700);
+      return;
     }
+    attrSyncing.current = true;
+    try {
+      const synced = syncedAttrsRef.current;
+      const targetIds = new Set(target.filter((a) => a.id).map((a) => a.id!));
 
-    // Added (нет id, есть непустые name+value)
-    const added = next.filter((a) => !a.id && a.name.trim() && a.value.trim());
-    for (let i = 0; i < added.length; i++) {
-      const a = added[i];
-      try {
-        await createProductAttribute(id, {
-          name: a.name.trim(),
-          value: a.value.trim(),
-          sortOrder: next.indexOf(a),
-        });
-      } catch (err) { console.error(`create attribute failed`, err); }
+      // Removed — был с id в синхронизированном состоянии, отсутствует в target
+      const removed = synced.filter((a) => a.id && !targetIds.has(a.id));
+      for (const a of removed) {
+        try { await deleteProductAttribute(id, a.id!); }
+        catch (err) { console.error('delete attribute failed', err); }
+      }
+
+      // Added — без id, оба поля непустые
+      const added = target.filter((a) => !a.id && a.name.trim() && a.value.trim());
+      for (const a of added) {
+        try {
+          const created = await createProductAttribute(id, {
+            name: a.name.trim(),
+            value: a.value.trim(),
+            sortOrder: target.indexOf(a),
+          });
+          // Записать id обратно — иначе следующий проход создаст дубль.
+          a.id = created.id;
+          setAttributes((cur) => cur.map((x) => (x === a ? { ...x, id: created.id } : x)));
+        } catch (err) { console.error('create attribute failed', err); }
+      }
+
+      // Зафиксировать новое синхронизированное состояние (только то, что на сервере).
+      syncedAttrsRef.current = target.filter((a) => a.id);
+      queryClient.invalidateQueries({ queryKey: productKeys.detail(id) });
+    } finally {
+      attrSyncing.current = false;
     }
-
-    queryClient.invalidateQueries({ queryKey: productKeys.detail(id) });
   }
 
   async function onSubmit(values: EditProductForm) {
@@ -360,7 +416,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {/* Photos */}
           <div>
             <Label>Фото товара</Label>
-            <MultiImageUploader value={images} onChange={handleImagesChange} maxFiles={8} />
+            <MultiImageUploader
+              value={images}
+              onChange={handleImagesChange}
+              maxFiles={8}
+              reorderable={false}
+            />
+            {imageError && (
+              <p className="mt-2 text-xs" style={{ color: colors.danger }}>
+                {imageError}
+              </p>
+            )}
           </div>
 
           {/* Display type */}

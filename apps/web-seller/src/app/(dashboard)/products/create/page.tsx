@@ -10,7 +10,7 @@ import { track } from '../../../../lib/analytics';
 import { MultiImageUploader, type MultiImageItem } from '../../../../components/multi-image-uploader';
 import { ProductAttributesSection, type AttributeItem } from '../../../../components/product-attributes-section';
 import { CategoryFiltersSection, type FilterValue } from '../../../../components/category-filters-section';
-import { VariantsMatrixBuilder, type VariantCell } from '../../../../components/variants-matrix-builder';
+import { VariantsMatrixBuilder, VARIANT_LABEL_SEP, type VariantCell } from '../../../../components/variants-matrix-builder';
 import { Select } from '../../../../components/select';
 import { DisplayTypeSelector } from '../../../../components/display-type-selector';
 import { titlePlaceholder, descriptionPlaceholder } from '../../../../lib/product-examples';
@@ -32,7 +32,7 @@ function isHiddenCategory(cat: { slug: string; nameRu: string }): boolean {
   return HIDDEN_CATEGORY_SLUGS.has(cat.slug) || HIDDEN_CATEGORY_NAME_RE.test(cat.nameRu);
 }
 
-import { card, colors, dangerTint, inputStyle as inputBase } from '@/lib/styles';
+import { card, colors, dangerTint, warningTint, inputStyle as inputBase } from '@/lib/styles';
 
 // ── Form types ────────────────────────────────────────────────────────────────
 
@@ -72,6 +72,9 @@ export default function CreateProductPage() {
   const [filterValues, setFilterValues] = useState<Record<string, FilterValue>>({});
   const [variantSelection, setVariantSelection] = useState<Record<string, string[]>>({});
   const [variantCells, setVariantCells] = useState<Record<string, VariantCell>>({});
+  // WS-B10: товар создан, но часть фото/характеристик/вариантов не сохранилась.
+  const [partialWarning, setPartialWarning] = useState<string | null>(null);
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null);
 
   const { data: categories = [] } = useStoreCategories();
   const { data: globalCategoriesRaw = [] } = useGlobalCategories();
@@ -120,6 +123,11 @@ export default function CreateProductPage() {
 
     const productId = product.id;
 
+    // WS-B10: считаем сбои пост-создания, чтобы не выдать «успех» молча.
+    let failedPhotos = 0;
+    let failedAttrs = 0;
+    let failedVariants = 0;
+
     // Parallel: фото + атрибуты. Не валим product create если что-то упало.
     const photoPromises = images.map((img, idx) =>
       addProductImage(productId, {
@@ -128,6 +136,7 @@ export default function CreateProductPage() {
         sortOrder: idx,
       }).catch((err) => {
         console.error(`Image #${idx} failed`, err);
+        failedPhotos++;
         return null;
       }),
     );
@@ -151,6 +160,7 @@ export default function CreateProductPage() {
     const attrPromises = [...freeAttrs, ...filterAttrs].map((a) =>
       createProductAttribute(productId, a).catch((err) => {
         console.error(`Attribute "${a.name}" failed`, err);
+        failedAttrs++;
         return null;
       }),
     );
@@ -201,7 +211,7 @@ export default function CreateProductPage() {
       // Создаём варианты по матрице.
       const baseSku = (values.sku || `P-${productId.slice(0, 6)}`).toUpperCase();
       for (const [label, cell] of Object.entries(variantCells)) {
-        const parts = label.split(' / ');
+        const parts = label.split(VARIANT_LABEL_SEP);
         const optionValueIds: string[] = [];
         let okay = true;
         for (let i = 0; i < multiFilters.length; i++) {
@@ -223,11 +233,27 @@ export default function CreateProductPage() {
           });
         } catch (err) {
           console.error(`Variant "${label}" failed`, err);
+          failedVariants++;
         }
       }
     }
 
     track.productCreated(product.storeId, product.id);
+
+    // WS-B10: если часть данных не сохранилась — не редиректим молча как при
+    // полном успехе. Показываем баннер с возможностью открыть товар и дозаполнить.
+    if (failedPhotos > 0 || failedAttrs > 0 || failedVariants > 0) {
+      const parts: string[] = [];
+      if (failedPhotos > 0) parts.push(`фото: ${failedPhotos}`);
+      if (failedAttrs > 0) parts.push(`характеристики: ${failedAttrs}`);
+      if (failedVariants > 0) parts.push(`варианты: ${failedVariants}`);
+      setCreatedProductId(productId);
+      setPartialWarning(
+        `Товар создан, но не сохранилось — ${parts.join(', ')}. Откройте товар и добавьте недостающее.`,
+      );
+      return;
+    }
+
     router.push('/products');
   }
 
@@ -240,6 +266,51 @@ export default function CreateProductPage() {
   };
 
   const inputFocusClass = "focus:ring-0 focus:outline-none";
+
+  // WS-B10: товар создан, но часть данных не сохранилась — отдельный экран
+  // вместо молчаливого редиректа «как при успехе» (форму не показываем,
+  // чтобы продавец повторным сабмитом не создал дубль товара).
+  if (partialWarning) {
+    return (
+      <div className="max-w-xl">
+        <div className="rounded-xl p-6 flex flex-col gap-4" style={card}>
+          <h1 className="text-lg font-bold" style={{ color: colors.textPrimary }}>
+            Товар создан
+          </h1>
+          <div
+            className="px-4 py-3 rounded-md text-sm"
+            style={{
+              background: warningTint(0.12),
+              border: `1px solid ${warningTint(0.30)}`,
+              color: colors.textPrimary,
+            }}
+          >
+            {partialWarning}
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => router.push('/products')}
+              className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
+            >
+              К товарам
+            </button>
+            {createdProductId && (
+              <button
+                type="button"
+                onClick={() => router.push(`/products/${createdProductId}/edit`)}
+                className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ background: colors.accent, color: colors.accentTextOnBg }}
+              >
+                Открыть товар
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl">

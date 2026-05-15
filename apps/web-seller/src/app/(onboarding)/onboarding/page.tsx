@@ -421,33 +421,51 @@ export default function OnboardingPage() {
   async function handleStep2(data: Step2Data) {
     if (!step1Data) return;
     setError(undefined);
-    try {
-      // Если пользователь ещё BUYER — сначала делаем upgrade до SELLER и получаем новые токены
-      if (user && user.role !== 'SELLER') {
+
+    // Если пользователь ещё BUYER — сначала upgrade до SELLER и получаем новые токены.
+    // applySeller идемпотентен на retry: при role==='SELLER' этот блок пропускается.
+    if (user && user.role !== 'SELLER') {
+      try {
         const applied = await applySeller();
         login(applied.accessToken, applied.refreshToken, applied.user);
+      } catch {
+        setError('Не удалось оформить продавца. Попробуйте ещё раз.');
+        return;
       }
+    }
 
-      // Normalise telegram username
-      const telegramUsername = data.telegramUsername.startsWith('@')
-        ? data.telegramUsername
-        : `@${data.telegramUsername}`;
+    // Normalise telegram username
+    const telegramUsername = data.telegramUsername.startsWith('@')
+      ? data.telegramUsername
+      : `@${data.telegramUsername}`;
 
-      const [store] = await Promise.all([
-        createStore.mutateAsync({
-          name:                step1Data.name,
-          slug:                step1Data.slug,
-          city:                data.city,
-          telegramContactLink: data.telegramContactLink,
-        }),
-        updateProfile.mutateAsync({ telegramUsername }),
-      ]);
-      track.storeCreated(store.id, store.slug);
-      track.sellerProfileCompleted(store.id);
-      setStep(2);
+    // Магазин создаём ПЕРВЫМ и отдельно. Раньше createStore + updateProfile шли
+    // в Promise.all — при сбое профиля магазин уже создан, а retry падал дублем
+    // (INV-S01: один продавец = один магазин) и запирал на шаге 2.
+    let store;
+    try {
+      store = await createStore.mutateAsync({
+        name:                step1Data.name,
+        slug:                step1Data.slug,
+        city:                data.city,
+        telegramContactLink: data.telegramContactLink,
+      });
     } catch {
       setError('Не удалось создать магазин. Попробуйте ещё раз.');
+      return;
     }
+
+    // Профиль (telegram username) — вторично. Сбой здесь НЕ должен запирать
+    // продавца: магазин уже создан, username дозаполняется в настройках.
+    try {
+      await updateProfile.mutateAsync({ telegramUsername });
+    } catch {
+      /* non-fatal — магазин создан, профиль можно дозаполнить позже */
+    }
+
+    track.storeCreated(store.id, store.slug);
+    track.sellerProfileCompleted(store.id);
+    setStep(2);
   }
 
   async function handleSubmit() {

@@ -22,6 +22,12 @@ export interface MultiImageUploaderProps {
   value: MultiImageItem[];
   onChange: (next: MultiImageItem[]) => void;
   maxFiles?: number;
+  /**
+   * Разрешить смену порядка (drag) и выбор главного фото.
+   * `false` для edit-страницы: backend не имеет PATCH-эндпоинта на reorder
+   * (API-PRODUCT-IMAGES-PATCH-001), и перетаскивание там молча не сохранялось.
+   */
+  reorderable?: boolean;
 }
 
 function describeError(err: unknown): string {
@@ -41,6 +47,7 @@ export function MultiImageUploader({
   value,
   onChange,
   maxFiles = DEFAULT_MAX,
+  reorderable = true,
 }: MultiImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -123,12 +130,12 @@ export function MultiImageUploader({
         {value.map((item, idx) => (
           <div
             key={item.mediaId}
-            draggable
-            onDragStart={(e) => onDragStart(e, idx)}
-            onDragOver={(e) => onDragOverItem(e, idx)}
-            onDrop={(e) => onDropItem(e, idx)}
-            onDragLeave={() => setDragOverIdx(null)}
-            className="relative aspect-square rounded-lg overflow-hidden cursor-move"
+            draggable={reorderable}
+            onDragStart={reorderable ? (e) => onDragStart(e, idx) : undefined}
+            onDragOver={reorderable ? (e) => onDragOverItem(e, idx) : undefined}
+            onDrop={reorderable ? (e) => onDropItem(e, idx) : undefined}
+            onDragLeave={reorderable ? () => setDragOverIdx(null) : undefined}
+            className={`relative aspect-square rounded-lg overflow-hidden ${reorderable ? 'cursor-move' : ''}`}
             style={{
               border: `2px solid ${dragOverIdx === idx ? colors.accent : colors.border}`,
               background: colors.surfaceMuted,
@@ -148,7 +155,7 @@ export function MultiImageUploader({
                 <Star size={10} />
                 Главное
               </div>
-            ) : (
+            ) : reorderable ? (
               <button
                 type="button"
                 onClick={() => makePrimary(idx)}
@@ -159,7 +166,7 @@ export function MultiImageUploader({
               >
                 <Star size={12} />
               </button>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={() => removeAt(idx)}
@@ -208,7 +215,8 @@ export function MultiImageUploader({
         </p>
       )}
       <p className="mt-2 text-xs" style={{ color: colors.textDim }}>
-        До {maxFiles} фото · Первое — главное · Перетащи чтобы поменять порядок
+        До {maxFiles} фото · Первое — главное
+        {reorderable && ' · Перетащи чтобы поменять порядок'}
       </p>
     </div>
   );

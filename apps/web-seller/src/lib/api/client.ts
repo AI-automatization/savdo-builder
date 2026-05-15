@@ -38,7 +38,8 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint =
       url.includes('/auth/logout') ||
       url.includes('/auth/refresh') ||
-      url.includes('/auth/otp/');
+      url.includes('/auth/request-otp') ||
+      url.includes('/auth/verify-otp');
     if (error.response?.status !== 401 || original._retry || isAuthEndpoint) {
       return Promise.reject(error);
     }

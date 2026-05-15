@@ -18,6 +18,19 @@ export interface VariantCell {
   priceOverride?: number;
 }
 
+/**
+ * Разделитель в составном ключе варианта (tuple значений опций -> label).
+ * ASCII Unit Separator (codepoint 31) — пользователь его ввести не может,
+ * поэтому label.split(VARIANT_LABEL_SEP) безопасен даже когда значение опции
+ * само содержит " / " (напр. размер "S / M"). Для показа склеиваем " / ".
+ */
+export const VARIANT_LABEL_SEP = String.fromCharCode(31);
+
+/** Человекочитаемый вид составного ключа варианта. */
+export function variantLabelDisplay(label: string): string {
+  return label.split(VARIANT_LABEL_SEP).join(' / ');
+}
+
 export interface VariantsMatrixBuilderProps {
   filters: StorefrontCategoryFilter[];
   selection: Record<string, string[]>;          // filterKey → selected values
@@ -50,7 +63,7 @@ export function VariantsMatrixBuilder({
     if (multiFilters.length === 0) return [];
     const arrays = multiFilters.map((f) => selection[f.key] ?? []);
     if (arrays.some((a) => a.length === 0)) return [];
-    return cartesian(arrays).map((tuple) => tuple.join(' / '));
+    return cartesian(arrays).map((tuple) => tuple.join(VARIANT_LABEL_SEP));
   }, [multiFilters, selection]);
 
   if (multiFilters.length === 0) return null;
@@ -129,7 +142,7 @@ export function VariantsMatrixBuilder({
                       border: `1px solid ${colors.border}`,
                     }}
                   >
-                    {label}
+                    {variantLabelDisplay(label)}
                   </div>
                   <div className="w-20">
                     <input
