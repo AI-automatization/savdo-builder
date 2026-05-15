@@ -1,5 +1,22 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] ✅ Исправлено — TMA не деплоился
+- **Статус:** ✅ Исправлено (Полат, 15.05.2026)
+- **Что случилось:** Railway сервис `telegram-app` упал на сборке —
+  `No start command detected`, build driver = Railpack (auto-detect),
+  а не Dockerfile. Railpack видит pnpm-workspace из 8 пакетов и не знает
+  что TMA — статический Vite SPA.
+- **Root cause:** сервис `telegram-app` имеет Root Directory = корень репо
+  и читал корневой `railway.toml`. Wave 19 DevOps audit (commit `68d1389`)
+  удалил корневой `railway.toml` как «конфликтующий» — но для ветки `tma`
+  это был рабочий конфиг (`builder=DOCKERFILE` → `apps/tma/Dockerfile`).
+  Без него Railway свалился на Railpack.
+- **Что сделано:** восстановлен корневой `railway.toml` на ветке `tma`
+  (commit `798f720`). Живёт только на `tma` — main держит файл вне
+  трекинга. api/admin не затронуты (у них свой механизм конфига).
+- **Урок:** перед удалением деплой-конфига проверять, какой сервис его
+  читает. `railway.toml` в корне деплой-ветки ≠ мусор.
+
 ## [2026-05-15] [API-CHECKOUT-CONFIRM-500-001] 🟡 ЧАСТИЧНО — fault-isolation side-effects (Полат)
 - **Статус:** 🟡 Defensive fix задеплоен, root cause ещё под вопросом
 - **Что сделано (Полат, 15.05.2026):**
