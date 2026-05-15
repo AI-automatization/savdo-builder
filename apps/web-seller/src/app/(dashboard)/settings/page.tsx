@@ -6,17 +6,17 @@ import Link from 'next/link';
 import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories } from '@/hooks/use-seller';
 import { ChevronRight } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
-import type { Store } from 'types';
+import type { Store, StoreDeliverySettings } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
 import { Select, type SelectOption } from '@/components/select';
 import { card, colors, inputStyle as inputStyleBase } from '@/lib/styles';
 
-// Backend returns deliverySettings nested in Store response (not yet in shared types)
+// Seller Store-ответ включает nested deliverySettings; тип Store его пока не
+// моделирует (Полат добавил StoreDeliverySettings только в StorefrontStore —
+// API-STORE-DELIVERY-SETTINGS-TYPE-001). Используем канонический тип вместо
+// ad-hoc inline-литерала.
 type StoreWithDelivery = Store & {
-  deliverySettings?: {
-    deliveryFeeType: 'fixed' | 'manual' | 'none';
-    fixedDeliveryFee: number;
-  } | null;
+  deliverySettings?: StoreDeliverySettings | null;
 };
 
 const inputBase =

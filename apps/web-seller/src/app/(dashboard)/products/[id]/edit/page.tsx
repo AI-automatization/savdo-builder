@@ -140,13 +140,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       setStoreCategoryId(product.storeCategoryId ?? null);
       initialCategoryIdRef.current = product.storeCategoryId ?? null;
 
-      // Init multi-image state from product.images (mediaUrls для URL, raw images
-      // через cast для доступа к id/mediaId — типы в packages/types минимальны,
-      // фактический API возвращает полную форму).
-      type RawImage = { id: string; mediaId: string; url?: string };
-      const rawImages = (product as unknown as { images?: RawImage[] }).images ?? [];
+      // Init multi-image state from product.images (ProductImageRef[] из
+      // packages/types — API-PRODUCT-IMAGES-FULL-SHAPE-001). На seller detail
+      // endpoint id/mediaId всегда заполнены; в типе они optional ради лёгких
+      // feed-ответов, поэтому ниже идут ?? / guard.
+      const rawImages = product.images ?? [];
       const items: MultiImageItem[] = rawImages.map((img, i) => ({
-        mediaId: img.mediaId ?? img.id,
+        mediaId: img.mediaId ?? img.id ?? '',
         previewUrl: img.url ?? product.mediaUrls?.[i] ?? '',
       }));
       setImages(items);
@@ -154,7 +154,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       const map = new Map<string, string>();
       for (const img of rawImages) {
         const key = img.mediaId ?? img.id;
-        map.set(key, img.id);
+        if (key && img.id) map.set(key, img.id);
       }
       imageIdMapRef.current = map;
 
