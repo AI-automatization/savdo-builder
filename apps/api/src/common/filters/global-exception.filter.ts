@@ -9,6 +9,7 @@ import {
 import { Request, Response } from 'express';
 import { DomainException } from '../exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+import { ErrorReporter } from '../../shared/error-reporter';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -27,6 +28,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const res = exception.getResponse();
+      // API-SENTRY-001: 5xx HttpException (ServiceUnavailable и т.п.) — тоже инцидент.
+      // 4xx — клиентские ошибки, не репортим.
+      if (status >= 500) {
+        ErrorReporter.captureException(exception, this.requestContext(request));
+      }
       return response.status(status).json(
         typeof res === 'object'
           ? res
@@ -34,6 +40,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
+    // API-SENTRY-001: unhandled exception всегда 500 — репортим в ErrorReporter.
+    ErrorReporter.captureException(exception, this.requestContext(request));
     this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));
 
     return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
@@ -42,5 +50,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message: 'Internal server error',
       details: {},
     });
+  }
+
+  /**
+   * Контекст запроса для ErrorReporter. PII-скраббинг (token/secret) делает
+   * сам ErrorReporter.scrubPII — здесь только не-чувствительные поля.
+   */
+  private requestContext(request: Request): Record<string, unknown> {
+    const userId = (request as Request & { user?: { id?: string } }).user?.id;
+    return {
+      source: 'GlobalExceptionFilter',
+      method: request?.method,
+      path: request?.originalUrl ?? request?.url,
+      ...(userId ? { userId } : {}),
+    };
   }
 }
