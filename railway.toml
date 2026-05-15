@@ -1,0 +1,22 @@
+# Railway config для сервиса telegram-app (TMA).
+#
+# Этот файл существует ТОЛЬКО на ветке `tma`. Railway сервис telegram-app
+# имеет Root Directory = корень репозитория и читает railway.toml отсюда.
+# Без него Railway падает на Railpack auto-detect («No start command detected»).
+#
+# Удалён по ошибке в Wave 19 DevOps audit (commit 68d1389) → деплой TMA
+# сломался 15.05.2026. Восстановлен. НЕ удалять и НЕ мержить в main
+# (main держит railway.toml вне трекинга, у каждой деплой-ветки свой).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/tma/Dockerfile"
+# DEVOPS-AUDIT-2026-05-14: + packages/types (пересборка при изменении DTO),
+# + packages/ui (на будущее, сейчас TMA не зависит).
+watchPatterns = ["apps/tma/**", "packages/types/**", "packages/ui/**"]
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
