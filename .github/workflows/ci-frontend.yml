@@ -1,0 +1,51 @@
+name: CI — Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/tma/**'
+      - 'apps/admin/**'
+      - 'packages/types/**'
+      - 'packages/ui/**'
+      - '.github/workflows/ci-frontend.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/tma/**'
+      - 'apps/admin/**'
+      - 'packages/types/**'
+      - 'packages/ui/**'
+
+jobs:
+  ci:
+    name: Type check · Build (${{ matrix.app }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [tma, admin]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # tsc -b строит packages/types по project references автоматически,
+      # затем vite build. Один шаг покрывает type-check + bundle.
+      - name: Build
+        run: pnpm --filter ${{ matrix.app }} build
