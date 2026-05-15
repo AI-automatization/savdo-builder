@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-05-15 (Полат) — Wave 22: TMA buyer i18n + TMA deploy fix
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA buyer pages) 🔴
+Локализованы buyer-страницы TMA. Cart/Checkout/Orders/Product/Wishlist уже
+были на `t()`; добавлены 3 оставшиеся:
+- **ChatPage** — статусы тредов, меню действий, reply-баннеры, ошибки,
+  заголовки. Параметры `t` в `threadLabel`/`threadContext`/`threads.map`
+  переименованы в `thread` (шадовили функцию перевода).
+- **StorePage** — confirm замены корзины, тосты, verified-бейдж, фильтр
+  категорий, цена locale-aware.
+- **StoresPage** — фильтр «Все», сброс/диапазон цены, contact-tooltip.
+~40 новых ключей в `ru.ts` + `uz.ts` (узбекские с `ʻ`/`ʼ`). Все 10 buyer +
+5 seller страниц TMA теперь на i18n. Коммит `aad2bab`.
+
+### ✅ [DEPLOY-TMA-RAILPACK-FAIL-001] 🔴
+TMA не деплоился: Wave 19 DevOps audit удалил корневой `railway.toml`,
+Railway свалился на Railpack. Восстановлен `railway.toml` (`798f720`),
+`railway.toml` добавлен в watchPatterns (`6a39a06`), деплой раскручен
+version-bump'ом `apps/tma/package.json` (`0c57bad`). Задеплоился успешно.
+
+**Осталось по локализации:** admin (нет i18n-инфры), API `Accept-Language`.
+
 ## 2026-05-15 (Полат) — Wave 21: broken media + i18n + Sentry + frontend CI
 
 ### ✅ [API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001] 🔴
