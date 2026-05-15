@@ -1,5 +1,46 @@
 # Done — Азим + Полат
 
+## 2026-05-15 (Азим) — QA-аудит wave 2: 🟡 «сильно желательно»
+
+Коммиты `fb5febf` (ветка web-buyer), `47ea98d` (ветка web-seller).
+`tsc --noEmit` чист в обоих апах.
+
+### ✅ web-buyer (`fb5febf`)
+- **WB-B05** — checkout: протухший токен запирал на форме (`confirm` молча
+  401). Слушатель `savdo:auth:expired` → возврат на OTP-шаг. Убран мёртвый
+  `isAuthed`.
+- **WB-B06** — chats: удаление открытого треда перекидывало в чужой чат.
+  Авто-выбор `threads[0]` теперь только при первой загрузке (ref-guard).
+- **WB-B11** — `use-chat`: входящее сообщение помечало тред прочитанным даже
+  при свёрнутой вкладке → терялся unread. Гейт по `document.visibilityState`.
+- **WB-B12** — `use-notifications`: `readAll` давал flicker (unread→read).
+  `onMutate` с оптимистичным `isRead=true`.
+- **WB-B13** — notifications: строка не-order уведомления имела `cursor-pointer`,
+  но клик — no-op. cursor/hover/onClick только при наличии цели.
+- **error-UI** — каталоги `/stores` и `/products` игнорировали `isError` →
+  сбой сети показывался как «пусто». Добавлен error-state + «Повторить»
+  (`refetch`); `EmptyState` расширен опциональным `onCta`.
+- **Файлы:** `hooks/use-chat.ts`, `hooks/use-notifications.ts`,
+  `app/(shop)/{chats,notifications,stores,products}/page.tsx`,
+  `app/(minimal)/checkout/page.tsx`, `components/catalog/EmptyState.tsx`.
+
+### ✅ web-seller (`47ea98d`)
+- **WS-B07** — `InlineStockEditor`: `draft` не ре-синхронизировался с `current`
+  после `adjustStock` → возможно двойное применение delta. `key` с
+  `stockQuantity` → remount после рефетча.
+- **WS-B08** — варианты: дубль с той же комбинацией опций не блокировался.
+  Проверка `optionValueIds` + inline-ошибка.
+- **WS-B16** — orders: аккумулятор страниц дублировал строки при фоновом
+  рефетче текущей страницы (>1). `lastAppendedPage`-ref: append только для
+  новой страницы, рефетч обновляет строки на месте.
+- **WS-B17** — dashboard: «Ожидают обработки» считался по 5 загруженным
+  строкам → занижение при >5. Отдельный запрос `status=PENDING` → `meta.total`.
+- **WS-B19** — orders + order detail: показывали `shortId(id)` вместо
+  канонического `orderNumber` (продавец видел не тот «номер», что покупатель/
+  уведомления/Telegram). Везде → `orderNumber`, поиск тоже.
+- **Файлы:** `components/product-variants-section.tsx`,
+  `app/(dashboard)/orders/page.tsx`, `orders/[id]/page.tsx`, `dashboard/page.tsx`.
+
 ## 2026-05-15 (Азим) — QA-аудит wave 1: 🔴 блокеры запуска
 
 Закрыты 🔴-блокеры из `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.

@@ -75,10 +75,13 @@ root cause ещё не подтверждён.
 - ⏳ `WB-B01` доставка не считается — ждёт `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
   (Полат, контракт preview).
 
-**Волна 2 — 🟡 сильно желательно (ещё не начато):**
-- web-buyer: `WB-B05/B06/B11/B12/B13` (чат/уведомления), error-UI вместо «пусто».
-- web-seller: `WS-B07/B08/B16/B17/B19`.
-- **Детали и file:line** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+**Волна 2 ✅ 15.05.2026** — `fb5febf` (web-buyer) + `47ea98d` (web-seller).
+Закрыты: `WB-B05/B06/B11/B12/B13` (чат/уведомления + checkout auth), error-UI
+каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
+
+**Статус:** все 🔴-блокеры (кроме `WB-B01`, ждёт Полата) и 🟡-волна закрыты.
+Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
+дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
 
 ## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат)
 

@@ -379,11 +379,24 @@ page>1 триггерит это.
   от Полата (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`).
 
 ## 🟡 Сильно желательно до запуска
-- `WB-B05/B06` чат: чужой тред / read-mark; `WB-B12/B13` уведомления
-- `WS-B07/B08` стоки/дубли вариантов; `WS-B16` дубли заказов; `WS-B17` KPI;
-  `WS-B19` orderNumber
-- Error-UI вместо «пусто» (homepage / каталоги web-buyer)
-- Модалки без Esc/focus в обоих апах
+
+**Волна 2 ✅ закрыта 15.05.2026 (Азим)** — `fb5febf` (web-buyer), `47ea98d` (web-seller):
+- ✅ `WB-B05` протухший токен запирал на checkout — слушатель `auth:expired`
+- ✅ `WB-B06` удаление открытого треда перекидывало в чужой чат
+- ✅ `WB-B11` read-mark при свёрнутой вкладке — гейт по `visibilityState`
+- ✅ `WB-B12` flicker readAll уведомлений — оптимистичный `onMutate`
+- ✅ `WB-B13` мёртвый клик на не-order уведомлении
+- ✅ Error-UI в каталогах `/stores` и `/products` (вместо «пусто»)
+- ✅ `WS-B07` `InlineStockEditor` double-apply — `key`-remount
+- ✅ `WS-B08` дубли вариантов с той же комбинацией опций
+- ✅ `WS-B16` дубли строк заказов при рефетче — `lastAppendedPage`
+- ✅ `WS-B17` дашборд KPI «Ожидают» врал при >5 — отдельный count-запрос
+- ✅ `WS-B19` `shortId` → канонический `orderNumber` (orders + detail)
+
+**Осталось из 🟡:**
+- Модалки без Esc/focus в обоих апах (a11y) — перенесено в 🟢/после-запуска.
+- Homepage-блоки при ошибке делают `return null` (graceful degradation —
+  оставлено; критичный кейс каталогов закрыт).
 
 ## 🟢 После запуска
 - Скидки в `ProductCard`, пагинация отзывов, desktop-галерея 4 фото
