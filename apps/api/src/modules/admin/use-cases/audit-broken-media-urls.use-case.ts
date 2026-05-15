@@ -2,13 +2,28 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { PrismaService } from '../../../database/prisma.service';
 
+export interface AuditBrokenMediaInput {
+  /** Размер батча (clamp 1..500). */
+  limit?: number;
+  /** id последней записи предыдущего батча — сканировать дальше неё. */
+  cursorId?: string;
+}
+
 export interface AuditBrokenMediaResult {
   scanned: number;
   broken: number;
   ok: number;
   /** mediaFileId'ы помеченные bucket='broken' в этом прогоне. */
   markedIds: string[];
+  /**
+   * id последней просканированной записи. Передать как `cursorId` в следующий
+   * вызов чтобы продолжить аудит. null — достигнут конец таблицы.
+   */
+  nextCursor: string | null;
 }
+
+/** Сколько HEAD-запросов выполнять параллельно. */
+const HEAD_CONCURRENCY = 10;
 
 /**
  * API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001:
@@ -21,8 +36,16 @@ export interface AuditBrokenMediaResult {
  * HEAD-запрос на public URL, и помечает мёртвые `bucket='broken'`. После
  * этого `resolveImageUrl` возвращает '' → фронт рендерит «Без фото» placeholder.
  *
- * Запускать батчами: `POST /admin/media/audit-broken-urls?limit=100` (admin).
- * Idempotent — уже-broken записи пропускаются (не сканируются повторно).
+ * **Cursor-пагинация.** Аудит идёт батчами через `cursorId` (id последней
+ * записи). Без курсора (`take` от начала) повторный прогон всегда сканирует
+ * первые N alive-записей и не доходит до хвоста таблицы. Admin листает:
+ * `POST /admin/media/audit-broken-urls?limit=200` → берёт `nextCursor` из
+ * ответа → `?limit=200&cursor=<id>` → пока `nextCursor` не null.
+ *
+ * HEAD-запросы идут пулом по {@link HEAD_CONCURRENCY} — иначе батч из мёртвых
+ * URL'ов с 5s-таймаутом блокировал бы запрос на минуты.
+ *
+ * Idempotent — уже-broken записи не попадают в кандидаты.
  *
  * Схема MediaFile не имеет статус-поля — используем bucket-маркер, как
  * 'telegram-expired' в migrate-tg-media-to-r2 (тот же паттерн).
@@ -36,53 +59,70 @@ export class AuditBrokenMediaUrlsUseCase {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async execute(limit = 100): Promise<AuditBrokenMediaResult> {
+  async execute(input: AuditBrokenMediaInput = {}): Promise<AuditBrokenMediaResult> {
+    const empty: AuditBrokenMediaResult = {
+      scanned: 0, broken: 0, ok: 0, markedIds: [], nextCursor: null,
+    };
+
     const publicBase = (process.env.STORAGE_PUBLIC_URL ?? '').replace(/\/$/, '');
     if (!publicBase) {
       this.logger.warn('STORAGE_PUBLIC_URL не задан — audit невозможен');
-      return { scanned: 0, broken: 0, ok: 0, markedIds: [] };
+      return empty;
     }
+
+    const rawLimit = Number(input.limit);
+    const limit = Number.isFinite(rawLimit)
+      ? Math.min(Math.max(Math.trunc(rawLimit), 1), 500)
+      : 100;
 
     // Кандидаты: всё что resolveImageUrl попытается отдать как direct URL.
     // telegram / telegram-expired / broken — пропускаем (их resolveImageUrl
-    // и так не строит как Supabase-URL).
+    // и так не строит как Supabase-URL). Cursor двигает окно по id.
     const candidates = await this.prisma.mediaFile.findMany({
       where: {
         bucket: { notIn: ['telegram', 'telegram-expired', 'broken'] },
+        ...(input.cursorId ? { id: { gt: input.cursorId } } : {}),
       },
       select: { id: true, objectKey: true },
       orderBy: { id: 'asc' },
-      take: Math.min(Math.max(limit, 1), 500),
+      take: limit,
     });
 
-    if (candidates.length === 0) {
-      return { scanned: 0, broken: 0, ok: 0, markedIds: [] };
-    }
+    if (candidates.length === 0) return empty;
 
-    let broken = 0;
-    let ok = 0;
-    const markedIds: string[] = [];
+    // HEAD-проверки пулом по HEAD_CONCURRENCY.
+    const checks = await this.mapWithConcurrency(
+      candidates,
+      HEAD_CONCURRENCY,
+      async (media) => ({
+        id: media.id,
+        alive: await this.isUrlAlive(`${publicBase}/${media.objectKey}`),
+      }),
+    );
 
-    for (const media of candidates) {
-      const url = `${publicBase}/${media.objectKey}`;
-      const alive = await this.isUrlAlive(url);
-      if (alive) {
-        ok++;
-        continue;
-      }
-      // Мёртвый URL — помечаем bucket='broken'.
-      await this.prisma.mediaFile.update({
-        where: { id: media.id },
+    const brokenIds = checks.filter((c) => !c.alive).map((c) => c.id);
+    if (brokenIds.length > 0) {
+      await this.prisma.mediaFile.updateMany({
+        where: { id: { in: brokenIds } },
         data: { bucket: 'broken' },
       });
-      broken++;
-      markedIds.push(media.id);
     }
 
+    const result: AuditBrokenMediaResult = {
+      scanned: candidates.length,
+      broken: brokenIds.length,
+      ok: candidates.length - brokenIds.length,
+      markedIds: brokenIds,
+      // Если вернулся полный батч — возможно есть ещё; иначе конец таблицы.
+      nextCursor:
+        candidates.length === limit ? candidates[candidates.length - 1].id : null,
+    };
+
     this.logger.log(
-      `Broken-media audit: scanned ${candidates.length}, broken ${broken}, ok ${ok}`,
+      `Broken-media audit: scanned ${result.scanned}, broken ${result.broken}, ` +
+        `ok ${result.ok}, nextCursor ${result.nextCursor ?? '<end>'}`,
     );
-    return { scanned: candidates.length, broken, ok, markedIds };
+    return result;
   }
 
   /**
@@ -100,5 +140,27 @@ export class AuditBrokenMediaUrlsUseCase {
       // network error / timeout / DNS — считаем мёртвым
       return false;
     }
+  }
+
+  /**
+   * map с ограничением параллелизма — фиксированный пул воркеров разбирает
+   * общую очередь индексов. Сохраняет порядок результатов.
+   */
+  private async mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    fn: (item: T) => Promise<R>,
+  ): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < items.length) {
+        const i = next++;
+        results[i] = await fn(items[i]);
+      }
+    };
+    const pool = Array.from({ length: Math.min(concurrency, items.length) }, worker);
+    await Promise.all(pool);
+    return results;
   }
 }

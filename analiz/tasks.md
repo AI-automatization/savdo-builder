@@ -7,26 +7,32 @@
 
 # 🚨🚨🚨 ПОЛАТУ — СРОЧНО ПОСМОТРЕТЬ ПЕРВЫМ ДЕЛОМ (от 14.05.2026 ночь)
 
-## 🔴 P0 BLOCKER — `API-CHECKOUT-CONFIRM-500-001`
+## 🟡 P0 — `API-CHECKOUT-CONFIRM-500-001` — частично, ждёт redeploy + логи
 
-**Buyer не может оформить заказ.** На проде `POST /api/v1/checkout/confirm` возвращает HTTP 500 «Internal server error» — Azim воспроизвёл вечером 14.05.2026 в web-buyer checkout.
+**Статус 15.05.2026 (Полат):** defensive fix + диагностика задеплоены,
+root cause ещё не подтверждён.
 
-**Что нужно сделать:**
-1. Открыть Railway logs `savdo-api-production` за последние часы (с ~22:00 14.05.2026)
-2. Найти stack trace с `[CheckoutController]` или `[CheckoutService]`
-3. Подозрения (по убывающей вероятности):
-   - Decimal arithmetic floating-point (см. `analiz/logs.md` `P3-004-FLOATING-POINT` — твой же похожий pattern)
-   - Stock decrement INV-O04 (race / constraint violation)
-   - DB constraint violation на Order/OrderItem create
-   - Transaction rollback
-   - Telegram notification job enqueue падает
-4. Файлы: `apps/api/src/modules/checkout/checkout.controller.ts` + `checkout.use-case.ts` + `orders.repository.ts`
+**Что сделано:**
+1. ✅ **Fault-isolation** — `confirm-checkout.use-case.ts`: post-commit
+   side-effects (clearCart, WS-emit, TG-notify) обёрнуты в try/catch. Если
+   500 был из-за сбоя нотификации ПОСЛЕ создания заказа — buyer теперь
+   получает 201. Коммит `aec25e5`.
+2. ✅ **ErrorReporter в GlobalExceptionFilter** (API-SENTRY-001) — следующий
+   500 оставит полный stack trace в Railway stderr. Коммит `faaa36c`.
 
-**Frontend defensive уже работает** — Azim видит ErrorBanner с сообщением. Но до backend fix купить нельзя — это блокер launch'а.
+**Что осталось:**
+1. Дождаться redeploy `api` ветки на Railway.
+2. Если 500 повторится — взять stack trace из stderr (structured JSON,
+   `type:"exception"`, `source:"GlobalExceptionFilter"`, `path` содержит
+   `/checkout/confirm`).
+3. Если 500 ВНУТРИ транзакции `createOrder()` — root cause там (DB
+   constraint / stock race / Decimal). Если исчез — был side-effect,
+   задача закрыта.
 
-**Полные подробности:** `analiz/logs.md` под `[2026-05-14] [API-CHECKOUT-CONFIRM-500-001]`
+**Файлы:** `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`,
+`repositories/checkout.repository.ts`.
 
-После fix — закрыть здесь как `[x]` + перенести в `analiz/done.md`.
+**Подробности:** `analiz/logs.md` под `[2026-05-15] [API-CHECKOUT-CONFIRM-500-001]`.
 
 ---
 
@@ -91,7 +97,7 @@
 - [ ] **`API-STORES-PAGINATION-001`** 🟢 P3 (Полат) — `/storefront/stores` сейчас `take: 50` hardcoded в `findAllPublished` (`stores.repository.ts:59`). На 37 stores OK; при росте до 500+ — нужна server-side pagination (`page`/`limit`/`cursor`). Frontend в `/stores` каталоге уже готов потреблять paginated ответ.
 - [x] **`WEB-SELLER-PRODUCT-PARITY-001`** ✅ 13.05.2026 — функциональный паритет с TMA (multi-photo + attributes + filters + variants matrix + stock editor). 3 фазы. См. `analiz/done.md`.
 - [ ] **`API-PRODUCT-IMAGES-PATCH-001`** 🟢 P3 (Полат) — `PATCH /seller/products/:id/images/:imageId` для reorder/primary toggle. Сейчас отсутствует → web-seller edit reorder не сохраняется (только delete+recreate fallback). После добавления — web-seller подключит. Сейчас в `apps/api/src/modules/products/products.controller.ts:466-513` есть только POST (line 468) и DELETE (line 501).
-- [ ] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** 🟠 P1 (Полат) — На проде `/storefront/featured` возвращает мёртвые URLs вида `https://upjrcpxbewwceqthlzyd.supabase.co/storage/v1/object/public/savdo-public/product_image/2026/{uuid}.jpg` → 404. Подтверждено через Playwright: 3 из 5 продуктов на homepage web-buyer имеют `naturalWidth=0`. Миграция Supabase → R2/TG proxy не покрыла существующие записи `product_images`. Frontend defensive (web-buyer 14.05.2026, commit `0f1618e`): `<Image onError>` → fallback на «Без фото» placeholder. Backend нужен: либо bulk-rewrite старых URLs в R2/TG, либо deprecate этих записей (mediaUrls=[]) чтобы frontend сразу показывал placeholder без 404. Виден всем посетителям главной — подтянуть до больших маркетинговых пушей.
+- [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
 - [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **Осталось:** мигрировать остальные TMA страницы (Cart, Checkout, Orders, Product, Profile, Wishlist), admin локализацию, web-buyer/web-seller (Азим), API Accept-Language для уведомлений.

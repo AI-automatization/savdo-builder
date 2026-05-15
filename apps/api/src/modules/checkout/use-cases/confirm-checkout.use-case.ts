@@ -8,6 +8,7 @@ import { OrdersGateway } from '../../../socket/orders.gateway';
 import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import { DeliveryAddressDto, PaymentMethod as PaymentMethodInput } from '../dto/confirm-checkout.dto';
 
 export interface ConfirmCheckoutInput {
@@ -165,23 +166,56 @@ export class ConfirmCheckoutUseCase {
       ),
     });
 
-    // Clear cart items and mark cart as converted
-    await this.cartRepo.clearCart(cart.id);
-    await this.checkoutRepo.markCartConverted(cart.id);
+    // API-CHECKOUT-CONFIRM-500-001: заказ уже закоммичен транзакцией выше.
+    // Всё что ниже — побочные эффекты (очистка корзины, WS-эмит, TG-нотификация).
+    // Падение любого из них НЕ должно превращать успешно созданный заказ в
+    // HTTP 500 — иначе buyer видит «ошибку оформления», хотя заказ реально
+    // создан (и stock уже списан). Каждый side-effect изолирован try/catch.
+    try {
+      await this.cartRepo.clearCart(cart.id);
+      await this.checkoutRepo.markCartConverted(cart.id);
+    } catch (err) {
+      ErrorReporter.captureException(err, {
+        source: 'confirm-checkout:cart-cleanup',
+        orderId: order.id,
+      });
+      this.logger.error(
+        `Order ${order.orderNumber} created, but cart cleanup failed`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
 
     this.logger.log(`Order ${order.orderNumber} created for buyer ${input.buyerId}`);
 
-    this.ordersGateway.emitOrderNew(order);
+    try {
+      this.ordersGateway.emitOrderNew(order);
+    } catch (err) {
+      ErrorReporter.captureException(err, {
+        source: 'confirm-checkout:ws-emit',
+        orderId: order.id,
+      });
+      this.logger.error(
+        `Order ${order.orderNumber}: WS order:new emit failed`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
 
-    // TG notification → seller (fire-and-forget, never blocks)
-    this.tgNotifier.notifyNewOrder({
-      sellerTelegramUsername: store.seller.telegramUsername,
-      orderNumber: order.orderNumber,
-      storeName: store.name,
-      itemCount: validatedItems.length,
-      total: totalAmount,
-      currency: cart.currencyCode,
-    });
+    // TG notification → seller (fire-and-forget, never blocks).
+    try {
+      this.tgNotifier.notifyNewOrder({
+        sellerTelegramUsername: store.seller.telegramUsername,
+        orderNumber: order.orderNumber,
+        storeName: store.name,
+        itemCount: validatedItems.length,
+        total: totalAmount,
+        currency: cart.currencyCode,
+      });
+    } catch (err) {
+      ErrorReporter.captureException(err, {
+        source: 'confirm-checkout:tg-notify',
+        orderId: order.id,
+      });
+    }
 
     return order;
   }
