@@ -582,8 +582,16 @@ function ChatsView() {
   const { data: threads, isLoading, isError } = useThreads();
   const activeThread = threads?.find((t) => t.id === activeId) ?? null;
 
+  // Авто-выбор первого треда — только при первой загрузке. Иначе после
+  // удаления открытого треда (activeId → null) эффект тут же выбирал
+  // threads[0] и перекидывал пользователя в чужой чат.
+  const didAutoSelect = useRef(false);
   useEffect(() => {
-    if (!activeId && threads && threads.length > 0) setActiveId(threads[0].id);
+    if (didAutoSelect.current) return;
+    if (!activeId && threads && threads.length > 0) {
+      setActiveId(threads[0].id);
+      didAutoSelect.current = true;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads]);
 

@@ -56,15 +56,15 @@ const ORDER_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 function NotifRow({ item }: { item: NotificationItem }) {
   const router = useRouter();
 
-  function handleClick() {
-    const match = item.body.match(ORDER_ID_RE);
-    if (match) router.push(`/orders/${match[0]}`);
-  }
+  // Навигация только если в тексте есть order-UUID. Иначе строка не кликабельна —
+  // не показываем cursor-pointer/hover, чтобы не было «мёртвого» аффорданса.
+  const orderMatch = item.body.match(ORDER_ID_RE);
+  const target = orderMatch ? `/orders/${orderMatch[0]}` : null;
 
   return (
     <div
-      onClick={handleClick}
-      className="flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:opacity-90"
+      onClick={target ? () => router.push(target) : undefined}
+      className={`flex items-start gap-3 px-4 py-3.5 transition-colors ${target ? 'cursor-pointer hover:opacity-90' : ''}`}
       style={{
         background: item.isRead ? colors.surface : colors.brandMuted,
         borderBottom: `1px solid ${colors.divider}`,

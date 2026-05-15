@@ -51,6 +51,8 @@ function ProductsCatalogInner() {
   const {
     data,
     isLoading,
+    isError,
+    refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -102,7 +104,14 @@ function ProductsCatalogInner() {
           onChangeSort={(s) => updateUrl(categorySlug, s)}
         />
 
-        {!isLoading && products.length === 0 ? (
+        {isError ? (
+          <EmptyState
+            title="Не удалось загрузить товары"
+            description="Проверьте соединение и попробуйте снова"
+            ctaLabel="Повторить"
+            onCta={() => refetch()}
+          />
+        ) : !isLoading && products.length === 0 ? (
           <EmptyState
             title={
               categorySlug

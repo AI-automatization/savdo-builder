@@ -32,7 +32,7 @@ function StoresCatalogInner() {
     sort: parseSort(searchParams.get('sort')),
   });
 
-  const { data, isLoading } = useStoresCatalog();
+  const { data, isLoading, isError, refetch } = useStoresCatalog();
   const stores = data ?? [];
 
   useEffect(() => {
@@ -92,7 +92,14 @@ function StoresCatalogInner() {
 
         <StoresFilters stores={stores} value={filters} onChange={setFilters} />
 
-        {!isLoading && display.length === 0 ? (
+        {isError ? (
+          <EmptyState
+            title="Не удалось загрузить магазины"
+            description="Проверьте соединение и попробуйте снова"
+            ctaLabel="Повторить"
+            onCta={() => refetch()}
+          />
+        ) : !isLoading && display.length === 0 ? (
           <EmptyState
             title="По фильтрам ничего не нашлось"
             description="Сбросьте фильтры или вернитесь на главную"

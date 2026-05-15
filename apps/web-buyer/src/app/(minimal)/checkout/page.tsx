@@ -295,7 +295,6 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const isAuthed = !!user?.isPhoneVerified;
   // Lazy init avoids a 1-frame flash of the OTP form on hydration:
   // we already know we have a session if there's a token in storage, even if
   // the AuthContext hasn't populated `user` yet.
@@ -307,6 +306,15 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (user?.isPhoneVerified && pageStep !== "form") setPageStep("form");
   }, [user?.isPhoneVerified]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Сессия протухла (токен в storage был, но невалиден — confirm/preview дал
+  // 401, auth:expired почистил токен). Возвращаем на OTP-шаг, иначе юзер застрял
+  // бы на форме, где «Подтвердить» молча падает.
+  useEffect(() => {
+    function onExpired() { setPageStep("otp-phone"); }
+    window.addEventListener("savdo:auth:expired", onExpired);
+    return () => window.removeEventListener("savdo:auth:expired", onExpired);
+  }, []);
 
   const preview = useCheckoutPreview();
   const confirm = useConfirmCheckout();

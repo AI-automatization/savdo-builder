@@ -68,10 +68,17 @@ export function useChatSocket(threadId: string | null) {
     socket.emit('join-chat-room', { threadId });
 
     function onMessage() {
+      // Вкладка свёрнута — НЕ помечаем тред прочитанным: invalidate messages
+      // дёрнул бы refetch /messages, а backend авто-помечает read на этот
+      // запрос → потеряли бы genuine unread. Обновляем только список тредов.
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        queryClient.invalidateQueries({ queryKey: chatKeys.threads });
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: chatKeys.messages(threadId!) });
       queryClient.invalidateQueries({ queryKey: chatKeys.threads });
-      // User в треде — bunload до refetch'а threads сбрасываем unread, чтобы
-      // bottom-nav badge не «прыгал» если backend ещё не зафиксировал read.
+      // User в треде и вкладка активна — сбрасываем unread до refetch'а threads,
+      // чтобы bottom-nav badge не «прыгал» пока backend фиксирует read.
       queryClient.setQueryData<ChatThread[] | undefined>(chatKeys.threads, (old) =>
         old?.map((t) => (t.id === threadId ? { ...t, unreadCount: 0 } : t)),
       );
