@@ -1,5 +1,38 @@
 # Done — Азим + Полат
 
+## 2026-05-15 (Полат) — Wave 21: broken media + i18n + Sentry + frontend CI
+
+### ✅ [API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001] 🔴
+После миграции TG→Supabase часть `MediaFile` указывала на мёртвые Supabase URL.
+- `product-presenter.service.ts` — `resolveImageUrl` отдаёт `''` для bucket
+  `telegram-expired` **и** нового `broken`.
+- Новый `audit-broken-media-urls.use-case.ts` — сканирует MediaFile, HEAD-проверяет
+  URL (axios, 5s timeout), помечает мёртвые `bucket='broken'`.
+- `POST /admin/media/audit-broken-urls` (`media:migrate`), пишет audit_log
+  `media.audit.broken_urls`. Коммит `ffffb9c`.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA seller pages) 🟠
+Вынесены захардкоженные RU-строки на страницах продавца в i18n (ru.ts + uz.ts):
+ProfilePage, StorePage, DashboardPage, OrdersPage. OrdersPage — суммы через
+locale-aware `fmt()` + `common.currency`, заодно убран unused `fmt` (TS6133,
+ломал tma build). Коммит `1b9245c`.
+
+### ✅ [API-SENTRY-001] 🟠
+`ErrorReporter` ловил только uncaught/unhandledRejection — HTTP-обработанные
+500 проходили мимо. `GlobalExceptionFilter` теперь репортит unhandled exception
+и HttpException >= 500 с контекстом запроса (method, path, userId). Коммит `faaa36c`.
+
+### ✅ [CI-FRONTEND-001] 🟠
+Новый `.github/workflows/ci-frontend.yml` — matrix [tma, admin], build =
+`tsc -b && vite build`. До этого CI был только у backend, фронт-ошибки ловил
+Railway постфактум (как было с `CategoryFilter.label`). Коммит `7bb8359`.
+
+**Файлы:** apps/api/{admin-ops.controller,admin.module,product-presenter.service,
+audit-broken-media-urls.use-case,global-exception.filter}.ts,
+apps/tma/src/lib/i18n/{ru,uz}.ts, apps/tma/src/pages/seller/{Profile,Store,
+Dashboard,Orders}Page.tsx, .github/workflows/ci-frontend.yml.
+**Ветки:** main + api + tma + admin запушены.
+
 ## 2026-05-15 (Полат) — Wave 20: Action items от web-sync audit (6 задач + ADR)
 
 Закрыты все Action items для Полата из `analiz/audits/web-sync-2026-05-14.md`
