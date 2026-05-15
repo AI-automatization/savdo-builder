@@ -72,8 +72,9 @@ root cause ещё не подтверждён.
 `WS-B09`, `WS-B10` (`WS-B03` покрыт существующим guard). Детали — `analiz/done.md`.
 
 **Осталось из 🔴:**
-- ⏳ `WB-B01` доставка не считается — ждёт `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
-  (Полат, контракт preview).
+- ✅ `WB-B01` backend-часть готова 15.05.2026 — `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
+  закрыт (preview отдаёт реальный `deliveryFee`+`total`, тип `CheckoutPreview`
+  расширен). Азиму осталось прокинуть поле в UI checkout (web-buyer).
 
 **Волна 2 ✅ 15.05.2026** — `fb5febf` (web-buyer) + `47ea98d` (web-seller).
 Закрыты: `WB-B05/B06/B11/B12/B13` (чат/уведомления + checkout auth), error-UI
@@ -83,25 +84,23 @@ root cause ещё не подтверждён.
 Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
 дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат)
+## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
 
 - **Домен:** `packages/types` (Полат)
-- **Проблема:** фронт держит `as unknown as`/`as any` касты поверх рассинхрона
-  типов с реальными ответами API: web-buyer ~9 точек (`store.slug`, `itemCount`,
-  `name`, `stock`), web-seller — `OrderListItem` не содержит адресных полей
-  `city`/`addressLine1`, хотя API их отдаёт.
-- **Фикс:** свести DTO в `packages/types` с фактическими ответами, чтобы фронт
-  убрал касты.
+- **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
+  `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
+  web-seller читал через `as any`). Коммит `4cf0993`.
+- **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
+  `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
+  Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
+  типа вслепую. Передать Азиму запрос на список.
 
-## 🟡 `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат)
+## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
-- **Домен:** `apps/api` checkout + `packages/types` (Полат)
-- **Проблема:** web-buyer checkout (`WB-B01`) пытается прочитать `deliveryFee` из
-  ответа `/checkout/preview`, но в типе `CheckoutPreview` такого поля нет.
-  Доставка нигде не считается и не списывается.
-- **Нужно:** подтвердить — возвращает ли `/checkout/preview` рассчитанную плату
-  за доставку, под каким именем; добавить поле в `CheckoutPreview`. Без этого
-  Азим не может закрыть `WB-B01`.
+`PreviewCheckoutUseCase` хардкодил `deliveryFee=0`, confirm считал реальную
+плату → preview показывал «Бесплатно», списывалась fixed-плата (`WB-B01`).
+Введён `computeDeliveryFee()` — единый расчёт для preview и confirm.
+`CheckoutPreview` += `deliveryFee`+`total`. Коммит `484694a`, специ 61/61.
 
 ---
 
@@ -169,7 +168,7 @@ root cause ещё не подтверждён.
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
-- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **Осталось:** admin локализация (нет i18n-инфры — потребуется аналог `useTranslation`), API `Accept-Language` для Telegram-уведомлений, web-buyer/web-seller (Азим).
+- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Осталось:** admin локализация (нет i18n-инфры — потребуется аналог `useTranslation`), web-buyer/web-seller (Азим).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 
