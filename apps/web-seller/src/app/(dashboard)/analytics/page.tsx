@@ -5,7 +5,7 @@ import { Star, ShoppingBag, Package, Hourglass, TrendingUp } from 'lucide-react'
 import { useSellerSummary, useSellerAnalytics, type AnalyticsPeriod } from '@/hooks/use-analytics';
 import type { DailyPoint } from '@/lib/api/analytics.api';
 import { useSellerProduct } from '@/hooks/use-products';
-import { card, cardMuted, colors } from '@/lib/styles';
+import { card, cardMuted, colors, dangerTint } from '@/lib/styles';
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: 7,  label: '7 дней'  },
@@ -250,7 +250,7 @@ export default function AnalyticsPage() {
       {isError && (
         <div
           className="rounded-lg px-5 py-4 text-sm"
-          style={{ background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.25)', color: colors.danger }}
+          style={{ background: dangerTint(0.1), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
         >
           Не удалось загрузить аналитику. Попробуйте обновить страницу.
         </div>

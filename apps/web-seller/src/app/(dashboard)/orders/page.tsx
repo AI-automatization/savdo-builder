@@ -7,7 +7,7 @@ import { X, Package } from 'lucide-react';
 import type { OrderListItem } from 'types';
 import { useSellerOrders, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
-import { card, colors, inputStyle } from '@/lib/styles';
+import { card, colors, dangerTint, inputStyle } from '@/lib/styles';
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }> = {
   [OrderStatus.PENDING]:    { label: 'Ожидает',      color: colors.warning },
@@ -115,7 +115,7 @@ function CancelModal({
             onClick={() => reason.trim() && onConfirm(reason.trim())}
             disabled={!reason.trim() || loading}
             className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-opacity"
-            style={{ background: 'rgba(248,113,113,0.22)', color: colors.danger, border: `1px solid rgba(248,113,113,0.35)` }}
+            style={{ background: dangerTint(0.22), color: colors.danger, border: `1px solid ${dangerTint(0.35)}` }}
           >
             {loading ? 'Отмена...' : 'Отменить заказ'}
           </button>
@@ -229,7 +229,7 @@ function OrderRow({
             onClick={() => onCancel(order)}
             disabled={isLoading}
             className="px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: 'rgba(248,113,113,0.12)', color: colors.danger, border: `1px solid rgba(248,113,113,0.25)` }}
+            style={{ background: dangerTint(0.12), color: colors.danger, border: `1px solid ${dangerTint(0.25)}` }}
           >
             Отмена
           </button>

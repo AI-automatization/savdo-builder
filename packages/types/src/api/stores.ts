@@ -43,6 +43,23 @@ export interface StoreRef {
   reviewCount: number;
 }
 
+/**
+ * Настройки доставки магазина.
+ * API-STORE-DELIVERY-SETTINGS-TYPE-001 (от Азима, web-sync audit 14.05.2026).
+ * Backend: модель `StoreDeliverySettings`. `deliveryFeeType`:
+ *  - `fixed`  — фиксированная плата `fixedDeliveryFee`
+ *  - `manual` — продавец согласовывает индивидуально (фронт показывает «уточняется»)
+ *  - `none`   — доставка бесплатна
+ */
+export interface StoreDeliverySettings {
+  supportsDelivery: boolean;
+  supportsPickup: boolean;
+  deliveryFeeType: 'fixed' | 'manual' | 'none';
+  fixedDeliveryFee: number | null;
+  deliveryNotes: string | null;
+  pickupNotes: string | null;
+}
+
 // ── Storefront Store (публичная витрина — для покупателей и TMA) ──────────────
 
 export interface StorefrontStore {
@@ -61,6 +78,9 @@ export interface StorefrontStore {
   isVerified?: boolean;
   avgRating?: number | null;
   reviewCount?: number;
+  // API-STORE-DELIVERY-SETTINGS-TYPE-001 — настройки доставки (optional:
+  // не все storefront-ответы их включают, product checkout — включает).
+  deliverySettings?: StoreDeliverySettings;
 }
 
 // ── Global Category ───────────────────────────────────────────────────────────
