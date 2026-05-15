@@ -228,13 +228,13 @@ export default function BroadcastPage() {
           />
 
           {sendError && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--surface-error)', border: '1px solid var(--border-error-soft)', color: 'var(--error)', fontSize: 13 }}>
               <AlertCircle size={14} /> {sendError}
             </div>
           )}
 
           {result && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981', fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--surface-success)', border: '1px solid var(--border-success-soft)', color: 'var(--success)', fontSize: 13 }}>
               <CheckCircle size={14} /> Отправлено в очередь: {result.queued} получателей
             </div>
           )}

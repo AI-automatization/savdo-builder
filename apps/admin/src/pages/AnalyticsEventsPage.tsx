@@ -197,7 +197,7 @@ export default function AnalyticsEventsPage() {
 
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-4 text-[13px]"
-          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
+          style={{ background: 'var(--surface-error)', border: '1px solid var(--border-error-soft)', color: 'var(--error)' }}>
           <AlertCircle size={15} /> {error}
         </div>
       )}

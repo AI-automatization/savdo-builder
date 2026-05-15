@@ -94,7 +94,11 @@ export class ProductPresenterService {
     const m = media as { id?: string; objectKey?: string; bucket?: string } | null | undefined;
     if (!m?.objectKey) return '';
     // API-BUCKET-NAME-CONSISTENCY-001: 'telegram-expired' = TG getFile вернул 404, fileId мёртв навсегда.
-    if (m.bucket === 'telegram-expired') return '';
+    // API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001: 'broken' = Supabase objectKey
+    // указывает на несуществующий файл (миграция упала / file был удалён).
+    // AuditBrokenMediaUrlsUseCase помечает такие записи. Оба → '' (фронт
+    // показывает «Без фото» placeholder вместо broken <img>).
+    if (m.bucket === 'telegram-expired' || m.bucket === 'broken') return '';
     const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
     if (m.bucket === 'telegram') {
       return `${appUrl}/api/v1/media/proxy/${m.id}`;
@@ -129,6 +133,47 @@ export class ProductPresenterService {
     };
 
     return { logoUrl: resolve(logoMediaId), coverUrl: resolve(coverMediaId) };
+  }
+
+  /**
+   * API-PRODUCT-STORE-TRUST-SIGNALS-001: маппер для embedded `product.store`
+   * detail-страницы — добавляет logoUrl и нормализует Decimal avgRating.
+   * Trust signals (`isVerified`, `avgRating`, `reviewCount`) приходят прямо
+   * из Prisma include — здесь только image-resolve и type-clean.
+   */
+  async mapProductStoreRef<T extends {
+    id: string;
+    name: string;
+    slug: string;
+    city: string | null;
+    telegramContactLink: string | null;
+    logoMediaId: string | null;
+    isVerified: boolean;
+    avgRating: { toString(): string } | number | null;
+    reviewCount: number;
+  }>(store: T): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    city: string | null;
+    telegramContactLink: string | null;
+    logoUrl: string | null;
+    isVerified: boolean;
+    avgRating: number | null;
+    reviewCount: number;
+  }> {
+    const { logoUrl } = await this.resolveStoreImageUrls(store.logoMediaId, null);
+    return {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      city: store.city,
+      telegramContactLink: store.telegramContactLink,
+      logoUrl,
+      isVerified: store.isVerified,
+      avgRating: store.avgRating != null ? Number(store.avgRating) : null,
+      reviewCount: store.reviewCount,
+    };
   }
 
   /**

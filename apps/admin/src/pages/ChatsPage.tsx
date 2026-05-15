@@ -185,13 +185,14 @@ export default function ChatsPage() {
                         onClick={(e) => deleteThread(t.id, e)}
                         disabled={deletingId === t.id}
                         title="Удалить диалог"
+                        aria-label="Удалить диалог"
                         style={{
-                          background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)',
-                          borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#f87171',
+                          background: 'var(--surface-error-soft)', border: '1px solid var(--border-error)',
+                          borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: 'var(--error)',
                           opacity: deletingId === t.id ? 0.5 : 1, display: 'flex', alignItems: 'center',
                         }}
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={13} aria-hidden="true" />
                       </button>
                     </td>
                   </tr>

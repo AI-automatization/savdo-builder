@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, prefetch } from '@/lib/api';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTranslation } from '@/lib/i18n';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -42,6 +43,7 @@ export default function SellerProductsPage() {
     viewportWidth >= 1024 ? 'grid-cols-3' :
     'grid-cols-2';
   const { authVersion } = useAuth();
+  const { t } = useTranslation();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
@@ -207,7 +209,7 @@ export default function SellerProductsPage() {
                     {cat.name}
                     {count > 0 && (
                       <span
-                        className="text-[10px] font-bold px-1 rounded-full"
+                        className="text-xxs font-bold px-1 rounded-full"
                         style={{
                           background: active ? 'var(--tg-accent-bg)' : 'var(--tg-border-soft)',
                           color: active ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
@@ -232,7 +234,7 @@ export default function SellerProductsPage() {
         {!loading && error && (
           <GlassCard className="p-4 text-center">
             <p style={{ color: 'rgba(248,113,113,0.85)', fontSize: 14 }}>{error}</p>
-            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>Повторить</Button>
+            <Button variant="ghost" className="mt-3" onClick={() => load(abortRef.current?.signal)}>{t('seller.products.retry')}</Button>
           </GlassCard>
         )}
 
@@ -294,7 +296,7 @@ export default function SellerProductsPage() {
                     <Badge status={product.status} />
                   </div>
                   {typeof product.totalStock === 'number' && (
-                    <p className="text-[10px]" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'var(--tg-text-muted)' }}>
+                    <p className="text-xxs" style={{ color: product.totalStock <= 0 ? 'rgba(239,68,68,0.85)' : product.totalStock <= 5 ? 'rgba(251,191,36,0.85)' : 'var(--tg-text-muted)' }}>
                       {product.totalStock <= 0 ? '⛔ Нет в наличии' : `📦 Остаток: ${product.totalStock} шт`}
                     </p>
                   )}

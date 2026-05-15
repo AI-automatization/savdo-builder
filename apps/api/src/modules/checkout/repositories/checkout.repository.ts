@@ -34,6 +34,9 @@ export interface CreateOrderData {
   addressLine1?: string;
   addressLine2?: string;
   items: CheckoutOrderItemInput[];
+  // API-CHECKOUT-PAYMENT-METHOD-001: способ оплаты из ConfirmCheckoutDto.
+  // Use-case резолвит request-enum (cash/card/online) → Prisma-enum.
+  paymentMethod?: PaymentMethod;
 }
 
 export interface BuyerWithUser {
@@ -124,7 +127,7 @@ export class CheckoutRepository {
           sellerId: data.sellerId,
           cartId: data.cartId ?? null,
           status: OrderStatus.PENDING,
-          paymentMethod: PaymentMethod.COD,
+          paymentMethod: data.paymentMethod ?? PaymentMethod.COD,
           deliveryType: DeliveryType.DELIVERY,
           currencyCode: data.currencyCode,
           subtotalAmount: data.subtotalAmount,

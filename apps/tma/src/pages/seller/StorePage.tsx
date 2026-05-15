@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
+import { useTranslation } from '@/lib/i18n';
 import { glass } from '@/lib/styles';
 import { webStoreUrl } from '@/lib/webUrl';
 
@@ -28,6 +29,7 @@ export default function SellerStorePage() {
   const isDesktop = (viewportWidth ?? 0) >= 1024;
   const navigate = useNavigate();
   const { authVersion } = useAuth();
+  const { t } = useTranslation();
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -98,7 +100,7 @@ export default function SellerStorePage() {
       .catch((err: unknown) => {
         if (signal.aborted) return;
         if (!(err instanceof ApiError && err.status === 404)) {
-          setFetchError('Не удалось загрузить данные магазина. Проверьте соединение и попробуйте снова.');
+          setFetchError(t('seller.store.loadError'));
         }
       })
       .finally(() => { if (!signal.aborted) setLoading(false); });
@@ -131,9 +133,9 @@ export default function SellerStorePage() {
   };
 
   const handleCreateStore = async () => {
-    if (!newStoreName.trim()) { setCreateError('Введите название магазина'); return; }
-    if (!newStoreCity.trim()) { setCreateError('Введите город'); return; }
-    if (!newStoreTg.trim()) { setCreateError('Введите ссылку Telegram для связи'); return; }
+    if (!newStoreName.trim()) { setCreateError(t('seller.store.errNoName')); return; }
+    if (!newStoreCity.trim()) { setCreateError(t('seller.store.errNoCity')); return; }
+    if (!newStoreTg.trim()) { setCreateError(t('seller.store.errNoTg')); return; }
     setCreating(true);
     setCreateError('');
     try {
@@ -150,7 +152,7 @@ export default function SellerStorePage() {
       setDescription(created.description ?? '');
       tg?.HapticFeedback.notificationOccurred('success');
     } catch {
-      setCreateError('Не удалось создать магазин. Попробуйте снова.');
+      setCreateError(t('seller.store.createError'));
       tg?.HapticFeedback.notificationOccurred('error');
     } finally {
       setCreating(false);
@@ -176,7 +178,7 @@ export default function SellerStorePage() {
             }}
             style={{ padding: '8px 20px', borderRadius: 12, background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)', fontSize: 13, fontWeight: 600, border: '1px solid var(--tg-accent-border)' }}
           >
-            Попробовать снова
+            {t('common.retry')}
           </button>
         </div>
       
@@ -187,21 +189,21 @@ export default function SellerStorePage() {
     return (
       
         <div className="flex flex-col gap-4">
-          <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Мой магазин</h1>
+          <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.store.title')}</h1>
           <div
             className="flex flex-col items-center gap-4 py-8 px-4 rounded-2xl"
             style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}
           >
             <span style={{ fontSize: 44 }}>🏪</span>
             <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>Создайте свой магазин</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--tg-text-muted)' }}>Введите название чтобы начать продавать</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.createStore')}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--tg-text-muted)' }}>{t('seller.createStoreHint')}</p>
             </div>
             <div className="w-full flex flex-col gap-3">
               {[
-                { value: newStoreName, set: setNewStoreName, placeholder: 'Название магазина', max: 255 },
-                { value: newStoreCity, set: setNewStoreCity, placeholder: 'Город (например: Ташкент)', max: 100 },
-                { value: newStoreTg,   set: setNewStoreTg,   placeholder: 'Telegram ссылка: @username или https://t.me/...', max: 200 },
+                { value: newStoreName, set: setNewStoreName, placeholder: t('seller.store.namePlaceholder'), max: 255 },
+                { value: newStoreCity, set: setNewStoreCity, placeholder: t('seller.store.cityPlaceholder'), max: 100 },
+                { value: newStoreTg,   set: setNewStoreTg,   placeholder: t('seller.store.tgLinkPlaceholder'), max: 200 },
               ].map((field) => (
                 <input
                   key={field.placeholder}
@@ -226,7 +228,7 @@ export default function SellerStorePage() {
                   cursor: creating ? 'wait' : 'pointer',
                 }}
               >
-                {creating ? 'Создаём...' : 'Создать магазин'}
+                {creating ? t('seller.store.creating') : t('seller.store.createBtn')}
               </button>
             </div>
           </div>
@@ -241,7 +243,7 @@ export default function SellerStorePage() {
         style={isDesktop ? { gridTemplateColumns: '1.1fr 1fr', alignItems: 'start' } : undefined}
       >
         <h1 className="text-base font-bold" style={isDesktop ? { gridColumn: '1 / -1', color: 'var(--tg-text-primary)' } : { color: 'var(--tg-text-primary)' }}>
-          Мой магазин
+          {t('seller.store.title')}
         </h1>
 
         {/* Store info */}
@@ -259,7 +261,7 @@ export default function SellerStorePage() {
                 onClick={(e) => { e.preventDefault(); tg?.openLink?.(webStoreUrl(store.slug)); }}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] mt-0.5 px-2 py-0.5 rounded-md"
+                className="inline-flex items-center gap-1 text-xxs mt-0.5 px-2 py-0.5 rounded-md"
                 style={{
                   color: 'var(--tg-accent)',
                   background: 'var(--tg-accent-bg)',
@@ -267,9 +269,9 @@ export default function SellerStorePage() {
                   textDecoration: 'none',
                   width: 'fit-content',
                 }}
-                aria-label="Перейти на сайт магазина"
+                aria-label={t('seller.profile.openSite')}
               >
-                ↗ Перейти на сайт
+                {t('seller.store.openSite')}
               </a>
             </div>
             <Badge status={store.status} />
@@ -298,32 +300,32 @@ export default function SellerStorePage() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Название магазина"
+              placeholder={t('seller.storeName')}
               className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
               style={{ ...glass, background: 'var(--tg-surface)' }}
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Описание"
+              placeholder={t('seller.store.descPlaceholder')}
               rows={3}
               className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none resize-none"
               style={{ ...glass, background: 'var(--tg-surface)' }}
             />
             <div className="flex gap-3">
               <Button className="flex-1" onClick={save} disabled={saving}>
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving ? t('seller.store.saving') : t('common.save')}
               </Button>
-              <Button variant="ghost" onClick={() => setEditing(false)}>Отмена</Button>
+              <Button variant="ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</Button>
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             <Button variant="ghost" className="w-full" onClick={() => setEditing(true)}>
-              ✏️ Редактировать
+              ✏️ {t('common.edit')}
             </Button>
             <Button className="w-full" onClick={() => copyLink(store)}>
-              {copied ? '✅ Ссылка скопирована!' : '🔗 Скопировать ссылку'}
+              {copied ? t('seller.store.linkCopied') : t('seller.store.copyLink')}
             </Button>
             {(store.status === 'APPROVED' || store.isPublic) && (
               <Button
@@ -332,7 +334,7 @@ export default function SellerStorePage() {
                 onClick={() => togglePublish(store)}
                 disabled={publishing}
               >
-                {publishing ? '...' : store.isPublic ? '🔴 Скрыть магазин' : '🟢 Опубликовать магазин'}
+                {publishing ? '...' : store.isPublic ? t('seller.store.hide') : t('seller.store.publish')}
               </Button>
             )}
             <Button
@@ -340,7 +342,7 @@ export default function SellerStorePage() {
               className="w-full"
               onClick={() => navigate(`/buyer/store/${store.slug}`)}
             >
-              👁 Посмотреть каталог
+              {t('seller.store.viewCatalog')}
             </Button>
           </div>
         )}

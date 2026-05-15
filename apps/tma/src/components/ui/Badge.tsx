@@ -29,7 +29,7 @@ export function Badge({ status }: { status: string }) {
   const c = colors[status] ?? colors.DRAFT;
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xxs font-bold uppercase"
       style={{ background: c.bg, color: c.text }}
     >
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: c.dot, flexShrink: 0 }} />

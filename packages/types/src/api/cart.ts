@@ -68,6 +68,16 @@ export interface CheckoutPreview {
   stockWarnings: string[];
 }
 
+/**
+ * Способ оплаты заказа.
+ * API-CHECKOUT-PAYMENT-METHOD-001 (от Азима, web-sync audit 14.05.2026).
+ *  - `cash`   — наличными при получении (COD), доступно всегда
+ *  - `card`   — картой при получении / курьеру
+ *  - `online` — онлайн через Click/Payme (требует PAYMENT_ONLINE_ENABLED;
+ *               пока не реализовано — фронт показывает «Скоро»)
+ */
+export type PaymentMethod = 'cash' | 'card' | 'online';
+
 export interface CheckoutConfirmRequest {
   deliveryAddress: DeliveryAddress;
   buyerNote?: string;
@@ -76,4 +86,9 @@ export interface CheckoutConfirmRequest {
   customerFullName?: string;
   /** Override account phone for this order. Backend falls back to user.phone when empty. */
   customerPhone?: string;
+  /**
+   * Способ оплаты. Default `cash` если не передан (backward-compat со старыми
+   * клиентами). `online` принимается только при PAYMENT_ONLINE_ENABLED.
+   */
+  paymentMethod?: PaymentMethod;
 }

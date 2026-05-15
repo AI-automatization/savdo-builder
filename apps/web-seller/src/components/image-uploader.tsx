@@ -6,7 +6,7 @@ import axios from 'axios';
 import { uploadDirect } from '../lib/api/media.api';
 import type { MediaPurpose } from '../lib/api/media.api';
 import { AlertTriangle, Camera, X } from 'lucide-react';
-import { colors } from '@/lib/styles';
+import { colors, dangerTint } from '@/lib/styles';
 
 function describeUploadError(err: unknown): string {
   if (axios.isAxiosError(err)) {
@@ -128,12 +128,12 @@ export function ImageUploader({
   if (error) {
     return (
       <div
-        style={{ ...base, background: 'rgba(248,113,113,.08)', border: '2px dashed rgba(248,113,113,.50)', gap: 8, padding: 16 }}
+        style={{ ...base, background: dangerTint(0.08), border: `2px dashed ${dangerTint(0.5)}`, gap: 8, padding: 16 }}
         onClick={() => { setError(null); inputRef.current?.click(); }}
       >
         <AlertTriangle size={28} style={{ color: colors.danger }} />
         <span style={{ fontSize: 11, color: colors.danger, textAlign: 'center', lineHeight: 1.4 }}>{error}</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: colors.danger, background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.25)', borderRadius: 6, padding: '4px 10px' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: colors.danger, background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, borderRadius: 6, padding: '4px 10px' }}>
           Попробовать снова
         </span>
         <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
@@ -162,9 +162,10 @@ export function ImageUploader({
         <button
           type="button"
           onClick={handleRemove}
+          aria-label="Удалить фото"
           style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: 'rgba(0,0,0,.65)', border: `1px solid ${colors.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: colors.textPrimary, cursor: 'pointer' }}
         >
-          <X size={14} />
+          <X size={14} aria-hidden="true" />
         </button>
         <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
       </div>

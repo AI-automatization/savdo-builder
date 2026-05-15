@@ -111,7 +111,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
           )}
           <div className="flex flex-col min-w-0">
             {flatFiltered && (
-              <span className="text-[10px] mb-0.5 truncate" style={{ color: 'var(--tg-text-dim)' }}>
+              <span className="text-xxs mb-0.5 truncate" style={{ color: 'var(--tg-text-dim)' }}>
                 {getBreadcrumb(item).slice(0, -1).join(' › ') || ' '}
               </span>
             )}
@@ -182,7 +182,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
 
         {/* Breadcrumb для drilldown */}
         {currentNode && !flatFiltered && (
-          <div className="px-5 py-2 text-[11px] truncate" style={{ background: 'var(--tg-surface)', color: 'var(--tg-text-muted)' }}>
+          <div className="px-5 py-2 text-xxs truncate" style={{ background: 'var(--tg-surface)', color: 'var(--tg-text-muted)' }}>
             {getBreadcrumb(currentNode).join(' › ')}
           </div>
         )}

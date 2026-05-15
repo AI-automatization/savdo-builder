@@ -41,6 +41,881 @@
 
 ---
 
+## 2026-05-15 (Полат) — Wave 22: TMA buyer i18n + TMA deploy fix
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA buyer pages) 🔴
+Локализованы buyer-страницы TMA. Cart/Checkout/Orders/Product/Wishlist уже
+были на `t()`; добавлены 3 оставшиеся:
+- **ChatPage** — статусы тредов, меню действий, reply-баннеры, ошибки,
+  заголовки. Параметры `t` в `threadLabel`/`threadContext`/`threads.map`
+  переименованы в `thread` (шадовили функцию перевода).
+- **StorePage** — confirm замены корзины, тосты, verified-бейдж, фильтр
+  категорий, цена locale-aware.
+- **StoresPage** — фильтр «Все», сброс/диапазон цены, contact-tooltip.
+~40 новых ключей в `ru.ts` + `uz.ts` (узбекские с `ʻ`/`ʼ`). Все 10 buyer +
+5 seller страниц TMA теперь на i18n. Коммит `aad2bab`.
+
+### ✅ [DEPLOY-TMA-RAILPACK-FAIL-001] 🔴
+TMA не деплоился: Wave 19 DevOps audit удалил корневой `railway.toml`,
+Railway свалился на Railpack. Восстановлен `railway.toml` (`798f720`),
+`railway.toml` добавлен в watchPatterns (`6a39a06`), деплой раскручен
+version-bump'ом `apps/tma/package.json` (`0c57bad`). Задеплоился успешно.
+
+**Осталось по локализации:** admin (нет i18n-инфры), API `Accept-Language`.
+
+## 2026-05-15 (Полат) — Wave 21: broken media + i18n + Sentry + frontend CI
+
+### ✅ [API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001] 🔴
+После миграции TG→Supabase часть `MediaFile` указывала на мёртвые Supabase URL.
+- `product-presenter.service.ts` — `resolveImageUrl` отдаёт `''` для bucket
+  `telegram-expired` **и** нового `broken`.
+- Новый `audit-broken-media-urls.use-case.ts` — сканирует MediaFile, HEAD-проверяет
+  URL (axios, 5s timeout), помечает мёртвые `bucket='broken'`.
+- `POST /admin/media/audit-broken-urls` (`media:migrate`), пишет audit_log
+  `media.audit.broken_urls`. Коммит `ffffb9c`.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA seller pages) 🟠
+Вынесены захардкоженные RU-строки на страницах продавца в i18n (ru.ts + uz.ts):
+ProfilePage, StorePage, DashboardPage, OrdersPage. OrdersPage — суммы через
+locale-aware `fmt()` + `common.currency`, заодно убран unused `fmt` (TS6133,
+ломал tma build). Коммит `1b9245c`.
+
+### ✅ [API-SENTRY-001] 🟠
+`ErrorReporter` ловил только uncaught/unhandledRejection — HTTP-обработанные
+500 проходили мимо. `GlobalExceptionFilter` теперь репортит unhandled exception
+и HttpException >= 500 с контекстом запроса (method, path, userId). Коммит `faaa36c`.
+
+### ✅ [CI-FRONTEND-001] 🟠
+Новый `.github/workflows/ci-frontend.yml` — matrix [tma, admin], build =
+`tsc -b && vite build`. До этого CI был только у backend, фронт-ошибки ловил
+Railway постфактум (как было с `CategoryFilter.label`). Коммит `7bb8359`.
+
+**Файлы:** apps/api/{admin-ops.controller,admin.module,product-presenter.service,
+audit-broken-media-urls.use-case,global-exception.filter}.ts,
+apps/tma/src/lib/i18n/{ru,uz}.ts, apps/tma/src/pages/seller/{Profile,Store,
+Dashboard,Orders}Page.tsx, .github/workflows/ci-frontend.yml.
+**Ветки:** main + api + tma + admin запушены.
+
+## 2026-05-15 (Полат) — Wave 20: Action items от web-sync audit (6 задач + ADR)
+
+Закрыты все Action items для Полата из `analiz/audits/web-sync-2026-05-14.md`
+(Часть 3). 1 оказалась false positive.
+
+### ✅ [TMA-CART-API-SYNC-001] re-open → false positive 🔴
+Азим в аудите написал «cart sync не в коде». Проверка: `apps/tma/src/lib/
+cartSync.ts` существует, `syncCartToBackend()` вызывается в `AuthProvider.tsx:61`
+после BUYER auth. `POST /cart/bulk-merge` идёт. Cross-channel cart работает.
+Азим смотрел `cart.ts` (localStorage helper) + `CartPage.tsx`, не нашёл хук
+в AuthProvider. Реально implemented в Wave 8. Ничего не менял.
+
+### ✅ [API-CHECKOUT-PAYMENT-METHOD-001] 🔴
+- `packages/types/src/api/cart.ts` — новый `PaymentMethod = 'cash'|'card'|'online'`,
+  `CheckoutConfirmRequest.paymentMethod?`.
+- `confirm-checkout.dto.ts` — `@IsIn(PAYMENT_METHODS)` валидация.
+- `confirm-checkout.use-case.ts` — `resolvePaymentMethod()` маппит request-enum →
+  Prisma-enum: `cash→COD`, `card→MANUAL_TRANSFER`, `online→ONLINE` (при
+  `PAYMENT_ONLINE_ENABLED`, иначе degrade COD).
+- `checkout.repository.ts` — `CreateOrderData.paymentMethod`, `createOrder`
+  сохраняет на Order (`data.paymentMethod ?? COD`).
+- `checkout.controller.ts` — прокидывает `dto.paymentMethod`.
+- 59/59 checkout-тестов passed.
+
+### ✅ [ADMIN-STATUS-LABEL-PENDING-001] + [STATUS-LABEL-CANONICAL-SHIPPED-001] 🟡
+Единые лейблы по платформе:
+- `PENDING` = «Ожидает» (admin OrdersPage STATUS_CFG + DashboardPage; FILTER_LABEL «Ожидают»)
+- `SHIPPED` = «В пути» / uz «Yoʻlda»:
+  - admin: `OrdersPage.tsx`, `DashboardPage.tsx`, `StatusBadge.tsx`
+  - TMA: `i18n/ru.ts` + `uz.ts` `orders.status.SHIPPED`
+  - API: `shared/i18n.ts` (buyer+seller `🚚 в пути`), `telegram-demo.handler.ts` (`🚚 В пути`)
+  - web-* + TMA Badge уже были «В пути».
+
+### ✅ [API-TYPES-PROMOTE-FEATURED-STOREFRONT-001] 🟢
+Создан `packages/types/src/api/storefront.ts`: `FeaturedTopStore`,
+`FeaturedProduct`, `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`.
+Экспорт в `index.ts`. Подняты из локального web-buyer файла.
+
+### ✅ [API-PRODUCT-IMAGES-FULL-SHAPE-001] 🟢
+Новый `ProductImageRef { url; id?; mediaId?; sortOrder?; isPrimary? }`.
+`ProductListItem.images` + `Product.images` теперь `ProductImageRef[]`.
+
+### ✅ [API-STORE-DELIVERY-SETTINGS-TYPE-001] 🟢
+Тип `StoreDeliverySettings` в `stores.ts`. `StorefrontStore.deliverySettings?`.
+
+### ✅ [ADR-007] Chat message edit/delete 📋
+`docs/adr/ADR-007_chat_message_edit_delete.md` (Accepted задним числом —
+фича от session 36, 26.04). Edit: автор, 15-мин окно, text-only. Delete:
+автор, soft (`is_deleted`). `INV-CH02` переформулирован: «soft-mutable в
+пределах ADR-007» вместо «append-only».
+
+**Файлы:** `packages/types/src/api/{cart,products,stores,storefront}.ts` + `index.ts`,
+`apps/api/src/modules/checkout/{dto/confirm-checkout.dto,use-cases/confirm-checkout.use-case,
+repositories/checkout.repository,checkout.controller}.ts`, `apps/api/src/shared/i18n.ts`,
+`apps/api/src/modules/telegram/telegram-demo.handler.ts`, `apps/admin/src/pages/{Orders,Dashboard}Page.tsx`,
+`apps/admin/src/components/admin/StatusBadge.tsx`, `apps/tma/src/lib/i18n/{ru,uz}.ts`,
+`docs/adr/ADR-007_chat_message_edit_delete.md`, `docs/V1.1/01_domain_invariants.md`.
+
+**Tests:** api/admin/tma `tsc` clean, 59/59 checkout passed.
+
+## 2026-05-14 (Азим) — WEB-BUYER-OTP-PURPOSE-FIX-001 (SEV-3 от audit)
+
+### ✅ [WEB-BUYER-OTP-PURPOSE-FIX-001] OtpGate purpose через props
+- **Важность:** 🟢 SEV-3 (cleanup из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `e84598c`)
+- **Файл:** `apps/web-buyer/src/components/auth/OtpGate.tsx` (+11, −3)
+- **Что сделано:**
+  - Добавлен `purpose?: 'login' | 'register' | 'checkout'` в `OtpGateProps` с default `'login'`
+  - Замена hardcoded `purpose: 'checkout'` в обоих `mutateAsync` calls на переменную `purpose`
+  - Inline комментарий с reference на причину
+- **Эффект:** все 5 callsites OtpGate (orders, wishlist, profile, chats, ChatComposerModal) теперь по умолчанию используют `'login'` — semantic корректно. Backend OTP rate-limits скоупятся per-purpose, теперь не путаются.
+- **Что НЕ затронуто:**
+  - `(minimal)/checkout/page.tsx` имеет local OtpGate function (не shared) — там `'checkout'` hardcode остаётся правильным (это и есть checkout flow).
+- **Verification:** `npx tsc --noEmit` чист.
+
+## 2026-05-14 (Азим) — WEB-BUYER-CARD-PAYMENT-DISABLE-001 (SEV-1 #3 от audit, quick fix)
+
+### ✅ [WEB-BUYER-CARD-PAYMENT-DISABLE-001] card payment → disabled + «Скоро» badge
+- **Важность:** 🔴 SEV-1 (pre-launch блокер из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `2d59047`)
+- **Файл:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (+6, −1)
+- **Что сделано:**
+  - В `paymentMethods[]` (line 272-277) `card` option: `disabled: false` → `disabled: true`, добавлен `badge: "Скоро"` (как у `online`).
+  - Inline комментарий с reference на `WEB-AUDIT-SYNC-IDEOLOGY-001` и `API-CHECKOUT-PAYMENT-METHOD-001` для будущих читателей.
+- **Контекст SEV-1:**
+  - До fix'а: `card` option был selectable, **но** `paymentMethod` selected state НИКОГДА не отправлялся в API. `confirm.mutateAsync(:383)` не передавал field, `CheckoutConfirmRequest` в packages/types не имеет поля, analytics (`:394`) hardcode'ит `"COD"`.
+  - Эффект: misleading UI — buyer выбирает «Картой курьеру», думает что заказ оформится с картой, но seller видит «cash» и ничего не знает.
+- **Quick fix vs полный fix:**
+  - **Quick fix (закрыто сейчас):** скрыть от buyer'а пока backend не готов. Default `paymentMethod = 'cash'` (line 324) — поток не сломан, никто card не выберет.
+  - **Полный fix (после Полата):** `API-CHECKOUT-PAYMENT-METHOD-001` — расширить `CheckoutConfirmRequest` с `paymentMethod: 'cash' | 'card' | 'online'`. Frontend передаёт selected, analytics использует actual value, backend сохраняет на Order. Web-seller увидит выбор покупателя.
+- **UI:** UI уже корректно отрабатывал `disabled` через `disabled={m.disabled}` + dashed border + opacity 0.55 + cursor-not-allowed. Никаких UI правок не нужно — только flag.
+- **Verification:** `npx tsc --noEmit` чист в web-buyer.
+
+## 2026-05-14 (Азим) — WEB-BUYER-BECOME-SELLER-CTA-001 (SEV-1 #2 от audit)
+
+### ✅ [WEB-BUYER-BECOME-SELLER-CTA-001] «Стать продавцом» CTA в /profile
+- **Важность:** 🔴 SEV-1 (pre-launch блокер из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `55c524b`)
+- **Файл:** `apps/web-buyer/src/app/(shop)/profile/page.tsx` (+44, импорты `Store` + `ExternalLink` из lucide-react, `BOT_USERNAME` const)
+- **Что сделано:**
+  - Brand-tinted promo card в `ProfileView` между секцией «Активность» и Logout block
+  - SectionLabel «Развитие» + card с `colors.brandMuted` background + `colors.brandBorder`
+  - Иконка `<Store>` 18px в brand-color круге, заголовок «Откройте свой магазин», sub «Запустите Telegram-storefront за 5 минут. Свой каталог, корзина, заказы — без сайта.»
+  - Filled accent button «Стать продавцом → 🔗» с deep-link `https://t.me/${BOT_USERNAME}?start=become_seller` (тот же endpoint что использует TMA `SettingsPage.tsx:22`)
+  - Conditional render: только `user?.role === 'BUYER'` (SELLER уже имеет store; HYBRID/ADMIN скрыто)
+  - aria-label на кнопке
+- **Поправка к Pillar 6 audit'у:**
+  - Агент сказал «0 occurrences `become_seller` / `applyAsSeller` в web-buyer» — это false positive потому что грепал на main. На ветке `web-buyer` `apps/web-buyer/src/components/home/HomeHero.tsx:42-50` уже имел «Стать продавцом» CTA в hero homepage (deep-link идентичный).
+  - Однако оригинальный finding всё равно валиден: logged-in BUYER на /profile (далеко от homepage hero) не имел visible пути upgrade. Теперь закрыт — оба места покрыты.
+- **Verification:** `npx tsc --noEmit` чист в web-buyer. Логика прозрачна: anonymous user видит OtpGate; BUYER видит promo card; SELLER не видит (return null от условия).
+- **Парность:** TMA `SettingsPage.tsx:101-110` имеет ту же кнопку (с эмодзи 🏪). Web-buyer теперь консистентен.
+
+## 2026-05-14 (Азим) — WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001 (SEV-1 #1 от audit)
+
+### ✅ [WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001] Trust signals на storefront /[slug]
+- **Важность:** 🔴 SEV-1 (pre-launch блокер из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `707f1d4`)
+- **Файл:** `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` (+43, −1)
+- **Что сделано:**
+  - Inline trust row в hero brand-color column между `<h1>` и `<p>description</p>`
+  - ✓ pill «Проверенный» — если `store.isVerified`. Стиль: `rgba(251,247,240,0.18)` background + `0.28` border + `brandTextOnBg` text — light-on-dark для тёмно-коричневого hero
+  - ⭐ rating «X.X · N отзыв/отзыва/отзывов» — если `(store.reviewCount ?? 0) > 0 && store.avgRating != null`
+  - Локальный `pluralReviews()` helper (копия из `components/store/StoreRating.tsx`)
+  - Импорты `Check`, `Star` из lucide-react добавлены к существующему `Send`
+  - aria-label на pill + aria-label на rating span
+- **Почему не reuse `VerifiedBadge`/`StoreRating`:** оба компонента используют `colors.success`/`colors.textMuted`/`colors.textBody` — рассчитаны на light surface. На тёмно-коричневом `colors.brand` фоне hero они плохо читаются.
+- **Conditional render:** оба элемента показываются только при наличии данных. На текущем проде оба stores (`azim-mnx4na25`, `savdobuilder-mnvjz3cg`) `isVerified=false` и `reviewCount=0` — ничего не рендерится. Активируется когда:
+  - Полат verify-ит магазин через admin (`POST /admin/stores/:id/verify`)
+  - Появятся отзывы (review repository aggregate refresh)
+- **Парность:** TMA `StorePage.tsx:188` и admin `StoresPage.tsx:206` тоже отображают эти trust signals — теперь web-buyer консистентен.
+- **Verification:** `npx tsc --noEmit` чист в web-buyer. Smoke на проде: страница `/azim-mnx4na25` рендерится без ошибок (новый блок hidden из-за условий).
+
+## 2026-05-14 (Азим) — WEB-AUDIT-SYNC-IDEOLOGY-001
+
+### ✅ [WEB-AUDIT-SYNC-IDEOLOGY-001] Pre-launch sync audit web-* (4 параллельных агента)
+- **Важность:** 🔴 P0
+- **Дата:** 14.05.2026
+- **Deliverable:** `analiz/audits/web-sync-2026-05-14.md` (~600 LOC)
+- **Метод:** 4 параллельных read-only агента (`Explore` + `feature-dev:code-explorer` + `feature-dev:code-reviewer`) на 6 pillars.
+- **Pillars / verdicts:**
+  1. Type sync — ✅ mostly clean (2 SEV-3 concerns: locals types + image cast)
+  2. Storage / Media — ✅ clean (0 critical; backend = единственный URL resolver)
+  3. Function duplication — 🟡 1 known dupe (PhoneInput triple, tracked)
+  4. API endpoint hygiene — ✅ ZERO ISSUES (0 dead/stale/duplicate)
+  5. Ideology / scope-creep — 🔴 1 invariant violation (INV-CH02 без ADR) + 1 SEV-1 (card payment misleading)
+  6. Cross-platform consistency — 🔴 3 SEV-1 (cart cross-channel, web-buyer trust signals, become-seller CTA) + 2 SEV-2 (status labels)
+- **Главный итог:** web-* архитектурно соответствует проекту. **Pre-launch блокеры — функциональные пробелы, не архитектурные баги.** 5 SEV-1 нужно закрыть до launch (3 = web-buyer фичи, 1 = TMA cart sync, 1 = ADR для chat edit/delete). 8 SEV-2/3 — tech-debt.
+- **Выписаны новые тикеты в `analiz/tasks.md`:**
+  - 🔴 `WEB-BUYER-STORE-PAGE-TRUST-SIGNALS-001` (Азим)
+  - 🔴 `WEB-BUYER-BECOME-SELLER-CTA-001` (Азим)
+  - 🔴 `WEB-BUYER-CARD-PAYMENT-DISABLE-001` (Азим, quick fix; full fix после Полата)
+  - 🔴 `TMA-CART-API-SYNC-001` (re-open для Полата)
+  - 🔴 `API-CHECKOUT-PAYMENT-METHOD-001` (Полат)
+  - 🔴 `ADR-CHAT-MESSAGE-EDIT-DELETE-001` (документация — все)
+  - 🟡 `STATUS-LABEL-CANONICAL-SHIPPED-001` (4-way label divergence)
+  - 🟡 `ADMIN-STATUS-LABEL-PENDING-001` (Полат, admin)
+  - 🟢 `WEB-BUYER-OTP-PURPOSE-FIX-001` (Азим)
+  - 🟢 `API-TYPES-PROMOTE-FEATURED-STOREFRONT-001` (Полат)
+  - 🟢 `API-PRODUCT-IMAGES-FULL-SHAPE-001` (Полат)
+  - 🟢 `API-STORE-DELIVERY-SETTINGS-TYPE-001` (Полат)
+- **Compliance OK (явно подтверждено):**
+  - 0 SMS / Eskiz / Playmobile / Twilio / AWS SNS — OTP только Telegram bot
+  - INV-C01 (cart=один store), INV-C03 (заказ immutable), INV-S01 (один seller=один store) — все соблюдены
+  - 0 unauthorized roles (только BUYER/SELLER/ADMIN/HYBRID)
+  - 0 gamification / loyalty / referral / affiliate features
+  - 0 admin-level features inside seller dashboard
+  - 100% type imports из packages/types (нет локальных `interface Order/Cart/Product`)
+  - 100% media URL resolution на backend (нет локальных `resolveMediaUrl()`, нет hardcoded supabase URLs)
+  - 100% delivery fee / stock / sale price / order status — из API
+- **Что НЕ scope creep (false positive от агента):** `MARKETING-REVIEWS-SHOW-001` (read-only product reviews UI) — закрыт 11.05.2026, агент это пропустил при поиске.
+- **Re-audit:** не нужен после закрытия SEV-1 + ADR — это точечные фиксы, не архитектурные.
+
+## 2026-05-14 (Азим) — WEB-BUYER-REMOVE-USESTOREWITHTRUST-001
+
+### ✅ [WEB-BUYER-REMOVE-USESTOREWITHTRUST-001] Cleanup useStoreWithTrust
+- **Важность:** 🟢 P3 cleanup
+- **Дата:** 14.05.2026
+- **Ветка:** `web-buyer` (commit `10f3bd0`) — main только статус-апдейт в analiz/*
+- **Контекст:** Полат 14.05.2026 закрыл `API-PRODUCT-STORE-TRUST-SIGNALS-001` (commit `b1aa682` в main): backend теперь возвращает `product.store: StoreRef` с mandatory `isVerified/avgRating/reviewCount`. Web-buyer'у больше не нужен второй request на `/storefront/stores/:slug` ради бейджа/рейтинга на product page seller card.
+- **Файлы (5):**
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — убран `useStoreWithTrust(slug)`, `<SellerCard>` читает `product.store.{isVerified,avgRating,reviewCount}` напрямую
+  - `apps/web-buyer/src/hooks/use-storefront.ts` — удалён `useStoreWithTrust` hook + `storeWithTrust` query key
+  - `apps/web-buyer/src/lib/api/storefront.api.ts` — удалена `getStorefrontStoreWithTrust` функция
+  - `apps/web-buyer/src/types/storefront.ts` — удалены `StoreTrustSignals` + `StorefrontStoreWithTrust` локальные расширения
+  - `packages/types/src/api/stores.ts` — подтянуто из main (StoreRef + Store с mandatory trust signals, StorefrontStore — optional для backward-compat кэша)
+- **Эффект:**
+  - −1 HTTP request на каждое product detail visit (раньше 2: `/products/:id` + `/stores/:slug`)
+  - −1 React Query cache entry, −1 hook, −1 API function, −2 локальных type definitions
+  - Trust signals теперь идут вместе с продуктом → no inconsistent loading states (раньше badge мог появиться позже названия магазина из-за второго запроса)
+- **Verification:** `npx tsc --noEmit` чист в web-buyer; grep `useStoreWithTrust|StoreTrustSignals|getStorefrontStoreWithTrust` в `apps/web-buyer/src` → 0 hits.
+- **Что НЕ затронуто:**
+  - `getStoreBySlug` / `useStoreBySlug` — отдельный use case (рендер каталога магазина `/[slug]/page.tsx`), оставлен.
+  - Backend изменения — Полатовские, в main, на web-buyer service-ветке backend файлы не нужны (Railway деплоит web-buyer Next.js, бэк отдельно из api/main).
+
+## 2026-05-14 (Полат) — Wave 18: TMA seller pages i18n + Sentry-lite
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] TMA seller pages i18n 🔴
+- +12 ключей в ru.ts + uz.ts (seller.products.retry/allFilter, seller.orders.*, seller.profile.title/openSite, seller.store.*)
+- `ProductsPage`: useTranslation hook, retry button
+- `OrdersPage` (seller): title, loadError + retry, empty/emptyCategory, total label, message placeholder, customer/account phone notes
+- `ProfilePage` (seller): title + openSite aria-label
+- `StorePage` (seller): title (3 места), createTitle/Hint, creating/createBtn, name placeholder, descPlaceholder, cancel button, openSite aria-label
+
+### ✅ [API-SENTRY-001] lightweight error reporter 🟢
+- `apps/api/src/shared/error-reporter.ts` — `ErrorReporter.init()` в `main.ts`
+- Auto-capture: `uncaughtException` + `unhandledRejection`
+- Manual API: `captureException(err, context)` / `captureMessage(msg, level, context)`
+- JSON output в stderr (Railway log aggregation friendly)
+- PII-скраббинг: `password/secret/token/authorization` → `[REDACTED]`
+- Tags: `release` (`RAILWAY_GIT_COMMIT_SHA[:7]`) + `environment` (`NODE_ENV`)
+- Env-flag `ERROR_REPORTER_ENABLED=false`
+- 60% Sentry-функций без npm install. Когда нужен полный Sentry — заменить `ErrorReporter.captureException` на `Sentry.captureException` (API совместимый).
+
+### ⏸️ Admin локализация — пропущена
+ROI низкий: admin — внутренний tool для команды из 1-3 человек, родной язык русский. Делать позже когда найдём UZ-only админа.
+
+**Tests:** api tsc clean. TMA tsc clean.
+
+## 2026-05-14 (Полат) — Wave 17: API i18n + Pino logging + Seller Dashboard i18n
+
+3 задачи закрыты:
+
+### ✅ [API i18n] Accept-Language для TG-уведомлений 🔴
+- `apps/api/src/shared/i18n.ts` (NEW): `t(locale, key, vars)` + `fmt(n, locale)` + `currency(code, locale)`. Полные dictionaries ru/uz для всех 9 типов notification:
+  newOrder, storeApproved/Rejected, verificationApproved, orderStatusChanged,
+  chatMessage, cartAbandoned, priceDrop, backInStock.
+  Узбекский — Latin с обратным апострофом `ʻ`.
+- `apps/api/src/queues/telegram-notification.processor.ts`: все 9 cases на `t()` + `fmt()` + `currency()`. Удалены legacy `ORDER_STATUS_LABEL_BUYER/SELLER` константы.
+- `seller-notification.service.ts`: все DTO теперь несут опциональный `locale?: string` (значение `User.languageCode`, default 'ru').
+- `cart-abandonment.service.ts` + `wishlist-notify.service.ts`: select `languageCode` из `buyer.user`, передают в job data.
+- **Поведение:** seller с `User.languageCode='uz'` получит TG-уведомления на узбекском. Default = ru.
+
+### ✅ [API-PINO-LOGGING-001] structured logging без зависимостей 🟢
+- `apps/api/src/shared/structured-logger.ts` — `ConsoleLogger` extension.
+- В `NODE_ENV=production`: emit single-line JSON `{ts, level, context, msg, trace}` через stdout (info/log/warn/debug/verbose) или stderr (error/fatal) — Railway log aggregation разделяет streams.
+- В dev: fallback на цветной NestJS ConsoleLogger.
+- `isLevelEnabled` override + `LOG_LEVEL` env для production tuning.
+- Подключено в `main.ts` через `NestFactory.create({ logger: new StructuredLogger() })`.
+- **Все существующие `Logger.log/warn/error` работают автоматически без правок** (StructuredLogger пробрасывает в super.log в dev, в JSON в prod).
+- **Pino не подключаем** — требует `pnpm install` (4 пакета). Wrapper даёт 80% value.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] Seller Dashboard + словарь seller 🟠
+- ru.ts + uz.ts: +24 ключа для seller (dashboard.title/greeting/quickActions/totalProducts/totalOrders/pending/revenue, products.title/empty/addFirst/filterActive/filterDraft/filterArchived/confirmDelete*, orders.viewAll/recent).
+- `seller/DashboardPage.tsx`: heading, statsCards labels (Товары/Заказы/Новые), greeting `Salom, {name}!`, orders.recent + orders.viewAll, empty state, currency, `orders.orderNumber` template.
+
+**Tests:** 74/74 api wishlist+cart passed. TMA tsc + build clean (300KB / 94KB gzip).
+
+## 2026-05-14 (Полат) — Wave 16: 4 P1 design/UX задачи (полное закрытие)
+
+4 задачи закрыты за один проход.
+
+### ✅ [DESIGN-TMA-BRAND-DIFF-001] verified done 🎨
+Реализовано параллельной FG-TOKENS сессией ранее (Wave 7-12).
+- `index.css` имеет `[data-role="SELLER"]` override на `--tg-accent`
+- `AppShell.tsx:21` + `BottomNav.tsx:53` ставят `data-role={role}`
+- Buyer = orchid `#A855F7`, Seller = cyan `#22D3EE`
+- Light + dark theme overrides оба покрыты
+
+### ✅ [DESIGN-PHONE-INPUT-PACKAGE-001] packages/ui (Полат часть) 🎨
+- `packages/ui/components/PhoneInput.tsx` (NEW) — `forwardRef` + `formatUzPhone/stripUzPhone/isValidUzPhone`. value/onChange в E.164, маска `+998 XX XXX XX XX`.
+- `packages/ui/index.ts` экспортирует.
+- `packages/ui/package.json` — `peerDependencies.react: ^18||^19`.
+- `packages/ui/README.md` — migration plan для Азима: добавить `"@savdo/ui": "workspace:*"` в web-buyer + web-seller package.json → `pnpm install` → удалить дубли → заменить импорты на `'use client'` обёртку.
+- **Что НЕ сделал:** не подключал в apps/web-* (зона Азима, требует `pnpm install`).
+
+### ✅ [TMA-LIGHT-THEME-MIGRATION-001] +92 точки text-цветов 🟠
+Mass replace text-colors во всех 4 крупных seller-формах:
+- `seller/AddProductPage.tsx` (12 точек)
+- `seller/EditProductPage.tsx` (11)
+- `seller/ChannelSettingsPage.tsx` (26)
+- `seller/SettingsPage.tsx` — закрыто в Wave 14
+
+Map:
+```
+0.90/0.85/0.92 → var(--tg-text-primary)
+0.75/0.70/0.55/0.50/0.5 → var(--tg-text-secondary)
+0.45/0.40 → var(--tg-text-muted)
+0.35/0.30/0.25 → var(--tg-text-dim)
+```
+
+Остаётся ~40 точек surface/border (0.04-0.18 диапазон) — тонкие
+glass/backdrop эффекты, требуют визуального теста light theme.
+
+### ✅ [TMA-TYPOGRAPHY-SCALE-001] mass migrate text-[Npx] 🟠
+Sed batch замена во всех 20+ файлах:
+- `text-[10px]` → `text-xxs`
+- `text-[11px]` → `text-xxs`
+- `text-[12px]` → `text-xs`
+
+После: 0 хардкодов `text-[1[0-2]px]` осталось. ~50 редких
+`text-[Npx]` для специфичных значений (15-17px) — по мере касания.
+
+**Tests:** `pnpm tsc --noEmit` чист, `pnpm build` clean (297KB index gzip 93KB).
+
+## 2026-05-14 (Полат) — Wave 15: P2-P3 batch (5 tickets + i18n продолжение)
+
+5 быстрых задач + i18n миграция Profile/ChatPage buyer.
+
+### ✅ [API-N1-PRODUCTS-LIST-001] Opt-in pagination для /stores/:slug/products 🟢
+- `GET /stores/:slug/products` теперь поддерживает `?page=N&limit=N` query
+  params. Если переданы — envelope `{ data, meta: { total, page, limit } }`
+  через `findPublicByStoreIdPaginated`. Если нет — legacy raw array
+  (backward-compat, take=200 default).
+- Без breaking change для существующих consumers. Полная envelope-wide
+  migration отложена в `API-PAGINATION-ENVELOPE-001` (dual-emit + sync с Азимом).
+- **Файлы:** `apps/api/src/modules/products/storefront.controller.ts`.
+
+### ✅ [DESIGN-SEMANTIC-COLORS-001] admin часть (mirror Azim'овской web-* версии) 🟡
+- Новый `apps/admin/src/lib/styles.ts`:
+  - `dangerTint(o)/warningTint(o)/successTint(o)` через `color-mix(in srgb,
+    var(--error) X%, transparent)` (Chrome 111+/Safari 16.4+/FF 113+ — admin
+    desktop-only). Произвольная opacity без раздувания CSS-vars.
+  - Готовые `errorBanner()/successBanner()/warningBanner()` `CSSProperties`
+    для частых случаев (status + border + bg одним объектом).
+- **packages/design-tokens unified пакет НЕ создаём** — Soft Color Lifestyle
+  (buyer) и Liquid Authority (seller+admin) by design разные.
+
+### ✅ [DESIGN-A11Y-ARIA-LABELS-001] admin часть 🟡
+- AdminUsersPage delete button (с conditional aria-label «Нельзя удалить
+  Super Admin» / «Удалить доступ»)
+- CategoriesPage `ActionBtn` (aria-label = title + aria-hidden на children-иконке)
+- ChatsPage delete thread
+- DatabasePage: 2 кнопки в RowDetailPanel (delete/close) + 1 в actions
+  rows + 1 в error banner close
+- StoreDetailPage delete product
+- **Bonus:** все hardcoded `rgba(239,68,68,...)` в этих файлах заменены
+  на semantic vars (`var(--surface-error)`/`var(--border-error-soft)`/
+  `var(--error)`) из `ADMIN-DESIGN-TOKENS-SURFACE-001`.
+
+### ✅ [Nice-to-have от Азима] `_count.products` в /seller/categories 🟢
+- `StoreCategoriesRepository.findByStoreId` теперь делает `include: {
+  _count: { select: { products: { where: { status: ACTIVE, deletedAt: null } } } } }`
+- Возврат: `StoreCategoryWithCount[]` (`& { productCount: number }`)
+- В `packages/types/src/api/stores.ts` — `StoreCategory.productCount?: number`
+  (опционально для backward-compat с другими endpoints).
+- Один запрос, без N+1. Web-seller `/store/categories` теперь может
+  показывать счётчик товаров рядом с именем категории.
+- **Файлы:** `apps/api/src/modules/categories/repositories/store-categories.repository.ts`,
+  `apps/api/src/modules/categories/use-cases/get-store-categories.use-case.ts`,
+  `packages/types/src/api/stores.ts`.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] продолжение — Profile + ChatPage buyer 🔴
+- `buyer/ProfilePage` целиком переведена: header, аккаунт, «Хочешь
+  продавать?» card, действия (заказы, бот, выйти), guest banner,
+  CTA «Войти через @bot». +14 ключей profile.* / auth.guest*.
+- `buyer/ChatPage` (минимально): empty/error/no-threads states, edit
+  message banner, edited tag, attach photo / cancel reply / cancel edit
+  aria-labels, placeholder инпута, toast'ы send/report. +14 ключей chat.*.
+- **Файлы:** `apps/tma/src/lib/i18n/{ru,uz}.ts`, `apps/tma/src/pages/
+  buyer/{ProfilePage,ChatPage}.tsx`.
+
+**Tests:** api 74/74 (categories + products), tma `pnpm build` clean,
+admin tsc clean.
+
+## 2026-05-14 (Полат) — API-PRODUCT-STORE-TRUST-SIGNALS-001 (контракт от Азима)
+
+### ✅ [API-PRODUCT-STORE-TRUST-SIGNALS-001] Trust signals в Product.store 🟡
+- **Важность:** 🟡 P1 (контракт-задача от Азима, коммит `508932d` от 13.05)
+- **Дата:** 14.05.2026
+- **Ветка:** main + api
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/products.repository.ts` —
+    `publicProductDetailInclude.store` теперь `select` с `id/name/slug/city/
+    telegramContactLink/logoMediaId` + trust signals `isVerified/avgRating/
+    reviewCount`. Был без `store` вообще.
+  - `apps/api/src/modules/products/services/product-presenter.service.ts` —
+    новый helper `mapProductStoreRef(store)`: resolveStoreImageUrls для
+    logoUrl + Number(avgRating) Decimal→number normalization.
+  - `apps/api/src/modules/products/storefront.controller.ts` —
+    оба endpoints (`GET /storefront/products/:id` + `GET /stores/:slug/
+    products/:id`) применяют `presenter.mapProductStoreRef` и эмиттят
+    `store: StoreRef` в response.
+  - `packages/types/src/api/stores.ts` —
+    - `StoreRef` расширен trust signals (mandatory).
+    - `Store` (full model) — trust signals mandatory.
+    - `StorefrontStore` — trust signals optional (backward-compat с
+      кэшированными ответами; новые `/storefront/stores/:slug` всегда
+      возвращают, см. `stores.repository.findBySlug`).
+- **Что закрывает на стороне Азима:**
+  - Можно удалить `useStoreWithTrust` hook
+  - Можно удалить локальные расширения `apps/web-buyer/src/types/storefront.ts`
+  - Второй request на `/storefront/stores/:slug` ради бейджа/рейтинга
+    больше не нужен — все trust signals приходят в `product.store`.
+- **Tests:** 62/62 products-теста passed (presenter, get-featured, change-status,
+  и др. — никаких регрессий). api `tsc --noEmit` clean.
+
+## 2026-05-13 (Полат) — Wave 14: P1 UX batch (8 tickets) + 2 deferred
+
+Большая партия: 4 admin (design tokens + a11y + tabs + buttons), 4 tma
+(typography + light theme partial + 2 MainButton + Yandex autocomplete +
+wishlist-notify cron). 2 breaking-change задачи отложены с обоснованием.
+
+### ✅ Wave 13 ([feat/admin]: design tokens + a11y) — закоммичено отдельно
+
+См. коммит `33a90b7`. 4 ADMIN-* задачи закрыты:
+- ADMIN-DESIGN-TOKENS-SURFACE-001 (12 semantic surface tokens × 2 темы)
+- ADMIN-THEME-VARS-MIGRATE-001 (Button/Badge через .btn-*/.badge-* классы на vars)
+- ADMIN-A11Y-MODAL-001 (DashboardLayout aria-label + theme toggle aria-pressed)
+- ADMIN-A11Y-TABS-OTP-001 (новый Tabs primitive + roving-tabindex в ModerationPage)
+
+### ✅ [TMA-TYPOGRAPHY-SCALE-001] (партиально, инфра) 🟠
+
+`tailwind.config.js` теперь использует CSS-vars для `theme.fontSize`:
+`text-xxs/-xs/-sm/-base/-lg/-xl/-2xl` все через `var(--t-*)` из index.css.
+Кастомный `text-xxs` (11px) для UI — раньше был `text-[11px]` хардкодом
+в 280+ местах. Десктопный override `@media (min-width: 1024px)` (1.05×
+scale). Migrate map в комментариях config'а. Мигрированы SettingsPage
+buyer / StoresPage / StorePage. Остальные 250+ — рутина по мере касания.
+
+### ✅ [TMA-LIGHT-THEME-MIGRATION-001] (партиально продолжение)
+
+Параллельная FG-TOKENS сессия закрыла 470 точек (waves 7-16). 13.05.2026
+точечно мигрировал text-цвета в seller/SettingsPage (15 точек: text-primary
+/secondary/muted/dim). Осталось ~117 точек surface/border тонкие эффекты
+в крупных seller-формах (Add/Edit/ChannelSettings) — не блокер.
+
+### ✅ [TMA-SELLER-MAIN-BUTTON-002/003] AddProductPage + EditProductPage 🟠
+
+**AddProductPage** (1069 LOC): MainButton текст по стадии заполнения:
+1. Выберите категорию → 2. Добавьте фото → 3. Введите название →
+4. Укажите цену → 5. Заполните: {filter-label} → 6. Добавьте размер →
+7. Опубликовать товар. Пользователь видит чего не хватает, не упирается
+в disabled.
+
+**EditProductPage** (1150 LOC): аналогично, упрощённо (нет photo/filters):
+1. Выберите категорию → 2. Введите название → 3. Укажите цену →
+4. Сохранить изменения.
+
+### ✅ [TMA-ADDRESS-AUTOCOMPLETE-001] Yandex Suggest для UZ-адресов 🟠
+
+`apps/tma/src/components/ui/AddressAutocomplete.tsx`:
+- REST endpoint `suggest-maps.yandex.ru/v1/suggest` (без полной Maps JS)
+- Bbox `55.99,37.18~73.16,45.59` — результаты только из Узбекистана
+- Debounce 300ms + AbortController на каждый запрос
+- Локаль `ru_RU`/`uz_UZ` авто из i18n locale
+- Grafefully degrades на обычный input если `VITE_YANDEX_MAPS_API_KEY` пуст
+- Dropdown с outside-click + Esc + клик-pick
+
+Подключено в `buyer/CheckoutPage` (`<AddressAutocomplete>` вместо `<input>`).
+
+### ✅ [MARKETING-WISHLIST-NOTIFY-001] price-drop + back-in-stock cron 🟠
+
+**Schema:** `BuyerWishlistItem.priceSnapshot/inStockSnapshot/notifiedAt/notifiedReason`
++ индекс `notifiedAt`. Migration `20260513150000_wishlist_notify_tracking`.
+
+**AddToWishlistUseCase** теперь сохраняет snapshot: priceSnapshot =
+salePrice ?? basePrice; inStockSnapshot = status==='ACTIVE' && isVisible
+&& (no variants || any variant with stock>0). При re-add (upsert update)
+snapshot обновляется + notifiedAt сбрасывается.
+
+**WishlistNotifyService** cron `@EVERY_4_HOURS`:
+- Сканирует кандидатов с заполненным snapshot, не ghost-аккаунты
+- PRICE_DROP: currentPrice < oldPrice × (1 - 0.10) — порог 10%
+- BACK_IN_STOCK: was OOS → now ACTIVE+stock
+- Idempotency: updateMany WHERE notifiedAt IS NULL OR < now-7d
+- Cooldown 7 дней между nudge per item
+- После nudge snapshot обновляется → следующий только при новом изменении
+- Env-flag `WISHLIST_NOTIFY_ENABLED=false` отключает
+
+**Jobs:** `TELEGRAM_JOB_WISHLIST_PRICE_DROP` / `_BACK_IN_STOCK` в processor:
+HTML-template с discount% (для price-drop) + inline-кнопка «🛍 Открыть
+товар» с deep-link `?startapp=product_<slug>_<id>`.
+
+**Tests:** spec +5 cases (price snapshot, salePrice priority, status≠ACTIVE,
+empty variants, no variants single-stock). Всего 17/17 wishlist-тестов passed.
+
+### ⏸️ Отложено с обоснованием
+
+- **API-WS-EVENTS-NAMING-001** — breaking для 4 фронтов одновременно.
+  Без feature-flag/dual-emit + sync с Азимом нельзя. План в `API-WS-EVENTS-DUAL-EMIT-001`.
+- **API-PAGINATION-ENVELOPE-001** — breaking для всех list endpoints.
+  Стратегия: dual-emit через query/header, миграция фронтов раздельно.
+
+### Файлы
+
+**Admin (Wave 13):**
+- `apps/admin/src/index.css` (+vars + @layer components)
+- `apps/admin/src/components/ui/{button,badge,tabs}.tsx`
+- `apps/admin/src/layouts/DashboardLayout.tsx`
+- `apps/admin/src/pages/{AdminUsers,AuditLogs,AnalyticsEvents,Broadcast,Moderation}Page.tsx`
+
+**TMA (Wave 14):**
+- `apps/tma/tailwind.config.js` (fontSize through vars)
+- `apps/tma/src/index.css` (+ typography vars + desktop override)
+- `apps/tma/src/pages/buyer/{SettingsPage,StoresPage,StorePage}.tsx` (text-xxs migrate)
+- `apps/tma/src/pages/seller/SettingsPage.tsx` (light theme text colors)
+- `apps/tma/src/pages/seller/AddProductPage.tsx` (MainButton stages)
+- `apps/tma/src/pages/seller/EditProductPage.tsx` (MainButton stages)
+- `apps/tma/src/components/ui/AddressAutocomplete.tsx` (new)
+- `apps/tma/src/pages/buyer/CheckoutPage.tsx` (integrate AddressAutocomplete)
+
+**API (Wave 14 backend):**
+- `packages/db/prisma/schema.prisma` (Wishlist snapshot fields)
+- `packages/db/prisma/migrations/20260513150000_wishlist_notify_tracking/`
+- `apps/api/src/queues/telegram-notification.processor.ts` (+2 job cases)
+- `apps/api/src/modules/wishlist/services/wishlist-notify.service.ts` (new)
+- `apps/api/src/modules/wishlist/wishlist.module.ts` (+BullModule + cron)
+- `apps/api/src/modules/wishlist/use-cases/add-to-wishlist.use-case.ts`
+- `apps/api/src/modules/wishlist/repositories/wishlist.repository.ts`
+- `apps/api/src/modules/wishlist/use-cases/wishlist.use-cases.spec.ts` (+5 cases)
+
+**Tests:** admin tsc clean, api tsc clean, 17/17 wishlist passed.
+
+## 2026-05-14 (Азим) — DESIGN-SEMANTIC-COLORS-RGBA-002 (follow-up rest)
+
+### ✅ [DESIGN-SEMANTIC-COLORS-RGBA-002] Оставшиеся ~14 точек hardcoded rgba → dangerTint()
+- **Важность:** 🟢 P3 design follow-up
+- **Дата:** 14.05.2026
+- **Ветки:** `main` → web-buyer + web-seller (cherry-pick)
+- **Файлы (10):**
+  - `apps/web-seller/src/components/image-uploader.tsx` — error-state container + retry pill (2 точки)
+  - `apps/web-seller/src/app/(dashboard)/analytics/page.tsx` — analytics error banner
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx` — `HIDDEN_BY_ADMIN` status chip
+  - `apps/web-seller/src/app/(dashboard)/orders/page.tsx` — cancel modal confirm + row Cancel button (2 точки)
+  - `apps/web-seller/src/app/(dashboard)/orders/[id]/page.tsx` — cancel modal confirm + detail Cancel button (2 точки)
+  - `apps/web-seller/src/app/(dashboard)/notifications/page.tsx` — notifications error banner
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` — save error banner
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` — create error banner
+  - `apps/web-seller/src/app/(dashboard)/chat/page.tsx` — delete-chat icon-button + 2 confirm-delete pills (3 точки)
+  - `apps/web-buyer/src/app/(shop)/chats/page.tsx` — delete-chat icon-button (1 точка, `rgba(220,38,38)` → buyer `dangerTint()` теперь муто-красный per Soft Color Lifestyle)
+- **Что сделано:**
+  - Все 15 точек заменены: `'rgba(248,113,113,X)'` → `dangerTint(X)` (seller) и `'rgba(220,38,38,X)'` → `dangerTint(X)` (buyer chats).
+  - Все эти места теперь автоматически адаптируются к смене темы light↔dark вместо фиксированного «коралового» оттенка.
+  - В каждый файл добавлен `dangerTint` к существующему импорту из `@/lib/styles`.
+- **Verification:** `pnpm exec tsc --noEmit` в обоих апах чист. Grep `rgba\(248,113,113|rgba\(220,38,38` в моей зоне → 0 hits (остатки только в TMA + admin — зона Полата).
+- **Что НЕ сделано (out-of-scope):**
+  - TMA pages (`apps/tma/src/pages/seller/*`, `App.tsx`, `SellerAnalyticsCard.tsx` и т.д.) — зона Полата (~20 точек).
+  - admin (`apps/admin/src/index.css` — уже использует CSS-vars паттерн через `--surface-error-*`, OK).
+
+---
+
+## 2026-05-14 (Азим) — WEB-SELLER-STORE-CATEGORIES-CRUD-001
+
+### ✅ [WEB-SELLER-STORE-CATEGORIES-CRUD-001] Отдельная страница для CRUD категорий
+- **Важность:** 🟢 P3
+- **Дата:** 14.05.2026
+- **Ветка:** `main` → web-seller (cherry-pick)
+- **Файлы (2):**
+  - `apps/web-seller/src/app/(dashboard)/store/categories/page.tsx` (NEW, ~240 LOC) — отдельная страница `/store/categories`
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx` (REFACTOR) — StoreCategoriesSection (120 LOC) → компактная ссылка «Управление категориями» с count
+- **Что сделано:**
+  - List категорий с inline edit (click name → input, Enter to save, Escape to cancel)
+  - Add form вверху страницы (отдельный block с лейблом)
+  - Delete через `ConfirmModal` (раньше в Settings — без confirm)
+  - **Move up / move down arrows** — сортировка через swap sortOrder (новое — Settings секция не имела)
+  - Empty state «Пока нет категорий»
+  - Error banner через `dangerTint()` helpers
+  - aria-label на каждой кнопке (Pencil/Trash2/ArrowUp/ArrowDown) + aria-hidden на иконках
+- **Что НЕ сделано (nice-to-have):**
+  - Product count per category (нужен backend поддержка `_count.products` в response — Полату следует добавить если потом понадобится)
+  - Drag-and-drop reorder вместо arrow buttons (текущий swap достаточно для UZ-сценария)
+- **Verification:** `npx tsc --noEmit` чист.
+
+## 2026-05-14 (Азим) — DESIGN-SEMANTIC-COLORS-001 (theme-aware tints, hot-path)
+
+### ✅ [DESIGN-SEMANTIC-COLORS-001] dangerTint / warningTint / successTint helpers
+- **Важность:** 🟡 P1 design quick win
+- **Дата:** 14.05.2026
+- **Ветки:** `main` → web-buyer + web-seller (cherry-pick)
+- **Файлы (7):**
+  - `apps/web-buyer/src/app/globals.css` — `--color-success-rgb/-warning-rgb/-danger-rgb` для `:root` и `[data-theme=dark]`
+  - `apps/web-buyer/src/lib/styles.ts` — `dangerTint(o)/warningTint(o)/successTint(o)` helpers
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` — checkout error banner + stock warning переведены
+  - `apps/web-seller/src/app/globals.css` — `--color-success-rgb/-warning-rgb/-danger-rgb/-info-rgb` для обоих тем
+  - `apps/web-seller/src/lib/styles.ts` — те же helpers
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — login error banner переведён
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — ErrorBanner переведён
+- **Что сделано:**
+  - **Theme-aware tints** через CSS color level 4 syntax `rgb(var(--color-X-rgb) / opacity)`. Раньше hardcoded `rgba(220,38,38,0.10)` не адаптировался при смене light↔dark, теперь — автоматически.
+  - **RGB-channels разные** для каждой темы (buyer light: `139,58,58` → dark `197,102,102`; seller light: `220,38,38` → dark `248,113,113`).
+  - Hot-path: видимые на каждой login/onboarding/checkout попытке — переведены.
+- **Что НЕ сделано (отдельная задача `DESIGN-SEMANTIC-COLORS-RGBA-002`, P3):**
+  - ~14 точек hardcoded `rgba(248,113,113,X)` в web-seller analytics/orders/notifications/products/chat и web-buyer chats. Helper готов — нужен mass-replace. Не блокер: цвета визуально совпадают, но light/dark не адаптируются.
+  - `packages/design-tokens` unified пакет **намеренно НЕ создаём** — Soft Color Lifestyle (buyer warm terracotta) и Liquid Authority (seller violet) by design разные.
+- **Verification:** `npx tsc --noEmit` чист в обоих апсах.
+
+## 2026-05-14 (Азим) — DESIGN-A11Y-ARIA-LABELS-001 (web-* часть)
+
+### ✅ [DESIGN-A11Y-ARIA-LABELS-001] A11y aria-labels на icon-only кнопках + decorative SVG
+- **Важность:** 🟡 P1 design quick win
+- **Дата:** 14.05.2026
+- **Ветки:** `main` → web-buyer + web-seller (cherry-pick)
+- **Файлы (6):**
+  - `apps/web-buyer/src/components/icons.tsx` — 10 shared SVG получили `aria-hidden="true"` + `focusable="false"` (декоративные, рядом всегда есть видимый текст — BottomNavBar таб, button label)
+  - `apps/web-buyer/src/components/layout/BottomNavBar.tsx` — `aria-current="page"` на активном табе; `aria-label` на Link теперь включает badge count (`"Корзина (3 непрочитанных)"`); badge span получил `aria-hidden="true"` (озвучен через label)
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` — 2 thumbnail кнопки (desktop grid + mobile scroll) получили `aria-label="Показать фото N"` + `aria-pressed`. Раньше `<Image alt="">` внутри — кнопка была без accessible name
+  - `apps/web-seller/src/components/image-uploader.tsx` — X кнопка удаления получила `aria-label="Удалить фото"`
+  - `apps/web-seller/src/components/product-variants-section.tsx`, `product-option-groups-section.tsx` — X cancel получили `aria-label="Отмена"` (title уже был — но title не считается accessible name)
+- **Что НЕ сделано:**
+  - **Admin (DatabasePage и др.)** — зона Полата. Оригинальный отчёт упоминал 21 icon-only button по всей платформе; admin-часть — отдельный ticket.
+  - Полный audit lucide-react иконок в buttons с text-соседями — не критично (текст-сосед даёт accessible name автоматически), осталось как nice-to-have.
+- **Verification:** `npx tsc --noEmit` чист в обоих апсах.
+
+## 2026-05-14 (Азим) — DESIGN-PHONE-INPUT-PACKAGE-001 (web-* часть)
+
+### ✅ [DESIGN-PHONE-INPUT-PACKAGE-001] PhoneInput с маской +998 XX XXX XX XX
+- **Важность:** 🟡 P1 design quick win
+- **Дата:** 14.05.2026
+- **Ветки:** `main` → web-buyer + web-seller (через FF merge)
+- **Файлы:**
+  - `apps/web-buyer/src/components/PhoneInput.tsx` (NEW)
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx` (EDIT — заменён `<input type=tel>` на `<PhoneInput>`)
+  - `apps/web-buyer/src/app/(minimal)/checkout/page.tsx` (EDIT — 2 phone inputs: OTP step + contact form)
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` (EDIT — display через formatUzPhone)
+  - `apps/web-seller/src/components/PhoneInput.tsx` (NEW — дубль buyer-копии)
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` (EDIT — заменён prefix `+998` + raw input на единый PhoneInput)
+- **Что сделано:**
+  - Компонент `<PhoneInput>` с маской `+998 XX XXX XX XX`. Внутри format/strip/validate. value+onChange работают в E.164 (`+998XXXXXXXXX`) — backend получает напрямую, без `+998${phone}` склейки.
+  - Disabled-state кнопок на `isValidUzPhone(phone)` вместо `.trim().length<9` (строгая проверка: 12 цифр).
+  - Display телефона на code-шаге и в /profile — через `formatUzPhone()`.
+  - aria-label="Телефон" + autoComplete="tel" + inputMode="tel" встроены.
+- **Что НЕ сделано:**
+  - **packages/ui подключение** — `@savdo/ui` сейчас не в dependencies web-* (только tokens/colors.ts существует, но не используется). Подключение требует `pnpm install` локально (Азим не разрешает). Пока — две идентичные копии в web-buyer и web-seller, sync вручную, с явным SYNC-комментарием в обоих файлах.
+  - **TMA** — Полат уже сделал `apps/tma/src/lib/phone.ts` (Wave 7, TMA-PHONE-MASK-001). Не дублируем.
+  - **Admin** — зона Полата.
+- **Verification:** `npx tsc --noEmit` чист на обоих апсах. Дев-сервер не запускал (memory feedback: не запускать монорепо локально).
+
+## 2026-05-13 (Азим) — WEB-SELLER-PRODUCT-PARITY-001 (3 фазы)
+
+Полат сильно развил TMA AddProduct/EditProduct (multi-photo, dynamic filters, variants matrix, attributes, per-variant stock). Web-seller отставал. Цель — **функциональный паритет** (дизайн остаётся Liquid Authority).
+
+### ✅ [WEB-SELLER-PRODUCT-PARITY-001] Multi-photo + attributes + filters + variants matrix + stock editor
+- **Важность:** 🟠 P1
+- **Дата:** 13.05.2026 (3 фазы за день)
+- **Ветка:** `web-seller` (8 коммитов `d51b552..bddc515`)
+- **Файлы:**
+  - `apps/web-seller/src/components/multi-image-uploader.tsx` (NEW)
+  - `apps/web-seller/src/components/product-attributes-section.tsx` (NEW)
+  - `apps/web-seller/src/components/category-filters-section.tsx` (NEW)
+  - `apps/web-seller/src/components/variants-matrix-builder.tsx` (NEW)
+  - `apps/web-seller/src/components/product-variants-section.tsx` (EDIT — inline stock editor)
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` (EDIT — multi-photo + attrs + filters + matrix)
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx` (EDIT — multi-photo + attrs sync)
+  - `apps/web-seller/src/lib/api/products.api.ts` (EDIT — image + attribute helpers)
+  - `apps/web-seller/src/lib/api/storefront.api.ts` (NEW — getCategoryFilters)
+  - `apps/web-seller/src/hooks/use-category-filters.ts` (NEW)
+- **Phase 1 (multi-photo + attributes):**
+  - MultiImageUploader ≤8 фото, drag-reorder, primary marker, native file picker (без cropper'а — это touch-фича TMA)
+  - ProductAttributesSection free-form key/value pairs с +/− строк
+  - Create: parallel POST на /images (isPrimary для первого) + /attributes (только non-empty)
+  - Edit: diff prev/next → POST на added, DELETE на removed
+- **Phase 2 (filters + matrix):**
+  - useCategoryFilters → GET /storefront/categories/:slug/filters (cached 10min)
+  - CategoryFiltersSection — text/number/select/boolean/color → сохраняются как ProductAttribute
+  - VariantsMatrixBuilder — multi_select chips → cartesian product матрица с per-cell stock + priceOverride
+  - Create flow: после product → POST option-groups → POST option-values → POST variants matrix
+- **Phase 3 (stock editor):**
+  - InlineStockEditor в каждом variant row: compact input + ✓ кнопка
+  - useAdjustStock(delta = new - current, reason='manual')
+- **Что НЕ сделано:**
+  - PATCH images endpoint отсутствует у backend → reorder в edit-режиме не сохраняется (Create поддерживает) — отдельная задача `API-PRODUCT-IMAGES-PATCH-001` для Полата
+  - Store-категории CRUD (`WEB-SELLER-STORE-CATEGORIES-CRUD-001`) — отдельная задача
+  - VariantsMatrixBuilder в edit-режиме (после первого create варианты редактируются через старый ProductOptionGroupsSection / ProductVariantsSection)
+
+### Spec + Plan
+- `docs/superpowers/specs/2026-05-13-web-seller-product-feature-parity-design.md` (`3dfdc8c`)
+- `docs/superpowers/plans/2026-05-13-web-seller-product-feature-parity.md` (`692b835`)
+
+### Контракт-задачи для Полата (P3)
+- `API-PRODUCT-IMAGES-PATCH-001` — `PATCH /seller/products/:id/images/:imageId` для reorder/primary toggle без delete-recreate
+- `WEB-SELLER-STORE-CATEGORIES-CRUD-001` — UI для управления store-категориями (CRUD страница), сейчас seller может выбрать существующую, но не управлять списком
+
+---
+
+## 2026-05-13 (Азим) — WEB-BUYER-CATALOG-001 + WEB-SELLER-ONBOARDING-INTERCEPT-001
+
+Реакция на жалобы Полата (скрины 12.05 / 13.05). Адресует:
+- buyer не может найти магазины / товары без прямой ссылки → нужен каталог
+- buyer попадая в seller-кабинет молча кидается в `/onboarding` (форма создания магазина) без объяснения, рядом 401-spam от seller-хуков
+- создание товара зашито в seller-онбординг — добавляет friction и плодит огрызочные продукты
+
+### ✅ [WEB-BUYER-CATALOG-001] /stores + /products каталог
+- **Важность:** 🔴
+- **Дата:** 13.05.2026
+- **Ветка:** `web-buyer` (commits `6670451` → `ada8369`)
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/stores/page.tsx` (NEW)
+  - `apps/web-buyer/src/app/(shop)/products/page.tsx` (NEW)
+  - `apps/web-buyer/src/components/catalog/` — LoadMoreButton, EmptyState, StoresGrid, StoresFilters, ProductsGrid, ProductsFilters (6 NEW)
+  - `apps/web-buyer/src/hooks/use-storefront.ts` — `useStoresCatalog` + `useProductsCatalog` (infinite)
+  - `apps/web-buyer/src/lib/api/storefront.api.ts` — `getStoresCatalog` + `getProductsCatalog`
+  - `apps/web-buyer/src/lib/analytics.ts` — `stores_catalog_viewed` + `products_catalog_viewed`
+  - `apps/web-buyer/src/components/layout/Header.tsx` — desktop nav `Магазины` / `Товары`
+  - `apps/web-buyer/src/components/home/HomeTopStores.tsx` — «Все магазины →» link
+  - `apps/web-buyer/src/components/home/HomeFeaturedFeed.tsx` — «Все товары →» link
+- **Что сделано:**
+  - `/stores` — каталог всех опубликованных магазинов, client-side фильтры (город из ответа, verified-toggle, sort top/new/rating), URL state, плюрализация
+  - `/products` — каталог товаров с infinite scroll (24/page), category chips через `useGlobalCategoriesTree`, sort new/price_asc/price_desc, URL state
+  - Reuse `StoreCard` / `ProductCard` без изменений; общий `LoadMoreButton` и `EmptyState`
+  - Homepage: «Все →» ссылки рядом с h2 в Top stores / Featured feed; в Featured сохраняется `?cat=` при переходе
+  - Header (desktop): новые `Магазины` / `Товары` ссылки перед глобальным search. Mobile BottomNav без изменений
+  - Все Suspense-boundary для Next 16 `useSearchParams`
+  - Backend готов — без правок API
+
+### ✅ [WEB-SELLER-ONBOARDING-INTERCEPT-001] /become-seller intercept + -1 шаг + 401-spam fix
+- **Важность:** 🔴
+- **Дата:** 13.05.2026
+- **Ветка:** `web-seller` (commits `02ad31e` → `91c4b7b`)
+- **Файлы:**
+  - `apps/web-seller/src/app/(onboarding)/become-seller/page.tsx` (NEW)
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — redirect target
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — удалён Step3 (товар), STEPS 4→3
+  - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — empty-state «Добавьте товар»
+  - `apps/web-seller/src/hooks/use-seller.ts` `use-chat.ts` `use-orders.ts` `use-products.ts` `use-notifications.ts` `use-analytics.ts` — auth guards
+  - `apps/web-seller/src/lib/analytics.ts` — `become_seller_intercept_*` events
+- **Что сделано:**
+  - **/become-seller** — friendly explainer для BUYER: «У вас ещё нет магазина», 3 CTA (Открыть магазин / Перейти к покупкам → savdo.uz / Выйти из аккаунта). Self-guard: SELLER со store → /dashboard; не залогинен → /login
+  - **Login redirect**: `verifyOtp.onSuccess` и `useEffect` теперь шлют не-SELLER на `/become-seller` вместо `/onboarding`
+  - **Onboarding**: удалён Step3 (~90 LOC) — создание товара выпилено. STEPS теперь `[Магазин, Контакты, Готово]`. Step4 (submit) рендерится на step===2
+  - **Dashboard empty-state**: блок с CTA «+Добавить товар» (→`/products/create`) пока `products.length === 0`. Текст адаптируется к store status (PENDING_REVIEW vs APPROVED)
+  - **401-spam fix**: все `useQuery` в seller-хуках получили `enabled: !!user && user.role === 'SELLER'`. Покрыто: `useSellerProfile`, `useStore`, `useStoreCategories`, `useThreads`, `useMessages`, `useSellerOrders`, `useSellerOrder`, `useSellerProducts`, `useSellerProduct`, `useProductVariants`, `useNotifications`, `useUnreadCount`, `useNotifPreferences`, `useSellerSummary`, `useSellerAnalytics`. Buyer на /become-seller и /onboarding больше не видит 401 в консоли
+
+### Spec + Plan (commits на ветке web-buyer)
+- `docs/superpowers/specs/2026-05-13-buyer-catalog-and-seller-onboarding-design.md` — `15d1113`
+- `docs/superpowers/plans/2026-05-13-buyer-catalog-and-seller-onboarding.md` — `3bd31a7`
+
+### Контракт-задача для Полата (P3, после launch)
+- `API-STORES-PAGINATION-001` — `/storefront/stores` сейчас `take: 50` в `findAllPublished` (stores.repository.ts:59). На 37 stores OK; при росте до 500+ нужна server-side pagination (`page`/`limit`). Frontend `/stores` уже готов потреблять paginated ответ.
+
+---
+
+## 2026-05-13 (Полат) — Wave 12: MARKETING-LOCALIZATION-UZ-001 продолжение (TMA buyer pages)
+
+Продолжение Wave 11. Мигрировал основные buyer-страницы на `t()`,
+расширил словари (~75 новых ключей), добавил плюрализацию для русского.
+
+- **CartPage:** заголовок, пустая корзина, кнопки контакта продавца, MainButton
+  («Оформить — {total} {currency}»), aria-label на qty-кнопках,
+  localized `toLocaleString` (uz / ru), валюта через `t('common.currency')`.
+- **CheckoutPage:** все строки → `t()`, success screen, error states,
+  auth-warning, placeholder'ы инпутов, CTA с динамическим amount.
+- **OrdersPage:** заголовок + плюрализация `pluralOrders(N)` (1 заказ / 2 заказа / 5 заказов),
+  фильтры статусов (Все/Ожидают/Подтвержд./В пути/Доставлены/Отменены),
+  empty/error/auth states, review-модалка («Оцените товар»), Stars +
+  comment placeholder + Опубликовать. Узбекский всегда `{N} buyurtma`
+  (без плюрализации — у узбекского нет грамматики числа).
+- **WishlistPage:** заголовок + плюрализация товаров, badge "Недоступен",
+  empty states, цены через `fmt + common.currency`.
+- **ProductPage:** заголовок не найден, MainButton (Выберите вариант / Нет в наличии
+  / В корзину — N сум), stock badges, описание/характеристики/магазин labels,
+  CTA «Задать вопрос продавцу», chat prefill через локализованный template.
+
+**Технические решения:**
+- Простая плюрализация без `Intl.PluralRules` — runtime function в каждой
+  странице (`pluralOrders`/`pluralWishlist`) использует общие ключи
+  `.wordOne/.wordFew/.wordMany`. Для uz все три формы одинаковые.
+- `toLocaleString(locale === 'uz' ? 'uz' : 'ru')` для чисел — узбекская
+  локаль тоже использует пробел как тысячный разделитель.
+- `useEffect` deps с `locale` для MainButton — пересоздаём label при смене.
+- Все нормальные апострофы `o'` / `g'` в uz.ts проверены через grep, ровно 0.
+
+**Файлы:**
+- `apps/tma/src/lib/i18n/{ru,uz}.ts` (+75 ключей, общая валюта `common.currency`)
+- `apps/tma/src/pages/buyer/{CartPage,CheckoutPage,OrdersPage,WishlistPage,ProductPage}.tsx`
+
+**Tests:** `tsc --noEmit` clean.
+
+**Осталось:** Profile, ChatPage (buyer), все seller pages, admin, API уведомления.
+
+## 2026-05-12 (Полат) — Wave 11: MARKETING-LOCALIZATION-UZ-001 (i18n infra + uzbek translator skill)
+
+Большая задача — research + reverse + skill + реализация инфры + TMA SettingsPage и StoresPage. Цель: 60% UZ-аудитория, предпочитающая узбекский, получает родной язык.
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (partial) i18n инфра + skill + TMA migrate 🔴
+
+**Research / reverse-engineering Uzum, OLX UZ:**
+- Узбекистан официально перешёл на латиницу с 01.01.2023 (СМИ, маркетплейсы)
+- Стандарт e-commerce: товар на узбекском (Latin) + русский (Cyrillic). Кириллицу uz НЕ поддерживаем.
+- Ключевой символ — **обратный апостроф** `ʻ` (U+02BB), а не обычный `'`. GT почти всегда ставит обычный.
+
+**Skill записан для будущих сессий:**
+- `.claude/skills/uzbek-translator/SKILL.md` (~290 строк)
+- Активируется триггерами: "переведи на узбекский", "i18n uz", "локализация Узбекистан"
+- Алфавит, особые символы, типография апострофов, грамматика (агглютинация, падежи `-ga/-ni/-da/-dan`, императив `-ing`, притяжательные `-im/-ingiz`), множ. число `-lar`
+- E-commerce глоссарий: 60+ терминов (savat, savatga qoʻshish, buyurtma, yetkazib berish, toʻlov, manzil, doʻkon, sotuvchi, xaridor, mahsulot, chegirma, soʻm, ...)
+- Чек-лист перед коммитом + типичные ошибки Google Translate
+
+**TMA i18n инфра — zero-deps React Context:**
+- `apps/tma/src/lib/i18n/types.ts` — `Locale = 'ru' | 'uz'`, `SUPPORTED_LOCALES`, `DEFAULT_LOCALE`
+- `apps/tma/src/lib/i18n/ru.ts` (100+ ключей, default) и `uz.ts` (зеркало, проверено grep'ом на `o'`/`g'`)
+- `apps/tma/src/lib/i18n/I18nProvider.tsx` — Context + `useTranslation()` hook
+  - Auto-detect: `localStorage['savdo_locale']` → `tg.initDataUnsafe.user.language_code` → default (ru)
+  - `setLocale()` сохраняет в localStorage + обновляет `<html lang>` для a11y
+  - `t(key, vars)` поддерживает `{name}` интерполяцию + fallback на `ru` если ключ отсутствует в активной локали
+- `main.tsx`: `<I18nProvider>` обёрнут между `<TelegramProvider>` и `<ThemeProvider>` (нужен tgUser для language detection)
+
+**SettingsPage переведён + добавлен переключатель языка:**
+- Карточка «Язык / Til» с двумя кнопками `Русский` / `Oʻzbek`, haptic feedback при выборе
+- Все остальные строки на странице через `t()` — заголовок, аккаунт, тема, "Стать продавцом" CTA, "Telegram-бот", "Мои заказы", "Каталог", "Выйти"
+
+**StoresPage переведён (главная страница buyer):**
+- Приветствие `Salom, {name}!` через `t('auth.welcomeName', { name })`
+- Табы Магазины/Товары (`nav.stores` / `nav.products`)
+- Плейсхолдер поиска (контекстный — stores или products)
+- Sort labels (Новые / ↑ Цена / ↓ Цена)
+- Verified badge title + aria-label
+- Empty states + error states + retry
+
+**Файлы:**
+- `apps/tma/src/main.tsx` (Provider wiring)
+- `apps/tma/src/lib/i18n/{types,ru,uz,I18nProvider,index}.ts` (new)
+- `apps/tma/src/pages/buyer/SettingsPage.tsx`
+- `apps/tma/src/pages/buyer/StoresPage.tsx`
+- `.claude/skills/uzbek-translator/SKILL.md` (new — но `.claude/` в .gitignore, локальный)
+- `analiz/tasks.md`, `analiz/done.md`
+
+**Tests:** TypeScript `tsc --noEmit` чист. Runtime смок не делал (нужен Telegram WebApp env), переключатель собран минимально (Context value + map lookup).
+
+**Осталось (не блокер для запуска инфры):**
+- Мигрировать остальные TMA страницы (CartPage, CheckoutPage, OrdersPage, ProductPage, ProfilePage, WishlistPage, ChatPage)
+- Admin локализацию (Азим/Полат)
+- API Accept-Language header в `seller-notification.service` (узбекские тексты для seller TG-уведомлений)
+- Web-buyer / web-seller (зона Азима)
+
+**Важность:** 🔴 P0 — без инфры не запустить ни одну страницу на uz. Полный перевод дальше партиями.
+
 ## 2026-05-12 (Полат) — Wave 10: MARKETING-CART-ABANDONMENT-001 + cleanup
 
 Закрыто 4 задачи в одном проходе.

@@ -12,10 +12,25 @@ export class AddToWishlistUseCase {
   ) {}
 
   async execute(buyerId: string, productId: string) {
-    // Verify product exists and is not deleted
+    // Verify product exists and is not deleted.
+    // MARKETING-WISHLIST-NOTIFY-001: подтягиваем priceSnapshot +
+    // inStockSnapshot для cron-сканера (детекция price-drop / back-in-stock).
+    // Stock хранится на ProductVariant, поэтому in-stock = status=ACTIVE +
+    // isVisible (достаточный сигнал «можно купить») плюс хоть один
+    // variant с stockQuantity>0 ИЛИ нет вариантов (single-stock product).
     const product = await this.prisma.product.findFirst({
       where: { id: productId, deletedAt: null },
-      select: { id: true },
+      select: {
+        id: true,
+        basePrice: true,
+        salePrice: true,
+        status: true,
+        isVisible: true,
+        variants: {
+          where: { isActive: true },
+          select: { stockQuantity: true },
+        },
+      },
     });
 
     if (!product) {
@@ -26,6 +41,17 @@ export class AddToWishlistUseCase {
       );
     }
 
-    return this.wishlistRepo.create(buyerId, productId);
+    const priceSnapshot = product.salePrice ?? product.basePrice;
+    const hasVariants = product.variants.length > 0;
+    const anyVariantInStock = hasVariants && product.variants.some((v) => v.stockQuantity > 0);
+    const inStockSnapshot =
+      product.status === 'ACTIVE' &&
+      product.isVisible &&
+      (!hasVariants || anyVariantInStock);
+
+    return this.wishlistRepo.create(buyerId, productId, {
+      priceSnapshot,
+      inStockSnapshot,
+    });
   }
 }

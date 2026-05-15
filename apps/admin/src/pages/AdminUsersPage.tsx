@@ -86,7 +86,7 @@ export default function AdminUsersPage() {
       )}
 
       {error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'var(--surface-error)', border: '1px solid var(--border-error-soft)', color: 'var(--error)', fontSize: 13 }}>
           <AlertCircle size={15} /> {error}
         </div>
       )}
@@ -148,9 +148,10 @@ export default function AdminUsersPage() {
                       onClick={() => setRemoveTarget(admin)}
                       disabled={isSelf || admin.adminRole === 'super_admin'}
                       title={admin.adminRole === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ'}
-                      style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: (isSelf || admin.adminRole === 'super_admin') ? 'not-allowed' : 'pointer', opacity: (isSelf || admin.adminRole === 'super_admin') ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
+                      aria-label={admin.adminRole === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ администратора'}
+                      style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border-error)', background: 'var(--surface-error)', color: 'var(--error)', fontSize: 12, fontWeight: 600, cursor: (isSelf || admin.adminRole === 'super_admin') ? 'not-allowed' : 'pointer', opacity: (isSelf || admin.adminRole === 'super_admin') ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={12} aria-hidden="true" />
                     </button>
                   </div>
                 )}

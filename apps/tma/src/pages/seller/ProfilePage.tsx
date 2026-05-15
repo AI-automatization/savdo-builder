@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { webStoreUrl } from '@/lib/webUrl';
+import { useTranslation } from '@/lib/i18n';
 
 interface Store {
   id: string;
@@ -25,6 +26,7 @@ export default function SellerProfilePage() {
   const { user, logout } = useAuth();
   const { tg, user: tgUser } = useTelegram();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [store, setStore] = useState<Store | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -37,7 +39,7 @@ export default function SellerProfilePage() {
       .catch((err: unknown) => {
         if (ac.signal.aborted) return;
         if (err instanceof Error && err.name === 'AbortError') return;
-        showToast('Не удалось загрузить профиль магазина', 'error');
+        showToast(t('seller.profile.loadError'), 'error');
       });
     return () => ac.abort();
   }, []);
@@ -57,14 +59,14 @@ export default function SellerProfilePage() {
     const link = `https://t.me/${BOT_USERNAME}?startapp=store_${store.slug}`;
     navigator.clipboard.writeText(link)
       .then(() => { tg?.HapticFeedback.notificationOccurred('success'); })
-      .catch(() => { showToast('Не удалось скопировать ссылку', 'error'); });
+      .catch(() => { showToast(t('seller.profile.copyError'), 'error'); });
     track.storeLinkCopied(store.id);
   };
 
   return (
 
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
-        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>Профиль</h1>
+        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.profile.title')}</h1>
 
         {/* Telegram аккаунт */}
         <GlassCard className="p-4 flex items-center gap-3">
@@ -86,10 +88,10 @@ export default function SellerProfilePage() {
             )}
           </div>
           <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            className="text-xxs font-bold px-2 py-0.5 rounded-full"
             style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
           >
-            Продавец
+            {t('seller.profile.roleBadge')}
           </span>
         </GlassCard>
 
@@ -111,23 +113,23 @@ export default function SellerProfilePage() {
           <GlassCard className="p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-                Мой магазин
+                {t('seller.profile.myStore')}
               </p>
               <Badge status={store.status} />
             </div>
             <p className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>{store.name}</p>
             <button
               onClick={() => tg?.openLink?.(webStoreUrl(store.slug))}
-              className="text-[11px] inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+              className="text-xxs inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
               style={{
                 color: 'var(--tg-accent)',
                 background: 'var(--tg-accent-bg)',
                 border: '1px solid var(--tg-accent-border)',
                 cursor: 'pointer',
               }}
-              aria-label="Перейти на сайт магазина"
+              aria-label={t('seller.profile.openSite')}
             >
-              ↗ Перейти на сайт
+              ↗ {t('seller.profile.openSite')}
             </button>
 
             {store.telegramChannelId ? (
@@ -141,7 +143,7 @@ export default function SellerProfilePage() {
                 style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)', color: 'rgba(251,191,36,0.80)' }}
               >
                 <span>⚠️</span>
-                <span>Telegram-канал не привязан — автопостинг отключён</span>
+                <span>{t('seller.profile.noChannel')}</span>
               </div>
             )}
 
@@ -150,7 +152,7 @@ export default function SellerProfilePage() {
               className="flex items-center gap-2 text-xs"
               style={{ color: 'var(--tg-accent)' }}
             >
-              🔗 Скопировать ссылку на магазин
+              {t('seller.profile.copyStoreLink')}
             </button>
           </GlassCard>
         )}
@@ -158,47 +160,47 @@ export default function SellerProfilePage() {
         {/* Быстрые действия */}
         <GlassCard className="p-4 flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--tg-text-dim)' }}>
-            Действия
+            {t('seller.profile.actions')}
           </p>
           <button
             onClick={() => navigate('/seller/store')}
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
-            <span>⚙️</span> Настройки магазина
+            {t('seller.profile.storeSettings')}
           </button>
           <button
             onClick={() => navigate('/seller/products')}
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
-            <span>📦</span> Управление товарами
+            {t('seller.profile.manageProducts')}
           </button>
           <button
             onClick={() => navigate('/buyer')}
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'rgba(52,211,153,0.85)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
-            <span>🛍</span> Режим покупателя
+            {t('seller.profile.buyerMode')}
           </button>
           <button
             onClick={openBot}
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
-            <span>🤖</span> Открыть бота (@{BOT_USERNAME})
+            {t('seller.profile.openBot')} (@{BOT_USERNAME})
           </button>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'rgba(248,113,113,0.75)' }}
           >
-            <span>🚪</span> Выйти из аккаунта
+            {t('seller.profile.logout')}
           </button>
         </GlassCard>
 
-        <p className="text-center text-[10px]" style={{ color: 'var(--tg-text-dim)' }}>
-          Savdo · Продавец
+        <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
+          {t('seller.profile.footer')}
         </p>
       </div>
     

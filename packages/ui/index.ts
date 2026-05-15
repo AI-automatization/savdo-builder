@@ -2,3 +2,4 @@
 // All apps import from '@savdo/ui'
 
 export * from './tokens/colors';
+export * from './components/PhoneInput';

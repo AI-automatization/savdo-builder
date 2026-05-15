@@ -23,7 +23,7 @@ const STATUS_MAP: Record<string, BadgeVariant> = {
   PENDING_REVIEW:  { label: 'Ожидает',        className: 'bg-amber-500/12 text-amber-400' },
   PROCESSING:      { label: 'Обработка',      className: 'bg-amber-500/12 text-amber-400' },
   CONFIRMED:       { label: 'Подтверждён',    className: 'bg-amber-500/12 text-amber-400' },
-  SHIPPED:         { label: 'Отправлен',      className: 'bg-amber-500/12 text-amber-400' },
+  SHIPPED:         { label: 'В пути',         className: 'bg-amber-500/12 text-amber-400' },
 
   // danger
   BLOCKED:     { label: 'Заблокирован',   className: 'bg-red-500/12 text-red-400' },

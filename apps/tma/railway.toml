@@ -1,7 +1,9 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "apps/tma/Dockerfile"
-watchPatterns = ["apps/tma/**"]
+# DEVOPS-AUDIT-2026-05-14: + packages/types для пересборки при изменении DTO,
+# + packages/ui когда подключим (сейчас TMA сам туда не зависит, но для будущего).
+watchPatterns = ["apps/tma/**", "packages/types/**", "packages/ui/**"]
 
 [deploy]
 healthcheckPath = "/"
