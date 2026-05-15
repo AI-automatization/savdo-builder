@@ -3,9 +3,11 @@ import { ProductStatus } from '@prisma/client';
 import { CartRepository } from '../../cart/repositories/cart.repository';
 import { ProductsRepository } from '../../products/repositories/products.repository';
 import { VariantsRepository } from '../../products/repositories/variants.repository';
+import { CheckoutRepository } from '../repositories/checkout.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { toNum } from '../../cart/cart.mapper';
+import { computeDeliveryFee } from '../delivery-fee.util';
 
 export interface PreviewCheckoutInput {
   buyerId: string;
@@ -42,6 +44,7 @@ export class PreviewCheckoutUseCase {
     private readonly cartRepo: CartRepository,
     private readonly productsRepo: ProductsRepository,
     private readonly variantsRepo: VariantsRepository,
+    private readonly checkoutRepo: CheckoutRepository,
   ) {}
 
   async execute(input: PreviewCheckoutInput): Promise<CheckoutPreviewResult> {
@@ -139,7 +142,12 @@ export class PreviewCheckoutUseCase {
     }
 
     const subtotal = validItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const deliveryFee = 0; // MVP: always 0, seller-defined later
+    // API-CHECKOUT-PREVIEW-DELIVERY-FEE-001: реальная плата за доставку из
+    // store.deliverySettings — тот же computeDeliveryFee, что и confirm-checkout.
+    // Раньше хардкодили 0 → preview показывал «Бесплатно», confirm списывал
+    // fixed-плату (WB-B01).
+    const store = await this.checkoutRepo.findStoreWithSeller(cart.storeId);
+    const deliveryFee = computeDeliveryFee(store?.deliverySettings);
     const stockWarnings = invalidItems.map((i) => i.reason);
 
     return {
