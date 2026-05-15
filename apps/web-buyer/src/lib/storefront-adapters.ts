@@ -3,9 +3,8 @@
 // Мост между shape'ом /storefront/featured (узкий) и тем,
 // что принимает существующий ProductCard (ProductListItem из packages/types).
 
-import type { ProductListItem } from 'types';
+import type { ProductListItem, FeaturedProduct } from 'types';
 import { ProductStatus } from 'types';
-import type { FeaturedProduct } from '@/types/storefront';
 
 /**
  * Расширить featured product до ProductListItem-совместимого объекта.

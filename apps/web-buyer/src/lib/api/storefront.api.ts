@@ -1,8 +1,11 @@
-import type { GlobalCategory, ProductListItem, Product, StorefrontStore } from 'types';
 import type {
+  GlobalCategory,
+  ProductListItem,
+  Product,
+  StorefrontStore,
   FeaturedStorefrontResponse,
   GlobalCategoryTreeItem,
-} from '@/types/storefront';
+} from 'types';
 import { apiClient } from './client';
 
 export type { StorefrontStore };
