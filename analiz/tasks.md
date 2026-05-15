@@ -72,8 +72,9 @@ root cause ещё не подтверждён.
 `WS-B09`, `WS-B10` (`WS-B03` покрыт существующим guard). Детали — `analiz/done.md`.
 
 **Осталось из 🔴:**
-- ⏳ `WB-B01` доставка не считается — ждёт `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
-  (Полат, контракт preview).
+- ✅ `WB-B01` backend-часть готова 15.05.2026 — `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
+  закрыт (preview отдаёт реальный `deliveryFee`+`total`, тип `CheckoutPreview`
+  расширен). Азиму осталось прокинуть поле в UI checkout (web-buyer).
 
 **Волна 2 ✅ 15.05.2026** — `fb5febf` (web-buyer) + `47ea98d` (web-seller).
 Закрыты: `WB-B05/B06/B11/B12/B13` (чат/уведомления + checkout auth), error-UI
@@ -83,25 +84,23 @@ root cause ещё не подтверждён.
 Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
 дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат)
+## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
 
 - **Домен:** `packages/types` (Полат)
-- **Проблема:** фронт держит `as unknown as`/`as any` касты поверх рассинхрона
-  типов с реальными ответами API: web-buyer ~9 точек (`store.slug`, `itemCount`,
-  `name`, `stock`), web-seller — `OrderListItem` не содержит адресных полей
-  `city`/`addressLine1`, хотя API их отдаёт.
-- **Фикс:** свести DTO в `packages/types` с фактическими ответами, чтобы фронт
-  убрал касты.
+- **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
+  `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
+  web-seller читал через `as any`). Коммит `4cf0993`.
+- **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
+  `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
+  Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
+  типа вслепую. Передать Азиму запрос на список.
 
-## 🟡 `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат)
+## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
-- **Домен:** `apps/api` checkout + `packages/types` (Полат)
-- **Проблема:** web-buyer checkout (`WB-B01`) пытается прочитать `deliveryFee` из
-  ответа `/checkout/preview`, но в типе `CheckoutPreview` такого поля нет.
-  Доставка нигде не считается и не списывается.
-- **Нужно:** подтвердить — возвращает ли `/checkout/preview` рассчитанную плату
-  за доставку, под каким именем; добавить поле в `CheckoutPreview`. Без этого
-  Азим не может закрыть `WB-B01`.
+`PreviewCheckoutUseCase` хардкодил `deliveryFee=0`, confirm считал реальную
+плату → preview показывал «Бесплатно», списывалась fixed-плата (`WB-B01`).
+Введён `computeDeliveryFee()` — единый расчёт для preview и confirm.
+`CheckoutPreview` += `deliveryFee`+`total`. Коммит `484694a`, специ 61/61.
 
 ---
 
