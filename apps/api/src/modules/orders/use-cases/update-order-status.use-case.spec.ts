@@ -23,10 +23,10 @@ const ORDER_PENDING = {
   currencyCode: 'UZS',
   store: {
     name: 'Test Store',
-    seller: { telegramChatId: BigInt(111111) },
+    seller: { telegramChatId: BigInt(111111), user: { languageCode: 'ru' } },
   },
   buyer: {
-    user: { telegramId: BigInt(222222) },
+    user: { telegramId: BigInt(222222), languageCode: 'ru' },
   },
 };
 

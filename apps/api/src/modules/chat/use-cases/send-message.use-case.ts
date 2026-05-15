@@ -7,6 +7,7 @@ import { ChatRepository } from '../repositories/chat.repository';
 import { ChatGateway } from '../../../socket/chat.gateway';
 import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { MappedChatMessage } from './get-thread-messages.use-case';
+import { t } from '../../../shared/i18n';
 
 const PREVIEW_MAX_LENGTH = 80;
 
@@ -151,9 +152,10 @@ export class SendMessageUseCase {
     const storeName = thread.seller.store?.name ?? null;
 
     if (senderRole === 'BUYER') {
-      // → seller
+      // → seller. MARKETING-LOCALIZATION-UZ-001: уведомление на языке продавца.
       const sellerChatId = thread.seller.telegramChatId;
-      const buyerName = thread.buyer?.user.phone ?? 'Покупатель';
+      const sellerLocale = thread.seller.user.languageCode ?? undefined;
+      const buyerName = thread.buyer?.user.phone ?? t(sellerLocale, 'notify.senderFallback.buyer');
       if (sellerChatId) {
         this.tgNotifier.notifyChatMessage({
           recipientChatId: String(sellerChatId),
@@ -163,21 +165,24 @@ export class SendMessageUseCase {
           messagePreview: preview,
           threadId: input.threadId,
           recipientRole: 'SELLER',
+          locale: sellerLocale,
         });
       }
     } else {
-      // → buyer
+      // → buyer. MARKETING-LOCALIZATION-UZ-001: уведомление на языке покупателя.
       const buyerChatId = thread.buyer?.user.telegramId;
+      const buyerLocale = thread.buyer?.user.languageCode ?? undefined;
       if (buyerChatId) {
         this.tgNotifier.notifyChatMessage({
           recipientChatId: String(buyerChatId),
-          senderName: storeName ?? 'Продавец',
+          senderName: storeName ?? t(buyerLocale, 'notify.senderFallback.seller'),
           productTitle,
           orderNumber,
           storeName,
           messagePreview: preview,
           threadId: input.threadId,
           recipientRole: 'BUYER',
+          locale: buyerLocale,
         });
       }
     }
