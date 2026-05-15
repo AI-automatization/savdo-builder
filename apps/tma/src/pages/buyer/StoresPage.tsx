@@ -262,7 +262,7 @@ export default function StoresPage() {
                   whiteSpace: 'nowrap',
                 } : { whiteSpace: 'nowrap' }}
               >
-                Все
+                {t('common.all')}
               </button>
               {globalCategories.map((cat) => (
                 <button
@@ -311,7 +311,7 @@ export default function StoresPage() {
                   className="px-3 py-1 rounded-lg text-xs font-medium"
                   style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
                 >
-                  ✕ Сброс цены
+                  ✕ {t('stores.resetPrice')}
                 </button>
               )}
             </div>
@@ -321,7 +321,7 @@ export default function StoresPage() {
                 pattern="[0-9]*"
                 value={priceMin}
                 onChange={(e) => setPriceMin(e.target.value.replace(/[^\d]/g, ''))}
-                placeholder="Цена от"
+                placeholder={t('stores.priceFrom')}
                 className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
                 style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
@@ -331,11 +331,11 @@ export default function StoresPage() {
                 pattern="[0-9]*"
                 value={priceMax}
                 onChange={(e) => setPriceMax(e.target.value.replace(/[^\d]/g, ''))}
-                placeholder="до"
+                placeholder={t('stores.priceTo')}
                 className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
                 style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'var(--tg-text-muted)', fontSize: 11 }}>сум</span>
+              <span style={{ color: 'var(--tg-text-muted)', fontSize: 11 }}>{t('common.currency')}</span>
             </div>
           </div>
         )}
@@ -431,7 +431,7 @@ export default function StoresPage() {
                       onClick={(e) => openTgContact(e, store.telegramContactLink!)}
                       className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
                       style={{ background: 'rgba(37,99,235,0.20)', border: '1px solid rgba(37,99,235,0.35)' }}
-                      title="Написать продавцу"
+                      title={t('stores.contactSellerTitle')}
                     >
                       ✈️
                     </button>
