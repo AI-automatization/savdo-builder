@@ -366,7 +366,7 @@ export default function SellerOrdersPage() {
                         )}
                       </p>
                       <p className="shrink-0 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--tg-accent)' }}>
-                        {Number(o.totalAmount).toLocaleString('ru')} сум
+                        {fmt(Number(o.totalAmount))} {t('common.currency')}
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2 min-w-0">
@@ -480,7 +480,7 @@ export default function SellerOrdersPage() {
                         {item.title}{item.variantTitle ? ` · ${item.variantTitle}` : ''} × {item.quantity}
                       </span>
                       <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--tg-accent)' }}>
-                        {Number(item.subtotal).toLocaleString('ru')} сум
+                        {fmt(Number(item.subtotal))} {t('common.currency')}
                       </span>
                     </div>
                   ))}
@@ -509,7 +509,7 @@ export default function SellerOrdersPage() {
               <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--tg-border-soft)' }}>
                 <span className="text-sm font-semibold" style={{ color: 'var(--tg-text-secondary)' }}>{t('cart.total')}</span>
                 <span className="text-base font-bold" style={{ color: 'var(--tg-accent)' }}>
-                  {Number(detail.totalAmount).toLocaleString('ru')} сум
+                  {fmt(Number(detail.totalAmount))} {t('common.currency')}
                 </span>
               </div>
 
