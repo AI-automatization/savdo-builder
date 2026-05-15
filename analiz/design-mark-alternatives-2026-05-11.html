@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Savdo — варианты знака (без medallion)</title>
+<style>
+  :root {
+    --bg: #FBF7F0;
+    --surface: #FFFEF9;
+    --surface-muted: #F4ECDE;
+    --surface-sunken: #EDE2CE;
+    --text-strong: #1F1A12;
+    --text-body: #4A4035;
+    --text-muted: #7C6F5C;
+    --text-dim: #A89B85;
+    --border: rgba(31,26,18,0.10);
+    --divider: rgba(31,26,18,0.06);
+    --brand: #A05A45;
+    --brand-hover: #8D4D3A;
+    --brand-muted: rgba(160,90,69,0.10);
+    --brand-text-on: #FBF7F0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1000px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  h1 { font-size: 34px; line-height: 1.1; letter-spacing: -0.02em; color: var(--text-strong); margin: 0 0 12px; }
+  .lead { font-size: 16px; line-height: 1.55; color: var(--text-body); margin: 0 0 32px; max-width: 720px; }
+
+  .hero {
+    padding: 36px 32px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--surface-muted), var(--surface));
+    border: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .hero p { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin: 12px 0 0; max-width: 640px; }
+
+  .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  @media (max-width: 720px) { .options-grid { grid-template-columns: 1fr; } }
+
+  .option {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .option-preview {
+    aspect-ratio: 4/3;
+    background: var(--surface-muted);
+    display: flex; align-items: center; justify-content: center;
+    border-bottom: 1px solid var(--divider);
+  }
+  .option-preview.dark { background: var(--text-strong); }
+  .option-body { padding: 20px 22px 22px; }
+  .option-tag {
+    display: inline-block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    background: var(--brand-muted); color: var(--brand); margin-bottom: 10px;
+  }
+  .option-title { font-size: 18px; color: var(--text-strong); margin: 0 0 6px; letter-spacing: -0.01em; }
+  .option-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+
+  .option-mini-uses {
+    display: flex; gap: 10px; margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--divider); align-items: center;
+  }
+  .mini-cell {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: var(--surface-muted); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mini-cell svg { max-width: 22px; max-height: 22px; }
+  .mini-label { font-size: 11px; color: var(--text-dim); }
+
+  .pros-cons {
+    display: grid; grid-template-columns: 1fr 1fr;
+    margin-top: 14px; gap: 12px; font-size: 12px; line-height: 1.5;
+  }
+  .pros-cons .pro { color: var(--text-body); }
+  .pros-cons .con { color: var(--text-muted); }
+  .pros-cons strong { color: var(--text-strong); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; display: block; margin-bottom: 4px; font-weight: 600; }
+
+  h2 { font-size: 18px; color: var(--text-strong); margin: 56px 0 16px; letter-spacing: -0.01em; }
+
+  .skip-card {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    text-align: center;
+    margin-top: 24px;
+  }
+  .skip-card p { font-size: 14px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.5; }
+  .skip-card strong { color: var(--text-strong); font-size: 16px; }
+
+  .footer-note { margin-top: 56px; padding: 20px; background: var(--surface-muted); border-radius: 10px; color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="hero">
+  <h1>Знак-сигнатура: альтернативные варианты</h1>
+  <p>
+    Старые варианты убрал — спасибо за честный feedback. Эти все построены так, чтобы не было центрически-симметричных
+    medallion-форм. Источники: <strong>UZ-архитектура</strong>, <strong>каллиграфия</strong>, <strong>ритмичные узоры</strong>.
+    Каждый можно прочитать однозначно — портал, буква, ритм.
+  </p>
+</div>
+
+<div class="options-grid">
+
+  <!-- ── 1. ПОРТАЛ (АЙВАН) ──────────────────────────────────── -->
+  <div class="option">
+    <div class="option-preview">
+      <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" stroke="#A05A45" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+          <rect x="20" y="20" width="60" height="72" />
+          <path d="M 32 92 L 32 50 Q 32 36 50 36 Q 68 36 68 50 L 68 92" />
+        </g>
+      </svg>
+    </div>
+    <div class="option-body">
+      <span class="option-tag">Архитектура</span>
+      <h3 class="option-title">A · Пиштак</h3>
+      <p class="option-desc">
+        Портал медресе — прямоугольное обрамление с арочным входом. Сразу читается «лавка / магазин / вход».
+        Универсальный UZ-архитектурный код (Регистан, Шахи-Зинда, любая старая чайхана).
+      </p>
+      <div class="pros-cons">
+        <div class="pro"><strong>Плюсы</strong>Понятен с первого взгляда. Метафора «вход в магазин» совпадает с UX.</div>
+        <div class="con"><strong>Минусы</strong>Может выглядеть слишком architectural / serious для casual магазинов.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. АЙВАН-АРКА (asymmetric) ──────────────────────────── -->
+  <div class="option">
+    <div class="option-preview">
+      <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" stroke="#A05A45" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M 18 90 L 18 38 Q 18 14 50 14 Q 82 14 82 38 L 82 90" />
+          <path d="M 32 90 L 32 50 Q 32 38 50 38 Q 68 38 68 50 L 68 90" />
+        </g>
+      </svg>
+    </div>
+    <div class="option-body">
+      <span class="option-tag">Архитектура</span>
+      <h3 class="option-title">B · Двойная арка</h3>
+      <p class="option-desc">
+        Арка в арке — портал-айван классической UZ-архитектуры. Читается как «вход в магазин» + ритм глубины.
+        Используется в Бухаре, Хиве, Самарканде.
+      </p>
+      <div class="pros-cons">
+        <div class="pro"><strong>Плюсы</strong>Читается мгновенно. Глубинная метафора (вход → товары внутри).</div>
+        <div class="con"><strong>Минусы</strong>Похоже на варианты A — выбирать между ними нужно осторожно.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. КАЛЛИГРАФИЯ С ──────────────────────────────────── -->
+  <div class="option">
+    <div class="option-preview">
+      <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" stroke="#A05A45" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M 70 28 Q 50 18 36 30 Q 22 42 32 56 Q 42 66 60 64 Q 76 62 76 76 Q 76 88 56 86 Q 38 84 28 76" />
+        </g>
+        <circle cx="78" cy="32" r="3" fill="#A05A45"/>
+      </svg>
+    </div>
+    <div class="option-body">
+      <span class="option-tag">Каллиграфия</span>
+      <h3 class="option-title">C · Буква «С» вязью</h3>
+      <p class="option-desc">
+        Стилизованная «С» в духе восточной каллиграфии — одна непрерывная линия с финальной точкой.
+        Не графический символ, а «подпись бренда». Похоже на handwritten signature.
+      </p>
+      <div class="pros-cons">
+        <div class="pro"><strong>Плюсы</strong>Уникально, читается как имя. Невозможно скопировать без переписывания.</div>
+        <div class="con"><strong>Минусы</strong>Латинская «С» в кириллической стране может быть прочитана и как «S» — двойственно.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. IKAT РИТМ (не центричный) ──────────────────────── -->
+  <div class="option">
+    <div class="option-preview">
+      <svg width="140" height="120" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <g fill="#A05A45">
+          <path d="M 10 50 L 22 38 L 34 50 L 22 62 Z"/>
+          <path d="M 38 50 L 50 30 L 62 50 L 50 70 Z" opacity="0.7"/>
+          <path d="M 66 50 L 78 38 L 90 50 L 78 62 Z" opacity="0.45"/>
+          <path d="M 94 50 L 102 44 L 110 50 L 102 56 Z" opacity="0.25"/>
+        </g>
+      </svg>
+    </div>
+    <div class="option-body">
+      <span class="option-tag">Узор</span>
+      <h3 class="option-title">D · Ikat-ритм</h3>
+      <p class="option-desc">
+        Ромбы убывающего размера — ритм ткацкого ikat-узора. Не центричный. Можно использовать как horizontal divider,
+        loading bar, watermark на success-страницах.
+      </p>
+      <div class="pros-cons">
+        <div class="pro"><strong>Плюсы</strong>Динамика, движение, не статика. Хорошо анимируется (loading state).</div>
+        <div class="con"><strong>Минусы</strong>Не «logo-stamp», скорее текстура. Не подойдёт для favicon-size где нужна одна форма.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. БОТЕ ────────────────────────────────────────────── -->
+  <div class="option">
+    <div class="option-preview">
+      <svg width="100" height="120" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" stroke="#A05A45" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M 26 88 Q 14 70 18 50 Q 22 28 38 14 Q 56 4 60 22 Q 62 38 50 50 Q 38 60 36 76 Q 34 86 30 88 Z"/>
+        </g>
+      </svg>
+    </div>
+    <div class="option-body">
+      <span class="option-tag">Узор</span>
+      <h3 class="option-title">E · Боте (пейсли)</h3>
+      <p class="option-desc">
+        Огурец-пейсли — древний центрально-азиатский мотив. Асимметричный «слезка с завитком». Используется в ikat,
+        suzani, кашмирских шалях. Не имеет двусмысленных прочтений — он явно «листо-капля».
+      </p>
+      <div class="pros-cons">
+        <div class="pro"><strong>Плюсы</strong>Один из самых узнаваемых UZ-мотивов. Чёткое прочтение. Хорош в любом размере.</div>
+        <div class="con"><strong>Минусы</strong>Используется и другими регионами (Индия, Иран) — не эксклюзивно узбекский.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6. ГРАНАТ ──────────────────────────────────────────── -->
+  <div class="option">
+    <div class="option-preview">
+      <svg width="100" height="120" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" stroke="#A05A45" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M 36 12 Q 32 6 40 6 Q 48 6 44 12"/>
+          <path d="M 36 12 Q 36 20 40 22 Q 44 20 44 12"/>
+          <path d="M 18 50 Q 18 22 40 22 Q 62 22 62 50 Q 62 88 40 88 Q 18 88 18 50 Z"/>
+          <path d="M 40 32 L 40 78"/>
+          <path d="M 26 38 Q 28 52 32 64" opacity="0.5"/>
+          <path d="M 54 38 Q 52 52 48 64" opacity="0.5"/>
+        </g>
+      </svg>
+    </div>
+    <div class="option-body">
+      <span class="option-tag">Природа</span>
+      <h3 class="option-title">F · Гранат (плод)</h3>
+      <p class="option-desc">
+        Силуэт граната — символ изобилия в UZ-культуре. Используется на свадебных подарках, керамике, тканях.
+        Не цветок, не медальон — плод с короной и стеблем. Читается однозначно.
+      </p>
+      <div class="pros-cons">
+        <div class="pro"><strong>Плюсы</strong>Тёплая ассоциация «изобилие / щедрость» = совпадает с торговой метафорой.</div>
+        <div class="con"><strong>Минусы</strong>Достаточно много веков использования — есть и в Иране, Турции, Греции.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── ВАРИАНТ: БЕЗ ЗНАКА ВООБЩЕ ────────────────────────────── -->
+<h2>Или — вариант «совсем без знака»</h2>
+<div class="skip-card">
+  <strong>Без mark, работаем на остальных направлениях</strong>
+  <p>
+    Aritzia, Reformation, MUJI, & Other Stories — у них нет центрального знака. Узнаваемость строится через
+    <em>voice + colors + typography + photography</em>. Это валидный путь — особенно если хочется чистой эстетики
+    без декоративных элементов.<br><br>
+    Если выбираешь этот путь — пропускаем знак, переходим к brand voice + asymmetric corners + texture patterns.
+  </p>
+</div>
+
+<div class="footer-note">
+  Если что-то из A-F нравится — скажи букву. Если «не нравится ни одно» — скажи и пойдём без знака.<br>
+  Если есть конкретный UZ-мотив который ты сам хочешь видеть — опиши, нарисую.
+</div>
+
+</div>
+</body>
+</html>

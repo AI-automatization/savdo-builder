@@ -67,16 +67,18 @@ root cause ещё не подтверждён.
 
 ## 🔴 `WEB-QA-BUGFIX-2026-05-15` — блокеры запуска (Азим, web-buyer + web-seller)
 
-Закрыть до запуска (ID из аудита):
-- **web-buyer:** `WB-B01` доставка не считается (money), `WB-B02` нельзя удалить
-  товар из корзины, `WB-B04` нет error-UI на checkout.
-- **web-seller:** `WS-B01` неверный OTP ломает логин, `WS-B02` онбординг-ловушка,
-  `WS-B03/B04/B05` потеря фото, `WS-B06` data-corruption вариантов на `" / "`,
-  `WS-B09` дубли атрибутов (POST-per-keystroke), `WS-B10` create product —
-  молчаливый partial-success.
-- **Сильно желательно:** чат/уведомления (`WB-B05/B06/B11/B12/B13`),
-  `WS-B07/B08/B16/B17/B19`, error-UI вместо «пусто».
-- **Детали и file:line** — в файле аудита. Разбить на fix-волны.
+**Волна 1 ✅ 15.05.2026** — `123b70a` (web-buyer) + `73ff29f` (web-seller).
+Закрыты: `WB-B02`, `WB-B04`, `WS-B01`, `WS-B02`, `WS-B04`, `WS-B05`, `WS-B06`,
+`WS-B09`, `WS-B10` (`WS-B03` покрыт существующим guard). Детали — `analiz/done.md`.
+
+**Осталось из 🔴:**
+- ⏳ `WB-B01` доставка не считается — ждёт `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
+  (Полат, контракт preview).
+
+**Волна 2 — 🟡 сильно желательно (ещё не начато):**
+- web-buyer: `WB-B05/B06/B11/B12/B13` (чат/уведомления), error-UI вместо «пусто».
+- web-seller: `WS-B07/B08/B16/B17/B19`.
+- **Детали и file:line** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
 
 ## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат)
 

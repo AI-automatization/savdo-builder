@@ -1,5 +1,41 @@
 # Done — Азим + Полат
 
+## 2026-05-15 (Азим) — QA-аудит wave 1: 🔴 блокеры запуска
+
+Закрыты 🔴-блокеры из `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+Коммиты `123b70a` (ветка web-buyer), `73ff29f` (ветка web-seller).
+
+### ✅ web-buyer (`123b70a`)
+- **WB-B02** — в корзине у in-stock товара не было кнопки удаления (степпер не
+  доходит до 0). Добавлена «Удалить» рядом со степпером.
+- **WB-B04** — при сбое `/checkout/preview` показывалась форма с «0 сум» без
+  объяснения. Добавлен error-state (`AlertCircle` + «Повторить» через
+  `preview.refetch()` + «В корзину»); форма скрыта при `preview.isError`.
+- **Файлы:** `app/(minimal)/cart/page.tsx`, `app/(minimal)/checkout/page.tsx`.
+
+### ✅ web-seller (`73ff29f`)
+- **WS-B01** — refresh-interceptor скипал OTP по несуществующему `/auth/otp/`
+  → неверный код ломал логин. → `/auth/request-otp` + `/auth/verify-otp`.
+- **WS-B02** — онбординг: `createStore`+`updateProfile` в `Promise.all`, при
+  сбое профиля retry падал дублём (INV-S01). → последовательно, профиль
+  non-fatal.
+- **WS-B04** — edit page: при сбое add/remove фото UI расходился с сервером.
+  → сверка: упавший add убирается, упавший delete возвращается + ошибка.
+- **WS-B05** — edit page: drag-реордер фото молча не сохранялся (нет backend
+  PATCH). → `MultiImageUploader` проп `reorderable`; edit передаёт `false`.
+- **WS-B06** — ключ варианта `join('/')/split('/')` ломался на значении опции
+  с `« / »`. → `VARIANT_LABEL_SEP` (U+001F) + `variantLabelDisplay()`.
+- **WS-B09** — атрибуты слали POST на каждый символ, без id-writeback → дубли.
+  → дебаунс 700мс + in-flight lock + запись id обратно.
+- **WS-B10** — create product: сбой фото/вариантов давал молчаливый «успех».
+  → подсчёт сбоев + экран «Товар создан, но не сохранилось …».
+- **Файлы:** `lib/api/client.ts`, `app/(onboarding)/onboarding/page.tsx`,
+  `app/(dashboard)/products/[id]/edit/page.tsx`, `products/create/page.tsx`,
+  `components/multi-image-uploader.tsx`, `components/variants-matrix-builder.tsx`.
+
+**Verification:** `npx tsc --noEmit` чист в обоих апах.
+**Не закрыт из 🔴:** `WB-B01` (доставка) — ждёт контракт preview от Полата.
+
 ## 2026-05-15 (Азим) — Consumption-задачи web-sync аудита (3 типовых дубля убраны)
 
 Полат в Wave 20 поднял типы в `packages/types`; закрыл фронтовую часть —
