@@ -155,7 +155,7 @@ export const ru: Translations = {
   'orders.status.PENDING': 'Ожидает',
   'orders.status.CONFIRMED': 'Подтверждён',
   'orders.status.PROCESSING': 'В обработке',
-  'orders.status.SHIPPED': 'Доставляется',
+  'orders.status.SHIPPED': 'В пути',
   'orders.status.DELIVERED': 'Доставлен',
   'orders.status.CANCELLED': 'Отменён',
 

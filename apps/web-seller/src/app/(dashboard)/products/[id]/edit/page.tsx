@@ -14,7 +14,7 @@ import { DisplayTypeSelector } from '../../../../../components/display-type-sele
 import { ConfirmModal } from '../../../../../components/confirm-modal';
 import { Select } from '../../../../../components/select';
 import { titlePlaceholder, descriptionPlaceholder } from '../../../../../lib/product-examples';
-import { card, colors, inputStyle as inputBase } from '@/lib/styles';
+import { card, colors, dangerTint, inputStyle as inputBase } from '@/lib/styles';
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
 // до тех пор, пока Полат не уберёт их из seed'а на бэке
@@ -387,7 +387,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         {update.isError && (
           <div
             className="mt-4 px-4 py-3 rounded-xl text-sm"
-            style={{ background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: colors.danger }}
+            style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
           >
             Не удалось сохранить изменения. Попробуйте ещё раз.
           </div>

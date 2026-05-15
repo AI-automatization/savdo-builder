@@ -3,11 +3,15 @@ import {
   IsNotEmpty,
   IsOptional,
   IsNumber,
+  IsIn,
   Min,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export const PAYMENT_METHODS = ['cash', 'card', 'online'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export class DeliveryAddressDto {
   @IsString()
@@ -59,4 +63,13 @@ export class ConfirmCheckoutDto {
   @IsString()
   @MaxLength(20)
   customerPhone?: string;
+
+  // API-CHECKOUT-PAYMENT-METHOD-001 (от Азима, web-sync audit 14.05.2026):
+  // способ оплаты. Раньше DTO его не принимал → web-buyer card-кнопка
+  // была misleading (заказ всё равно создавался как cash). Теперь
+  // явный enum. Default 'cash' если не передан (backward-compat).
+  // 'online' принимается use-case'ом только при PAYMENT_ONLINE_ENABLED.
+  @IsOptional()
+  @IsIn(PAYMENT_METHODS)
+  paymentMethod?: PaymentMethod;
 }
