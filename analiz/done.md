@@ -121,6 +121,23 @@
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
 
+## 2026-05-15 (Полат) — Wave 23: API Telegram-уведомления i18n
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (API notifications) 🔴
+TG-notification processor уже рендерил через `t(locale,...)`, но producer
+use-cases не прокидывали `locale` → `d.locale` был undefined → всегда 'ru'.
+Узбекские пользователи получали русские уведомления.
+Теперь `locale = User.languageCode` получателя резолвится и пробрасывается:
+- `notifyNewOrder` (confirm-checkout, create-direct-order) — язык продавца;
+  `checkout.repository.findStoreWithSeller` селектит `seller.user.languageCode`.
+- `notifyOrderStatusChanged` (update-order-status) — язык buyer/seller;
+  `orders.repository.findById` селектит `buyer.user`+`seller.user.languageCode`.
+- `notifyChatMessage` (send-message) — язык получателя;
+  `chat.repository.findThreadById` селектит обе стороны. Fallback-имена
+  отправителя локализованы через `notify.senderFallback.*`.
+**Тесты:** api tsc clean, checkout+orders+chat 70/70. Коммит `0e18129`.
+**Осталось по локализации:** admin i18n (нет инфры).
+
 ## 2026-05-15 (Полат) — Wave 22: TMA buyer i18n + TMA deploy fix
 
 ### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA buyer pages) 🔴
