@@ -1,5 +1,24 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-15] [API-CHECKOUT-CONFIRM-500-001] 🟡 ЧАСТИЧНО — fault-isolation side-effects (Полат)
+- **Статус:** 🟡 Defensive fix задеплоен, root cause ещё под вопросом
+- **Что сделано (Полат, 15.05.2026):**
+  1. **Fault-isolation post-commit.** `confirm-checkout.use-case.ts` после
+     `createOrder()` делал clearCart + markCartConverted + WS-emit + TG-notify
+     БЕЗ защиты. Если WS-сервер не инициализирован (`this.server` undefined)
+     или Redis-glitch на cart-update — buyer получал 500, **хотя заказ уже
+     создан и stock списан**. Каждый side-effect обёрнут в try/catch → заказ
+     возвращается с 201 даже при сбое нотификаций. Коммит `aec25e5`.
+  2. **Диагностика.** API-SENTRY-001: `GlobalExceptionFilter` теперь репортит
+     любой 5xx в `ErrorReporter` (stderr, structured JSON, с method/path/
+     userId). Коммит `faaa36c`. После redeploy `api` ветки следующий 500 на
+     `/checkout/confirm` оставит полный stack trace в Railway stderr.
+- **Что НЕ закрыто:** если 500 происходит ВНУТРИ транзакции `createOrder()`
+  (DB constraint, stock race, Decimal) — этот фикс не помогает (заказ честно
+  не создаётся). Нужно: redeploy `api` → поймать stack trace из ErrorReporter
+  → дотянуть root cause. Статически код checkout валиден (21/21 тестов).
+- **Зона:** `apps/api/src/modules/checkout/`. Полат.
+
 ## [2026-05-14] [API-CHECKOUT-CONFIRM-500-001] 🔴 BLOCKER — buyer не может оформить заказ
 - **Статус:** 🔴 Баг — открыт, передан Полату как P0
 - **Что случилось:** Azim сообщил 14.05.2026 — на проде при оформлении заказа из web-buyer checkout `POST /api/v1/checkout/confirm` возвращает HTTP **500 Internal server error** (повторяется на нескольких попытках). Buyer не может завершить покупку.
