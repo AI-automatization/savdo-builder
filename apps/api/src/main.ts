@@ -48,27 +48,39 @@ async function bootstrap() {
   app.use(helmet());
 
   const isProd = process.env.NODE_ENV === 'production';
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? [];
-  if (isProd && allowedOrigins.length === 0) {
-    Logger.warn('ALLOWED_ORIGINS is not set in production — only Railway/Telegram defaults will pass', 'Bootstrap');
-  }
 
-  // Regex для доменов которые меняются между деплоями Railway:
-  // *.up.railway.app, *.railway.app — все наши TMA/admin/web домены
-  // web.telegram.org, t.me — Telegram WebView host
+  // SEC-AUDIT-02: явный allow-list прод-доменов фронтов savdo. Раньше был
+  // wildcard /[a-z0-9-]+\.up\.railway\.app/ — пропускал ЛЮБОЙ проект на общей
+  // платформе Railway (любой мог задеплоить evil-app.up.railway.app и пройти
+  // CORS с credentials). Если домен Railway пересоздан — обновить здесь или
+  // добавить через ALLOWED_ORIGINS env.
+  const SAVDO_PROD_ORIGINS = [
+    'https://telegram-app-production-7e95.up.railway.app', // TMA
+    'https://adminsb.up.railway.app',                      // admin
+    'https://savdo-builder-by-production.up.railway.app',  // web-buyer
+    'https://savdo-builder-sl-production.up.railway.app',  // web-seller
+  ];
+  const allowedOrigins = [
+    ...SAVDO_PROD_ORIGINS,
+    ...(process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
+  ];
+
+  // Паттерны: кастомный домен savdo.uz (+ поддомены) и Telegram WebView host.
   const ORIGIN_PATTERNS = [
-    /^https:\/\/[a-z0-9-]+\.up\.railway\.app$/i,
-    /^https:\/\/[a-z0-9-]+\.railway\.app$/i,
+    /^https:\/\/([a-z0-9-]+\.)?savdo\.uz$/i,
     /^https:\/\/(web\.)?telegram\.org$/i,
     /^https:\/\/t\.me$/i,
-    /^https:\/\/(.+\.)?savdo\.uz$/i,
   ];
 
   const corsOriginCheck = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     if (!origin) return callback(null, true); // same-origin / curl / mobile apps
     if (allowedOrigins.includes(origin)) return callback(null, true);
     if (ORIGIN_PATTERNS.some((re) => re.test(origin))) return callback(null, true);
-    if (!isProd) return callback(null, true);
+    // Dev: localhost любой порт — НЕ зависит от NODE_ENV (SEC-AUDIT-06:
+    // раньше `!isProd` открывал ВСЕ origin'ы при сбое NODE_ENV).
+    if (/^https?:\/\/localhost(:\d+)?$/i.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
     callback(null, false);
   };
 
