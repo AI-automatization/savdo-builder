@@ -102,13 +102,15 @@ root cause ещё не подтверждён.
    500 оставит полный stack trace в Railway stderr. Коммит `faaa36c`.
 
 **Что осталось:**
-1. Дождаться redeploy `api` ветки на Railway.
-2. Если 500 повторится — взять stack trace из stderr (structured JSON,
-   `type:"exception"`, `source:"GlobalExceptionFilter"`, `path` содержит
-   `/checkout/confirm`).
-3. Если 500 ВНУТРИ транзакции `createOrder()` — root cause там (DB
-   constraint / stock race / Decimal). Если исчез — был side-effect,
-   задача закрыта.
+1. ✅ Redeploy `api` сделан 16.05.2026 — деплой `ebe374f8` активен,
+   стартап чистый, ошибок нет.
+2. **Проверка передана Азиму** → `VERIFY-CHECKOUT-CONFIRM-500-001` в секции
+   «Tasks — Азим». Воспроизвести корзинный checkout на проде нельзя из
+   backend-сессии — нужен фронт.
+3. Если Азим отпишет «заказ создаётся (201)» — Полат закрывает задачу.
+   Если снова 500 — Азим приложит stack trace (`type:"exception"`,
+   `path` ~ `/checkout/confirm`), Полат разберёт: 500 внутри транзакции
+   `createOrder()` = root cause там (DB constraint / stock race / Decimal).
 
 **Файлы:** `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`,
 `repositories/checkout.repository.ts`.
@@ -181,7 +183,9 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
   `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
   Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
-  типа вслепую. Передать Азиму запрос на список.
+  типа вслепую.
+- **✅ Запрос Азиму передан 16.05.2026** — задача `API-RESPONSE-TYPES-RECONCILE-001`
+  в секции «Tasks — Азим». Полат правит тип после получения списка.
 
 ## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
@@ -864,6 +868,41 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 Домен: `apps/web-buyer`, `apps/web-seller`, `apps/tma`
 
 > TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
+
+## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
+
+> **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
+> стороны — нужна проверка из фронта, дальше двигаться без неё нельзя.
+
+- **Домен:** `apps/web-buyer` + `apps/tma` (проверка, без правки кода если 500 нет)
+- **Контекст:** Полат задеплоил на прод (`api` ветка, деплой `ebe374f8`):
+  fault-isolation fix (post-commit side-effects обёрнуты в try/catch — сбой
+  WS/TG/clearCart больше НЕ превращает успешный заказ в 500) + ErrorReporter
+  (любой следующий 500 оставит полный stack trace в Railway stderr).
+- **Что сделать:**
+  1. Пройти именно **корзинный** checkout: товар → корзина → «Оформить заказ»
+     → подтвердить. (Это `POST /checkout/confirm`, НЕ «купить сейчас» —
+     direct-order это другой эндпоинт, он на проде уже работает без ошибок.)
+  2. Прогнать оба режима: `delivery` и `pickup` — заодно проверка нового
+     `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` (pickup → deliveryFee 0,
+     суммы preview и confirm должны совпасть).
+- **Результат:**
+  - ✅ Заказ создаётся (201) → отписать Полату, он закроет
+    `API-CHECKOUT-CONFIRM-500-001`.
+  - ❌ Снова 500 → взять из Railway-логов `savdo-api` JSON-строку
+    `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
+    stack trace в `analiz/logs.md` — Полат разберёт root cause.
+
+## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — нужен список callsite'ов (Азим → Полату)
+
+> **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
+
+- **Домен:** список собирает Азим, правит тип Полат.
+- **Что нужно:** в web-buyer осталось ~9 `as`-кастов response-объектов
+  (`store.slug`, `itemCount`, `name`, `stock` и т.п.). `StoreRef.slug` в типе
+  уже есть — значит касты на других shape'ах. Прислать Полату список конкретных
+  callsite'ов в формате `файл:строка` + какое поле кастится. Без списка Полат
+  правит тип вслепую.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 
