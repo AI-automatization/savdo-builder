@@ -78,12 +78,30 @@ export class StorefrontController {
 
   // ─── Stores ──────────────────────────────────────────────────────────────
 
+  // API-STORES-PAGINATION-001: opt-in пагинация через ?page=&limit=.
+  // Без параметров — первая страница, limit 50 (прежнее поведение).
+  // Ответ всегда `{ data, meta }` — meta добавлен, старые клиенты читают data.
   @Get('storefront/stores')
-  async listStorefrontStores() {
-    const stores = await this.storesRepo.findAllPublished();
-    if (!stores.length) return { data: [] };
-    const data = await this.presenter.attachStoreImageUrls(stores);
-    return { data };
+  async listStorefrontStores(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.storesRepo.findAllPublished({
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+    const data = result.stores.length
+      ? await this.presenter.attachStoreImageUrls(result.stores)
+      : [];
+    return {
+      data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Get('storefront/stores/:slug')

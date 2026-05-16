@@ -168,12 +168,12 @@ describe('VerifyOtpUseCase', () => {
       expect(payload.adminRole).toBe('super_admin');
     });
 
-    it('ADMIN без MFA → adminRole есть, mfaPending отсутствует', async () => {
+    it('ADMIN без MFA → mfaPending=true (SEC-ADMIN стадия C: MFA обязателен)', async () => {
       authRepo.findUserByPhone.mockResolvedValue(USER_ADMIN);
       authRepo.findAdminClaims.mockResolvedValue({ mfaEnabled: false, adminRole: 'moderator' });
       await useCase.execute('+998900000003', '123456', 'login');
       const payload = tokenService.generateAccessToken.mock.calls[0][0];
-      expect(payload.mfaPending).toBeUndefined();
+      expect(payload.mfaPending).toBe(true);
       expect(payload.adminRole).toBe('moderator');
     });
   });

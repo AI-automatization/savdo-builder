@@ -15,6 +15,7 @@ import { PreviewCheckoutUseCase } from './preview-checkout.use-case';
 import { CartRepository } from '../../cart/repositories/cart.repository';
 import { ProductsRepository } from '../../products/repositories/products.repository';
 import { VariantsRepository } from '../../products/repositories/variants.repository';
+import { CheckoutRepository } from '../repositories/checkout.repository';
 
 const PRODUCT = { id: 'p-1', title: 'iPhone', status: ProductStatus.ACTIVE };
 const ITEM_PLAIN = {
@@ -29,6 +30,7 @@ describe('PreviewCheckoutUseCase', () => {
   let cartRepo: { findByBuyerId: jest.Mock };
   let productsRepo: { findById: jest.Mock };
   let variantsRepo: { findById: jest.Mock };
+  let checkoutRepo: { findStoreWithSeller: jest.Mock };
 
   beforeEach(() => {
     cartRepo = {
@@ -38,10 +40,17 @@ describe('PreviewCheckoutUseCase', () => {
     };
     productsRepo = { findById: jest.fn().mockResolvedValue(PRODUCT) };
     variantsRepo = { findById: jest.fn() };
+    // По умолчанию — тариф 'none' → deliveryFee 0. Тесты доставки переопределяют.
+    checkoutRepo = {
+      findStoreWithSeller: jest.fn().mockResolvedValue({
+        deliverySettings: { deliveryFeeType: 'none', fixedDeliveryFee: null },
+      }),
+    };
     useCase = new PreviewCheckoutUseCase(
       cartRepo as unknown as CartRepository,
       productsRepo as unknown as ProductsRepository,
       variantsRepo as unknown as VariantsRepository,
+      checkoutRepo as unknown as CheckoutRepository,
     );
   });
 
@@ -63,6 +72,27 @@ describe('PreviewCheckoutUseCase', () => {
     expect(result.deliveryFee).toBe(0);
     expect(result.total).toBe(200);
     expect(result.stockWarnings).toEqual([]);
+  });
+
+  // API-CHECKOUT-PREVIEW-DELIVERY-FEE-001 (WB-B01): preview считает реальную
+  // плату за доставку, не хардкодит 0 — иначе расходится с confirm.
+  it('fixed-тариф доставки: deliveryFee и total включают плату', async () => {
+    checkoutRepo.findStoreWithSeller.mockResolvedValue({
+      deliverySettings: { deliveryFeeType: 'fixed', fixedDeliveryFee: 15000 },
+    });
+    const result = await useCase.execute({ buyerId: 'b-1' });
+    expect(result.subtotal).toBe(200);
+    expect(result.deliveryFee).toBe(15000);
+    expect(result.total).toBe(15200);
+  });
+
+  it('manual-тариф доставки: deliveryFee 0 (продавец выставит вручную)', async () => {
+    checkoutRepo.findStoreWithSeller.mockResolvedValue({
+      deliverySettings: { deliveryFeeType: 'manual', fixedDeliveryFee: null },
+    });
+    const result = await useCase.execute({ buyerId: 'b-1' });
+    expect(result.deliveryFee).toBe(0);
+    expect(result.total).toBe(200);
   });
 
   it('product not found → invalid + reason', async () => {

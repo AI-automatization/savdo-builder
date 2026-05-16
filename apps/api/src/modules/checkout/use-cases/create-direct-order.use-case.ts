@@ -177,6 +177,8 @@ export class CreateDirectOrderUseCase {
       itemCount: dto.items.length,
       total: totalAmount,
       currency: 'UZS',
+      // MARKETING-LOCALIZATION-UZ-001: уведомление на языке продавца.
+      locale: store.seller.user.languageCode ?? undefined,
     });
 
     return order;

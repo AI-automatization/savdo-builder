@@ -73,9 +73,7 @@ export class VerifyOtpUseCase {
       ? await this.authRepo.findStoreIdByUserId(resolvedUser.id)
       : undefined;
 
-    // API-MFA-NOT-ENFORCED-001 + API-RBAC-MICRO-PERMISSIONS-001:
-    // Для ADMIN-юзеров поднимаем mfaPending (если MFA включена) и adminRole
-    // одним DB-вызовом.
+    // API-RBAC-MICRO-PERMISSIONS-001: adminRole одним DB-вызовом.
     const adminClaims = resolvedUser.role === 'ADMIN'
       ? await this.authRepo.findAdminClaims(resolvedUser.id)
       : null;
@@ -85,7 +83,12 @@ export class VerifyOtpUseCase {
       role: resolvedUser.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
-      ...(adminClaims?.mfaEnabled && { mfaPending: true }),
+      // SEC-ADMIN-ACCESS-MODEL стадия C: MFA обязателен для ВСЕХ админов.
+      // Раньше mfaPending поднимался лишь при mfaEnabled=true → админ без
+      // настроенного MFA входил по одному OTP (SEC-AUDIT-01). Теперь mfaPending
+      // у любого админа: mfaEnabled=true → TOTP-challenge, mfaEnabled=false →
+      // LoginPage форсит MFA-setup. Снимается через /admin/auth/mfa/login.
+      ...(adminClaims && { mfaPending: true }),
       ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 

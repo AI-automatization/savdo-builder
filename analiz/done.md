@@ -1,5 +1,315 @@
 # Done — Азим + Полат
 
+## 2026-05-16 (Полат) — checkout pickup + Store type
+
+### ✅ [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] «Самовывоз» больше не платит доставку 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/api/src/modules/checkout/dto/confirm-checkout.dto.ts`,
+  `checkout.controller.ts`, `use-cases/confirm-checkout.use-case.ts`,
+  `use-cases/preview-checkout.use-case.ts`, `packages/types/src/api/cart.ts`
+- **Что сделано:** Закрыт money/UX-баг из находки Азима (`WB-B01`-класс для
+  pickup-ветки). Выбран вариант 1 — явный `deliveryMode` в контракте, а не
+  угадывание по тексту адреса. `ConfirmCheckoutDto` принимает
+  `deliveryMode: 'delivery'|'pickup'`; `GET /checkout/preview` — query-параметр
+  `?deliveryMode`. При `pickup` backend принудительно обнуляет `deliveryFee`
+  (пропускает `computeDeliveryFee`) одинаково в preview и confirm → суммы
+  согласованы. `CheckoutConfirmRequest.deliveryMode` + `CheckoutDeliveryMode`
+  в `packages/types`. Default `delivery` (backward-compat). Коммит `fb3eea0`,
+  специ checkout 61/61.
+
+### ✅ [API-STORE-TYPE-DELIVERY-SETTINGS-001] `deliverySettings` в тип `Store` 🟢
+
+- **Важность:** 🟢
+- **Дата:** 16.05.2026
+- **Файлы:** `packages/types/src/api/stores.ts`
+- **Что сделано:** Добавлено `deliverySettings?: StoreDeliverySettings` в
+  интерфейс `Store` — `GET /seller/store` его уже возвращает (nested include),
+  но тип не моделировал. Азим может убрать UI-extension `StoreWithDelivery`.
+  Коммит `fb3eea0`.
+
+## 2026-05-16 (Азим) — WB-B01: доставка в checkout
+
+### ✅ [WB-B01] Плата за доставку отображается и списывается согласованно 🔴
+
+- **Важность:** 🔴
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Закрыт последний 🔴-блокер QA-аудита 15.05. Backend-часть
+  (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`, `484694a`, Полат) научила
+  `/checkout/preview` отдавать реальный `deliveryFee`+`total`; тип
+  `CheckoutPreview` теперь канонически несёт `deliveryFee`/`total` — убран
+  избыточный loose-cast. Режим «Доставка» согласован с backend. Commit
+  `6d9f527` (ветка web-buyer). Смежная находка — pickup облагается доставкой
+  на backend → тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` Полату.
+
+## 2026-05-15 (Азим) — QA-аудит wave 2: 🟡 «сильно желательно»
+
+Коммиты `fb5febf` (ветка web-buyer), `47ea98d` (ветка web-seller).
+`tsc --noEmit` чист в обоих апах.
+
+### ✅ web-buyer (`fb5febf`)
+- **WB-B05** — checkout: протухший токен запирал на форме (`confirm` молча
+  401). Слушатель `savdo:auth:expired` → возврат на OTP-шаг. Убран мёртвый
+  `isAuthed`.
+- **WB-B06** — chats: удаление открытого треда перекидывало в чужой чат.
+  Авто-выбор `threads[0]` теперь только при первой загрузке (ref-guard).
+- **WB-B11** — `use-chat`: входящее сообщение помечало тред прочитанным даже
+  при свёрнутой вкладке → терялся unread. Гейт по `document.visibilityState`.
+- **WB-B12** — `use-notifications`: `readAll` давал flicker (unread→read).
+  `onMutate` с оптимистичным `isRead=true`.
+- **WB-B13** — notifications: строка не-order уведомления имела `cursor-pointer`,
+  но клик — no-op. cursor/hover/onClick только при наличии цели.
+- **error-UI** — каталоги `/stores` и `/products` игнорировали `isError` →
+  сбой сети показывался как «пусто». Добавлен error-state + «Повторить»
+  (`refetch`); `EmptyState` расширен опциональным `onCta`.
+- **Файлы:** `hooks/use-chat.ts`, `hooks/use-notifications.ts`,
+  `app/(shop)/{chats,notifications,stores,products}/page.tsx`,
+  `app/(minimal)/checkout/page.tsx`, `components/catalog/EmptyState.tsx`.
+
+### ✅ web-seller (`47ea98d`)
+- **WS-B07** — `InlineStockEditor`: `draft` не ре-синхронизировался с `current`
+  после `adjustStock` → возможно двойное применение delta. `key` с
+  `stockQuantity` → remount после рефетча.
+- **WS-B08** — варианты: дубль с той же комбинацией опций не блокировался.
+  Проверка `optionValueIds` + inline-ошибка.
+- **WS-B16** — orders: аккумулятор страниц дублировал строки при фоновом
+  рефетче текущей страницы (>1). `lastAppendedPage`-ref: append только для
+  новой страницы, рефетч обновляет строки на месте.
+- **WS-B17** — dashboard: «Ожидают обработки» считался по 5 загруженным
+  строкам → занижение при >5. Отдельный запрос `status=PENDING` → `meta.total`.
+- **WS-B19** — orders + order detail: показывали `shortId(id)` вместо
+  канонического `orderNumber` (продавец видел не тот «номер», что покупатель/
+  уведомления/Telegram). Везде → `orderNumber`, поиск тоже.
+- **Файлы:** `components/product-variants-section.tsx`,
+  `app/(dashboard)/orders/page.tsx`, `orders/[id]/page.tsx`, `dashboard/page.tsx`.
+
+## 2026-05-15 (Азим) — QA-аудит wave 1: 🔴 блокеры запуска
+
+Закрыты 🔴-блокеры из `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+Коммиты `123b70a` (ветка web-buyer), `73ff29f` (ветка web-seller).
+
+### ✅ web-buyer (`123b70a`)
+- **WB-B02** — в корзине у in-stock товара не было кнопки удаления (степпер не
+  доходит до 0). Добавлена «Удалить» рядом со степпером.
+- **WB-B04** — при сбое `/checkout/preview` показывалась форма с «0 сум» без
+  объяснения. Добавлен error-state (`AlertCircle` + «Повторить» через
+  `preview.refetch()` + «В корзину»); форма скрыта при `preview.isError`.
+- **Файлы:** `app/(minimal)/cart/page.tsx`, `app/(minimal)/checkout/page.tsx`.
+
+### ✅ web-seller (`73ff29f`)
+- **WS-B01** — refresh-interceptor скипал OTP по несуществующему `/auth/otp/`
+  → неверный код ломал логин. → `/auth/request-otp` + `/auth/verify-otp`.
+- **WS-B02** — онбординг: `createStore`+`updateProfile` в `Promise.all`, при
+  сбое профиля retry падал дублём (INV-S01). → последовательно, профиль
+  non-fatal.
+- **WS-B04** — edit page: при сбое add/remove фото UI расходился с сервером.
+  → сверка: упавший add убирается, упавший delete возвращается + ошибка.
+- **WS-B05** — edit page: drag-реордер фото молча не сохранялся (нет backend
+  PATCH). → `MultiImageUploader` проп `reorderable`; edit передаёт `false`.
+- **WS-B06** — ключ варианта `join('/')/split('/')` ломался на значении опции
+  с `« / »`. → `VARIANT_LABEL_SEP` (U+001F) + `variantLabelDisplay()`.
+- **WS-B09** — атрибуты слали POST на каждый символ, без id-writeback → дубли.
+  → дебаунс 700мс + in-flight lock + запись id обратно.
+- **WS-B10** — create product: сбой фото/вариантов давал молчаливый «успех».
+  → подсчёт сбоев + экран «Товар создан, но не сохранилось …».
+- **Файлы:** `lib/api/client.ts`, `app/(onboarding)/onboarding/page.tsx`,
+  `app/(dashboard)/products/[id]/edit/page.tsx`, `products/create/page.tsx`,
+  `components/multi-image-uploader.tsx`, `components/variants-matrix-builder.tsx`.
+
+**Verification:** `npx tsc --noEmit` чист в обоих апах.
+**Не закрыт из 🔴:** `WB-B01` (доставка) — ждёт контракт preview от Полата.
+
+## 2026-05-15 (Азим) — Consumption-задачи web-sync аудита (3 типовых дубля убраны)
+
+Полат в Wave 20 поднял типы в `packages/types`; закрыл фронтовую часть —
+подключение и удаление локальных дублей. Сервис-ветки `web-buyer` / `web-seller`
+сначала синхронизированы с `main` (merge, конфликт `railway.toml` разрешён в
+пользу веток — per-branch deploy config).
+
+### ✅ [API-TYPES-PROMOTE-FEATURED-STOREFRONT-001 FE] storefront-типы из packages/types 🟢
+- **Важность:** 🟢 (tech-debt из `WEB-AUDIT-SYNC-IDEOLOGY-001`)
+- **Дата:** 15.05.2026
+- **Ветка:** `web-buyer` (merge `b237f76` + `refactor`-коммит)
+- **Файлы:** `apps/web-buyer/src/lib/api/storefront.api.ts`,
+  `apps/web-buyer/src/lib/storefront-adapters.ts`,
+  удалён `apps/web-buyer/src/types/storefront.ts`
+- **Что сделано:** `FeaturedTopStore` / `FeaturedProduct` /
+  `FeaturedStorefrontResponse` / `GlobalCategoryTreeItem` теперь импортируются
+  из `types`. Локальный дубль (byte-identical) удалён.
+
+### ✅ [API-PRODUCT-IMAGES-FULL-SHAPE-001 FE] ProductImageRef — убран double-cast 🟢
+- **Важность:** 🟢
+- **Дата:** 15.05.2026
+- **Ветка:** `web-seller` (merge `b187ae1` + `refactor`-коммит `59ca414`)
+- **Файл:** `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
+- **Что сделано:** убран `as unknown as { images?: RawImage[] }` double-cast +
+  локальный тип `RawImage`. `product.images` теперь типизирован
+  `ProductImageRef[]`. `id/mediaId` в типе optional (ради feed-ответов) →
+  добавлены `?? ''` и guard для `Map<string,string>`.
+
+### ✅ [API-STORE-DELIVERY-SETTINGS-TYPE-001 FE] StoreDeliverySettings (частично) 🟢
+- **Важность:** 🟢
+- **Дата:** 15.05.2026
+- **Ветка:** `web-seller` (commit `59ca414`)
+- **Файл:** `apps/web-seller/src/app/(dashboard)/settings/page.tsx`
+- **Что сделано:** `StoreWithDelivery` ссылается на канонический
+  `StoreDeliverySettings` вместо ad-hoc inline-литерала.
+- **Не закрыто полностью:** Полат добавил `deliverySettings` только в
+  `StorefrontStore`, не в `Store` → extension-обёртка пока остаётся. Follow-up
+  `API-STORE-TYPE-DELIVERY-SETTINGS-001` в tasks.md.
+
+### 🔴 Найден баг: [API-TYPES-PAYMENT-METHOD-COLLISION-001]
+При прогоне `tsc` обнаружен дубль экспорта `PaymentMethod` в `packages/types`
+(`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
+Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
+
+## 2026-05-16 (Полат) — Wave 29: security audit fixes (часть 1)
+
+### ✅ [SEC-AUDIT-03] 🟠 — trust proxy
+`main.ts`: `app.set('trust proxy', 1)`. За Railway-прокси `req.ip` был IP
+эджа → ThrottlerGuard считал всех в одном ведре. Теперь rate-limit per-IP.
+Коммит `6751b12`.
+
+### ✅ [SEC-AUDIT-04] 🟠→🟡 — проверено, активной дыры нет
+Прошёл все 28 контроллеров: защищённые эндпоинты под guard'ами, незащищённые —
+публичные by design (storefront/media/reviews/health/telegram-webhook
+с secret-token). Понижено до 🟡 hardening. Коммит `2a814eb`.
+
+### ✅ [SEC-AUDIT-07] 🟡 — JWT session-check безусловный
+`jwt.strategy.ts`: проверка сессии на отзыв больше не условная — токен без
+`sessionId` отклоняется. Все 6 флоу выдачи токена ставят sessionId.
+Коммит `31a5187`, auth-специ 97/97.
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] (chat) 🧱 — рефактор chat.controller
+`chat.controller.ts` 659→379 LOC, прямых prisma-вызовов 19→0, `as any` 12→0
+по всему модулю. +9 методов в `ChatRepository`, +6 use-cases (MarkThreadRead,
+DeleteThread, Delete/EditMessage, ReportMessage, AdminChat). `as any` оказался
+schema-drift — ушёл после `db:generate`. Поведение идентично. chat-специ 48/48,
+api tsc clean. Коммит `6d3c8d7` (через фонового агента, проверено + закоммичено).
+Осталось по тикету: products/stores/categories контроллеры.
+
+### ✅ [SEC-ADMIN-ACCESS-MODEL] 🔐 — план ролей admin закрыт целиком (стадии A-D)
+Активировано в проде 16.05.2026 (merge `main→api` `37b481f`, подтверждено владельцем).
+- **B** — `AdminAccessGuard` на 10 admin-контроллерах: вход только `super_admin`/
+  `admin` + `isActive`. Закрыл `SEC-AUDIT-05`. Коммит `bb19395`.
+- **C** — mandatory MFA: `mfaPending` всем админам (verify-otp/refresh/
+  telegram-auth). Закрыл `SEC-AUDIT-01`. Коммит `f0d6618`.
+- **D** — LoginPage MFA-setup branch (QR → /mfa/verify → /mfa/login). `c1e125c`.
+Тесты: auth 97/97, admin+guard 236/236, admin build clean.
+
+### ✅ [SEC-ADMIN-ACCESS-MODEL стадия A] 🔐 — флаги AdminUser
+`AdminUser.isSuperadmin` default `true`→`false` (опасный дефолт) + новое поле
+`isActive Boolean @default(true)` (мягкая блокировка). Миграция
+`20260516140000_admin_user_access_flags` написана вручную (нет dev-БД),
+Expand-safe. Коммит `5a977b8`. Дальше — стадии B/C/D (entry-gate + MFA).
+
+### ✅ [SEC-AUDIT-02 + 06] 🟠 — CORS allow-list
+Убран wildcard `*.up.railway.app` (пропускал любой Railway-проект) → явный
+список 4 прод-доменов фронтов + `ALLOWED_ORIGINS` env. Dev-доступ через
+localhost-regex, не зависит от `NODE_ENV` (закрыт и `06`). Коммит `8ead898`.
+
+**Осталось из аудита:** `SEC-AUDIT-01/05` (в плане ролей `SEC-ADMIN-ACCESS-MODEL`),
+`SEC-AUDIT-04` global-guard (🟡 hardening), `SEC-AUDIT-07` (🟡 JWT session-check).
+
+## 2026-05-16 (Полат) — Wave 28: admin i18n инфра + layout/login
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (admin — инфра + первый слой)
+У admin не было i18n — последняя незакрытая часть локализации платформы.
+- **Инфра** `apps/admin/src/lib/i18n/` (zero-deps, зеркалит TMA): types/ru/uz/
+  I18nProvider/index. Detect: localStorage → navigator.language → 'ru'.
+  `useTranslation()` → `{ t, locale, setLocale }`, `{var}`-интерполяция.
+- **App.tsx** — `I18nProvider` обёртка, PageFallback + QueuesRedirect.
+- **DashboardLayout** — навигация (4 группы, 21 пункт), поиск, тема, logout
+  + переключатель языка RU/UZ в футере сайдбара.
+- **LoginPage** — все строки (OTP/MFA шаги, ошибки, плейсхолдеры, aria).
+Коммит `666b88b`, admin build чисто.
+**Осталось:** 24 page'и admin — инкрементальная миграция по мере касания.
+
+## 2026-05-15 (Полат) — Wave 27: тест AuditBrokenMediaUrlsUseCase
+
+### ✅ [AUDIT-N1] 🟢
+Unit-spec для `AuditBrokenMediaUrlsUseCase` (был gap из self-audit Wave 21).
+10 кейсов: STORAGE_PUBLIC_URL guard, живые/мёртвые URL, cursor-пагинация
+(nextCursor full/partial), clamp limit. axios замокан. 10/10 passed.
+Коммит `d336977`.
+
+## 2026-05-15 (Полат) — Wave 26: storefront stores pagination
+
+### ✅ [API-STORES-PAGINATION-001] 🟢
+`GET /storefront/stores` — server-side пагинация `?page=&limit=`. Раньше
+`findAllPublished` хардкодил `take: 50` → хвост каталога недоступен при
+>50 магазинов. Репозиторий: `$transaction` findMany+count, возвращает
+`{ stores, total, page, limit }`, clamp limit 1..100, дефолты на невалид.
+Ответ `{ data, meta }` — meta non-breaking. Коммит `8a60131`, api tsc clean.
+
+## 2026-05-15 (Полат) — Wave 25: PATCH product image endpoint
+
+### ✅ [API-PRODUCT-IMAGES-PATCH-001] 🟢
+`PATCH /seller/products/:id/images/:imageId` — reorder (`sortOrder`) + toggle
+обложки (`isPrimary`). Раньше только POST/DELETE → web-seller edit не мог
+сохранить порядок фото (`WS-B05`). Ownership-проверка, 404 на чужое фото,
+400 если не передано ни одно поле, isPrimary=true снимает обложку с остальных.
+DTO `UpdateProductImageDto`. Коммит `788aeb3`, api tsc clean.
+
+## 2026-05-15 (Полат) — Wave 24: checkout preview delivery fee + типы
+
+### ✅ [API-CHECKOUT-PREVIEW-DELIVERY-FEE-001] 🔴 (разблокирует WB-B01)
+`PreviewCheckoutUseCase` хардкодил `deliveryFee = 0`, а `ConfirmCheckoutUseCase`
+считал реальную плату из `store.deliverySettings` → покупатель видел «Бесплатно»
+в preview, но платил fixed-плату при подтверждении (money-bug).
+- Новый `checkout/delivery-fee.util.ts` → `computeDeliveryFee()` — единый расчёт.
+- preview-checkout инжектит `CheckoutRepository`, считает реальную плату.
+- confirm-checkout переведён на тот же helper (убран дублирующий inline).
+- `packages/types` `CheckoutPreview` += `deliveryFee` + `total`.
+- Тесты: +2 (fixed/manual), checkout-специ 61/61. Коммит `484694a`.
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] (частично) 🟡
+`OrderListItem` += плоские `city`/`region`/`addressLine1`/`addressLine2` +
+`subtotalAmount`/`discountAmount` — их отдаёт `GET /seller/orders`, web-seller
+читал через `as any`. Коммит `4cf0993`. Осталось: web-buyer ~9 кастов — нужен
+список callsite'ов от Азима.
+
+## 2026-05-15 (Полат) — Wave 23: API Telegram-уведомления i18n
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (API notifications) 🔴
+TG-notification processor уже рендерил через `t(locale,...)`, но producer
+use-cases не прокидывали `locale` → `d.locale` был undefined → всегда 'ru'.
+Узбекские пользователи получали русские уведомления.
+Теперь `locale = User.languageCode` получателя резолвится и пробрасывается:
+- `notifyNewOrder` (confirm-checkout, create-direct-order) — язык продавца;
+  `checkout.repository.findStoreWithSeller` селектит `seller.user.languageCode`.
+- `notifyOrderStatusChanged` (update-order-status) — язык buyer/seller;
+  `orders.repository.findById` селектит `buyer.user`+`seller.user.languageCode`.
+- `notifyChatMessage` (send-message) — язык получателя;
+  `chat.repository.findThreadById` селектит обе стороны. Fallback-имена
+  отправителя локализованы через `notify.senderFallback.*`.
+**Тесты:** api tsc clean, checkout+orders+chat 70/70. Коммит `0e18129`.
+**Осталось по локализации:** admin i18n (нет инфры).
+
+## 2026-05-15 (Полат) — Wave 22: TMA buyer i18n + TMA deploy fix
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (TMA buyer pages) 🔴
+Локализованы buyer-страницы TMA. Cart/Checkout/Orders/Product/Wishlist уже
+были на `t()`; добавлены 3 оставшиеся:
+- **ChatPage** — статусы тредов, меню действий, reply-баннеры, ошибки,
+  заголовки. Параметры `t` в `threadLabel`/`threadContext`/`threads.map`
+  переименованы в `thread` (шадовили функцию перевода).
+- **StorePage** — confirm замены корзины, тосты, verified-бейдж, фильтр
+  категорий, цена locale-aware.
+- **StoresPage** — фильтр «Все», сброс/диапазон цены, contact-tooltip.
+~40 новых ключей в `ru.ts` + `uz.ts` (узбекские с `ʻ`/`ʼ`). Все 10 buyer +
+5 seller страниц TMA теперь на i18n. Коммит `aad2bab`.
+
+### ✅ [DEPLOY-TMA-RAILPACK-FAIL-001] 🔴
+TMA не деплоился: Wave 19 DevOps audit удалил корневой `railway.toml`,
+Railway свалился на Railpack. Восстановлен `railway.toml` (`798f720`),
+`railway.toml` добавлен в watchPatterns (`6a39a06`), деплой раскручен
+version-bump'ом `apps/tma/package.json` (`0c57bad`). Задеплоился успешно.
+
+**Осталось по локализации:** admin (нет i18n-инфры), API `Accept-Language`.
+
 ## 2026-05-15 (Полат) — Wave 21: broken media + i18n + Sentry + frontend CI
 
 ### ✅ [API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001] 🔴

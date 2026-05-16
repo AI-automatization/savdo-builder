@@ -95,7 +95,7 @@ export class GetThreadMessagesUseCase {
     const parentIds = Array.from(
       new Set(
         slice
-          .map((m) => (m as any).parentMessageId as string | null)
+          .map((m) => m.parentMessageId)
           .filter((id): id is string => Boolean(id)),
       ),
     );
@@ -105,22 +105,21 @@ export class GetThreadMessagesUseCase {
     const parentsById = new Map(parents.map((p) => [p.id, p]));
 
     const messages: MappedChatMessage[] = slice.map((m) => {
-      const mAny = m as any;
-      const parent = mAny.parentMessageId ? parentsById.get(mAny.parentMessageId) : null;
+      const parent = m.parentMessageId ? parentsById.get(m.parentMessageId) : null;
       return {
         id: m.id,
         threadId: m.threadId,
         text: m.isDeleted ? '' : (m.body ?? ''),
         senderRole: m.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
-        editedAt: mAny.editedAt ? new Date(mAny.editedAt).toISOString() : null,
+        editedAt: m.editedAt ? m.editedAt.toISOString() : null,
         isDeleted: m.isDeleted,
         createdAt: m.createdAt.toISOString(),
-        mediaUrl: mAny.mediaId ? `${appUrl}/api/v1/media/proxy/${mAny.mediaId}` : null,
+        mediaUrl: m.mediaId ? `${appUrl}/api/v1/media/proxy/${m.mediaId}` : null,
         messageType: m.messageType,
         parentMessage: parent
           ? {
               id: parent.id,
-              text: parent.isDeleted ? '' : ((parent as any).body ?? ''),
+              text: parent.isDeleted ? '' : (parent.body ?? ''),
               senderRole: parent.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER',
             }
           : null,

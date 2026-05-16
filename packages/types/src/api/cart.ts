@@ -64,19 +64,39 @@ export interface CheckoutPreview {
   storeName: string;
   items: CheckoutPreviewItem[];
   subtotal: number;
+  /**
+   * API-CHECKOUT-PREVIEW-DELIVERY-FEE-001: рассчитанная backend'ом плата за
+   * доставку (из store.deliverySettings). Тот же расчёт применяется в confirm —
+   * preview и итоговый заказ согласованы. 0 для `manual`/`none` тарифа.
+   */
+  deliveryFee: number;
+  /** subtotal + deliveryFee. То, что покупатель реально заплатит. */
+  total: number;
   currencyCode: string;
   stockWarnings: string[];
 }
 
 /**
- * Способ оплаты заказа.
+ * Способ оплаты заказа (request-side enum для checkout).
  * API-CHECKOUT-PAYMENT-METHOD-001 (от Азима, web-sync audit 14.05.2026).
  *  - `cash`   — наличными при получении (COD), доступно всегда
  *  - `card`   — картой при получении / курьеру
  *  - `online` — онлайн через Click/Payme (требует PAYMENT_ONLINE_ENABLED;
  *               пока не реализовано — фронт показывает «Скоро»)
+ *
+ * Назван `CheckoutPaymentMethod`, чтобы не коллидировать с Prisma-enum
+ * `PaymentMethod` (COD/MANUAL_TRANSFER/ONLINE) из `enums.ts` — оба
+ * ре-экспортятся через `index.ts` (TS2308). См. API-TYPES-PAYMENT-METHOD-COLLISION-001.
  */
-export type PaymentMethod = 'cash' | 'card' | 'online';
+export type CheckoutPaymentMethod = 'cash' | 'card' | 'online';
+
+/**
+ * Режим получения заказа.
+ * API-CHECKOUT-PICKUP-DELIVERY-FEE-001 (от Азима, 16.05.2026).
+ *  - `delivery` — курьерская доставка, deliveryFee из store.deliverySettings
+ *  - `pickup`   — самовывоз, backend принудительно обнуляет deliveryFee
+ */
+export type CheckoutDeliveryMode = 'delivery' | 'pickup';
 
 export interface CheckoutConfirmRequest {
   deliveryAddress: DeliveryAddress;
@@ -90,5 +110,10 @@ export interface CheckoutConfirmRequest {
    * Способ оплаты. Default `cash` если не передан (backward-compat со старыми
    * клиентами). `online` принимается только при PAYMENT_ONLINE_ENABLED.
    */
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: CheckoutPaymentMethod;
+  /**
+   * Режим получения. Default `delivery` если не передан (backward-compat).
+   * `pickup` → backend обнуляет deliveryFee независимо от store.deliverySettings.
+   */
+  deliveryMode?: CheckoutDeliveryMode;
 }

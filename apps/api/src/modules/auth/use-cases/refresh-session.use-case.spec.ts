@@ -175,13 +175,14 @@ describe('RefreshSessionUseCase', () => {
       }));
     });
 
-    it('ADMIN без mfa → adminRole, но БЕЗ mfaPending', async () => {
+    it('ADMIN без mfa → adminRole + mfaPending=true (SEC-ADMIN стадия C)', async () => {
       prisma.user.findUnique.mockResolvedValue({ ...USER_BUYER, role: 'ADMIN' });
       authRepo.findAdminClaims.mockResolvedValue({ mfaEnabled: false, adminRole: 'moderator' });
       await useCase.execute('sess-1.token');
       const claims = tokenService.generateAccessToken.mock.calls[0][0];
       expect(claims.adminRole).toBe('moderator');
-      expect(claims.mfaPending).toBeUndefined();
+      // Стадия C: refresh не должен выдавать чистый токен админу без MFA.
+      expect(claims.mfaPending).toBe(true);
     });
 
     it('BUYER → findAdminClaims НЕ вызывается', async () => {
