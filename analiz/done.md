@@ -1,5 +1,24 @@
 # Done — Азим + Полат
 
+## 2026-05-16 (Азим) — WB-B01: доставка в checkout
+
+### ✅ [WB-B01] Плата за доставку отображается и списывается согласованно 🔴
+
+- **Важность:** 🔴
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Закрыт последний 🔴-блокер QA-аудита 15.05. Backend-часть
+  (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`, `484694a`, Полат) научила
+  `/checkout/preview` отдавать реальный `deliveryFee`+`total` из
+  `store.deliverySettings` — раньше хардкодил `0`, из-за чего поле
+  `previewData.deliveryFee` всегда было `undefined` и summary показывал
+  «Бесплатно», хотя confirm списывал fixed-плату. Тип `CheckoutPreview` теперь
+  канонически несёт `deliveryFee: number` + `total: number`; убран избыточный
+  loose-cast (`PreviewWithFee` оставлен только под legacy-поле `validItems`).
+  Режим «Доставка»: summary и итог заказа согласованы с backend. `tsc --noEmit`
+  чист. **Смежная находка** — режим «Самовывоз» всё равно облагается доставкой
+  на backend → отдельный тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` Полату.
+
 ## 2026-05-13 (Азим) — Part 4: MARKETING-VERIFIED-SELLER-001 web-buyer Frontend (Tasks 15-19)
 
 ### ✅ [MARKETING-VERIFIED-SELLER-001 FE] Product detail refactor — seller card up + Обсудить primary 🟠

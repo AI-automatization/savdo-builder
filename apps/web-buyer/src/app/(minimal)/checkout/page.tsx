@@ -25,9 +25,10 @@ type PreviewItemLoose = CheckoutPreviewItem & {
   variantLabelSnapshot?: string | null;
   lineTotal?: number;
 };
+// WB-B01: `CheckoutPreview` теперь канонически несёт `deliveryFee` + `total`
+// (API-CHECKOUT-PREVIEW-DELIVERY-FEE-001). Локальный extension оставлен только
+// под legacy-поле `validItems` — старые ответы preview отдавали его вместо `items`.
 type PreviewWithFee = CheckoutPreview & {
-  deliveryFee?: number;
-  total?: number;
   validItems?: PreviewItemLoose[];
 };
 
