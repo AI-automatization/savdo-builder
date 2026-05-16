@@ -49,22 +49,34 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // Проверяем что сессия ещё существует в БД.
     // Гарантирует немедленную инвалидацию токена после logout.
     // Запрос по PRIMARY KEY (id) — один B-tree lookup, ~1ms.
-    if (payload.sessionId) {
-      const session = await this.prisma.userSession.findUnique({
-        where: { id: payload.sessionId },
-        select: { id: true, expiresAt: true },
-      });
+    // SEC-AUDIT-07: проверка сессии безусловная. Раньше была `if (payload.sessionId)`
+    // — токен без sessionId проскакивал без проверки на отзыв. Все легитимные
+    // access-токены (verify-otp / telegram-auth / refresh / mfa / impersonate)
+    // содержат sessionId, поэтому его отсутствие = малформированный/поддельный
+    // токен → отклоняем.
+    if (!payload.sessionId) {
+      this.logger.warn(`JWT rejected: missing sessionId [sub=${payload.sub}]`);
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Malformed token. Please log in again.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
 
-      if (!session || session.expiresAt < new Date()) {
-        this.logger.warn(
-          `JWT rejected: session not found/expired [sub=${payload.sub}, sid=${payload.sessionId}]`,
-        );
-        throw new DomainException(
-          ErrorCode.UNAUTHORIZED,
-          'Session expired. Please log in again.',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+    const session = await this.prisma.userSession.findUnique({
+      where: { id: payload.sessionId },
+      select: { id: true, expiresAt: true },
+    });
+
+    if (!session || session.expiresAt < new Date()) {
+      this.logger.warn(
+        `JWT rejected: session not found/expired [sub=${payload.sub}, sid=${payload.sessionId}]`,
+      );
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Session expired. Please log in again.',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     return payload;
