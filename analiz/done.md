@@ -121,6 +121,15 @@
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
 
+## 2026-05-15 (Полат) — Wave 26: storefront stores pagination
+
+### ✅ [API-STORES-PAGINATION-001] 🟢
+`GET /storefront/stores` — server-side пагинация `?page=&limit=`. Раньше
+`findAllPublished` хардкодил `take: 50` → хвост каталога недоступен при
+>50 магазинов. Репозиторий: `$transaction` findMany+count, возвращает
+`{ stores, total, page, limit }`, clamp limit 1..100, дефолты на невалид.
+Ответ `{ data, meta }` — meta non-breaking. Коммит `8a60131`, api tsc clean.
+
 ## 2026-05-15 (Полат) — Wave 25: PATCH product image endpoint
 
 ### ✅ [API-PRODUCT-IMAGES-PATCH-001] 🟢
