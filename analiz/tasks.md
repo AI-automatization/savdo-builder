@@ -61,16 +61,16 @@
 (не владелец) · `moderator/support/finance/read_only` — резерв, в панель НЕ
 пускаются. Новые роли (`owner`/`developer`) НЕ вводим.
 
-- ✅ **Стадия A (БД)** 16.05.2026 — `AdminUser.isSuperadmin` default `true`→`false`
-  + `isActive Boolean @default(true)`. Миграция `20260516140000_admin_user_access_flags`
-  (написана вручную, Expand-safe). Коммит `5a977b8`.
-- **Стадия B (entry-gate):** пускать в admin только `adminRole ∈ {super_admin,
-  admin}` + `isActive` + есть `AdminUser`. LoginPage зовёт `/admin/auth/me`,
-  при 403 — чёткий отказ.
-- **Стадия C (mandatory MFA):** `mfaPending` всем админам; `mfaEnabled=false`
-  → форс MfaSetupPage. Закрывает `SEC-AUDIT-01`.
-- **Стадия D (frontend):** ветка MFA-setup в LoginPage + сообщение об отказе.
-- ⚠️ Стадия C трогает логин — делать последней, отдельными коммитами.
+- ✅ **Стадия A (БД)** — `isSuperadmin` default `false` + `isActive`. Коммит `5a977b8`.
+- ✅ **Стадия B (entry-gate)** — `AdminAccessGuard` на всех 10 admin-контроллерах:
+  `adminRole ∈ {super_admin,admin}` + `isActive` + есть `AdminUser`. Коммит `bb19395`.
+- ✅ **Стадия C (mandatory MFA)** — `mfaPending` всем админам в verify-otp/
+  refresh/telegram-auth. Коммит `f0d6618`.
+- ✅ **Стадия D (frontend)** — LoginPage: ветка MFA-setup (QR), коммит `c1e125c`.
+- 🟡 **ОСТАЛОСЬ: активация.** `admin`-ветка с D задеплоена (inert). `api`-ветка
+  с B+C — merge `main→api` НЕ сделан, ждёт подтверждения владельца: после
+  деплоя api каждый админ без MFA при входе будет принудительно проходить
+  MFA-setup. Перед merge — убедиться, что setup-флоу работает.
 
 ---
 
