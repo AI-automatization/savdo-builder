@@ -121,6 +121,21 @@
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
 
+## 2026-05-16 (Полат) — Wave 29: security audit fixes (часть 1)
+
+### ✅ [SEC-AUDIT-03] 🟠 — trust proxy
+`main.ts`: `app.set('trust proxy', 1)`. За Railway-прокси `req.ip` был IP
+эджа → ThrottlerGuard считал всех в одном ведре. Теперь rate-limit per-IP.
+Коммит `6751b12`.
+
+### ✅ [SEC-AUDIT-04] 🟠→🟡 — проверено, активной дыры нет
+Прошёл все 28 контроллеров: защищённые эндпоинты под guard'ами, незащищённые —
+публичные by design (storefront/media/reviews/health/telegram-webhook
+с secret-token). Понижено до 🟡 hardening. Коммит `2a814eb`.
+
+**Осталось из аудита:** `SEC-AUDIT-02` CORS (нужны прод-домены), `SEC-AUDIT-01/05`
+(в плане ролей `SEC-ADMIN-ACCESS-MODEL`), `SEC-AUDIT-04` global-guard (hardening).
+
 ## 2026-05-16 (Полат) — Wave 28: admin i18n инфра + layout/login
 
 ### ✅ [MARKETING-LOCALIZATION-UZ-001] (admin — инфра + первый слой)
