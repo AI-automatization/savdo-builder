@@ -10,11 +10,10 @@
 > Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.
 > **Домен:** `apps/api`. **Кто берёт:** Полат.
 
-## 🔴 `SEC-AUDIT-01` — MFA не обязателен (OWASP A07)
-- `MfaEnforcedGuard` блокирует только `mfaPending=true`; `mfaPending` ставится
-  лишь при `mfaEnabled=true` → админ без настроенного MFA входит по одному OTP.
-- **Фикс:** `mfaPending=true` для всех админов; `mfaEnabled=false` → форс в setup.
-  Часть плана ролей (стадия C, см. `SEC-ADMIN-ACCESS-MODEL` ниже).
+## ✅ `SEC-AUDIT-01` — MFA не обязателен (OWASP A07) — закрыто 16.05.2026
+- `mfaPending=true` для всех админов (verify-otp/refresh/telegram-auth);
+  `mfaEnabled=false` → LoginPage форсит MFA-setup. = `SEC-ADMIN-ACCESS-MODEL`
+  стадия C, активировано в проде (`37b481f`).
 
 ## ✅ `SEC-AUDIT-02` — CORS allow-list слишком широкий (A05) — закрыто 16.05.2026
 - Был wildcard `*.up.railway.app` — пропускал любой проект Railway.
@@ -40,11 +39,9 @@
   — defense-in-depth, чтобы БУДУЩИЙ забытый guard не открыл эндпоинт. Не срочно,
   рефактор рискованный (28 контроллеров) — делать отдельным focused-проходом.
 
-## 🟠 `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` доступны любому `role=ADMIN` (A01)
-- `AdminPermissionGuard`: «нет декоратора → return true». Жёсткий гейт — только
-  `RolesGuard('ADMIN')`. В связке с `isSuperadmin @default(true)` — `read_only`/
-  `support` админ дёргает незадекорированные admin-эндпоинты.
-- **Фикс:** часть плана ролей (стадия B).
+## ✅ `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` (A01) — закрыто 16.05.2026
+- `AdminAccessGuard` на всех 10 admin-контроллерах: вход только `super_admin`/
+  `admin` + `isActive`. = `SEC-ADMIN-ACCESS-MODEL` стадия B, в проде (`37b481f`).
 
 ## ✅ `SEC-AUDIT-07` — JWT session-check сделан безусловным — закрыто 16.05.2026
 - `jwt.strategy.ts`: проверка сессии больше не `if (payload.sessionId)` —
@@ -67,10 +64,9 @@
 - ✅ **Стадия C (mandatory MFA)** — `mfaPending` всем админам в verify-otp/
   refresh/telegram-auth. Коммит `f0d6618`.
 - ✅ **Стадия D (frontend)** — LoginPage: ветка MFA-setup (QR), коммит `c1e125c`.
-- 🟡 **ОСТАЛОСЬ: активация.** `admin`-ветка с D задеплоена (inert). `api`-ветка
-  с B+C — merge `main→api` НЕ сделан, ждёт подтверждения владельца: после
-  деплоя api каждый админ без MFA при входе будет принудительно проходить
-  MFA-setup. Перед merge — убедиться, что setup-флоу работает.
+- ✅ **Активировано 16.05.2026** — `main→api` смержен (`37b481f`), api редеплоен:
+  entry-gate + mandatory MFA в проде. Подтверждено владельцем. План
+  `SEC-ADMIN-ACCESS-MODEL` закрыт целиком (A→D).
 
 ---
 

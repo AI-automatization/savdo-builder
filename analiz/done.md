@@ -138,6 +138,15 @@
 `sessionId` отклоняется. Все 6 флоу выдачи токена ставят sessionId.
 Коммит `31a5187`, auth-специ 97/97.
 
+### ✅ [SEC-ADMIN-ACCESS-MODEL] 🔐 — план ролей admin закрыт целиком (стадии A-D)
+Активировано в проде 16.05.2026 (merge `main→api` `37b481f`, подтверждено владельцем).
+- **B** — `AdminAccessGuard` на 10 admin-контроллерах: вход только `super_admin`/
+  `admin` + `isActive`. Закрыл `SEC-AUDIT-05`. Коммит `bb19395`.
+- **C** — mandatory MFA: `mfaPending` всем админам (verify-otp/refresh/
+  telegram-auth). Закрыл `SEC-AUDIT-01`. Коммит `f0d6618`.
+- **D** — LoginPage MFA-setup branch (QR → /mfa/verify → /mfa/login). `c1e125c`.
+Тесты: auth 97/97, admin+guard 236/236, admin build clean.
+
 ### ✅ [SEC-ADMIN-ACCESS-MODEL стадия A] 🔐 — флаги AdminUser
 `AdminUser.isSuperadmin` default `true`→`false` (опасный дефолт) + новое поле
 `isActive Boolean @default(true)` (мягкая блокировка). Миграция
