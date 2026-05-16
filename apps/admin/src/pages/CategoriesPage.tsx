@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Tags, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, X, Save, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 
 interface GlobalCategory {
@@ -26,6 +27,7 @@ function slugify(s: string) {
 }
 
 export default function CategoriesPage() {
+  const { t } = useTranslation()
   const { data, loading, error, refetch } = useFetch<GlobalCategory[]>('/api/v1/admin/categories')
   const [categories, setCategories] = useState<GlobalCategory[]>([])
   useEffect(() => { setCategories(data ?? []) }, [data])
@@ -78,7 +80,7 @@ export default function CategoriesPage() {
 
   async function handleSave() {
     if (!form.nameRu.trim() || !form.nameUz.trim() || !form.slug.trim()) {
-      setFormError('Заполните все обязательные поля')
+      setFormError(t('categories.errRequired'))
       return
     }
     setSaving(true)
@@ -100,7 +102,7 @@ export default function CategoriesPage() {
       closeModal()
       refetch()
     } catch (e: any) {
-      setFormError(e.message ?? 'Ошибка сохранения')
+      setFormError(e.message ?? t('categories.errSave'))
     } finally {
       setSaving(false)
     }
@@ -113,7 +115,7 @@ export default function CategoriesPage() {
       await api.patch(`/api/v1/admin/categories/${cat.id}`, { isActive: !cat.isActive })
     } catch (e: any) {
       setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, isActive: cat.isActive } : c))
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     }
   }
 
@@ -125,7 +127,7 @@ export default function CategoriesPage() {
       await api.delete(`/api/v1/admin/categories/${id}`)
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка удаления')
+      setActionError(e.message ?? t('categories.errDelete'))
       refetch()
     }
   }
@@ -139,7 +141,7 @@ export default function CategoriesPage() {
         <div className="flex items-center gap-2">
           <Tags size={20} style={{ color: 'var(--text-muted)' }} />
           <h1 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
-            Глобальные категории
+            {t('categories.title')}
           </h1>
           <span className="text-sm px-2 py-0.5 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
             {categories.length}
@@ -151,7 +153,7 @@ export default function CategoriesPage() {
           style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)' }}
         >
           <Plus size={14} />
-          Добавить
+          {t('categories.add')}
         </button>
       </div>
 
@@ -164,7 +166,7 @@ export default function CategoriesPage() {
       )}
 
       {loading && (
-        <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+        <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
       )}
       {error && (
         <div className="text-sm py-8 text-center" style={{ color: '#f87171' }}>{error}</div>
@@ -174,7 +176,7 @@ export default function CategoriesPage() {
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
           {rootCategories.length === 0 && (
             <div className="px-4 py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-              Категорий нет. Нажмите «Добавить» или запустите seed:categories.
+              {t('categories.empty')}
             </div>
           )}
 
@@ -229,9 +231,9 @@ export default function CategoriesPage() {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
           <div className="rounded-xl p-6 w-80 shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>Удалить категорию?</h3>
+            <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>{t('categories.deleteConfirmTitle')}</h3>
             <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>
-              Дочерние категории и товары потеряют привязку. Действие необратимо.
+              {t('categories.deleteConfirmText')}
             </p>
             <div className="flex gap-2">
               <button
@@ -239,14 +241,14 @@ export default function CategoriesPage() {
                 className="flex-1 py-2 rounded-md text-sm font-medium"
                 style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => handleDelete(confirmDelete)}
                 className="flex-1 py-2 rounded-md text-sm font-medium"
                 style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
               >
-                Удалить
+                {t('common.delete')}
               </button>
             </div>
           </div>
@@ -259,31 +261,31 @@ export default function CategoriesPage() {
           <div className="rounded-xl w-[480px] shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                {modal === 'create' ? 'Новая категория' : 'Редактировать категорию'}
+                {modal === 'create' ? t('categories.modalCreate') : t('categories.modalEdit')}
               </h3>
-              <button onClick={closeModal} aria-label="Закрыть"><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
+              <button onClick={closeModal} aria-label={t('common.close')}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
             </div>
 
             <div className="px-5 py-4 flex flex-col gap-3">
-              <Field label="Название (RU) *" value={form.nameRu} onChange={handleNameRuChange} placeholder="Электроника" />
-              <Field label="Название (UZ) *" value={form.nameUz} onChange={v => setForm(f => ({ ...f, nameUz: v }))} placeholder="Elektronika" />
+              <Field label={t('categories.fieldNameRu')} value={form.nameRu} onChange={handleNameRuChange} placeholder="Электроника" />
+              <Field label={t('categories.fieldNameUz')} value={form.nameUz} onChange={v => setForm(f => ({ ...f, nameUz: v }))} placeholder="Elektronika" />
               <Field
-                label="Slug *"
+                label={t('categories.fieldSlug')}
                 value={form.slug}
                 onChange={v => setForm(f => ({ ...f, slug: v }))}
                 placeholder="electronics"
-                hint="Только латиница, цифры, _"
+                hint={t('categories.slugHint')}
               />
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Родитель</label>
+                  <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('categories.parent')}</label>
                   <select
                     value={form.parentId}
                     onChange={e => setForm(f => ({ ...f, parentId: e.target.value }))}
                     className="w-full px-3 py-2 rounded-md text-sm"
                     style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
                   >
-                    <option value="">— Корневая —</option>
+                    <option value="">{t('categories.rootOption')}</option>
                     {categories
                       .filter(c => editTarget ? c.id !== editTarget.id : true)
                       .map(c => (
@@ -295,7 +297,7 @@ export default function CategoriesPage() {
                 </div>
                 <div className="w-24">
                   <Field
-                    label="Порядок"
+                    label={t('categories.sortOrder')}
                     value={form.sortOrder}
                     onChange={v => setForm(f => ({ ...f, sortOrder: v }))}
                     placeholder="0"
@@ -310,7 +312,7 @@ export default function CategoriesPage() {
                   onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))}
                   className="w-4 h-4"
                 />
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Активна (видна продавцам)</span>
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('categories.activeLabel')}</span>
               </label>
 
               {formError && (
@@ -324,7 +326,7 @@ export default function CategoriesPage() {
                 className="flex-1 py-2 rounded-md text-sm font-medium"
                 style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSave}
@@ -333,7 +335,7 @@ export default function CategoriesPage() {
                 style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)' }}
               >
                 <Save size={13} />
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving ? t('categories.saving') : t('common.save')}
               </button>
             </div>
           </div>
@@ -354,6 +356,7 @@ interface RowProps {
 }
 
 function CategoryRow({ cat, depth, onEdit, onToggle, onDelete, onAddChild }: RowProps) {
+  const { t } = useTranslation()
   const indent = depth * 24
 
   return (
@@ -388,20 +391,20 @@ function CategoryRow({ cat, depth, onEdit, onToggle, onDelete, onAddChild }: Row
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
         {onAddChild && (
-          <ActionBtn onClick={onAddChild} title="Добавить подкатегорию">
+          <ActionBtn onClick={onAddChild} title={t('categories.addSubcategory')}>
             <Plus size={13} />
           </ActionBtn>
         )}
-        <ActionBtn onClick={() => onEdit(cat)} title="Редактировать">
+        <ActionBtn onClick={() => onEdit(cat)} title={t('categories.editAction')}>
           <Pencil size={13} />
         </ActionBtn>
-        <ActionBtn onClick={() => onToggle(cat)} title={cat.isActive ? 'Деактивировать' : 'Активировать'}>
+        <ActionBtn onClick={() => onToggle(cat)} title={cat.isActive ? t('categories.deactivate') : t('categories.activate')}>
           {cat.isActive
             ? <ToggleRight size={14} style={{ color: '#10B981' }} />
             : <ToggleLeft size={14} style={{ color: '#6B7280' }} />
           }
         </ActionBtn>
-        <ActionBtn onClick={() => onDelete(cat.id)} title="Удалить" danger>
+        <ActionBtn onClick={() => onDelete(cat.id)} title={t('common.delete')} danger>
           <Trash2 size={13} />
         </ActionBtn>
       </div>

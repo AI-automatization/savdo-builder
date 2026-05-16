@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Send, Eye, AlertCircle, CheckCircle, RefreshCw, Megaphone } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { DialogShell } from '../components/admin/DialogShell'
 
@@ -13,8 +14,8 @@ interface BroadcastLog {
   creator: { phone: string }
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('ru-RU', {
+function formatDate(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleString(dateLocale, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
@@ -53,11 +54,11 @@ function parseTelegram(text: string): ReactNode[] {
   return nodes;
 }
 
-function TelegramPreview({ text }: { text: string }) {
+function TelegramPreview({ text, t }: { text: string; t: (k: string, v?: Record<string, string | number>) => string }) {
   return (
     <div style={{ background: '#1a2133', borderRadius: 12, padding: '16px 20px' }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: '#818CF8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-        Превью Telegram
+        {t('broadcast.preview')}
       </div>
       <div style={{
         display: 'inline-block', maxWidth: 320,
@@ -65,21 +66,21 @@ function TelegramPreview({ text }: { text: string }) {
         padding: '10px 14px', fontSize: 14, lineHeight: 1.5, color: '#E2E8F0',
         whiteSpace: 'pre-wrap', wordBreak: 'break-word',
       }}>
-        {text ? parseTelegram(text) : <span style={{ opacity: 0.4 }}>Введите текст...</span>}
+        {text ? parseTelegram(text) : <span style={{ opacity: 0.4 }}>{t('broadcast.previewEmpty')}</span>}
       </div>
     </div>
   )
 }
 
 const TOOLBAR_BUTTONS = [
-  { label: 'B', title: 'Жирный', open: '<b>', close: '</b>', style: { fontWeight: 800 } },
-  { label: 'I', title: 'Курсив', open: '<i>', close: '</i>', style: { fontStyle: 'italic' } },
-  { label: '🔗', title: 'Ссылка', open: '<a href="">', close: '</a>', style: {} },
-  { label: '🎉', title: 'Праздник', open: '🎉', close: '', style: {} },
-  { label: '🔥', title: 'Огонь', open: '🔥', close: '', style: {} },
-  { label: '✅', title: 'Галочка', open: '✅', close: '', style: {} },
-  { label: '⚠️', title: 'Внимание', open: '⚠️', close: '', style: {} },
-  { label: '📢', title: 'Рупор', open: '📢', close: '', style: {} },
+  { label: 'B', titleKey: 'broadcast.tbBold', open: '<b>', close: '</b>', style: { fontWeight: 800 } },
+  { label: 'I', titleKey: 'broadcast.tbItalic', open: '<i>', close: '</i>', style: { fontStyle: 'italic' } },
+  { label: '🔗', titleKey: 'broadcast.tbLink', open: '<a href="">', close: '</a>', style: {} },
+  { label: '🎉', titleKey: 'broadcast.tbParty', open: '🎉', close: '', style: {} },
+  { label: '🔥', titleKey: 'broadcast.tbFire', open: '🔥', close: '', style: {} },
+  { label: '✅', titleKey: 'broadcast.tbCheck', open: '✅', close: '', style: {} },
+  { label: '⚠️', titleKey: 'broadcast.tbWarning', open: '⚠️', close: '', style: {} },
+  { label: '📢', titleKey: 'broadcast.tbMegaphone', open: '📢', close: '', style: {} },
 ]
 
 function wrapSelection(
@@ -100,13 +101,15 @@ function wrapSelection(
 
 type Audience = 'all' | 'sellers' | 'buyers'
 
-const AUDIENCE_OPTIONS: { value: Audience; label: string; desc: string }[] = [
-  { value: 'all',     label: 'Все',        desc: 'Продавцы и покупатели' },
-  { value: 'sellers', label: 'Продавцы',   desc: 'Только продавцы' },
-  { value: 'buyers',  label: 'Покупатели', desc: 'Только покупатели' },
+const AUDIENCE_OPTIONS: { value: Audience; labelKey: string; descKey: string }[] = [
+  { value: 'all',     labelKey: 'common.all',           descKey: 'broadcast.audAllDesc' },
+  { value: 'sellers', labelKey: 'nav.sellers',          descKey: 'broadcast.audSellersDesc' },
+  { value: 'buyers',  labelKey: 'broadcast.audBuyers',  descKey: 'broadcast.audBuyersDesc' },
 ]
 
 export default function BroadcastPage() {
+  const { t, locale } = useTranslation()
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
   const [message, setMessage] = useState('')
   const [audience, setAudience] = useState<Audience>('all')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -133,7 +136,7 @@ export default function BroadcastPage() {
       setPreviewCount(res.queued)
       setConfirm(true)
     } catch (e: any) {
-      setSendError(e.message ?? 'Ошибка')
+      setSendError(e.message ?? t('common.error'))
     }
   }
 
@@ -147,7 +150,7 @@ export default function BroadcastPage() {
       setMessage('')
       refetchHistory()
     } catch (e: any) {
-      setSendError(e.message ?? 'Ошибка отправки')
+      setSendError(e.message ?? t('broadcast.errSend'))
     } finally {
       setSending(false)
     }
@@ -159,17 +162,17 @@ export default function BroadcastPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>
-            Рассылка
+            {t('broadcast.title')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            Telegram-рассылка пользователям с привязанным аккаунтом
+            {t('broadcast.subtitle')}
           </p>
         </div>
         <button
           onClick={refetchHistory}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
         >
-          <RefreshCw size={14} /> Обновить
+          <RefreshCw size={14} /> {t('common.refresh')}
         </button>
       </div>
 
@@ -177,7 +180,7 @@ export default function BroadcastPage() {
         {/* Composer */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Сообщение</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t('broadcast.message')}</span>
             <span style={{ fontSize: 11, color: message.length > 4000 ? '#EF4444' : 'var(--text-dim)' }}>
               {message.length} / 4096
             </span>
@@ -188,7 +191,7 @@ export default function BroadcastPage() {
             {TOOLBAR_BUTTONS.map((btn) => (
               <button
                 key={btn.label}
-                title={btn.title}
+                title={t(btn.titleKey)}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   if (textareaRef.current) {
@@ -214,7 +217,7 @@ export default function BroadcastPage() {
             ref={textareaRef}
             value={message}
             onChange={e => { setMessage(e.target.value); setResult(null); setSendError(null) }}
-            placeholder="Введите текст рассылки..."
+            placeholder={t('broadcast.textPlaceholder')}
             rows={8}
             style={{
               width: '100%', boxSizing: 'border-box', padding: '12px 14px',
@@ -235,14 +238,14 @@ export default function BroadcastPage() {
 
           {result && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--surface-success)', border: '1px solid var(--border-success-soft)', color: 'var(--success)', fontSize: 13 }}>
-              <CheckCircle size={14} /> Отправлено в очередь: {result.queued} получателей
+              <CheckCircle size={14} /> {t('broadcast.queued', { n: result.queued })}
             </div>
           )}
 
           {/* Audience selector */}
           <div style={{ marginTop: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Получатели
+              {t('broadcast.recipients')}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {AUDIENCE_OPTIONS.map((opt) => (
@@ -256,9 +259,9 @@ export default function BroadcastPage() {
                     color: audience === opt.value ? '#818CF8' : 'var(--text-muted)',
                     transition: 'all 0.15s',
                   }}
-                  title={opt.desc}
+                  title={t(opt.descKey)}
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
             </div>
@@ -276,12 +279,12 @@ export default function BroadcastPage() {
               transition: 'opacity 0.15s',
             }}
           >
-            <Eye size={15} /> Предпросмотр и отправка
+            <Eye size={15} /> {t('broadcast.previewAndSend')}
           </button>
         </div>
 
         {/* Preview */}
-        <TelegramPreview text={message} />
+        <TelegramPreview text={message} t={t} />
       </div>
 
       {/* Confirm modal — ADMIN-MODAL-A11Y-001: DialogShell */}
@@ -295,33 +298,33 @@ export default function BroadcastPage() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <Megaphone size={20} style={{ color: '#818CF8' }} />
-            <span id="broadcast-confirm-title" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Подтвердите рассылку</span>
+            <span id="broadcast-confirm-title" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('broadcast.confirmTitle')}</span>
           </div>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}>
-            Сообщение будет отправлено{' '}
-            <strong style={{ color: 'var(--text)' }}>{previewCount} получателям</strong> в Telegram
+            {t('broadcast.confirmTextBefore')}{' '}
+            <strong style={{ color: 'var(--text)' }}>{t('broadcast.confirmRecipients', { n: previewCount ?? 0 })}</strong> {t('broadcast.confirmTextAfter')}
             {' '}(
             <span style={{ color: '#818CF8' }}>
-              {AUDIENCE_OPTIONS.find(o => o.value === audience)?.label ?? audience}
+              {(() => { const o = AUDIENCE_OPTIONS.find(o => o.value === audience); return o ? t(o.labelKey) : audience })()}
             </span>
             ).
           </p>
           <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>
-            Это действие нельзя отменить.
+            {t('broadcast.confirmIrreversible')}
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={() => setConfirm(false)}
               style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}
             >
-              Отмена
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSend}
               disabled={sending}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 8, border: 'none', background: '#818CF8', color: '#fff', fontSize: 14, fontWeight: 600, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1 }}
             >
-              <Send size={14} /> {sending ? 'Отправка...' : 'Отправить всем'}
+              <Send size={14} /> {sending ? t('broadcast.sending') : t('broadcast.sendAll')}
             </button>
           </div>
         </DialogShell>
@@ -329,23 +332,23 @@ export default function BroadcastPage() {
 
       {/* History */}
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 14 }}>История рассылок</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 14 }}>{t('broadcast.history')}</div>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-                {['Сообщение', 'Отправлено', 'Ошибок', 'Автор', 'Дата'].map(h => (
+                {[t('broadcast.colMessage'), t('broadcast.colSent'), t('broadcast.colFailed'), t('broadcast.colAuthor'), t('broadcast.colDate')].map(h => (
                   <th key={h} style={{ padding: '11px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {histLoading ? (
-                <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+                <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
               ) : !history?.length ? (
                 <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
                   <Megaphone size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
-                  Рассылок ещё не было
+                  {t('broadcast.historyEmpty')}
                 </td></tr>
               ) : history.map((log, i) => (
                 <tr key={log.id}
@@ -373,7 +376,7 @@ export default function BroadcastPage() {
                     {log.creator?.phone ?? '—'}
                   </td>
                   <td style={{ padding: '13px 20px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {formatDate(log.createdAt)}
+                    {formatDate(log.createdAt, dateLocale)}
                   </td>
                 </tr>
               ))}

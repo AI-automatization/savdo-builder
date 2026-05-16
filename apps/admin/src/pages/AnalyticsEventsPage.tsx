@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BarChart2, Search, X, RefreshCw, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { PageHeader } from '../components/admin/PageHeader'
 import { Panel } from '../components/admin/Panel'
 import { PaginationBar } from '../components/admin/PaginationBar'
@@ -46,17 +47,20 @@ function eventColor(name: string) {
   return EVENT_COLORS[name] ?? { bg: 'rgba(148,163,184,0.10)', text: '#94A3B8' }
 }
 
-function timeAgo(iso: string) {
+type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+function timeAgo(iso: string, t: TFn) {
   const diff = Date.now() - new Date(iso).getTime()
   const h = Math.floor(diff / 3_600_000)
   const d = Math.floor(h / 24)
-  if (d > 0) return `${d}д назад`
-  if (h > 0) return `${h}ч назад`
+  if (d > 0) return t('moderation.daysAgo', { n: d })
+  if (h > 0) return t('moderation.hoursAgo', { n: h })
   const m = Math.floor(diff / 60_000)
-  return m > 0 ? `${m}м назад` : 'только что'
+  return m > 0 ? t('moderation.minutesAgo', { n: m }) : t('moderation.justNow')
 }
 
 export default function AnalyticsEventsPage() {
+  const { t, locale } = useTranslation()
   const [page, setPage] = useState(1)
   const [eventName, setEventName] = useState('')
   const [storeIdInput, setStoreIdInput] = useState('')
@@ -94,8 +98,8 @@ export default function AnalyticsEventsPage() {
     <div className="px-8 pt-8 pb-12 min-h-screen">
       <PageHeader
         icon={<BarChart2 size={20} />}
-        title="Analytics Events"
-        subtitle="Лента аналитических событий платформы в реальном времени"
+        title={t('analyticsEvents.title')}
+        subtitle={t('analyticsEvents.subtitle')}
         count={total > 0 ? total : undefined}
         actions={
           <button
@@ -108,7 +112,7 @@ export default function AnalyticsEventsPage() {
               cursor: 'pointer',
             }}
           >
-            <RefreshCw size={14} /> Обновить
+            <RefreshCw size={14} /> {t('common.refresh')}
           </button>
         }
       />
@@ -127,7 +131,7 @@ export default function AnalyticsEventsPage() {
               color: !eventName ? 'white' : 'var(--text-muted)',
             }}
           >
-            Все события
+            {t('analyticsEvents.allEvents')}
           </button>
           {KNOWN_EVENTS.map(ev => {
             const c = eventColor(ev)
@@ -176,7 +180,7 @@ export default function AnalyticsEventsPage() {
             className="h-8 px-3 rounded-lg text-[13px] font-semibold"
             style={{ border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer' }}
           >
-            Найти
+            {t('common.find')}
           </button>
           {hasFilters && (
             <button
@@ -189,7 +193,7 @@ export default function AnalyticsEventsPage() {
                 cursor: 'pointer',
               }}
             >
-              <X size={12} /> Сброс
+              <X size={12} /> {t('common.reset')}
             </button>
           )}
         </div>
@@ -208,7 +212,7 @@ export default function AnalyticsEventsPage() {
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Событие', 'Actor', 'Store', 'Сессия', 'Когда', 'Payload'].map(col => (
+                {[t('analyticsEvents.colEvent'), 'Actor', 'Store', t('analyticsEvents.colSession'), t('analyticsEvents.colWhen'), 'Payload'].map(col => (
                   <th
                     key={col}
                     className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
@@ -223,7 +227,7 @@ export default function AnalyticsEventsPage() {
               {loading && (
                 <tr>
                   <td colSpan={6} className="p-10 text-center text-[14px]" style={{ color: 'var(--text-muted)' }}>
-                    Загрузка...
+                    {t('common.loading')}
                   </td>
                 </tr>
               )}
@@ -232,7 +236,7 @@ export default function AnalyticsEventsPage() {
                   <td colSpan={6}>
                     <EmptyState
                       icon={<BarChart2 size={32} />}
-                      title={hasFilters ? 'Событий не найдено с текущими фильтрами' : 'Нет событий'}
+                      title={hasFilters ? t('analyticsEvents.emptyFiltered') : t('analyticsEvents.empty')}
                     />
                   </td>
                 </tr>
@@ -287,7 +291,7 @@ export default function AnalyticsEventsPage() {
                         {ev.sessionKey ? ev.sessionKey.slice(0, 10) + '…' : '—'}
                       </td>
                       <td className="px-4 py-2.5 text-[12px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                        {timeAgo(ev.createdAt)}
+                        {timeAgo(ev.createdAt, t)}
                       </td>
                       <td
                         className="px-4 py-2.5 text-[11px] font-mono max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap"
@@ -301,7 +305,7 @@ export default function AnalyticsEventsPage() {
                         <td colSpan={6} className="px-5 py-3">
                           <div className="flex gap-8 flex-wrap">
                             <div>
-                              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>ID события</div>
+                              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('analyticsEvents.eventId')}</div>
                               <code className="text-[12px] px-2 py-0.5 rounded" style={{ color: 'var(--text)', background: 'var(--surface)' }}>{ev.id}</code>
                             </div>
                             {ev.actorUserId && (
@@ -317,8 +321,8 @@ export default function AnalyticsEventsPage() {
                               </div>
                             )}
                             <div>
-                              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Время</div>
-                              <span className="text-[12px]" style={{ color: 'var(--text)' }}>{new Date(ev.createdAt).toLocaleString('ru-RU')}</span>
+                              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('analyticsEvents.time')}</div>
+                              <span className="text-[12px]" style={{ color: 'var(--text)' }}>{new Date(ev.createdAt).toLocaleString(locale === 'uz' ? 'uz-UZ' : 'ru-RU')}</span>
                             </div>
                             <div className="basis-full">
                               <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Payload</div>
@@ -344,7 +348,7 @@ export default function AnalyticsEventsPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-4">
-          <PaginationBar page={page} totalPages={totalPages} total={total} itemsLabel="событий" onPageChange={setPage} />
+          <PaginationBar page={page} totalPages={totalPages} total={total} itemsLabel={t('analyticsEvents.itemsLabel')} onPageChange={setPage} />
         </div>
       )}
     </div>

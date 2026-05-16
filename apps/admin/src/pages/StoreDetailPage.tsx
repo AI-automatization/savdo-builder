@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
 import { DialogShell } from '../components/admin/DialogShell'
@@ -29,11 +30,11 @@ interface ProductsResponse {
   total: number
 }
 
-const PRODUCT_STATUS: Record<string, { label: string; color: string }> = {
-  ACTIVE:          { label: 'Активен',  color: '#10B981' },
-  DRAFT:           { label: 'Черновик', color: '#94A3B8' },
-  ARCHIVED:        { label: 'Архив',    color: '#94A3B8' },
-  HIDDEN_BY_ADMIN: { label: 'Скрыт',   color: '#EF4444' },
+const PRODUCT_STATUS: Record<string, { labelKey: string; color: string }> = {
+  ACTIVE:          { labelKey: 'storeDetail.psActive',  color: '#10B981' },
+  DRAFT:           { labelKey: 'storeDetail.psDraft', color: '#94A3B8' },
+  ARCHIVED:        { labelKey: 'storeDetail.psArchived',    color: '#94A3B8' },
+  HIDDEN_BY_ADMIN: { labelKey: 'storeDetail.psHidden',   color: '#EF4444' },
 }
 
 interface StoreDetail {
@@ -55,14 +56,14 @@ interface StoreDetail {
   _count?: { products: number; orders: number }
 }
 
-const STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  APPROVED:       { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Одобрен' },
-  PENDING_REVIEW: { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', label: 'На проверке' },
-  SUSPENDED:      { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', label: 'Приостановлен' },
-  DRAFT:          { bg: 'rgba(148,163,184,0.1)',  text: '#94A3B8', label: 'Черновик' },
-  REJECTED:       { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', label: 'Отклонён' },
-  PUBLISHED:      { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Опубликован' },
-  ARCHIVED:       { bg: 'rgba(148,163,184,0.1)',  text: '#94A3B8', label: 'Архив' },
+const STATUS_CFG: Record<string, { bg: string; text: string; labelKey: string }> = {
+  APPROVED:       { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', labelKey: 'stores.sApproved' },
+  PENDING_REVIEW: { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', labelKey: 'stores.sPendingReview' },
+  SUSPENDED:      { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', labelKey: 'storeDetail.sSuspended' },
+  DRAFT:          { bg: 'rgba(148,163,184,0.1)',  text: '#94A3B8', labelKey: 'stores.sDraft' },
+  REJECTED:       { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', labelKey: 'stores.sRejected' },
+  PUBLISHED:      { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', labelKey: 'stores.sPublished' },
+  ARCHIVED:       { bg: 'rgba(148,163,184,0.1)',  text: '#94A3B8', labelKey: 'storeDetail.psArchived' },
 }
 
 function ConfirmModal({
@@ -73,6 +74,7 @@ function ConfirmModal({
   requireReason: boolean; onConfirm: (reason: string) => void
   onCancel: () => void; loading: boolean
 }) {
+  const { t } = useTranslation()
   const [reason, setReason] = useState('')
   const titleId = 'store-confirm-title'
   return (
@@ -82,23 +84,23 @@ function ConfirmModal({
         {requireReason && (
           <textarea
             value={reason} onChange={e => setReason(e.target.value)}
-            placeholder="Причина (обязательно)..."
+            placeholder={t('storeDetail.reasonPlaceholder')}
             rows={3}
-            aria-label="Причина действия"
+            aria-label={t('storeDetail.reasonAria')}
             aria-invalid={requireReason && !reason.trim() || undefined}
             style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, resize: 'vertical', outline: 'none', marginBottom: 16 }}
           />
         )}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>
-            Отмена
+            {t('common.cancel')}
           </button>
           <button
             onClick={() => onConfirm(reason)}
             disabled={loading || (requireReason && !reason.trim())}
             style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: actionColor, color: 'white', fontSize: 14, fontWeight: 600, cursor: loading ? 'wait' : 'pointer', opacity: (requireReason && !reason.trim()) ? 0.5 : 1 }}
           >
-            {loading ? 'Загрузка...' : actionLabel}
+            {loading ? t('common.loading') : actionLabel}
           </button>
         </div>
     </DialogShell>
@@ -108,6 +110,8 @@ function ConfirmModal({
 export default function StoreDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t, locale } = useTranslation()
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
   const { data: store, loading, error, refetch } = useFetch<StoreDetail>(`/api/v1/admin/stores/${id}`)
   const { data: auditData } = useFetch<{ logs: AuditEntry[]; total: number }>(
     `/api/v1/admin/audit-log?entityType=Store&entityId=${store?.id ?? 'none'}&limit=20`,
@@ -167,22 +171,22 @@ export default function StoreDetailPage() {
       setModal(null)
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(false)
     }
   }
 
   if (loading) return (
-    <div style={{ padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
+    <div style={{ padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>{t('common.loading')}</div>
   )
 
   if (error || !store) return (
     <div style={{ padding: 32 }}>
       <button onClick={() => navigate('/stores')} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, marginBottom: 20 }}>
-        <ArrowLeft size={16} /> Назад
+        <ArrowLeft size={16} /> {t('common.back')}
       </button>
-      <div style={{ color: '#EF4444', fontSize: 14 }}>{error ?? 'Магазин не найден'}</div>
+      <div style={{ color: '#EF4444', fontSize: 14 }}>{error ?? t('storeDetail.notFound')}</div>
     </div>
   )
 
@@ -200,7 +204,7 @@ export default function StoreDetailPage() {
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh', maxWidth: 900 }}>
       {/* Back */}
       <button onClick={() => navigate('/stores')} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, marginBottom: 24, padding: 0 }}>
-        <ArrowLeft size={16} /> Назад к магазинам
+        <ArrowLeft size={16} /> {t('storeDetail.backToStores')}
       </button>
 
       {actionError && (
@@ -212,7 +216,7 @@ export default function StoreDetailPage() {
       {isSuspended && suspendReason && (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
           <Ban size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span><strong>Причина приостановки:</strong> {suspendReason}</span>
+          <span><strong>{t('storeDetail.suspendReasonLabel')}</strong> {suspendReason}</span>
         </div>
       )}
 
@@ -222,7 +226,7 @@ export default function StoreDetailPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>{store.name}</h1>
             <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: statusCfg.bg, color: statusCfg.text }}>
-              {statusCfg.label}
+              {t(statusCfg.labelKey)}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -232,7 +236,7 @@ export default function StoreDetailPage() {
               target="_blank" rel="noreferrer"
               style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--primary)', fontSize: 12, textDecoration: 'none' }}
             >
-              <ExternalLink size={12} /> Открыть витрину
+              <ExternalLink size={12} /> {t('storeDetail.openStorefront')}
             </a>
           </div>
         </div>
@@ -241,31 +245,31 @@ export default function StoreDetailPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {canApprove && (
             <button onClick={() => setModal('approve')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <CheckCircle size={14} /> Верифицировать
+              <CheckCircle size={14} /> {t('storeDetail.verify')}
             </button>
           )}
           {isApproved && (
             <button onClick={() => setModal('unapprove')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.08)', color: '#F59E0B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <ShieldOff size={14} /> Снять одобрение
+              <ShieldOff size={14} /> {t('storeDetail.unapprove')}
             </button>
           )}
           {isSuspended ? (
             <button onClick={() => setModal('unsuspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <Unlock size={14} /> Восстановить
+              <Unlock size={14} /> {t('storeDetail.restore')}
             </button>
           ) : (
             <button onClick={() => setModal('suspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <Ban size={14} /> Приостановить
+              <Ban size={14} /> {t('storeDetail.suspend')}
             </button>
           )}
           {!isRejected && (
             <button onClick={() => setModal('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <XCircle size={14} /> Отклонить
+              <XCircle size={14} /> {t('moderation.reject')}
             </button>
           )}
           {!isArchived && (
             <button onClick={() => setModal('archive')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(148,163,184,0.06)', color: '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <Archive size={14} /> В архив
+              <Archive size={14} /> {t('storeDetail.toArchive')}
             </button>
           )}
         </div>
@@ -275,8 +279,8 @@ export default function StoreDetailPage() {
       {store._count && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
-            { label: 'Товаров', value: store._count.products, icon: Package },
-            { label: 'Заказов', value: store._count.orders, icon: Package },
+            { label: t('storeDetail.statProducts'), value: store._count.products, icon: Package },
+            { label: t('storeDetail.statOrders'), value: store._count.orders, icon: Package },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -295,7 +299,7 @@ export default function StoreDetailPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         {/* Seller */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Продавец</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{t('nav.sellers')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #818CF8, #6366F1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: 'white', flexShrink: 0 }}>
               {store.seller.fullName?.[0]?.toUpperCase() ?? '?'}
@@ -310,26 +314,26 @@ export default function StoreDetailPage() {
             <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: 13 }}>{store.seller.user.phone}</span>
           </div>
           <button onClick={() => navigate(`/sellers/${store.seller.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
-            <User size={13} /> Перейти к продавцу
+            <User size={13} /> {t('storeDetail.goToSeller')}
           </button>
         </div>
 
         {/* Dates */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Информация</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{t('storeDetail.infoSection')}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Создан</span>
-            <span style={{ color: 'var(--text)', fontSize: 13 }}>{new Date(store.createdAt).toLocaleDateString('ru-RU')}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('storeDetail.createdLabel')}</span>
+            <span style={{ color: 'var(--text)', fontSize: 13 }}>{new Date(store.createdAt).toLocaleDateString(dateLocale)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Обновлён</span>
-            <span style={{ color: 'var(--text)', fontSize: 13 }}>{new Date(store.updatedAt).toLocaleDateString('ru-RU')}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('storeDetail.updatedLabel')}</span>
+            <span style={{ color: 'var(--text)', fontSize: 13 }}>{new Date(store.updatedAt).toLocaleDateString(dateLocale)}</span>
           </div>
           {store.deliverySettings && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Доставка</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('storeDetail.delivery')}</span>
               <span style={{ color: store.deliverySettings.deliveryEnabled ? '#10B981' : 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>
-                {store.deliverySettings.deliveryEnabled ? 'Включена' : 'Выключена'}
+                {store.deliverySettings.deliveryEnabled ? t('storeDetail.deliveryOn') : t('storeDetail.deliveryOff')}
               </span>
             </div>
           )}
@@ -339,7 +343,7 @@ export default function StoreDetailPage() {
       {/* Description */}
       {store.description && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Описание</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{t('storeDetail.description')}</div>
           <p style={{ margin: 0, color: 'var(--text)', fontSize: 14, lineHeight: 1.6 }}>{store.description}</p>
         </div>
       )}
@@ -347,7 +351,7 @@ export default function StoreDetailPage() {
       {/* Contacts */}
       {store.contacts?.length > 0 && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Контакты</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{t('storeDetail.contacts')}</div>
           {store.contacts.map((c, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: i < store.contacts.length - 1 ? 8 : 0 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{c.type}</span>
@@ -361,22 +365,23 @@ export default function StoreDetailPage() {
       {productsData && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
-            Товары ({productsData.total})
+            {t('storeDetail.productsSection', { n: productsData.total })}
           </div>
           {productsData.products.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Товаров нет</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{t('storeDetail.noProducts')}</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Название', 'Цена', 'Статус', ''].map(h => (
+                  {[t('storeDetail.colTitle'), t('storeDetail.colPrice'), t('storeDetail.colStatus'), ''].map(h => (
                     <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {productsData.products.map(p => {
-                  const ps = PRODUCT_STATUS[p.status] ?? { label: p.status, color: '#94A3B8' }
+                  const psRaw = PRODUCT_STATUS[p.status]
+                  const ps = psRaw ? { label: t(psRaw.labelKey), color: psRaw.color } : { label: p.status, color: '#94A3B8' }
                   const isHidden = p.status === 'HIDDEN_BY_ADMIN'
                   const loading = productActionLoading === p.id
                   return (
@@ -397,26 +402,26 @@ export default function StoreDetailPage() {
                           <button
                             onClick={() => toggleProductHide(p)}
                             disabled={loading}
-                            title={isHidden ? 'Восстановить' : 'Скрыть'}
+                            title={isHidden ? t('storeDetail.restoreProduct') : t('storeDetail.hideProduct')}
                             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 6, border: `1px solid ${isHidden ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, background: isHidden ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', color: isHidden ? '#10B981' : '#EF4444', fontSize: 12, cursor: loading ? 'wait' : 'pointer' }}
                           >
                             {isHidden ? <Eye size={12} /> : <EyeOff size={12} />}
-                            {isHidden ? 'Восстановить' : 'Скрыть'}
+                            {isHidden ? t('storeDetail.restoreProduct') : t('storeDetail.hideProduct')}
                           </button>
                           {confirmDeleteProduct === p.id ? (
                             <>
                               <button onClick={() => deleteStoreProduct(p.id)} disabled={loading} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.15)', color: '#EF4444', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                                Да
+                                {t('common.yes')}
                               </button>
                               <button onClick={() => setConfirmDeleteProduct(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
-                                Нет
+                                {t('common.no')}
                               </button>
                             </>
                           ) : (
                             <button
                               onClick={() => setConfirmDeleteProduct(p.id)}
-                              title="Удалить"
-                              aria-label="Удалить товар"
+                              title={t('common.delete')}
+                              aria-label={t('storeDetail.deleteProductAria')}
                               style={{ display: 'flex', alignItems: 'center', padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border-error-soft)', background: 'transparent', color: 'var(--error)', opacity: 0.6, cursor: 'pointer' }}
                             >
                               <Trash2 size={12} aria-hidden="true" />
@@ -438,16 +443,16 @@ export default function StoreDetailPage() {
         <ActivityLogPanel
           entityType="Store"
           entityId={store.id}
-          emptyText="С этим магазином ещё не было админ-действий"
+          emptyText={t('storeDetail.noActivity')}
         />
       </div>
 
       {/* Modals */}
       {modal === 'suspend' && (
         <ConfirmModal
-          title="Приостановить магазин"
-          description={`Магазин «${store.name}» будет скрыт и недоступен покупателям.`}
-          actionLabel="Приостановить"
+          title={t('storeDetail.modalSuspendTitle')}
+          description={t('storeDetail.modalSuspendDesc', { name: store.name })}
+          actionLabel={t('storeDetail.suspend')}
           actionColor="#EF4444"
           requireReason={true}
           onConfirm={handleAction}
@@ -457,9 +462,9 @@ export default function StoreDetailPage() {
       )}
       {modal === 'unsuspend' && (
         <ConfirmModal
-          title="Восстановить магазин"
-          description={`Магазин «${store.name}» снова станет доступен покупателям.`}
-          actionLabel="Восстановить"
+          title={t('storeDetail.modalUnsuspendTitle')}
+          description={t('storeDetail.modalUnsuspendDesc', { name: store.name })}
+          actionLabel={t('storeDetail.restore')}
           actionColor="#10B981"
           requireReason={true}
           onConfirm={handleAction}
@@ -469,9 +474,9 @@ export default function StoreDetailPage() {
       )}
       {modal === 'reject' && (
         <ConfirmModal
-          title="Отклонить магазин"
-          description={`Магазин «${store.name}» получит статус REJECTED и будет недоступен покупателям.`}
-          actionLabel="Отклонить"
+          title={t('storeDetail.modalRejectTitle')}
+          description={t('storeDetail.modalRejectDesc', { name: store.name })}
+          actionLabel={t('moderation.reject')}
           actionColor="#EF4444"
           requireReason={true}
           onConfirm={handleAction}
@@ -481,9 +486,9 @@ export default function StoreDetailPage() {
       )}
       {modal === 'archive' && (
         <ConfirmModal
-          title="Архивировать магазин"
-          description={`Магазин «${store.name}» будет перемещён в архив. Данные сохранятся.`}
-          actionLabel="В архив"
+          title={t('storeDetail.modalArchiveTitle')}
+          description={t('storeDetail.modalArchiveDesc', { name: store.name })}
+          actionLabel={t('storeDetail.toArchive')}
           actionColor="#64748B"
           requireReason={true}
           onConfirm={handleAction}
@@ -493,9 +498,9 @@ export default function StoreDetailPage() {
       )}
       {modal === 'approve' && (
         <ConfirmModal
-          title="Верифицировать магазин"
-          description={`Магазин «${store.name}» будет верифицирован, опубликован и появится в поиске покупателей.`}
-          actionLabel="Верифицировать"
+          title={t('storeDetail.modalApproveTitle')}
+          description={t('storeDetail.modalApproveDesc', { name: store.name })}
+          actionLabel={t('storeDetail.verify')}
           actionColor="#10B981"
           requireReason={false}
           onConfirm={handleAction}
@@ -505,9 +510,9 @@ export default function StoreDetailPage() {
       )}
       {modal === 'unapprove' && (
         <ConfirmModal
-          title="Снять одобрение"
-          description={`Магазин «${store.name}» будет скрыт из поиска и переведён обратно в черновик.`}
-          actionLabel="Снять одобрение"
+          title={t('storeDetail.modalUnapproveTitle')}
+          description={t('storeDetail.modalUnapproveDesc', { name: store.name })}
+          actionLabel={t('storeDetail.unapprove')}
           actionColor="#F59E0B"
           requireReason={false}
           onConfirm={handleAction}

@@ -1,6 +1,7 @@
 import { ScrollText, Search, RefreshCw, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface AuditLog {
@@ -30,14 +31,16 @@ const ACTION_CFG: Record<string, { color: string; bg: string }> = {
   'store.unsuspend':        { color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('ru-RU', {
+function formatDate(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleString(dateLocale, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
 }
 
 export default function AuditLogsPage() {
+  const { t, locale } = useTranslation()
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
@@ -61,13 +64,13 @@ export default function AuditLogsPage() {
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>Аудит-лог</h1>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>{t('audit.title')}</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            {loading ? 'Загрузка...' : `${total} записей`}
+            {loading ? t('common.loading') : t('audit.count', { count: total })}
           </p>
         </div>
         <button onClick={refetch} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-          <RefreshCw size={14} /> Обновить
+          <RefreshCw size={14} /> {t('common.refresh')}
         </button>
       </div>
 
@@ -82,7 +85,7 @@ export default function AuditLogsPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Фильтр по действию, типу объекта..."
+          placeholder={t('audit.searchPlaceholder')}
           style={{
             width: '100%', padding: '10px 14px 10px 36px', borderRadius: 10, boxSizing: 'border-box',
             background: 'var(--surface)', border: '1px solid var(--border)',
@@ -97,7 +100,7 @@ export default function AuditLogsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-              {['Действие', 'Тип объекта', 'ID объекта', 'Актор', 'Тип', 'Время'].map(h => (
+              {[t('audit.colAction'), t('audit.colEntityType'), t('audit.colEntityId'), t('audit.colActor'), t('audit.colType'), t('audit.colTime')].map(h => (
                 <th key={h} style={{
                   padding: '11px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                   color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -107,10 +110,10 @@ export default function AuditLogsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                {total === 0 ? <><ScrollText size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />Аудит-лог пуст</> : 'Ничего не найдено'}
+                {total === 0 ? <><ScrollText size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />{t('audit.empty')}</> : t('common.notFound')}
               </td></tr>
             ) : filtered.map((log, i) => {
               const cfg = ACTION_CFG[log.action] ?? { color: 'var(--text-muted)', bg: 'var(--surface2)' }
@@ -144,7 +147,7 @@ export default function AuditLogsPage() {
                     </span>
                   </td>
                   <td style={{ padding: '13px 20px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {formatDate(log.createdAt)}
+                    {formatDate(log.createdAt, dateLocale)}
                   </td>
                 </tr>
               )
@@ -158,7 +161,7 @@ export default function AuditLogsPage() {
               page={page}
               totalPages={Math.ceil(total / 20)}
               total={total}
-              itemsLabel="записей"
+              itemsLabel={t('audit.itemsLabel')}
               onPageChange={setPage}
             />
           </div>

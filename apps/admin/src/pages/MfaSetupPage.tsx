@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Lock, Shield, ShieldCheck, ShieldOff, AlertCircle, Copy, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
+import { useTranslation } from '../lib/i18n'
 
 interface MfaStatus {
   enabled: boolean
@@ -22,6 +23,7 @@ interface SetupResponse {
 }
 
 export default function MfaSetupPage() {
+  const { t, locale } = useTranslation()
   const [status, setStatus] = useState<MfaStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,9 +37,9 @@ export default function MfaSetupPage() {
   useEffect(() => {
     api.get<AdminAuthMe>('/api/v1/admin/auth/me')
       .then(me => setStatus({ enabled: me.mfaEnabled, enabledAt: me.mfaEnabledAt ?? null }))
-      .catch(e => setError(e.message ?? 'Не удалось проверить статус MFA'))
+      .catch(e => setError(e.message ?? t('mfa.errStatus')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   const startSetup = async () => {
     setError(null); setCode('')
@@ -45,8 +47,8 @@ export default function MfaSetupPage() {
       const res = await api.post<SetupResponse>('/api/v1/admin/auth/mfa/setup', {})
       setSetup(res)
     } catch (e: any) {
-      setError(e.message ?? 'Не удалось начать настройку')
-      toast.error(e.message ?? 'Не удалось начать настройку')
+      setError(e.message ?? t('mfa.errStartSetup'))
+      toast.error(e.message ?? t('mfa.errStartSetup'))
     }
   }
 
@@ -55,11 +57,11 @@ export default function MfaSetupPage() {
     setVerifying(true)
     try {
       await api.post('/api/v1/admin/auth/mfa/verify', { code: code.trim() })
-      toast.success('MFA успешно подключён')
+      toast.success(t('mfa.connected'))
       setSetup(null); setCode('')
       setStatus({ enabled: true, enabledAt: new Date().toISOString() })
     } catch (e: any) {
-      toast.error(e.message ?? 'Неверный код, попробуйте ещё раз')
+      toast.error(e.message ?? t('mfa.errBadCode'))
     } finally {
       setVerifying(false)
     }
@@ -69,11 +71,11 @@ export default function MfaSetupPage() {
     setDisableLoading(true)
     try {
       await api.post('/api/v1/admin/auth/mfa/disable', {})
-      toast.success('MFA отключён')
+      toast.success(t('mfa.disabled'))
       setStatus({ enabled: false })
       setShowDisable(false)
     } catch (e: any) {
-      toast.error(e.message ?? 'Не удалось отключить')
+      toast.error(e.message ?? t('mfa.errDisable'))
     } finally {
       setDisableLoading(false)
     }
@@ -86,22 +88,22 @@ export default function MfaSetupPage() {
       setSecretCopied(true)
       setTimeout(() => setSecretCopied(false), 2000)
     } catch {
-      toast.error('Не удалось скопировать')
+      toast.error(t('mfa.errCopy'))
     }
   }
 
   if (loading) {
-    return <div style={{ padding: 24, color: 'var(--text-muted)' }}>Загрузка...</div>
+    return <div style={{ padding: 24, color: 'var(--text-muted)' }}>{t('common.loading')}</div>
   }
 
   return (
     <div style={{ padding: '32px 32px 48px', maxWidth: 720 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         <Lock size={20} color="var(--primary)" />
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>Двухфакторная аутентификация</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{t('mfa.title')}</h1>
       </div>
       <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)' }}>
-        TOTP через Google Authenticator, Authy или 1Password — дополнительная защита аккаунта администратора
+        {t('mfa.subtitle')}
       </p>
 
       {error && (
@@ -132,14 +134,14 @@ export default function MfaSetupPage() {
           )}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-              {status?.enabled ? 'MFA включён' : 'MFA не настроен'}
+              {status?.enabled ? t('mfa.statusEnabled') : t('mfa.statusDisabled')}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {status?.enabled
                 ? status.enabledAt
-                  ? `Активен с ${new Date(status.enabledAt).toLocaleDateString('ru-RU')}`
-                  : 'Активен'
-                : 'Включите MFA для защиты от компрометации пароля'}
+                  ? t('mfa.activeSince', { date: new Date(status.enabledAt).toLocaleDateString(locale === 'uz' ? 'uz-UZ' : 'ru-RU') })
+                  : t('mfa.active')
+                : t('mfa.enableHint')}
             </div>
           </div>
           {status?.enabled && (
@@ -147,7 +149,7 @@ export default function MfaSetupPage() {
               onClick={() => setShowDisable(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
-              <ShieldOff size={14} /> Отключить
+              <ShieldOff size={14} /> {t('mfa.disable')}
             </button>
           )}
         </div>
@@ -159,16 +161,16 @@ export default function MfaSetupPage() {
           onClick={startSetup}
           style={{ display: 'flex', alignItems: 'center', gap: 8, height: 42, padding: '0 22px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
         >
-          <Shield size={16} /> Начать настройку
+          <Shield size={16} /> {t('mfa.startSetup')}
         </button>
       )}
 
       {setup && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>1. Отсканируйте QR-код</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{t('mfa.step1')}</h3>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
-              Откройте приложение-аутентификатор (Google Authenticator, Authy и т.д.) и наведите камеру
+              {t('mfa.step1Hint')}
             </p>
           </div>
 
@@ -176,14 +178,14 @@ export default function MfaSetupPage() {
             <div style={{ background: 'white', padding: 16, borderRadius: 12 }}>
               <img
                 src={setup.qrCodeDataUrl}
-                alt="MFA QR Code"
+                alt={t('mfa.qrAlt')}
                 style={{ width: 200, height: 200, display: 'block' }}
               />
             </div>
           </div>
 
           <div>
-            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Не работает камера? Введите код вручную:</h4>
+            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{t('mfa.manualEntry')}</h4>
             <div
               onClick={copySecret}
               style={{
@@ -206,7 +208,7 @@ export default function MfaSetupPage() {
           <div style={{ height: 1, background: 'var(--border)' }} />
 
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>2. Введите 6-значный код из приложения</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{t('mfa.step2')}</h3>
             <input
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -229,14 +231,14 @@ export default function MfaSetupPage() {
               onClick={() => { setSetup(null); setCode('') }}
               style={{ height: 38, padding: '0 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
             >
-              Отмена
+              {t('common.cancel')}
             </button>
             <button
               onClick={verify}
               disabled={code.length !== 6 || verifying}
               style={{ height: 38, padding: '0 22px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 13, fontWeight: 600, cursor: verifying ? 'wait' : 'pointer', opacity: (code.length !== 6 || verifying) ? 0.5 : 1 }}
             >
-              {verifying ? 'Проверка...' : 'Подтвердить'}
+              {verifying ? t('mfa.verifying') : t('common.confirm')}
             </button>
           </div>
         </div>
@@ -252,10 +254,9 @@ export default function MfaSetupPage() {
             onClick={e => e.stopPropagation()}
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 440, maxWidth: '92vw' }}
           >
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Отключить MFA?</h3>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('mfa.disableTitle')}</h3>
             <p style={{ margin: '8px 0 22px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Аккаунт станет защищён только паролем. Это снижает безопасность —
-              продолжайте только если это действительно необходимо.
+              {t('mfa.disableWarning')}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
@@ -263,14 +264,14 @@ export default function MfaSetupPage() {
                 disabled={disableLoading}
                 style={{ height: 38, padding: '0 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={disable}
                 disabled={disableLoading}
                 style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: '#EF4444', color: 'white', fontSize: 13, fontWeight: 600, cursor: disableLoading ? 'wait' : 'pointer', opacity: disableLoading ? 0.6 : 1 }}
               >
-                {disableLoading ? '...' : 'Отключить MFA'}
+                {disableLoading ? '...' : t('mfa.disableConfirm')}
               </button>
             </div>
           </div>
