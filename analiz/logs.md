@@ -1,5 +1,20 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-16] [SEC-AUDIT-MIDDLEWARE-CORS-GUARDS] 🟡 Аудит проведён — 5 находок
+- **Статус:** 🟡 Найдено 5 реальных дыр (1🔴 + 4🟠) + 2 мелочи. Не эксплуатировано.
+- **Что случилось:** аудит middleware/CORS/guards `apps/api` по OWASP (skill
+  security-pen-testing) по запросу владельца.
+- **Находки:** `SEC-AUDIT-01` MFA не обязателен (A07, 🔴) · `SEC-AUDIT-02` CORS
+  `*.up.railway.app` wildcard + credentials (A05) · `SEC-AUDIT-03` rate limiting
+  сломан без `trust proxy` (A04) · `SEC-AUDIT-04` нет глобального JwtAuthGuard
+  (A01) · `SEC-AUDIT-05` admin-эндпоинты без `@AdminPermission` доступны любому
+  `role=ADMIN` (A01). Детали + фиксы — `analiz/tasks.md` секция SECURITY AUDIT.
+- **Правильно выстроено:** JWT (нет alg:none), session-invalidation на logout,
+  BLOCKED-юзер отбивается, OTP brute-force per-phone 5/15мин, guard order
+  Jwt→Roles→Mfa→Permission, Bull Board cookie HttpOnly/SameSite=Strict.
+- **Что сделано:** все находки занесены в `tasks.md` как `SEC-AUDIT-*` +
+  `SEC-ADMIN-ACCESS-MODEL` + `API-CONTROLLERS-ARCH-DEBT-001`. Фиксы — отдельно.
+
 ## [2026-05-15] [API-TYPES-PAYMENT-METHOD-COLLISION-001] ✅ Исправлено — дубль экспорта `PaymentMethod` в packages/types
 - **Статус:** ✅ Исправлено (Азим, 15.05.2026, аварийный фикс с согласия Азима).
   Тип `PaymentMethod` в `cart.ts` переименован в `CheckoutPaymentMethod`

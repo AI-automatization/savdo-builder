@@ -121,6 +121,37 @@
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
 
+## 2026-05-16 (Полат) — Wave 29: security audit fixes (часть 1)
+
+### ✅ [SEC-AUDIT-03] 🟠 — trust proxy
+`main.ts`: `app.set('trust proxy', 1)`. За Railway-прокси `req.ip` был IP
+эджа → ThrottlerGuard считал всех в одном ведре. Теперь rate-limit per-IP.
+Коммит `6751b12`.
+
+### ✅ [SEC-AUDIT-04] 🟠→🟡 — проверено, активной дыры нет
+Прошёл все 28 контроллеров: защищённые эндпоинты под guard'ами, незащищённые —
+публичные by design (storefront/media/reviews/health/telegram-webhook
+с secret-token). Понижено до 🟡 hardening. Коммит `2a814eb`.
+
+### ✅ [SEC-AUDIT-07] 🟡 — JWT session-check безусловный
+`jwt.strategy.ts`: проверка сессии на отзыв больше не условная — токен без
+`sessionId` отклоняется. Все 6 флоу выдачи токена ставят sessionId.
+Коммит `31a5187`, auth-специ 97/97.
+
+### ✅ [SEC-ADMIN-ACCESS-MODEL стадия A] 🔐 — флаги AdminUser
+`AdminUser.isSuperadmin` default `true`→`false` (опасный дефолт) + новое поле
+`isActive Boolean @default(true)` (мягкая блокировка). Миграция
+`20260516140000_admin_user_access_flags` написана вручную (нет dev-БД),
+Expand-safe. Коммит `5a977b8`. Дальше — стадии B/C/D (entry-gate + MFA).
+
+### ✅ [SEC-AUDIT-02 + 06] 🟠 — CORS allow-list
+Убран wildcard `*.up.railway.app` (пропускал любой Railway-проект) → явный
+список 4 прод-доменов фронтов + `ALLOWED_ORIGINS` env. Dev-доступ через
+localhost-regex, не зависит от `NODE_ENV` (закрыт и `06`). Коммит `8ead898`.
+
+**Осталось из аудита:** `SEC-AUDIT-01/05` (в плане ролей `SEC-ADMIN-ACCESS-MODEL`),
+`SEC-AUDIT-04` global-guard (🟡 hardening), `SEC-AUDIT-07` (🟡 JWT session-check).
+
 ## 2026-05-16 (Полат) — Wave 28: admin i18n инфра + layout/login
 
 ### ✅ [MARKETING-LOCALIZATION-UZ-001] (admin — инфра + первый слой)

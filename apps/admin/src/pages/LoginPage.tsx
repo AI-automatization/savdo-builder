@@ -43,13 +43,18 @@ export default function LoginPage() {
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
   }
 
-  // step 1 = phone, 2 = OTP, 3 = MFA TOTP challenge.
-  // После Wave 30 (c1607c5) MFA enforced на admin endpoints — JWT с mfaPending=true
-  // не пройдёт MfaEnforcedGuard. Step 3 обменивает mfaPending JWT на полный.
+  // step 1 = phone, 2 = OTP, 3 = MFA.
+  // SEC-ADMIN-ACCESS-MODEL стадия C: MFA обязателен для ВСЕХ админов. На step 3:
+  //  - mfaMode='challenge' — MFA уже настроен, вводим TOTP-код (/mfa/login);
+  //  - mfaMode='setup'     — MFA ещё не настроен, показываем QR (/mfa/setup),
+  //    затем /mfa/verify + /mfa/login.
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [phone, setPhone] = useState('+998')
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [mfaCode, setMfaCode] = useState('')
+  const [mfaMode, setMfaMode] = useState<'challenge' | 'setup'>('challenge')
+  const [mfaQr, setMfaQr] = useState('')
+  const [mfaSecret, setMfaSecret] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [timer, setTimer] = useState(0)
@@ -106,6 +111,30 @@ export default function LoginPage() {
     }
   }
 
+  // SEC-ADMIN стадия D: после mfaPending — решаем challenge vs setup.
+  // mfaEnabled берём из /admin/auth/me (SkipMfaCheck — доступен с mfaPending JWT).
+  const routeToMfa = async () => {
+    try {
+      const me = await api.get<{ mfaEnabled?: boolean }>('/api/v1/admin/auth/me')
+      if (me?.mfaEnabled) {
+        setMfaMode('challenge')
+      } else {
+        const setup = await api.post<{ qrDataUrl: string; secret: string }>(
+          '/api/v1/admin/auth/mfa/setup', {},
+        )
+        setMfaQr(setup.qrDataUrl)
+        setMfaSecret(setup.secret)
+        setMfaMode('setup')
+      }
+      setStep(3)
+      setTimeout(() => mfaInputRef.current?.focus(), 100)
+    } catch (e: any) {
+      setError(e.message ?? t('login.errLoginFailed'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const verify = async (code: string) => {
     setError('')
     setLoading(true)
@@ -121,14 +150,12 @@ export default function LoginPage() {
       // accessToken с mfaPending=true даёт доступ только к /admin/auth/mfa/* (SkipMfaCheck).
       auth.setTokens(data.accessToken, data.refreshToken)
 
-      // Decode JWT — если mfaPending=true, переходим на step 3 (TOTP challenge).
+      // Decode JWT — если mfaPending=true, идём на step 3 (challenge или setup).
       const payload = decodeJwtPayload<{ mfaPending?: boolean }>(data.accessToken)
       if (payload?.mfaPending) {
-        setStep(3)
         setOtp(['', '', '', '', '', ''])
         setMfaCode('')
-        setLoading(false)
-        setTimeout(() => mfaInputRef.current?.focus(), 100)
+        await routeToMfa()
         return
       }
 
@@ -166,10 +193,33 @@ export default function LoginPage() {
     }
   }
 
+  // setup-режим: /mfa/verify включает MFA, /mfa/login обменивает mfaPending
+  // токен на чистый. Один и тот же TOTP-код проходит оба шага (окно 30с±).
+  const completeMfaSetup = async () => {
+    if (mfaCode.length !== 6) return
+    setError('')
+    setLoading(true)
+    try {
+      await api.post('/api/v1/admin/auth/mfa/verify', { code: mfaCode })
+      const data: any = await api.post('/api/v1/admin/auth/mfa/login', { code: mfaCode })
+      auth.setTokens(data.accessToken, auth.getRefresh() ?? '')
+      navigate('/dashboard')
+    } catch (e: any) {
+      setError(e.message?.includes('Invalid') ? t('login.errBadMfa') : (e.message ?? t('login.errLoginFailed')))
+      setMfaCode('')
+      setTimeout(() => mfaInputRef.current?.focus(), 50)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const reset = () => {
     setStep(1)
     setOtp(['', '', '', '', '', ''])
     setMfaCode('')
+    setMfaMode('challenge')
+    setMfaQr('')
+    setMfaSecret('')
     setError('')
     auth.clear()
   }
@@ -220,7 +270,9 @@ export default function LoginPage() {
               ? t('login.subtitlePhone')
               : step === 2
                 ? t('login.subtitleOtp', { phone })
-                : t('login.subtitleMfa')}
+                : mfaMode === 'setup'
+                  ? t('login.subtitleMfaSetup')
+                  : t('login.subtitleMfa')}
           </p>
         </div>
 
@@ -270,6 +322,74 @@ export default function LoginPage() {
                 ? <><Loader2 size={15} className="animate-spin" /> {t('login.sending')}</>
                 : <>{t('login.getCode')} <ArrowRight size={15} /></>
               }
+            </button>
+          </div>
+        ) : step === 3 && mfaMode === 'setup' ? (
+          // ── MFA Setup — первая настройка 2FA (SEC-ADMIN стадия D) ──────────
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
+              <Lock size={12} className="text-indigo-400 shrink-0 mt-0.5" />
+              <span className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                {t('login.mfaSetupHint')}
+              </span>
+            </div>
+
+            {mfaQr && (
+              <div className="flex justify-center">
+                <img
+                  src={mfaQr}
+                  alt=""
+                  width={168}
+                  height={168}
+                  className="rounded-lg"
+                  style={{ background: '#fff', padding: 8 }}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block mb-1 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                {t('login.mfaSecretLabel')}
+              </label>
+              <code
+                className="block w-full px-3 py-2 rounded-lg text-xs font-mono break-all select-all"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              >
+                {mfaSecret}
+              </code>
+            </div>
+
+            <div>
+              <label className="block mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                {t('login.mfaCodeLabel')}
+              </label>
+              <input
+                ref={el => { mfaInputRef.current = el }}
+                value={mfaCode}
+                onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={e => e.key === 'Enter' && mfaCode.length === 6 && completeMfaSetup()}
+                placeholder="000000"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                className="w-full h-12 px-3 rounded-lg text-center text-xl font-bold font-mono tracking-[0.5em] focus:outline-none focus:border-indigo-500/60 transition-colors"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              />
+            </div>
+
+            <button
+              onClick={completeMfaSetup}
+              disabled={loading || mfaCode.length !== 6}
+              className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading
+                ? <><Loader2 size={15} className="animate-spin" /> {t('login.checking')}</>
+                : <>{t('login.mfaSetupConfirm')} <ArrowRight size={15} /></>
+              }
+            </button>
+
+            <button onClick={reset} className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: 'var(--text-dim)' }}>
+              <ChevronLeft size={13} /> {t('login.loginAgain')}
             </button>
           </div>
         ) : step === 3 ? (
