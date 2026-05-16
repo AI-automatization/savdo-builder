@@ -62,8 +62,9 @@
 (не владелец) · `moderator/support/finance/read_only` — резерв, в панель НЕ
 пускаются. Новые роли (`owner`/`developer`) НЕ вводим.
 
-- **Стадия A (БД):** `AdminUser.isSuperadmin` default `true`→`false`;
-  `+ isActive Boolean @default(true)` (мягкая блокировка).
+- ✅ **Стадия A (БД)** 16.05.2026 — `AdminUser.isSuperadmin` default `true`→`false`
+  + `isActive Boolean @default(true)`. Миграция `20260516140000_admin_user_access_flags`
+  (написана вручную, Expand-safe). Коммит `5a977b8`.
 - **Стадия B (entry-gate):** пускать в admin только `adminRole ∈ {super_admin,
   admin}` + `isActive` + есть `AdminUser`. LoginPage зовёт `/admin/auth/me`,
   при 403 — чёткий отказ.

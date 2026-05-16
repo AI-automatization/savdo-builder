@@ -133,6 +133,12 @@
 публичные by design (storefront/media/reviews/health/telegram-webhook
 с secret-token). Понижено до 🟡 hardening. Коммит `2a814eb`.
 
+### ✅ [SEC-ADMIN-ACCESS-MODEL стадия A] 🔐 — флаги AdminUser
+`AdminUser.isSuperadmin` default `true`→`false` (опасный дефолт) + новое поле
+`isActive Boolean @default(true)` (мягкая блокировка). Миграция
+`20260516140000_admin_user_access_flags` написана вручную (нет dev-БД),
+Expand-safe. Коммит `5a977b8`. Дальше — стадии B/C/D (entry-gate + MFA).
+
 ### ✅ [SEC-AUDIT-02 + 06] 🟠 — CORS allow-list
 Убран wildcard `*.up.railway.app` (пропускал любой Railway-проект) → явный
 список 4 прод-доменов фронтов + `ALLOWED_ORIGINS` env. Dev-доступ через
