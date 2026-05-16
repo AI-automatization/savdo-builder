@@ -121,6 +121,14 @@
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
 
+## 2026-05-15 (Полат) — Wave 27: тест AuditBrokenMediaUrlsUseCase
+
+### ✅ [AUDIT-N1] 🟢
+Unit-spec для `AuditBrokenMediaUrlsUseCase` (был gap из self-audit Wave 21).
+10 кейсов: STORAGE_PUBLIC_URL guard, живые/мёртвые URL, cursor-пагинация
+(nextCursor full/partial), clamp limit. axios замокан. 10/10 passed.
+Коммит `d336977`.
+
 ## 2026-05-15 (Полат) — Wave 26: storefront stores pagination
 
 ### ✅ [API-STORES-PAGINATION-001] 🟢
