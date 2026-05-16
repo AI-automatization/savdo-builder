@@ -99,7 +99,7 @@ export class CreateSellerThreadUseCase {
 
     await this.sendMessage.execute({
       threadId,
-      senderUserId: input.sellerProfileId,
+      sellerProfileId: input.sellerProfileId,
       text,
     });
 
