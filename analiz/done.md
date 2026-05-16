@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-05-16 (Азим) — WB-B01: доставка в checkout
+
+### ✅ [WB-B01] Плата за доставку отображается и списывается согласованно 🔴
+
+- **Важность:** 🔴
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Закрыт последний 🔴-блокер QA-аудита 15.05. Backend-часть
+  (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`, `484694a`, Полат) научила
+  `/checkout/preview` отдавать реальный `deliveryFee`+`total`; тип
+  `CheckoutPreview` теперь канонически несёт `deliveryFee`/`total` — убран
+  избыточный loose-cast. Режим «Доставка» согласован с backend. Commit
+  `6d9f527` (ветка web-buyer). Смежная находка — pickup облагается доставкой
+  на backend → тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` Полату.
+
 ## 2026-05-15 (Азим) — QA-аудит wave 2: 🟡 «сильно желательно»
 
 Коммиты `fb5febf` (ветка web-buyer), `47ea98d` (ветка web-seller).
