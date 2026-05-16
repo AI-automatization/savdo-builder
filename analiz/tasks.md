@@ -27,10 +27,17 @@
   `ThrottlerGuard` считает всех в одном ведре. `@Throttle` лимиты общие, не per-IP.
 - **Фикс:** `app.set('trust proxy', 1)`.
 
-## 🟠 `SEC-AUDIT-04` — нет глобального default-deny auth (A01/A05)
-- `JwtAuthGuard` не глобальный — вешается вручную на каждый из 28 контроллеров.
-  Забыли `@UseGuards` на одном → эндпоинт публичный, без fail-safe.
-- **Фикс:** глобальный `APP_GUARD: JwtAuthGuard` + `@Public()` для открытых роутов.
+## 🟡 `SEC-AUDIT-04` — нет глобального default-deny auth (A01/A05) — проверено, активной дыры нет
+- `JwtAuthGuard` не глобальный — вешается вручную. Забыли `@UseGuards` →
+  эндпоинт публичный, без fail-safe.
+- **Проверка 16.05.2026:** прошёл все 28 контроллеров — все защищённые
+  эндпоинты реально под guard'ами (per-method, осознанно). Незащищённые —
+  только публичные by design: storefront-каталог (reads), media-proxy,
+  reviews read, health-probe, telegram-webhook (защищён своим
+  `x-telegram-bot-api-secret-token`, fail-closed). **Активной дыры нет.**
+- **Остаётся (🟡 hardening):** глобальный `APP_GUARD: JwtAuthGuard` + `@Public()`
+  — defense-in-depth, чтобы БУДУЩИЙ забытый guard не открыл эндпоинт. Не срочно,
+  рефактор рискованный (28 контроллеров) — делать отдельным focused-проходом.
 
 ## 🟠 `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` доступны любому `role=ADMIN` (A01)
 - `AdminPermissionGuard`: «нет декоратора → return true». Жёсткий гейт — только
