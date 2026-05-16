@@ -64,6 +64,14 @@ export interface CheckoutPreview {
   storeName: string;
   items: CheckoutPreviewItem[];
   subtotal: number;
+  /**
+   * API-CHECKOUT-PREVIEW-DELIVERY-FEE-001: рассчитанная backend'ом плата за
+   * доставку (из store.deliverySettings). Тот же расчёт применяется в confirm —
+   * preview и итоговый заказ согласованы. 0 для `manual`/`none` тарифа.
+   */
+  deliveryFee: number;
+  /** subtotal + deliveryFee. То, что покупатель реально заплатит. */
+  total: number;
   currencyCode: string;
   stockWarnings: string[];
 }

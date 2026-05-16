@@ -1,9 +1,27 @@
 # Logs — локальные тесты и баги
 
-## [2026-05-15] [API-TYPES-PAYMENT-METHOD-COLLISION-001] 🔴 Баг — дубль экспорта `PaymentMethod` в packages/types
-- **Статус:** 🔴 Баг — заведено Полату (зона `packages/types`), не правил сам.
-- **Что случилось:** `tsc --noEmit` в web-buyer И web-seller падает одной
-  ошибкой:
+## [2026-05-16] [SEC-AUDIT-MIDDLEWARE-CORS-GUARDS] 🟡 Аудит проведён — 5 находок
+- **Статус:** 🟡 Найдено 5 реальных дыр (1🔴 + 4🟠) + 2 мелочи. Не эксплуатировано.
+- **Что случилось:** аудит middleware/CORS/guards `apps/api` по OWASP (skill
+  security-pen-testing) по запросу владельца.
+- **Находки:** `SEC-AUDIT-01` MFA не обязателен (A07, 🔴) · `SEC-AUDIT-02` CORS
+  `*.up.railway.app` wildcard + credentials (A05) · `SEC-AUDIT-03` rate limiting
+  сломан без `trust proxy` (A04) · `SEC-AUDIT-04` нет глобального JwtAuthGuard
+  (A01) · `SEC-AUDIT-05` admin-эндпоинты без `@AdminPermission` доступны любому
+  `role=ADMIN` (A01). Детали + фиксы — `analiz/tasks.md` секция SECURITY AUDIT.
+- **Правильно выстроено:** JWT (нет alg:none), session-invalidation на logout,
+  BLOCKED-юзер отбивается, OTP brute-force per-phone 5/15мин, guard order
+  Jwt→Roles→Mfa→Permission, Bull Board cookie HttpOnly/SameSite=Strict.
+- **Что сделано:** все находки занесены в `tasks.md` как `SEC-AUDIT-*` +
+  `SEC-ADMIN-ACCESS-MODEL` + `API-CONTROLLERS-ARCH-DEBT-001`. Фиксы — отдельно.
+
+## [2026-05-15] [API-TYPES-PAYMENT-METHOD-COLLISION-001] ✅ Исправлено — дубль экспорта `PaymentMethod` в packages/types
+- **Статус:** ✅ Исправлено (Азим, 15.05.2026, аварийный фикс с согласия Азима).
+  Тип `PaymentMethod` в `cart.ts` переименован в `CheckoutPaymentMethod`
+  (commit `c148a18` на main, смержено в web-buyer/web-seller). `tsc --noEmit`
+  чист в обоих апах, Railway-сборка разблокирована.
+- **Что случилось:** `next build` (с type-check) в web-buyer И web-seller
+  падал на Railway одной ошибкой:
   `packages/types/src/index.ts(11,1): error TS2308: Module './enums' has
   already exported a member named 'PaymentMethod'.`
 - **Root cause:** Полат в Wave 20 (`API-CHECKOUT-PAYMENT-METHOD-001`) добавил
@@ -11,14 +29,18 @@
   `packages/types/src/api/cart.ts:79`. Но в `packages/types/src/enums.ts:50`
   уже есть `export enum PaymentMethod { COD, MANUAL_TRANSFER, ONLINE }`
   (Prisma-enum). `index.ts` делает `export *` из обоих → имя коллидирует.
-- **Эффект:** ломает type-check всех фронтов, потребляющих `types`
-  (web-buyer, web-seller, admin, tma). Сборка Next.js может пройти (своя
-  конфигурация TS), но `tsc` строго — нет.
-- **Что сделано:** обнаружено при закрытии 3 consumption-задач web-sync
-  аудита. НЕ исправлял — `packages/types` правит только Полат (CLAUDE.md).
-- **Что нужно Полату:** переименовать request-enum, чтобы не конфликтовал с
-  Prisma-enum. Напр. `CheckoutPaymentMethod` или `PaymentMethodInput` в
-  `cart.ts`, обновить `ConfirmCheckoutDto` и `resolvePaymentMethod()`.
+- **Эффект:** `next build` падал → Railway-деплой web-buyer и web-seller
+  обрывался (build daemon exit 1). Production-блокер обоих апов.
+- **Root cause обнаружения:** до merge 15.05 сервис-ветки имели старый
+  `packages/types` без типа из `cart.ts`. Sync-merge затащил Полатовский
+  `packages/types` с коллизией → деплой сломался.
+- **Фикс:** `cart.ts` — `export type PaymentMethod` → `CheckoutPaymentMethod`
+  (request-side enum). `CheckoutConfirmRequest.paymentMethod` обновлён.
+  Потребителей у типа не было: `apps/api` checkout использует свой локальный
+  тип + Prisma-enum, web-* не импортили. Изменение изолировано в `cart.ts` —
+  `apps/api` не затронут (нет конфликта с активным P0 checkout 500 Полата).
+- **На ревью Полату:** изменён `packages/types` (его зона) в аварийном
+  порядке. Если нужно другое имя — переименовать, потребителей нет.
 
 ## [2026-05-15] [DEPLOY-TMA-RAILPACK-FAIL-001] ✅ Исправлено — деплой триггернут version-bump'ом
 - **Статус:** ✅ Исправлено (Полат, 15.05.2026). Деплой запущен без ручного Redeploy.

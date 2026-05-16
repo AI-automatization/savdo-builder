@@ -29,6 +29,17 @@ export interface OrderListItem {
   /** May be undefined for orders created before address migration */
   deliveryAddress?: DeliveryAddress;
   deliveryFee: number;
+  /**
+   * API-RESPONSE-TYPES-RECONCILE-001: seller orders-list (`GET /seller/orders`)
+   * отдаёт также плоские поля адреса и суммы — рядом с nested `deliveryAddress`.
+   * Buyer-list их не присылает (отсюда `?`). Раньше фронт читал их через `as any`.
+   */
+  subtotalAmount?: number;
+  discountAmount?: number;
+  city?: string | null;
+  region?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
   createdAt: string;
   /** Buyer's registered account phone (from User record) */
   buyer?: { phone: string } | null;
