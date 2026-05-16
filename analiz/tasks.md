@@ -75,14 +75,14 @@
 > Аудит 16.05.2026. **Домен:** `apps/api`. Tech-debt, не security.
 
 Правило (`apps/api/CLAUDE.md`): thin controllers, DB только через repositories,
-no direct prisma. **Нарушено в 8 контроллерах — 46 прямых `this.prisma.*`:**
-- `chat.controller.ts` — 🔴 19 вызовов, 659 LOC, 7 `as any`. Логика чата
-  (edit/delete/mark-read/admin-list) инлайн в обход repository, хотя use-cases
-  есть. Вынести в `ChatRepository` + use-cases.
-- `products.controller.ts` — 🟠 11 (image/attribute/option-эндпоинты).
-- `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — 🟡.
+no direct prisma. Было нарушено в 8 контроллерах — 46 прямых `this.prisma.*`:
+- ✅ `chat.controller.ts` — закрыто 16.05.2026 (`6d3c8d7`): 659→379 LOC, prisma
+  19→0, `as any` 12→0 по модулю. +9 методов в ChatRepository, +6 use-cases.
+  chat-специ 48/48.
+- 🟠 `products.controller.ts` — 11 (image/attribute/option-эндпоинты) — осталось.
+- 🟡 `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — осталось.
 - `health` — `$queryRaw SELECT 1` — ✅ легитимное исключение.
-- `as any` в контроллерах: 14 (chat 7, admin 3, categories 2, orders 2).
+- Остаток `as any` в контроллерах: ~7 (admin 3, categories 2, orders 2).
 
 ---
 

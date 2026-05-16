@@ -138,6 +138,14 @@
 `sessionId` отклоняется. Все 6 флоу выдачи токена ставят sessionId.
 Коммит `31a5187`, auth-специ 97/97.
 
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] (chat) 🧱 — рефактор chat.controller
+`chat.controller.ts` 659→379 LOC, прямых prisma-вызовов 19→0, `as any` 12→0
+по всему модулю. +9 методов в `ChatRepository`, +6 use-cases (MarkThreadRead,
+DeleteThread, Delete/EditMessage, ReportMessage, AdminChat). `as any` оказался
+schema-drift — ушёл после `db:generate`. Поведение идентично. chat-специ 48/48,
+api tsc clean. Коммит `6d3c8d7` (через фонового агента, проверено + закоммичено).
+Осталось по тикету: products/stores/categories контроллеры.
+
 ### ✅ [SEC-ADMIN-ACCESS-MODEL] 🔐 — план ролей admin закрыт целиком (стадии A-D)
 Активировано в проде 16.05.2026 (merge `main→api` `37b481f`, подтверждено владельцем).
 - **B** — `AdminAccessGuard` на 10 admin-контроллерах: вход только `super_admin`/
