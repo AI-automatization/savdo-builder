@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Phone, Search, MessageCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
-import { api } from '../lib/api'
+import { useTranslation } from '../lib/i18n'
 import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface UserRow {
@@ -16,19 +16,20 @@ interface UserRow {
   seller: { telegramChatId: string | null } | null
 }
 
-const ROLE_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  SELLER: { bg: 'rgba(99,102,241,0.12)',  text: '#818CF8', label: 'Продавец' },
-  BUYER:  { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Покупатель' },
-  ADMIN:  { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', label: 'Админ' },
+const ROLE_CFG: Record<string, { bg: string; text: string; labelKey: string }> = {
+  SELLER: { bg: 'rgba(99,102,241,0.12)',  text: '#818CF8', labelKey: 'users.roleSeller' },
+  BUYER:  { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', labelKey: 'users.roleBuyer' },
+  ADMIN:  { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', labelKey: 'users.roleAdmin' },
 }
 
-const STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  ACTIVE:  { bg: 'rgba(16,185,129,0.10)', text: '#10B981', label: 'Активен' },
-  BLOCKED: { bg: 'rgba(239,68,68,0.10)',  text: '#EF4444', label: 'Заблокирован' },
+const STATUS_CFG: Record<string, { bg: string; text: string; labelKey: string }> = {
+  ACTIVE:  { bg: 'rgba(16,185,129,0.10)', text: '#10B981', labelKey: 'users.statusActive' },
+  BLOCKED: { bg: 'rgba(239,68,68,0.10)',  text: '#EF4444', labelKey: 'users.statusBlocked' },
 }
 
 export default function UsersPage() {
   const navigate = useNavigate()
+  const { t, locale } = useTranslation()
   const [page, setPage] = useState(1)
   const [role, setRole] = useState('')
   const [status, setStatus] = useState('')
@@ -58,7 +59,7 @@ export default function UsersPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Users size={20} color="var(--primary)" />
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>Пользователи</h1>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{t('users.title')}</h1>
           {total > 0 && (
             <span style={{ padding: '2px 10px', borderRadius: 20, background: 'rgba(99,102,241,0.12)', color: '#818CF8', fontSize: 12, fontWeight: 700 }}>
               {total}
@@ -77,16 +78,16 @@ export default function UsersPage() {
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="Поиск по телефону..."
+              placeholder={t('users.searchPlaceholder')}
               style={{ paddingLeft: 32, paddingRight: 12, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none', width: 220 }}
             />
           </div>
           <button onClick={handleSearch} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            Найти
+            {t('common.find')}
           </button>
           {search && (
             <button onClick={handleClearSearch} style={{ height: 34, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-              Сбросить
+              {t('common.reset')}
             </button>
           )}
         </div>
@@ -103,7 +104,7 @@ export default function UsersPage() {
               color: role === r ? 'white' : 'var(--text-muted)',
             }}
           >
-            {r || 'Все роли'}
+            {r === '' ? t('users.allRoles') : r === 'SELLER' ? t('users.roleSeller') : r === 'BUYER' ? t('users.roleBuyer') : t('users.roleAdmin')}
           </button>
         ))}
 
@@ -119,7 +120,7 @@ export default function UsersPage() {
               color: status === s ? 'white' : 'var(--text-muted)',
             }}
           >
-            {s === '' ? 'Все статусы' : s === 'ACTIVE' ? 'Активные' : 'Заблокированные'}
+            {s === '' ? t('users.allStatuses') : s === 'ACTIVE' ? t('users.statusActivePlural') : t('users.statusBlockedPlural')}
           </button>
         ))}
       </div>
@@ -129,7 +130,7 @@ export default function UsersPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Телефон', 'Роль', 'Статус', 'Telegram', 'Дата регистрации', ''].map(col => (
+              {[t('users.colPhone'), t('users.colRole'), t('users.colStatus'), t('users.colTelegram'), t('users.colRegDate'), ''].map(col => (
                 <th key={col} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
                   {col}
                 </th>
@@ -139,12 +140,12 @@ export default function UsersPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</td>
+                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{t('common.loading')}</td>
               </tr>
             )}
             {!loading && users.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Пользователи не найдены</td>
+                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{t('users.notFound')}</td>
               </tr>
             )}
             {users.map((user, i) => {
@@ -167,18 +168,18 @@ export default function UsersPage() {
                       <Phone size={13} color="var(--text-muted)" />
                       <span style={{ fontFamily: 'monospace', color: 'var(--text)', fontSize: 13 }}>{user.phone}</span>
                       {!user.isPhoneVerified && (
-                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontWeight: 600 }}>не верифицирован</span>
+                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontWeight: 600 }}>{t('users.notVerified')}</span>
                       )}
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: roleCfg.bg, color: roleCfg.text }}>
-                      {roleCfg.label}
+                      {t(roleCfg.labelKey)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: statusCfg.bg, color: statusCfg.text }}>
-                      {statusCfg.label}
+                      {t(statusCfg.labelKey)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
@@ -192,7 +193,7 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {new Date(user.createdAt).toLocaleDateString('ru-RU')}
+                    {new Date(user.createdAt).toLocaleDateString(locale === 'uz' ? 'uz-UZ' : 'ru-RU')}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>→</span>

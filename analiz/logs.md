@@ -1,5 +1,16 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-16] [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] 🟡 «Самовывоз» всё равно платит доставку
+- **Статус:** 🟡 Предупреждение — тикет Полату заведён в `tasks.md`, не исправлено.
+- **Что случилось:** при закрытии `WB-B01` обнаружено: `confirm-checkout.use-case`
+  считает `deliveryFee` через `computeDeliveryFee(store.deliverySettings)`
+  безусловно. Backend не знает про режим «Самовывоз» (в `ConfirmCheckoutDto`
+  нет `deliveryMode`). Магазин с `fixed`-тарифом → покупатель в режиме
+  «Самовывоз» видит «Бесплатно», но при confirm платит fixed-плату.
+- **Что сделано:** заведён тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` (Полат).
+  web-buyer пока показывает `deliveryFee=0` для pickup — совпадёт с реальностью
+  только после backend-фикса.
+
 ## [2026-05-16] [SEC-AUDIT-MIDDLEWARE-CORS-GUARDS] 🟡 Аудит проведён — 5 находок
 - **Статус:** 🟡 Найдено 5 реальных дыр (1🔴 + 4🟠) + 2 мелочи. Не эксплуатировано.
 - **Что случилось:** аудит middleware/CORS/guards `apps/api` по OWASP (skill

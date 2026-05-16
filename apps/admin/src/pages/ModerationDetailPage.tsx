@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   User, Store, Clock, CheckCircle, XCircle,
   AlertTriangle, GitMerge, UserCheck, FolderOpen, RotateCcw,
   AlertCircle, X,
 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/admin/PageHeader'
 import { Panel } from '../components/admin/Panel'
@@ -34,57 +35,61 @@ interface ModerationCase {
   actions: ModerationAction[]
 }
 
-const TYPE_CFG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
-  seller: { icon: User,  color: 'var(--primary)', bg: 'rgba(129,140,248,0.12)', label: 'Продавец' },
-  store:  { icon: Store, color: '#22C55E',         bg: 'rgba(34,197,94,0.12)',  label: 'Магазин'  },
+type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+const TYPE_CFG: Record<string, { icon: any; color: string; bg: string; labelKey: string }> = {
+  seller: { icon: User,  color: 'var(--primary)', bg: 'rgba(129,140,248,0.12)', labelKey: 'users.roleSeller' },
+  store:  { icon: Store, color: '#22C55E',         bg: 'rgba(34,197,94,0.12)',  labelKey: 'moderation.entityStore' },
 }
 
-const CASE_TYPE_LABEL: Record<string, string> = {
-  verification:  'Верификация',
-  abuse:         'Жалоба',
-  manual_review: 'Ручная проверка',
-  VERIFICATION:  'Верификация',
-  ABUSE:         'Жалоба',
-  MANUAL_REVIEW: 'Ручная проверка',
+const CASE_TYPE_LABEL_KEY: Record<string, string> = {
+  verification:  'moderation.caseVerification',
+  abuse:         'moderation.caseAbuse',
+  manual_review: 'moderation.caseManualReview',
+  VERIFICATION:  'moderation.caseVerification',
+  ABUSE:         'moderation.caseAbuse',
+  MANUAL_REVIEW: 'moderation.caseManualReview',
 }
 
-const ACTION_CFG: Record<string, { color: string; bg: string; label: string }> = {
-  APPROVE:         { color: '#22C55E', bg: 'rgba(34,197,94,0.12)',   label: 'Одобрено' },
-  REJECT:          { color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   label: 'Отклонено' },
-  REQUEST_CHANGES: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  label: 'Доработка' },
-  ESCALATE:        { color: '#818CF8', bg: 'rgba(129,140,248,0.12)', label: 'Эскалация' },
-  CLOSE:           { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', label: 'Закрыто' },
-  REOPEN:          { color: '#818CF8', bg: 'rgba(129,140,248,0.12)', label: 'Переоткрыто' },
+const ACTION_CFG: Record<string, { color: string; bg: string; labelKey: string }> = {
+  APPROVE:         { color: '#22C55E', bg: 'rgba(34,197,94,0.12)',   labelKey: 'moderationDetail.actApproved' },
+  REJECT:          { color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   labelKey: 'moderationDetail.actRejected' },
+  REQUEST_CHANGES: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  labelKey: 'moderation.requestChanges' },
+  ESCALATE:        { color: '#818CF8', bg: 'rgba(129,140,248,0.12)', labelKey: 'moderation.escalate' },
+  CLOSE:           { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', labelKey: 'moderationDetail.actClosed' },
+  REOPEN:          { color: '#818CF8', bg: 'rgba(129,140,248,0.12)', labelKey: 'moderationDetail.actReopened' },
 }
 
 const SLA_HOURS = 24
 
-function getSla(createdAt: string) {
+function getSla(createdAt: string, t: TFn) {
   const elapsed = Date.now() - new Date(createdAt).getTime()
   const remaining = SLA_HOURS * 3_600_000 - elapsed
+  const hU = t('moderation.unitHour')
+  const mU = t('moderation.unitMinute')
   if (remaining <= 0) {
     const h = Math.abs(Math.floor(remaining / 3_600_000))
-    return { label: `SLA +${h}ч просрочка`, color: '#EF4444', bg: 'rgba(239,68,68,0.12)' }
+    return { label: t('moderationDetail.slaOverdue', { h }), color: '#EF4444', bg: 'rgba(239,68,68,0.12)' }
   }
   const h = Math.floor(remaining / 3_600_000)
   const m = Math.floor((remaining % 3_600_000) / 60_000)
-  const label = h > 0 ? `SLA ${h}ч ${m}м` : `SLA ${m}м`
+  const label = h > 0 ? `SLA ${h}${hU} ${m}${mU}` : `SLA ${m}${mU}`
   if (remaining < 2 * 3_600_000) return { label, color: '#EF4444', bg: 'rgba(239,68,68,0.12)' }
   if (remaining < 8 * 3_600_000) return { label, color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' }
   return { label, color: '#22C55E', bg: 'rgba(34,197,94,0.12)' }
 }
 
-function timeAgo(iso: string) {
+function timeAgo(iso: string, t: TFn) {
   const diff = Date.now() - new Date(iso).getTime()
   const h = Math.floor(diff / 3_600_000)
   const d = Math.floor(h / 24)
-  if (d > 0) return `${d}д назад`
-  if (h > 0) return `${h}ч назад`
+  if (d > 0) return t('moderation.daysAgo', { n: d })
+  if (h > 0) return t('moderation.hoursAgo', { n: h })
   const m = Math.floor(diff / 60_000)
-  return m > 0 ? `${m}м назад` : 'только что'
+  return m > 0 ? t('moderation.minutesAgo', { n: m }) : t('moderation.justNow')
 }
 
-function ActionBtn({ icon, label, color, bg, border, loading, disabled, onClick }: {
+function ActionBtn({ icon, label, color, bg, border, loading, disabled, onClick, loadingLabel }: {
   icon: React.ReactNode
   label: string
   color: string
@@ -93,6 +98,7 @@ function ActionBtn({ icon, label, color, bg, border, loading, disabled, onClick 
   loading: boolean
   disabled: boolean
   onClick: () => void
+  loadingLabel: string
 }) {
   return (
     <button
@@ -107,14 +113,14 @@ function ActionBtn({ icon, label, color, bg, border, loading, disabled, onClick 
         opacity: disabled ? 0.7 : 1,
       }}
     >
-      {icon} {loading ? 'Загрузка...' : label}
+      {icon} {loading ? loadingLabel : label}
     </button>
   )
 }
 
 export default function ModerationDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const { t, locale } = useTranslation()
 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [comment, setComment] = useState('')
@@ -136,7 +142,7 @@ export default function ModerationDetailPage() {
       setComment('')
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(null)
     }
@@ -150,7 +156,7 @@ export default function ModerationDetailPage() {
       await api.patch(`/api/v1/admin/moderation/${id}/assign`, {})
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка назначения')
+      setActionError(e.message ?? t('moderation.errAssign'))
     } finally {
       setActionLoading(null)
     }
@@ -165,38 +171,40 @@ export default function ModerationDetailPage() {
       await api.patch(`/api/v1/admin/moderation/${id}/${endpoint}`, {})
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(null)
     }
   }
 
   if (loading) {
-    return <div className="p-8 text-[15px]" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+    return <div className="p-8 text-[15px]" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
   }
 
   if (error || !modCase) {
     return (
       <div className="p-8">
         <div className="flex items-center gap-2 text-[14px]" style={{ color: '#EF4444' }}>
-          <AlertCircle size={16} /> {error ?? 'Кейс не найден'}
+          <AlertCircle size={16} /> {error ?? t('moderationDetail.notFound')}
         </div>
       </div>
     )
   }
 
   const cfg = TYPE_CFG[modCase.entityType] ?? TYPE_CFG.seller
-  const sla = getSla(modCase.createdAt)
+  const sla = getSla(modCase.createdAt, t)
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
+  const caseTypeLabel = CASE_TYPE_LABEL_KEY[modCase.caseType] ? t(CASE_TYPE_LABEL_KEY[modCase.caseType]) : modCase.caseType
   const isClosed = modCase.status !== 'OPEN'
   const isLoading = (a: string) => actionLoading === a
 
   return (
     <div className="px-8 pt-8 pb-12 min-h-screen">
       <PageHeader
-        title={`Кейс · ${modCase.id.slice(0, 8)}…`}
-        subtitle={`${cfg.label} · ${CASE_TYPE_LABEL[modCase.caseType] ?? modCase.caseType}`}
+        title={t('moderationDetail.caseTitle', { id: modCase.id.slice(0, 8) })}
+        subtitle={`${t(cfg.labelKey)} · ${caseTypeLabel}`}
         backTo="/moderation"
-        backLabel="Очередь"
+        backLabel={t('moderationDetail.queue')}
       />
 
       {actionError && (
@@ -209,24 +217,24 @@ export default function ModerationDetailPage() {
       <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px', alignItems: 'start' }}>
         {/* Left — Info + History */}
         <div className="flex flex-col gap-5">
-          <Panel title="Информация о кейсе">
-            <InfoRow label="ID сущности">
+          <Panel title={t('moderationDetail.caseInfo')}>
+            <InfoRow label={t('moderationDetail.entityId')}>
               <span className="font-mono text-[13px]" style={{ color: 'var(--text)' }}>{modCase.entityId}</span>
             </InfoRow>
-            <InfoRow label="Тип сущности">
+            <InfoRow label={t('moderationDetail.entityType')}>
               <span
                 className="px-2.5 py-1 rounded-full text-[12px] font-semibold"
                 style={{ background: cfg.bg, color: cfg.color }}
               >
-                {cfg.label}
+                {t(cfg.labelKey)}
               </span>
             </InfoRow>
-            <InfoRow label="Тип кейса">
+            <InfoRow label={t('moderationDetail.caseType')}>
               <span className="text-[13px]" style={{ color: 'var(--text)' }}>
-                {CASE_TYPE_LABEL[modCase.caseType] ?? modCase.caseType}
+                {caseTypeLabel}
               </span>
             </InfoRow>
-            <InfoRow label="Статус">
+            <InfoRow label={t('userDetail.status')}>
               <StatusBadge status={modCase.status} />
             </InfoRow>
             <InfoRow label="SLA">
@@ -238,33 +246,36 @@ export default function ModerationDetailPage() {
               </span>
             </InfoRow>
             {modCase.reason && (
-              <InfoRow label="Причина">
+              <InfoRow label={t('moderationDetail.reason')}>
                 <span className="text-[13px]" style={{ color: 'var(--text)' }}>{modCase.reason}</span>
               </InfoRow>
             )}
-            <InfoRow label="Создан">
+            <InfoRow label={t('moderationDetail.createdAt')}>
               <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
-                {new Date(modCase.createdAt).toLocaleString('ru-RU')} ({timeAgo(modCase.createdAt)})
+                {new Date(modCase.createdAt).toLocaleString(dateLocale)} ({timeAgo(modCase.createdAt, t)})
               </span>
             </InfoRow>
-            <InfoRow label="Назначен" border={false}>
+            <InfoRow label={t('moderationDetail.assignedTo')} border={false}>
               {modCase.assignedAdminId ? (
                 <span className="font-mono text-[12px]" style={{ color: '#22C55E' }}>
                   {modCase.assignedAdminId.slice(0, 12)}…
                 </span>
               ) : (
-                <span className="text-[13px]" style={{ color: 'var(--text-dim)' }}>Не назначен</span>
+                <span className="text-[13px]" style={{ color: 'var(--text-dim)' }}>{t('moderationDetail.notAssigned')}</span>
               )}
             </InfoRow>
           </Panel>
 
-          <Panel title={`История действий (${modCase.actions.length})`}>
+          <Panel title={t('moderationDetail.actionsHistory', { n: modCase.actions.length })}>
             {modCase.actions.length === 0 ? (
-              <p className="m-0 text-[14px]" style={{ color: 'var(--text-muted)' }}>Действий ещё не было</p>
+              <p className="m-0 text-[14px]" style={{ color: 'var(--text-muted)' }}>{t('moderationDetail.noActions')}</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {modCase.actions.map((action, i) => {
-                  const acfg = ACTION_CFG[action.actionType] ?? { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', label: action.actionType }
+                  const acfgRaw = ACTION_CFG[action.actionType]
+                  const acfg = acfgRaw
+                    ? { color: acfgRaw.color, bg: acfgRaw.bg, label: t(acfgRaw.labelKey) }
+                    : { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', label: action.actionType }
                   return (
                     <div
                       key={action.id}
@@ -286,7 +297,7 @@ export default function ModerationDetailPage() {
                             {acfg.label}
                           </span>
                           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                            {timeAgo(action.createdAt)}
+                            {timeAgo(action.createdAt, t)}
                           </span>
                         </div>
                         {action.comment && (
@@ -311,78 +322,85 @@ export default function ModerationDetailPage() {
           {isClosed ? (
             <ActionBtn
               icon={<RotateCcw size={14} />}
-              label="Переоткрыть"
+              label={t('moderation.reopen')}
               color="var(--primary)"
               bg="rgba(129,140,248,0.08)"
               border="rgba(129,140,248,0.3)"
               loading={isLoading('reopen')}
               disabled={!!actionLoading}
               onClick={toggleStatus}
+              loadingLabel={t('common.loading')}
             />
           ) : (
             <div className="flex flex-col gap-2.5">
               {!modCase.assignedAdminId && (
                 <ActionBtn
                   icon={<UserCheck size={14} />}
-                  label="Взять в работу"
+                  label={t('moderation.takeTitle')}
                   color="#818CF8"
                   bg="rgba(129,140,248,0.08)"
                   border="rgba(129,140,248,0.25)"
                   loading={isLoading('assign')}
                   disabled={!!actionLoading}
                   onClick={assignToMe}
+                  loadingLabel={t('common.loading')}
                 />
               )}
               <ActionBtn
                 icon={<CheckCircle size={14} />}
-                label="Одобрить"
+                label={t('moderation.approve')}
                 color="#22C55E"
                 bg="rgba(34,197,94,0.1)"
                 border="rgba(34,197,94,0.25)"
                 loading={isLoading('APPROVE')}
                 disabled={!!actionLoading}
                 onClick={() => doAction('APPROVE')}
+                loadingLabel={t('common.loading')}
               />
               <ActionBtn
                 icon={<AlertTriangle size={14} />}
-                label="Запросить доработку"
+                label={t('moderationDetail.requestChangesLong')}
                 color="#F59E0B"
                 bg="rgba(245,158,11,0.08)"
                 border="rgba(245,158,11,0.25)"
                 loading={isLoading('REQUEST_CHANGES')}
                 disabled={!!actionLoading}
                 onClick={() => doAction('REQUEST_CHANGES')}
+                loadingLabel={t('common.loading')}
               />
               <ActionBtn
                 icon={<GitMerge size={14} />}
-                label="Эскалировать"
+                label={t('moderation.escalateTitle')}
                 color="#818CF8"
                 bg="rgba(129,140,248,0.08)"
                 border="rgba(129,140,248,0.25)"
                 loading={isLoading('ESCALATE')}
                 disabled={!!actionLoading}
                 onClick={() => doAction('ESCALATE')}
+                loadingLabel={t('common.loading')}
               />
               <ActionBtn
                 icon={<XCircle size={14} />}
-                label="Отклонить"
+                label={t('moderation.reject')}
                 color="#EF4444"
                 bg="rgba(239,68,68,0.08)"
                 border="rgba(239,68,68,0.25)"
                 loading={isLoading('REJECT')}
                 disabled={!!actionLoading}
                 onClick={() => setRejectOpen(true)}
+                loadingLabel={t('common.loading')}
               />
               <div className="pt-2.5" style={{ borderTop: '1px solid var(--border)' }}>
                 <ActionBtn
                   icon={<FolderOpen size={14} />}
-                  label="Закрыть без решения"
+                  label={t('moderationDetail.closeNoDecision')}
                   color="#94A3B8"
                   bg="rgba(148,163,184,0.06)"
                   border="rgba(148,163,184,0.25)"
                   loading={isLoading('close')}
                   disabled={!!actionLoading}
                   onClick={toggleStatus}
+                  loadingLabel={t('common.loading')}
                 />
               </div>
             </div>
@@ -407,7 +425,7 @@ export default function ModerationDetailPage() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>Отклонить кейс</h3>
+              <h3 className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>{t('moderationDetail.rejectTitle')}</h3>
               <button
                 onClick={() => { setRejectOpen(false); setComment('') }}
                 className="p-0"
@@ -417,12 +435,12 @@ export default function ModerationDetailPage() {
               </button>
             </div>
             <p className="m-0 mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>
-              Укажи причину отклонения — обязательное поле.
+              {t('moderationDetail.rejectReasonHint')}
             </p>
             <textarea
               value={comment}
               onChange={e => setComment(e.target.value)}
-              placeholder="Например: профиль не заполнен, нарушение правил платформы..."
+              placeholder={t('moderation.rejectReasonPlaceholder')}
               rows={4}
               className="w-full px-3.5 py-3 rounded-xl text-[14px] resize-y outline-none leading-relaxed"
               style={{
@@ -437,7 +455,7 @@ export default function ModerationDetailPage() {
               className="text-[12px] text-right mt-1 mb-4"
               style={{ color: comment.length >= 10 ? 'var(--text-muted)' : '#EF4444' }}
             >
-              {comment.length} символов {comment.length < 10 && '(мин. 10)'}
+              {t('moderation.charCount', { n: comment.length })} {comment.length < 10 && t('moderation.charMin')}
             </div>
             <div className="flex gap-2.5 justify-end">
               <button
@@ -450,7 +468,7 @@ export default function ModerationDetailPage() {
                   cursor: 'pointer',
                 }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => doAction('REJECT', comment)}
@@ -463,7 +481,7 @@ export default function ModerationDetailPage() {
                   color: comment.trim().length >= 10 ? 'white' : 'var(--text-muted)',
                 }}
               >
-                {isLoading('REJECT') ? 'Отправка...' : 'Отклонить'}
+                {isLoading('REJECT') ? t('moderation.sending') : t('moderation.reject')}
               </button>
             </div>
           </div>

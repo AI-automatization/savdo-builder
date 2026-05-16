@@ -10,11 +10,10 @@
 > Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.
 > **Домен:** `apps/api`. **Кто берёт:** Полат.
 
-## 🔴 `SEC-AUDIT-01` — MFA не обязателен (OWASP A07)
-- `MfaEnforcedGuard` блокирует только `mfaPending=true`; `mfaPending` ставится
-  лишь при `mfaEnabled=true` → админ без настроенного MFA входит по одному OTP.
-- **Фикс:** `mfaPending=true` для всех админов; `mfaEnabled=false` → форс в setup.
-  Часть плана ролей (стадия C, см. `SEC-ADMIN-ACCESS-MODEL` ниже).
+## ✅ `SEC-AUDIT-01` — MFA не обязателен (OWASP A07) — закрыто 16.05.2026
+- `mfaPending=true` для всех админов (verify-otp/refresh/telegram-auth);
+  `mfaEnabled=false` → LoginPage форсит MFA-setup. = `SEC-ADMIN-ACCESS-MODEL`
+  стадия C, активировано в проде (`37b481f`).
 
 ## ✅ `SEC-AUDIT-02` — CORS allow-list слишком широкий (A05) — закрыто 16.05.2026
 - Был wildcard `*.up.railway.app` — пропускал любой проект Railway.
@@ -40,11 +39,9 @@
   — defense-in-depth, чтобы БУДУЩИЙ забытый guard не открыл эндпоинт. Не срочно,
   рефактор рискованный (28 контроллеров) — делать отдельным focused-проходом.
 
-## 🟠 `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` доступны любому `role=ADMIN` (A01)
-- `AdminPermissionGuard`: «нет декоратора → return true». Жёсткий гейт — только
-  `RolesGuard('ADMIN')`. В связке с `isSuperadmin @default(true)` — `read_only`/
-  `support` админ дёргает незадекорированные admin-эндпоинты.
-- **Фикс:** часть плана ролей (стадия B).
+## ✅ `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` (A01) — закрыто 16.05.2026
+- `AdminAccessGuard` на всех 10 admin-контроллерах: вход только `super_admin`/
+  `admin` + `isActive`. = `SEC-ADMIN-ACCESS-MODEL` стадия B, в проде (`37b481f`).
 
 ## ✅ `SEC-AUDIT-07` — JWT session-check сделан безусловным — закрыто 16.05.2026
 - `jwt.strategy.ts`: проверка сессии больше не `if (payload.sessionId)` —
@@ -61,16 +58,15 @@
 (не владелец) · `moderator/support/finance/read_only` — резерв, в панель НЕ
 пускаются. Новые роли (`owner`/`developer`) НЕ вводим.
 
-- ✅ **Стадия A (БД)** 16.05.2026 — `AdminUser.isSuperadmin` default `true`→`false`
-  + `isActive Boolean @default(true)`. Миграция `20260516140000_admin_user_access_flags`
-  (написана вручную, Expand-safe). Коммит `5a977b8`.
-- **Стадия B (entry-gate):** пускать в admin только `adminRole ∈ {super_admin,
-  admin}` + `isActive` + есть `AdminUser`. LoginPage зовёт `/admin/auth/me`,
-  при 403 — чёткий отказ.
-- **Стадия C (mandatory MFA):** `mfaPending` всем админам; `mfaEnabled=false`
-  → форс MfaSetupPage. Закрывает `SEC-AUDIT-01`.
-- **Стадия D (frontend):** ветка MFA-setup в LoginPage + сообщение об отказе.
-- ⚠️ Стадия C трогает логин — делать последней, отдельными коммитами.
+- ✅ **Стадия A (БД)** — `isSuperadmin` default `false` + `isActive`. Коммит `5a977b8`.
+- ✅ **Стадия B (entry-gate)** — `AdminAccessGuard` на всех 10 admin-контроллерах:
+  `adminRole ∈ {super_admin,admin}` + `isActive` + есть `AdminUser`. Коммит `bb19395`.
+- ✅ **Стадия C (mandatory MFA)** — `mfaPending` всем админам в verify-otp/
+  refresh/telegram-auth. Коммит `f0d6618`.
+- ✅ **Стадия D (frontend)** — LoginPage: ветка MFA-setup (QR), коммит `c1e125c`.
+- ✅ **Активировано 16.05.2026** — `main→api` смержен (`37b481f`), api редеплоен:
+  entry-gate + mandatory MFA в проде. Подтверждено владельцем. План
+  `SEC-ADMIN-ACCESS-MODEL` закрыт целиком (A→D).
 
 ---
 
@@ -79,14 +75,14 @@
 > Аудит 16.05.2026. **Домен:** `apps/api`. Tech-debt, не security.
 
 Правило (`apps/api/CLAUDE.md`): thin controllers, DB только через repositories,
-no direct prisma. **Нарушено в 8 контроллерах — 46 прямых `this.prisma.*`:**
-- `chat.controller.ts` — 🔴 19 вызовов, 659 LOC, 7 `as any`. Логика чата
-  (edit/delete/mark-read/admin-list) инлайн в обход repository, хотя use-cases
-  есть. Вынести в `ChatRepository` + use-cases.
-- `products.controller.ts` — 🟠 11 (image/attribute/option-эндпоинты).
-- `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — 🟡.
+no direct prisma. Было нарушено в 8 контроллерах — 46 прямых `this.prisma.*`:
+- ✅ `chat.controller.ts` — закрыто 16.05.2026 (`6d3c8d7`): 659→379 LOC, prisma
+  19→0, `as any` 12→0 по модулю. +9 методов в ChatRepository, +6 use-cases.
+  chat-специ 48/48.
+- 🟠 `products.controller.ts` — 11 (image/attribute/option-эндпоинты) — осталось.
+- 🟡 `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — осталось.
 - `health` — `$queryRaw SELECT 1` — ✅ легитимное исключение.
-- `as any` в контроллерах: 14 (chat 7, admin 3, categories 2, orders 2).
+- Остаток `as any` в контроллерах: ~7 (admin 3, categories 2, orders 2).
 
 ---
 
@@ -131,16 +127,11 @@ root cause ещё не подтверждён.
   имя типа — переименовать свободно, внешних потребителей нет.
 - **Подробности:** `analiz/logs.md` под `[API-TYPES-PAYMENT-METHOD-COLLISION-001]`.
 
-## 🟢 P3 — `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store`
+## ✅ `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store` — закрыт 16.05.2026
 
-- **Домен:** `packages/types` (Полат)
-- **Детали:** Wave 20 добавил `deliverySettings?: StoreDeliverySettings` только
-  в `StorefrontStore`. Seller-эндпоинт `GET /seller/store` тоже возвращает
-  nested `deliverySettings` (`stores.repository.ts` include), но интерфейс
-  `Store` его не моделирует. Из-за этого в web-seller `settings/page.tsx`
-  остаётся UI-extension `StoreWithDelivery = Store & { deliverySettings? }`.
-- **Фикс:** добавить `deliverySettings?: StoreDeliverySettings` в `Store`.
-  После — Азим уберёт `StoreWithDelivery` полностью.
+Добавлено `deliverySettings?: StoreDeliverySettings` в интерфейс `Store`
+(`packages/types/src/api/stores.ts`). Азим может убрать UI-extension
+`StoreWithDelivery`. Коммит `fb3eea0`.
 
 ---
 
@@ -157,17 +148,29 @@ root cause ещё не подтверждён.
 `WS-B09`, `WS-B10` (`WS-B03` покрыт существующим guard). Детали — `analiz/done.md`.
 
 **Осталось из 🔴:**
-- ✅ `WB-B01` backend-часть готова 15.05.2026 — `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
-  закрыт (preview отдаёт реальный `deliveryFee`+`total`, тип `CheckoutPreview`
-  расширен). Азиму осталось прокинуть поле в UI checkout (web-buyer).
+- ✅ `WB-B01` ЗАКРЫТ 16.05.2026 — backend (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`,
+  `484694a`) отдаёт реальный `deliveryFee`+`total`; web-buyer уже читал поле,
+  убран избыточный loose-cast `PreviewWithFee` (тип `CheckoutPreview` теперь
+  канонически несёт `deliveryFee`/`total`). Режим «Доставка» показывает и
+  списывает согласованную сумму. Commit `6d9f527` (ветка web-buyer).
 
 **Волна 2 ✅ 15.05.2026** — `fb5febf` (web-buyer) + `47ea98d` (web-seller).
 Закрыты: `WB-B05/B06/B11/B12/B13` (чат/уведомления + checkout auth), error-UI
 каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
 
-**Статус:** все 🔴-блокеры (кроме `WB-B01`, ждёт Полата) и 🟡-волна закрыты.
+**Статус:** все 🔴-блокеры закрыты, 🟡-волна закрыта.
 Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
 дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+
+## ✅ `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» платил доставку — закрыт 16.05.2026
+
+Выбран вариант 1: явный `deliveryMode: 'delivery' | 'pickup'` в контракте.
+`ConfirmCheckoutDto` + `GET /checkout/preview?deliveryMode` принимают режим;
+при `pickup` backend принудительно обнуляет `deliveryFee` и в preview, и в
+confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest.deliveryMode`
++ `CheckoutDeliveryMode` в `packages/types`. Default `delivery` (backward-compat).
+Коммит `fb3eea0`, специ checkout 61/61. **Азиму:** web-buyer теперь может слать
+`deliveryMode: 'pickup'` — backend согласует сумму preview/confirm.
 
 ## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
 

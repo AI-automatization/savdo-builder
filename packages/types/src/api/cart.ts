@@ -90,6 +90,14 @@ export interface CheckoutPreview {
  */
 export type CheckoutPaymentMethod = 'cash' | 'card' | 'online';
 
+/**
+ * Режим получения заказа.
+ * API-CHECKOUT-PICKUP-DELIVERY-FEE-001 (от Азима, 16.05.2026).
+ *  - `delivery` — курьерская доставка, deliveryFee из store.deliverySettings
+ *  - `pickup`   — самовывоз, backend принудительно обнуляет deliveryFee
+ */
+export type CheckoutDeliveryMode = 'delivery' | 'pickup';
+
 export interface CheckoutConfirmRequest {
   deliveryAddress: DeliveryAddress;
   buyerNote?: string;
@@ -103,4 +111,9 @@ export interface CheckoutConfirmRequest {
    * клиентами). `online` принимается только при PAYMENT_ONLINE_ENABLED.
    */
   paymentMethod?: CheckoutPaymentMethod;
+  /**
+   * Режим получения. Default `delivery` если не передан (backward-compat).
+   * `pickup` → backend обнуляет deliveryFee независимо от store.deliverySettings.
+   */
+  deliveryMode?: CheckoutDeliveryMode;
 }
