@@ -127,16 +127,11 @@ root cause ещё не подтверждён.
   имя типа — переименовать свободно, внешних потребителей нет.
 - **Подробности:** `analiz/logs.md` под `[API-TYPES-PAYMENT-METHOD-COLLISION-001]`.
 
-## 🟢 P3 — `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store`
+## ✅ `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store` — закрыт 16.05.2026
 
-- **Домен:** `packages/types` (Полат)
-- **Детали:** Wave 20 добавил `deliverySettings?: StoreDeliverySettings` только
-  в `StorefrontStore`. Seller-эндпоинт `GET /seller/store` тоже возвращает
-  nested `deliverySettings` (`stores.repository.ts` include), но интерфейс
-  `Store` его не моделирует. Из-за этого в web-seller `settings/page.tsx`
-  остаётся UI-extension `StoreWithDelivery = Store & { deliverySettings? }`.
-- **Фикс:** добавить `deliverySettings?: StoreDeliverySettings` в `Store`.
-  После — Азим уберёт `StoreWithDelivery` полностью.
+Добавлено `deliverySettings?: StoreDeliverySettings` в интерфейс `Store`
+(`packages/types/src/api/stores.ts`). Азим может убрать UI-extension
+`StoreWithDelivery`. Коммит `fb3eea0`.
 
 ---
 
@@ -167,25 +162,15 @@ root cause ещё не подтверждён.
 Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
 дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
 
-## 🟡 `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» всё равно платит доставку
+## ✅ `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» платил доставку — закрыт 16.05.2026
 
-- **Домен:** `apps/api` (Полат)
-- **Кто нашёл:** Азим, при закрытии `WB-B01` (16.05.2026)
-- **Что не так:** `confirm-checkout.use-case.ts` считает `deliveryFee` через
-  `computeDeliveryFee(store.deliverySettings)` **безусловно** — про режим
-  «Самовывоз» backend не знает (в `ConfirmCheckoutDto` нет `deliveryMode`,
-  pickup отличается только текстом `"Самовывоз"` в `deliveryAddress.street`).
-  Для магазина с `fixed`-тарифом покупатель, выбравший самовывоз, видит в
-  checkout «Бесплатно», но при подтверждении ему списывается fixed-плата →
-  тот же класс money/UX-бага, что `WB-B01`, но для pickup-ветки.
-- **Варианты фикса (нужно решение product):**
-  1. Добавить `deliveryMode: 'delivery' | 'pickup'` в `ConfirmCheckoutDto` +
-     `CheckoutPreview`; при `pickup` → `deliveryFee = 0` и в preview, и в confirm.
-  2. Либо: pickup всегда бесплатен — тогда web-buyer должен слать признак, а
-     backend обнулять плату.
-- **Пока не решено** — web-buyer в режиме «Самовывоз» показывает `deliveryFee=0`
-  (`checkout/page.tsx`: `mode === "delivery" ? storeDeliveryFee : 0`). Это
-  совпадёт с реальностью только после backend-фикса.
+Выбран вариант 1: явный `deliveryMode: 'delivery' | 'pickup'` в контракте.
+`ConfirmCheckoutDto` + `GET /checkout/preview?deliveryMode` принимают режим;
+при `pickup` backend принудительно обнуляет `deliveryFee` и в preview, и в
+confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest.deliveryMode`
++ `CheckoutDeliveryMode` в `packages/types`. Default `delivery` (backward-compat).
+Коммит `fb3eea0`, специ checkout 61/61. **Азиму:** web-buyer теперь может слать
+`deliveryMode: 'pickup'` — backend согласует сумму preview/confirm.
 
 ## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
 

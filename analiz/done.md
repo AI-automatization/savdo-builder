@@ -1,5 +1,34 @@
 # Done — Азим + Полат
 
+## 2026-05-16 (Полат) — checkout pickup + Store type
+
+### ✅ [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] «Самовывоз» больше не платит доставку 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/api/src/modules/checkout/dto/confirm-checkout.dto.ts`,
+  `checkout.controller.ts`, `use-cases/confirm-checkout.use-case.ts`,
+  `use-cases/preview-checkout.use-case.ts`, `packages/types/src/api/cart.ts`
+- **Что сделано:** Закрыт money/UX-баг из находки Азима (`WB-B01`-класс для
+  pickup-ветки). Выбран вариант 1 — явный `deliveryMode` в контракте, а не
+  угадывание по тексту адреса. `ConfirmCheckoutDto` принимает
+  `deliveryMode: 'delivery'|'pickup'`; `GET /checkout/preview` — query-параметр
+  `?deliveryMode`. При `pickup` backend принудительно обнуляет `deliveryFee`
+  (пропускает `computeDeliveryFee`) одинаково в preview и confirm → суммы
+  согласованы. `CheckoutConfirmRequest.deliveryMode` + `CheckoutDeliveryMode`
+  в `packages/types`. Default `delivery` (backward-compat). Коммит `fb3eea0`,
+  специ checkout 61/61.
+
+### ✅ [API-STORE-TYPE-DELIVERY-SETTINGS-001] `deliverySettings` в тип `Store` 🟢
+
+- **Важность:** 🟢
+- **Дата:** 16.05.2026
+- **Файлы:** `packages/types/src/api/stores.ts`
+- **Что сделано:** Добавлено `deliverySettings?: StoreDeliverySettings` в
+  интерфейс `Store` — `GET /seller/store` его уже возвращает (nested include),
+  но тип не моделировал. Азим может убрать UI-extension `StoreWithDelivery`.
+  Коммит `fb3eea0`.
+
 ## 2026-05-16 (Азим) — WB-B01: доставка в checkout
 
 ### ✅ [WB-B01] Плата за доставку отображается и списывается согласованно 🔴
