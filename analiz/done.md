@@ -121,6 +121,20 @@
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
 
+## 2026-05-16 (Полат) — Wave 28: admin i18n инфра + layout/login
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (admin — инфра + первый слой)
+У admin не было i18n — последняя незакрытая часть локализации платформы.
+- **Инфра** `apps/admin/src/lib/i18n/` (zero-deps, зеркалит TMA): types/ru/uz/
+  I18nProvider/index. Detect: localStorage → navigator.language → 'ru'.
+  `useTranslation()` → `{ t, locale, setLocale }`, `{var}`-интерполяция.
+- **App.tsx** — `I18nProvider` обёртка, PageFallback + QueuesRedirect.
+- **DashboardLayout** — навигация (4 группы, 21 пункт), поиск, тема, logout
+  + переключатель языка RU/UZ в футере сайдбара.
+- **LoginPage** — все строки (OTP/MFA шаги, ошибки, плейсхолдеры, aria).
+Коммит `666b88b`, admin build чисто.
+**Осталось:** 24 page'и admin — инкрементальная миграция по мере касания.
+
 ## 2026-05-15 (Полат) — Wave 27: тест AuditBrokenMediaUrlsUseCase
 
 ### ✅ [AUDIT-N1] 🟢
