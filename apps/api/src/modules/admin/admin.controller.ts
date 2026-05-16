@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
+import { AdminAccessGuard } from '../../common/guards/admin-access.guard';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
@@ -45,7 +46,7 @@ import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 @ApiTags('admin')
 @ApiBearerAuth('jwt')
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, AdminAccessGuard, MfaEnforcedGuard, AdminPermissionGuard)
 @Roles('ADMIN')
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);

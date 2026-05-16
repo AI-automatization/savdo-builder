@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
+import { AdminAccessGuard } from '../../common/guards/admin-access.guard';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { SkipMfaCheck } from '../../common/decorators/skip-mfa.decorator';
@@ -31,7 +32,7 @@ import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-ma
 @ApiTags('admin')
 @ApiBearerAuth('jwt')
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, AdminAccessGuard, MfaEnforcedGuard, AdminPermissionGuard)
 @Roles('ADMIN')
 export class SuperAdminController {
   private readonly logger = new Logger(SuperAdminController.name);
