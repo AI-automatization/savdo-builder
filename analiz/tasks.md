@@ -823,9 +823,11 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 > Когда придёт время монетизации — добавить subscription модель поверх
 > существующего flow. Все PAY-NNN тикеты ниже остаются как roadmap.
 >
-> **TODO для admin frontend:** добавить кнопку «Активировать продавца на рынке»
-> в `apps/admin/src/pages/UserDetailPage.tsx` (или где сейчас make-seller) —
-> модалка со всеми полями → один POST. Тикет: `ADMIN-MANUAL-ACTIVATION-UI-001`.
+> ✅ **`ADMIN-MANUAL-ACTIVATION-UI-001` закрыт 16.05.2026** — кнопка
+> «Активировать продавца на рынке» + модалка со всеми полями добавлены в
+> `apps/admin/src/pages/UserDetailPage.tsx`. Показывается только для не-админов
+> без профиля продавца. Один POST на `/admin/users/:id/activate-seller-on-market`.
+> Коммит см. `analiz/done.md`.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`

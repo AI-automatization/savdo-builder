@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye } from 'lucide-react'
+import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
@@ -64,6 +64,21 @@ export default function UserDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [impersonateConfirm, setImpersonateConfirm] = useState(false)
   const [impersonating, setImpersonating] = useState(false)
+
+  // ADMIN-MANUAL-ACTIVATION-UI-001: ручная активация продавца на рынке.
+  const [activateModal, setActivateModal] = useState(false)
+  const [activating, setActivating] = useState(false)
+  const [activateForm, setActivateForm] = useState({
+    fullName: '',
+    sellerType: 'individual' as 'individual' | 'business',
+    telegramUsername: '',
+    storeName: '',
+    storeCity: '',
+    telegramContactLink: '',
+    region: '',
+    slug: '',
+    description: '',
+  })
 
   const { data: user, loading, error, refetch } = useFetch<UserDetail>(
     `/api/v1/admin/users/${id}`,
@@ -129,6 +144,39 @@ export default function UserDetailPage() {
       toast.error(e.message ?? t('userDetail.impersonateError'))
     } finally {
       setImpersonating(false)
+    }
+  }
+
+  const activateRequiredFilled =
+    activateForm.fullName.trim() !== '' &&
+    activateForm.telegramUsername.trim() !== '' &&
+    activateForm.storeName.trim() !== '' &&
+    activateForm.storeCity.trim() !== '' &&
+    activateForm.telegramContactLink.trim() !== ''
+
+  async function activateSellerOnMarket() {
+    if (!id || !activateRequiredFilled) return
+    setActivating(true)
+    setActionError(null)
+    try {
+      await api.post(`/api/v1/admin/users/${id}/activate-seller-on-market`, {
+        fullName: activateForm.fullName.trim(),
+        sellerType: activateForm.sellerType,
+        telegramUsername: activateForm.telegramUsername.trim(),
+        storeName: activateForm.storeName.trim(),
+        storeCity: activateForm.storeCity.trim(),
+        telegramContactLink: activateForm.telegramContactLink.trim(),
+        region: activateForm.region.trim() || undefined,
+        slug: activateForm.slug.trim() || undefined,
+        description: activateForm.description.trim() || undefined,
+      })
+      toast.success(t('userDetail.activateSellerSuccess'))
+      setActivateModal(false)
+      refetch()
+    } catch (e: any) {
+      setActionError(e.message ?? t('common.error'))
+    } finally {
+      setActivating(false)
     }
   }
 
@@ -334,6 +382,29 @@ export default function UserDetailPage() {
               <Eye size={14} /> {t('userDetail.impersonate')}
             </button>
           )}
+
+          {/* ADMIN-MANUAL-ACTIVATION-UI-001: только для не-админов без профиля продавца */}
+          {!user.admin && !user.seller && !isBlocked && (
+            <button
+              onClick={() => {
+                setActivateForm(f => ({
+                  ...f,
+                  fullName: user.buyer?.fullName ?? '',
+                }))
+                setActionError(null)
+                setActivateModal(true)
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[14px] font-semibold"
+              style={{
+                border: '1px solid rgba(34,197,94,0.3)',
+                background: 'rgba(34,197,94,0.08)',
+                color: '#22C55E',
+                cursor: 'pointer',
+              }}
+            >
+              <Rocket size={14} /> {t('userDetail.activateSeller')}
+            </button>
+          )}
         </ActionPanel>
 
         {/* История действий с этим пользователем (suspend/unsuspend, верификации и т.д.) */}
@@ -442,6 +513,121 @@ export default function UserDetailPage() {
                 {impersonating ? t('userDetail.impersonating') : t('userDetail.impersonateConfirmBtn')}
               </button>
             </div>
+        </DialogShell>
+      )}
+
+      {/* Activate Seller On Market — ADMIN-MANUAL-ACTIVATION-UI-001 */}
+      {activateModal && (
+        <DialogShell
+          onClose={() => !activating && setActivateModal(false)}
+          width={520}
+          ariaLabelledBy="activate-seller-title"
+          closeOnBackdrop={!activating}
+          closeOnEscape={!activating}
+        >
+          <h3 id="activate-seller-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+            {t('userDetail.activateSellerTitle')}
+          </h3>
+          <p className="m-0 mb-4 text-[13px]" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {t('userDetail.activateSellerDesc')}
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {([
+              { key: 'fullName', label: t('userDetail.activateSellerFullName'), required: true },
+              { key: 'telegramUsername', label: t('userDetail.activateSellerTgUsername'), required: true },
+              { key: 'storeName', label: t('userDetail.activateSellerStoreName'), required: true },
+              { key: 'storeCity', label: t('userDetail.activateSellerStoreCity'), required: true },
+              { key: 'telegramContactLink', label: t('userDetail.activateSellerContactLink'), required: true },
+              { key: 'region', label: t('userDetail.activateSellerRegion'), required: false },
+              { key: 'slug', label: t('userDetail.activateSellerSlug'), required: false },
+            ] as const).map(field => (
+              <label key={field.key} className="flex flex-col gap-1">
+                <span className="text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  {field.label}{field.required && <span style={{ color: '#EF4444' }}> *</span>}
+                </span>
+                <input
+                  type="text"
+                  value={activateForm[field.key]}
+                  onChange={e => setActivateForm(f => ({ ...f, [field.key]: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-[14px] outline-none"
+                  style={{
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </label>
+            ))}
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                {t('userDetail.activateSellerType')}
+              </span>
+              <select
+                value={activateForm.sellerType}
+                onChange={e => setActivateForm(f => ({ ...f, sellerType: e.target.value as 'individual' | 'business' }))}
+                className="w-full px-3.5 py-2.5 rounded-xl text-[14px] outline-none"
+                style={{
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="individual">{t('userDetail.activateSellerTypeIndividual')}</option>
+                <option value="business">{t('userDetail.activateSellerTypeBusiness')}</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                {t('userDetail.activateSellerDescription')}
+              </span>
+              <textarea
+                value={activateForm.description}
+                onChange={e => setActivateForm(f => ({ ...f, description: e.target.value }))}
+                rows={2}
+                className="w-full px-3.5 py-2.5 rounded-xl text-[14px] resize-y outline-none"
+                style={{
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </label>
+          </div>
+
+          {actionError && (
+            <div role="alert" className="mt-3 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
+          )}
+
+          <div className="flex gap-2.5 justify-end mt-5">
+            <button
+              onClick={() => setActivateModal(false)}
+              disabled={activating}
+              className="px-5 py-2.5 rounded-xl text-[14px]"
+              style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: activating ? 'not-allowed' : 'pointer' }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={activateSellerOnMarket}
+              disabled={!activateRequiredFilled || activating}
+              className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+              style={{
+                border: 'none',
+                cursor: activateRequiredFilled && !activating ? 'pointer' : 'not-allowed',
+                background: activateRequiredFilled ? '#22C55E' : 'var(--surface2)',
+                color: activateRequiredFilled ? 'white' : 'var(--text-muted)',
+              }}
+            >
+              {activating ? t('userDetail.activateSellerSubmitting') : t('userDetail.activateSellerSubmit')}
+            </button>
+          </div>
         </DialogShell>
       )}
     </div>

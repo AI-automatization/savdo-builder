@@ -1,5 +1,24 @@
 # Done — Азим + Полат
 
+## 2026-05-16 (Полат) — admin: ручная активация продавца
+
+### ✅ [ADMIN-MANUAL-ACTIVATION-UI-001] Кнопка «Активировать продавца на рынке» 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/admin/src/pages/UserDetailPage.tsx`,
+  `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Что сделано:** Закрыт последний UI-хвост из замороженного блока монетизации.
+  В `UserDetailPage` добавлена кнопка «Активировать продавца на рынке» (зелёная,
+  в ActionPanel) — показывается только для не-админов без профиля продавца и не
+  заблокированных. Открывает модалку со всеми полями backend-контракта
+  (`fullName`, `sellerType` select, `telegramUsername`, `storeName`, `storeCity`,
+  `telegramContactLink` — обязательные; `region`, `slug`, `description` —
+  опциональные). `fullName` префиллится из `buyer.fullName`. Один POST на
+  `/admin/users/:id/activate-seller-on-market` — backend-endpoint уже был
+  (`super-admin.controller.ts`, `seller:create` permission). +19 i18n-ключей
+  ru/uz. tsc admin чистый.
+
 ## 2026-05-16 (Полат) — checkout pickup + Store type
 
 ### ✅ [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] «Самовывоз» больше не платит доставку 🟡
