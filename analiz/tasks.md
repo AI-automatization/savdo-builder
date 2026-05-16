@@ -5,6 +5,81 @@
 
 ---
 
+# 🔒 SECURITY AUDIT 16.05.2026 (Полат) — middleware / CORS / guards
+
+> Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.
+> **Домен:** `apps/api`. **Кто берёт:** Полат.
+
+## 🔴 `SEC-AUDIT-01` — MFA не обязателен (OWASP A07)
+- `MfaEnforcedGuard` блокирует только `mfaPending=true`; `mfaPending` ставится
+  лишь при `mfaEnabled=true` → админ без настроенного MFA входит по одному OTP.
+- **Фикс:** `mfaPending=true` для всех админов; `mfaEnabled=false` → форс в setup.
+  Часть плана ролей (стадия C, см. `SEC-ADMIN-ACCESS-MODEL` ниже).
+
+## 🟠 `SEC-AUDIT-02` — CORS allow-list слишком широкий (A05)
+- `main.ts` ORIGIN_PATTERNS: `*.up.railway.app` + `*.railway.app` + `credentials:true`.
+  Любой проект на общей платформе Railway проходит CORS. Смягчено Bearer-auth
+  основного API, но Bull Board на cookie → cross-site возможен.
+- **Фикс:** заменить wildcard на конкретные домены сервисов через `ALLOWED_ORIGINS`.
+
+## 🟠 `SEC-AUDIT-03` — rate limiting сломан за прокси (A04)
+- В `main.ts` нет `app.set('trust proxy')` → за Railway-прокси `req.ip` = IP эджа,
+  `ThrottlerGuard` считает всех в одном ведре. `@Throttle` лимиты общие, не per-IP.
+- **Фикс:** `app.set('trust proxy', 1)`.
+
+## 🟠 `SEC-AUDIT-04` — нет глобального default-deny auth (A01/A05)
+- `JwtAuthGuard` не глобальный — вешается вручную на каждый из 28 контроллеров.
+  Забыли `@UseGuards` на одном → эндпоинт публичный, без fail-safe.
+- **Фикс:** глобальный `APP_GUARD: JwtAuthGuard` + `@Public()` для открытых роутов.
+
+## 🟠 `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` доступны любому `role=ADMIN` (A01)
+- `AdminPermissionGuard`: «нет декоратора → return true». Жёсткий гейт — только
+  `RolesGuard('ADMIN')`. В связке с `isSuperadmin @default(true)` — `read_only`/
+  `support` админ дёргает незадекорированные admin-эндпоинты.
+- **Фикс:** часть плана ролей (стадия B).
+
+## 🟡 `SEC-AUDIT-06/07` — мелочи
+- `06`: DEV CORS = any origin (`if(!isProd) callback(null,true)`) — хрупкая
+  зависимость от `NODE_ENV`. `07`: JWT session-check условный (`if payload.sessionId`).
+
+---
+
+# 🔐 `SEC-ADMIN-ACCESS-MODEL` — модель ролей admin (Полат, 16.05.2026)
+
+> Решено с владельцем. **Домен:** `packages/db` + `apps/api` + `apps/admin`.
+
+**Модель ролей:** `super_admin` = owner (Полат, Азим) · `admin` = разработчик
+(не владелец) · `moderator/support/finance/read_only` — резерв, в панель НЕ
+пускаются. Новые роли (`owner`/`developer`) НЕ вводим.
+
+- **Стадия A (БД):** `AdminUser.isSuperadmin` default `true`→`false`;
+  `+ isActive Boolean @default(true)` (мягкая блокировка).
+- **Стадия B (entry-gate):** пускать в admin только `adminRole ∈ {super_admin,
+  admin}` + `isActive` + есть `AdminUser`. LoginPage зовёт `/admin/auth/me`,
+  при 403 — чёткий отказ.
+- **Стадия C (mandatory MFA):** `mfaPending` всем админам; `mfaEnabled=false`
+  → форс MfaSetupPage. Закрывает `SEC-AUDIT-01`.
+- **Стадия D (frontend):** ветка MFA-setup в LoginPage + сообщение об отказе.
+- ⚠️ Стадия C трогает логин — делать последней, отдельными коммитами.
+
+---
+
+# 🧱 `API-CONTROLLERS-ARCH-DEBT-001` — дрейф контроллеров от архправил (Полат)
+
+> Аудит 16.05.2026. **Домен:** `apps/api`. Tech-debt, не security.
+
+Правило (`apps/api/CLAUDE.md`): thin controllers, DB только через repositories,
+no direct prisma. **Нарушено в 8 контроллерах — 46 прямых `this.prisma.*`:**
+- `chat.controller.ts` — 🔴 19 вызовов, 659 LOC, 7 `as any`. Логика чата
+  (edit/delete/mark-read/admin-list) инлайн в обход repository, хотя use-cases
+  есть. Вынести в `ChatRepository` + use-cases.
+- `products.controller.ts` — 🟠 11 (image/attribute/option-эндпоинты).
+- `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — 🟡.
+- `health` — `$queryRaw SELECT 1` — ✅ легитимное исключение.
+- `as any` в контроллерах: 14 (chat 7, admin 3, categories 2, orders 2).
+
+---
+
 # 🚨🚨🚨 ПОЛАТУ — СРОЧНО ПОСМОТРЕТЬ ПЕРВЫМ ДЕЛОМ (от 14.05.2026 ночь)
 
 ## 🟡 P0 — `API-CHECKOUT-CONFIRM-500-001` — частично, ждёт redeploy + логи
