@@ -7,26 +7,100 @@
 
 # 🚨🚨🚨 ПОЛАТУ — СРОЧНО ПОСМОТРЕТЬ ПЕРВЫМ ДЕЛОМ (от 14.05.2026 ночь)
 
-## 🔴 P0 BLOCKER — `API-CHECKOUT-CONFIRM-500-001`
+## 🟡 P0 — `API-CHECKOUT-CONFIRM-500-001` — частично, ждёт redeploy + логи
 
-**Buyer не может оформить заказ.** На проде `POST /api/v1/checkout/confirm` возвращает HTTP 500 «Internal server error» — Azim воспроизвёл вечером 14.05.2026 в web-buyer checkout.
+**Статус 15.05.2026 (Полат):** defensive fix + диагностика задеплоены,
+root cause ещё не подтверждён.
 
-**Что нужно сделать:**
-1. Открыть Railway logs `savdo-api-production` за последние часы (с ~22:00 14.05.2026)
-2. Найти stack trace с `[CheckoutController]` или `[CheckoutService]`
-3. Подозрения (по убывающей вероятности):
-   - Decimal arithmetic floating-point (см. `analiz/logs.md` `P3-004-FLOATING-POINT` — твой же похожий pattern)
-   - Stock decrement INV-O04 (race / constraint violation)
-   - DB constraint violation на Order/OrderItem create
-   - Transaction rollback
-   - Telegram notification job enqueue падает
-4. Файлы: `apps/api/src/modules/checkout/checkout.controller.ts` + `checkout.use-case.ts` + `orders.repository.ts`
+**Что сделано:**
+1. ✅ **Fault-isolation** — `confirm-checkout.use-case.ts`: post-commit
+   side-effects (clearCart, WS-emit, TG-notify) обёрнуты в try/catch. Если
+   500 был из-за сбоя нотификации ПОСЛЕ создания заказа — buyer теперь
+   получает 201. Коммит `aec25e5`.
+2. ✅ **ErrorReporter в GlobalExceptionFilter** (API-SENTRY-001) — следующий
+   500 оставит полный stack trace в Railway stderr. Коммит `faaa36c`.
 
-**Frontend defensive уже работает** — Azim видит ErrorBanner с сообщением. Но до backend fix купить нельзя — это блокер launch'а.
+**Что осталось:**
+1. Дождаться redeploy `api` ветки на Railway.
+2. Если 500 повторится — взять stack trace из stderr (structured JSON,
+   `type:"exception"`, `source:"GlobalExceptionFilter"`, `path` содержит
+   `/checkout/confirm`).
+3. Если 500 ВНУТРИ транзакции `createOrder()` — root cause там (DB
+   constraint / stock race / Decimal). Если исчез — был side-effect,
+   задача закрыта.
 
-**Полные подробности:** `analiz/logs.md` под `[2026-05-14] [API-CHECKOUT-CONFIRM-500-001]`
+**Файлы:** `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`,
+`repositories/checkout.repository.ts`.
 
-После fix — закрыть здесь как `[x]` + перенести в `analiz/done.md`.
+**Подробности:** `analiz/logs.md` под `[2026-05-15] [API-CHECKOUT-CONFIRM-500-001]`.
+
+## ✅ P1 — `API-TYPES-PAYMENT-METHOD-COLLISION-001` — дубль экспорта `PaymentMethod` (ЗАКРЫТО 15.05.2026)
+
+- **Статус:** ✅ Закрыто Азимом аварийно 15.05.2026 (commit `c148a18`) —
+  **ломало Railway-сборку** web-buyer и web-seller (`next build` exit 1).
+- **Фикс:** `cart.ts` — `export type PaymentMethod` → `CheckoutPaymentMethod`.
+  Потребителей у типа не было (`apps/api` checkout — свой локальный тип +
+  Prisma-enum, web-* не импортили). `apps/api` не затронут.
+- **Полату на ревью:** изменён `packages/types` (его зона) в аварийном
+  порядке с согласия Азима — деплой обоих апов был мёртв. Если нужно другое
+  имя типа — переименовать свободно, внешних потребителей нет.
+- **Подробности:** `analiz/logs.md` под `[API-TYPES-PAYMENT-METHOD-COLLISION-001]`.
+
+## 🟢 P3 — `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store`
+
+- **Домен:** `packages/types` (Полат)
+- **Детали:** Wave 20 добавил `deliverySettings?: StoreDeliverySettings` только
+  в `StorefrontStore`. Seller-эндпоинт `GET /seller/store` тоже возвращает
+  nested `deliverySettings` (`stores.repository.ts` include), но интерфейс
+  `Store` его не моделирует. Из-за этого в web-seller `settings/page.tsx`
+  остаётся UI-extension `StoreWithDelivery = Store & { deliverySettings? }`.
+- **Фикс:** добавить `deliverySettings?: StoreDeliverySettings` в `Store`.
+  После — Азим уберёт `StoreWithDelivery` полностью.
+
+---
+
+# 🚨 QA-АУДИТ web-buyer + web-seller (15.05.2026) — pre-launch баги
+
+> Полный отчёт: `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`
+> (6 параллельных read-only агентов). **~20 🔴 багов + ~30 🟡 недочётов.**
+> Вердикт: к запуску в текущем виде НЕ готово.
+
+## 🔴 `WEB-QA-BUGFIX-2026-05-15` — блокеры запуска (Азим, web-buyer + web-seller)
+
+**Волна 1 ✅ 15.05.2026** — `123b70a` (web-buyer) + `73ff29f` (web-seller).
+Закрыты: `WB-B02`, `WB-B04`, `WS-B01`, `WS-B02`, `WS-B04`, `WS-B05`, `WS-B06`,
+`WS-B09`, `WS-B10` (`WS-B03` покрыт существующим guard). Детали — `analiz/done.md`.
+
+**Осталось из 🔴:**
+- ✅ `WB-B01` backend-часть готова 15.05.2026 — `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`
+  закрыт (preview отдаёт реальный `deliveryFee`+`total`, тип `CheckoutPreview`
+  расширен). Азиму осталось прокинуть поле в UI checkout (web-buyer).
+
+**Волна 2 ✅ 15.05.2026** — `fb5febf` (web-buyer) + `47ea98d` (web-seller).
+Закрыты: `WB-B05/B06/B11/B12/B13` (чат/уведомления + checkout auth), error-UI
+каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
+
+**Статус:** все 🔴-блокеры (кроме `WB-B01`, ждёт Полата) и 🟡-волна закрыты.
+Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
+дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+
+## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
+
+- **Домен:** `packages/types` (Полат)
+- **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
+  `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
+  web-seller читал через `as any`). Коммит `4cf0993`.
+- **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
+  `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
+  Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
+  типа вслепую. Передать Азиму запрос на список.
+
+## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
+
+`PreviewCheckoutUseCase` хардкодил `deliveryFee=0`, confirm считал реальную
+плату → preview показывал «Бесплатно», списывалась fixed-плата (`WB-B01`).
+Введён `computeDeliveryFee()` — единый расчёт для preview и confirm.
+`CheckoutPreview` += `deliveryFee`+`total`. Коммит `484694a`, специ 61/61.
 
 ---
 
@@ -88,13 +162,13 @@
 - [x] **`MARKETING-HOMEPAGE-DISCOVERY-001`** ✅ 13.05.2026 — Backend (Полат) + Frontend (Азим) закрыты. Slug-форма заменена на discovery page (HomeHero + chips + top stores + featured + recent + quick links). См. `analiz/done.md` 2026-05-13.
 - [x] **`WEB-BUYER-CATALOG-001`** ✅ 13.05.2026 — /stores и /products catalog pages + homepage «Все →» links + desktop header nav `Магазины`/`Товары`. См. `analiz/done.md`.
 - [x] **`WEB-SELLER-ONBOARDING-INTERCEPT-001`** ✅ 13.05.2026 — /become-seller explainer + onboarding 4→3 шага (-Step3 товар) + dashboard empty-state «Добавьте товар» + auth guards в seller-хуках (401-spam fix). См. `analiz/done.md`.
-- [ ] **`API-STORES-PAGINATION-001`** 🟢 P3 (Полат) — `/storefront/stores` сейчас `take: 50` hardcoded в `findAllPublished` (`stores.repository.ts:59`). На 37 stores OK; при росте до 500+ — нужна server-side pagination (`page`/`limit`/`cursor`). Frontend в `/stores` каталоге уже готов потреблять paginated ответ.
+- [x] **`API-STORES-PAGINATION-001`** ✅ 15.05.2026 (Полат) — `GET /storefront/stores` поддерживает `?page=&limit=` (server-side pagination, $transaction findMany+count, clamp 1..100, default 50). Ответ всегда `{ data, meta }` — meta добавлен non-breaking. Коммит `8a60131`.
 - [x] **`WEB-SELLER-PRODUCT-PARITY-001`** ✅ 13.05.2026 — функциональный паритет с TMA (multi-photo + attributes + filters + variants matrix + stock editor). 3 фазы. См. `analiz/done.md`.
-- [ ] **`API-PRODUCT-IMAGES-PATCH-001`** 🟢 P3 (Полат) — `PATCH /seller/products/:id/images/:imageId` для reorder/primary toggle. Сейчас отсутствует → web-seller edit reorder не сохраняется (только delete+recreate fallback). После добавления — web-seller подключит. Сейчас в `apps/api/src/modules/products/products.controller.ts:466-513` есть только POST (line 468) и DELETE (line 501).
-- [ ] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** 🟠 P1 (Полат) — На проде `/storefront/featured` возвращает мёртвые URLs вида `https://upjrcpxbewwceqthlzyd.supabase.co/storage/v1/object/public/savdo-public/product_image/2026/{uuid}.jpg` → 404. Подтверждено через Playwright: 3 из 5 продуктов на homepage web-buyer имеют `naturalWidth=0`. Миграция Supabase → R2/TG proxy не покрыла существующие записи `product_images`. Frontend defensive (web-buyer 14.05.2026, commit `0f1618e`): `<Image onError>` → fallback на «Без фото» placeholder. Backend нужен: либо bulk-rewrite старых URLs в R2/TG, либо deprecate этих записей (mediaUrls=[]) чтобы frontend сразу показывал placeholder без 404. Виден всем посетителям главной — подтянуть до больших маркетинговых пушей.
+- [x] **`API-PRODUCT-IMAGES-PATCH-001`** ✅ 15.05.2026 (Полат) — `PATCH /seller/products/:id/images/:imageId` добавлен (reorder `sortOrder` + toggle `isPrimary`, ownership-проверка, 404 на чужое фото, одна обложка на товар). DTO `UpdateProductImageDto`. Коммит `788aeb3`. Web-seller может подключить вместо delete+recreate fallback (закрывает `WS-B05`).
+- [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
-- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **Осталось:** мигрировать остальные TMA страницы (Cart, Checkout, Orders, Product, Profile, Wishlist), admin локализацию, web-buyer/web-seller (Азим), API Accept-Language для уведомлений.
+- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания), web-buyer/web-seller (Азим).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 
@@ -353,9 +427,9 @@
 - [x] **`WEB-BUYER-OTP-PURPOSE-FIX-001`** ✅ 14.05.2026 (Азим) — закрыто на ветке `web-buyer` (commit `e84598c`). Добавлен `purpose?: 'login' | 'register' | 'checkout'` prop с default `'login'`. Все 5 callsites (orders, wishlist, profile, chats, ChatComposerModal) наследуют 'login' default — semantic корректно. `(minimal)/checkout/page.tsx` имеет local OtpGate function — там `'checkout'` hardcode остаётся правильным. Подробности в `analiz/done.md`.
 
 **Для Полата (packages/types):**
-- [x] **`API-TYPES-PROMOTE-FEATURED-STOREFRONT-001`** ✅ 15.05.2026 (Полат) — создан `packages/types/src/api/storefront.ts` с `FeaturedTopStore`, `FeaturedProduct`, `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`. Экспорт в `index.ts`. **Азим:** обнови импорты в web-buyer → удали локальный `src/types/storefront.ts`.
-- [x] **`API-PRODUCT-IMAGES-FULL-SHAPE-001`** ✅ 15.05.2026 (Полат) — новый тип `ProductImageRef { url: string; id?: string; mediaId?: string; sortOrder?: number; isPrimary?: boolean }` в `packages/types/src/api/products.ts`. `ProductListItem.images` и `Product.images` теперь `ProductImageRef[]`. `id/mediaId/sortOrder` optional — feed-ответы могут отдавать только url, detail — всё. **Азим:** убери `as unknown as { images?: RawImage[] }` cast в `web-seller edit page`.
-- [x] **`API-STORE-DELIVERY-SETTINGS-TYPE-001`** ✅ 15.05.2026 (Полат) — тип `StoreDeliverySettings { supportsDelivery, supportsPickup, deliveryFeeType: 'fixed'|'manual'|'none', fixedDeliveryFee, deliveryNotes, pickupNotes }` в `stores.ts`. `StorefrontStore.deliverySettings?` (optional). **Азим:** убери UI-extension `StoreWithDelivery`.
+- [x] **`API-TYPES-PROMOTE-FEATURED-STOREFRONT-001`** ✅ 15.05.2026 (Полат) — создан `packages/types/src/api/storefront.ts` с `FeaturedTopStore`, `FeaturedProduct`, `FeaturedStorefrontResponse`, `GlobalCategoryTreeItem`. Экспорт в `index.ts`. **Азим ✅ 15.05.2026** — импорты обновлены, локальный `apps/web-buyer/src/types/storefront.ts` удалён (commit на ветке `web-buyer`).
+- [x] **`API-PRODUCT-IMAGES-FULL-SHAPE-001`** ✅ 15.05.2026 (Полат) — новый тип `ProductImageRef { url: string; id?: string; mediaId?: string; sortOrder?: number; isPrimary?: boolean }` в `packages/types/src/api/products.ts`. `ProductListItem.images` и `Product.images` теперь `ProductImageRef[]`. `id/mediaId/sortOrder` optional — feed-ответы могут отдавать только url, detail — всё. **Азим ✅ 15.05.2026** — `as unknown as { images?: RawImage[] }` double-cast убран в `web-seller products/[id]/edit/page.tsx`, `product.images` теперь типизирован (commit на ветке `web-seller`).
+- [x] **`API-STORE-DELIVERY-SETTINGS-TYPE-001`** ✅ 15.05.2026 (Полат) — тип `StoreDeliverySettings { supportsDelivery, supportsPickup, deliveryFeeType: 'fixed'|'manual'|'none', fixedDeliveryFee, deliveryNotes, pickupNotes }` в `stores.ts`. `StorefrontStore.deliverySettings?` (optional). **Азим ✅ 15.05.2026 (частично)** — `StoreWithDelivery` в `web-seller settings/page.tsx` теперь ссылается на канонический `StoreDeliverySettings` вместо ad-hoc inline-литерала. Полностью убрать extension нельзя: `deliverySettings` добавлен только в `StorefrontStore`, не в `Store` → заведён follow-up `API-STORE-TYPE-DELIVERY-SETTINGS-001` Полату.
 
 ### 🟡 P2 — для Полата (technical debt)
 

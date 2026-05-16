@@ -3,6 +3,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { Toaster } from 'sonner'
 import { auth } from './lib/api'
 import { ImpersonationProvider } from './lib/impersonation'
+import { I18nProvider, useTranslation } from './lib/i18n'
 import { ConfirmContainer } from './components/admin/ConfirmDialog'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
@@ -34,9 +35,10 @@ const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
 const MfaSetupPage = lazy(() => import('./pages/MfaSetupPage'))
 
 function PageFallback() {
+  const { t } = useTranslation()
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 240, color: 'var(--text-muted)', fontSize: 13 }}>
-      Загрузка…
+      {t('common.loading')}
     </div>
   )
 }
@@ -58,6 +60,7 @@ function AuthLogoutListener() {
 }
 
 function QueuesRedirect() {
+  const { t } = useTranslation()
   useEffect(() => {
     const apiUrl = (import.meta as any).env?.VITE_API_URL ?? ''
     // Bull Board защищён JWT — передаём admin access token в query.
@@ -68,7 +71,7 @@ function QueuesRedirect() {
   }, [])
   return (
     <div style={{ padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>
-      Открываем Bull Board...
+      {t('login.openQueues')}
     </div>
   )
 }
@@ -76,6 +79,7 @@ function QueuesRedirect() {
 export default function App() {
   return (
     <BrowserRouter>
+      <I18nProvider>
       <ImpersonationProvider>
         <AuthLogoutListener />
         <ConfirmContainer />
@@ -120,6 +124,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </ImpersonationProvider>
+      </I18nProvider>
     </BrowserRouter>
   )
 }

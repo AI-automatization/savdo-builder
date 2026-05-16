@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft, Sun, Moon, Lock } from 'lucide-react'
 import { api, auth } from '../lib/api'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '../lib/i18n'
 
 /** Decode JWT payload (no signature verify — фронт только читает claim'ы). */
 function decodeJwtPayload<T = Record<string, unknown>>(token: string): T | null {
@@ -29,6 +30,7 @@ function getInitialDark() {
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [dark, setDark] = useState(() => {
     const isDark = getInitialDark()
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
@@ -64,7 +66,7 @@ export default function LoginPage() {
   const sendOtp = async () => {
     setError('')
     if (!/^\+998\d{9}$/.test(phone)) {
-      setError('Формат: +998XXXXXXXXX (9 цифр после кода)')
+      setError(t('login.errPhoneFormat'))
       return
     }
     setLoading(true)
@@ -74,7 +76,7 @@ export default function LoginPage() {
       setTimer(300)
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
     } catch (e: any) {
-      setError(e.message ?? 'Ошибка отправки кода')
+      setError(e.message ?? t('login.errSendFailed'))
     } finally {
       setLoading(false)
     }
@@ -110,7 +112,7 @@ export default function LoginPage() {
     try {
       const data: any = await api.post('/api/v1/auth/verify-otp', { phone, code, purpose: 'login' })
       if (data.user?.role !== 'ADMIN') {
-        setError('Доступ запрещён. Этот кабинет только для администраторов Savdo.')
+        setError(t('login.errNotAdmin'))
         setOtp(['', '', '', '', '', ''])
         setLoading(false)
         return
@@ -133,9 +135,9 @@ export default function LoginPage() {
       navigate('/dashboard')
     } catch (e: any) {
       if (e.message?.includes('TELEGRAM_NOT_LINKED')) {
-        setError('Telegram не привязан. Напиши боту @savdo_builderBOT команду /start')
+        setError(t('login.errTgNotLinked'))
       } else {
-        setError('Неверный или просроченный код.')
+        setError(t('login.errBadCode'))
       }
       setOtp(['', '', '', '', '', ''])
       setTimeout(() => inputRefs.current[0]?.focus(), 50)
@@ -156,7 +158,7 @@ export default function LoginPage() {
       auth.setTokens(data.accessToken, auth.getRefresh() ?? '')
       navigate('/dashboard')
     } catch (e: any) {
-      setError(e.message?.includes('Invalid') ? 'Неверный TOTP код' : (e.message ?? 'Не удалось войти'))
+      setError(e.message?.includes('Invalid') ? t('login.errBadMfa') : (e.message ?? t('login.errLoginFailed')))
       setMfaCode('')
       setTimeout(() => mfaInputRef.current?.focus(), 50)
     } finally {
@@ -197,7 +199,7 @@ export default function LoginPage() {
       {/* Theme toggle — top right */}
       <button
         onClick={toggleTheme}
-        aria-label={dark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+        aria-label={dark ? t('theme.toLight') : t('theme.toDark')}
         className="fixed top-4 right-4 z-20 w-11 h-11 rounded-lg flex items-center justify-center transition-colors"
         style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
       >
@@ -212,13 +214,13 @@ export default function LoginPage() {
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/20">
             <Store size={20} color="white" />
           </div>
-          <h1 className="text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Savdo Admin</h1>
+          <h1 className="text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{t('login.title')}</h1>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
             {step === 1
-              ? 'Вход через Telegram OTP'
+              ? t('login.subtitlePhone')
               : step === 2
-                ? `Код отправлен на ${phone}`
-                : 'Введите код из приложения-аутентификатора'}
+                ? t('login.subtitleOtp', { phone })
+                : t('login.subtitleMfa')}
           </p>
         </div>
 
@@ -243,7 +245,7 @@ export default function LoginPage() {
         {step === 1 ? (
           <div className="space-y-4">
             <div>
-              <label className="block mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Номер телефона</label>
+              <label className="block mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{t('login.phoneLabel')}</label>
               <input
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
@@ -256,7 +258,7 @@ export default function LoginPage() {
 
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
               <MessageCircle size={12} className="text-indigo-400 shrink-0" />
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Код придёт в Telegram от @savdo_builderBOT</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('login.tgHint')}</span>
             </div>
 
             <button
@@ -265,8 +267,8 @@ export default function LoginPage() {
               className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
-                ? <><Loader2 size={15} className="animate-spin" /> Отправляем...</>
-                : <>Получить код <ArrowRight size={15} /></>
+                ? <><Loader2 size={15} className="animate-spin" /> {t('login.sending')}</>
+                : <>{t('login.getCode')} <ArrowRight size={15} /></>
               }
             </button>
           </div>
@@ -276,13 +278,13 @@ export default function LoginPage() {
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
               <Lock size={12} className="text-indigo-400 shrink-0" />
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Двухфакторная аутентификация активна. Откройте Google Authenticator / Authy / 1Password.
+                {t('login.mfaActive')}
               </span>
             </div>
 
             <div>
               <label className="block mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Код из приложения (6 цифр)
+                {t('login.mfaCodeLabel')}
               </label>
               <input
                 ref={el => { mfaInputRef.current = el }}
@@ -304,24 +306,24 @@ export default function LoginPage() {
               className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
-                ? <><Loader2 size={15} className="animate-spin" /> Проверяем...</>
-                : <>Подтвердить <ArrowRight size={15} /></>
+                ? <><Loader2 size={15} className="animate-spin" /> {t('login.checking')}</>
+                : <>{t('login.confirm')} <ArrowRight size={15} /></>
               }
             </button>
 
             <button onClick={reset} className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: 'var(--text-dim)' }}>
-              <ChevronLeft size={13} /> Войти заново
+              <ChevronLeft size={13} /> {t('login.loginAgain')}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
               <legend className="text-xs text-center w-full" style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-                Введите 6-значный код из Telegram
+                {t('login.otpLegend')}
               </legend>
 
               {/* OTP inputs */}
-              <div className="flex gap-2 justify-center" role="group" aria-label="Код подтверждения">
+              <div className="flex gap-2 justify-center" role="group" aria-label={t('login.otpGroupAria')}>
                 {otp.map((d, i) => (
                   <input
                     key={i}
@@ -332,7 +334,7 @@ export default function LoginPage() {
                     maxLength={6}
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    aria-label={`Цифра ${i + 1} из 6`}
+                    aria-label={t('login.otpDigitAria', { n: i + 1 })}
                     className={cn(
                       'w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border',
                       'focus:outline-none transition-colors',
@@ -346,7 +348,7 @@ export default function LoginPage() {
 
             {timer > 0 ? (
               <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-                Повторить через{' '}
+                {t('login.resendIn')}{' '}
                 <span className="text-indigo-400 font-mono font-semibold">
                   {Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}
                 </span>
@@ -354,19 +356,19 @@ export default function LoginPage() {
             ) : (
               <p className="text-center">
                 <button onClick={reset} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                  Отправить код повторно
+                  {t('login.resend')}
                 </button>
               </p>
             )}
 
             {loading && (
               <div className="flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                <Loader2 size={13} className="animate-spin" /> Проверяем...
+                <Loader2 size={13} className="animate-spin" /> {t('login.checking')}
               </div>
             )}
 
             <button onClick={reset} className="flex items-center gap-1.5 text-xs transition-colors mt-2" style={{ color: 'var(--text-dim)' }}>
-              <ChevronLeft size={13} /> Изменить номер
+              <ChevronLeft size={13} /> {t('login.changeNumber')}
             </button>
           </div>
         )}

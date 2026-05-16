@@ -40,7 +40,7 @@ const STORE = {
   id: 'store-1',
   sellerId: 'seller-1',
   name: 'Тестовый магазин',
-  seller: { telegramUsername: 'test_seller' },
+  seller: { telegramUsername: 'test_seller', user: { languageCode: 'ru' } },
   // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend читает из deliverySettings.
   // По умолчанию none → 0. Тесты которые проверяют ненулевой deliveryFee
   // переопределяют через mockResolvedValueOnce с deliveryFeeType=fixed.
@@ -263,6 +263,7 @@ describe('ConfirmCheckoutUseCase', () => {
         itemCount: 1,
         total: 1100,
         currency: 'UZS',
+        locale: 'ru',
       });
     });
 
