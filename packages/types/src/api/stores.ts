@@ -23,6 +23,10 @@ export interface Store {
   isVerified: boolean;
   avgRating: number | null;
   reviewCount: number;
+  // API-STORE-TYPE-DELIVERY-SETTINGS-001 (от Азима, 16.05.2026) — настройки
+  // доставки магазина. Optional: не все store-ответы их включают (seller
+  // dashboard / checkout — включают). Тип задан ниже в этом же файле.
+  deliverySettings?: StoreDeliverySettings;
 }
 
 /**

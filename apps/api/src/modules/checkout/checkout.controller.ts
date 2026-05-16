@@ -3,13 +3,14 @@ import {
   Get,
   Post,
   Body,
+  Query,
   UseGuards,
   UseInterceptors,
   HttpCode,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiHeader, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
@@ -38,9 +39,21 @@ export class CheckoutController {
   // ─── GET /api/v1/checkout/preview ──────────────────────────────────────────
 
   @Get('preview')
-  async preview(@CurrentUser() user: JwtPayload) {
+  @ApiQuery({
+    name: 'deliveryMode',
+    required: false,
+    enum: ['delivery', 'pickup'],
+    description: 'Режим получения. pickup → deliveryFee = 0. Default delivery.',
+  })
+  async preview(
+    @CurrentUser() user: JwtPayload,
+    @Query('deliveryMode') deliveryMode?: string,
+  ) {
     const buyerId = await this.resolveBuyerId(user.sub);
-    return this.previewCheckoutUseCase.execute({ buyerId });
+    // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: невалидное значение трактуем как
+    // delivery (backward-compat: старые клиенты вообще не шлют параметр).
+    const mode = deliveryMode === 'pickup' ? 'pickup' : 'delivery';
+    return this.previewCheckoutUseCase.execute({ buyerId, deliveryMode: mode });
   }
 
   // ─── POST /api/v1/checkout/confirm ─────────────────────────────────────────
@@ -79,6 +92,7 @@ export class CheckoutController {
       customerFullName: dto.customerFullName,
       customerPhone: dto.customerPhone,
       paymentMethod: dto.paymentMethod,
+      deliveryMode: dto.deliveryMode,
     });
   }
 
