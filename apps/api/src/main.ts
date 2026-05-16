@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -25,9 +26,14 @@ ErrorReporter.init();
 async function bootstrap() {
   // API-PINO-LOGGING-001: structured JSON logging в production (Railway).
   // В dev — fallback на цветной ConsoleLogger.
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: new StructuredLogger(),
   });
+
+  // SEC-AUDIT-03: за Railway-прокси без `trust proxy` Express видит `req.ip`
+  // как IP эджа → ThrottlerGuard считает всех в одном ведре, X-Forwarded-For
+  // игнорируется. `1` = доверяем одному хопу (Railway edge сам выставляет XFF).
+  app.set('trust proxy', 1);
 
   app.setGlobalPrefix('api/v1');
 
