@@ -222,7 +222,7 @@ describe('CreateSellerThreadUseCase', () => {
     });
     expect(sendMessage.execute).toHaveBeenCalledWith({
       threadId: 't-1',
-      senderUserId: 'seller-1',
+      sellerProfileId: 'seller-1',
       text: 'about your order',
     });
   });

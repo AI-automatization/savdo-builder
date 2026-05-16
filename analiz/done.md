@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-05-16 (Полат) — checkout pickup + Store type
+
+### ✅ [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] «Самовывоз» больше не платит доставку 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/api/src/modules/checkout/dto/confirm-checkout.dto.ts`,
+  `checkout.controller.ts`, `use-cases/confirm-checkout.use-case.ts`,
+  `use-cases/preview-checkout.use-case.ts`, `packages/types/src/api/cart.ts`
+- **Что сделано:** Закрыт money/UX-баг из находки Азима (`WB-B01`-класс для
+  pickup-ветки). Выбран вариант 1 — явный `deliveryMode` в контракте, а не
+  угадывание по тексту адреса. `ConfirmCheckoutDto` принимает
+  `deliveryMode: 'delivery'|'pickup'`; `GET /checkout/preview` — query-параметр
+  `?deliveryMode`. При `pickup` backend принудительно обнуляет `deliveryFee`
+  (пропускает `computeDeliveryFee`) одинаково в preview и confirm → суммы
+  согласованы. `CheckoutConfirmRequest.deliveryMode` + `CheckoutDeliveryMode`
+  в `packages/types`. Default `delivery` (backward-compat). Коммит `fb3eea0`,
+  специ checkout 61/61.
+
+### ✅ [API-STORE-TYPE-DELIVERY-SETTINGS-001] `deliverySettings` в тип `Store` 🟢
+
+- **Важность:** 🟢
+- **Дата:** 16.05.2026
+- **Файлы:** `packages/types/src/api/stores.ts`
+- **Что сделано:** Добавлено `deliverySettings?: StoreDeliverySettings` в
+  интерфейс `Store` — `GET /seller/store` его уже возвращает (nested include),
+  но тип не моделировал. Азим может убрать UI-extension `StoreWithDelivery`.
+  Коммит `fb3eea0`.
+
+## 2026-05-16 (Азим) — WB-B01: доставка в checkout
+
+### ✅ [WB-B01] Плата за доставку отображается и списывается согласованно 🔴
+
+- **Важность:** 🔴
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Закрыт последний 🔴-блокер QA-аудита 15.05. Backend-часть
+  (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`, `484694a`, Полат) научила
+  `/checkout/preview` отдавать реальный `deliveryFee`+`total`; тип
+  `CheckoutPreview` теперь канонически несёт `deliveryFee`/`total` — убран
+  избыточный loose-cast. Режим «Доставка» согласован с backend. Commit
+  `6d9f527` (ветка web-buyer). Смежная находка — pickup облагается доставкой
+  на backend → тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` Полату.
+
 ## 2026-05-15 (Азим) — QA-аудит wave 2: 🟡 «сильно желательно»
 
 Коммиты `fb5febf` (ветка web-buyer), `47ea98d` (ветка web-seller).
@@ -137,6 +181,23 @@
 `jwt.strategy.ts`: проверка сессии на отзыв больше не условная — токен без
 `sessionId` отклоняется. Все 6 флоу выдачи токена ставят sessionId.
 Коммит `31a5187`, auth-специ 97/97.
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] (chat) 🧱 — рефактор chat.controller
+`chat.controller.ts` 659→379 LOC, прямых prisma-вызовов 19→0, `as any` 12→0
+по всему модулю. +9 методов в `ChatRepository`, +6 use-cases (MarkThreadRead,
+DeleteThread, Delete/EditMessage, ReportMessage, AdminChat). `as any` оказался
+schema-drift — ушёл после `db:generate`. Поведение идентично. chat-специ 48/48,
+api tsc clean. Коммит `6d3c8d7` (через фонового агента, проверено + закоммичено).
+Осталось по тикету: products/stores/categories контроллеры.
+
+### ✅ [SEC-ADMIN-ACCESS-MODEL] 🔐 — план ролей admin закрыт целиком (стадии A-D)
+Активировано в проде 16.05.2026 (merge `main→api` `37b481f`, подтверждено владельцем).
+- **B** — `AdminAccessGuard` на 10 admin-контроллерах: вход только `super_admin`/
+  `admin` + `isActive`. Закрыл `SEC-AUDIT-05`. Коммит `bb19395`.
+- **C** — mandatory MFA: `mfaPending` всем админам (verify-otp/refresh/
+  telegram-auth). Закрыл `SEC-AUDIT-01`. Коммит `f0d6618`.
+- **D** — LoginPage MFA-setup branch (QR → /mfa/verify → /mfa/login). `c1e125c`.
+Тесты: auth 97/97, admin+guard 236/236, admin build clean.
 
 ### ✅ [SEC-ADMIN-ACCESS-MODEL стадия A] 🔐 — флаги AdminUser
 `AdminUser.isSuperadmin` default `true`→`false` (опасный дефолт) + новое поле

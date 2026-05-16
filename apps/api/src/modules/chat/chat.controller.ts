@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Logger,
   Param,
   Patch,
   Post,
@@ -24,7 +23,6 @@ import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { UsersRepository } from '../users/repositories/users.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
-import { PrismaService } from '../../database/prisma.service';
 import { CreateThreadDto } from './dto/create-thread.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ListMessagesDto } from './dto/list-messages.dto';
@@ -35,27 +33,34 @@ import { GetThreadMessagesUseCase } from './use-cases/get-thread-messages.use-ca
 import { ListMyThreadsUseCase } from './use-cases/list-my-threads.use-case';
 import { ResolveThreadUseCase } from './use-cases/resolve-thread.use-case';
 import { GetUnreadCountUseCase } from './use-cases/get-unread-count.use-case';
-import { ChatGateway } from '../../socket/chat.gateway';
+import { MarkThreadReadUseCase } from './use-cases/mark-thread-read.use-case';
+import { DeleteThreadUseCase } from './use-cases/delete-thread.use-case';
+import { DeleteMessageUseCase } from './use-cases/delete-message.use-case';
+import { EditMessageUseCase } from './use-cases/edit-message.use-case';
+import { ReportMessageUseCase } from './use-cases/report-message.use-case';
+import { AdminChatUseCases } from './use-cases/admin-chat.use-cases';
 
 @ApiTags('chat')
 @ApiBearerAuth('jwt')
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard)
 export class ChatController {
-  private readonly logger = new Logger(ChatController.name);
-
   constructor(
     private readonly usersRepo: UsersRepository,
     private readonly sellersRepo: SellersRepository,
-    private readonly prisma: PrismaService,
     private readonly createThreadUseCase: CreateThreadUseCase,
     private readonly createSellerThreadUseCase: CreateSellerThreadUseCase,
     private readonly sendMessageUseCase: SendMessageUseCase,
     private readonly getThreadMessagesUseCase: GetThreadMessagesUseCase,
     private readonly listMyThreadsUseCase: ListMyThreadsUseCase,
     private readonly resolveThreadUseCase: ResolveThreadUseCase,
-    private readonly chatGateway: ChatGateway,
     private readonly getUnreadCountUseCase: GetUnreadCountUseCase,
+    private readonly markThreadReadUseCase: MarkThreadReadUseCase,
+    private readonly deleteThreadUseCase: DeleteThreadUseCase,
+    private readonly deleteMessageUseCase: DeleteMessageUseCase,
+    private readonly editMessageUseCase: EditMessageUseCase,
+    private readonly reportMessageUseCase: ReportMessageUseCase,
+    private readonly adminChatUseCases: AdminChatUseCases,
   ) {}
 
   // GET /api/v1/chat/unread-count — UX-002 badge на иконке чата (polling 30s)
@@ -153,26 +158,14 @@ export class ChatController {
     @Param('id') threadId: string,
     @Body() dto: SendMessageDto,
   ) {
-    // Dual-role: определяем senderUserId по тому, в какой роли юзер участвует в треде.
+    // Dual-role: use-case сам резолвит senderUserId по тому, в какой роли
+    // юзер участвует в треде.
     const ids = await this.resolveBothProfileIds(user.sub);
-    const thread = await this.prisma.chatThread.findUnique({
-      where: { id: threadId },
-      select: { buyerId: true, sellerId: true },
-    });
-    if (!thread) {
-      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
-    }
-    const senderUserId =
-      ids.buyerProfileId && thread.buyerId === ids.buyerProfileId ? ids.buyerProfileId :
-      ids.sellerProfileId && thread.sellerId === ids.sellerProfileId ? ids.sellerProfileId :
-      null;
-    if (!senderUserId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant of this thread', HttpStatus.FORBIDDEN);
-    }
 
     return this.sendMessageUseCase.execute({
       threadId,
-      senderUserId,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
       text: dto.text,
       parentMessageId: dto.parentMessageId,
       mediaId: dto.mediaId,
@@ -201,26 +194,10 @@ export class ChatController {
   ): Promise<void> {
     const ids = await this.resolveBothProfileIds(user.sub);
 
-    const thread = await this.prisma.chatThread.findUnique({
-      where: { id: threadId },
-      select: { buyerId: true, sellerId: true },
-    });
-
-    if (!thread) {
-      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
-    }
-
-    const isBuyer = !!ids.buyerProfileId && thread.buyerId === ids.buyerProfileId;
-    const isSeller = !!ids.sellerProfileId && thread.sellerId === ids.sellerProfileId;
-
-    if (!isBuyer && !isSeller) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
-    }
-
-    const field = isBuyer ? 'buyerLastReadAt' : 'sellerLastReadAt';
-    await this.prisma.chatThread.update({
-      where: { id: threadId },
-      data: { [field]: new Date() },
+    await this.markThreadReadUseCase.execute({
+      threadId,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
     });
   }
 
@@ -234,26 +211,10 @@ export class ChatController {
   ): Promise<void> {
     const ids = await this.resolveBothProfileIds(user.sub);
 
-    const thread = await this.prisma.chatThread.findUnique({
-      where: { id: threadId },
-      select: { buyerId: true, sellerId: true },
-    });
-
-    if (!thread) {
-      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
-    }
-
-    const isBuyer = !!ids.buyerProfileId && thread.buyerId === ids.buyerProfileId;
-    const isSeller = !!ids.sellerProfileId && thread.sellerId === ids.sellerProfileId;
-
-    if (!isBuyer && !isSeller) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
-    }
-
-    const field = isBuyer ? 'buyerDeletedAt' : 'sellerDeletedAt';
-    await (this.prisma.chatThread as any).update({
-      where: { id: threadId },
-      data: { [field]: new Date() },
+    await this.deleteThreadUseCase.execute({
+      threadId,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
     });
   }
 
@@ -268,33 +229,12 @@ export class ChatController {
   ): Promise<void> {
     const ids = await this.resolveBothProfileIds(user.sub);
 
-    const message = await this.prisma.chatMessage.findUnique({
-      where: { id: msgId },
-      select: { id: true, threadId: true, senderUserId: true, isDeleted: true },
+    await this.deleteMessageUseCase.execute({
+      threadId,
+      messageId: msgId,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
     });
-
-    if (!message || message.threadId !== threadId) {
-      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Message not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (message.isDeleted) return;
-
-    // Author check: senderUserId — это Buyer.id или Seller.id. Юзер автор если
-    // совпало с любым из его профилей.
-    const isAuthor =
-      (!!ids.buyerProfileId && message.senderUserId === ids.buyerProfileId) ||
-      (!!ids.sellerProfileId && message.senderUserId === ids.sellerProfileId);
-
-    if (!isAuthor) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can delete this message', HttpStatus.FORBIDDEN);
-    }
-
-    await (this.prisma.chatMessage as any).update({
-      where: { id: msgId },
-      data: { isDeleted: true, body: null, deletedAt: new Date() },
-    });
-
-    this.chatGateway.emitChatMessageDeleted(threadId, msgId);
   }
 
   // PATCH /api/v1/chat/threads/:threadId/messages/:msgId  (edit, author only, 15 min window)
@@ -306,53 +246,15 @@ export class ChatController {
     @Param('msgId') msgId: string,
     @Body('text') text: string,
   ) {
-    if (!text?.trim()) {
-      throw new BadRequestException('text is required');
-    }
-
     const ids = await this.resolveBothProfileIds(user.sub);
 
-    const message = await this.prisma.chatMessage.findUnique({
-      where: { id: msgId },
-      select: { id: true, threadId: true, senderUserId: true, isDeleted: true, createdAt: true },
+    return this.editMessageUseCase.execute({
+      threadId,
+      messageId: msgId,
+      text,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
     });
-
-    if (!message || message.threadId !== threadId) {
-      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Message not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (message.isDeleted) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Cannot edit a deleted message', HttpStatus.FORBIDDEN);
-    }
-
-    const isAuthorAsBuyer = !!ids.buyerProfileId && message.senderUserId === ids.buyerProfileId;
-    const isAuthorAsSeller = !!ids.sellerProfileId && message.senderUserId === ids.sellerProfileId;
-
-    if (!isAuthorAsBuyer && !isAuthorAsSeller) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Only the author can edit this message', HttpStatus.FORBIDDEN);
-    }
-
-    const ageMs = Date.now() - message.createdAt.getTime();
-    if (ageMs > 15 * 60 * 1000) {
-      throw new BadRequestException('Edit window expired (15 minutes)');
-    }
-
-    const updated = await (this.prisma.chatMessage as any).update({
-      where: { id: msgId },
-      data: { body: text.trim(), editedAt: new Date() },
-    });
-
-    this.chatGateway.emitChatMessageEdited(updated);
-
-    return {
-      id: updated.id,
-      threadId: updated.threadId,
-      text: updated.body ?? '',
-      senderRole: isAuthorAsSeller ? 'SELLER' : 'BUYER',
-      editedAt: updated.editedAt ? new Date(updated.editedAt).toISOString() : null,
-      isDeleted: false,
-      createdAt: new Date(updated.createdAt).toISOString(),
-    };
   }
 
   // PATCH /api/v1/chat/messages/:id/report
@@ -365,31 +267,12 @@ export class ChatController {
   ): Promise<void> {
     const ids = await this.resolveBothProfileIds(user.sub);
 
-    const message = await this.prisma.chatMessage.findUnique({
-      where: { id: messageId },
-      select: { id: true, thread: { select: { buyerId: true, sellerId: true } } },
+    await this.reportMessageUseCase.execute({
+      messageId,
+      reporterUserId: user.sub,
+      buyerProfileId: ids.buyerProfileId,
+      sellerProfileId: ids.sellerProfileId,
     });
-
-    if (!message) {
-      throw new DomainException(ErrorCode.THREAD_NOT_FOUND, 'Message not found', HttpStatus.NOT_FOUND);
-    }
-
-    const { buyerId, sellerId } = message.thread;
-    const isParticipant =
-      (!!ids.buyerProfileId && ids.buyerProfileId === buyerId) ||
-      (!!ids.sellerProfileId && ids.sellerProfileId === sellerId);
-
-    if (!isParticipant) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Not a participant', HttpStatus.FORBIDDEN);
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (this.prisma.chatMessage as any).update({
-      where: { id: messageId },
-      data: { reportedAt: new Date() },
-    });
-
-    this.logger.warn(`Message ${messageId} reported by user ${user.sub}`);
   }
 
   // ─── Admin endpoints ────────────────────────────────────────────────────────
@@ -402,127 +285,28 @@ export class ChatController {
     @Query('limit') limit = 30,
     @Query('status') status?: 'OPEN' | 'CLOSED',
   ) {
-    const allowedStatuses = ['OPEN', 'CLOSED'];
-    const where = status && allowedStatuses.includes(status) ? { status } : {};
-    const [threads, total] = await Promise.all([
-      this.prisma.chatThread.findMany({
-        where,
-        orderBy: { lastMessageAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
-        include: {
-          buyer: { include: { user: { select: { phone: true } } } },
-          seller: { include: { store: { select: { name: true, slug: true } } } },
-          messages: {
-            where: { isDeleted: false },
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-          },
-        },
-      }),
-      this.prisma.chatThread.count({ where }),
-    ]);
-
-    return {
-      data: threads.map((t) => ({
-        id: t.id,
-        status: t.status,
-        threadType: t.threadType,
-        lastMessageAt: t.lastMessageAt,
-        storeName: t.seller?.store?.name ?? null,
-        storeSlug: t.seller?.store?.slug ?? null,
-        buyerPhone: t.buyer?.user?.phone ?? null,
-        lastMessage: t.messages[0]?.body ?? null,
-      })),
-      total,
-      page: Number(page),
-      limit: Number(limit),
-    };
+    return this.adminChatUseCases.listThreads({ page, limit, status });
   }
 
   // GET /api/v1/admin/chat/threads/:id/messages
   @Get('admin/chat/threads/:id/messages')
   @Roles('ADMIN')
   async adminGetMessages(@Param('id') threadId: string) {
-    const thread = await this.prisma.chatThread.findUnique({
-      where: { id: threadId },
-      include: {
-        buyer: { include: { user: { select: { phone: true } } } },
-        seller: { include: { store: { select: { name: true } } } },
-        messages: {
-          where: { isDeleted: false },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
-
-    if (!thread) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
-    }
-
-    return {
-      id: thread.id,
-      status: thread.status,
-      storeName: thread.seller?.store?.name ?? null,
-      buyerPhone: thread.buyer?.user?.phone ?? null,
-      messages: thread.messages.map((m) => ({
-        id: m.id,
-        senderUserId: m.senderUserId,
-        body: m.body,
-        createdAt: m.createdAt,
-      })),
-    };
+    return this.adminChatUseCases.getThreadMessages(threadId);
   }
 
   // DELETE /api/v1/admin/chat/threads/:id
   @Delete('admin/chat/threads/:id')
   @Roles('ADMIN')
   async adminDeleteThread(@Param('id') threadId: string) {
-    const thread = await this.prisma.chatThread.findUnique({ where: { id: threadId } });
-    if (!thread) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'Thread not found', HttpStatus.NOT_FOUND);
-    }
-    await this.prisma.chatMessage.deleteMany({ where: { threadId } });
-    await this.prisma.chatThread.delete({ where: { id: threadId } });
-    return { success: true };
+    return this.adminChatUseCases.deleteThread(threadId);
   }
 
   // GET /api/v1/admin/chat/reports
   @Get('admin/chat/reports')
   @Roles('ADMIN')
   async adminGetReports() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const messages = await (this.prisma.chatMessage as any).findMany({
-      where: { reportedAt: { not: null } },
-      orderBy: { reportedAt: 'desc' },
-      take: 200,
-      select: {
-        id: true,
-        body: true,
-        reportedAt: true,
-        createdAt: true,
-        thread: {
-          select: {
-            id: true,
-            status: true,
-            buyer: { select: { user: { select: { phone: true } } } },
-            seller: { select: { store: { select: { name: true } } } },
-          },
-        },
-      },
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (messages as any[]).map((m) => ({
-      id: m.id,
-      body: m.body ?? '',
-      reportedAt: m.reportedAt,
-      createdAt: m.createdAt,
-      threadId: m.thread.id,
-      threadStatus: m.thread.status,
-      buyerPhone: m.thread.buyer?.user?.phone ?? null,
-      storeName: m.thread.seller?.store?.name ?? null,
-    }));
+    return this.adminChatUseCases.getReports();
   }
 
   // DELETE /api/v1/admin/chat/messages/:id/report  (dismiss report)
@@ -530,12 +314,7 @@ export class ChatController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('ADMIN')
   async adminDismissReport(@Param('id') messageId: string): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (this.prisma.chatMessage as any).update({
-      where: { id: messageId },
-      data: { reportedAt: null },
-    });
-    this.logger.log(`Report dismissed for message ${messageId}`);
+    await this.adminChatUseCases.dismissReport(messageId);
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
@@ -590,35 +369,6 @@ export class ChatController {
       buyerProfileId: user?.buyer?.id,
       sellerProfileId: user?.seller?.id,
     };
-  }
-
-  /**
-   * Returns a single `participantId` for message access checks (write paths).
-   * Для read-only endpoints используй resolveBothProfileIds.
-   */
-  private async resolveParticipantId(
-    userId: string,
-    role: string,
-  ): Promise<{ participantId: string }> {
-    if (role === 'BUYER') {
-      return { participantId: await this.resolveBuyerId(userId) };
-    }
-
-    if (role === 'SELLER') {
-      return { participantId: await this.resolveSellerProfileId(userId) };
-    }
-
-    // ADMIN: try buyer first, then seller
-    const user = await this.usersRepo.findById(userId);
-    const profileId = user?.buyer?.id ?? user?.seller?.id;
-    if (!profileId) {
-      throw new DomainException(
-        ErrorCode.FORBIDDEN,
-        'No buyer or seller profile found for this account',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-    return { participantId: profileId };
   }
 
   private async resolveBuyerId(userId: string): Promise<string> {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Flag, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { confirmDialog } from '../components/admin/ConfirmDialog'
 import { useNavigate } from 'react-router-dom'
@@ -17,8 +18,8 @@ interface ReportRow {
   storeName: string | null
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('ru-RU', {
+function formatDate(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleString(dateLocale, {
     day: '2-digit', month: '2-digit', year: '2-digit',
     hour: '2-digit', minute: '2-digit',
   })
@@ -26,24 +27,26 @@ function formatDate(iso: string) {
 
 export default function ReportsPage() {
   const navigate = useNavigate()
+  const { t, locale } = useTranslation()
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
   const [dismissingId, setDismissingId] = useState<string | null>(null)
 
   const { data: reports, loading, refetch } = useFetch<ReportRow[]>('/api/v1/admin/chat/reports')
 
   const dismiss = async (id: string) => {
     const ok = await confirmDialog({
-      title: 'Снять жалобу?',
-      body: 'Сообщение останется опубликованным. Если жалоба обоснована — лучше удалить через ChatsPage.',
-      confirmText: 'Снять жалобу',
+      title: t('reports.dismissTitle'),
+      body: t('reports.dismissBody'),
+      confirmText: t('reports.dismiss'),
     })
     if (!ok) return
     setDismissingId(id)
     try {
       await api.delete(`/api/v1/admin/chat/messages/${id}/report`)
-      toast.success('Жалоба снята')
+      toast.success(t('reports.dismissed'))
       refetch()
     } catch {
-      toast.error('Не удалось снять жалобу')
+      toast.error(t('reports.dismissError'))
     } finally {
       setDismissingId(null)
     }
@@ -57,21 +60,21 @@ export default function ReportsPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>
-            Жалобы на сообщения
+            {t('reports.title')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            Сообщения, на которые пожаловались пользователи
+            {t('reports.subtitle')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 13, padding: '4px 12px', borderRadius: 20, background: rows.length > 0 ? 'rgba(239,68,68,0.12)' : 'var(--surface2)', border: `1px solid ${rows.length > 0 ? 'rgba(239,68,68,0.25)' : 'var(--border)'}`, color: rows.length > 0 ? '#f87171' : 'var(--text-muted)', fontWeight: 700 }}>
-            {loading ? '...' : rows.length} жалоб
+            {loading ? '...' : t('reports.countLabel', { n: rows.length })}
           </span>
           <button
             onClick={() => refetch()}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
           >
-            <RefreshCw size={14} /> Обновить
+            <RefreshCw size={14} /> {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -81,7 +84,7 @@ export default function ReportsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-              {['Сообщение', 'Магазин', 'Покупатель', 'Дата жалобы', 'Тред', ''].map((h) => (
+              {[t('reports.colMessage'), t('reports.colStore'), t('reports.colBuyer'), t('reports.colReportDate'), t('reports.colThread'), ''].map((h) => (
                 <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</th>
               ))}
             </tr>
@@ -90,15 +93,15 @@ export default function ReportsPage() {
             {loading ? (
               <tr>
                 <td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Загрузка...
+                  {t('common.loading')}
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: 64, textAlign: 'center' }}>
                   <CheckCircle size={36} style={{ margin: '0 auto 12px', display: 'block', color: '#4ade80', opacity: 0.6 }} />
-                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>Жалоб нет</p>
-                  <p style={{ margin: '4px 0 0', color: 'var(--text-dim)', fontSize: 12 }}>Все сообщения чистые</p>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 14 }}>{t('reports.empty')}</p>
+                  <p style={{ margin: '4px 0 0', color: 'var(--text-dim)', fontSize: 12 }}>{t('reports.emptySub')}</p>
                 </td>
               </tr>
             ) : rows.map((r, i) => (
@@ -124,7 +127,7 @@ export default function ReportsPage() {
                     {r.body}
                   </div>
                   <span style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3, display: 'block' }}>
-                    Отправлено: {formatDate(r.createdAt)}
+                    {t('reports.sentAt')}: {formatDate(r.createdAt, dateLocale)}
                   </span>
                 </td>
 
@@ -140,14 +143,14 @@ export default function ReportsPage() {
 
                 {/* Reported at */}
                 <td style={{ padding: '13px 16px', color: '#f87171', fontSize: 12, whiteSpace: 'nowrap' }}>
-                  {formatDate(r.reportedAt)}
+                  {formatDate(r.reportedAt, dateLocale)}
                 </td>
 
                 {/* Thread status */}
                 <td style={{ padding: '13px 16px' }}>
                   <button
                     onClick={() => navigate(`/chats?thread=${r.threadId}`)}
-                    title="Открыть диалог в разделе Чаты"
+                    title={t('reports.openThreadTitle')}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
                       padding: '5px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer',
@@ -155,7 +158,7 @@ export default function ReportsPage() {
                       color: 'var(--text-muted)',
                     }}
                   >
-                    <ExternalLink size={12} /> Открыть тред
+                    <ExternalLink size={12} /> {t('reports.openThread')}
                   </button>
                 </td>
 
@@ -164,7 +167,7 @@ export default function ReportsPage() {
                   <button
                     onClick={() => dismiss(r.id)}
                     disabled={dismissingId === r.id}
-                    title="Снять жалобу (сообщение не удаляется)"
+                    title={t('reports.dismissBtnTitle')}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
                       padding: '5px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer',
@@ -174,7 +177,7 @@ export default function ReportsPage() {
                     }}
                   >
                     <CheckCircle size={12} />
-                    {dismissingId === r.id ? '...' : 'Снять жалобу'}
+                    {dismissingId === r.id ? '...' : t('reports.dismiss')}
                   </button>
                 </td>
               </tr>

@@ -8,6 +8,12 @@ import { GetThreadMessagesUseCase } from './use-cases/get-thread-messages.use-ca
 import { ListMyThreadsUseCase } from './use-cases/list-my-threads.use-case';
 import { ResolveThreadUseCase } from './use-cases/resolve-thread.use-case';
 import { GetUnreadCountUseCase } from './use-cases/get-unread-count.use-case';
+import { MarkThreadReadUseCase } from './use-cases/mark-thread-read.use-case';
+import { DeleteThreadUseCase } from './use-cases/delete-thread.use-case';
+import { DeleteMessageUseCase } from './use-cases/delete-message.use-case';
+import { EditMessageUseCase } from './use-cases/edit-message.use-case';
+import { ReportMessageUseCase } from './use-cases/report-message.use-case';
+import { AdminChatUseCases } from './use-cases/admin-chat.use-cases';
 import { ProductsModule } from '../products/products.module';
 import { OrdersModule } from '../orders/orders.module';
 import { UsersModule } from '../users/users.module';
@@ -28,6 +34,12 @@ import { TelegramModule } from '../telegram/telegram.module';
     ListMyThreadsUseCase,
     ResolveThreadUseCase,
     GetUnreadCountUseCase,
+    MarkThreadReadUseCase,
+    DeleteThreadUseCase,
+    DeleteMessageUseCase,
+    EditMessageUseCase,
+    ReportMessageUseCase,
+    AdminChatUseCases,
   ],
   exports: [ChatRepository],
 })

@@ -10,7 +10,7 @@ import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ErrorReporter } from '../../../shared/error-reporter';
 import { computeDeliveryFee } from '../delivery-fee.util';
-import { DeliveryAddressDto, PaymentMethod as PaymentMethodInput } from '../dto/confirm-checkout.dto';
+import { DeliveryAddressDto, PaymentMethod as PaymentMethodInput, DeliveryMode } from '../dto/confirm-checkout.dto';
 
 export interface ConfirmCheckoutInput {
   buyerId: string;
@@ -24,6 +24,8 @@ export interface ConfirmCheckoutInput {
   customerPhone?: string;
   // API-CHECKOUT-PAYMENT-METHOD-001: способ оплаты (cash/card/online).
   paymentMethod?: PaymentMethodInput;
+  // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: режим получения. pickup → fee 0.
+  deliveryMode?: DeliveryMode;
 }
 
 /**
@@ -128,7 +130,10 @@ export class ConfirmCheckoutUseCase {
     // backend сам считает deliveryFee из store.deliverySettings (input.deliveryFee
     // игнорируется, DTO оставлен для backward-compat). Тот же helper использует
     // preview — суммы preview и confirm всегда согласованы.
-    const deliveryFeeAmount = computeDeliveryFee(store.deliverySettings);
+    // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: при самовывозе (pickup) доставка не
+    // оказывается → fee принудительно 0, store.deliverySettings не учитывается.
+    const deliveryFeeAmount =
+      input.deliveryMode === 'pickup' ? 0 : computeDeliveryFee(store.deliverySettings);
     const totalAmount = subtotalAmount + deliveryFeeAmount;
 
     const firstName = buyerWithUser.firstName ?? '';

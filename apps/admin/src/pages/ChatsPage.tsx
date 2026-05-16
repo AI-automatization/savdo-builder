@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MessageSquare, RefreshCw, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { confirmDialog } from '../components/admin/ConfirmDialog'
 
@@ -24,9 +25,9 @@ interface ThreadDetail {
   messages: Array<{ id: string; senderUserId: string; body: string; createdAt: string }>
 }
 
-function formatDate(iso: string | null) {
+function formatDate(iso: string | null, dateLocale: string) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('ru-RU', {
+  return new Date(iso).toLocaleString(dateLocale, {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 }
@@ -37,6 +38,8 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 }
 
 export default function ChatsPage() {
+  const { t, locale } = useTranslation()
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -48,8 +51,8 @@ export default function ChatsPage() {
     `/api/v1/admin/chat/threads${statusFilter ? `?status=${statusFilter}` : ''}`,
   )
 
-  const threads = (raw?.data ?? []).filter((t) =>
-    !search || t.storeName?.toLowerCase().includes(search.toLowerCase()) || t.buyerPhone?.includes(search),
+  const threads = (raw?.data ?? []).filter((thread) =>
+    !search || thread.storeName?.toLowerCase().includes(search.toLowerCase()) || thread.buyerPhone?.includes(search),
   )
 
   const openDetail = async (id: string) => {
@@ -66,9 +69,9 @@ export default function ChatsPage() {
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     const ok = await confirmDialog({
-      title: 'Удалить диалог?',
-      body: 'Все сообщения треда будут удалены безвозвратно. Восстановить нельзя.',
-      confirmText: 'Удалить',
+      title: t('chats.deleteTitle'),
+      body: t('chats.deleteBody'),
+      confirmText: t('common.delete'),
       danger: true,
     })
     if (!ok) return
@@ -76,9 +79,9 @@ export default function ChatsPage() {
     try {
       await api.delete(`/api/v1/admin/chat/threads/${id}`)
       if (selectedId === id) { setSelectedId(null); setDetail(null) }
-      toast.success('Диалог удалён')
+      toast.success(t('chats.deleted'))
       refetch()
-    } catch { toast.error('Не удалось удалить') }
+    } catch { toast.error(t('chats.deleteError')) }
     finally { setDeletingId(null) }
   }
 
@@ -88,17 +91,17 @@ export default function ChatsPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>
-            Чаты
+            {t('chats.title')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            Мониторинг диалогов между покупателями и продавцами
+            {t('chats.subtitle')}
           </p>
         </div>
         <button
           onClick={() => refetch()}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
         >
-          <RefreshCw size={14} /> Обновить
+          <RefreshCw size={14} /> {t('common.refresh')}
         </button>
       </div>
 
@@ -107,7 +110,7 @@ export default function ChatsPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск по магазину или телефону..."
+          placeholder={t('chats.searchPlaceholder')}
           style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none' }}
         />
         {(['', 'OPEN', 'CLOSED'] as const).map((s) => (
@@ -121,7 +124,7 @@ export default function ChatsPage() {
               color: statusFilter === s ? '#fff' : 'var(--text-muted)',
             }}
           >
-            {s === '' ? 'Все' : s === 'OPEN' ? 'Открытые' : 'Закрытые'}
+            {s === '' ? t('common.all') : s === 'OPEN' ? t('chats.filterOpen') : t('chats.filterClosed')}
           </button>
         ))}
       </div>
@@ -132,26 +135,26 @@ export default function ChatsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-                {['Магазин', 'Покупатель', 'Статус', 'Последнее сообщение', 'Дата', ''].map((h) => (
+                {[t('chats.colStore'), t('chats.colBuyer'), t('chats.colStatus'), t('chats.colLastMessage'), t('chats.colDate'), ''].map((h) => (
                   <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+                <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
               ) : !threads.length ? (
                 <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
                   <MessageSquare size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
-                  Чатов не найдено
+                  {t('chats.notFound')}
                 </td></tr>
-              ) : threads.map((t, i) => {
-                const sc = STATUS_COLORS[t.status] ?? STATUS_COLORS.CLOSED
-                const isSelected = selectedId === t.id
+              ) : threads.map((thread, i) => {
+                const sc = STATUS_COLORS[thread.status] ?? STATUS_COLORS.CLOSED
+                const isSelected = selectedId === thread.id
                 return (
                   <tr
-                    key={t.id}
-                    onClick={() => openDetail(t.id)}
+                    key={thread.id}
+                    onClick={() => openDetail(thread.id)}
                     style={{
                       borderBottom: i < threads.length - 1 ? '1px solid var(--border)' : 'none',
                       cursor: 'pointer',
@@ -162,34 +165,34 @@ export default function ChatsPage() {
                     onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                   >
                     <td style={{ padding: '12px 16px', color: 'var(--text)', fontSize: 13 }}>
-                      {t.storeName ?? <span style={{ color: 'var(--text-dim)' }}>—</span>}
+                      {thread.storeName ?? <span style={{ color: 'var(--text-dim)' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13, fontFamily: 'monospace' }}>
-                      {t.buyerPhone ?? '—'}
+                      {thread.buyerPhone ?? '—'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color }}>
-                        {t.status === 'OPEN' ? 'Открыт' : 'Закрыт'}
+                        {thread.status === 'OPEN' ? t('chats.statusOpen') : t('chats.statusClosed')}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12, maxWidth: 200 }}>
                       <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t.lastMessage ?? '—'}
+                        {thread.lastMessage ?? '—'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                      {formatDate(t.lastMessageAt)}
+                      {formatDate(thread.lastMessageAt, dateLocale)}
                     </td>
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={(e) => deleteThread(t.id, e)}
-                        disabled={deletingId === t.id}
-                        title="Удалить диалог"
-                        aria-label="Удалить диалог"
+                        onClick={(e) => deleteThread(thread.id, e)}
+                        disabled={deletingId === thread.id}
+                        title={t('chats.deleteTitle')}
+                        aria-label={t('chats.deleteTitle')}
                         style={{
                           background: 'var(--surface-error-soft)', border: '1px solid var(--border-error)',
                           borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: 'var(--error)',
-                          opacity: deletingId === t.id ? 0.5 : 1, display: 'flex', alignItems: 'center',
+                          opacity: deletingId === thread.id ? 0.5 : 1, display: 'flex', alignItems: 'center',
                         }}
                       >
                         <Trash2 size={13} aria-hidden="true" />
@@ -202,7 +205,7 @@ export default function ChatsPage() {
           </table>
           {raw && (
             <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-dim)', borderTop: '1px solid var(--border)' }}>
-              Всего: {raw.total}
+              {t('chats.total', { n: raw.total })}
             </div>
           )}
         </div>
@@ -225,7 +228,7 @@ export default function ChatsPage() {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {detailLoading && <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>Загрузка...</p>}
+              {detailLoading && <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>{t('common.loading')}</p>}
               {!detailLoading && detail?.messages.map((m) => (
                 <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{
@@ -237,12 +240,12 @@ export default function ChatsPage() {
                     {m.body}
                   </div>
                   <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                    {new Date(m.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(m.createdAt).toLocaleTimeString(locale === 'uz' ? 'uz-UZ' : 'ru', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               ))}
               {!detailLoading && detail?.messages.length === 0 && (
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>Нет сообщений</p>
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>{t('chats.noMessages')}</p>
               )}
             </div>
           </div>

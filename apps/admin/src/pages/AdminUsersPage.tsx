@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Shield, Plus, UserCog, Trash2, AlertCircle, Phone, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { useFocusTrap } from '../lib/use-focus-trap'
 import { ROLE_OPTIONS, ROLE_BADGE, type AdminRole } from '../lib/admin-roles'
@@ -32,6 +33,7 @@ interface AdminMe {
 }
 
 export default function AdminUsersPage() {
+  const { t, locale } = useTranslation()
   const { data: admins, loading, error, refetch } = useFetch<AdminRow[]>('/api/v1/admin/admins')
   const { data: me } = useFetch<AdminMe>('/api/v1/admin/auth/me')
   const [editTarget, setEditTarget] = useState<AdminRow | null>(null)
@@ -47,11 +49,11 @@ export default function AdminUsersPage() {
     if (!removeTarget) return
     try {
       await api.delete(`/api/v1/admin/admins/${removeTarget.id}`)
-      toast.success(`Доступ удалён: ${removeTarget.user.phone}`)
+      toast.success(t('adminUsers.accessRemoved', { phone: removeTarget.user.phone }))
       setRemoveTarget(null)
       refetch()
     } catch (e: any) {
-      toast.error(e.message ?? 'Не удалось удалить доступ')
+      toast.error(e.message ?? t('adminUsers.errRemove'))
     }
   }
 
@@ -62,9 +64,9 @@ export default function AdminUsersPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Shield size={20} color="var(--primary)" />
           <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>Администраторы</h1>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{t('adminUsers.title')}</h1>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
-              Управление доступом сотрудников панели
+              {t('adminUsers.subtitle')}
             </p>
           </div>
         </div>
@@ -73,7 +75,7 @@ export default function AdminUsersPage() {
             onClick={() => setAddOpen(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
-            <Plus size={14} /> Добавить администратора
+            <Plus size={14} /> {t('adminUsers.add')}
           </button>
         )}
       </div>
@@ -81,7 +83,7 @@ export default function AdminUsersPage() {
       {!isSuperAdmin && currentRole && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B', fontSize: 13 }}>
           <AlertCircle size={15} />
-          Изменение ролей доступно только Super Admin. Ваша роль: <strong>{ROLE_BADGE[currentRole].label}</strong>
+          {t('adminUsers.superAdminOnly')} <strong>{ROLE_BADGE[currentRole].label}</strong>
         </div>
       )}
 
@@ -93,11 +95,11 @@ export default function AdminUsersPage() {
 
       {/* Grid */}
       {loading ? (
-        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('common.loading')}</div>
       ) : adminsList.length === 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 48, textAlign: 'center' }}>
           <Shield size={32} style={{ opacity: 0.3, color: 'var(--text-muted)', margin: '0 auto 12px' }} />
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)' }}>Администраторов не найдено</p>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)' }}>{t('adminUsers.notFound')}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
@@ -132,7 +134,7 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 14 }}>
-                  Назначен {new Date(admin.createdAt).toLocaleDateString('ru-RU')}
+                  {t('adminUsers.assignedOn', { date: new Date(admin.createdAt).toLocaleDateString(locale === 'uz' ? 'uz-UZ' : 'ru-RU') })}
                 </div>
 
                 {isSuperAdmin && (
@@ -142,13 +144,13 @@ export default function AdminUsersPage() {
                       disabled={isSelf}
                       style={{ flex: 1, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: isSelf ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}
                     >
-                      Изменить роль
+                      {t('adminUsers.changeRole')}
                     </button>
                     <button
                       onClick={() => setRemoveTarget(admin)}
                       disabled={isSelf || admin.adminRole === 'super_admin'}
-                      title={admin.adminRole === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ'}
-                      aria-label={admin.adminRole === 'super_admin' ? 'Нельзя удалить Super Admin' : 'Удалить доступ администратора'}
+                      title={admin.adminRole === 'super_admin' ? t('adminUsers.cannotRemoveSuper') : t('adminUsers.removeAccess')}
+                      aria-label={admin.adminRole === 'super_admin' ? t('adminUsers.cannotRemoveSuper') : t('adminUsers.removeAccessAria')}
                       style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border-error)', background: 'var(--surface-error)', color: 'var(--error)', fontSize: 12, fontWeight: 600, cursor: (isSelf || admin.adminRole === 'super_admin') ? 'not-allowed' : 'pointer', opacity: (isSelf || admin.adminRole === 'super_admin') ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       <Trash2 size={12} aria-hidden="true" />
@@ -181,9 +183,9 @@ export default function AdminUsersPage() {
       {/* Remove confirm */}
       {removeTarget && (
         <ConfirmDialog
-          title="Удалить доступ администратора?"
-          description={`${removeTarget.user.phone} (${ROLE_BADGE[removeTarget.adminRole].label}) потеряет доступ к панели.`}
-          actionLabel="Удалить"
+          title={t('adminUsers.removeConfirmTitle')}
+          description={t('adminUsers.removeConfirmDesc', { phone: removeTarget.user.phone, role: ROLE_BADGE[removeTarget.adminRole].label })}
+          actionLabel={t('common.delete')}
           actionColor="#EF4444"
           onConfirm={handleRemove}
           onCancel={() => setRemoveTarget(null)}
@@ -196,6 +198,7 @@ export default function AdminUsersPage() {
 // ── Edit Role ────────────────────────────────────────────────────────────────
 
 function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation()
   const [role, setRole] = useState<AdminRole>(admin.adminRole)
   const [loading, setLoading] = useState(false)
 
@@ -204,10 +207,10 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
     try {
       // Backend (super-admin.controller.ts:131) expects @Body('adminRole'), не 'role'.
       await api.patch(`/api/v1/admin/admins/${admin.id}/role`, { adminRole: role })
-      toast.success(`Роль обновлена: ${ROLE_BADGE[role].label}`)
+      toast.success(t('adminUsers.roleUpdated', { role: ROLE_BADGE[role].label }))
       onSaved()
     } catch (e: any) {
-      toast.error(e.message ?? 'Не удалось изменить роль')
+      toast.error(e.message ?? t('adminUsers.errChangeRole'))
     } finally {
       setLoading(false)
     }
@@ -215,7 +218,7 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
 
   return (
     <ModalShell onClose={onClose} width={500}>
-      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Изменить роль</h3>
+      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{t('adminUsers.changeRole')}</h3>
       <p style={{ margin: '6px 0 18px', fontSize: 13, color: 'var(--text-muted)' }}>
         {admin.user.phone}
       </p>
@@ -253,13 +256,13 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
       </div>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        <button onClick={onClose} style={btnSecondary}>Отмена</button>
+        <button onClick={onClose} style={btnSecondary}>{t('common.cancel')}</button>
         <button
           onClick={submit}
           disabled={loading || role === admin.adminRole}
           style={{ ...btnPrimary, opacity: (loading || role === admin.adminRole) ? 0.5 : 1, cursor: loading ? 'wait' : 'pointer' }}
         >
-          {loading ? 'Сохранение...' : 'Сохранить'}
+          {loading ? t('adminUsers.saving') : t('common.save')}
         </button>
       </div>
     </ModalShell>
@@ -271,6 +274,7 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
 interface FoundUser { id: string; phone: string; role: string; fullName?: string | null }
 
 function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation()
   const [phone, setPhone] = useState('')
   const [searching, setSearching] = useState(false)
   const [found, setFound] = useState<FoundUser | null>(null)
@@ -286,12 +290,12 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       const res = await api.get<{ users: FoundUser[] }>(`/api/v1/admin/users?${params}`)
       const user = res.users?.[0] ?? null
       if (!user) {
-        setSearchError('Пользователь с таким телефоном не найден')
+        setSearchError(t('adminUsers.userNotFound'))
       } else {
         setFound(user)
       }
     } catch (e: any) {
-      setSearchError(e.message ?? 'Ошибка поиска')
+      setSearchError(e.message ?? t('adminUsers.errSearch'))
     } finally {
       setSearching(false)
     }
@@ -304,10 +308,10 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       // Backend (super-admin.controller.ts:115) expects {phone, adminRole}, не {userId, role}.
       // Phone берём из found, чтобы избежать опечаток пользователя.
       await api.post('/api/v1/admin/admins', { phone: found.phone, adminRole: role })
-      toast.success(`${ROLE_BADGE[role].label} назначен: ${found.phone}`)
+      toast.success(t('adminUsers.roleAssigned', { role: ROLE_BADGE[role].label, phone: found.phone }))
       onSaved()
     } catch (e: any) {
-      toast.error(e.message ?? 'Не удалось создать администратора')
+      toast.error(e.message ?? t('adminUsers.errCreate'))
     } finally {
       setCreating(false)
     }
@@ -315,13 +319,13 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 
   return (
     <ModalShell onClose={onClose} width={520}>
-      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Добавить администратора</h3>
+      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{t('adminUsers.add')}</h3>
       <p style={{ margin: '6px 0 18px', fontSize: 13, color: 'var(--text-muted)' }}>
-        Найдите существующего пользователя по телефону и назначьте роль
+        {t('adminUsers.addHint')}
       </p>
 
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Телефон</label>
+        <label style={labelStyle}>{t('users.colPhone')}</label>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             value={phone}
@@ -335,7 +339,7 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             disabled={searching || !phone.trim()}
             style={{ ...btnPrimary, padding: '0 16px', height: 38, opacity: (searching || !phone.trim()) ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            <Search size={14} /> {searching ? 'Поиск...' : 'Найти'}
+            <Search size={14} /> {searching ? t('adminUsers.searching') : t('common.find')}
           </button>
         </div>
         {searchError && (
@@ -347,17 +351,17 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
         <>
           <div style={{ padding: 14, borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-              {found.fullName || 'Без имени'}
+              {found.fullName || t('adminUsers.noName')}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: 2 }}>
               {found.phone}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
-              Текущая роль: {found.role}
+              {t('adminUsers.currentRole')}: {found.role}
             </div>
           </div>
 
-          <label style={labelStyle}>Назначить роль</label>
+          <label style={labelStyle}>{t('adminUsers.assignRole')}</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
             {ROLE_OPTIONS.filter(r => r.value !== 'super_admin').map(opt => {
               const isActive = role === opt.value
@@ -384,13 +388,13 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       )}
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        <button onClick={onClose} style={btnSecondary}>Отмена</button>
+        <button onClick={onClose} style={btnSecondary}>{t('common.cancel')}</button>
         <button
           onClick={create}
           disabled={!found || creating}
           style={{ ...btnPrimary, opacity: (!found || creating) ? 0.5 : 1, cursor: creating ? 'wait' : 'pointer' }}
         >
-          {creating ? 'Создание...' : 'Назначить роль'}
+          {creating ? t('adminUsers.creating') : t('adminUsers.assignRole')}
         </button>
       </div>
     </ModalShell>
@@ -402,13 +406,14 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 function ConfirmDialog({ title, description, actionLabel, actionColor, onConfirm, onCancel }:
   { title: string; description: string; actionLabel: string; actionColor: string; onConfirm: () => void; onCancel: () => void }
 ) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   return (
     <ModalShell onClose={onCancel} width={420}>
       <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{title}</h3>
       <p style={{ margin: '8px 0 22px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{description}</p>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        <button onClick={onCancel} style={btnSecondary}>Отмена</button>
+        <button onClick={onCancel} style={btnSecondary}>{t('common.cancel')}</button>
         <button
           onClick={async () => { setLoading(true); try { await onConfirm() } finally { setLoading(false) } }}
           disabled={loading}
