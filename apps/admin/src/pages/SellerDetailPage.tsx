@@ -5,6 +5,7 @@ import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { SellerVerificationPanel } from '../components/admin/SellerVerificationPanel'
 import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
+import { useTranslation } from '../lib/i18n'
 
 interface ModerationAction {
   id: string
@@ -44,12 +45,12 @@ interface SellerDetail {
   moderationCases: ModerationCase[]
 }
 
-const VERIFY_CFG: Record<string, { bg: string; text: string; icon: any; label: string }> = {
-  VERIFIED:   { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', icon: CheckCircle,   label: 'Верифицирован' },
-  PENDING:    { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', icon: Clock,          label: 'На проверке' },
-  REJECTED:   { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', icon: XCircle,        label: 'Отклонён' },
-  UNVERIFIED: { bg: 'rgba(148,163,184,0.1)',  text: '#94A3B8', icon: Clock,          label: 'Не верифицирован' },
-  SUSPENDED:  { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', icon: AlertTriangle,  label: 'Заблокирован' },
+const VERIFY_CFG: Record<string, { bg: string; text: string; icon: any; labelKey: string }> = {
+  VERIFIED:   { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', icon: CheckCircle,   labelKey: 'sellerDetail.statusVERIFIED' },
+  PENDING:    { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', icon: Clock,          labelKey: 'sellerDetail.statusPENDING' },
+  REJECTED:   { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', icon: XCircle,        labelKey: 'sellerDetail.statusREJECTED' },
+  UNVERIFIED: { bg: 'rgba(148,163,184,0.1)',  text: '#94A3B8', icon: Clock,          labelKey: 'sellerDetail.statusUNVERIFIED' },
+  SUSPENDED:  { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', icon: AlertTriangle,  labelKey: 'sellerDetail.statusSUSPENDED' },
 }
 
 function ConfirmModal({
@@ -61,6 +62,7 @@ function ConfirmModal({
   onCancel: () => void; loading: boolean
 }) {
   const [reason, setReason] = useState('')
+  const { t } = useTranslation()
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 440, maxWidth: '90vw' }}>
@@ -69,21 +71,21 @@ function ConfirmModal({
         {requireReason && (
           <textarea
             value={reason} onChange={e => setReason(e.target.value)}
-            placeholder="Причина (обязательно)..."
+            placeholder={t('sellerDetail.reasonPlaceholder')}
             rows={3}
             style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, resize: 'vertical', outline: 'none', marginBottom: 16 }}
           />
         )}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>
-            Отмена
+            {t('common.cancel')}
           </button>
           <button
             onClick={() => onConfirm(reason)}
             disabled={loading || (requireReason && !reason.trim())}
             style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: actionColor, color: 'white', fontSize: 14, fontWeight: 600, cursor: loading ? 'wait' : 'pointer', opacity: (requireReason && !reason.trim()) ? 0.5 : 1 }}
           >
-            {loading ? 'Загрузка...' : actionLabel}
+            {loading ? t('common.loading') : actionLabel}
           </button>
         </div>
       </div>
@@ -94,6 +96,7 @@ function ConfirmModal({
 export default function SellerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { data: seller, loading, error, refetch } = useFetch<SellerDetail>(`/api/v1/admin/sellers/${id}`)
   const { data: auditData } = useFetch<{ logs: AuditEntry[]; total: number }>(
     `/api/v1/admin/audit-log?entityType=User&entityId=${seller?.user?.id ?? 'none'}&limit=50`,
@@ -117,7 +120,7 @@ export default function SellerDetailPage() {
       setCreateStoreForm({ name: '', city: '', telegramContactLink: '', description: '', region: '', slug: '' })
       refetch()
     } catch (e: any) {
-      setCreateStoreError(e.message ?? 'Ошибка')
+      setCreateStoreError(e.message ?? t('common.error'))
     } finally {
       setCreateStoreLoading(false)
     }
@@ -140,22 +143,22 @@ export default function SellerDetailPage() {
       setModal(null)
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(false)
     }
   }
 
   if (loading) return (
-    <div style={{ padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
+    <div style={{ padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>{t('common.loading')}</div>
   )
 
   if (error || !seller) return (
     <div style={{ padding: 32 }}>
       <button onClick={() => navigate('/sellers')} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, marginBottom: 20 }}>
-        <ArrowLeft size={16} /> Назад
+        <ArrowLeft size={16} /> {t('common.back')}
       </button>
-      <div style={{ color: '#EF4444', fontSize: 14 }}>{error ?? 'Продавец не найден'}</div>
+      <div style={{ color: '#EF4444', fontSize: 14 }}>{error ?? t('sellerDetail.notFound')}</div>
     </div>
   )
 
@@ -168,7 +171,7 @@ export default function SellerDetailPage() {
     <div style={{ padding: '32px 32px 48px', minHeight: '100vh', maxWidth: 900 }}>
       {/* Back */}
       <button onClick={() => navigate('/sellers')} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, marginBottom: 24, padding: 0 }}>
-        <ArrowLeft size={16} /> Назад к продавцам
+        <ArrowLeft size={16} /> {t('sellerDetail.back')}
       </button>
 
       {actionError && (
@@ -187,11 +190,11 @@ export default function SellerDetailPage() {
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>{seller.fullName || '—'}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: verifyCfg.bg, color: verifyCfg.text }}>
-                <verifyCfg.icon size={11} /> {verifyCfg.label}
+                <verifyCfg.icon size={11} /> {t(verifyCfg.labelKey)}
               </span>
               {isUserBlocked && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>
-                  <Ban size={11} /> Аккаунт заблокирован
+                  <Ban size={11} /> {t('sellerDetail.accountBlocked')}
                 </span>
               )}
             </div>
@@ -203,30 +206,30 @@ export default function SellerDetailPage() {
           {seller.verificationStatus === 'PENDING' && (
             <>
               <button onClick={() => setModal('verify')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <UserCheck size={14} /> Верифицировать
+                <UserCheck size={14} /> {t('sellerDetail.verify')}
               </button>
               <button onClick={() => setModal('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <XCircle size={14} /> Отклонить
+                <XCircle size={14} /> {t('sellerDetail.reject')}
               </button>
             </>
           )}
           {seller.verificationStatus === 'VERIFIED' && (
             <button onClick={() => setModal('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <XCircle size={14} /> Снять верификацию
+              <XCircle size={14} /> {t('sellerDetail.unverify')}
             </button>
           )}
           {(seller.verificationStatus === 'REJECTED' || seller.verificationStatus === 'UNVERIFIED') && (
             <button onClick={() => setModal('verify')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <UserCheck size={14} /> Верифицировать
+              <UserCheck size={14} /> {t('sellerDetail.verify')}
             </button>
           )}
           {isUserBlocked ? (
             <button onClick={() => setModal('unsuspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <Unlock size={14} /> Разблокировать
+              <Unlock size={14} /> {t('sellerDetail.unblock')}
             </button>
           ) : (
             <button onClick={() => setModal('suspend')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <Ban size={14} /> Заблокировать
+              <Ban size={14} /> {t('sellerDetail.block')}
             </button>
           )}
         </div>
@@ -241,7 +244,7 @@ export default function SellerDetailPage() {
           {/* Контакт + Аккаунт side by side */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Контакт</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>{t('sellerDetail.contact')}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <Phone size={13} color="var(--text-muted)" />
                 <span style={{ fontFamily: 'monospace', color: 'var(--text)', fontSize: 13 }}>{seller.user.phone}</span>
@@ -255,20 +258,20 @@ export default function SellerDetailPage() {
             </div>
 
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Аккаунт</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>{t('sellerDetail.account')}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Статус</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('sellerDetail.statusLabel')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: isUserBlocked ? '#EF4444' : '#10B981' }}>
-                  {isUserBlocked ? 'Заблокирован' : 'Активен'}
+                  {isUserBlocked ? t('sellerDetail.accBlocked') : t('sellerDetail.accActive')}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Роль</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('sellerDetail.role')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{seller.user.role}</span>
               </div>
               {isUserBlocked && blockReason && (
                 <div style={{ fontSize: 11, color: '#EF4444', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 7, marginTop: 8 }}>
-                  Причина: {blockReason}
+                  {t('sellerDetail.reasonLabel')}: {blockReason}
                 </div>
               )}
             </div>
@@ -277,14 +280,14 @@ export default function SellerDetailPage() {
           {/* Bio */}
           {seller.bio && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>О продавце</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{t('sellerDetail.about')}</div>
               <p style={{ margin: 0, color: 'var(--text)', fontSize: 13, lineHeight: 1.6 }}>{seller.bio}</p>
             </div>
           )}
 
           {/* Store */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Магазин</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>{t('sellerDetail.store')}</div>
             {seller.store ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -297,15 +300,15 @@ export default function SellerDetailPage() {
                   </div>
                 </div>
                 <button onClick={() => navigate(`/stores/${seller.store!.id}`)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
-                  Открыть
+                  {t('sellerDetail.open')}
                 </button>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>Магазин не создан</span>
+                <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{t('sellerDetail.noStore')}</span>
                 <button onClick={() => setShowCreateStore(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'rgba(16,185,129,0.12)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  <Plus size={13} /> Создать магазин
+                  <Plus size={13} /> {t('sellerDetail.createStore')}
                 </button>
               </div>
             )}
@@ -317,7 +320,7 @@ export default function SellerDetailPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Shield size={13} color="var(--text-muted)" />
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Кейсы модерации ({seller.moderationCases.length})
+                  {t('sellerDetail.modCases', { count: seller.moderationCases.length })}
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -380,7 +383,7 @@ export default function SellerDetailPage() {
         <ActivityLogPanel
           entityType="User"
           entityId={seller.user?.id ?? null}
-          emptyText="История действий с этим продавцом ещё не велась"
+          emptyText={t('sellerDetail.historyEmpty')}
         />
         </div>
         {/* END RIGHT COLUMN */}
@@ -391,9 +394,9 @@ export default function SellerDetailPage() {
       {/* Modals */}
       {modal === 'verify' && (
         <ConfirmModal
-          title="Верифицировать продавца"
-          description={`Продавец ${seller.fullName} получит статус VERIFIED и сможет публиковать магазин.`}
-          actionLabel="Верифицировать"
+          title={t('sellerDetail.mVerifyTitle')}
+          description={t('sellerDetail.mVerifyDesc', { name: seller.fullName })}
+          actionLabel={t('sellerDetail.verify')}
           actionColor="#10B981"
           requireReason={false}
           onConfirm={handleAction}
@@ -403,9 +406,9 @@ export default function SellerDetailPage() {
       )}
       {modal === 'reject' && (
         <ConfirmModal
-          title="Отклонить / снять верификацию"
-          description={`Продавец ${seller.fullName} потеряет статус верификации.`}
-          actionLabel="Отклонить"
+          title={t('sellerDetail.mRejectTitle')}
+          description={t('sellerDetail.mRejectDesc', { name: seller.fullName })}
+          actionLabel={t('sellerDetail.reject')}
           actionColor="#EF4444"
           requireReason={false}
           onConfirm={handleAction}
@@ -415,9 +418,9 @@ export default function SellerDetailPage() {
       )}
       {modal === 'suspend' && (
         <ConfirmModal
-          title="Заблокировать аккаунт"
-          description={`Пользователь ${seller.user.phone} потеряет доступ к платформе.`}
-          actionLabel="Заблокировать"
+          title={t('sellerDetail.mSuspendTitle')}
+          description={t('sellerDetail.mSuspendDesc', { phone: seller.user.phone })}
+          actionLabel={t('sellerDetail.block')}
           actionColor="#EF4444"
           requireReason={true}
           onConfirm={handleAction}
@@ -427,9 +430,9 @@ export default function SellerDetailPage() {
       )}
       {modal === 'unsuspend' && (
         <ConfirmModal
-          title="Разблокировать аккаунт"
-          description={`Пользователь ${seller.user.phone} снова получит доступ к платформе.`}
-          actionLabel="Разблокировать"
+          title={t('sellerDetail.mUnsuspendTitle')}
+          description={t('sellerDetail.mUnsuspendDesc', { phone: seller.user.phone })}
+          actionLabel={t('sellerDetail.unblock')}
           actionColor="#10B981"
           requireReason={true}
           onConfirm={handleAction}
@@ -443,19 +446,19 @@ export default function SellerDetailPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Создать магазин</h3>
-              <button onClick={() => setShowCreateStore(false)} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('sellerDetail.createStore')}</h3>
+              <button onClick={() => setShowCreateStore(false)} aria-label={t('sellerDetail.close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18, padding: '8px 12px', background: 'rgba(16,185,129,0.06)', borderRadius: 8, borderLeft: '3px solid #10B981' }}>
-              Статус ACTIVE, сразу опубликован. Продавец: <strong>{seller.fullName}</strong>
+              {t('sellerDetail.csNote')} <strong>{seller.fullName}</strong>
             </div>
             {([
-              { key: 'name', label: 'Название', required: true, placeholder: 'Uzcar Market' },
-              { key: 'city', label: 'Город', required: true, placeholder: 'Ташкент' },
-              { key: 'telegramContactLink', label: 'Telegram контакт', required: true, placeholder: '@username' },
-              { key: 'description', label: 'Описание', required: false, placeholder: 'Необязательно' },
-              { key: 'region', label: 'Регион', required: false, placeholder: 'Необязательно' },
-              { key: 'slug', label: 'Slug', required: false, placeholder: 'Авто-генерируется' },
+              { key: 'name', label: t('sellerDetail.csName'), required: true, placeholder: 'Uzcar Market' },
+              { key: 'city', label: t('sellerDetail.csCity'), required: true, placeholder: t('sellerDetail.csCityPh') },
+              { key: 'telegramContactLink', label: t('sellerDetail.csTgContact'), required: true, placeholder: '@username' },
+              { key: 'description', label: t('sellerDetail.csDescription'), required: false, placeholder: t('sellerDetail.csOptional') },
+              { key: 'region', label: t('sellerDetail.csRegion'), required: false, placeholder: t('sellerDetail.csOptional') },
+              { key: 'slug', label: t('sellerDetail.csSlug'), required: false, placeholder: t('sellerDetail.csSlugAuto') },
             ] as const).map(({ key, label, required, placeholder }) => (
               <div key={key} style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -470,11 +473,11 @@ export default function SellerDetailPage() {
               <div style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{createStoreError}</div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowCreateStore(false)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>Отмена</button>
+              <button onClick={() => setShowCreateStore(false)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>{t('common.cancel')}</button>
               <button onClick={handleCreateStore} disabled={createStoreLoading || !createStoreForm.name.trim() || !createStoreForm.city.trim() || !createStoreForm.telegramContactLink.trim()}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: '#10B981', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                   opacity: (!createStoreForm.name.trim() || !createStoreForm.city.trim() || !createStoreForm.telegramContactLink.trim()) ? 0.5 : 1 }}>
-                <Store size={14} /> {createStoreLoading ? 'Создание...' : 'Создать'}
+                <Store size={14} /> {createStoreLoading ? t('sellerDetail.creating') : t('sellerDetail.create')}
               </button>
             </div>
           </div>
