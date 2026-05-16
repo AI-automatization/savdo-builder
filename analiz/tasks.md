@@ -16,11 +16,13 @@
 - **Фикс:** `mfaPending=true` для всех админов; `mfaEnabled=false` → форс в setup.
   Часть плана ролей (стадия C, см. `SEC-ADMIN-ACCESS-MODEL` ниже).
 
-## 🟠 `SEC-AUDIT-02` — CORS allow-list слишком широкий (A05)
-- `main.ts` ORIGIN_PATTERNS: `*.up.railway.app` + `*.railway.app` + `credentials:true`.
-  Любой проект на общей платформе Railway проходит CORS. Смягчено Bearer-auth
-  основного API, но Bull Board на cookie → cross-site возможен.
-- **Фикс:** заменить wildcard на конкретные домены сервисов через `ALLOWED_ORIGINS`.
+## ✅ `SEC-AUDIT-02` — CORS allow-list слишком широкий (A05) — закрыто 16.05.2026
+- Был wildcard `*.up.railway.app` — пропускал любой проект Railway.
+- **Сделано:** явный allow-list 4 прод-доменов (TMA `telegram-app-production-7e95`,
+  admin `adminsb`, web-buyer `savdo-builder-by-production`, web-seller
+  `savdo-builder-sl-production`) + `ALLOWED_ORIGINS` env. `SEC-AUDIT-06` тоже
+  закрыт — dev-доступ через явный localhost-regex, не зависит от `NODE_ENV`.
+  Коммит `8ead898`.
 
 ## 🟠 `SEC-AUDIT-03` — rate limiting сломан за прокси (A04)
 - В `main.ts` нет `app.set('trust proxy')` → за Railway-прокси `req.ip` = IP эджа,
@@ -45,9 +47,10 @@
   `support` админ дёргает незадекорированные admin-эндпоинты.
 - **Фикс:** часть плана ролей (стадия B).
 
-## 🟡 `SEC-AUDIT-06/07` — мелочи
-- `06`: DEV CORS = any origin (`if(!isProd) callback(null,true)`) — хрупкая
-  зависимость от `NODE_ENV`. `07`: JWT session-check условный (`if payload.sessionId`).
+## 🟡 `SEC-AUDIT-07` — JWT session-check условный
+- `07`: JWT session-check `if (payload.sessionId)` — токен без sessionId не
+  проверяется на отзыв. Все флоу ставят sessionId — латентно. (`06` закрыт
+  вместе с `SEC-AUDIT-02`.)
 
 ---
 

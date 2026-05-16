@@ -133,8 +133,13 @@
 публичные by design (storefront/media/reviews/health/telegram-webhook
 с secret-token). Понижено до 🟡 hardening. Коммит `2a814eb`.
 
-**Осталось из аудита:** `SEC-AUDIT-02` CORS (нужны прод-домены), `SEC-AUDIT-01/05`
-(в плане ролей `SEC-ADMIN-ACCESS-MODEL`), `SEC-AUDIT-04` global-guard (hardening).
+### ✅ [SEC-AUDIT-02 + 06] 🟠 — CORS allow-list
+Убран wildcard `*.up.railway.app` (пропускал любой Railway-проект) → явный
+список 4 прод-доменов фронтов + `ALLOWED_ORIGINS` env. Dev-доступ через
+localhost-regex, не зависит от `NODE_ENV` (закрыт и `06`). Коммит `8ead898`.
+
+**Осталось из аудита:** `SEC-AUDIT-01/05` (в плане ролей `SEC-ADMIN-ACCESS-MODEL`),
+`SEC-AUDIT-04` global-guard (🟡 hardening), `SEC-AUDIT-07` (🟡 JWT session-check).
 
 ## 2026-05-16 (Полат) — Wave 28: admin i18n инфра + layout/login
 
