@@ -24,10 +24,9 @@
   закрыт — dev-доступ через явный localhost-regex, не зависит от `NODE_ENV`.
   Коммит `8ead898`.
 
-## 🟠 `SEC-AUDIT-03` — rate limiting сломан за прокси (A04)
-- В `main.ts` нет `app.set('trust proxy')` → за Railway-прокси `req.ip` = IP эджа,
-  `ThrottlerGuard` считает всех в одном ведре. `@Throttle` лимиты общие, не per-IP.
-- **Фикс:** `app.set('trust proxy', 1)`.
+## ✅ `SEC-AUDIT-03` — rate limiting за прокси — закрыто 16.05.2026
+- `main.ts`: `app.set('trust proxy', 1)` → `req.ip` = реальный клиент,
+  `@Throttle` лимиты работают per-IP. Коммит `6751b12`.
 
 ## 🟡 `SEC-AUDIT-04` — нет глобального default-deny auth (A01/A05) — проверено, активной дыры нет
 - `JwtAuthGuard` не глобальный — вешается вручную. Забыли `@UseGuards` →
