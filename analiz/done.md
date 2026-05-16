@@ -133,6 +133,11 @@
 публичные by design (storefront/media/reviews/health/telegram-webhook
 с secret-token). Понижено до 🟡 hardening. Коммит `2a814eb`.
 
+### ✅ [SEC-AUDIT-07] 🟡 — JWT session-check безусловный
+`jwt.strategy.ts`: проверка сессии на отзыв больше не условная — токен без
+`sessionId` отклоняется. Все 6 флоу выдачи токена ставят sessionId.
+Коммит `31a5187`, auth-специ 97/97.
+
 ### ✅ [SEC-ADMIN-ACCESS-MODEL стадия A] 🔐 — флаги AdminUser
 `AdminUser.isSuperadmin` default `true`→`false` (опасный дефолт) + новое поле
 `isActive Boolean @default(true)` (мягкая блокировка). Миграция
