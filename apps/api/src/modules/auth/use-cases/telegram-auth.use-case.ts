@@ -147,7 +147,8 @@ export class TelegramAuthUseCase {
       role: resolvedUser.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
-      ...(adminClaims?.mfaEnabled && { mfaPending: true }),
+      // SEC-ADMIN-ACCESS-MODEL стадия C: mfaPending у любого админа.
+      ...(adminClaims && { mfaPending: true }),
       ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 
