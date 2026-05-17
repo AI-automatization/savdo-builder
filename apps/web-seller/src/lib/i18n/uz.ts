@@ -410,8 +410,6 @@ export const uz: Translations = {
   'settings.deliveryTypeAriaLabel': 'Yetkazib berish narxi turi',
   'settings.labelFullName': 'Ism / kompaniya nomi',
   'settings.labelTgUsername': 'Telegram username',
-  'settings.labelLanguage': 'Interfeys tili',
-  'settings.languageAriaLabel': 'Interfeys tili',
   'settings.tgUsernamePattern': 'Format: @username (3–32 ta belgi)',
   'settings.requiredField': 'Majburiy maydon',
   'settings.minTwoChars': 'Kamida 2 ta belgi',

@@ -412,8 +412,6 @@ export const ru: Translations = {
   'settings.deliveryTypeAriaLabel': 'Тип стоимости доставки',
   'settings.labelFullName': 'Имя / название компании',
   'settings.labelTgUsername': 'Telegram username',
-  'settings.labelLanguage': 'Язык интерфейса',
-  'settings.languageAriaLabel': 'Язык интерфейса',
   'settings.tgUsernamePattern': 'Формат: @username (3–32 символа)',
   'settings.requiredField': 'Обязательное поле',
   'settings.minTwoChars': 'Минимум 2 символа',
