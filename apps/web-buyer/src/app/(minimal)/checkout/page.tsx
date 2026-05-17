@@ -14,6 +14,7 @@ import type { CheckoutPreview, CheckoutPreviewItem, CartItem } from "types";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { colors, dangerTint, warningTint } from "@/lib/styles";
 import { PhoneInput, formatUzPhone, isValidUzPhone } from "@/components/PhoneInput";
+import { useTranslation } from "@/lib/i18n";
 
 type DeliveryMode = "delivery" | "pickup";
 type PageStep = "otp-phone" | "otp-code" | "form";
@@ -149,6 +150,7 @@ function CheckoutStep({
 // ── OTP Gate ──────────────────────────────────────────────────────────────────
 
 function OtpGate({ onSuccess }: { onSuccess: () => void }) {
+  const { t } = useTranslation();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [otpStep, setOtpStep] = useState<"phone" | "code">("phone");
@@ -176,12 +178,12 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-          {otpStep === "phone" ? "Введите телефон" : "Введите код"}
+          {otpStep === "phone" ? t('checkout.otp.enterPhone') : t('checkout.otp.enterCode')}
         </h2>
         <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
           {otpStep === "phone"
-            ? "Для оформления заказа нужно подтвердить номер"
-            : `Код отправлен в Telegram на ${formatUzPhone(phone)}`}
+            ? t('checkout.otp.phoneHint')
+            : t('checkout.otp.codeHint', { phone: formatUzPhone(phone) })}
         </p>
       </div>
 
@@ -192,7 +194,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
               className="text-[11px] font-medium block mb-1.5"
               style={{ color: colors.textMuted }}
             >
-              Телефон
+              {t('checkout.otp.phoneLabel')}
             </label>
             <PhoneInput
               value={phone}
@@ -209,7 +211,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
             className="w-full py-3.5 rounded text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
-            {requestOtp.isPending ? "Отправка..." : "Получить код"}
+            {requestOtp.isPending ? t('checkout.otp.sending') : t('checkout.otp.getCode')}
           </button>
         </>
       ) : (
@@ -219,7 +221,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
               className="text-[11px] font-medium block mb-1.5"
               style={{ color: colors.textMuted }}
             >
-              Код из сообщения
+              {t('checkout.otp.codeLabel')}
             </label>
             <input
               type="text"
@@ -240,14 +242,14 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
             className="w-full py-3.5 rounded text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
-            {verifyOtp.isPending ? "Проверка..." : "Подтвердить"}
+            {verifyOtp.isPending ? t('checkout.otp.verifying') : t('checkout.otp.confirm')}
           </button>
           <button
             onClick={() => setOtpStep("phone")}
             className="text-xs text-center"
             style={{ color: colors.textMuted }}
           >
-            ← Изменить номер
+            {t('checkout.otp.changePhone')}
           </button>
         </>
       )}
@@ -255,44 +257,10 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-// ── Payment options ───────────────────────────────────────────────────────────
-
-const paymentMethods: {
-  id: PaymentId;
-  label: string;
-  sub: string;
-  disabled: boolean;
-  badge?: string;
-}[] = [
-  {
-    id: "cash",
-    label: "Наличные курьеру",
-    sub: "оплата при получении",
-    disabled: false,
-  },
-  {
-    // SEV-1 от WEB-AUDIT-SYNC-IDEOLOGY-001: card option был selectable, но
-    // `paymentMethod` НИКОГДА не отправлялся в API (CheckoutConfirmRequest в
-    // packages/types не имеет поля). Misleading UI. Disabled до тех пор пока
-    // Полат не закроет API-CHECKOUT-PAYMENT-METHOD-001.
-    id: "card",
-    label: "Картой курьеру",
-    sub: "UzCard / Humo POS-терминал",
-    disabled: true,
-    badge: "Скоро",
-  },
-  {
-    id: "online",
-    label: "Online",
-    sub: "Payme / Click",
-    disabled: true,
-    badge: "Скоро",
-  },
-];
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -356,6 +324,40 @@ export default function CheckoutPage() {
   const subtotal = rawSubtotal > 0 ? rawSubtotal : cartSubtotal;
   const total = subtotal + deliveryFee;
 
+  // Payment methods — defined inside component to access t()
+  const paymentMethods: {
+    id: PaymentId;
+    label: string;
+    sub: string;
+    disabled: boolean;
+    badge?: string;
+  }[] = [
+    {
+      id: "cash",
+      label: t('checkout.payment.cashLabel'),
+      sub: t('checkout.payment.cashSub'),
+      disabled: false,
+    },
+    {
+      // SEV-1 от WEB-AUDIT-SYNC-IDEOLOGY-001: card option был selectable, но
+      // `paymentMethod` НИКОГДА не отправлялся в API (CheckoutConfirmRequest в
+      // packages/types не имеет поля). Misleading UI. Disabled до тех пор пока
+      // Полат не закроет API-CHECKOUT-PAYMENT-METHOD-001.
+      id: "card",
+      label: t('checkout.payment.cardLabel'),
+      sub: t('checkout.payment.cardSub'),
+      disabled: true,
+      badge: t('checkout.payment.comingSoon'),
+    },
+    {
+      id: "online",
+      label: t('checkout.payment.onlineLabel'),
+      sub: t('checkout.payment.onlineSub'),
+      disabled: true,
+      badge: t('checkout.payment.comingSoon'),
+    },
+  ];
+
   // Redirect away if cart becomes empty after preview loads
   useEffect(() => {
     if (
@@ -410,7 +412,7 @@ export default function CheckoutPage() {
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
       setApiError(
-        err?.response?.data?.message ?? "Не удалось оформить заказ. Попробуйте ещё раз.",
+        err?.response?.data?.message ?? t('checkout.submitError'),
       );
       if (typeof window !== "undefined") {
         window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
@@ -451,7 +453,7 @@ export default function CheckoutPage() {
           className="flex-1 text-base font-bold tracking-tight"
           style={{ color: colors.textStrong }}
         >
-          Оформление заказа
+          {t('checkout.title')}
         </h1>
       </div>
 
@@ -476,11 +478,10 @@ export default function CheckoutPage() {
           >
             <AlertCircle size={32} style={{ color: colors.danger }} />
             <h2 className="text-base font-bold" style={{ color: colors.textStrong }}>
-              Не удалось загрузить заказ
+              {t('checkout.previewError')}
             </h2>
             <p className="text-sm" style={{ color: colors.textMuted }}>
-              Проверьте соединение и попробуйте снова. Если корзина пуста —
-              вернитесь и добавьте товары.
+              {t('checkout.previewErrorDesc')}
             </p>
             <div className="flex gap-2 mt-1">
               <button
@@ -490,7 +491,7 @@ export default function CheckoutPage() {
                 className="px-4 py-2.5 text-sm font-bold rounded-lg disabled:opacity-50"
                 style={{ background: colors.brand, color: colors.brandTextOnBg }}
               >
-                {preview.isFetching ? "Загрузка…" : "Повторить"}
+                {preview.isFetching ? t('checkout.previewLoading') : t('common.retry')}
               </button>
               <Link
                 href="/cart"
@@ -501,7 +502,7 @@ export default function CheckoutPage() {
                   color: colors.textPrimary,
                 }}
               >
-                В корзину
+                {t('checkout.toCart')}
               </Link>
             </div>
           </div>
@@ -516,11 +517,11 @@ export default function CheckoutPage() {
             {/* ── Step 1: Контакты ─────────────────────────────────────────── */}
             <CheckoutStep
               n={1}
-              title="Контакты"
+              title={t('checkout.step.contacts')}
               action={
                 editContacts
-                  ? { label: "Готово", onClick: () => setEditContacts(false) }
-                  : { label: "Изменить", onClick: () => setEditContacts(true) }
+                  ? { label: t('checkout.done'), onClick: () => setEditContacts(false) }
+                  : { label: t('common.edit'), onClick: () => setEditContacts(true) }
               }
             >
               {editContacts ? (
@@ -530,11 +531,11 @@ export default function CheckoutPage() {
                       className="text-[11px] font-medium"
                       style={{ color: colors.textMuted }}
                     >
-                      Имя
+                      {t('checkout.nameLabel')}
                     </label>
                     <input
                       type="text"
-                      placeholder="Ваше имя"
+                      placeholder={t('checkout.namePlaceholder')}
                       value={contactName}
                       onChange={(e) => setContactName(e.target.value)}
                       className="w-full px-3 h-[44px] text-sm rounded-lg outline-none"
@@ -550,7 +551,7 @@ export default function CheckoutPage() {
                       className="text-[11px] font-medium"
                       style={{ color: colors.textMuted }}
                     >
-                      Телефон
+                      {t('checkout.phoneLabel')}
                     </label>
                     <PhoneInput
                       value={contactPhone}
@@ -572,7 +573,7 @@ export default function CheckoutPage() {
             </CheckoutStep>
 
             {/* ── Step 2: Доставка ─────────────────────────────────────────── */}
-            <CheckoutStep n={2} title="Доставка">
+            <CheckoutStep n={2} title={t('checkout.step.delivery')}>
               {/* Delivery/Pickup toggle */}
               <div
                 className="flex gap-2 p-1 rounded-xl mb-3"
@@ -590,7 +591,7 @@ export default function CheckoutPage() {
                         : { color: colors.textMuted, background: "transparent" }
                     }
                   >
-                    {m === "delivery" ? "Доставка" : "Самовывоз"}
+                    {m === "delivery" ? t('checkout.delivery.modeDelivery') : t('checkout.delivery.modePickup')}
                   </button>
                 ))}
               </div>
@@ -602,11 +603,11 @@ export default function CheckoutPage() {
                       className="text-[11px] font-medium"
                       style={{ color: colors.textMuted }}
                     >
-                      Улица, дом, квартира *
+                      {t('checkout.delivery.streetLabel')}
                     </label>
                     <input
                       type="text"
-                      placeholder="ул. Навои 15, кв. 3"
+                      placeholder={t('checkout.delivery.streetPlaceholder')}
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
                       className="w-full px-3 h-[44px] text-sm rounded-md outline-none"
@@ -623,11 +624,11 @@ export default function CheckoutPage() {
                       className="text-[11px] font-medium"
                       style={{ color: colors.textMuted }}
                     >
-                      Город *
+                      {t('checkout.delivery.cityLabel')}
                     </label>
                     <input
                       type="text"
-                      placeholder="Ташкент"
+                      placeholder={t('checkout.delivery.cityPlaceholder')}
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       className="w-full px-3 h-[44px] text-sm rounded-md outline-none"
@@ -649,17 +650,17 @@ export default function CheckoutPage() {
                   }}
                 >
                   <p className="font-medium text-xs" style={{ color: colors.textStrong }}>
-                    Адрес уточните у продавца
+                    {t('checkout.delivery.pickupTitle')}
                   </p>
                   <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
-                    Свяжитесь через Telegram для согласования
+                    {t('checkout.delivery.pickupHint')}
                   </p>
                 </div>
               )}
             </CheckoutStep>
 
             {/* ── Step 3: Оплата ───────────────────────────────────────────── */}
-            <CheckoutStep n={3} title="Оплата">
+            <CheckoutStep n={3} title={t('checkout.step.payment')}>
               <div className="space-y-2 md:grid md:grid-cols-3 md:gap-2.5 md:space-y-0">
                 {paymentMethods.map((m) => (
                   <button
@@ -709,12 +710,12 @@ export default function CheckoutPage() {
                   className="text-[11px] mb-1.5"
                   style={{ color: colors.textMuted }}
                 >
-                  Комментарий курьеру (необязательно)
+                  {t('checkout.commentLabel')}
                 </div>
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Например: позвонить за 10 минут"
+                  placeholder={t('checkout.commentPlaceholder')}
                   rows={2}
                   className="w-full px-3 py-2.5 text-xs rounded resize-none outline-none"
                   style={{
@@ -736,7 +737,7 @@ export default function CheckoutPage() {
                   color: colors.warning,
                 }}
               >
-                Некоторые товары заканчиваются. Вернитесь в корзину и скорректируйте количество.
+                {t('checkout.stockWarning')}
               </div>
             )}
 
@@ -753,7 +754,7 @@ export default function CheckoutPage() {
                 className="text-[10px] tracking-[0.18em] uppercase mb-3.5"
                 style={{ color: colors.textMuted }}
               >
-                — Ваш заказ
+                {t('checkout.orderSummaryLabel')}
               </div>
 
               {/* Mini items */}
@@ -771,7 +772,7 @@ export default function CheckoutPage() {
                     const productRaw = item as unknown as {
                       product?: { title?: string; mediaUrl?: string };
                     };
-                    const title = productRaw.product?.title ?? "Товар";
+                    const title = productRaw.product?.title ?? t('cart.productFallback');
                     const mediaUrl = productRaw.product?.mediaUrl ?? null;
                     const unit = cartItemUnitPrice(item);
                     const lineSubtotal =
@@ -826,18 +827,18 @@ export default function CheckoutPage() {
                 className="flex justify-between text-xs mb-1.5"
                 style={{ color: colors.textMuted }}
               >
-                <span>Подытог</span>
+                <span>{t('cart.subtotal')}</span>
                 <span>{fmt(subtotal)}</span>
               </div>
               <div
                 className="flex justify-between text-xs mb-1.5"
                 style={{ color: colors.textMuted }}
               >
-                <span>Доставка</span>
+                <span>{t('cart.delivery')}</span>
                 {deliveryFee > 0 ? (
                   <span>{fmt(deliveryFee)}</span>
                 ) : (
-                  <span style={{ color: colors.success }}>Бесплатно</span>
+                  <span style={{ color: colors.success }}>{t('cart.deliveryFree')}</span>
                 )}
               </div>
               <div
@@ -847,7 +848,7 @@ export default function CheckoutPage() {
                   borderTop: `1px dashed ${colors.divider}`,
                 }}
               >
-                <span>К оплате</span>
+                <span>{t('cart.total')}</span>
                 <span>{fmt(total)} сум</span>
               </div>
 
@@ -858,19 +859,19 @@ export default function CheckoutPage() {
                 className="hidden md:block w-full mt-4 py-3.5 text-sm font-bold rounded transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: colors.brand, color: colors.brandTextOnBg }}
               >
-                {confirm.isPending ? "Оформляем..." : "Подтвердить заказ →"}
+                {confirm.isPending ? t('checkout.submitting') : t('checkout.placeOrder')}
               </button>
               <div
                 className="hidden md:block text-[10px] mt-2 text-center"
                 style={{ color: colors.textMuted }}
               >
-                Нажимая «Подтвердить», вы соглашаетесь с{" "}
+                {t('checkout.legalPrefix')}{" "}
                 <Link href="/offer" className="underline" style={{ color: colors.textBody }}>
-                  публичной офертой
+                  {t('checkout.legalOffer')}
                 </Link>{" "}
-                и{" "}
+                {t('checkout.legalAnd')}{" "}
                 <Link href="/privacy" className="underline" style={{ color: colors.textBody }}>
-                  политикой
+                  {t('checkout.legalPrivacy')}
                 </Link>
               </div>
             </div>
@@ -891,20 +892,20 @@ export default function CheckoutPage() {
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
             {confirm.isPending
-              ? "Оформляем..."
-              : `Подтвердить заказ · ${fmt(total)} сум`}
+              ? t('checkout.submitting')
+              : t('checkout.placeOrderWithAmount', { amount: fmt(total) })}
           </button>
           <div
             className="text-[10px] mt-1.5 text-center"
             style={{ color: colors.textMuted }}
           >
-            Нажимая «Подтвердить», вы соглашаетесь с{" "}
+            {t('checkout.legalPrefix')}{" "}
             <Link href="/offer" className="underline" style={{ color: colors.textBody }}>
-              публичной офертой
+              {t('checkout.legalOffer')}
             </Link>{" "}
-            и{" "}
+            {t('checkout.legalAnd')}{" "}
             <Link href="/privacy" className="underline" style={{ color: colors.textBody }}>
-              политикой
+              {t('checkout.legalPrivacy')}
             </Link>
           </div>
         </div>

@@ -12,6 +12,7 @@ import { ThreadType } from "types";
 import { ArrowLeft, Package, ShoppingCart, MessageSquare } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import { colors } from "@/lib/styles";
+import { useTranslation } from "@/lib/i18n";
 
 // Free-delivery threshold — placeholder until real per-store rule lands
 // totalAmount in Cart is in major units (сум), so threshold also in сум
@@ -51,7 +52,8 @@ const itemUnitPrice = (i: CartItem) => {
 const itemSubtotal = (i: CartItem) =>
   typeof i.subtotal === "number" ? i.subtotal : itemUnitPrice(i) * (i.quantity || 0);
 
-const plural = (n: number) => n === 1 ? "товар" : n < 5 ? "товара" : "товаров";
+// Russian plural for «товар» — used only when locale === 'ru'
+const pluralRu = (n: number) => n === 1 ? "товар" : n < 5 ? "товара" : "товаров";
 
 // ── QtyStepper ────────────────────────────────────────────────────────────────
 
@@ -88,6 +90,7 @@ function QtyStepper({ value, onChange }: { value: number; onChange: (q: number) 
 // ── CartItemRow ───────────────────────────────────────────────────────────────
 
 function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
+  const { t } = useTranslation();
   const update = useUpdateCartItem();
   const remove = useRemoveCartItem();
   const [imgFailed, setImgFailed] = useState(false);
@@ -150,7 +153,7 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
           className="text-[10px] md:text-[11px] mt-0.5"
           style={{ color: outOfStock ? colors.danger : colors.textMuted }}
         >
-          {outOfStock ? "Нет в наличии" : (variantLabel ?? " ")}
+          {outOfStock ? t('cart.outOfStock') : (variantLabel ?? " ")}
         </div>
 
         {/* Bottom row: actions + price */}
@@ -162,7 +165,7 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
                 style={{ borderColor: colors.brand, color: colors.brand, background: "transparent" }}
                 disabled
               >
-                Уведомить
+                {t('cart.notify')}
               </button>
               <button
                 onClick={() => remove.mutate(item.id)}
@@ -170,7 +173,7 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
                 className="text-[10px] disabled:opacity-40"
                 style={{ color: colors.textMuted, background: "transparent", border: "none" }}
               >
-                Удалить
+                {t('common.delete')}
               </button>
             </div>
           ) : (
@@ -184,7 +187,7 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
                   className="text-[10px] disabled:opacity-40"
                   style={{ color: colors.textMuted, background: "transparent", border: "none" }}
                 >
-                  Удалить
+                  {t('common.delete')}
                 </button>
               </div>
               <div className="text-[13px] md:text-sm font-bold" style={{ color: colors.textStrong }}>
@@ -215,6 +218,7 @@ function SkeletonItem() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CartPage() {
+  const { t, locale } = useTranslation();
   const { data: cart, isLoading, isError } = useCart();
   const [chatOpen, setChatOpen] = useState(false);
   const [storeInfo, setStoreInfo] = useState<{ name: string; slug: string } | null>(null);
@@ -253,15 +257,21 @@ export default function CartPage() {
     }
   }, [storeId]);
 
-  const storeName = storeInfo?.name ?? "Магазин";
+  const storeName = storeInfo?.name ?? t('cart.storeFallback');
   const storeSlug = storeInfo?.slug ?? "";
   const storeInitial = storeName.charAt(0).toUpperCase();
 
+  // Item count label — RU uses plural declension, UZ uses a flat form
+  const itemCountLabel =
+    locale === 'uz'
+      ? t('cart.itemCountUz', { count: totalQty })
+      : `${totalQty} ${pluralRu(totalQty)}`;
+
   const cartAsChatMessage = items
-    .map((it) => `• ${it.product?.title ?? "Товар"} × ${it.quantity}`)
+    .map((it) => `• ${it.product?.title ?? t('cart.productFallback')} × ${it.quantity}`)
     .join("\n");
   const chatInitialText = items.length > 0
-    ? `Хочу уточнить по товарам из корзины:\n${cartAsChatMessage}`
+    ? t('cart.chatInitialText', { items: cartAsChatMessage })
     : "";
 
   // Free-delivery progress
@@ -279,19 +289,19 @@ export default function CartPage() {
           href="/"
           className="w-8 h-8 flex items-center justify-center rounded-lg hover-soft"
           style={{ color: colors.textPrimary }}
-          aria-label="Назад"
+          aria-label={t('cart.backLabel')}
         >
           <ArrowLeft size={18} />
         </Link>
         <h1 className="flex-1 text-base font-bold tracking-tight" style={{ color: colors.textStrong }}>
-          Корзина
+          {t('cart.title')}
         </h1>
         {totalQty > 0 && (
           <span
             className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
             style={{ background: colors.brandMuted, color: colors.brand }}
           >
-            {totalQty} {plural(totalQty)}
+            {itemCountLabel}
           </span>
         )}
       </div>
@@ -308,7 +318,7 @@ export default function CartPage() {
       {/* ── Error ─────────────────────────────────────────────────────────── */}
       {isError && (
         <p className="text-center text-sm py-16" style={{ color: colors.danger }}>
-          Не удалось загрузить корзину
+          {t('cart.loadError')}
         </p>
       )}
 
@@ -319,21 +329,21 @@ export default function CartPage() {
             className="text-[10px] tracking-[0.18em] uppercase mb-3"
             style={{ color: colors.textMuted }}
           >
-            — Пусто
+            {t('cart.emptyLabel')}
           </div>
           <ShoppingCart size={40} style={{ color: colors.textDim }} className="mb-4" />
           <h2 className="text-xl font-bold mb-2" style={{ color: colors.textStrong }}>
-            В корзине пока пусто
+            {t('cart.emptyTitle')}
           </h2>
           <p className="text-sm mb-6" style={{ color: colors.textMuted }}>
-            Добавьте товар в корзину чтобы оформить заказ
+            {t('cart.emptyHint')}
           </p>
           <Link
             href="/"
             className="px-6 py-3 text-sm font-bold rounded-lg"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
-            К магазинам
+            {t('cart.toStores')}
           </Link>
         </div>
       )}
@@ -360,7 +370,7 @@ export default function CartPage() {
                 {storeName}
               </div>
               <div className="text-[10px]" style={{ color: colors.textMuted }}>
-                написать продавцу
+                {t('cart.writeSeller')}
               </div>
             </div>
             <button
@@ -371,7 +381,7 @@ export default function CartPage() {
               className="text-[11px] font-semibold whitespace-nowrap"
               style={{ color: colors.brand, background: "transparent", border: "none" }}
             >
-              💬 Чат
+              {t('cart.chat')}
             </button>
           </div>
 
@@ -382,12 +392,9 @@ export default function CartPage() {
           >
             <div className="text-[11px]" style={{ color: colors.textBody }}>
               {remaining > 0 ? (
-                <>
-                  До бесплатной доставки{" "}
-                  <strong style={{ color: colors.brand }}>{fmt(remaining)} сум</strong>
-                </>
+                t('cart.freeDeliveryRemaining', { amount: fmt(remaining) })
               ) : (
-                <>✓ Бесплатная доставка включена</>
+                t('cart.freeDeliveryIncluded')
               )}
             </div>
             {remaining > 0 && (
@@ -422,16 +429,16 @@ export default function CartPage() {
                   className="text-[10px] tracking-[0.18em] uppercase mb-3.5"
                   style={{ color: colors.textMuted }}
                 >
-                  — Итого
+                  {t('cart.summaryLabel')}
                 </div>
                 <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
-                  <span>Подытог</span>
+                  <span>{t('cart.subtotal')}</span>
                   <span>{fmt(subtotal)} сум</span>
                 </div>
                 <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
-                  <span>Доставка</span>
+                  <span>{t('cart.delivery')}</span>
                   <span style={{ color: colors.textDim }}>
-                    {delivery === 0 && subtotal >= FREE_DELIVERY_MIN ? "Бесплатно" : "при оформлении"}
+                    {delivery === 0 && subtotal >= FREE_DELIVERY_MIN ? t('cart.deliveryFree') : t('cart.deliveryAtCheckout')}
                   </span>
                 </div>
                 <div
@@ -441,7 +448,7 @@ export default function CartPage() {
                     borderTop: `1px dashed ${colors.divider}`,
                   }}
                 >
-                  <span>К оплате</span>
+                  <span>{t('cart.total')}</span>
                   <span>{fmt(total)} сум</span>
                 </div>
 
@@ -451,7 +458,7 @@ export default function CartPage() {
                   className="hidden md:block w-full mt-4 py-3.5 text-center text-sm font-bold rounded-lg transition-opacity hover:opacity-90"
                   style={{ background: colors.brand, color: colors.brandTextOnBg }}
                 >
-                  Оформить заказ →
+                  {t('cart.checkout')}
                 </Link>
                 {storeSlug && (
                   <Link
@@ -459,7 +466,7 @@ export default function CartPage() {
                     className="hidden md:block w-full mt-2 py-2.5 text-center text-xs font-semibold"
                     style={{ color: colors.brand }}
                   >
-                    ← Продолжить покупки
+                    {t('cart.continueShopping')}
                   </Link>
                 )}
               </div>
@@ -472,16 +479,16 @@ export default function CartPage() {
               className="text-[10px] tracking-[0.18em] uppercase mb-3"
               style={{ color: colors.textMuted }}
             >
-              — Итого
+              {t('cart.summaryLabel')}
             </div>
             <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
-              <span>Подытог</span>
+              <span>{t('cart.subtotal')}</span>
               <span>{fmt(subtotal)} сум</span>
             </div>
             <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
-              <span>Доставка</span>
+              <span>{t('cart.delivery')}</span>
               <span style={{ color: colors.textDim }}>
-                {delivery === 0 && subtotal >= FREE_DELIVERY_MIN ? "Бесплатно" : "при оформлении"}
+                {delivery === 0 && subtotal >= FREE_DELIVERY_MIN ? t('cart.deliveryFree') : t('cart.deliveryAtCheckout')}
               </span>
             </div>
             <div
@@ -491,7 +498,7 @@ export default function CartPage() {
                 borderTop: `1px dashed ${colors.divider}`,
               }}
             >
-              <span>К оплате</span>
+              <span>{t('cart.total')}</span>
               <span>{fmt(total)} сум</span>
             </div>
           </div>
@@ -509,7 +516,7 @@ export default function CartPage() {
             className="block w-full py-3.5 text-center text-sm font-bold rounded-lg"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
-            Оформить заказ · {fmt(total)} сум
+            {t('cart.checkoutWithAmount', { amount: fmt(total) })}
           </Link>
         </div>
       )}
@@ -519,7 +526,7 @@ export default function CartPage() {
         <ChatComposerModal
           contextType={ThreadType.PRODUCT}
           contextId={firstItem.productId}
-          title={`Корзина · ${totalQty} ${plural(totalQty)}`}
+          title={t('cart.chatTitle', { count: totalQty, items: itemCountLabel })}
           initialText={chatInitialText}
           onClose={() => setChatOpen(false)}
         />
