@@ -294,7 +294,7 @@ export default function CheckoutPage() {
   // Delivery
   const [mode, setMode] = useState<DeliveryMode>("delivery");
   const [street, setStreet] = useState("");
-  const [city, setCity] = useState("Ташкент");
+  const [city, setCity] = useState(t('checkout.delivery.cityPlaceholder'));
 
   // Contacts editing
   const [editContacts, setEditContacts] = useState(false);

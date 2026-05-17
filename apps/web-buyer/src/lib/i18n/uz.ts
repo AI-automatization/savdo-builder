@@ -432,7 +432,7 @@ export const uz: Translations = {
   'emoji.ariaLabel': 'Emoji',
   'emoji.cat.smiles': 'Tabassum',
   'emoji.cat.gestures': 'Imo-ishoralar',
-  'emoji.cat.hearts': 'Yuraklarlar',
+  'emoji.cat.hearts': 'Yuraklar',
   'emoji.cat.animals': 'Hayvonlar',
   'emoji.cat.food': 'Oziq-ovqat',
   'emoji.cat.money': 'Pul',
