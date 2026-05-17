@@ -526,7 +526,7 @@ export default function CartPage() {
         <ChatComposerModal
           contextType={ThreadType.PRODUCT}
           contextId={firstItem.productId}
-          title={t('cart.chatTitle', { count: totalQty, items: itemCountLabel })}
+          title={t('cart.chatTitle', { items: itemCountLabel })}
           initialText={chatInitialText}
           onClose={() => setChatOpen(false)}
         />

@@ -360,7 +360,7 @@ export const uz: Translations = {
   'checkout.placeOrder': 'Buyurtmani tasdiqlash →',
   'checkout.placeOrderWithAmount': 'Buyurtmani tasdiqlash · {amount} soʻm',
   'checkout.legalPrefix': '«Tasdiqlash» tugmasini bosib, siz',
-  'checkout.legalOffer': 'ommaviy oferta',
+  'checkout.legalOffer': 'ommaviy ofertaga',
   'checkout.legalAnd': 'va',
   'checkout.legalPrivacy': 'maxfiylik siyosatiga rozi boʻlasiz',
   'checkout.previewError': 'Buyurtmani yuklashda xato',

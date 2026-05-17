@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -324,14 +324,15 @@ export default function CheckoutPage() {
   const subtotal = rawSubtotal > 0 ? rawSubtotal : cartSubtotal;
   const total = subtotal + deliveryFee;
 
-  // Payment methods — defined inside component to access t()
+  // Payment methods — defined inside component to access t().
+  // useMemo([t]): t is stable per locale, so the array rebuilds only on language switch.
   const paymentMethods: {
     id: PaymentId;
     label: string;
     sub: string;
     disabled: boolean;
     badge?: string;
-  }[] = [
+  }[] = useMemo(() => [
     {
       id: "cash",
       label: t('checkout.payment.cashLabel'),
@@ -356,7 +357,7 @@ export default function CheckoutPage() {
       disabled: true,
       badge: t('checkout.payment.comingSoon'),
     },
-  ];
+  ], [t]);
 
   // Redirect away if cart becomes empty after preview loads
   useEffect(() => {
