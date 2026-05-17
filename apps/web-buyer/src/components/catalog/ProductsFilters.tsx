@@ -2,14 +2,9 @@
 
 import { useGlobalCategoriesTree } from '@/hooks/use-storefront';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 export type ProductsSortKey = 'new' | 'price_asc' | 'price_desc';
-
-const SORT_LABELS: Record<ProductsSortKey, string> = {
-  new: 'Новые',
-  price_asc: 'Дешевле',
-  price_desc: 'Дороже',
-};
 
 export function ProductsFilters({
   categorySlug,
@@ -24,6 +19,13 @@ export function ProductsFilters({
 }) {
   const { data: tree } = useGlobalCategoriesTree();
   const rootCategories = tree ?? [];
+  const { t } = useTranslation();
+
+  const SORT_LABELS: Record<ProductsSortKey, string> = {
+    new: t('catalog.sort.new'),
+    price_asc: t('catalog.sort.priceAsc'),
+    price_desc: t('catalog.sort.priceDesc'),
+  };
 
   return (
     <div className="mb-5">
@@ -32,7 +34,7 @@ export function ProductsFilters({
         <ChipButton
           active={!categorySlug}
           onClick={() => onChangeCategory(null)}
-          label="Все"
+          label={t('catalog.all')}
         />
         {rootCategories.map((c) => (
           <ChipButton
@@ -57,11 +59,11 @@ export function ProductsFilters({
           padding: '0.4rem 0.75rem',
           fontSize: '0.8125rem',
         }}
-        aria-label="Сортировка"
+        aria-label={t('catalog.sort.label')}
       >
         {(Object.keys(SORT_LABELS) as ProductsSortKey[]).map((k) => (
           <option key={k} value={k}>
-            Сортировка: {SORT_LABELS[k]}
+            {t('catalog.sort.option', { label: SORT_LABELS[k] })}
           </option>
         ))}
       </select>

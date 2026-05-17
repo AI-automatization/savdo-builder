@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useFeaturedStorefront } from '@/hooks/use-storefront';
 import { StoreCard } from '@/components/store/StoreCard';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 export function HomeTopStores() {
   const { data, isLoading, isError } = useFeaturedStorefront();
   const stores = data?.topStores ?? [];
+  const { t } = useTranslation();
 
   if (isError || (!isLoading && stores.length === 0)) return null;
 
@@ -19,14 +21,14 @@ export function HomeTopStores() {
           className="text-[10px] font-bold uppercase"
           style={{ color: colors.textMuted, letterSpacing: '0.18em' }}
         >
-          — Топ магазины
+          {t('home.topStores.title')}
         </h2>
         <Link
           href="/stores"
           className="text-xs font-semibold transition-opacity hover:opacity-80"
           style={{ color: colors.brand }}
         >
-          Все магазины →
+          {t('home.topStores.allStores')}
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">

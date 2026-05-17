@@ -5,6 +5,7 @@ import type { ProductListItem } from "types";
 import ProductCard from "@/components/store/ProductCard";
 import { Package, Search } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { useTranslation } from "@/lib/i18n";
 
 type Props = {
   products: ProductListItem[];
@@ -13,6 +14,7 @@ type Props = {
 
 export default function ProductsWithSearch({ products, storeSlug }: Props) {
   const [query, setQuery] = useState("");
+  const { t } = useTranslation();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -25,7 +27,7 @@ export default function ProductsWithSearch({ products, storeSlug }: Props) {
       <div className="text-center py-20">
         <Package size={48} style={{ color: colors.textDim }} className="mb-4 mx-auto" />
         <p className="text-sm" style={{ color: colors.textMuted }}>
-          Товаров в этой категории пока нет
+          {t('store.productsEmpty')}
         </p>
       </div>
     );
@@ -44,7 +46,7 @@ export default function ProductsWithSearch({ products, storeSlug }: Props) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по товарам..."
+            placeholder={t('store.productsSearch')}
             className="w-full pl-10 pr-4 py-2.5 rounded-md text-sm outline-none focus:ring-2 transition-shadow"
             style={{
               background: colors.surface,
@@ -60,7 +62,7 @@ export default function ProductsWithSearch({ products, storeSlug }: Props) {
         <div className="text-center py-16">
           <Search size={40} style={{ color: colors.textDim }} className="mb-3 mx-auto" />
           <p className="text-sm" style={{ color: colors.textMuted }}>
-            Ничего не найдено
+            {t('store.searchEmpty')}
           </p>
         </div>
       ) : (

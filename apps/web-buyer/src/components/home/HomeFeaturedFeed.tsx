@@ -12,6 +12,7 @@ import {
 import ProductCard from '@/components/store/ProductCard';
 import { featuredProductToListItem } from '@/lib/storefront-adapters';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 export function HomeFeaturedFeed() {
   const searchParams = useSearchParams();
@@ -32,6 +33,7 @@ export function HomeFeaturedFeed() {
 
   const isFilterMode = !!categoryId;
   const isLoading = isFilterMode ? filtered.isLoading : featured.isLoading;
+  const { t } = useTranslation();
 
   return (
     <section className="px-4 sm:px-6 mt-10 max-w-7xl mx-auto">
@@ -40,14 +42,14 @@ export function HomeFeaturedFeed() {
           className="text-[10px] font-bold uppercase"
           style={{ color: colors.textMuted, letterSpacing: '0.18em' }}
         >
-          — {isFilterMode ? 'По категории' : 'Новинки'}
+          — {isFilterMode ? t('home.featured.byCategory') : t('home.featured.newArrivals')}
         </h2>
         <Link
           href={catSlug ? `/products?cat=${catSlug}` : '/products'}
           className="text-xs font-semibold transition-opacity hover:opacity-80"
           style={{ color: colors.brand }}
         >
-          Все товары →
+          {t('home.featured.allProducts')}
         </Link>
       </div>
       {isLoading ? (
@@ -65,7 +67,7 @@ export function HomeFeaturedFeed() {
           {isFilterMode ? (
             (filtered.data?.data ?? []).length === 0 ? (
               <p className="text-sm py-4" style={{ color: colors.textMuted }}>
-                В этой категории пока нет товаров
+                {t('home.featured.emptyCatalog')}
               </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -81,7 +83,7 @@ export function HomeFeaturedFeed() {
           ) : (
             (featured.data?.featuredProducts ?? []).length === 0 ? (
               <p className="text-sm py-4" style={{ color: colors.textMuted }}>
-                Скоро здесь появятся товары
+                {t('home.featured.emptyFeatured')}
               </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">

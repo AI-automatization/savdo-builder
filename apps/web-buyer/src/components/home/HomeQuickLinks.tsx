@@ -4,22 +4,24 @@
 import Link from 'next/link';
 import { Package, MessageSquare, ChevronRight } from 'lucide-react';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 export function HomeQuickLinks() {
+  const { t } = useTranslation();
   return (
     <section className="px-4 sm:px-6 mt-10 max-w-7xl mx-auto">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <QuickLink
           href="/orders"
           icon={<Package size={18} style={{ color: colors.brand }} />}
-          title="Мои заказы"
-          subtitle="Статус доставки и история"
+          title={t('home.quickLinks.ordersTitle')}
+          subtitle={t('home.quickLinks.ordersSubtitle')}
         />
         <QuickLink
           href="/chats"
           icon={<MessageSquare size={18} style={{ color: colors.brand }} />}
-          title="Чаты с продавцами"
-          subtitle="Вопросы по заказу или товару"
+          title={t('home.quickLinks.chatsTitle')}
+          subtitle={t('home.quickLinks.chatsSubtitle')}
         />
       </div>
     </section>

@@ -6,10 +6,12 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { getRecentStores, removeRecentStore, type RecentStore } from "@/lib/recent-stores";
 import { colors } from "@/lib/styles";
+import { useTranslation } from "@/lib/i18n";
 
 export function RecentStores() {
   const [stores, setStores] = useState<RecentStore[]>([]);
   const [mounted, setMounted] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     setStores(getRecentStores());
@@ -28,7 +30,7 @@ export function RecentStores() {
   return (
     <div className="w-full">
       <p className="text-[10px] tracking-[0.18em] uppercase font-semibold mb-3 px-1" style={{ color: colors.textMuted }}>
-        — Недавние магазины
+        {t('home.recentStores.title')}
       </p>
       <div className="flex gap-2.5 overflow-x-auto scrollbar-none pb-1">
         {stores.map((store) => (
@@ -56,7 +58,7 @@ export function RecentStores() {
             <button
               type="button"
               onClick={(e) => handleRemove(e, store.slug)}
-              aria-label="Забыть магазин"
+              aria-label={t('home.recentStores.forget')}
               className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-10"
               style={{ background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }}
             >

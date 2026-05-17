@@ -10,6 +10,7 @@ import { ShoppingBag, Layers, Heart } from "lucide-react";
 import { colors } from "@/lib/styles";
 import { useAuth } from "@/lib/auth/context";
 import { useToggleWishlist, useWishlistIds } from "@/hooks/use-wishlist";
+import { useTranslation } from "@/lib/i18n";
 
 type Props = {
   product: ProductListItem;
@@ -24,6 +25,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
   const wishlistIds = useWishlistIds();
   const toggleWishlist = useToggleWishlist();
   const [imageErrored, setImageErrored] = useState(false);
+  const { t } = useTranslation();
 
   // Server-sent flag (auth'd storefront feed) wins; client cache is the fallback
   // for cards rendered from a non-feed source (cart, recent stores, etc).
@@ -69,7 +71,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
             <div className="flex flex-col items-center gap-1.5 px-3 text-center">
               <ShoppingBag size={26} style={{ color: colors.textMuted, opacity: 0.55 }} />
               <span className="text-[10px] font-medium tracking-wide uppercase" style={{ color: colors.textMuted, opacity: 0.7 }}>
-                Без фото
+                {t('store.noPhoto')}
               </span>
             </div>
           ) : useCollage ? (
@@ -126,7 +128,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
           <button
             type="button"
             onClick={handleHeartClick}
-            aria-label={inWishlist ? "Убрать из избранного" : "В избранное"}
+            aria-label={inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}
             aria-pressed={inWishlist}
             className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
             style={{
@@ -153,7 +155,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
                 style={{ background: colors.brandTextOnBg, color: colors.textBody, border: `1px solid ${colors.border}` }}
               >
-                Нет в наличии
+                {t('store.outOfStock')}
               </span>
             </div>
           )}
@@ -178,6 +180,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
 function CollageGrid({ urls, alt }: { urls: string[]; alt: string }) {
   const cells = [0, 1, 2, 3].map((i) => urls[i] ?? null);
   const [brokenCells, setBrokenCells] = useState<Set<number>>(new Set());
+  const { t } = useTranslation();
 
   return (
     <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
@@ -186,7 +189,7 @@ function CollageGrid({ urls, alt }: { urls: string[]; alt: string }) {
           {url && !brokenCells.has(i) ? (
             <Image
               src={url}
-              alt={`${alt} — фото ${i + 1}`}
+              alt={`${alt} — ${t('product.showPhoto', { n: i + 1 })}`}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 25vw, 110px"

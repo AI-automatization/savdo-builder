@@ -1,6 +1,7 @@
 'use client';
 
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 export function LoadMoreButton({
   onClick,
@@ -11,6 +12,7 @@ export function LoadMoreButton({
   isLoading: boolean;
   hasMore: boolean;
 }) {
+  const { t } = useTranslation();
   if (!hasMore) return null;
   return (
     <div className="flex justify-center mt-8">
@@ -25,7 +27,7 @@ export function LoadMoreButton({
           color: colors.textBody,
         }}
       >
-        {isLoading ? 'Загрузка…' : 'Загрузить ещё'}
+        {isLoading ? t('common.loading') : t('catalog.loadMore')}
       </button>
     </div>
   );

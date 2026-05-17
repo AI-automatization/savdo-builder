@@ -6,6 +6,7 @@ import { ChevronDown, Filter as FilterIcon, X } from "lucide-react";
 import type { GlobalCategory } from "types";
 import type { StorefrontCategoryFilter } from "@/lib/api/storefront.api";
 import { colors } from "@/lib/styles";
+import { useTranslation } from "@/lib/i18n";
 
 type Props = {
   /** All global categories (Sprint 31). User picks one to enable attribute filters. */
@@ -34,6 +35,7 @@ export default function CategoryAttributeFilters({
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { t } = useTranslation();
 
   // Local input state — submitted on blur / Enter so each keystroke doesn't
   // refetch the storefront. Synced with URL on prop change.
@@ -114,7 +116,7 @@ export default function CategoryAttributeFilters({
           }
         >
           <FilterIcon size={14} />
-          Фильтры
+          {t('store.filters.label')}
           {activeCount > 0 && (
             <span
               className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold"
@@ -133,7 +135,7 @@ export default function CategoryAttributeFilters({
             className="text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
             style={{ color: colors.textMuted }}
           >
-            Сбросить
+            {t('store.filters.reset')}
           </button>
         )}
       </div>
@@ -146,7 +148,7 @@ export default function CategoryAttributeFilters({
           {/* Global category select */}
           <div>
             <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: colors.textStrong }}>
-              Категория
+              {t('store.filters.category')}
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
@@ -159,7 +161,7 @@ export default function CategoryAttributeFilters({
                     : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}`, borderRadius: 4 }
                 }
               >
-                Все
+                {t('store.allCategory')}
               </button>
               {globalCategories.map((cat) => {
                 const isActive = activeGlobalSlug === cat.slug;
@@ -185,7 +187,7 @@ export default function CategoryAttributeFilters({
           {/* Price range — always available, no category required. */}
           <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: '12px' }}>
             <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: colors.textStrong }}>
-              Цена, сум
+              {t('store.filters.price')}
             </p>
             <div className="flex items-center gap-2">
               <input
@@ -196,7 +198,7 @@ export default function CategoryAttributeFilters({
                 onChange={(e) => setMinInput(e.target.value)}
                 onBlur={() => commitPrice("priceMin", minInput)}
                 onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                placeholder="от"
+                placeholder={t('store.filters.priceFrom')}
                 className="w-1/2 px-3 py-2 text-sm outline-none"
                 style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textBody, borderRadius: 6 }}
               />
@@ -209,7 +211,7 @@ export default function CategoryAttributeFilters({
                 onChange={(e) => setMaxInput(e.target.value)}
                 onBlur={() => commitPrice("priceMax", maxInput)}
                 onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                placeholder="до"
+                placeholder={t('store.filters.priceTo')}
                 className="w-1/2 px-3 py-2 text-sm outline-none"
                 style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textBody, borderRadius: 6 }}
               />
@@ -219,7 +221,7 @@ export default function CategoryAttributeFilters({
           {/* Attribute filters — only shown when a category is picked */}
           {activeGlobalSlug && attributeFilters.length === 0 && (
             <p className="text-xs" style={{ color: colors.textDim }}>
-              У этой категории нет дополнительных фильтров
+              {t('store.filters.noFilters')}
             </p>
           )}
           {activeGlobalSlug && attributeFilters.length > 0 && (
@@ -249,6 +251,7 @@ function AttributeControl({
   value: string;
   onChange: (v: string | null) => void;
 }) {
+  const { t } = useTranslation();
   const label = filter.unit ? `${filter.nameRu} (${filter.unit})` : filter.nameRu;
 
   if (filter.fieldType === "select" && filter.options && filter.options.length > 0) {
@@ -269,7 +272,7 @@ function AttributeControl({
               borderRadius: 6,
             }}
           >
-            <option value="">Любой</option>
+            <option value="">{t('store.filters.any')}</option>
             {filter.options.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -284,7 +287,7 @@ function AttributeControl({
               type="button"
               onClick={() => onChange(null)}
               className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover-soft"
-              aria-label="Очистить"
+              aria-label={t('store.filters.clear')}
             >
               <X size={12} style={{ color: colors.textMuted }} />
             </button>
@@ -323,7 +326,7 @@ function AttributeControl({
         type={filter.fieldType === "number" ? "number" : "text"}
         value={value}
         onChange={(e) => onChange(e.target.value || null)}
-        placeholder="Любое"
+        placeholder={t('store.filters.anyValue')}
         className="w-full px-3 py-2 text-sm outline-none"
         style={{
           background: colors.surfaceMuted,

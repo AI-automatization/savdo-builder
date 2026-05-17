@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { useGlobalCategoriesTree } from '@/hooks/use-storefront';
 import { colors, pill, pillActive } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 const MAX_CHIPS = 6;
 
@@ -14,6 +15,7 @@ export function HomeCategoryChips() {
   const searchParams = useSearchParams();
   const { data, isLoading } = useGlobalCategoriesTree();
   const selectedSlug = searchParams.get('cat');
+  const { t } = useTranslation();
 
   const roots = useMemo(() => {
     const all = data ?? [];
@@ -52,7 +54,7 @@ export function HomeCategoryChips() {
   return (
     <section className="px-4 sm:px-6 mt-6 max-w-7xl mx-auto">
       <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-        <Chip active={!selectedSlug} onClick={() => setCat(null)} label="Все" />
+        <Chip active={!selectedSlug} onClick={() => setCat(null)} label={t('home.categories.all')} />
         {roots.map((c) => (
           <Chip
             key={c.id}

@@ -24,6 +24,7 @@ import {
   isValueAvailable,
   type OptionSelection,
 } from "@/lib/variants";
+import { useTranslation } from "@/lib/i18n";
 
 const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
 
@@ -43,6 +44,7 @@ function Skeleton({ className }: { className?: string }) {
 
 // ── Qty Stepper ───────────────────────────────────────────────────────────────
 function QtyStepper({ qty, onDec, onInc }: { qty: number; onDec: () => void; onInc: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       className="flex items-center rounded"
@@ -52,7 +54,7 @@ function QtyStepper({ qty, onDec, onInc }: { qty: number; onDec: () => void; onI
         onClick={onDec}
         className="flex items-center justify-center transition-opacity hover:opacity-70"
         style={{ padding: "6px 12px", color: colors.textBody }}
-        aria-label="Уменьшить количество"
+        aria-label={t('product.decreaseQty')}
       >
         <Minus size={14} />
       </button>
@@ -66,7 +68,7 @@ function QtyStepper({ qty, onDec, onInc }: { qty: number; onDec: () => void; onI
         onClick={onInc}
         className="flex items-center justify-center transition-opacity hover:opacity-70"
         style={{ padding: "6px 12px", color: colors.textBody }}
-        aria-label="Увеличить количество"
+        aria-label={t('product.increaseQty')}
       >
         <Plus size={14} />
       </button>
@@ -85,6 +87,7 @@ export default function ProductPage() {
   const { isAuthenticated } = useAuth();
   const wishlistIds = useWishlistIds();
   const toggleWishlist = useToggleWishlist();
+  const { t } = useTranslation();
   const inWishlist = product
     ? ((product as { inWishlist?: boolean }).inWishlist ?? wishlistIds.has(product.id))
     : false;
@@ -203,11 +206,11 @@ export default function ProductPage() {
 
   // ── Primary CTA label ────────────────────────────────────────────────────────
   function ctaLabel() {
-    if (isLoading) return "Загрузка...";
-    if (isOutOfStock) return "Нет в наличии";
-    if (requiresVariantSelection) return "Выберите вариант";
-    if (added) return "Добавлено ✓";
-    return `В корзину · ${fmt(totalPrice)} сум`;
+    if (isLoading) return t('product.ctaLoading');
+    if (isOutOfStock) return t('product.ctaOutOfStock');
+    if (requiresVariantSelection) return t('product.ctaSelectVariant');
+    if (added) return t('product.ctaAdded');
+    return t('product.ctaAddToCart', { price: fmt(totalPrice) });
   }
 
   // ── Variant: detect if a group is color-like ──────────────────────────────────
@@ -226,12 +229,12 @@ export default function ProductPage() {
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-2">
         <div className="flex items-center gap-3">
-          <Tooltip label="Назад">
+          <Tooltip label={t('product.back')}>
             <button
               onClick={() => window.history.length > 1 ? router.back() : router.push(`/${slug}`)}
               className="w-9 h-9 flex items-center justify-center rounded transition-colors"
               style={{ background: colors.surface, border: `1px solid ${colors.border}`, color: colors.textBody }}
-              aria-label="Назад"
+              aria-label={t('product.back')}
             >
               <ArrowLeft size={18} />
             </button>
@@ -251,10 +254,10 @@ export default function ProductPage() {
           {/* Right actions */}
           <div className="flex items-center gap-2 ml-auto">
             {!notFound && product && (
-              <Tooltip label={inWishlist ? 'Убрать из избранного' : 'В избранное'}>
+              <Tooltip label={inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}>
                 <button
                   onClick={handleWishlistToggle}
-                  aria-label={inWishlist ? 'Убрать из избранного' : 'В избранное'}
+                  aria-label={inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}
                   aria-pressed={inWishlist}
                   className="w-9 h-9 flex items-center justify-center rounded transition-colors"
                   style={{
@@ -269,10 +272,10 @@ export default function ProductPage() {
               </Tooltip>
             )}
             {!notFound && (
-              <Tooltip label={shared ? 'Ссылка скопирована' : 'Поделиться в Telegram'}>
+              <Tooltip label={shared ? t('product.linkCopied') : t('product.shareTelegram')}>
                 <button
                   onClick={handleShare}
-                  aria-label="Поделиться в Telegram"
+                  aria-label={t('product.shareTelegram')}
                   className="w-9 h-9 flex items-center justify-center rounded transition-colors"
                   style={{
                     background: colors.surface,
@@ -292,16 +295,16 @@ export default function ProductPage() {
       {notFound ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center py-20">
           <Search size={48} style={{ color: colors.textDim }} className="mb-4 mx-auto" />
-          <p className="text-base font-semibold" style={{ color: colors.textStrong }}>Товар не найден</p>
+          <p className="text-base font-semibold" style={{ color: colors.textStrong }}>{t('product.notFound')}</p>
           <p className="text-sm mt-2 mb-5" style={{ color: colors.textMuted }}>
-            Возможно, продавец его удалил или скрыл
+            {t('product.notFoundDesc')}
           </p>
           <button
             onClick={() => router.push(`/${slug}`)}
             className="inline-block px-5 py-2.5 rounded text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: colors.brandMuted, color: colors.brand, border: `1px solid ${colors.brandBorder}` }}
           >
-            К магазину
+            {t('product.toStore')}
           </button>
         </div>
       ) : (
@@ -374,7 +377,7 @@ export default function ProductPage() {
                       <button
                         key={i}
                         onClick={() => setActiveImage(i)}
-                        aria-label={`Показать фото ${i + 1}`}
+                        aria-label={t('product.showPhoto', { n: i + 1 })}
                         aria-pressed={i === activeImage}
                         className="relative aspect-square overflow-hidden rounded transition-all"
                         style={{
@@ -397,7 +400,7 @@ export default function ProductPage() {
                       <button
                         key={i}
                         onClick={() => setActiveImage(i)}
-                        aria-label={`Показать фото ${i + 1}`}
+                        aria-label={t('product.showPhoto', { n: i + 1 })}
                         aria-pressed={i === activeImage}
                         className="w-16 h-16 rounded overflow-hidden relative flex-shrink-0 transition-all"
                         style={{
@@ -431,7 +434,7 @@ export default function ProductPage() {
                       className="text-[10px] tracking-[0.18em] uppercase mb-2"
                       style={{ color: colors.textMuted }}
                     >
-                      — {product?.globalCategory?.nameRu ?? 'Товар'}
+                      — {product?.globalCategory?.nameRu ?? t('product.defaultCategory')}
                     </div>
 
                     {/* Title */}
@@ -454,8 +457,8 @@ export default function ProductPage() {
                     {stockQty !== null && (
                       <div className="text-xs" style={{ color: isOutOfStock ? colors.danger : colors.textMuted }}>
                         {isOutOfStock
-                          ? 'Нет в наличии'
-                          : `В наличии · ${stockQty} шт`}
+                          ? t('store.outOfStock')
+                          : t('store.inStock', { count: stockQty })}
                       </div>
                     )}
                   </div>
@@ -562,7 +565,7 @@ export default function ProductPage() {
 
                     {selectedVariantObj && isOutOfStock && (
                       <p className="text-xs" style={{ color: colors.warning }}>
-                        Эта комбинация временно недоступна
+                        {t('product.variantUnavailable')}
                       </p>
                     )}
                   </div>
@@ -572,7 +575,7 @@ export default function ProductPage() {
                 {!isLoading && !hasGroups && activeVariants.length > 0 && (
                   <div>
                     <div className="text-xs mb-2.5">
-                      <span style={{ color: colors.textMuted }}>Вариант:</span>{' '}
+                      <span style={{ color: colors.textMuted }}>{t('product.variantLabel')}</span>{' '}
                       {selectedVariantId && (
                         <strong style={{ color: colors.textStrong }}>
                           {activeVariants.find(v => v.id === selectedVariantId)?.titleOverride
@@ -655,7 +658,7 @@ export default function ProductPage() {
                           track.chatStarted(product.storeId, "product");
                           setChatOpen(true);
                         }}
-                        aria-label="Обсудить с продавцом"
+                        aria-label={t('product.discussLabel')}
                         className="text-sm font-bold flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.98]"
                         style={{
                           padding: '12px 16px',
@@ -666,7 +669,7 @@ export default function ProductPage() {
                         }}
                       >
                         <MessageSquare size={16} />
-                        Обсудить
+                        {t('product.discuss')}
                       </button>
                     </div>
                   </div>
@@ -686,7 +689,7 @@ export default function ProductPage() {
                   className="text-[10px] tracking-[0.18em] uppercase mb-3"
                   style={{ color: colors.textMuted }}
                 >
-                  — Описание
+                  {t('product.descriptionSection')}
                 </div>
                 <p
                   className="text-sm max-w-[680px]"
@@ -704,7 +707,7 @@ export default function ProductPage() {
                   className="text-[10px] tracking-[0.18em] uppercase mb-3"
                   style={{ color: colors.textMuted }}
                 >
-                  — Характеристики
+                  {t('product.attributesSection')}
                 </div>
                 <div
                   className="rounded-md p-4 max-w-[680px]"
@@ -735,14 +738,14 @@ export default function ProductPage() {
                     className="text-[10px] tracking-[0.18em] uppercase"
                     style={{ color: colors.textMuted }}
                   >
-                    — Из этого магазина
+                    {t('product.fromStore')}
                   </div>
                   <Link
                     href={`/${storeSlug}`}
                     className="text-xs font-semibold"
                     style={{ color: colors.brand }}
                   >
-                    Все →
+                    {t('product.allFromStore')}
                   </Link>
                 </div>
                 {/* Related products grid — populated when fetched upstream; currently empty placeholder */}
@@ -783,7 +786,7 @@ export default function ProductPage() {
                   track.chatStarted(product.storeId, "product");
                   setChatOpen(true);
                 }}
-                aria-label="Обсудить с продавцом"
+                aria-label={t('product.discussLabel')}
                 className="flex-shrink-0 w-12 h-12 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-[0.92]"
                 style={{
                   background: colors.accent,

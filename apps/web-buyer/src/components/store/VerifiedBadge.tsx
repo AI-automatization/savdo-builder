@@ -1,7 +1,10 @@
 // apps/web-buyer/src/components/store/VerifiedBadge.tsx
+'use client';
+
 import { Check } from 'lucide-react';
 import { Tooltip } from '@/components/tooltip';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 type Size = 'sm' | 'md' | 'lg';
 
@@ -15,9 +18,10 @@ interface Props {
 
 export function VerifiedBadge({ size = 'md', bare = false }: Props) {
   const px = SIZE_PX[size];
+  const { t } = useTranslation();
   const node = (
     <span
-      aria-label="Проверенный магазин"
+      aria-label={t('store.verifiedLabel')}
       className="inline-grid place-items-center rounded-full align-middle"
       style={{
         width: px,
@@ -30,5 +34,5 @@ export function VerifiedBadge({ size = 'md', bare = false }: Props) {
     </span>
   );
   if (bare) return node;
-  return <Tooltip label="Проверенный магазин">{node}</Tooltip>;
+  return <Tooltip label={t('store.verifiedLabel')}>{node}</Tooltip>;
 }

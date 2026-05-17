@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Star } from 'lucide-react';
 import { useProductReviews } from '@/hooks/use-storefront';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 interface ProductReviewsProps {
   productId: string;
@@ -15,8 +16,9 @@ function formatDate(iso: string): string {
 }
 
 function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
+  const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-0.5" aria-label={`Рейтинг ${rating} из 5`}>
+    <div className="flex items-center gap-0.5" aria-label={t('product.reviews.ratingLabel', { rating })}>
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
@@ -32,6 +34,7 @@ function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
 
 export function ProductReviews({ productId }: ProductReviewsProps) {
   const { data, isLoading, isError } = useProductReviews(productId);
+  const { t, locale } = useTranslation();
 
   const avgRating = useMemo(() => {
     if (!data?.items.length) return 0;
@@ -45,7 +48,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     return (
       <section className="mb-8">
         <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-          — Отзывы
+          {t('product.reviews.section')}
         </div>
         <div className="rounded-md p-4 max-w-[680px] animate-pulse" style={{ background: colors.surface }}>
           <div className="h-4 w-32 rounded mb-2" style={{ background: colors.surfaceMuted }} />
@@ -59,13 +62,13 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     return (
       <section className="mb-8">
         <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-          — Отзывы
+          {t('product.reviews.section')}
         </div>
         <div
           className="rounded-md p-4 max-w-[680px] text-sm"
           style={{ background: colors.surface, color: colors.textMuted }}
         >
-          Пока нет отзывов. Будьте первым после получения заказа.
+          {t('product.reviews.empty')}
         </div>
       </section>
     );
@@ -75,7 +78,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     <section className="mb-8">
       <div className="flex items-baseline justify-between mb-3 max-w-[680px]">
         <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
-          — Отзывы
+          {t('product.reviews.section')}
         </div>
         <div className="flex items-center gap-2">
           <Stars rating={Math.round(avgRating)} />
@@ -83,7 +86,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
             {avgRating.toFixed(1)}
           </span>
           <span className="text-xs" style={{ color: colors.textMuted }}>
-            · {data.total} {pluralizeReview(data.total)}
+            · {data.total} {locale === 'uz' ? 'ta sharh' : pluralizeReview(data.total)}
           </span>
         </div>
       </div>

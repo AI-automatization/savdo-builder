@@ -2,6 +2,7 @@
 
 import { colors } from '@/lib/styles';
 import type { StoresCatalogItem } from '@/lib/api/storefront.api';
+import { useTranslation } from '@/lib/i18n';
 
 export type StoresSortKey = 'top' | 'new' | 'rating';
 
@@ -10,12 +11,6 @@ export interface StoresFiltersState {
   verifiedOnly: boolean;
   sort: StoresSortKey;
 }
-
-const SORT_LABELS: Record<StoresSortKey, string> = {
-  top: 'Популярные',
-  new: 'Новые',
-  rating: 'По рейтингу',
-};
 
 export function StoresFilters({
   stores,
@@ -29,6 +24,13 @@ export function StoresFilters({
   const cities = Array.from(
     new Set(stores.map((s) => s.city).filter((c): c is string => !!c)),
   ).sort();
+  const { t } = useTranslation();
+
+  const SORT_LABELS: Record<StoresSortKey, string> = {
+    top: t('catalog.sort.top'),
+    new: t('catalog.sort.new'),
+    rating: t('catalog.sort.rating'),
+  };
 
   const selectStyle: React.CSSProperties = {
     background: colors.surface,
@@ -45,9 +47,9 @@ export function StoresFilters({
         value={value.city}
         onChange={(e) => onChange({ ...value, city: e.target.value })}
         style={selectStyle}
-        aria-label="Город"
+        aria-label={t('catalog.stores.cityLabel')}
       >
-        <option value="all">Все города</option>
+        <option value="all">{t('catalog.stores.allCities')}</option>
         {cities.map((c) => (
           <option key={c} value={c}>
             {c}
@@ -68,7 +70,7 @@ export function StoresFilters({
         }}
         aria-pressed={value.verifiedOnly}
       >
-        ✓ Только проверенные
+        {t('catalog.stores.verifiedOnly')}
       </button>
 
       <select
@@ -77,7 +79,7 @@ export function StoresFilters({
           onChange({ ...value, sort: e.target.value as StoresSortKey })
         }
         style={selectStyle}
-        aria-label="Сортировка"
+        aria-label={t('catalog.sort.label')}
       >
         {(Object.keys(SORT_LABELS) as StoresSortKey[]).map((k) => (
           <option key={k} value={k}>

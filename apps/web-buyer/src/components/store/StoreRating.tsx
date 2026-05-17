@@ -1,6 +1,9 @@
 // apps/web-buyer/src/components/store/StoreRating.tsx
+'use client';
+
 import { Star } from 'lucide-react';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 interface Props {
   rating: number | null;
@@ -21,6 +24,7 @@ function pluralReviews(n: number): string {
 }
 
 export function StoreRating({ rating, reviewCount, hideWhenEmpty = true, size = 'sm' }: Props) {
+  const { t, locale } = useTranslation();
   if (hideWhenEmpty && reviewCount === 0) return null;
   if (rating == null) return null;
 
@@ -32,12 +36,12 @@ export function StoreRating({ rating, reviewCount, hideWhenEmpty = true, size = 
     <span
       className="inline-flex items-center gap-1"
       style={{ color: colors.textMuted, fontSize: px }}
-      aria-label={`Рейтинг ${formatted} из 5, ${reviewCount} ${pluralReviews(reviewCount)}`}
+      aria-label={t('store.ratingAriaLabel', { rating: formatted, count: reviewCount })}
     >
       <Star size={iconPx} fill={colors.warning} strokeWidth={0} aria-hidden />
       <span style={{ color: colors.textBody, fontWeight: 600 }}>{formatted}</span>
       <span aria-hidden>·</span>
-      <span>{reviewCount} {pluralReviews(reviewCount)}</span>
+      <span>{reviewCount} {locale === 'uz' ? 'ta sharh' : pluralReviews(reviewCount)}</span>
     </span>
   );
 }
