@@ -480,6 +480,7 @@ export const ru: Translations = {
   'uploader.serverError': 'Сервер вернул {status}. Попробуйте позже.',
   'uploader.noConnection': 'Нет связи с сервером.',
   'uploader.genericError': 'Не удалось загрузить фото. Попробуйте снова.',
+  'uploader.uploadFailed': 'Ошибка загрузки ({status}).',
   'uploader.invalidFormat': 'Формат не поддерживается. Используйте JPG, PNG или WebP.',
   'uploader.fileTooLargeLocal': 'Файл слишком большой. Максимум 10 МБ.',
   'uploader.retry': 'Попробовать снова',

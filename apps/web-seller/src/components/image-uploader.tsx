@@ -53,7 +53,7 @@ export function ImageUploader({
       if (status === 503) return t('uploader.storageDisabled');
       if (status && status >= 500) return t('uploader.serverError', { status: String(status) });
       if (!err.response) return t('uploader.noConnection');
-      return serverMsg ?? `Ошибка загрузки (${status ?? '?'}).`;
+      return serverMsg ?? t('uploader.uploadFailed', { status: String(status ?? '?') });
     }
     return t('uploader.genericError');
   }

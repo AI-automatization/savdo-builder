@@ -478,6 +478,7 @@ export const uz: Translations = {
   'uploader.serverError': 'Server {status} qaytardi. Keyinroq urinib koʻring.',
   'uploader.noConnection': 'Server bilan aloqa yoʻq.',
   'uploader.genericError': 'Rasmni yuklab boʻlmadi. Qayta urinib koʻring.',
+  'uploader.uploadFailed': 'Yuklash xatosi ({status}).',
   'uploader.invalidFormat': 'Format qoʻllab-quvvatlanmaydi. JPG, PNG yoki WebP ishlating.',
   'uploader.fileTooLargeLocal': 'Fayl juda katta. Maksimum 10 MB.',
   'uploader.retry': 'Qayta urinib koʻring',

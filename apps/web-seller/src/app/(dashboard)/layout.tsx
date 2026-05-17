@@ -338,9 +338,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Socket.IO toasts */}
       {toasts.length > 0 && (
         <div className="fixed bottom-6 right-6 flex flex-col gap-2.5" style={{ zIndex: 100 }}>
-          {toasts.map((t) => (
+          {toasts.map((toast) => (
             <div
-              key={t.id}
+              key={toast.id}
               className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium shadow-xl"
               style={{
                 background: colors.surfaceElevated,
@@ -351,7 +351,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               }}
             >
               <ShoppingCart size={16} style={{ color: colors.accent }} />
-              {t.text}
+              {toast.text}
             </div>
           ))}
         </div>
