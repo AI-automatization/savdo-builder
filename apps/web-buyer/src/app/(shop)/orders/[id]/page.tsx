@@ -10,6 +10,7 @@ import { track } from "@/lib/analytics";
 import { ArrowLeft, Package, Frown, MessageSquare, MapPin, Send } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import { colors } from "@/lib/styles";
+import { useTranslation } from "@/lib/i18n";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,13 +81,13 @@ function normalizeOrder(raw: any): NormalizedOrder {
 
 type StatusTone = "success" | "brand" | "warning" | "muted";
 
-const STATUS_META: Record<string, { label: string; eta: string; tone: StatusTone }> = {
-  [OrderStatus.PENDING]:    { label: "Ожидает подтверждения", eta: "Продавец скоро рассмотрит заказ",       tone: "warning" },
-  [OrderStatus.CONFIRMED]:  { label: "Подтверждён",            eta: "Магазин готовит ваш заказ",            tone: "brand"   },
-  [OrderStatus.PROCESSING]: { label: "В обработке",            eta: "Идёт сборка заказа",                   tone: "brand"   },
-  [OrderStatus.SHIPPED]:    { label: "В пути",                  eta: "Курьер скоро привезёт",                tone: "brand"   },
-  [OrderStatus.DELIVERED]:  { label: "Доставлен",               eta: "Спасибо за покупку",                   tone: "success" },
-  [OrderStatus.CANCELLED]:  { label: "Отменён",                 eta: "Заказ был отменён",                    tone: "muted"   },
+const STATUS_TONE: Record<string, StatusTone> = {
+  [OrderStatus.PENDING]:    "warning",
+  [OrderStatus.CONFIRMED]:  "brand",
+  [OrderStatus.PROCESSING]: "brand",
+  [OrderStatus.SHIPPED]:    "brand",
+  [OrderStatus.DELIVERED]:  "success",
+  [OrderStatus.CANCELLED]:  "muted",
 };
 
 const TONE_COLORS: Record<StatusTone, { bg: string; fg: string }> = {
@@ -98,12 +99,12 @@ const TONE_COLORS: Record<StatusTone, { bg: string; fg: string }> = {
 
 // ── Timeline ─────────────────────────────────────────────────────────────────
 
-const TIMELINE: { key: OrderStatus; label: string }[] = [
-  { key: OrderStatus.PENDING,    label: "Заказ оформлен"          },
-  { key: OrderStatus.CONFIRMED,  label: "Подтверждён продавцом"   },
-  { key: OrderStatus.PROCESSING, label: "Сборка заказа"           },
-  { key: OrderStatus.SHIPPED,    label: "Передан курьеру"         },
-  { key: OrderStatus.DELIVERED,  label: "Доставлен"               },
+const TIMELINE_KEYS: { key: OrderStatus; tKey: string }[] = [
+  { key: OrderStatus.PENDING,    tKey: 'orders.timeline.placed'     },
+  { key: OrderStatus.CONFIRMED,  tKey: 'orders.timeline.confirmed'  },
+  { key: OrderStatus.PROCESSING, tKey: 'orders.timeline.processing' },
+  { key: OrderStatus.SHIPPED,    tKey: 'orders.timeline.shipped'    },
+  { key: OrderStatus.DELIVERED,  tKey: 'orders.timeline.delivered'  },
 ];
 
 const STATUS_INDEX: Record<string, number> = {
@@ -115,33 +116,37 @@ const STATUS_INDEX: Record<string, number> = {
 };
 
 function StatusPill({ status }: { status: OrderStatus }) {
-  const meta = STATUS_META[status] ?? { label: status, tone: "muted" as StatusTone };
-  const c = TONE_COLORS[meta.tone];
+  const { t } = useTranslation();
+  const tone = STATUS_TONE[status] ?? "muted";
+  const c = TONE_COLORS[tone as StatusTone];
+  const label = t(`orders.meta.${status}.label` as Parameters<typeof t>[0]) || status;
   return (
     <span
       className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
       style={{ background: c.bg, color: c.fg }}
     >
-      {meta.label}
+      {label}
     </span>
   );
 }
 
 function StatusHero({ order }: { order: NormalizedOrder }) {
-  const meta = STATUS_META[order.status] ?? STATUS_META[OrderStatus.PENDING];
+  const { t } = useTranslation();
   const cancelled = order.status === OrderStatus.CANCELLED;
+  const label = t(`orders.meta.${order.status}.label` as Parameters<typeof t>[0]) || order.status;
+  const eta = t(`orders.meta.${order.status}.eta` as Parameters<typeof t>[0]) || "";
 
   if (cancelled) {
     return (
       <div className="px-4 py-5" style={{ background: colors.surfaceSunken }}>
         <div className="text-[10px] tracking-[0.18em] uppercase mb-1.5" style={{ color: colors.textMuted }}>
-          — Статус
+          {t('orders.detail.statusLabel')}
         </div>
         <div className="text-lg font-bold mb-1" style={{ color: colors.textStrong }}>
-          {meta.label}
+          {label}
         </div>
         <div className="text-[11px]" style={{ color: colors.textMuted }}>
-          {meta.eta}
+          {eta}
         </div>
       </div>
     );
@@ -150,34 +155,35 @@ function StatusHero({ order }: { order: NormalizedOrder }) {
   return (
     <div className="px-4 py-5" style={{ background: colors.brand, color: colors.brandTextOnBg }}>
       <div className="text-[10px] tracking-[0.18em] uppercase opacity-70 mb-1.5">
-        — Статус
+        {t('orders.detail.statusLabel')}
       </div>
       <div className="text-lg font-bold mb-1">
-        {meta.label}
+        {label}
       </div>
       <div className="text-[11px] opacity-85">
-        {meta.eta}
+        {eta}
       </div>
     </div>
   );
 }
 
 function Timeline({ status }: { status: OrderStatus }) {
+  const { t } = useTranslation();
   if (status === OrderStatus.CANCELLED) return null;
   const currentIdx = STATUS_INDEX[status] ?? 0;
 
   return (
     <div className="px-4 py-5" style={{ background: colors.surface }}>
       <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-        — Этапы
+        {t('orders.detail.timelineLabel')}
       </div>
-      {TIMELINE.map((step, i) => {
+      {TIMELINE_KEYS.map((step, i) => {
         const completed = i < currentIdx;
         const current = i === currentIdx;
         const upcoming = i > currentIdx;
         return (
           <div key={step.key} className="flex items-start gap-3">
-            <div className="flex flex-col items-center" style={{ minHeight: i === TIMELINE.length - 1 ? "auto" : 36 }}>
+            <div className="flex flex-col items-center" style={{ minHeight: i === TIMELINE_KEYS.length - 1 ? "auto" : 36 }}>
               <div
                 className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0${current ? " animate-pulse" : ""}`}
                 style={{
@@ -187,7 +193,7 @@ function Timeline({ status }: { status: OrderStatus }) {
               >
                 {completed ? "✓" : current ? "●" : ""}
               </div>
-              {i < TIMELINE.length - 1 && (
+              {i < TIMELINE_KEYS.length - 1 && (
                 <div
                   className="w-px flex-1 min-h-[18px]"
                   style={{ background: completed ? colors.brand : colors.divider }}
@@ -206,7 +212,7 @@ function Timeline({ status }: { status: OrderStatus }) {
                   opacity: upcoming ? 0.7 : 1,
                 }}
               >
-                {step.label}
+                {t(step.tKey as Parameters<typeof t>[0])}
               </div>
             </div>
           </div>
@@ -232,6 +238,7 @@ function PageSkeleton() {
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useTranslation();
   const { data: rawOrder, isLoading, isError } = useOrder(id);
   const cancelOrder = useCancelOrder();
   useBuyerSocket();
@@ -255,12 +262,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           href="/orders"
           className="w-8 h-8 flex items-center justify-center rounded-md transition-colors"
           style={{ color: colors.textBody }}
-          aria-label="Назад"
+          aria-label={t('orders.detail.backLabel')}
         >
           <ArrowLeft size={18} />
         </Link>
         <h1 className="flex-1 text-[15px] font-bold" style={{ color: colors.textStrong }}>
-          Заказ #{order ? (order.orderNumber ?? shortId(order.id)) : "…"}
+          {order
+            ? t('orders.detail.orderNumber').replace('{number}', String(order.orderNumber ?? shortId(order.id)))
+            : t('orders.detail.orderNumber').replace('{number}', '…')}
         </h1>
         {order && <StatusPill status={order.status} />}
       </div>
@@ -271,9 +280,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         {isError && (
           <div className="text-center py-16 px-4">
             <Frown size={28} style={{ color: colors.textDim }} className="mb-3 mx-auto" />
-            <p className="text-sm" style={{ color: colors.danger }}>Не удалось загрузить заказ</p>
+            <p className="text-sm" style={{ color: colors.danger }}>{t('orders.detail.loadError')}</p>
             <Link href="/orders" className="text-xs mt-3 inline-block font-semibold" style={{ color: colors.brand }}>
-              ← Назад к заказам
+              {t('orders.detail.backToOrders')}
             </Link>
           </div>
         )}
@@ -300,9 +309,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold truncate" style={{ color: colors.textStrong }}>
-                    {order.store.name ?? "Магазин"}
+                    {order.store.name ?? t('orders.detail.storeFallback')}
                   </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>Продавец</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>{t('orders.detail.seller')}</p>
                 </div>
                 {order.store.telegramContactLink && (
                   <a
@@ -314,7 +323,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     style={{ background: colors.brandMuted, color: colors.brand }}
                   >
                     <Send size={11} />
-                    Написать
+                    {t('orders.detail.write')}
                   </a>
                 )}
               </div>
@@ -325,7 +334,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             {/* Items */}
             <div className="px-4 py-4" style={{ background: colors.surface }}>
               <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-                — Товары · {totalQty} шт
+                {t('orders.detail.itemsLabel').replace('{qty}', String(totalQty))}
               </div>
               <div className="flex flex-col gap-3">
                 {order.items.map((item) => (
@@ -362,7 +371,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             {/* Delivery */}
             <div className="px-4 py-4" style={{ background: colors.surface }}>
               <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-                — Доставка
+                {t('orders.detail.deliveryLabel')}
               </div>
               {order.deliveryType === DeliveryType.DELIVERY ? (
                 <div className="flex items-start gap-2.5">
@@ -380,11 +389,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
               ) : (
-                <p className="text-xs" style={{ color: colors.textStrong }}>Самовывоз</p>
+                <p className="text-xs" style={{ color: colors.textStrong }}>{t('orders.detail.pickup')}</p>
               )}
               {order.buyerNote && (
                 <div className="mt-3 pt-3" style={{ borderTop: `1px dashed ${colors.divider}` }}>
-                  <p className="text-[10px] mb-1" style={{ color: colors.textMuted }}>Комментарий покупателя</p>
+                  <p className="text-[10px] mb-1" style={{ color: colors.textMuted }}>{t('orders.detail.buyerNote')}</p>
                   <p className="text-xs" style={{ color: colors.textBody }}>{order.buyerNote}</p>
                 </div>
               )}
@@ -395,21 +404,21 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             {/* Total */}
             <div className="px-4 py-4" style={{ background: colors.surface }}>
               <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-                — Итого
+                {t('orders.detail.totalsLabel')}
               </div>
               <div className="flex justify-between text-xs mb-1.5">
-                <span style={{ color: colors.textMuted }}>Товары · {totalQty} шт</span>
+                <span style={{ color: colors.textMuted }}>{t('orders.detail.goodsLine').replace('{qty}', String(totalQty))}</span>
                 <span style={{ color: colors.textBody }}>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-xs mb-1.5">
-                <span style={{ color: colors.textMuted }}>Доставка</span>
+                <span style={{ color: colors.textMuted }}>{t('orders.detail.deliveryLine')}</span>
                 <span style={{ color: colors.textBody }}>{formatPrice(order.deliveryFee)}</span>
               </div>
               <div
                 className="flex justify-between items-baseline pt-2.5 mt-2"
                 style={{ borderTop: `1px dashed ${colors.divider}` }}
               >
-                <span className="text-sm font-bold" style={{ color: colors.textStrong }}>К оплате</span>
+                <span className="text-sm font-bold" style={{ color: colors.textStrong }}>{t('orders.detail.toPay')}</span>
                 <span className="text-base font-bold" style={{ color: colors.textStrong }}>
                   {formatPrice(order.totalAmount)} сум
                 </span>
@@ -436,7 +445,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 style={{ background: colors.brand, color: colors.brandTextOnBg }}
               >
                 <MessageSquare size={16} />
-                Чат по заказу
+                {t('orders.detail.chatBtn')}
               </button>
             )}
 
@@ -446,7 +455,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 className="w-full py-3.5 rounded-md text-sm font-bold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
                 style={{ background: colors.brand, color: colors.brandTextOnBg }}
               >
-                К магазинам
+                {t('orders.detail.toStores')}
               </Link>
             )}
 
@@ -460,7 +469,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 style={{ background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }}
               >
                 <Send size={12} />
-                Открыть в Telegram
+                {t('orders.detail.openTelegram')}
               </a>
             )}
 
@@ -470,7 +479,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 className="w-full py-2.5 rounded-md text-xs font-semibold transition-opacity hover:opacity-90"
                 style={{ background: "transparent", color: colors.danger, border: `1px solid ${colors.danger}` }}
               >
-                Отменить заказ
+                {t('orders.detail.cancelBtn')}
               </button>
             )}
 
@@ -480,7 +489,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 style={{ background: colors.surface, border: `1px solid ${colors.danger}` }}
               >
                 <p className="text-xs text-center" style={{ color: colors.textStrong }}>
-                  Отменить заказ #{order.orderNumber ?? shortId(order.id)}?
+                  {t('orders.detail.confirmCancelQuestion').replace('{number}', String(order.orderNumber ?? shortId(order.id)))}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -488,7 +497,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     className="flex-1 py-2 rounded-md text-[11px] font-semibold"
                     style={{ background: colors.surfaceSunken, color: colors.textBody }}
                   >
-                    Назад
+                    {t('common.back')}
                   </button>
                   <button
                     onClick={() => cancelOrder.mutate({ id: order.id })}
@@ -496,7 +505,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     className="flex-1 py-2 rounded-md text-[11px] font-semibold disabled:opacity-40"
                     style={{ background: colors.danger, color: colors.brandTextOnBg }}
                   >
-                    {cancelOrder.isPending ? "..." : "Да, отменить"}
+                    {cancelOrder.isPending ? "..." : t('orders.detail.confirmCancelYes')}
                   </button>
                 </div>
               </div>
@@ -511,7 +520,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <ChatComposerModal
           contextType={ThreadType.ORDER}
           contextId={order.id}
-          title={`Заказ #${order.orderNumber ?? shortId(order.id)}`}
+          title={t('orders.detail.orderNumber').replace('{number}', String(order.orderNumber ?? shortId(order.id)))}
           onClose={() => setChatOpen(false)}
         />
       )}

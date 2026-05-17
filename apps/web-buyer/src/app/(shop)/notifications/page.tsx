@@ -8,6 +8,7 @@ import { useNotifications, useReadAll } from "@/hooks/use-notifications";
 import type { NotificationItem } from "@/lib/api/notifications.api";
 import { CheckCircle, Truck, Package, XCircle, ShoppingBag, Bell } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { useTranslation } from "@/lib/i18n";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -22,13 +23,6 @@ function relativeTime(iso: string): string {
 }
 
 type Bucket = "today" | "yesterday" | "week" | "earlier";
-
-const BUCKET_LABEL: Record<Bucket, string> = {
-  today: "Сегодня",
-  yesterday: "Вчера",
-  week: "На прошлой неделе",
-  earlier: "Ранее",
-};
 
 function bucketFor(iso: string): Bucket {
   const ms = Date.now() - new Date(iso).getTime();
@@ -128,23 +122,24 @@ function Skeleton() {
 
 function AuthGate() {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
       <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-        — Уведомления
+        {t('notifications.authGate.label')}
       </div>
       <h2 className="text-lg font-bold mb-2" style={{ color: colors.textStrong }}>
-        Войдите чтобы видеть уведомления
+        {t('notifications.authGate.title')}
       </h2>
       <p className="text-sm mb-6 max-w-sm" style={{ color: colors.textMuted }}>
-        Уведомления об изменении статуса заказов и другие важные события
+        {t('notifications.authGate.hint')}
       </p>
       <button
         onClick={() => router.push("/profile")}
         className="px-6 py-3 rounded-md text-sm font-bold transition-opacity hover:opacity-90"
         style={{ background: colors.brand, color: colors.brandTextOnBg }}
       >
-        Войти
+        {t('notifications.authGate.login')}
       </button>
     </div>
   );
@@ -156,6 +151,7 @@ type Tab = "all" | "unread";
 
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("all");
   const { data: items = [], isLoading, isError } = useNotifications();
   const readAll = useReadAll();
@@ -184,6 +180,13 @@ export default function NotificationsPage() {
 
   const orderedBuckets: Bucket[] = ["today", "yesterday", "week", "earlier"];
 
+  const BUCKET_LABEL: Record<Bucket, string> = {
+    today:     t('notifications.bucket.today'),
+    yesterday: t('notifications.bucket.yesterday'),
+    week:      t('notifications.bucket.week'),
+    earlier:   t('notifications.bucket.earlier'),
+  };
+
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
       {/* Header */}
@@ -192,7 +195,7 @@ export default function NotificationsPage() {
         style={{ background: colors.surface, borderColor: colors.divider }}
       >
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Уведомления</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>{t('notifications.title')}</h1>
           {isAuthenticated && items.length > 0 && (
             <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
               {items.length} {items.length === 1 ? "уведомление" : items.length < 5 ? "уведомления" : "уведомлений"}
@@ -206,7 +209,7 @@ export default function NotificationsPage() {
             className="text-[11px] font-semibold px-3 py-1.5 rounded-md transition-opacity hover:opacity-80 disabled:opacity-40"
             style={{ background: colors.brandMuted, color: colors.brand }}
           >
-            Прочитать все
+            {t('notifications.readAll')}
           </button>
         )}
       </div>
@@ -218,15 +221,17 @@ export default function NotificationsPage() {
           <>
             {/* Filter chips */}
             <div className="px-4 py-2.5 flex gap-1.5">
-              {(["all", "unread"] as Tab[]).map((t) => {
-                const active = tab === t;
-                const label = t === "all"
-                  ? `Все · ${items.length}`
-                  : `Непрочитанные${unreadItems.length > 0 ? ` · ${unreadItems.length}` : ""}`;
+              {(["all", "unread"] as Tab[]).map((tabKey) => {
+                const active = tab === tabKey;
+                const label = tabKey === "all"
+                  ? t('notifications.filter.all').replace('{count}', String(items.length))
+                  : unreadItems.length > 0
+                    ? t('notifications.filter.unread').replace('{count}', String(unreadItems.length))
+                    : t('notifications.filter.unreadNoCount');
                 return (
                   <button
-                    key={t}
-                    onClick={() => setTab(t)}
+                    key={tabKey}
+                    onClick={() => setTab(tabKey)}
                     className="flex-shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded transition"
                     style={
                       active
@@ -244,20 +249,20 @@ export default function NotificationsPage() {
 
             {isError && (
               <p className="text-sm py-8 px-4 text-center" style={{ color: colors.danger }}>
-                Не удалось загрузить уведомления
+                {t('notifications.error')}
               </p>
             )}
 
             {!isLoading && !isError && filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
                 <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-                  — Пусто
+                  {t('notifications.empty.label')}
                 </div>
                 <h2 className="text-lg font-bold mb-2" style={{ color: colors.textStrong }}>
-                  {tab === "unread" ? "Нет непрочитанных" : "Уведомлений пока нет"}
+                  {tab === "unread" ? t('notifications.empty.noUnread') : t('notifications.empty.noNotifications')}
                 </h2>
                 <p className="text-sm" style={{ color: colors.textMuted }}>
-                  Когда что-то случится с заказом — появится здесь
+                  {t('notifications.empty.hint')}
                 </p>
               </div>
             )}

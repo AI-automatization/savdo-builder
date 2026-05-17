@@ -21,6 +21,7 @@ import {
 import { ChevronRight, MessageSquare, MoreVertical, Package, Pencil, Search, Send, Store, Trash2 } from "lucide-react";
 import { colors, dangerTint } from "@/lib/styles";
 import { EmojiPicker } from "@/components/emoji-picker";
+import { useTranslation } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
@@ -51,6 +52,7 @@ function sameDay(a: string, b: string): boolean {
 }
 
 function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
+  const { t } = useTranslation();
   const { title } = getThreadDisplay(thread);
   const unread = thread.unreadCount ?? 0;
   const storeBrand = colors.brand;
@@ -77,7 +79,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
             className="text-[13px] truncate"
             style={{ color: colors.textStrong, fontWeight: unread > 0 ? 700 : 500 }}
           >
-            {thread.storeName ?? title ?? "Магазин"}
+            {thread.storeName ?? title ?? t('chat.threadFallback')}
           </div>
           {thread.lastMessageAt && (
             <div className="text-[10px] flex-shrink-0 ml-2" style={{ color: colors.textMuted }}>
@@ -93,7 +95,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
               fontWeight: unread > 0 ? 600 : 400,
             }}
           >
-            {thread.lastMessage ?? "Нет сообщений"}
+            {thread.lastMessage ?? t('chat.noMessages')}
           </div>
           {unread > 0 && (
             <div
@@ -110,13 +112,14 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 }
 
 function PinnedProductStrip({ thread }: { thread: ChatThread }) {
+  const { t } = useTranslation();
   if (!thread.productId) return null;
   const href = thread.storeSlug ? `/${thread.storeSlug}/products/${thread.productId}` : null;
   const priceLabel =
     typeof thread.productPrice === "number"
       ? `${Number(thread.productPrice).toLocaleString("ru-RU")} сум`
       : null;
-  const title = thread.productTitle ?? "Товар";
+  const title = thread.productTitle ?? t('chat.threadFallback');
 
   const content = (
     <div
@@ -145,7 +148,7 @@ function PinnedProductStrip({ thread }: { thread: ChatThread }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: colors.textMuted, letterSpacing: "0.04em" }}>
-          Обсуждение товара
+          {t('chat.pinnedProduct.label')}
         </div>
         <div className="text-[13px] font-semibold truncate" style={{ color: colors.textStrong }}>
           {title}
@@ -161,7 +164,7 @@ function PinnedProductStrip({ thread }: { thread: ChatThread }) {
           className="flex items-center gap-0.5 text-[11px] font-semibold flex-shrink-0"
           style={{ color: colors.brand }}
         >
-          Открыть
+          {t('chat.pinnedProduct.open')}
           <ChevronRight size={12} />
         </div>
       )}
@@ -172,6 +175,7 @@ function PinnedProductStrip({ thread }: { thread: ChatThread }) {
 }
 
 function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: () => void; onDeleted: () => void }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
@@ -191,7 +195,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
     return [...raw].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
   }, [data?.messages]);
   const { title } = getThreadDisplay(thread);
-  const storeName = thread.storeName ?? title ?? "Магазин";
+  const storeName = thread.storeName ?? title ?? t('chat.threadFallback');
   const storeBrand = colors.brand;
   const storeInitial = storeName.charAt(0).toUpperCase();
 
@@ -270,7 +274,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           onClick={onBack}
           className="md:hidden text-lg flex-shrink-0 transition-opacity hover:opacity-70"
           style={{ color: colors.textBody, background: "transparent", border: "none" }}
-          aria-label="Назад"
+          aria-label={t('chat.backLabel')}
         >
           ←
         </button>
@@ -285,15 +289,15 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
             {storeName}
           </div>
           <div className="text-[10px] truncate" style={{ color: colors.textMuted }}>
-            {thread.status === "OPEN" ? "Открыт" : "Закрыт"}
+            {thread.status === "OPEN" ? t('chat.threadStatus.open') : t('chat.threadStatus.closed')}
           </div>
         </div>
         <button
           onClick={() => setConfirmDeleteThread(true)}
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-opacity hover:opacity-80 flex-shrink-0"
           style={{ background: dangerTint(0.08), color: colors.danger, border: `1px solid ${dangerTint(0.25)}` }}
-          aria-label="Удалить чат"
-          title="Удалить чат"
+          aria-label={t('chat.deleteThreadLabel')}
+          title={t('chat.deleteThreadLabel')}
         >
           <Trash2 size={14} />
         </button>
@@ -308,9 +312,9 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
             className="rounded-lg p-5 max-w-xs w-full flex flex-col gap-3"
             style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
           >
-            <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Удалить сообщение?</p>
+            <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>{t('chat.confirmDeleteMsg.title')}</p>
             <p className="text-xs" style={{ color: colors.textMuted }}>
-              Продавец увидит «Сообщение удалено» вместо текста.
+              {t('chat.confirmDeleteMsg.hint')}
             </p>
             <div className="flex gap-2 mt-1">
               <button
@@ -318,7 +322,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 className="flex-1 py-2.5 rounded-md text-sm font-medium"
                 style={{ background: colors.surfaceMuted, color: colors.textBody, border: `1px solid ${colors.border}` }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => handleDeleteMessage(confirmDeleteMsg)}
@@ -326,7 +330,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
                 style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
-                {deleteMessageMutation.isPending ? "..." : "Удалить"}
+                {deleteMessageMutation.isPending ? "..." : t('common.delete')}
               </button>
             </div>
           </div>
@@ -340,9 +344,9 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
             className="rounded-lg p-5 max-w-xs w-full flex flex-col gap-3"
             style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
           >
-            <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>Удалить этот чат?</p>
+            <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>{t('chat.confirmDeleteThread.title')}</p>
             <p className="text-xs" style={{ color: colors.textMuted }}>
-              Чат исчезнет из вашего списка. Продавец продолжит видеть историю.
+              {t('chat.confirmDeleteThread.hint')}
             </p>
             <div className="flex gap-2 mt-1">
               <button
@@ -350,7 +354,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 className="flex-1 py-2.5 rounded-md text-sm font-medium"
                 style={{ background: colors.surfaceMuted, color: colors.textBody, border: `1px solid ${colors.border}` }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleDeleteThread}
@@ -358,7 +362,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                 className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
                 style={{ background: colors.danger, color: colors.brandTextOnBg }}
               >
-                {deleteThreadMutation.isPending ? "..." : "Удалить"}
+                {deleteThreadMutation.isPending ? "..." : t('common.delete')}
               </button>
             </div>
           </div>
@@ -381,7 +385,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
         )}
 
         {!isLoading && messages.length === 0 && (
-          <p className="text-center text-sm py-8" style={{ color: colors.textMuted }}>Нет сообщений</p>
+          <p className="text-center text-sm py-8" style={{ color: colors.textMuted }}>{t('chat.noMessages')}</p>
         )}
 
         {messages.map((m, i) => {
@@ -436,7 +440,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                     }
                   >
                     {m.isDeleted ? (
-                      <p>Сообщение удалено</p>
+                      <p>{t('chat.messageDeleted')}</p>
                     ) : isEditing ? (
                       <div className="flex flex-col gap-2 min-w-[180px]">
                         <textarea
@@ -458,7 +462,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             className="px-2.5 py-1 rounded-md text-[11px] font-semibold"
                             style={{ background: "transparent", border: `1px solid ${colors.brandTextOnBg}`, color: colors.brandTextOnBg }}
                           >
-                            Отмена
+                            {t('common.cancel')}
                           </button>
                           <button
                             type="button"
@@ -467,7 +471,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                             className="px-2.5 py-1 rounded-md text-[11px] font-semibold disabled:opacity-50"
                             style={{ background: colors.brandTextOnBg, color: colors.brand }}
                           >
-                            {editMessageMutation.isPending ? "..." : "Сохранить"}
+                            {editMessageMutation.isPending ? "..." : t('common.save')}
                           </button>
                         </div>
                       </div>
@@ -482,7 +486,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                           textAlign: isBuyer ? "right" : "left",
                         }}
                       >
-                        {m.editedAt && <span className="mr-1">изменено · </span>}
+                        {m.editedAt && <span className="mr-1">{t('chat.edited')}</span>}
                         {timeLabel(m.createdAt)}
                       </p>
                     )}
@@ -495,7 +499,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                         onClick={() => setOpenMenuId(showMenu ? null : m.id)}
                         className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
                         style={{ background: colors.surface, color: colors.textStrong, border: `1px solid ${colors.border}` }}
-                        aria-label="Действия с сообщением"
+                        aria-label={t('chat.actionsLabel')}
                       >
                         <MoreVertical size={15} />
                       </button>
@@ -511,7 +515,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover-soft"
                               style={{ color: colors.textStrong }}
                             >
-                              <Pencil size={12} /> Редактировать
+                              <Pencil size={12} /> {t('chat.editAction')}
                             </button>
                           )}
                           {canDelete && (
@@ -521,7 +525,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover-soft"
                               style={{ color: colors.danger }}
                             >
-                              <Trash2 size={12} /> Удалить
+                              <Trash2 size={12} /> {t('chat.deleteAction')}
                             </button>
                           )}
                         </div>
@@ -548,7 +552,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Сообщение..."
+            placeholder={t('chat.composerPlaceholder')}
             className="flex-1 px-3 py-2.5 rounded-full text-xs outline-none"
             style={{ background: colors.surfaceMuted, color: colors.textBody }}
           />
@@ -557,7 +561,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
             disabled={!text.trim() || sendMutation.isPending}
             className="w-9 h-9 rounded-full flex items-center justify-center text-base disabled:opacity-50 flex-shrink-0 transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg, border: "none" }}
-            aria-label="Отправить"
+            aria-label={t('chat.sendLabel')}
           >
             <Send size={15} />
           </button>
@@ -568,7 +572,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           className="px-4 py-3 text-center text-xs flex-shrink-0 border-t"
           style={{ color: colors.textMuted, borderColor: colors.divider, background: colors.surface }}
         >
-          Чат закрыт продавцом
+          {t('chat.closedByseller')}
         </div>
       )}
     </div>
@@ -576,6 +580,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
 }
 
 function ChatsView() {
+  const { t } = useTranslation();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -628,7 +633,7 @@ function ChatsView() {
       >
         {/* Header */}
         <div className="px-4 py-3.5 flex-shrink-0 border-b" style={{ borderColor: colors.divider }}>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>Чаты</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>{t('chat.title')}</h1>
         </div>
 
         {/* Search */}
@@ -640,7 +645,7 @@ function ChatsView() {
             <Search size={14} style={{ color: colors.textMuted }} />
             <input
               type="text"
-              placeholder="Поиск магазинов"
+              placeholder={t('chat.search.placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-transparent outline-none text-xs"
@@ -660,7 +665,7 @@ function ChatsView() {
                 : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
             }
           >
-            Все · {threads?.length ?? 0}
+            {t('chat.filter.all').replace('{count}', String(threads?.length ?? 0))}
           </button>
           <button
             onClick={() => setFilter("unread")}
@@ -671,7 +676,7 @@ function ChatsView() {
                 : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
             }
           >
-            Непрочитанные · {unreadCount}
+            {t('chat.filter.unread').replace('{count}', String(unreadCount))}
           </button>
         </div>
 
@@ -692,16 +697,16 @@ function ChatsView() {
           )}
           {isError && (
             <p className="px-4 py-6 text-xs text-center" style={{ color: colors.danger }}>
-              Ошибка загрузки
+              {t('chat.loadError')}
             </p>
           )}
           {!isLoading && !isError && (threads?.length ?? 0) === 0 && (
             <div className="px-4 py-10 text-center flex flex-col items-center gap-3">
               <MessageSquare size={28} style={{ color: colors.textMuted }} />
               <div>
-                <p className="text-sm font-medium" style={{ color: colors.textStrong }}>Чатов пока нет</p>
+                <p className="text-sm font-medium" style={{ color: colors.textStrong }}>{t('chat.empty.title')}</p>
                 <p className="text-xs mt-1.5 leading-relaxed" style={{ color: colors.textMuted }}>
-                  Откройте магазин или заказ и нажмите кнопку чата
+                  {t('chat.empty.hint')}
                 </p>
               </div>
               <Link
@@ -709,13 +714,13 @@ function ChatsView() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold mt-1 transition-opacity hover:opacity-90"
                 style={{ background: colors.brand, color: colors.brandTextOnBg }}
               >
-                <Store size={14} /> Перейти к магазинам
+                <Store size={14} /> {t('chat.empty.toStores')}
               </Link>
             </div>
           )}
           {!isLoading && !isError && (threads?.length ?? 0) > 0 && filteredThreads.length === 0 && (
             <div className="px-4 py-10 text-center">
-              <p className="text-sm" style={{ color: colors.textMuted }}>Нет совпадений</p>
+              <p className="text-sm" style={{ color: colors.textMuted }}>{t('chat.noMatches')}</p>
             </div>
           )}
           {filteredThreads.map((thread) => (
@@ -744,13 +749,13 @@ function ChatsView() {
             <MessageSquare size={32} style={{ color: colors.textMuted, margin: "0 auto 10px" }} />
             {threads && threads.length === 0 ? (
               <>
-                <p className="text-sm font-medium" style={{ color: colors.textStrong }}>Здесь появятся ваши диалоги</p>
+                <p className="text-sm font-medium" style={{ color: colors.textStrong }}>{t('chat.placeholder.title')}</p>
                 <p className="text-xs mt-2 leading-relaxed" style={{ color: colors.textMuted }}>
-                  Зайдите в любой магазин, откройте товар и нажмите кнопку чата.
+                  {t('chat.placeholder.hint')}
                 </p>
               </>
             ) : (
-              <p className="text-sm" style={{ color: colors.textMuted }}>Выберите чат</p>
+              <p className="text-sm" style={{ color: colors.textMuted }}>{t('chat.placeholder.select')}</p>
             )}
           </div>
         </div>
@@ -761,6 +766,7 @@ function ChatsView() {
 
 export default function ChatsPage() {
   const { isAuthenticated } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textStrong }}>
@@ -770,7 +776,7 @@ export default function ChatsPage() {
         ) : (
           <OtpGate
             icon={<MessageSquare size={22} />}
-            title="Войдите для доступа к чатам"
+            title={t('chat.loginTitle')}
           />
         )}
       </div>
