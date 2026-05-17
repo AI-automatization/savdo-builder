@@ -6,12 +6,15 @@ import { useSellerSummary, useSellerAnalytics, type AnalyticsPeriod } from '@/ho
 import type { DailyPoint } from '@/lib/api/analytics.api';
 import { useSellerProduct } from '@/hooks/use-products';
 import { card, cardMuted, colors, dangerTint } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
-const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
-  { value: 7,  label: '7 дней'  },
-  { value: 30, label: '30 дней' },
-  { value: 90, label: '90 дней' },
-];
+const PERIOD_VALUES: AnalyticsPeriod[] = [7, 30, 90];
+
+const PERIOD_KEY: Record<AnalyticsPeriod, string> = {
+  7:  'analytics.period7',
+  30: 'analytics.period30',
+  90: 'analytics.period90',
+};
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + ' млн';
@@ -65,7 +68,7 @@ function KpiCard({
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
 
-function Sparkline({ daily }: { daily: DailyPoint[] }) {
+function Sparkline({ daily, t }: { daily: DailyPoint[]; t: (key: string, vars?: Record<string, string | number>) => string }) {
   const W = 600;
   const H = 90;
   const pad = 6;
@@ -87,9 +90,11 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
     <div className="rounded-lg p-5 flex flex-col gap-3" style={card}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>Выручка по дням</p>
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
+            {t('analytics.sparklineTitle')}
+          </p>
           <p className="text-sm mt-0.5" style={{ color: colors.textPrimary }}>
-            <span className="font-semibold">{fmt(totalRevenue)}</span> сум суммарно
+            {t('analytics.sparklineSum', { sum: fmt(totalRevenue) })}
           </p>
         </div>
         <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: colors.accent + '22', color: colors.accent }}>
@@ -118,9 +123,11 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
 function TopProductsList({
   products,
   loading,
+  t,
 }: {
   products: { productId: string | null; title: string; quantity: number; revenue: number }[];
   loading: boolean;
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
   if (!loading && products.length === 0) return null;
 
@@ -128,7 +135,7 @@ function TopProductsList({
     <div className="rounded-lg p-5 flex flex-col gap-3" style={card}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Топ товары · по выручке
+          {t('analytics.topProductsTitle')}
         </span>
         <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: 'rgba(251,191,36,0.15)', color: colors.warning }}>
           <Star size={16} />
@@ -170,10 +177,12 @@ function TopByViewsCard({
   productId,
   views,
   loading,
+  t,
 }: {
   productId: string | null;
   views: number;
   loading: boolean;
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
   const { data: product, isLoading: productLoading } = useSellerProduct(productId ?? '');
   const isLoading = loading || (!!productId && productLoading);
@@ -183,7 +192,7 @@ function TopByViewsCard({
     <div className="rounded-lg p-5 flex flex-col gap-3" style={card}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Самый просматриваемый · 30 дней
+          {t('analytics.topByViewsTitle')}
         </span>
         <span className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: `color-mix(in srgb, ${colors.info} 15%, transparent)`, color: colors.info }}>
           <Star size={16} />
@@ -198,11 +207,11 @@ function TopByViewsCard({
         <>
           <p className="text-xl font-bold leading-snug" style={{ color: colors.textPrimary }}>{title}</p>
           <p className="text-xs" style={{ color: colors.textDim }}>
-            {views.toLocaleString('ru-RU')} просмотров
+            {t('analytics.topByViewsCount', { count: views.toLocaleString('ru-RU') })}
           </p>
         </>
       ) : (
-        <p className="text-sm" style={{ color: colors.textDim }}>Недостаточно данных</p>
+        <p className="text-sm" style={{ color: colors.textDim }}>{t('analytics.topByViewsNoData')}</p>
       )}
     </div>
   );
@@ -211,6 +220,7 @@ function TopByViewsCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<AnalyticsPeriod>(30);
   const { data, isLoading, isError } = useSellerAnalytics(period);
   const { data: summary, isLoading: summaryLoading } = useSellerSummary();
@@ -220,19 +230,19 @@ export default function AnalyticsPage() {
       {/* Header + period selector */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Аналитика</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t('analytics.title')}</h1>
           <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
-            Заказы и выручка магазина
+            {t('analytics.subtitle')}
           </p>
         </div>
-        <div className="flex gap-1.5" role="group" aria-label="Период">
-          {PERIODS.map((p) => {
-            const active = period === p.value;
+        <div className="flex gap-1.5" role="group" aria-label={t('analytics.periodLabel')}>
+          {PERIOD_VALUES.map((p) => {
+            const active = period === p;
             return (
               <button
-                key={p.value}
+                key={p}
                 type="button"
-                onClick={() => setPeriod(p.value)}
+                onClick={() => setPeriod(p)}
                 className="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
                 style={
                   active
@@ -240,7 +250,7 @@ export default function AnalyticsPage() {
                     : { background: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}` }
                 }
               >
-                {p.label}
+                {t(PERIOD_KEY[p])}
               </button>
             );
           })}
@@ -252,34 +262,34 @@ export default function AnalyticsPage() {
           className="rounded-lg px-5 py-4 text-sm"
           style={{ background: dangerTint(0.1), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
         >
-          Не удалось загрузить аналитику. Попробуйте обновить страницу.
+          {t('analytics.loadError')}
         </div>
       )}
 
       {/* KPI grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
-          label="Выручка"
+          label={t('analytics.kpiRevenue')}
           value={data ? fmt(data.revenue.completed) : '—'}
-          unit="сум"
-          sub="Доставленные заказы"
+          unit={t('analytics.kpiRevenueUnit')}
+          sub={t('analytics.kpiRevenueSub')}
           color={colors.success}
           loading={isLoading}
           icon={<TrendingUp size={16} />}
         />
         <KpiCard
-          label="Заказы"
+          label={t('analytics.kpiOrders')}
           value={data ? String(data.orders.total) : '—'}
-          sub={data ? `${data.orders.byStatus.DELIVERED ?? 0} доставлено` : undefined}
+          sub={data ? t('analytics.kpiOrdersSub', { count: String(data.orders.byStatus.DELIVERED ?? 0) }) : undefined}
           color={colors.accent}
           loading={isLoading}
           icon={<Package size={16} />}
         />
         <KpiCard
-          label="В работе"
+          label={t('analytics.kpiPending')}
           value={data ? fmt(data.revenue.pending) : '—'}
-          unit="сум"
-          sub="Confirmed + Processing + Shipped"
+          unit={t('analytics.kpiRevenueUnit')}
+          sub={t('analytics.kpiPendingSub')}
           color={colors.warning}
           loading={isLoading}
           icon={<Hourglass size={16} />}
@@ -288,19 +298,21 @@ export default function AnalyticsPage() {
 
       {/* Sparkline */}
       {!isLoading && !isError && data && data.daily.length > 1 && (
-        <Sparkline daily={data.daily} />
+        <Sparkline daily={data.daily} t={t} />
       )}
 
       {/* Top products by revenue */}
-      <TopProductsList products={data?.topProducts ?? []} loading={isLoading} />
+      <TopProductsList products={data?.topProducts ?? []} loading={isLoading} t={t} />
 
       {/* Empty state */}
       {!isLoading && !isError && data && data.orders.total === 0 && (
         <div className="rounded-lg px-5 py-8 text-center" style={cardMuted}>
           <ShoppingBag size={28} className="mx-auto mb-2" style={{ color: colors.textDim }} />
-          <p className="text-sm font-medium" style={{ color: colors.textMuted }}>За {PERIODS.find((p) => p.value === period)?.label.toLowerCase()} ещё нет заказов</p>
+          <p className="text-sm font-medium" style={{ color: colors.textMuted }}>
+            {t('analytics.emptyTitle', { period: t(PERIOD_KEY[period]).toLowerCase() })}
+          </p>
           <p className="text-xs mt-1" style={{ color: colors.textDim }}>
-            Поделитесь ссылкой на магазин и продвигайте товары — статистика появится здесь
+            {t('analytics.emptySub')}
           </p>
         </div>
       )}
@@ -309,13 +321,13 @@ export default function AnalyticsPage() {
       <div className="flex flex-col gap-3 mt-4">
         <hr style={{ border: 0, borderTop: `1px solid ${colors.divider}` }} />
         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Просмотры и конверсия (за 30 дней)
+          {t('analytics.viewsSectionTitle')}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <KpiCard
-            label="Просмотры"
+            label={t('analytics.kpiViews')}
             value={summary ? summary.views.toLocaleString('ru-RU') : '—'}
-            sub="товаров и магазина"
+            sub={t('analytics.kpiViewsSub')}
             color={colors.accent}
             loading={summaryLoading}
             icon={
@@ -326,10 +338,10 @@ export default function AnalyticsPage() {
             }
           />
           <KpiCard
-            label="Конверсия"
+            label={t('analytics.kpiConversion')}
             value={summary ? `${summary.conversionRate}` : '—'}
             unit="%"
-            sub="просмотр → заказ"
+            sub={t('analytics.kpiConversionSub')}
             color={colors.success}
             loading={summaryLoading}
             icon={
@@ -343,6 +355,7 @@ export default function AnalyticsPage() {
           productId={summary?.topProduct?.productId ?? null}
           views={summary?.topProduct?.views ?? 0}
           loading={summaryLoading}
+          t={t}
         />
       </div>
     </div>

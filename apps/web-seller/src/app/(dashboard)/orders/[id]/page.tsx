@@ -6,23 +6,24 @@ import { OrderStatus } from 'types';
 import { useSellerOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
 import { card, cardMuted, colors, dangerTint, inputStyle } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }> = {
-  [OrderStatus.PENDING]:    { label: 'Ожидает',     color: colors.warning },
-  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён', color: colors.info },
-  [OrderStatus.PROCESSING]: { label: 'Обработка',   color: colors.accent },
-  [OrderStatus.SHIPPED]:    { label: 'В пути',       color: colors.info },
-  [OrderStatus.DELIVERED]:  { label: 'Доставлен',   color: colors.success },
-  [OrderStatus.CANCELLED]:  { label: 'Отменён',     color: colors.danger },
+const STATUS_COLOR: Record<OrderStatus, string> = {
+  [OrderStatus.PENDING]:    colors.warning,
+  [OrderStatus.CONFIRMED]:  colors.info,
+  [OrderStatus.PROCESSING]: colors.accent,
+  [OrderStatus.SHIPPED]:    colors.info,
+  [OrderStatus.DELIVERED]:  colors.success,
+  [OrderStatus.CANCELLED]:  colors.danger,
 };
 
-const NEXT_TRANSITION: Record<string, { status: OrderStatus; label: string }> = {
-  [OrderStatus.PENDING]:    { status: OrderStatus.CONFIRMED,  label: 'Подтвердить заказ' },
-  [OrderStatus.CONFIRMED]:  { status: OrderStatus.PROCESSING, label: 'Взять в обработку' },
-  [OrderStatus.PROCESSING]: { status: OrderStatus.SHIPPED,    label: 'Отправить' },
-  [OrderStatus.SHIPPED]:    { status: OrderStatus.DELIVERED,  label: 'Отметить доставленным' },
+const NEXT_TRANSITION_KEY: Record<string, { status: OrderStatus; labelKey: string }> = {
+  [OrderStatus.PENDING]:    { status: OrderStatus.CONFIRMED,  labelKey: 'orders.detail.nextConfirm' },
+  [OrderStatus.CONFIRMED]:  { status: OrderStatus.PROCESSING, labelKey: 'orders.detail.nextProcess' },
+  [OrderStatus.PROCESSING]: { status: OrderStatus.SHIPPED,    labelKey: 'orders.detail.nextShip' },
+  [OrderStatus.SHIPPED]:    { status: OrderStatus.DELIVERED,  labelKey: 'orders.detail.nextDeliver' },
 };
 
 const CANCELLABLE: OrderStatus[] = [
@@ -30,12 +31,6 @@ const CANCELLABLE: OrderStatus[] = [
   OrderStatus.CONFIRMED,
   OrderStatus.PROCESSING,
 ];
-
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  UNPAID:   'Ожидает оплаты',
-  PAID:     'Оплачен',
-  REFUNDED: 'Возврат',
-};
 
 function toNum(v: unknown): number {
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
@@ -71,6 +66,7 @@ function CancelModal({
   onConfirm: (reason: string) => void;
   loading: boolean;
 }) {
+  const { t } = useTranslation();
   const [reason, setReason] = useState('');
 
   return (
@@ -79,10 +75,10 @@ function CancelModal({
       style={{ background: 'rgba(0,0,0,0.65)' }}
     >
       <div className="w-full max-w-md rounded-lg p-6 flex flex-col gap-4 shadow-2xl" style={card}>
-        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>Отменить заказ</h2>
+        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>{t('orders.detail.cancelModalTitle')}</h2>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium" style={{ color: colors.textMuted }}>
-            Причина отмены <span style={{ color: colors.danger }}>*</span>
+            {t('orders.detail.cancelReasonLabel')} <span style={{ color: colors.danger }}>*</span>
           </label>
           <textarea
             className="w-full rounded-lg px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2"
@@ -91,7 +87,7 @@ function CancelModal({
               minHeight: 80,
               '--tw-ring-color': colors.accentBorder,
             } as React.CSSProperties}
-            placeholder="Нет в наличии, покупатель не отвечает..."
+            placeholder={t('orders.detail.cancelReasonPlaceholder')}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             autoFocus
@@ -103,7 +99,7 @@ function CancelModal({
             className="px-4 py-2 rounded-lg text-sm font-medium"
             style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
           >
-            Назад
+            {t('orders.detail.cancelBack')}
           </button>
           <button
             onClick={() => reason.trim() && onConfirm(reason.trim())}
@@ -111,7 +107,7 @@ function CancelModal({
             className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
             style={{ background: dangerTint(0.22), color: colors.danger, border: `1px solid ${dangerTint(0.35)}` }}
           >
-            {loading ? 'Отмена...' : 'Отменить заказ'}
+            {loading ? t('orders.detail.cancelPending') : t('orders.detail.cancelConfirm')}
           </button>
         </div>
       </div>
@@ -123,6 +119,7 @@ function CancelModal({
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useTranslation();
   const router  = useRouter();
 
   const { data: order, isLoading, isError } = useSellerOrder(id);
@@ -179,21 +176,22 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="max-w-2xl">
         <div className="rounded-lg px-6 py-10 text-center" style={card}>
-          <p className="text-sm" style={{ color: colors.danger }}>Заказ не найден.</p>
+          <p className="text-sm" style={{ color: colors.danger }}>{t('orders.detail.notFound')}</p>
           <button
             onClick={() => router.push('/orders')}
             className="mt-4 text-sm underline"
             style={{ color: colors.accent }}
           >
-            Вернуться к списку
+            {t('orders.detail.backToList')}
           </button>
         </div>
       </div>
     );
   }
 
-  const cfg  = STATUS_CONFIG[order.status] ?? { label: String(order.status ?? '—'), color: colors.textMuted };
-  const next = NEXT_TRANSITION[order.status];
+  const statusColor = STATUS_COLOR[order.status] ?? colors.textMuted;
+  const statusLabel = t(`orders.status.${order.status}`) || String(order.status ?? '—');
+  const next = NEXT_TRANSITION_KEY[order.status];
   const canCancel = CANCELLABLE.includes(order.status);
 
   return (
@@ -204,7 +202,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           onClick={() => router.back()}
           className="w-8 h-8 flex items-center justify-center rounded-md transition-opacity hover:opacity-80 flex-shrink-0"
           style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
-          aria-label="Назад"
+          aria-label={t('orders.detail.backAriaLabel')}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: colors.textPrimary }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -212,12 +210,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Заказ {order.orderNumber}</h1>
+            <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>
+              {t('orders.detail.orderTitle', { orderNumber: order.orderNumber })}
+            </h1>
             <span
               className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-              style={{ background: cfg.color + '22', color: cfg.color }}
+              style={{ background: statusColor + '22', color: statusColor }}
             >
-              {cfg.label}
+              {statusLabel}
             </span>
           </div>
           <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
@@ -234,7 +234,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {/* Action panel */}
       {(next || canCancel) && order.status !== OrderStatus.CANCELLED && (
         <div className="rounded-lg px-5 py-4 flex items-center gap-3 flex-wrap" style={card}>
-          <p className="text-sm font-medium flex-1 min-w-0" style={{ color: colors.textPrimary }}>Следующий шаг</p>
+          <p className="text-sm font-medium flex-1 min-w-0" style={{ color: colors.textPrimary }}>{t('orders.detail.nextStep')}</p>
           {next && (
             <button
               onClick={() => handleForward(next.status)}
@@ -242,7 +242,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               className="px-4 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: colors.accent, color: colors.accentTextOnBg }}
             >
-              {pending ? '...' : next.label}
+              {pending ? '...' : t(next.labelKey)}
             </button>
           )}
           {canCancel && (
@@ -252,7 +252,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               className="px-4 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: dangerTint(0.12), color: colors.danger, border: `1px solid ${dangerTint(0.25)}` }}
             >
-              Отменить
+              {t('orders.detail.cancelBtn')}
             </button>
           )}
         </div>
@@ -264,7 +264,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           className="px-5 py-3 text-xs font-semibold uppercase tracking-widest"
           style={{ color: colors.textDim, background: colors.surfaceMuted, borderBottom: `1px solid ${colors.divider}` }}
         >
-          Товары ({order.items?.length ?? 0})
+          {t('orders.detail.itemsSection', { count: String(order.items?.length ?? 0) })}
         </div>
         {(order.items ?? []).map((item) => (
           <div
@@ -292,11 +292,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         {/* Totals */}
         <div className="px-5 py-4 flex flex-col gap-2" style={{ background: colors.surfaceMuted }}>
           <div className="flex items-center justify-between text-sm" style={{ color: colors.textMuted }}>
-            <span>Доставка</span>
-            <span>{toNum(order.deliveryFee) > 0 ? fmt(order.deliveryFee) : 'Бесплатно'}</span>
+            <span>{t('orders.detail.deliveryLabel')}</span>
+            <span>{toNum(order.deliveryFee) > 0 ? fmt(order.deliveryFee) : t('orders.detail.deliveryFree')}</span>
           </div>
           <div className="flex items-center justify-between text-base font-bold" style={{ color: colors.textPrimary }}>
-            <span>Итого</span>
+            <span>{t('orders.detail.totalLabel')}</span>
             <span style={{ color: colors.accent }}>{fmt(order.totalAmount)}</span>
           </div>
         </div>
@@ -305,12 +305,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {/* Delivery & payment */}
       <div className="rounded-lg px-5 py-5 flex flex-col gap-4" style={card}>
         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Доставка и оплата
+          {t('orders.detail.deliveryAndPayment')}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <p className="text-xs mb-1" style={{ color: colors.textDim }}>Адрес</p>
+            <p className="text-xs mb-1" style={{ color: colors.textDim }}>{t('orders.detail.addressLabel')}</p>
             <p className="text-sm" style={{ color: colors.textPrimary }}>
               {order.deliveryAddress?.city ?? '—'}, {order.deliveryAddress?.street ?? '—'}
             </p>
@@ -321,17 +321,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
           <div>
-            <p className="text-xs mb-1" style={{ color: colors.textDim }}>Оплата</p>
-            <p className="text-sm" style={{ color: colors.textPrimary }}>{order.paymentMethod ?? 'Не указан'}</p>
+            <p className="text-xs mb-1" style={{ color: colors.textDim }}>{t('orders.detail.paymentLabel')}</p>
+            <p className="text-sm" style={{ color: colors.textPrimary }}>{order.paymentMethod ?? t('orders.detail.paymentNotSet')}</p>
             <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
-              {order.paymentStatus ? (PAYMENT_STATUS_LABELS[order.paymentStatus] ?? '—') : '—'}
+              {order.paymentStatus
+                ? (t(`orders.detail.paymentStatus.${order.paymentStatus}`) || '—')
+                : '—'}
             </p>
           </div>
         </div>
 
         {order.buyer?.phone && (
           <div>
-            <p className="text-xs mb-1" style={{ color: colors.textDim }}>Номер аккаунта</p>
+            <p className="text-xs mb-1" style={{ color: colors.textDim }}>{t('orders.detail.accountPhone')}</p>
             <a
               href={`tel:${order.buyer.phone}`}
               className="text-sm font-semibold transition-opacity hover:opacity-80"
@@ -344,7 +346,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
         {order.customerPhone && order.customerPhone !== order.buyer?.phone && (
           <div>
-            <p className="text-xs mb-1" style={{ color: colors.textDim }}>Резервный номер</p>
+            <p className="text-xs mb-1" style={{ color: colors.textDim }}>{t('orders.detail.backupPhone')}</p>
             <a
               href={`tel:${order.customerPhone}`}
               className="text-sm font-medium transition-opacity hover:opacity-80"
@@ -360,7 +362,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             className="rounded-md px-3.5 py-2.5"
             style={cardMuted}
           >
-            <p className="text-xs mb-1" style={{ color: colors.textDim }}>Комментарий покупателя</p>
+            <p className="text-xs mb-1" style={{ color: colors.textDim }}>{t('orders.detail.buyerNote')}</p>
             <p className="text-sm" style={{ color: colors.textPrimary }}>{order.buyerNote}</p>
           </div>
         )}

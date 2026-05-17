@@ -8,22 +8,14 @@ import type { OrderListItem } from 'types';
 import { useSellerOrders, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
 import { card, colors, dangerTint, inputStyle } from '@/lib/styles';
-
-const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }> = {
-  [OrderStatus.PENDING]:    { label: 'Ожидает',      color: colors.warning },
-  [OrderStatus.CONFIRMED]:  { label: 'Подтверждён',  color: colors.info },
-  [OrderStatus.PROCESSING]: { label: 'Обработка',    color: colors.accent },
-  [OrderStatus.SHIPPED]:    { label: 'В пути',        color: colors.info },
-  [OrderStatus.DELIVERED]:  { label: 'Доставлен',    color: colors.success },
-  [OrderStatus.CANCELLED]:  { label: 'Отменён',      color: colors.danger },
-};
+import { useTranslation } from '@/lib/i18n';
 
 // Seller-allowed forward transitions per state
-const NEXT_TRANSITION: Record<string, { status: OrderStatus; label: string }> = {
-  [OrderStatus.PENDING]:    { status: OrderStatus.CONFIRMED,  label: 'Подтвердить' },
-  [OrderStatus.CONFIRMED]:  { status: OrderStatus.PROCESSING, label: 'В обработку' },
-  [OrderStatus.PROCESSING]: { status: OrderStatus.SHIPPED,    label: 'Отправить' },
-  [OrderStatus.SHIPPED]:    { status: OrderStatus.DELIVERED,  label: 'Доставлено' },
+const NEXT_TRANSITION_KEY: Record<string, { status: OrderStatus; labelKey: string }> = {
+  [OrderStatus.PENDING]:    { status: OrderStatus.CONFIRMED,  labelKey: 'orders.nextConfirm' },
+  [OrderStatus.CONFIRMED]:  { status: OrderStatus.PROCESSING, labelKey: 'orders.nextProcess' },
+  [OrderStatus.PROCESSING]: { status: OrderStatus.SHIPPED,    labelKey: 'orders.nextShip' },
+  [OrderStatus.SHIPPED]:    { status: OrderStatus.DELIVERED,  labelKey: 'orders.nextDeliver' },
 };
 
 const CANCELLABLE: OrderStatus[] = [
@@ -32,13 +24,13 @@ const CANCELLABLE: OrderStatus[] = [
   OrderStatus.PROCESSING,
 ];
 
-const FILTER_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
-  { key: 'ALL',                    label: 'Все' },
-  { key: OrderStatus.PENDING,      label: 'Ожидают' },
-  { key: OrderStatus.CONFIRMED,    label: 'Подтвержд.' },
-  { key: OrderStatus.PROCESSING,   label: 'Обработка' },
-  { key: OrderStatus.SHIPPED,      label: 'В пути' },
-  { key: OrderStatus.DELIVERED,    label: 'Доставлены' },
+const FILTER_TABS: { key: OrderStatus | 'ALL'; labelKey: string }[] = [
+  { key: 'ALL',                    labelKey: 'orders.filterAll' },
+  { key: OrderStatus.PENDING,      labelKey: 'orders.filterPending' },
+  { key: OrderStatus.CONFIRMED,    labelKey: 'orders.filterConfirmed' },
+  { key: OrderStatus.PROCESSING,   labelKey: 'orders.filterProcessing' },
+  { key: OrderStatus.SHIPPED,      labelKey: 'orders.filterShipped' },
+  { key: OrderStatus.DELIVERED,    labelKey: 'orders.filterDelivered' },
 ];
 
 function toNum(v: unknown): number {
@@ -73,18 +65,21 @@ function CancelModal({
   onConfirm: (reason: string) => void;
   loading: boolean;
 }) {
+  const { t } = useTranslation();
   const [reason, setReason] = useState('');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.65)' }}>
       <div className="w-full max-w-md rounded-lg p-6 flex flex-col gap-4 shadow-2xl" style={card}>
-        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>Отменить заказ {order.orderNumber}</h2>
+        <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>
+          {t('orders.cancelModalTitle', { orderNumber: order.orderNumber })}
+        </h2>
         <p className="text-sm" style={{ color: colors.textMuted }}>
           {(() => { const a = getAddr(order); return `${a.city ?? '—'}, ${a.street ?? '—'}`; })()}
         </p>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium" style={{ color: colors.textMuted }}>
-            Причина отмены <span style={{ color: colors.danger }}>*</span>
+            {t('orders.cancelReasonLabel')} <span style={{ color: colors.danger }}>*</span>
           </label>
           <textarea
             className="w-full rounded-lg px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2"
@@ -93,7 +88,7 @@ function CancelModal({
               minHeight: 80,
               '--tw-ring-color': colors.accentBorder,
             } as React.CSSProperties}
-            placeholder="Нет в наличии, покупатель не отвечает..."
+            placeholder={t('orders.cancelReasonPlaceholder')}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             autoFocus
@@ -105,7 +100,7 @@ function CancelModal({
             className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
           >
-            Назад
+            {t('orders.cancelBack')}
           </button>
           <button
             onClick={() => reason.trim() && onConfirm(reason.trim())}
@@ -113,7 +108,7 @@ function CancelModal({
             className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-opacity"
             style={{ background: dangerTint(0.22), color: colors.danger, border: `1px solid ${dangerTint(0.35)}` }}
           >
-            {loading ? 'Отмена...' : 'Отменить заказ'}
+            {loading ? t('orders.cancelPending') : t('orders.cancelConfirm')}
           </button>
         </div>
       </div>
@@ -134,8 +129,17 @@ function OrderRow({
   onCancel: (order: OrderListItem) => void;
   pendingId: string | null;
 }) {
-  const cfg = STATUS_CONFIG[order.status];
-  const next = NEXT_TRANSITION[order.status];
+  const { t } = useTranslation();
+  const statusColor = {
+    [OrderStatus.PENDING]:    colors.warning,
+    [OrderStatus.CONFIRMED]:  colors.info,
+    [OrderStatus.PROCESSING]: colors.accent,
+    [OrderStatus.SHIPPED]:    colors.info,
+    [OrderStatus.DELIVERED]:  colors.success,
+    [OrderStatus.CANCELLED]:  colors.danger,
+  }[order.status] ?? colors.textMuted;
+  const statusLabel = t(`orders.status.${order.status}`) || order.status;
+  const next = NEXT_TRANSITION_KEY[order.status];
   const canCancel = CANCELLABLE.includes(order.status);
   const isLoading = pendingId === order.id;
 
@@ -170,7 +174,7 @@ function OrderRow({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 min-w-0">
               <p className="text-sm font-medium truncate" style={{ color: colors.textPrimary }}>
-                {order.preview?.title ?? 'Без товаров'}
+                {order.preview?.title ?? t('orders.noProductTitle')}
               </p>
               {order.preview && order.preview.itemCount > 1 && (
                 <span
@@ -189,9 +193,9 @@ function OrderRow({
         {/* Status badge — mobile only */}
         <span
           className="sm:hidden shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-full self-start"
-          style={{ background: cfg.color + '22', color: cfg.color }}
+          style={{ background: statusColor + '22', color: statusColor }}
         >
-          {cfg.label}
+          {statusLabel}
         </span>
       </div>
 
@@ -203,9 +207,9 @@ function OrderRow({
       {/* Status badge — desktop only */}
       <span
         className="hidden sm:inline text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-        style={{ background: cfg.color + '22', color: cfg.color }}
+        style={{ background: statusColor + '22', color: statusColor }}
       >
-        {cfg.label}
+        {statusLabel}
       </span>
 
       {/* Action buttons */}
@@ -217,7 +221,7 @@ function OrderRow({
             className="px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
-            {isLoading ? '...' : next.label}
+            {isLoading ? '...' : t(next.labelKey)}
           </button>
         )}
         {canCancel && (
@@ -227,7 +231,7 @@ function OrderRow({
             className="px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
             style={{ background: dangerTint(0.12), color: colors.danger, border: `1px solid ${dangerTint(0.25)}` }}
           >
-            Отмена
+            {t('orders.cancelBtn')}
           </button>
         )}
       </div>
@@ -251,6 +255,7 @@ function SkeletonRow() {
 const PAGE_LIMIT = 20;
 
 export default function OrdersPage() {
+  const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [cancelTarget, setCancelTarget] = useState<OrderListItem | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -334,13 +339,13 @@ export default function OrdersPage() {
     <div className="flex flex-col gap-5 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Заказы</h1>
+        <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t('orders.title')}</h1>
         <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
           {isLoading
-            ? 'Загрузка...'
+            ? t('orders.loadingCount')
             : q
-              ? `Найдено: ${orders.length} из ${accOrders.length} загруженных`
-              : `${data?.meta.total ?? 0} заказов`}
+              ? t('orders.searchResultCount', { found: String(orders.length), total: String(accOrders.length) })
+              : t('orders.totalCount', { count: String(data?.meta.total ?? 0) })}
         </p>
       </div>
 
@@ -359,7 +364,7 @@ export default function OrdersPage() {
                   : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
               }
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
@@ -367,14 +372,14 @@ export default function OrdersPage() {
           <button
             onClick={() => setHideCompleted((v) => !v)}
             className="px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors ml-auto"
-            title="Скрыть заказы в статусах Доставлен и Отменён"
+            title={t('orders.hideCompleted')}
             style={
               hideCompleted
                 ? { background: 'rgba(52,211,153,0.18)', color: colors.success, border: '1px solid rgba(52,211,153,0.30)' }
                 : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
             }
           >
-            {hideCompleted ? '✓ ' : ''}Скрыть завершённые
+            {hideCompleted ? t('orders.hideCompletedActive') : t('orders.hideCompleted')}
           </button>
         )}
       </div>
@@ -385,7 +390,7 @@ export default function OrdersPage() {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Поиск по № заказа, городу, адресу, товару"
+          placeholder={t('orders.searchPlaceholder')}
           className="w-full h-10 pl-10 pr-10 rounded-md text-sm focus:outline-none focus:ring-2"
           style={{
             ...inputStyle,
@@ -407,7 +412,7 @@ export default function OrdersPage() {
             onClick={() => setSearchQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium transition-opacity hover:opacity-70"
             style={{ color: colors.textMuted }}
-            aria-label="Очистить"
+            aria-label={t('orders.searchClear')}
           >
             <X size={14} />
           </button>
@@ -421,11 +426,11 @@ export default function OrdersPage() {
           className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] gap-x-4 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest"
           style={{ color: colors.textDim, background: colors.surfaceMuted, borderBottom: `1px solid ${colors.divider}` }}
         >
-          <span>#</span>
-          <span>Заказ</span>
-          <span>Сумма</span>
-          <span>Статус</span>
-          <span>Действия</span>
+          <span>{t('orders.colNum')}</span>
+          <span>{t('orders.colOrder')}</span>
+          <span>{t('orders.colAmount')}</span>
+          <span>{t('orders.colStatus')}</span>
+          <span>{t('orders.colActions')}</span>
         </div>
 
         {isLoading && (
@@ -438,7 +443,7 @@ export default function OrdersPage() {
 
         {isError && (
           <div className="px-5 py-8 text-center text-sm" style={{ color: colors.danger }}>
-            Не удалось загрузить заказы. Попробуйте обновить страницу.
+            {t('orders.loadError')}
           </div>
         )}
 
@@ -446,10 +451,10 @@ export default function OrdersPage() {
           <div className="px-5 py-10 text-center">
             <p className="text-sm" style={{ color: colors.textDim }}>
               {q
-                ? `Ничего не найдено по запросу «${searchQuery}». Попробуйте загрузить больше заказов.`
+                ? t('orders.noSearchResults', { query: searchQuery })
                 : activeFilter === 'ALL'
-                  ? 'Заказов пока нет'
-                  : `Нет заказов со статусом "${STATUS_CONFIG[activeFilter]?.label}"`}
+                  ? t('orders.noItems')
+                  : t('orders.noStatusResults', { status: t(`orders.status.${activeFilter}`) })}
             </p>
           </div>
         )}
@@ -473,7 +478,7 @@ export default function OrdersPage() {
           className="w-full py-3 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
           style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
         >
-          {isLoadingMore ? 'Загрузка...' : 'Загрузить ещё'}
+          {isLoadingMore ? t('orders.loadingMore') : t('orders.loadMore')}
         </button>
       )}
 

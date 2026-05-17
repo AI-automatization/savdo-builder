@@ -17,6 +17,7 @@ import {
 } from '@/hooks/use-chat';
 import { card, cardMuted, colors, dangerTint, inputStyle } from '@/lib/styles';
 import { EmojiPicker } from '@/components/emoji-picker';
+import { useTranslation } from '@/lib/i18n';
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
@@ -25,18 +26,20 @@ const glassDim = cardMuted;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function timeLabel(iso: string): string {
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+function timeLabel(iso: string, t: TFn): string {
   const date = new Date(iso);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
   if (diffDays === 0) return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  if (diffDays === 1) return 'вчера';
+  if (diffDays === 1) return t('common.yesterday');
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 // ── Thread List ────────────────────────────────────────────────────────────
 
-function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: boolean; onClick: () => void }) {
+function ThreadItem({ thread, active, onClick, t }: { thread: ChatThread; active: boolean; onClick: () => void; t: TFn }) {
   const { title, subtitle } = getThreadDisplay(thread);
   const unread = thread.unreadCount ?? 0;
   return (
@@ -56,13 +59,13 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
           {title}
         </p>
         <p className="text-xs truncate" style={{ color: unread > 0 ? colors.textPrimary : colors.textDim }}>
-          {thread.lastMessage ?? subtitle ?? 'Нет сообщений'}
+          {thread.lastMessage ?? subtitle ?? t('chat.threadNoMessages')}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         {thread.lastMessageAt && (
           <span className="text-[10px]" style={{ color: colors.textDim }}>
-            {timeLabel(thread.lastMessageAt)}
+            {timeLabel(thread.lastMessageAt, t)}
           </span>
         )}
         {unread > 0 && (
@@ -72,7 +75,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
           </span>
         )}
         {unread === 0 && thread.status === 'CLOSED' && (
-          <span className="text-[10px]" style={{ color: colors.success }}>закрыт</span>
+          <span className="text-[10px]" style={{ color: colors.success }}>{t('chat.statusClosed')}</span>
         )}
       </div>
     </button>
@@ -82,6 +85,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
 // ── Chat Window ────────────────────────────────────────────────────────────
 
 function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDeleted: () => void; onBack: () => void }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useMessages(thread.id);
   useChatSocket(thread.id);
   const sendMutation = useSendMessage(thread.id);
@@ -180,7 +184,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
             onClick={onBack}
             className="md:hidden w-8 h-8 -ml-1 flex items-center justify-center rounded-lg flex-shrink-0 transition-opacity hover:opacity-80"
             style={{ color: colors.textPrimary }}
-            aria-label="Назад к списку"
+            aria-label={t('chat.backAriaLabel')}
           >
             <ArrowLeft size={18} />
           </button>
@@ -190,7 +194,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate" style={{ color: colors.textPrimary }}>{title}</p>
             <p className="text-[11px] truncate" style={{ color: colors.textDim }}>
-              {subtitle ?? (thread.threadType === 'ORDER' ? 'Заказ' : 'Товар')}
+              {subtitle ?? (thread.threadType === 'ORDER' ? t('chat.threadTypeOrder') : t('chat.threadTypeProduct'))}
             </p>
           </div>
         </div>
@@ -202,15 +206,15 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
               className="px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-40 transition-opacity"
               style={{ background: 'rgba(52,211,153,0.13)', color: colors.success, border: '1px solid rgba(52,211,153,0.25)' }}
             >
-              {resolveMutation.isPending ? '...' : 'Закрыть чат'}
+              {resolveMutation.isPending ? '...' : t('chat.closeChat')}
             </button>
           )}
           <button
             onClick={() => setConfirmDeleteThread(true)}
             className="w-8 h-8 rounded-xl flex items-center justify-center transition-opacity hover:opacity-80"
             style={{ background: dangerTint(0.1), color: colors.danger, border: `1px solid ${dangerTint(0.18)}` }}
-            aria-label="Удалить чат"
-            title="Удалить чат"
+            aria-label={t('chat.deleteChatAriaLabel')}
+            title={t('chat.deleteChatTitle')}
           >
             <Trash2 size={14} />
           </button>
@@ -221,13 +225,13 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
       {confirmDeleteMsg && (
         <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.55)' }}>
           <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
-            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Удалить сообщение?</p>
+            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>{t('chat.deleteMsgTitle')}</p>
             <p className="text-xs" style={{ color: colors.textMuted }}>
-              Покупатель увидит «Сообщение удалено» вместо текста.
+              {t('chat.deleteMsgHint')}
             </p>
             {deleteMessageMutation.isError && (
               <p className="text-xs" style={{ color: colors.danger }}>
-                {errorText(deleteMessageMutation.error, 'Не удалось удалить сообщение')}
+                {errorText(deleteMessageMutation.error, t('chat.deleteMsgError'))}
               </p>
             )}
             <div className="flex gap-2 mt-1">
@@ -236,7 +240,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                 style={{ background: colors.surfaceMuted, color: colors.textPrimary }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => handleDeleteMessage(confirmDeleteMsg)}
@@ -244,7 +248,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
                 style={{ background: dangerTint(0.18), color: colors.danger }}
               >
-                {deleteMessageMutation.isPending ? '...' : 'Удалить'}
+                {deleteMessageMutation.isPending ? '...' : t('common.delete')}
               </button>
             </div>
           </div>
@@ -255,13 +259,13 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
       {confirmDeleteThread && (
         <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.55)' }}>
           <div className="rounded-2xl p-5 max-w-xs w-full flex flex-col gap-3" style={glass}>
-            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Удалить этот чат?</p>
+            <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>{t('chat.deleteChatTitle')}</p>
             <p className="text-xs" style={{ color: colors.textMuted }}>
-              Чат исчезнет из вашего списка. Покупатель продолжит видеть историю.
+              {t('chat.deleteChatHint')}
             </p>
             {deleteThreadMutation.isError && (
               <p className="text-xs" style={{ color: colors.danger }}>
-                {errorText(deleteThreadMutation.error, 'Не удалось удалить чат')}
+                {errorText(deleteThreadMutation.error, t('chat.deleteError'))}
               </p>
             )}
             <div className="flex gap-2 mt-1">
@@ -270,7 +274,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                 style={{ background: colors.surfaceMuted, color: colors.textPrimary }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleDeleteThread}
@@ -278,7 +282,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
                 style={{ background: dangerTint(0.18), color: colors.danger }}
               >
-                {deleteThreadMutation.isPending ? '...' : 'Удалить'}
+                {deleteThreadMutation.isPending ? '...' : t('common.delete')}
               </button>
             </div>
           </div>
@@ -299,7 +303,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
 
         {!isLoading && messages.length === 0 && (
           <p className="text-center text-sm py-8" style={{ color: colors.textDim }}>
-            Нет сообщений
+            {t('chat.noMessages')}
           </p>
         )}
 
@@ -325,7 +329,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                   }
                 >
                   {m.isDeleted ? (
-                    <p>Сообщение удалено</p>
+                    <p>{t('chat.deletedMessage')}</p>
                   ) : isEditing ? (
                     <div className="flex flex-col gap-2 min-w-[180px]">
                       <textarea
@@ -350,7 +354,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                             color: colors.accentTextOnBg,
                           }}
                         >
-                          Отмена
+                          {t('chat.cancelEdit')}
                         </button>
                         <button
                           type="button"
@@ -359,12 +363,12 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                           className="px-2.5 py-1 rounded-md text-[11px] font-semibold disabled:opacity-50"
                           style={{ background: colors.accentTextOnBg, color: colors.accent }}
                         >
-                          {editMessageMutation.isPending ? '...' : 'Сохранить'}
+                          {editMessageMutation.isPending ? '...' : t('chat.saveEdit')}
                         </button>
                       </div>
                       {editingId === m.id && editMessageMutation.isError && (
                         <p className="text-[10px] mt-0.5" style={{ color: colors.accentTextOnBg, opacity: 0.85 }}>
-                          {errorText(editMessageMutation.error, 'Не удалось сохранить')}
+                          {errorText(editMessageMutation.error, t('chat.saveEditError'))}
                         </p>
                       )}
                     </div>
@@ -373,8 +377,8 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                   )}
                   {!m.isDeleted && !isEditing && (
                     <p className="text-[10px] mt-1 text-right" style={{ color: isSeller ? `color-mix(in srgb, ${colors.accentTextOnBg} 65%, transparent)` : colors.textDim }}>
-                      {m.editedAt && <span className="mr-1">изменено · </span>}
-                      {timeLabel(m.createdAt)}
+                      {m.editedAt && <span className="mr-1">{t('chat.msgEdited')}</span>}
+                      {timeLabel(m.createdAt, t)}
                     </p>
                   )}
                 </div>
@@ -387,7 +391,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                       onClick={() => setOpenMenuId(showMenu ? null : m.id)}
                       className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
                       style={{ background: colors.surfaceMuted, color: colors.textPrimary, border: `1px solid ${colors.border}` }}
-                      aria-label="Действия с сообщением"
+                      aria-label={t('chat.actionMenuAriaLabel')}
                     >
                       <MoreVertical size={15} />
                     </button>
@@ -403,7 +407,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                             className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[var(--color-surface-muted)]"
                             style={{ color: colors.textPrimary }}
                           >
-                            <Pencil size={12} /> Редактировать
+                            <Pencil size={12} /> {t('chat.editAction')}
                           </button>
                         )}
                         {canDelete && (
@@ -413,7 +417,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
                             className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[var(--color-surface-muted)]"
                             style={{ color: colors.danger }}
                           >
-                            <Trash2 size={12} /> Удалить
+                            <Trash2 size={12} /> {t('chat.deleteAction')}
                           </button>
                         )}
                       </div>
@@ -437,7 +441,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-          placeholder={thread.status === 'CLOSED' ? 'Чат закрыт' : 'Написать сообщение...'}
+          placeholder={thread.status === 'CLOSED' ? t('chat.inputClosedPlaceholder') : t('chat.inputPlaceholder')}
           disabled={thread.status === 'CLOSED'}
           className="flex-1 h-10 px-4 rounded-xl text-sm outline-none disabled:opacity-40 placeholder:opacity-50"
           style={inputStyle}
@@ -447,7 +451,7 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
           disabled={!text.trim() || sendMutation.isPending || thread.status === 'CLOSED'}
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-40 transition-opacity"
           style={{ background: colors.accent }}
-          aria-label="Отправить"
+          aria-label={t('chat.sendAriaLabel')}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
@@ -460,20 +464,20 @@ function ChatWindow({ thread, onDeleted, onBack }: { thread: ChatThread; onDelet
 
 // ── Empty state ────────────────────────────────────────────────────────────
 
-function EmptyState({ noThreads }: { noThreads: boolean }) {
+function EmptyState({ noThreads, t }: { noThreads: boolean; t: TFn }) {
   return (
     <div className="flex-1 rounded-2xl flex items-center justify-center p-8" style={glassDim}>
       <div className="text-center max-w-sm">
         <MessageSquare size={32} style={{ color: colors.textDim, margin: '0 auto 10px' }} />
         {noThreads ? (
           <>
-            <p className="text-sm font-medium" style={{ color: colors.textMuted }}>Здесь появятся диалоги с покупателями</p>
+            <p className="text-sm font-medium" style={{ color: colors.textMuted }}>{t('chat.emptyTitle')}</p>
             <p className="text-xs mt-2 leading-relaxed" style={{ color: colors.textDim }}>
-              Продавец не может начать чат первым. Покупатель напишет вам со страницы товара или заказа — диалог сразу появится в списке слева.
+              {t('chat.emptyHint')}
             </p>
           </>
         ) : (
-          <p className="text-sm" style={{ color: colors.textDim }}>Выберите чат</p>
+          <p className="text-sm" style={{ color: colors.textDim }}>{t('chat.selectChat')}</p>
         )}
       </div>
     </div>
@@ -483,10 +487,11 @@ function EmptyState({ noThreads }: { noThreads: boolean }) {
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
+  const { t } = useTranslation();
   const [activeId, setActiveId] = useState<string | null>(null);
   const { data: threads, isLoading, isError } = useThreads();
 
-  const activeThread = threads?.find((t) => t.id === activeId) ?? null;
+  const activeThread = threads?.find((th) => th.id === activeId) ?? null;
 
   // Auto-select first thread on desktop only — on mobile the thread list
   // is the entry point and user picks one to enter the chat view.
@@ -508,7 +513,7 @@ export default function ChatPage() {
         style={glass}
       >
         <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
-          <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>Чаты</p>
+          <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>{t('chat.title')}</p>
         </div>
         <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: colors.divider }}>
           {isLoading && (
@@ -527,7 +532,7 @@ export default function ChatPage() {
 
           {isError && (
             <p className="px-4 py-6 text-xs text-center" style={{ color: colors.danger }}>
-              Не удалось загрузить чаты
+              {t('chat.loadError')}
             </p>
           )}
 
@@ -535,9 +540,9 @@ export default function ChatPage() {
             <div className="px-4 py-8 text-center flex flex-col items-center gap-3">
               <MessageSquare size={28} style={{ color: colors.textDim }} />
               <div>
-                <p className="text-sm font-medium" style={{ color: colors.textMuted }}>Чатов пока нет</p>
+                <p className="text-sm font-medium" style={{ color: colors.textMuted }}>{t('chat.noChats')}</p>
                 <p className="text-xs mt-1.5 leading-relaxed" style={{ color: colors.textDim }}>
-                  Покупатели первыми пишут вам<br />со страницы товара или заказа
+                  {t('chat.noChatsHint')}
                 </p>
               </div>
             </div>
@@ -549,6 +554,7 @@ export default function ChatPage() {
               thread={thread}
               active={thread.id === activeId}
               onClick={() => setActiveId(thread.id)}
+              t={t}
             />
           ))}
         </div>
@@ -559,7 +565,7 @@ export default function ChatPage() {
         {activeThread ? (
           <ChatWindow thread={activeThread} onDeleted={() => setActiveId(null)} onBack={() => setActiveId(null)} />
         ) : (
-          <EmptyState noThreads={!threads || threads.length === 0} />
+          <EmptyState noThreads={!threads || threads.length === 0} t={t} />
         )}
       </div>
     </div>

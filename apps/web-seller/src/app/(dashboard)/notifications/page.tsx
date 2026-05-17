@@ -6,24 +6,27 @@ import { useNotifications, useReadAll } from '../../../hooks/use-notifications';
 import type { NotificationItem } from '../../../lib/api/notifications.api';
 import { ShoppingCart, CheckCircle, AlertTriangle, Package, Bell } from 'lucide-react';
 import { card, cardMuted, colors, dangerTint } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function relativeTime(iso: string): string {
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+function relativeTime(iso: string, t: TFn): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'только что';
-  if (mins < 60) return `${mins} мин назад`;
+  if (mins < 1) return t('notifications.timeJustNow');
+  if (mins < 60) return t('notifications.timeMinsAgo', { mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} ч назад`;
-  return `${Math.floor(hrs / 24)} дн назад`;
+  if (hrs < 24) return t('notifications.timeHoursAgo', { hrs });
+  return t('notifications.timeDaysAgo', { days: Math.floor(hrs / 24) });
 }
 
 function NotifIcon({ title }: { title: string }) {
-  const t = title.toLowerCase();
-  if (t.includes('заказ') || t.includes('order')) return <ShoppingCart size={18} style={{ color: colors.accent }} />;
-  if (t.includes('одобр') || t.includes('approved')) return <CheckCircle size={18} style={{ color: colors.success }} />;
-  if (t.includes('откло') || t.includes('reject')) return <AlertTriangle size={18} style={{ color: colors.warning }} />;
+  const tl = title.toLowerCase();
+  if (tl.includes('заказ') || tl.includes('order')) return <ShoppingCart size={18} style={{ color: colors.accent }} />;
+  if (tl.includes('одобр') || tl.includes('approved')) return <CheckCircle size={18} style={{ color: colors.success }} />;
+  if (tl.includes('откло') || tl.includes('reject')) return <AlertTriangle size={18} style={{ color: colors.warning }} />;
   return <Package size={18} style={{ color: colors.accent }} />;
 }
 
@@ -31,7 +34,7 @@ const ORDER_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 // ── Row ───────────────────────────────────────────────────────────────────────
 
-function NotifRow({ item }: { item: NotificationItem }) {
+function NotifRow({ item, t }: { item: NotificationItem; t: TFn }) {
   const router = useRouter();
 
   function handleClick() {
@@ -65,7 +68,7 @@ function NotifRow({ item }: { item: NotificationItem }) {
         <p className="text-xs mt-0.5 leading-relaxed" style={{ color: colors.textMuted }}>{item.body}</p>
       </div>
       <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: colors.textDim }}>
-        {relativeTime(item.createdAt)}
+        {relativeTime(item.createdAt, t)}
       </span>
     </div>
   );
@@ -94,6 +97,7 @@ function Skeleton() {
 type Tab = 'all' | 'unread';
 
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('all');
   const { data: items = [], isLoading, isError } = useNotifications();
   const readAll = useReadAll();
@@ -111,9 +115,9 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Уведомления</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t('notifications.title')}</h1>
           <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
-            Последние {items.length} уведомлений
+            {t('notifications.lastCount', { count: items.length })}
           </p>
         </div>
         <button
@@ -122,24 +126,24 @@ export default function NotificationsPage() {
           className="text-xs px-3 py-1.5 rounded-md transition-opacity hover:opacity-80 disabled:opacity-40"
           style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
         >
-          Прочитать все
+          {t('notifications.readAll')}
         </button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['all', 'unread'] as Tab[]).map(t => (
+        {(['all', 'unread'] as Tab[]).map(tabKey => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
             className="text-xs px-4 py-1.5 rounded-md transition-colors"
             style={
-              tab === t
+              tab === tabKey
                 ? { background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }
                 : { background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }
             }
           >
-            {t === 'all' ? 'Все' : 'Непрочитанные'}
+            {tabKey === 'all' ? t('notifications.tabAll') : t('notifications.tabUnread')}
           </button>
         ))}
       </div>
@@ -152,7 +156,7 @@ export default function NotificationsPage() {
           className="rounded-lg px-5 py-4 text-sm"
           style={{ background: dangerTint(0.1), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
         >
-          Не удалось загрузить уведомления. Попробуйте обновить страницу.
+          {t('notifications.loadError')}
         </div>
       ) : filtered.length === 0 ? (
         <div
@@ -160,12 +164,12 @@ export default function NotificationsPage() {
           style={cardMuted}
         >
           <Bell size={28} style={{ color: colors.textDim, margin: '0 auto 8px' }} />
-          <p className="text-sm font-medium" style={{ color: colors.textMuted }}>Уведомлений пока нет</p>
+          <p className="text-sm font-medium" style={{ color: colors.textMuted }}>{t('notifications.empty')}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map(item => (
-            <NotifRow key={item.id} item={item} />
+            <NotifRow key={item.id} item={item} t={t} />
           ))}
         </div>
       )}
