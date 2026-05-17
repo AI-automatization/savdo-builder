@@ -6,6 +6,7 @@
 // Когда packages/ui станет реально подключённым к web-*, перенести сюда.
 
 import { forwardRef, useCallback } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 const COUNTRY_CODE = '998';
 
@@ -62,15 +63,18 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(function
     onEnter,
     className,
     style,
-    placeholder = '+998 90 000 00 00',
+    placeholder,
     autoFocus,
     disabled,
-    ariaLabel = 'Телефон',
+    ariaLabel,
     id,
     name,
   },
   ref,
 ) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? '+998 90 000 00 00';
+  const resolvedAriaLabel = ariaLabel ?? t('auth.phoneLabel');
   const display = formatUzPhone(value);
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => onChange(stripUzPhone(e.target.value)),
@@ -84,13 +88,13 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(function
       type="tel"
       inputMode="tel"
       autoComplete="tel"
-      aria-label={ariaLabel}
+      aria-label={resolvedAriaLabel}
       value={display}
       onChange={handleChange}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && onEnter) onEnter();
       }}
-      placeholder={placeholder}
+      placeholder={resolvedPlaceholder}
       autoFocus={autoFocus}
       disabled={disabled}
       className={className}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 import { colors, inputStyle } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 export interface SelectOption {
   value: string;
@@ -27,14 +28,18 @@ export function Select({
   value,
   onChange,
   options,
-  placeholder = '— Выберите —',
-  searchPlaceholder = 'Поиск…',
-  emptyText = 'Ничего не найдено',
+  placeholder,
+  searchPlaceholder,
+  emptyText,
   searchable = true,
   clearable = false,
   disabled = false,
   ariaLabel,
 }: SelectProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.defaultPlaceholder');
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('select.defaultSearchPlaceholder');
+  const resolvedEmptyText = emptyText ?? t('select.defaultEmpty');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -126,13 +131,13 @@ export function Select({
           borderColor: open ? colors.accentBorder : colors.border,
         }}
       >
-        <span className="truncate text-left flex-1">{selected?.label ?? placeholder}</span>
+        <span className="truncate text-left flex-1">{selected?.label ?? resolvedPlaceholder}</span>
         <span className="flex items-center gap-1 flex-shrink-0">
           {clearable && selected && !disabled && (
             <span
               role="button"
               tabIndex={0}
-              aria-label="Сбросить"
+              aria-label={t('select.clearAria')}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange('');
@@ -181,7 +186,7 @@ export function Select({
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={searchPlaceholder}
+                placeholder={resolvedSearchPlaceholder}
                 className="flex-1 bg-transparent outline-none text-sm"
                 style={{ color: colors.textPrimary }}
               />
@@ -191,7 +196,7 @@ export function Select({
                   onClick={() => setQuery('')}
                   className="flex-shrink-0 hover:opacity-70"
                   style={{ color: colors.textDim }}
-                  aria-label="Очистить поиск"
+                  aria-label={t('select.clearSearchAria')}
                 >
                   <X size={14} />
                 </button>
@@ -202,7 +207,7 @@ export function Select({
           <div ref={listRef} role="listbox" className="overflow-y-auto py-1" style={{ maxHeight: 260 }}>
             {filtered.length === 0 && (
               <p className="px-4 py-3 text-xs text-center" style={{ color: colors.textDim }}>
-                {emptyText}
+                {resolvedEmptyText}
               </p>
             )}
             {filtered.map((opt, idx) => {

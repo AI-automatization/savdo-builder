@@ -4,6 +4,7 @@
 import { useMemo } from 'react';
 import { colors, inputStyle as inputBase } from '@/lib/styles';
 import type { StorefrontCategoryFilter } from '../lib/api/storefront.api';
+import { useTranslation } from '@/lib/i18n';
 
 const cellInputStyle: React.CSSProperties = {
   ...inputBase,
@@ -54,6 +55,7 @@ export function VariantsMatrixBuilder({
   variants,
   onChangeVariants,
 }: VariantsMatrixBuilderProps) {
+  const { t } = useTranslation();
   const multiFilters = useMemo(
     () => filters.filter((f) => f.fieldType === 'multi_select'),
     [filters],
@@ -127,7 +129,7 @@ export function VariantsMatrixBuilder({
             className="text-xs font-semibold mb-2"
             style={{ color: colors.textMuted }}
           >
-            Варианты ({labels.length})
+            {t('variants.matrixTitle', { count: String(labels.length) })}
           </p>
           <div className="flex flex-col gap-2">
             {labels.map((label) => {
@@ -148,7 +150,7 @@ export function VariantsMatrixBuilder({
                     <input
                       type="number"
                       min={0}
-                      placeholder="Склад"
+                      placeholder={t('variants.matrixStockPlaceholder')}
                       value={cell.stockQuantity || ''}
                       onChange={(e) =>
                         setVariantField(label, 'stockQuantity', Number(e.target.value) || 0)
@@ -160,7 +162,7 @@ export function VariantsMatrixBuilder({
                     <input
                       type="number"
                       min={0}
-                      placeholder="Цена опц."
+                      placeholder={t('variants.matrixPricePlaceholder')}
                       value={cell.priceOverride ?? ''}
                       onChange={(e) =>
                         setVariantField(
@@ -177,7 +179,7 @@ export function VariantsMatrixBuilder({
             })}
           </div>
           <p className="mt-2 text-[11px]" style={{ color: colors.textDim }}>
-            Склад — сколько штук в наличии. Цена опц. — переопределяет базовую цену для этого варианта (оставь пусто чтобы использовать базовую).
+            {t('variants.matrixHint')}
           </p>
         </div>
       )}

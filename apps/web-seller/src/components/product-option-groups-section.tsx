@@ -13,6 +13,7 @@ import {
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 import { ConfirmModal } from './confirm-modal';
+import { useTranslation } from '@/lib/i18n';
 
 const glass = card;
 
@@ -84,6 +85,7 @@ interface InlineTextFormProps {
 }
 
 function InlineTextForm({ initial, placeholder, saving, onSave, onCancel }: InlineTextFormProps) {
+  const { t } = useTranslation();
   const [text, setText] = useState(initial);
 
   function handleKey(e: React.KeyboardEvent) {
@@ -101,13 +103,13 @@ function InlineTextForm({ initial, placeholder, saving, onSave, onCancel }: Inli
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKey}
       />
-      <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена" aria-label="Отмена"><X size={14} aria-hidden="true" /></button>
+      <button type="button" style={cancelBtn} onClick={onCancel} title={t('common.cancel')} aria-label={t('common.cancel')}><X size={14} aria-hidden="true" /></button>
       <button
         type="button"
         style={confirmBtn}
         disabled={saving || !text.trim()}
         onClick={() => onSave(text.trim())}
-        title="Сохранить"
+        title={t('common.save')}
       >
         {saving ? '…' : <Check size={14} />}
       </button>
@@ -124,6 +126,7 @@ interface ValueRowProps {
 }
 
 function ValueRow({ productId, groupId, value }: ValueRowProps) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const update = useUpdateOptionValue(productId);
@@ -143,7 +146,7 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
     return (
       <InlineTextForm
         initial={value.value}
-        placeholder="Например: XL"
+        placeholder={t('optionGroups.valuePlaceholder')}
         saving={update.isPending}
         onSave={handleUpdate}
         onCancel={() => setEditing(false)}
@@ -163,7 +166,7 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
           className="transition-opacity opacity-40 hover:opacity-80"
           style={{ color: colors.accent }}
           onClick={() => setEditing(true)}
-          title="Редактировать"
+          title={t('common.edit')}
         >
           <Pencil size={12} />
         </button>
@@ -173,16 +176,16 @@ function ValueRow({ productId, groupId, value }: ValueRowProps) {
           style={{ color: colors.danger }}
           disabled={remove.isPending}
           onClick={() => setConfirmOpen(true)}
-          title="Удалить"
+          title={t('common.delete')}
         >
           <X size={12} />
         </button>
       </div>
       <ConfirmModal
         open={confirmOpen}
-        title={`Удалить значение «${value.value}»?`}
-        message="Варианты, использующие его, будут деактивированы."
-        confirmLabel="Удалить"
+        title={t('optionGroups.deleteValueTitle', { value: value.value })}
+        message={t('optionGroups.deleteValueMsg')}
+        confirmLabel={t('common.delete')}
         danger
         loading={remove.isPending}
         onConfirm={performDelete}
@@ -200,6 +203,7 @@ interface GroupRowProps {
 }
 
 function GroupRow({ productId, group }: GroupRowProps) {
+  const { t } = useTranslation();
   const [editingName, setEditingName] = useState(false);
   const [addingValue, setAddingValue] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -238,7 +242,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
         {editingName ? (
           <InlineTextForm
             initial={group.name}
-            placeholder="Например: Размер"
+            placeholder={t('optionGroups.groupNameEdit')}
             saving={updateGroup.isPending}
             onSave={handleRename}
             onCancel={() => setEditingName(false)}
@@ -251,7 +255,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
               className="text-xs transition-opacity opacity-40 hover:opacity-80"
               style={{ color: colors.accent }}
               onClick={() => setEditingName(true)}
-              title="Переименовать"
+              title={t('common.edit')}
             >
               <Pencil size={14} />
             </button>
@@ -261,7 +265,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
               style={{ color: colors.danger }}
               disabled={removeGroup.isPending}
               onClick={() => setConfirmOpen(true)}
-              title="Удалить группу"
+              title={t('common.delete')}
             >
               <Trash2 size={14} />
             </button>
@@ -278,7 +282,7 @@ function GroupRow({ productId, group }: GroupRowProps) {
           <div className="w-full">
             <InlineTextForm
               initial=""
-              placeholder="Новое значение"
+              placeholder={t('optionGroups.newValuePlaceholder')}
               saving={createValue.isPending}
               onSave={handleAddValue}
               onCancel={() => setAddingValue(false)}
@@ -291,15 +295,15 @@ function GroupRow({ productId, group }: GroupRowProps) {
             style={{ color: colors.accent }}
             onClick={() => setAddingValue(true)}
           >
-            + значение
+            {t('optionGroups.addValueBtn')}
           </button>
         )}
       </div>
       <ConfirmModal
         open={confirmOpen}
-        title={`Удалить группу «${group.name}»?`}
-        message={hasValues ? 'Все её значения будут удалены, а связанные варианты деактивированы.' : undefined}
-        confirmLabel="Удалить"
+        title={t('optionGroups.deleteGroupTitle', { name: group.name })}
+        message={hasValues ? t('optionGroups.deleteGroupMsg') : undefined}
+        confirmLabel={t('common.delete')}
         danger
         loading={removeGroup.isPending}
         onConfirm={performRemove}
@@ -317,6 +321,7 @@ interface Props {
 }
 
 export function ProductOptionGroupsSection({ productId, optionGroups }: Props) {
+  const { t } = useTranslation();
   const [adding, setAdding] = useState(false);
   const create = useCreateOptionGroup(productId);
 
@@ -333,18 +338,18 @@ export function ProductOptionGroupsSection({ productId, optionGroups }: Props) {
     <div className="rounded-2xl p-5 flex flex-col gap-3 mt-4" style={glass}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Опции товара
+          {t('optionGroups.title')}
         </p>
         {optionGroups.length > 0 && (
           <span className="text-xs" style={{ color: colors.textDim }}>
-            {optionGroups.length} гр.
+            {t('optionGroups.groupCount', { count: String(optionGroups.length) })}
           </span>
         )}
       </div>
 
       {optionGroups.length === 0 && !adding && (
         <p className="text-xs py-1" style={{ color: colors.textDim }}>
-          Добавьте группы опций (например «Размер», «Цвет»), чтобы товар продавался в нескольких вариантах.
+          {t('optionGroups.empty')}
         </p>
       )}
 
@@ -355,7 +360,7 @@ export function ProductOptionGroupsSection({ productId, optionGroups }: Props) {
       {adding ? (
         <InlineTextForm
           initial=""
-          placeholder="Название группы (например: Размер)"
+          placeholder={t('optionGroups.groupNamePlaceholder')}
           saving={create.isPending}
           onSave={handleAddGroup}
           onCancel={() => setAdding(false)}
@@ -367,7 +372,7 @@ export function ProductOptionGroupsSection({ productId, optionGroups }: Props) {
           style={{ color: colors.accent }}
           onClick={() => setAdding(true)}
         >
-          + Добавить группу опций
+          {t('optionGroups.addGroupBtn')}
         </button>
       )}
     </div>

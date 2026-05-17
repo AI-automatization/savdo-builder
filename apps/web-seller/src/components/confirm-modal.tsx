@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { card, colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 interface Props {
   open: boolean;
@@ -20,13 +21,17 @@ export function ConfirmModal({
   open,
   title,
   message,
-  confirmLabel = 'Подтвердить',
-  cancelLabel = 'Отмена',
+  confirmLabel,
+  cancelLabel,
   danger = false,
   loading = false,
   onConfirm,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
+  const resolvedConfirmLabel = confirmLabel ?? t('confirm.defaultConfirm');
+  const resolvedCancelLabel = cancelLabel ?? t('confirm.defaultCancel');
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -80,7 +85,7 @@ export function ConfirmModal({
             className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
             style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
           <button
             type="button"
@@ -90,7 +95,7 @@ export function ConfirmModal({
             style={confirmStyle}
             autoFocus
           >
-            {loading ? '…' : confirmLabel}
+            {loading ? '…' : resolvedConfirmLabel}
           </button>
         </div>
       </div>

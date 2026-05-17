@@ -6,6 +6,7 @@ import axios from 'axios';
 import { Camera, X, Star } from 'lucide-react';
 import { uploadDirect } from '../lib/api/media.api';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -30,35 +31,36 @@ export interface MultiImageUploaderProps {
   reorderable?: boolean;
 }
 
-function describeError(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const status = err.response?.status;
-    if (status === 401) return 'Сессия истекла';
-    if (status === 413) return 'Файл слишком большой';
-    if (status === 415) return 'Формат не поддерживается';
-    if (status === 503) return 'Хранилище недоступно';
-    if (status && status >= 500) return `Ошибка сервера ${status}`;
-    return `Ошибка ${status ?? '?'}`;
-  }
-  return 'Не удалось загрузить';
-}
-
 export function MultiImageUploader({
   value,
   onChange,
   maxFiles = DEFAULT_MAX,
   reorderable = true,
 }: MultiImageUploaderProps) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
+  function describeError(err: unknown): string {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      if (status === 401) return t('uploader.multiError.sessionExpired');
+      if (status === 413) return t('uploader.multiError.fileTooLarge');
+      if (status === 415) return t('uploader.multiError.formatNotSupported');
+      if (status === 503) return t('uploader.multiError.storageUnavailable');
+      if (status && status >= 500) return t('uploader.multiError.serverError', { status: String(status) });
+      return `${status ?? '?'}`;
+    }
+    return t('uploader.multiError.uploadFailed');
+  }
+
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const remaining = maxFiles - value.length;
     if (remaining <= 0) {
-      setError(`Максимум ${maxFiles} фото`);
+      setError(t('uploader.maxPhotos', { max: String(maxFiles) }));
       return;
     }
     const toUpload = Array.from(files).slice(0, remaining);
@@ -69,11 +71,11 @@ export function MultiImageUploader({
       const uploaded: MultiImageItem[] = [];
       for (const file of toUpload) {
         if (!ALLOWED_TYPES.includes(file.type)) {
-          setError('Только JPG / PNG / WebP');
+          setError(t('uploader.onlyFormats'));
           continue;
         }
         if (file.size > MAX_BYTES) {
-          setError(`Файл «${file.name}» больше 10 MB`);
+          setError(t('uploader.fileTooLargeNamed', { name: file.name }));
           continue;
         }
         const { mediaFileId } = await uploadDirect(file, 'product_image');
@@ -144,7 +146,7 @@ export function MultiImageUploader({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.previewUrl}
-              alt={`Фото ${idx + 1}`}
+              alt=""
               className="w-full h-full object-cover"
             />
             {idx === 0 ? (
@@ -153,7 +155,7 @@ export function MultiImageUploader({
                 style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
                 <Star size={10} />
-                Главное
+                {t('uploader.primaryLabel')}
               </div>
             ) : reorderable ? (
               <button
@@ -161,8 +163,8 @@ export function MultiImageUploader({
                 onClick={() => makePrimary(idx)}
                 className="absolute top-1 left-1 w-6 h-6 rounded-full flex items-center justify-center"
                 style={{ background: 'rgba(0,0,0,0.55)', color: '#fff' }}
-                aria-label="Сделать главным"
-                title="Сделать главным"
+                aria-label={t('uploader.makePrimary')}
+                title={t('uploader.makePrimary')}
               >
                 <Star size={12} />
               </button>
@@ -172,7 +174,7 @@ export function MultiImageUploader({
               onClick={() => removeAt(idx)}
               className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center"
               style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}
-              aria-label="Удалить фото"
+              aria-label={t('uploader.removePhoto')}
             >
               <X size={12} />
             </button>
@@ -190,11 +192,11 @@ export function MultiImageUploader({
               border: `2px dashed ${colors.border}`,
               color: colors.textMuted,
             }}
-            aria-label="Добавить фото"
+            aria-label={t('uploader.addPhotoBtn')}
           >
             <Camera size={20} />
             <span className="text-[10px] font-semibold">
-              {uploading ? 'Загрузка…' : '+ Добавить'}
+              {uploading ? t('uploader.uploading') : t('uploader.addBtn')}
             </span>
           </button>
         )}
@@ -215,8 +217,9 @@ export function MultiImageUploader({
         </p>
       )}
       <p className="mt-2 text-xs" style={{ color: colors.textDim }}>
-        До {maxFiles} фото · Первое — главное
-        {reorderable && ' · Перетащи чтобы поменять порядок'}
+        {reorderable
+          ? t('uploader.hintReorder', { max: String(maxFiles) })
+          : t('uploader.hint', { max: String(maxFiles) })}
       </p>
     </div>
   );

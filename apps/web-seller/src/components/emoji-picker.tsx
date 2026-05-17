@@ -3,45 +3,38 @@
 import { useEffect, useRef, useState } from 'react';
 import { Smile } from 'lucide-react';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
-const EMOJI: { name: string; icon: string; items: string[] }[] = [
+const EMOJI_ITEMS: { icon: string; items: string[] }[] = [
   {
-    name: 'Смайлы',
     icon: '😀',
     items: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','😘','😗','😚','😙','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🫡','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤧','🥵','🥶','😎','🥳','🤓','🧐'],
   },
   {
-    name: 'Жесты',
     icon: '👍',
     items: ['👍','👎','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','✋','🤚','🖐','🖖','👋','🤝','🙌','👏','🤲','🙏','💪','🦵','🦶','🦾','🦿'],
   },
   {
-    name: 'Сердца',
     icon: '❤️',
     items: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','💌'],
   },
   {
-    name: 'Животные',
     icon: '🐶',
     items: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐽','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐢','🐍','🦎','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋'],
   },
   {
-    name: 'Еда',
     icon: '🍔',
     items: ['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶','🫑','🌽','🥕','🧄','🧅','🥔','🍠','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🥪','🌮','🌯','🥙','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍘','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪'],
   },
   {
-    name: 'Деньги',
     icon: '💰',
     items: ['💰','💵','💴','💶','💷','💸','💳','🧾','🪙','💎','⚖️','🏦','💼','📈','📉','📊','💹'],
   },
   {
-    name: 'Объекты',
     icon: '🎁',
     items: ['🎁','🎈','🎉','🎊','🎀','🛒','📦','📱','💻','⌚','📷','📺','📻','🎮','📚','✏️','📝','📌','📎','🔑','🔒','🔓','🔔','🔕','📢','📣','💡','🔦','🕯','🛏','🛋','🚪','🪑','🚿','🛁','🧴','🧷','🧹','🧼','🪒','🧽'],
   },
   {
-    name: 'Символы',
     icon: '✅',
     items: ['✅','❌','⭕','🚫','⛔','📛','🆗','🆕','🆒','🆓','🆙','💯','🔥','⭐','🌟','💫','✨','⚡','☀️','🌈','❗','❓','‼️','⁉️','💤','💢','💥','💦','💨','🕐','✔️','☑️','🔘','🔴','🟢','🔵','🟡','🟣','🟠','⚫','⚪','🟤'],
   },
@@ -52,6 +45,7 @@ interface EmojiPickerProps {
 }
 
 export function EmojiPicker({ onPick }: EmojiPickerProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -72,14 +66,14 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
     };
   }, [open]);
 
-  const items = EMOJI[tab]?.items ?? [];
+  const items = EMOJI_ITEMS[tab]?.items ?? [];
 
   return (
     <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Эмодзи"
+        aria-label={t('emoji.ariaLabel')}
         className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors hover:opacity-80"
         style={{ color: open ? colors.accent : colors.textMuted, background: open ? colors.accentMuted : 'transparent' }}
       >
@@ -102,12 +96,11 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
             className="flex items-center gap-0.5 px-1.5 py-1.5 overflow-x-auto flex-shrink-0"
             style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}
           >
-            {EMOJI.map((g, i) => (
+            {EMOJI_ITEMS.map((g, i) => (
               <button
-                key={g.name}
+                key={i}
                 type="button"
                 onClick={() => setTab(i)}
-                title={g.name}
                 className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-base transition-colors"
                 style={{
                   background: tab === i ? colors.accentMuted : 'transparent',

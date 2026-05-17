@@ -2,6 +2,7 @@
 
 import type { ProductDisplayType } from 'types';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 interface Option {
   value: ProductDisplayType;
@@ -10,33 +11,35 @@ interface Option {
   preview: React.ReactNode;
 }
 
-const OPTIONS: Option[] = [
-  {
-    value: 'SINGLE',
-    label: 'Одно фото',
-    hint: 'Главное фото товара. Подходит когда фотография одна или достаточно одной.',
-    preview: <SinglePreview />,
-  },
-  {
-    value: 'SLIDER',
-    label: 'Слайдер',
-    hint: 'Несколько фото — покупатель листает свайпом. Точки-индикаторы внизу карточки.',
-    preview: <SliderPreview />,
-  },
-  {
-    value: 'COLLAGE_2X2',
-    label: 'Сетка 2×2',
-    hint: 'Сразу 4 фото в карточке — для одежды, аксессуаров, наборов. Загрузите минимум 2 фото.',
-    preview: <CollagePreview />,
-  },
-];
-
 interface Props {
   value: ProductDisplayType;
   onChange: (v: ProductDisplayType) => void;
 }
 
 export function DisplayTypeSelector({ value, onChange }: Props) {
+  const { t } = useTranslation();
+
+  const OPTIONS: Option[] = [
+    {
+      value: 'SINGLE',
+      label: t('displayType.singleLabel'),
+      hint: t('displayType.singleHint'),
+      preview: <SinglePreview />,
+    },
+    {
+      value: 'SLIDER',
+      label: t('displayType.sliderLabel'),
+      hint: t('displayType.sliderHint'),
+      preview: <SliderPreview />,
+    },
+    {
+      value: 'COLLAGE_2X2',
+      label: t('displayType.collageLabel'),
+      hint: t('displayType.collageHint'),
+      preview: <CollagePreview />,
+    },
+  ];
+
   const active = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0];
 
   return (

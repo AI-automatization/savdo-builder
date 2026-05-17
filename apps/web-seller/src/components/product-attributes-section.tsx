@@ -3,6 +3,7 @@
 
 import { Plus, X } from 'lucide-react';
 import { colors, inputStyle as inputBase } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 const inputStyle: React.CSSProperties = {
   ...inputBase,
@@ -28,6 +29,8 @@ export function ProductAttributesSection({
   value,
   onChange,
 }: ProductAttributesSectionProps) {
+  const { t } = useTranslation();
+
   function update(idx: number, field: 'name' | 'value', v: string) {
     onChange(value.map((a, i) => (i === idx ? { ...a, [field]: v } : a)));
   }
@@ -42,21 +45,21 @@ export function ProductAttributesSection({
     <div className="flex flex-col gap-2">
       {value.length === 0 && (
         <p className="text-xs" style={{ color: colors.textDim }}>
-          Добавьте характеристики товара: Гарантия, Производитель, Материал и т.д.
+          {t('attributes.empty')}
         </p>
       )}
       {value.map((attr, idx) => (
         <div key={idx} className="flex items-center gap-2">
           <input
             type="text"
-            placeholder="Название (Гарантия)"
+            placeholder={t('attributes.namePlaceholder')}
             value={attr.name}
             onChange={(e) => update(idx, 'name', e.target.value)}
             style={{ ...inputStyle, flex: 1 }}
           />
           <input
             type="text"
-            placeholder="Значение (12 месяцев)"
+            placeholder={t('attributes.valuePlaceholder')}
             value={attr.value}
             onChange={(e) => update(idx, 'value', e.target.value)}
             style={{ ...inputStyle, flex: 1 }}
@@ -70,7 +73,7 @@ export function ProductAttributesSection({
               border: `1px solid ${colors.border}`,
               color: colors.danger,
             }}
-            aria-label="Удалить характеристику"
+            aria-label={t('attributes.deleteAria')}
           >
             <X size={14} />
           </button>
@@ -87,7 +90,7 @@ export function ProductAttributesSection({
         }}
       >
         <Plus size={12} />
-        Добавить характеристику
+        {t('attributes.addBtn')}
       </button>
     </div>
   );

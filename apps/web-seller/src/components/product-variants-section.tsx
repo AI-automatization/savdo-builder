@@ -12,6 +12,7 @@ import {
 import { X, Check, Pencil, Trash2 } from 'lucide-react';
 import { card, colors, inputStyle as inputBase } from '@/lib/styles';
 import { ConfirmModal } from './confirm-modal';
+import { useTranslation } from '@/lib/i18n';
 
 const glass = card;
 
@@ -119,6 +120,7 @@ function InlineVariantForm({
   optionGroups,
   hideOptions,
 }: InlineFormProps) {
+  const { t } = useTranslation();
   const [f, setF] = useState<VariantForm>(initial);
 
   const setField = <K extends keyof VariantForm>(k: K) => (
@@ -170,7 +172,7 @@ function InlineVariantForm({
                     value={f.optionSelection[g.id] ?? ''}
                     onChange={(e) => setOptionValue(g.id, e.target.value)}
                   >
-                    <option value="" style={{ background: '#1a1d2e' }}>— выберите —</option>
+                    <option value="" style={{ background: '#1a1d2e' }}>{t('variants.formSelectDefault')}</option>
                     {g.values.map((v) => (
                       <option key={v.id} value={v.id} style={{ background: '#1a1d2e' }}>
                         {v.value}
@@ -179,7 +181,7 @@ function InlineVariantForm({
                   </select>
                 ) : (
                   <p className="text-xs" style={{ color: '#fbbf24' }}>
-                    Добавьте значения в эту группу перед созданием варианта
+                    {t('variants.noGroupValues')}
                   </p>
                 )}
               </div>
@@ -191,16 +193,16 @@ function InlineVariantForm({
       {/* Row 1: title + sku */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Название</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>{t('variants.formLabelName')}</label>
           <input
             style={fieldStyle}
-            placeholder="Красный / XL"
+            placeholder={t('variants.formPlaceholderName')}
             value={f.titleOverride}
             onChange={setField('titleOverride')}
           />
         </div>
         <div>
-          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Артикул (SKU)</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>{t('variants.formLabelSku')}</label>
           <input
             style={fieldStyle}
             placeholder="SKU-VAR-001"
@@ -213,7 +215,7 @@ function InlineVariantForm({
       {/* Row 2: price + stock */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Цена (сум, пусто = базовая)</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>{t('variants.formLabelPrice')}</label>
           <input
             type="number"
             min={0}
@@ -224,7 +226,7 @@ function InlineVariantForm({
           />
         </div>
         <div>
-          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>Остаток</label>
+          <label className="block text-xs mb-1" style={{ color: colors.textDim }}>{t('variants.formLabelStock')}</label>
           <input
             type="number"
             min={0}
@@ -249,17 +251,17 @@ function InlineVariantForm({
             className="relative w-9 h-5 rounded-full transition-all peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white"
             style={{ background: f.isActive ? colors.accent : colors.surfaceElevated, border: `1px solid ${f.isActive ? colors.accentBorder : colors.border}` }}
           />
-          Активен
+          {t('variants.formActiveToggle')}
         </label>
 
         <div className="flex gap-2">
-          <button type="button" style={cancelBtn} onClick={onCancel} title="Отмена" aria-label="Отмена"><X size={14} aria-hidden="true" /></button>
+          <button type="button" style={cancelBtn} onClick={onCancel} title={t('common.cancel')} aria-label={t('common.cancel')}><X size={14} aria-hidden="true" /></button>
           <button
             type="button"
             style={confirmBtn}
             disabled={saving || !f.sku.trim() || !allOptionsSelected}
             onClick={() => onSave(f)}
-            title={allOptionsSelected ? 'Сохранить' : 'Выберите значение для каждой группы опций'}
+            title={allOptionsSelected ? t('common.save') : t('variants.saveTooltipMissing')}
           >
             {saving ? '…' : <Check size={14} />}
           </button>
@@ -278,6 +280,7 @@ interface Props {
 }
 
 export function ProductVariantsSection({ productId, productSku, optionGroups = [] }: Props) {
+  const { t } = useTranslation();
   const { data: variants = [], isLoading } = useProductVariants(productId);
   const create = useCreateVariant();
   const update = useUpdateVariant();
@@ -319,7 +322,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
         );
       });
       if (dupe) {
-        setAddError('Вариант с такой комбинацией опций уже есть.');
+        setAddError(t('variants.duplicate'));
         return;
       }
     }
@@ -382,22 +385,22 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
     <div className="rounded-2xl p-5 flex flex-col gap-4 mt-4" style={glass}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Варианты товара
+          {t('variants.title')}
         </p>
         {variants.length > 0 && (
           <span className="text-xs" style={{ color: colors.textDim }}>
-            {variants.length} шт.
+            {t('variants.count', { count: String(variants.length) })}
           </span>
         )}
       </div>
 
       {isLoading && (
-        <p className="text-xs py-2" style={{ color: colors.textDim }}>Загрузка...</p>
+        <p className="text-xs py-2" style={{ color: colors.textDim }}>{t('variants.loading')}</p>
       )}
 
       {!isLoading && variants.length === 0 && !adding && (
         <p className="text-xs py-1" style={{ color: colors.textDim }}>
-          Нет вариантов. Добавьте, если товар продаётся в разных размерах, цветах и т.д.
+          {t('variants.empty')}
         </p>
       )}
 
@@ -507,16 +510,16 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
           style={{ color: colors.accent }}
           disabled={!canAdd}
           onClick={() => { setEditingId(null); setAddError(null); setAdding(true); }}
-          title={!canAdd ? 'Сначала добавьте значения в группы опций' : undefined}
+          title={!canAdd ? t('variants.cannotAdd') : undefined}
         >
-          + Добавить вариант
+          {t('variants.addBtn')}
         </button>
       )}
 
       <ConfirmModal
         open={confirmId !== null}
-        title="Удалить вариант?"
-        confirmLabel="Удалить"
+        title={t('variants.deleteTitle')}
+        confirmLabel={t('common.delete')}
         danger
         loading={confirmId !== null && deletingId === confirmId}
         onConfirm={performDelete}
@@ -537,6 +540,7 @@ function InlineStockEditor({
   variantId: string;
   current: number;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(String(current));
   const adjustStock = useAdjustStock();
   const num = Number(draft);
@@ -575,7 +579,7 @@ function InlineStockEditor({
           borderRadius: '0.25rem',
           color: colors.textPrimary,
         }}
-        aria-label="Склад"
+        aria-label={t('variants.stockAriaLabel')}
       />
       {dirty && (
         <button
@@ -584,7 +588,7 @@ function InlineStockEditor({
           disabled={adjustStock.isPending}
           className="px-1.5 py-0.5 rounded text-[10px] font-bold disabled:opacity-60"
           style={{ background: colors.accent, color: colors.accentTextOnBg }}
-          aria-label="Сохранить склад"
+          aria-label={t('variants.saveStockAriaLabel')}
         >
           {adjustStock.isPending ? '…' : '✓'}
         </button>

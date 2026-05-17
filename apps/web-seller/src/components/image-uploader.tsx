@@ -7,23 +7,7 @@ import { uploadDirect } from '../lib/api/media.api';
 import type { MediaPurpose } from '../lib/api/media.api';
 import { AlertTriangle, Camera, X } from 'lucide-react';
 import { colors, dangerTint } from '@/lib/styles';
-
-function describeUploadError(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const status = err.response?.status;
-    const serverMsg = (err.response?.data as { message?: string } | undefined)?.message;
-
-    if (status === 401) return 'Сессия истекла. Войдите заново.';
-    if (status === 403) return 'Нет прав на загрузку фото.';
-    if (status === 413) return 'Файл слишком большой для сервера.';
-    if (status === 415) return 'Формат не поддерживается сервером.';
-    if (status === 503) return 'Хранилище фото отключено на сервере.';
-    if (status && status >= 500) return `Сервер вернул ${status}. Попробуйте позже.`;
-    if (!err.response) return 'Нет связи с сервером.';
-    return serverMsg ?? `Ошибка загрузки (${status ?? '?'}).`;
-  }
-  return 'Не удалось загрузить фото. Попробуйте снова.';
-}
+import { useTranslation } from '@/lib/i18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,12 +33,30 @@ export function ImageUploader({
   previewUrl,
   aspectRatio = '1',
 }: ImageUploaderProps) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
 
   const displayUrl = localPreview ?? previewUrl ?? null;
+
+  function describeUploadError(err: unknown): string {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const serverMsg = (err.response?.data as { message?: string } | undefined)?.message;
+
+      if (status === 401) return t('uploader.sessionExpired');
+      if (status === 403) return t('uploader.noPermission');
+      if (status === 413) return t('uploader.fileTooLarge');
+      if (status === 415) return t('uploader.formatNotSupported');
+      if (status === 503) return t('uploader.storageDisabled');
+      if (status && status >= 500) return t('uploader.serverError', { status: String(status) });
+      if (!err.response) return t('uploader.noConnection');
+      return serverMsg ?? `Ошибка загрузки (${status ?? '?'}).`;
+    }
+    return t('uploader.genericError');
+  }
 
   useEffect(() => {
     return () => {
@@ -69,11 +71,11 @@ export function ImageUploader({
 
     // Validate
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('Формат не поддерживается. Используйте JPG, PNG или WebP.');
+      setError(t('uploader.invalidFormat'));
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError('Файл слишком большой. Максимум 10 МБ.');
+      setError(t('uploader.fileTooLargeLocal'));
       return;
     }
 
@@ -134,7 +136,7 @@ export function ImageUploader({
         <AlertTriangle size={28} style={{ color: colors.danger }} />
         <span style={{ fontSize: 11, color: colors.danger, textAlign: 'center', lineHeight: 1.4 }}>{error}</span>
         <span style={{ fontSize: 11, fontWeight: 600, color: colors.danger, background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, borderRadius: 6, padding: '4px 10px' }}>
-          Попробовать снова
+          {t('uploader.retry')}
         </span>
         <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
       </div>
@@ -162,7 +164,7 @@ export function ImageUploader({
         <button
           type="button"
           onClick={handleRemove}
-          aria-label="Удалить фото"
+          aria-label={t('uploader.removePhoto')}
           style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: 'rgba(0,0,0,.65)', border: `1px solid ${colors.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: colors.textPrimary, cursor: 'pointer' }}
         >
           <X size={14} aria-hidden="true" />
@@ -178,7 +180,7 @@ export function ImageUploader({
       onClick={() => inputRef.current?.click()}
     >
       <div style={{ width: 40, height: 40, borderRadius: 8, background: colors.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={20} style={{ color: colors.accent }} /></div>
-      <span style={{ fontSize: 12, color: colors.textDim, fontWeight: 500, textAlign: 'center', lineHeight: 1.4 }}>Добавить<br />фото</span>
+      <span style={{ fontSize: 12, color: colors.textDim, fontWeight: 500, textAlign: 'center', lineHeight: 1.4, whiteSpace: 'pre-line' }}>{t('uploader.addPhoto')}</span>
       <input ref={inputRef} type="file" accept={ALLOWED_TYPES.join(',')} className="sr-only" onChange={handleChange} />
     </div>
   );

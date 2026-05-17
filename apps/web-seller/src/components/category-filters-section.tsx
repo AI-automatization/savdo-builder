@@ -3,6 +3,7 @@
 
 import { colors, inputStyle as inputBase } from '@/lib/styles';
 import type { StorefrontCategoryFilter } from '../lib/api/storefront.api';
+import { useTranslation } from '@/lib/i18n';
 
 const inputStyle: React.CSSProperties = {
   ...inputBase,
@@ -25,6 +26,7 @@ export function CategoryFiltersSection({
   values,
   onChange,
 }: CategoryFiltersSectionProps) {
+  const { t } = useTranslation();
   // multi_select обрабатывает VariantsMatrixBuilder отдельно.
   const simpleFilters = filters.filter((f) => f.fieldType !== 'multi_select');
 
@@ -75,7 +77,7 @@ export function CategoryFiltersSection({
               onChange={(e) => setField(f.key, e.target.value)}
               style={inputStyle}
             >
-              <option value="">— Выберите —</option>
+              <option value="">{t('categoryFilters.selectPlaceholder')}</option>
               {f.options.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
@@ -91,7 +93,7 @@ export function CategoryFiltersSection({
                 checked={!!values[f.key]}
                 onChange={(e) => setField(f.key, e.target.checked)}
               />
-              <span style={{ color: colors.textPrimary }}>Да</span>
+              <span style={{ color: colors.textPrimary }}>{t('categoryFilters.booleanYes')}</span>
             </label>
           )}
 
@@ -102,7 +104,7 @@ export function CategoryFiltersSection({
               onChange={(e) => setField(f.key, e.target.value)}
               style={inputStyle}
             >
-              <option value="">— Выберите —</option>
+              <option value="">{t('categoryFilters.selectPlaceholder')}</option>
               {f.options.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
