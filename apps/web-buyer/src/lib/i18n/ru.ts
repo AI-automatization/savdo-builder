@@ -181,6 +181,24 @@ export const ru: Translations = {
   'orders.timeline.processing': 'Сборка заказа',
   'orders.timeline.shipped': 'Передан курьеру',
   'orders.timeline.delivered': 'Доставлен',
+  // plural count helpers (UZ only — RU uses pluralItems/pluralOrders helpers in component)
+  'orders.itemCountUz': '{count} ta mahsulot',
+  'profile.ordersCountUz': '{count} ta buyurtma',
+  'profile.wishlistCountUz': '{count} ta mahsulot',
+  'notifications.countUz': '{count} ta bildirishnoma',
+  // "empty" fallback label
+  'common.emptyFallback': 'Пусто',
+
+  // chat date/time helpers
+  'chat.time.yesterday': 'вчера',
+  'chat.date.today': 'Сегодня',
+  'chat.date.yesterday': 'Вчера',
+
+  // notifications relative time helpers
+  'notifications.time.justNow': 'только что',
+  'notifications.time.mins': '{count} мин',
+  'notifications.time.hrs': '{count} ч',
+  'notifications.time.days': '{count} дн',
 
   // chat — страница чатов и ChatComposerModal
   'chat.title': 'Чаты',
@@ -209,7 +227,7 @@ export const ru: Translations = {
   'chat.editAction': 'Редактировать',
   'chat.deleteAction': 'Удалить',
   'chat.composerPlaceholder': 'Сообщение...',
-  'chat.closedByseller': 'Чат закрыт продавцом',
+  'chat.closedBySeller': 'Чат закрыт продавцом',
   'chat.confirmDeleteMsg.title': 'Удалить сообщение?',
   'chat.confirmDeleteMsg.hint': 'Продавец увидит «Сообщение удалено» вместо текста.',
   'chat.confirmDeleteThread.title': 'Удалить этот чат?',

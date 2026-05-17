@@ -268,8 +268,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </Link>
         <h1 className="flex-1 text-[15px] font-bold" style={{ color: colors.textStrong }}>
           {order
-            ? t('orders.detail.orderNumber').replace('{number}', String(order.orderNumber ?? shortId(order.id)))
-            : t('orders.detail.orderNumber').replace('{number}', '…')}
+            ? t('orders.detail.orderNumber', { number: String(order.orderNumber ?? shortId(order.id)) })
+            : t('orders.detail.orderNumber', { number: '…' })}
         </h1>
         {order && <StatusPill status={order.status} />}
       </div>
@@ -334,7 +334,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             {/* Items */}
             <div className="px-4 py-4" style={{ background: colors.surface }}>
               <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
-                {t('orders.detail.itemsLabel').replace('{qty}', String(totalQty))}
+                {t('orders.detail.itemsLabel', { qty: totalQty })}
               </div>
               <div className="flex flex-col gap-3">
                 {order.items.map((item) => (
@@ -407,7 +407,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 {t('orders.detail.totalsLabel')}
               </div>
               <div className="flex justify-between text-xs mb-1.5">
-                <span style={{ color: colors.textMuted }}>{t('orders.detail.goodsLine').replace('{qty}', String(totalQty))}</span>
+                <span style={{ color: colors.textMuted }}>{t('orders.detail.goodsLine', { qty: totalQty })}</span>
                 <span style={{ color: colors.textBody }}>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-xs mb-1.5">
@@ -489,7 +489,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 style={{ background: colors.surface, border: `1px solid ${colors.danger}` }}
               >
                 <p className="text-xs text-center" style={{ color: colors.textStrong }}>
-                  {t('orders.detail.confirmCancelQuestion').replace('{number}', String(order.orderNumber ?? shortId(order.id)))}
+                  {t('orders.detail.confirmCancelQuestion', { number: String(order.orderNumber ?? shortId(order.id)) })}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -520,7 +520,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <ChatComposerModal
           contextType={ThreadType.ORDER}
           contextId={order.id}
-          title={t('orders.detail.orderNumber').replace('{number}', String(order.orderNumber ?? shortId(order.id)))}
+          title={t('orders.detail.orderNumber', { number: String(order.orderNumber ?? shortId(order.id)) })}
           onClose={() => setChatOpen(false)}
         />
       )}

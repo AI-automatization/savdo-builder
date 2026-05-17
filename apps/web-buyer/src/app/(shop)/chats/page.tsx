@@ -25,21 +25,23 @@ import { useTranslation } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
-function timeLabel(iso: string): string {
+type TFunc = (key: string, vars?: Record<string, string | number>) => string;
+
+function timeLabel(iso: string, t: TFunc): string {
   const date = new Date(iso);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
   if (diffDays === 0) return date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  if (diffDays === 1) return "вчера";
+  if (diffDays === 1) return t('chat.time.yesterday');
   return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-function formatDateLabel(iso: string): string {
+function formatDateLabel(iso: string, t: TFunc): string {
   const date = new Date(iso);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
-  if (diffDays === 0) return "Сегодня";
-  if (diffDays === 1) return "Вчера";
+  if (diffDays === 0) return t('chat.date.today');
+  if (diffDays === 1) return t('chat.date.yesterday');
   return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 }
 
@@ -83,7 +85,7 @@ function ThreadItem({ thread, active, onClick }: { thread: ChatThread; active: b
           </div>
           {thread.lastMessageAt && (
             <div className="text-[10px] flex-shrink-0 ml-2" style={{ color: colors.textMuted }}>
-              {timeLabel(thread.lastMessageAt)}
+              {timeLabel(thread.lastMessageAt, t)}
             </div>
           )}
         </div>
@@ -401,7 +403,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
             <Fragment key={m.id}>
               {isFirstOfDay && (
                 <div className="text-center text-[10px] my-1" style={{ color: colors.textMuted }}>
-                  {formatDateLabel(m.createdAt)}
+                  {formatDateLabel(m.createdAt, t)}
                 </div>
               )}
               <div className={`flex ${isBuyer ? "justify-end" : "justify-start"} group`}>
@@ -487,7 +489,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
                         }}
                       >
                         {m.editedAt && <span className="mr-1">{t('chat.edited')}</span>}
-                        {timeLabel(m.createdAt)}
+                        {timeLabel(m.createdAt, t)}
                       </p>
                     )}
                   </div>
@@ -572,7 +574,7 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
           className="px-4 py-3 text-center text-xs flex-shrink-0 border-t"
           style={{ color: colors.textMuted, borderColor: colors.divider, background: colors.surface }}
         >
-          {t('chat.closedByseller')}
+          {t('chat.closedBySeller')}
         </div>
       )}
     </div>
@@ -665,7 +667,7 @@ function ChatsView() {
                 : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
             }
           >
-            {t('chat.filter.all').replace('{count}', String(threads?.length ?? 0))}
+            {t('chat.filter.all', { count: threads?.length ?? 0 })}
           </button>
           <button
             onClick={() => setFilter("unread")}
@@ -676,7 +678,7 @@ function ChatsView() {
                 : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
             }
           >
-            {t('chat.filter.unread').replace('{count}', String(unreadCount))}
+            {t('chat.filter.unread', { count: unreadCount })}
           </button>
         </div>
 

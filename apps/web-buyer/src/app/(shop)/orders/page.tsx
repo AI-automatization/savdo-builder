@@ -36,6 +36,16 @@ const TONE_COLORS: Record<StatusTone, { bg: string; fg: string }> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Russian plural: 1 товар / 2 товара / 5 товаров */
+function pluralItems(count: number): string {
+  const abs = Math.abs(count) % 100;
+  const rem = abs % 10;
+  if (abs >= 11 && abs <= 14) return `${count} товаров`;
+  if (rem === 1) return `${count} товар`;
+  if (rem >= 2 && rem <= 4) return `${count} товара`;
+  return `${count} товаров`;
+}
+
 const toNum = (v: unknown): number => {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
@@ -92,7 +102,7 @@ const PAGE_LIMIT = 20;
 // ── OrdersList ────────────────────────────────────────────────────────────────
 
 function OrdersList() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<OrderStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [accOrders, setAccOrders] = useState<OrderListItem[]>([]);
@@ -225,12 +235,12 @@ function OrdersList() {
           </div>
           <h2 className="text-lg font-bold mb-2" style={{ color: colors.textStrong }}>
             {q
-              ? t('orders.empty.noResults').replace('{query}', searchQuery)
+              ? t('orders.empty.noResults', { query: searchQuery })
               : activeFilter === OrderStatus.CANCELLED
                 ? t('orders.empty.noCancelled')
                 : activeFilter === "ALL"
                   ? t('orders.empty.noOrders')
-                  : t('orders.empty.noStatus').replace('{label}', statusLabel)}
+                  : t('orders.empty.noStatus', { label: statusLabel })}
           </h2>
           <p className="text-sm mb-6" style={{ color: colors.textMuted }}>
             {q
@@ -266,12 +276,14 @@ function OrdersList() {
               >
                 <div className="flex justify-between items-baseline mb-1 gap-2">
                   <div className="text-[13px] font-semibold" style={{ color: colors.textStrong }}>
-                    {t('orders.card.number').replace('{number}', String(order.orderNumber ?? shortId(order.id)))}
+                    {t('orders.card.number', { number: String(order.orderNumber ?? shortId(order.id)) })}
                   </div>
                   <StatusPill status={order.status} />
                 </div>
                 <div className="text-[11px]" style={{ color: colors.textMuted }}>
-                  {itemCount > 0 ? `${itemCount} ${itemCount === 1 ? "товар" : itemCount < 5 ? "товара" : "товаров"} · ` : ""}
+                  {itemCount > 0
+                    ? `${locale === 'uz' ? t('orders.itemCountUz', { count: itemCount }) : pluralItems(itemCount)} · `
+                    : ""}
                   {formatDate(order.createdAt)}
                 </div>
                 <div className="text-sm font-bold mt-1.5" style={{ color: colors.textStrong }}>

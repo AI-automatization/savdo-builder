@@ -179,6 +179,24 @@ export const uz: Translations = {
   'orders.timeline.processing': 'Buyurtma yigʻilmoqda',
   'orders.timeline.shipped': 'Kuryerga topshirildi',
   'orders.timeline.delivered': 'Yetkazildi',
+  // plural count helpers
+  'orders.itemCountUz': '{count} ta mahsulot',
+  'profile.ordersCountUz': '{count} ta buyurtma',
+  'profile.wishlistCountUz': '{count} ta mahsulot',
+  'notifications.countUz': '{count} ta bildirishnoma',
+  // "empty" fallback label
+  'common.emptyFallback': 'Boʻsh',
+
+  // chat date/time helpers
+  'chat.time.yesterday': 'kecha',
+  'chat.date.today': 'Bugun',
+  'chat.date.yesterday': 'Kecha',
+
+  // notifications relative time helpers
+  'notifications.time.justNow': 'hozirgina',
+  'notifications.time.mins': '{count} daq',
+  'notifications.time.hrs': '{count} soat',
+  'notifications.time.days': '{count} kun',
 
   // chat — chatlar sahifasi va ChatComposerModal
   'chat.title': 'Chatlar',
@@ -207,7 +225,7 @@ export const uz: Translations = {
   'chat.editAction': 'Tahrirlash',
   'chat.deleteAction': 'Oʻchirish',
   'chat.composerPlaceholder': 'Xabar...',
-  'chat.closedByseller': 'Chat sotuvchi tomonidan yopildi',
+  'chat.closedBySeller': 'Chat sotuvchi tomonidan yopildi',
   'chat.confirmDeleteMsg.title': 'Xabarni oʻchirasizmi?',
   'chat.confirmDeleteMsg.hint': 'Sotuvchi matn oʻrnida «Xabar oʻchirildi» ni koʻradi.',
   'chat.confirmDeleteThread.title': 'Bu chatni oʻchirasizmi?',

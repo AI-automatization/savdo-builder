@@ -12,14 +12,16 @@ import { useTranslation } from "@/lib/i18n";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function relativeTime(iso: string): string {
+type TFunc = (key: string, vars?: Record<string, string | number>) => string;
+
+function relativeTime(iso: string, t: TFunc): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "только что";
-  if (mins < 60) return `${mins} мин`;
+  if (mins < 1) return t('notifications.time.justNow');
+  if (mins < 60) return t('notifications.time.mins', { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} ч`;
-  return `${Math.floor(hrs / 24)} дн`;
+  if (hrs < 24) return t('notifications.time.hrs', { count: hrs });
+  return t('notifications.time.days', { count: Math.floor(hrs / 24) });
 }
 
 type Bucket = "today" | "yesterday" | "week" | "earlier";
@@ -49,6 +51,7 @@ const ORDER_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 function NotifRow({ item }: { item: NotificationItem }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Навигация только если в тексте есть order-UUID. Иначе строка не кликабельна —
   // не показываем cursor-pointer/hover, чтобы не было «мёртвого» аффорданса.
@@ -79,7 +82,7 @@ function NotifRow({ item }: { item: NotificationItem }) {
             {item.title}
           </p>
           <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: colors.textMuted }}>
-            {relativeTime(item.createdAt)}
+            {relativeTime(item.createdAt, t)}
           </span>
         </div>
         <p className="text-[11px] mt-1 leading-relaxed line-clamp-2" style={{ color: colors.textBody }}>
@@ -149,9 +152,19 @@ type Tab = "all" | "unread";
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+/** Russian plural: 1 уведомление / 2 уведомления / 5 уведомлений */
+function pluralNotifications(count: number): string {
+  const abs = Math.abs(count) % 100;
+  const rem = abs % 10;
+  if (abs >= 11 && abs <= 14) return `${count} уведомлений`;
+  if (rem === 1) return `${count} уведомление`;
+  if (rem >= 2 && rem <= 4) return `${count} уведомления`;
+  return `${count} уведомлений`;
+}
+
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [tab, setTab] = useState<Tab>("all");
   const { data: items = [], isLoading, isError } = useNotifications();
   const readAll = useReadAll();
@@ -198,7 +211,9 @@ export default function NotificationsPage() {
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: colors.textStrong }}>{t('notifications.title')}</h1>
           {isAuthenticated && items.length > 0 && (
             <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
-              {items.length} {items.length === 1 ? "уведомление" : items.length < 5 ? "уведомления" : "уведомлений"}
+              {locale === 'uz'
+                ? t('notifications.countUz', { count: items.length })
+                : pluralNotifications(items.length)}
             </p>
           )}
         </div>
@@ -224,9 +239,9 @@ export default function NotificationsPage() {
               {(["all", "unread"] as Tab[]).map((tabKey) => {
                 const active = tab === tabKey;
                 const label = tabKey === "all"
-                  ? t('notifications.filter.all').replace('{count}', String(items.length))
+                  ? t('notifications.filter.all', { count: items.length })
                   : unreadItems.length > 0
-                    ? t('notifications.filter.unread').replace('{count}', String(unreadItems.length))
+                    ? t('notifications.filter.unread', { count: unreadItems.length })
                     : t('notifications.filter.unreadNoCount');
                 return (
                   <button

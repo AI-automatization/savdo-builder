@@ -64,7 +64,7 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
           <OtpGate
             icon={<MessageSquare size={22} style={{ color: colors.brand }} />}
             title={t('chat.composer.loginTitle')}
-            subtitle={t('chat.composer.loginSubtitle').replace('{title}', title)}
+            subtitle={t('chat.composer.loginSubtitle', { title })}
           />
         ) : (
           <ComposerBody

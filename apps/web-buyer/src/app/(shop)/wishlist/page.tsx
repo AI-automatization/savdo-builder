@@ -49,7 +49,7 @@ function WishlistContent() {
       <div className="px-4 md:px-6 pt-5 pb-3 flex items-baseline justify-between">
         <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
           {items.length > 0
-            ? t('wishlist.headerWithCount').replace('{count}', String(items.length))
+            ? t('wishlist.headerWithCount', { count: items.length })
             : t('wishlist.header')}
         </div>
       </div>

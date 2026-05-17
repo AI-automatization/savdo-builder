@@ -83,9 +83,29 @@ function MenuRow({
 
 // ── ProfileView ──────────────────────────────────────────────────────────────
 
+/** Russian plural: 1 заказ / 2 заказа / 5 заказов */
+function pluralOrders(count: number): string {
+  const abs = Math.abs(count) % 100;
+  const rem = abs % 10;
+  if (abs >= 11 && abs <= 14) return `${count} заказов`;
+  if (rem === 1) return `${count} заказ`;
+  if (rem >= 2 && rem <= 4) return `${count} заказа`;
+  return `${count} заказов`;
+}
+
+/** Russian plural: 1 товар / 2 товара / 5 товаров */
+function pluralItems(count: number): string {
+  const abs = Math.abs(count) % 100;
+  const rem = abs % 10;
+  if (abs >= 11 && abs <= 14) return `${count} товаров`;
+  if (rem === 1) return `${count} товар`;
+  if (rem >= 2 && rem <= 4) return `${count} товара`;
+  return `${count} товаров`;
+}
+
 function ProfileView() {
   const { user, isAuthenticated } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const logoutMutation = useLogout();
   const uploadAvatar = useUploadAvatar();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -205,9 +225,23 @@ function ProfileView() {
 
       {/* My activity */}
       <SectionLabel>{t('profile.section.activity')}</SectionLabel>
-      <MenuRow icon={<Package size={16} />} label={t('profile.menu.orders')} sub={ordersCount > 0 ? `${ordersCount} ${ordersCount === 1 ? "заказ" : ordersCount < 5 ? "заказа" : "заказов"}` : "Пусто"} href="/orders" />
+      <MenuRow
+        icon={<Package size={16} />}
+        label={t('profile.menu.orders')}
+        sub={ordersCount > 0
+          ? (locale === 'uz' ? t('profile.ordersCountUz', { count: ordersCount }) : pluralOrders(ordersCount))
+          : t('common.emptyFallback')}
+        href="/orders"
+      />
       <div style={{ height: 1, background: colors.divider }} className="mx-4" />
-      <MenuRow icon={<Heart size={16} />} label={t('profile.menu.wishlist')} sub={wishlistCount > 0 ? `${wishlistCount} ${wishlistCount === 1 ? "товар" : wishlistCount < 5 ? "товара" : "товаров"}` : "Пусто"} href="/wishlist" />
+      <MenuRow
+        icon={<Heart size={16} />}
+        label={t('profile.menu.wishlist')}
+        sub={wishlistCount > 0
+          ? (locale === 'uz' ? t('profile.wishlistCountUz', { count: wishlistCount }) : pluralItems(wishlistCount))
+          : t('common.emptyFallback')}
+        href="/wishlist"
+      />
       <div style={{ height: 1, background: colors.divider }} className="mx-4" />
       <MenuRow icon={<Bell size={16} />} label={t('profile.menu.notifications')} sub={t('profile.menu.notificationsSub')} href="/notifications" />
 
