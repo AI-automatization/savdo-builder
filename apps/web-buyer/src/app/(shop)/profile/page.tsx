@@ -23,6 +23,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useTranslation } from "@/lib/i18n";
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -83,6 +85,7 @@ function MenuRow({
 
 function ProfileView() {
   const { user, isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   const logoutMutation = useLogout();
   const uploadAvatar = useUploadAvatar();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -207,6 +210,20 @@ function ProfileView() {
       <MenuRow icon={<Heart size={16} />} label="Избранное" sub={wishlistCount > 0 ? `${wishlistCount} ${wishlistCount === 1 ? "товар" : wishlistCount < 5 ? "товара" : "товаров"}` : "Пусто"} href="/wishlist" />
       <div style={{ height: 1, background: colors.divider }} className="mx-4" />
       <MenuRow icon={<Bell size={16} />} label="Уведомления" sub="История событий" href="/notifications" />
+
+      {/* MARKETING-LOCALIZATION-UZ-001 — переключатель языка */}
+      <SectionLabel>{t('settings.title')}</SectionLabel>
+      <div className="px-4">
+        <div
+          className="flex items-center justify-between rounded-xl px-4 py-3"
+          style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+        >
+          <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
+            {t('settings.language')}
+          </span>
+          <LanguageToggle />
+        </div>
+      </div>
 
       {/* Become seller — только для BUYER (SELLER уже имеет store; HYBRID/ADMIN скрыто) */}
       {user?.role === 'BUYER' && (
