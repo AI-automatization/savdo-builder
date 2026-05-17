@@ -51,6 +51,8 @@ export const ru: Translations = {
   'onboarding.telegramLinkLabel': 'Telegram-ссылка для покупателей',
   'onboarding.telegramLinkHint': 'Ссылка на ваш канал, группу или личный чат',
   'onboarding.cityLabel': 'Город',
+  'onboarding.cityPlaceholder': 'Ташкент',
+  'onboarding.telegramUsernameLabel': 'Telegram username',
   'onboarding.backButton': '← Назад',
   'onboarding.creatingStore': 'Создание...',
   'onboarding.telegramUsernameRequired': 'Введите Telegram username',

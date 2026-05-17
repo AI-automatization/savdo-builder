@@ -225,7 +225,7 @@ function Step2({
       </div>
 
       <div>
-        <Label required>Telegram username</Label>
+        <Label required>{t('onboarding.telegramUsernameLabel')}</Label>
         <div className="flex items-center rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
           <span
             className="px-3 py-[0.625rem] text-sm flex-shrink-0"
@@ -274,7 +274,7 @@ function Step2({
         <input
           className="focus:outline-none"
           style={inputStyle}
-          placeholder="Ташкент"
+          placeholder={t('onboarding.cityPlaceholder')}
           {...register('city', {
             required: t('onboarding.cityRequired'),
             minLength: { value: 2, message: t('onboarding.minTwoChars') },

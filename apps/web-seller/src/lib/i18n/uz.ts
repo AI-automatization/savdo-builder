@@ -49,6 +49,8 @@ export const uz: Translations = {
   'onboarding.telegramLinkLabel': 'Xaridorlar uchun Telegram-havola',
   'onboarding.telegramLinkHint': 'Kanal, guruh yoki shaxsiy chatga havola',
   'onboarding.cityLabel': 'Shahar',
+  'onboarding.cityPlaceholder': 'Toshkent',
+  'onboarding.telegramUsernameLabel': 'Telegram username',
   'onboarding.backButton': '← Orqaga',
   'onboarding.creatingStore': 'Yaratilmoqda...',
   'onboarding.telegramUsernameRequired': 'Telegram username kiriting',
