@@ -180,12 +180,17 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
   `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
   web-seller читал через `as any`). Коммит `4cf0993`.
-- **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
-  `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
-  Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
-  типа вслепую.
-- **✅ Запрос Азиму передан 16.05.2026** — задача `API-RESPONSE-TYPES-RECONCILE-001`
-  в секции «Tasks — Азим». Полат правит тип после получения списка.
+- **Осталось:** web-buyer ~9 `as`-кастов на 4 shape'ах.
+- **✅ Список callsite'ов собран Азимом 17.05.2026** — см. секцию
+  `API-RESPONSE-TYPES-RECONCILE-001` в «Tasks — Азим». Сводка нужных правок типов:
+  - `CartItem` += `unitPrice`, `salePriceSnapshot`, `unitPriceSnapshot`,
+    `product?:{ basePrice, salePrice, title, mediaUrl, stock, isAvailable, isVisible }`,
+    `variant?:{ priceOverride, salePriceOverride }`
+  - `AuthUser` += `name?: string`
+  - `Order` / `OrderListItem` += `itemCount?: number`
+  - `Product` += `inWishlist?: boolean`
+  - `store.slug` каста НЕТ — `StoreRef.slug` уже в типе.
+  Полат правит тип, дальше Азим снимает касты.
 
 ## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
@@ -893,16 +898,38 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
     `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
     stack trace в `analiz/logs.md` — Полат разберёт root cause.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — нужен список callsite'ов (Азим → Полату)
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — список callsite'ов собран (Азим → Полату)
 
 > **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
+> ✅ Список собран Азимом 17.05.2026. Дальше правит тип Полат.
 
-- **Домен:** список собирает Азим, правит тип Полат.
-- **Что нужно:** в web-buyer осталось ~9 `as`-кастов response-объектов
-  (`store.slug`, `itemCount`, `name`, `stock` и т.п.). `StoreRef.slug` в типе
-  уже есть — значит касты на других shape'ах. Прислать Полату список конкретных
-  callsite'ов в формате `файл:строка` + какое поле кастится. Без списка Полат
-  правит тип вслепую.
+**9 `as`-кастов response-объектов в web-buyer на 4 shape'ах:**
+
+### 1. `CartItem` — нет полей цены/снапшотов + вложенных `product`/`variant`
+- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:32` — `CartItem` →
+  `{ unitPrice?, salePriceSnapshot?, unitPriceSnapshot?, product?:{basePrice?,salePrice?}, variant?:{priceOverride?,salePriceOverride?} }`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:47` — тот же shape, что cart:32
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:716` — `CartItem` →
+  `{ product?:{ title?, mediaUrl? } }`
+- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:99` — `CartItem.product` →
+  `{ stock?: number, isAvailable?: boolean, isVisible?: boolean }`
+
+### 2. `AuthUser` — нет поля `name`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:319` — `(user as { name?: string }).name`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:367` — то же
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:408` — то же
+
+### 3. `Order` / `OrderListItem` — нет поля `itemCount`
+- `apps/web-buyer/src/app/(shop)/orders/page.tsx:252` — `(order as { itemCount?: number }).itemCount`
+
+### 4. `Product` — нет поля `inWishlist`
+- `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:88` — `(product as { inWishlist?: boolean }).inWishlist`
+
+> Примечание: `store.slug` каста в web-buyer не найдено — `StoreRef.slug` в типе
+> уже есть и используется напрямую. Остальные `as` в web-buyer — это error-касты
+> (`e as { response?... }`), CSS-переменные (`'--tw-ring-color' as string`),
+> query-ключи (`as const`) и route-params (`params.slug as string`) —
+> к response-типам не относятся, не трогать.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 

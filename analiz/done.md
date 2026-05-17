@@ -1,5 +1,23 @@
 # Done — Азим + Полат
 
+## 2026-05-17 (Азим) — типы
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Список `as`-кастов response-объектов web-buyer 🟡
+
+- **Важность:** 🟡
+- **Дата:** 17.05.2026
+- **Файлы:** анализ — `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/orders/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`;
+  результат — `analiz/tasks.md`
+- **Что сделано:** Собран список из 9 `as`-кастов response-объектов в web-buyer
+  на 4 shape'ах (`CartItem`, `AuthUser`, `Order`, `Product`). Полный список
+  callsite'ов (`файл:строка` + кастуемые поля) записан в тикет
+  `API-RESPONSE-TYPES-RECONCILE-001` в `tasks.md` для Полата. Каста `store.slug`
+  не найдено — `StoreRef.slug` уже в типе. Дальше Полат правит `packages/types`,
+  затем Азим снимает касты. Sub-task Азима закрыт.
+
 ## 2026-05-16 (Полат) — admin: ручная активация продавца
 
 ### ✅ [ADMIN-MANUAL-ACTIVATION-UI-001] Кнопка «Активировать продавца на рынке» 🟡
