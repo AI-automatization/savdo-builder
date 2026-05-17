@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 interface LegalPageProps {
   title: string;
@@ -9,6 +12,8 @@ interface LegalPageProps {
 }
 
 export function LegalPage({ title, effectiveDate, children }: LegalPageProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen" style={{ background: colors.bg }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 md:py-12">
@@ -17,14 +22,14 @@ export function LegalPage({ title, effectiveDate, children }: LegalPageProps) {
           className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-80"
           style={{ color: colors.textMuted }}
         >
-          <ArrowLeft size={14} /> На главную
+          <ArrowLeft size={14} /> {t('legal.backToHome')}
         </Link>
         <article className="prose-content">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-1" style={{ color: colors.textStrong }}>
             {title}
           </h1>
           <p className="text-xs mb-8" style={{ color: colors.textMuted }}>
-            Вступает в силу: {effectiveDate}
+            {t('legal.effectiveDate')}: {effectiveDate}
           </p>
           <div
             className="flex flex-col gap-4 text-[15px] leading-relaxed"
