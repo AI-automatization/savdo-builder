@@ -11,8 +11,10 @@ import { colors } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Tooltip } from "@/components/tooltip";
 import HeaderSearch from "@/components/layout/HeaderSearch";
+import { useTranslation } from "@/lib/i18n";
 
 export default function Header() {
+  const { t } = useTranslation();
   const params = useParams();
   const slug = params?.slug as string | undefined;
   const { isAuthenticated } = useAuth();
@@ -46,14 +48,14 @@ export default function Header() {
             className="text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ color: colors.textBody }}
           >
-            Магазины
+            {t('header.stores')}
           </Link>
           <Link
             href="/products"
             className="text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ color: colors.textBody }}
           >
-            Товары
+            {t('header.products')}
           </Link>
         </nav>
 
@@ -62,26 +64,26 @@ export default function Header() {
 
         {/* Desktop nav links — visible md+ */}
         <nav className="hidden md:flex items-center gap-1">
-          <NavIconLink href="/chats" badge={unreadChatCount} ariaLabel="Чаты">
+          <NavIconLink href="/chats" badge={unreadChatCount} ariaLabel={t('header.chats')}>
             <MessageSquare size={18} />
           </NavIconLink>
-          <NavIconLink href="/orders" ariaLabel="Заказы">
+          <NavIconLink href="/orders" ariaLabel={t('header.orders')}>
             <Package size={18} />
           </NavIconLink>
         </nav>
 
         {/* Wishlist — always visible */}
-        <NavIconLink href="/wishlist" ariaLabel="Избранное">
+        <NavIconLink href="/wishlist" ariaLabel={t('header.wishlist')}>
           <Heart size={18} />
         </NavIconLink>
 
         {/* Cart — always visible */}
-        <NavIconLink href="/cart" badge={cartCount} ariaLabel="Корзина">
+        <NavIconLink href="/cart" badge={cartCount} ariaLabel={t('header.cart')}>
           <ShoppingCart size={18} />
         </NavIconLink>
 
         {/* Notifications — always visible */}
-        <NavIconLink href="/notifications" badge={unreadCount} ariaLabel="Уведомления">
+        <NavIconLink href="/notifications" badge={unreadCount} ariaLabel={t('header.notifications')}>
           <Bell size={18} />
         </NavIconLink>
 
@@ -90,7 +92,7 @@ export default function Header() {
 
         {/* Profile — rightmost, desktop only (mobile uses BottomNavBar) */}
         <div className="hidden md:flex">
-          <NavIconLink href="/profile" ariaLabel="Профиль">
+          <NavIconLink href="/profile" ariaLabel={t('header.profile')}>
             <UserIcon size={18} />
           </NavIconLink>
         </div>

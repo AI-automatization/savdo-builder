@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/context';
 import { IcoShop, IcoCart, IcoChat, IcoOrders, IcoProfile } from '@/components/icons';
 import { colors } from '@/lib/styles';
 import { getRecentStores } from '@/lib/recent-stores';
+import { useTranslation } from '@/lib/i18n';
 
 export type NavActive = 'store' | 'cart' | 'chats' | 'orders' | 'profile' | 'wishlist' | 'notifications';
 
@@ -21,6 +22,7 @@ export function BottomNavBar({
   cartBadge?: number;
   storeSlug?: string;
 }) {
+  const { t } = useTranslation();
   const [storedSlug, setStoredSlug] = useState(propSlug ?? '');
   const { isAuthenticated } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
@@ -28,7 +30,7 @@ export function BottomNavBar({
   const { data: cart } = useCart({ enabled: isAuthenticated });
   const cartCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
 
-  // Use the most recently visited store as the "Магазин" tab target.
+  // Use the most recently visited store as the "Doʻkon" tab target.
   // (Older code read a `last_store_slug` key that nothing wrote — dead read.)
   useEffect(() => {
     if (!propSlug) {
@@ -39,11 +41,11 @@ export function BottomNavBar({
   const storeSlug = propSlug ?? storedSlug;
 
   const NAV: { key: NavActive; href: string; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: 'store',   href: storeSlug ? `/${storeSlug}` : '/', label: 'Магазин', icon: <IcoShop /> },
-    { key: 'cart',    href: '/cart',    label: 'Корзина', icon: <IcoCart />, badge: cartBadge ?? cartCount },
-    { key: 'chats',   href: '/chats',   label: 'Чаты',    icon: <IcoChat />, badge: unreadChatCount },
-    { key: 'orders',  href: '/orders',  label: 'Заказы',  icon: <IcoOrders /> },
-    { key: 'profile', href: '/profile', label: 'Профиль', icon: <IcoProfile />, badge: unreadCount },
+    { key: 'store',   href: storeSlug ? `/${storeSlug}` : '/', label: t('nav.store'),   icon: <IcoShop /> },
+    { key: 'cart',    href: '/cart',    label: t('nav.cart'),   icon: <IcoCart />,    badge: cartBadge ?? cartCount },
+    { key: 'chats',   href: '/chats',   label: t('nav.chats'),  icon: <IcoChat />,    badge: unreadChatCount },
+    { key: 'orders',  href: '/orders',  label: t('nav.orders'), icon: <IcoOrders /> },
+    { key: 'profile', href: '/profile', label: t('nav.profile'), icon: <IcoProfile />, badge: unreadCount },
   ];
 
   return (
@@ -59,12 +61,15 @@ export function BottomNavBar({
         <nav className="flex items-center justify-around px-2 pt-2.5 pb-2 max-w-md mx-auto">
           {NAV.map(({ key, href, label, icon, badge }) => {
             const isActive = key === active;
+            const badgeLabel = badge != null && badge > 0
+              ? `${label} (${badge > 9 ? t('nav.unreadBadge', { count: '9+' }) : t('nav.unreadBadge', { count: String(badge) })})`
+              : label;
             return (
               <Link
                 key={key}
                 href={href}
                 aria-current={isActive ? 'page' : undefined}
-                aria-label={badge != null && badge > 0 ? `${label} (${badge > 9 ? '9+ непрочитанных' : badge + ' непрочитанных'})` : label}
+                aria-label={badgeLabel}
                 className="flex flex-col items-center gap-[3px] px-3 py-1 rounded-xl"
               >
                 <div className="relative">

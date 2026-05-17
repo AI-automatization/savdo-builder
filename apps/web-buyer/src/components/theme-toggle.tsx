@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTheme, type Theme } from '@/lib/theme/theme-provider';
 import { colors } from '@/lib/styles';
 import { Tooltip } from '@/components/tooltip';
+import { useTranslation } from '@/lib/i18n';
 
 interface Props {
   className?: string;
@@ -23,6 +24,7 @@ interface Props {
  * Aligns with `liquid-authority.md`: minimal, no neon, transition 200ms.
  */
 export function ThemeToggle({ className = '', bordered = true, withMenu = true }: Props) {
+  const { t } = useTranslation();
   const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const [open, setOpen] = useState(false);
@@ -43,7 +45,7 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
     };
   }, [open]);
 
-  const label = isDark ? 'Включить светлую тему' : 'Включить тёмную тему';
+  const label = isDark ? t('theme.enableLight') : t('theme.enableDark');
 
   return (
     <div ref={ref} className={`relative inline-flex ${className}`}>
@@ -93,9 +95,9 @@ export function ThemeToggle({ className = '', bordered = true, withMenu = true }
             boxShadow: '0 4px 12px rgba(31,26,18,0.08)',
           }}
         >
-          <MenuItem icon={<Sun size={14} />} label="Светлая"   active={theme === 'light'}  onClick={() => { setTheme('light');  setOpen(false); }} />
-          <MenuItem icon={<Moon size={14} />} label="Тёмная"    active={theme === 'dark'}   onClick={() => { setTheme('dark');   setOpen(false); }} />
-          <MenuItem icon={<Monitor size={14} />} label="Как в системе" active={theme === 'system'} onClick={() => { setTheme('system'); setOpen(false); }} />
+          <MenuItem icon={<Sun size={14} />} label={t('theme.light')}   active={theme === 'light'}  onClick={() => { setTheme('light');  setOpen(false); }} />
+          <MenuItem icon={<Moon size={14} />} label={t('theme.dark')}    active={theme === 'dark'}   onClick={() => { setTheme('dark');   setOpen(false); }} />
+          <MenuItem icon={<Monitor size={14} />} label={t('theme.system')} active={theme === 'system'} onClick={() => { setTheme('system'); setOpen(false); }} />
         </div>
       )}
     </div>

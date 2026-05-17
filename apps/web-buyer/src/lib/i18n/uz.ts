@@ -382,6 +382,81 @@ export const uz: Translations = {
   'wishlist.removeLabel': 'Sevimlilardan olib tashlash',
   'wishlist.outOfStock': 'Mavjud emas',
 
+  // nav — BottomNavBar items + nav labels
+  'nav.store': 'Doʻkon',
+  'nav.cart': 'Savat',
+  'nav.chats': 'Chatlar',
+  'nav.orders': 'Buyurtmalar',
+  'nav.profile': 'Profil',
+  'nav.unreadBadge': '{count} ta oʻqilmagan',
+
+  // header — Header chrome
+  'header.stores': 'Doʻkonlar',
+  'header.products': 'Mahsulotlar',
+  'header.chats': 'Chatlar',
+  'header.orders': 'Buyurtmalar',
+  'header.wishlist': 'Sevimlilar',
+  'header.cart': 'Savat',
+  'header.notifications': 'Bildirishnomalar',
+  'header.profile': 'Profil',
+
+  // search — HeaderSearch
+  'search.placeholder': 'Doʻkonlar va mahsulotlarni qidiring...',
+  'search.ariaLabel': 'Qidiruv',
+  'search.minLen': 'Kamida {n} ta belgi kiriting',
+  'search.searching': 'Qidirmoqda…',
+  'search.noResults': '«{query}» boʻyicha hech narsa topilmadi',
+  'search.storesSection': '— Doʻkonlar · {count}',
+  'search.productsSection': '— Mahsulotlar · {count}',
+
+  // auth — OtpGate (phone entry, OTP, errors)
+  'auth.phoneFallbackSubtitle': 'Kirish uchun telefon raqamingizni kiriting',
+  'auth.codeSentTo': 'Kod Telegramga {phone} raqamiga yuborildi',
+  'auth.sendError': 'Kodni yuborib boʻlmadi. Raqamni tekshiring.',
+  'auth.wrongCode': 'Notoʻgʻri kod. Qayta urinib koʻring.',
+  'auth.sending': 'Yuborilmoqda...',
+  'auth.getCode': 'Kodni olish',
+  'auth.verifying': 'Tekshirilmoqda...',
+  'auth.signIn': 'Kirish',
+  'auth.changePhone': 'Raqamni oʻzgartirish',
+  'auth.phoneAriaLabel': 'Telefon',
+
+  // theme — theme-toggle labels
+  'theme.enableLight': 'Yorqin mavzuni yoqish',
+  'theme.enableDark': 'Qorongʻu mavzuni yoqish',
+  'theme.light': 'Yorqin',
+  'theme.dark': 'Qorongʻu',
+  'theme.system': 'Tizim sozlamasi',
+
+  // emoji — EmojiPicker
+  'emoji.ariaLabel': 'Emoji',
+  'emoji.cat.smiles': 'Tabassum',
+  'emoji.cat.gestures': 'Imo-ishoralar',
+  'emoji.cat.hearts': 'Yuraklarlar',
+  'emoji.cat.animals': 'Hayvonlar',
+  'emoji.cat.food': 'Oziq-ovqat',
+  'emoji.cat.money': 'Pul',
+  'emoji.cat.objects': 'Buyumlar',
+  'emoji.cat.symbols': 'Belgilar',
+
+  // catalog (additions) — route pages /products and /stores
+  'catalog.backToHome': '← Bosh sahifaga',
+  'catalog.products.title': 'Mahsulotlar',
+  'catalog.products.loading': 'Yuklanmoqda…',
+  'catalog.products.countUz': '{count} ta mahsulot',
+  'catalog.products.loadError': 'Mahsulotlarni yuklashda xato',
+  'catalog.products.loadErrorDesc': 'Ulanishni tekshirib, qayta urinib koʻring',
+  'catalog.products.emptyCategory': 'Bu kategoriyada hozircha mahsulot yoʻq',
+  'catalog.products.empty': 'Hozircha mahsulotlar yoʻq',
+  'catalog.toHome': 'Bosh sahifaga',
+  'catalog.stores.title': 'Oʻzbekiston doʻkonlari',
+  'catalog.stores.loading': 'Yuklanmoqda…',
+  'catalog.stores.countUz': '{count} ta doʻkon',
+  'catalog.stores.loadError': 'Doʻkonlarni yuklashda xato',
+  'catalog.stores.loadErrorDesc': 'Ulanishni tekshirib, qayta urinib koʻring',
+  'catalog.stores.emptyFilters': 'Filtrlar boʻyicha hech narsa topilmadi',
+  'catalog.stores.emptyFiltersDesc': 'Filtrlarni tozalab yoki bosh sahifaga qayting',
+
   // REVIEW: legal text — Azim verify
 
   // legal — umumiy oyna (shared wrapper chrome)

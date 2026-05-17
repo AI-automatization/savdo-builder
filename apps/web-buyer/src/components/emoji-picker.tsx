@@ -3,45 +3,48 @@
 import { useEffect, useRef, useState } from 'react';
 import { Smile } from 'lucide-react';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
-const EMOJI: { name: string; icon: string; items: string[] }[] = [
+type EmojiCatKey = 'smiles' | 'gestures' | 'hearts' | 'animals' | 'food' | 'money' | 'objects' | 'symbols';
+
+const EMOJI: { key: EmojiCatKey; icon: string; items: string[] }[] = [
   {
-    name: 'Смайлы',
+    key: 'smiles',
     icon: '😀',
     items: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','😘','😗','😚','😙','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🫡','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤧','🥵','🥶','😎','🥳','🤓','🧐'],
   },
   {
-    name: 'Жесты',
+    key: 'gestures',
     icon: '👍',
     items: ['👍','👎','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','✋','🤚','🖐','🖖','👋','🤝','🙌','👏','🤲','🙏','💪','🦵','🦶','🦾','🦿'],
   },
   {
-    name: 'Сердца',
+    key: 'hearts',
     icon: '❤️',
     items: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','💌'],
   },
   {
-    name: 'Животные',
+    key: 'animals',
     icon: '🐶',
     items: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐽','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐢','🐍','🦎','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋'],
   },
   {
-    name: 'Еда',
+    key: 'food',
     icon: '🍔',
     items: ['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶','🫑','🌽','🥕','🧄','🧅','🥔','🍠','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🥪','🌮','🌯','🥙','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍘','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪'],
   },
   {
-    name: 'Деньги',
+    key: 'money',
     icon: '💰',
     items: ['💰','💵','💴','💶','💷','💸','💳','🧾','🪙','💎','⚖️','🏦','💼','📈','📉','📊','💹'],
   },
   {
-    name: 'Объекты',
+    key: 'objects',
     icon: '🎁',
     items: ['🎁','🎈','🎉','🎊','🎀','🛒','📦','📱','💻','⌚','📷','📺','📻','🎮','📚','✏️','📝','📌','📎','🔑','🔒','🔓','🔔','🔕','📢','📣','💡','🔦','🕯','🛏','🛋','🚪','🪑','🚿','🛁','🧴','🧷','🧹','🧼','🪒','🧽'],
   },
   {
-    name: 'Символы',
+    key: 'symbols',
     icon: '✅',
     items: ['✅','❌','⭕','🚫','⛔','📛','🆗','🆕','🆒','🆓','🆙','💯','🔥','⭐','🌟','💫','✨','⚡','☀️','🌈','❗','❓','‼️','⁉️','💤','💢','💥','💦','💨','🕐','✔️','☑️','🔘','🔴','🟢','🔵','🟡','🟣','🟠','⚫','⚪','🟤'],
   },
@@ -52,6 +55,7 @@ interface EmojiPickerProps {
 }
 
 export function EmojiPicker({ onPick }: EmojiPickerProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -79,7 +83,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Эмодзи"
+        aria-label={t('emoji.ariaLabel')}
         className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors hover:opacity-80"
         style={{
           color: open ? colors.brand : colors.textMuted,
@@ -107,10 +111,10 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
           >
             {EMOJI.map((g, i) => (
               <button
-                key={g.name}
+                key={g.key}
                 type="button"
                 onClick={() => setTab(i)}
-                title={g.name}
+                title={t(`emoji.cat.${g.key}`)}
                 className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-base transition-colors"
                 style={{
                   background: tab === i ? colors.brandMuted : 'transparent',

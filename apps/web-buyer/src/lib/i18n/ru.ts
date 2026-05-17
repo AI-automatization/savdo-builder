@@ -384,6 +384,81 @@ export const ru: Translations = {
   'wishlist.removeLabel': 'Убрать из избранного',
   'wishlist.outOfStock': 'Нет в наличии',
 
+  // nav — BottomNavBar items + nav labels
+  'nav.store': 'Магазин',
+  'nav.cart': 'Корзина',
+  'nav.chats': 'Чаты',
+  'nav.orders': 'Заказы',
+  'nav.profile': 'Профиль',
+  'nav.unreadBadge': '{count} непрочитанных',
+
+  // header — Header chrome
+  'header.stores': 'Магазины',
+  'header.products': 'Товары',
+  'header.chats': 'Чаты',
+  'header.orders': 'Заказы',
+  'header.wishlist': 'Избранное',
+  'header.cart': 'Корзина',
+  'header.notifications': 'Уведомления',
+  'header.profile': 'Профиль',
+
+  // search — HeaderSearch
+  'search.placeholder': 'Поиск магазинов и товаров...',
+  'search.ariaLabel': 'Поиск',
+  'search.minLen': 'Введите минимум {n} символа',
+  'search.searching': 'Ищем…',
+  'search.noResults': 'Ничего не нашли по «{query}»',
+  'search.storesSection': '— Магазины · {count}',
+  'search.productsSection': '— Товары · {count}',
+
+  // auth — OtpGate (phone entry, OTP, errors)
+  'auth.phoneFallbackSubtitle': 'Введите номер телефона для входа',
+  'auth.codeSentTo': 'Код отправлен в Telegram на {phone}',
+  'auth.sendError': 'Не удалось отправить код. Проверьте номер.',
+  'auth.wrongCode': 'Неверный код. Попробуйте ещё раз.',
+  'auth.sending': 'Отправка...',
+  'auth.getCode': 'Получить код',
+  'auth.verifying': 'Проверка...',
+  'auth.signIn': 'Войти',
+  'auth.changePhone': 'Изменить номер',
+  'auth.phoneAriaLabel': 'Телефон',
+
+  // theme — theme-toggle labels
+  'theme.enableLight': 'Включить светлую тему',
+  'theme.enableDark': 'Включить тёмную тему',
+  'theme.light': 'Светлая',
+  'theme.dark': 'Тёмная',
+  'theme.system': 'Как в системе',
+
+  // emoji — EmojiPicker
+  'emoji.ariaLabel': 'Эмодзи',
+  'emoji.cat.smiles': 'Смайлы',
+  'emoji.cat.gestures': 'Жесты',
+  'emoji.cat.hearts': 'Сердца',
+  'emoji.cat.animals': 'Животные',
+  'emoji.cat.food': 'Еда',
+  'emoji.cat.money': 'Деньги',
+  'emoji.cat.objects': 'Объекты',
+  'emoji.cat.symbols': 'Символы',
+
+  // catalog (additions) — route pages /products and /stores
+  'catalog.backToHome': '← На главную',
+  'catalog.products.title': 'Товары',
+  'catalog.products.loading': 'Загружаем…',
+  'catalog.products.countUz': '{count} ta mahsulot',
+  'catalog.products.loadError': 'Не удалось загрузить товары',
+  'catalog.products.loadErrorDesc': 'Проверьте соединение и попробуйте снова',
+  'catalog.products.emptyCategory': 'В этой категории пока нет товаров',
+  'catalog.products.empty': 'Товаров пока нет',
+  'catalog.toHome': 'На главную',
+  'catalog.stores.title': 'Магазины Узбекистана',
+  'catalog.stores.loading': 'Загружаем…',
+  'catalog.stores.countUz': '{count} ta doʻkon',
+  'catalog.stores.loadError': 'Не удалось загрузить магазины',
+  'catalog.stores.loadErrorDesc': 'Проверьте соединение и попробуйте снова',
+  'catalog.stores.emptyFilters': 'По фильтрам ничего не нашлось',
+  'catalog.stores.emptyFiltersDesc': 'Сбросьте фильтры или вернитесь на главную',
+
   // legal — shared wrapper chrome
   'legal.backToHome': 'На главную',
   'legal.effectiveDate': 'Вступает в силу',

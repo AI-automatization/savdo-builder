@@ -200,6 +200,7 @@ function OtpGate({ onSuccess }: { onSuccess: () => void }) {
               value={phone}
               onChange={setPhone}
               onEnter={handleSendOtp}
+              ariaLabel={t('checkout.otp.phoneLabel')}
               className="w-full px-3 h-[44px] text-sm rounded-xl"
               style={{ ...fieldStyle, color: colors.textPrimary }}
             />
@@ -557,6 +558,7 @@ export default function CheckoutPage() {
                     <PhoneInput
                       value={contactPhone}
                       onChange={setContactPhone}
+                      ariaLabel={t('checkout.phoneLabel')}
                       className="w-full px-3 h-[44px] text-sm rounded-lg outline-none"
                       style={{
                         background: colors.surfaceMuted,

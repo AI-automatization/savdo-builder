@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRequestOtp, useVerifyOtp } from '@/hooks/use-auth';
 import { colors } from '@/lib/styles';
 import { PhoneInput, isValidUzPhone } from '@/components/PhoneInput';
+import { useTranslation } from '@/lib/i18n';
 
 type OtpStep = 'phone' | 'code';
 type OtpPurpose = 'login' | 'register' | 'checkout';
@@ -22,6 +23,7 @@ interface OtpGateProps {
 }
 
 export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGateProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<OtpStep>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -36,7 +38,7 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
       await requestOtp.mutateAsync({ phone, purpose });
       setStep('code');
     } catch {
-      setError('Не удалось отправить код. Проверьте номер.');
+      setError(t('auth.sendError'));
     }
   }
 
@@ -45,7 +47,7 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
     try {
       await verifyOtp.mutateAsync({ phone, code, purpose });
     } catch {
-      setError('Неверный код. Попробуйте ещё раз.');
+      setError(t('auth.wrongCode'));
     }
   }
 
@@ -62,8 +64,8 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
           <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>{title}</h2>
           <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
             {step === 'phone'
-              ? (subtitle ?? 'Введите номер телефона для входа')
-              : `Код отправлен в Telegram на ${phone}`}
+              ? (subtitle ?? t('auth.phoneFallbackSubtitle'))
+              : t('auth.codeSentTo', { phone })}
           </p>
         </div>
 
@@ -77,6 +79,7 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
                 value={phone}
                 onChange={setPhone}
                 onEnter={handleSend}
+                ariaLabel={t('auth.phoneAriaLabel')}
                 className="h-11 px-4 rounded text-sm w-full focus:outline-none focus:ring-2"
                 style={{
                   background: colors.surfaceMuted,
@@ -91,7 +94,7 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
                 className="h-11 rounded text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
                 style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
-                {requestOtp.isPending ? 'Отправка...' : 'Получить код'}
+                {requestOtp.isPending ? t('auth.sending') : t('auth.getCode')}
               </button>
             </>
           ) : (
@@ -119,14 +122,14 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
                 className="h-11 rounded text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
                 style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
-                {verifyOtp.isPending ? 'Проверка...' : 'Войти'}
+                {verifyOtp.isPending ? t('auth.verifying') : t('auth.signIn')}
               </button>
               <button
                 onClick={() => { setStep('phone'); setCode(''); setError(''); }}
                 className="text-xs text-center"
                 style={{ color: colors.textDim }}
               >
-                Изменить номер
+                {t('auth.changePhone')}
               </button>
             </>
           )}

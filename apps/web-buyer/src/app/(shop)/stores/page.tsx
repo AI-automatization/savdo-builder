@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/catalog/EmptyState';
 import { BottomNavBar } from '@/components/layout/BottomNavBar';
 import { colors } from '@/lib/styles';
 import { track } from '@/lib/analytics';
+import { useTranslation } from '@/lib/i18n';
 
 const SORT_KEYS: StoresSortKey[] = ['top', 'new', 'rating'];
 
@@ -22,6 +23,7 @@ function parseSort(v: string | null): StoresSortKey {
 }
 
 function StoresCatalogInner() {
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,6 +71,12 @@ function StoresCatalogInner() {
     return out;
   }, [stores, filters]);
 
+  const countLabel = isLoading
+    ? t('catalog.stores.loading')
+    : locale === 'uz'
+    ? t('catalog.stores.countUz', { count: String(display.length) })
+    : `${display.length} ${pluralStores(display.length)}`;
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="px-4 sm:px-6 max-w-7xl mx-auto w-full mt-6 mb-10 pb-20 md:pb-10">
@@ -77,33 +85,33 @@ function StoresCatalogInner() {
           className="inline-flex items-center gap-1 text-xs mb-4 transition-opacity hover:opacity-80"
           style={{ color: colors.textMuted }}
         >
-          ← На главную
+          {t('catalog.backToHome')}
         </Link>
 
         <h1
           className="text-2xl font-bold tracking-tight mb-1"
           style={{ color: colors.textStrong }}
         >
-          Магазины Узбекистана
+          {t('catalog.stores.title')}
         </h1>
         <p className="text-sm mb-6" style={{ color: colors.textMuted }}>
-          {isLoading ? 'Загружаем…' : `${display.length} ${pluralStores(display.length)}`}
+          {countLabel}
         </p>
 
         <StoresFilters stores={stores} value={filters} onChange={setFilters} />
 
         {isError ? (
           <EmptyState
-            title="Не удалось загрузить магазины"
-            description="Проверьте соединение и попробуйте снова"
-            ctaLabel="Повторить"
+            title={t('catalog.stores.loadError')}
+            description={t('catalog.stores.loadErrorDesc')}
+            ctaLabel={t('common.retry')}
             onCta={() => refetch()}
           />
         ) : !isLoading && display.length === 0 ? (
           <EmptyState
-            title="По фильтрам ничего не нашлось"
-            description="Сбросьте фильтры или вернитесь на главную"
-            ctaLabel="На главную"
+            title={t('catalog.stores.emptyFilters')}
+            description={t('catalog.stores.emptyFiltersDesc')}
+            ctaLabel={t('catalog.toHome')}
             ctaHref="/"
           />
         ) : (

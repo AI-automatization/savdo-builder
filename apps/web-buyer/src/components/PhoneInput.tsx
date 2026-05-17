@@ -65,7 +65,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(function
     placeholder = '+998 90 000 00 00',
     autoFocus,
     disabled,
-    ariaLabel = 'Телефон',
+    ariaLabel = '',
     id,
     name,
   },

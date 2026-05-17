@@ -7,10 +7,12 @@ import { useRouter } from 'next/navigation';
 import { Search, ShoppingBag, Store as StoreIcon } from 'lucide-react';
 import { useStorefrontSearch } from '@/hooks/use-search';
 import { colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 const MIN_LEN = 2;
 
 export default function HeaderSearch() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -69,10 +71,10 @@ export default function HeaderSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
-          placeholder="Поиск магазинов и товаров..."
+          placeholder={t('search.placeholder')}
           className="grow bg-transparent text-sm outline-none placeholder:opacity-60"
           style={{ color: colors.textBody }}
-          aria-label="Поиск"
+          aria-label={t('search.ariaLabel')}
         />
       </div>
 
@@ -89,19 +91,19 @@ export default function HeaderSearch() {
         >
           {tooShort && (
             <div className="px-4 py-3 text-xs" style={{ color: colors.textMuted }}>
-              Введите минимум {MIN_LEN} символа
+              {t('search.minLen', { n: String(MIN_LEN) })}
             </div>
           )}
 
           {hasQuery && isFetching && (stores.length === 0 && products.length === 0) && (
             <div className="px-4 py-3 text-xs" style={{ color: colors.textMuted }}>
-              Ищем…
+              {t('search.searching')}
             </div>
           )}
 
           {empty && (
             <div className="px-4 py-6 text-xs text-center" style={{ color: colors.textMuted }}>
-              Ничего не нашли по «{trimmed}»
+              {t('search.noResults', { query: trimmed })}
             </div>
           )}
 
@@ -109,7 +111,7 @@ export default function HeaderSearch() {
             {stores.length > 0 && (
               <div>
                 <div className="px-4 pt-3 pb-1.5 text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
-                  — Магазины · {stores.length}
+                  {t('search.storesSection', { count: String(stores.length) })}
                 </div>
                 {stores.map((s) => (
                   <button
@@ -140,7 +142,7 @@ export default function HeaderSearch() {
             {products.length > 0 && (
               <div>
                 <div className="px-4 pt-3 pb-1.5 text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
-                  — Товары · {products.length}
+                  {t('search.productsSection', { count: String(products.length) })}
                 </div>
                 {products.map((p) => {
                   const slug = p.store?.slug;
