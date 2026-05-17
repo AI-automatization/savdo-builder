@@ -8,6 +8,7 @@ import { useAuth } from "../../../lib/auth/context";
 import { track } from "../../../lib/analytics";
 import { card, colors, dangerTint, inputStyle as inputBase } from "@/lib/styles";
 import { PhoneInput, formatUzPhone, isValidUzPhone } from "../../../components/PhoneInput";
+import { useTranslation } from "@/lib/i18n";
 
 const inputStyle: React.CSSProperties = {
   ...inputBase,
@@ -16,6 +17,7 @@ const inputStyle: React.CSSProperties = {
 export default function LoginPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [step,  setStep]  = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp,   setOtp]   = useState("");
@@ -79,20 +81,20 @@ export default function LoginPage() {
             <ShoppingCart size={28} color={colors.accentTextOnBg} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: colors.brand }}>Savdo</h1>
-          <p className="text-sm mt-1" style={{ color: colors.textMuted }}>Панель продавца</p>
+          <p className="text-sm mt-1" style={{ color: colors.textMuted }}>{t('auth.sellerPanel')}</p>
         </div>
 
         {/* Card */}
         <div className="rounded-lg p-6" style={card}>
           {step === "phone" ? (
             <>
-              <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Войти</h2>
+              <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>{t('auth.loginTitle')}</h2>
               <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
-                Введите номер телефона — отправим код
+                {t('auth.loginSubtitle')}
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>
-                Телефон
+                {t('auth.phoneLabel')}
               </label>
               <PhoneInput
                 value={phone}
@@ -114,7 +116,7 @@ export default function LoginPage() {
                 className="w-full h-11 rounded-md text-sm font-semibold transition-opacity active:scale-[0.98] hover:opacity-90"
                 style={primaryBtn(isValidUzPhone(phone) && !requestOtp.isPending)}
               >
-                {requestOtp.isPending ? "Отправка..." : "Получить код"}
+                {requestOtp.isPending ? t('auth.sendingOtp') : t('auth.getCode')}
               </button>
             </>
           ) : (
@@ -130,13 +132,13 @@ export default function LoginPage() {
                 {formatUzPhone(phone)}
               </button>
 
-              <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Введите код</h2>
+              <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>{t('auth.enterCodeTitle')}</h2>
               <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
-                Код отправлен в Telegram-бот @savdo_builderBOT
+                {t('auth.codeSentToTelegram')}
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>
-                Код из Telegram
+                {t('auth.telegramCodeLabel')}
               </label>
               <input
                 type="text"
@@ -162,17 +164,17 @@ export default function LoginPage() {
                 className="w-full h-11 rounded-md text-sm font-semibold transition-opacity active:scale-[0.98] hover:opacity-90"
                 style={primaryBtn(otp.length >= 6 && !verifyOtp.isPending)}
               >
-                {verifyOtp.isPending ? "Проверка..." : "Войти"}
+                {verifyOtp.isPending ? t('auth.verifying') : t('auth.loginButton')}
               </button>
 
               <p className="text-center text-xs mt-3" style={{ color: colors.textDim }}>
-                Не пришёл код?{" "}
+                {t('auth.codeNotReceived')}{" "}
                 <button
                   onClick={() => { requestOtp.reset(); handleSendOtp(); }}
                   className="underline"
                   style={{ color: colors.accent }}
                 >
-                  Отправить снова
+                  {t('auth.resendCode')}
                 </button>
               </p>
             </>

@@ -25,6 +25,7 @@ function toSlug(name: string) {
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 
 import { card, colors, dangerTint, inputStyle as inputBase } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 const glass = card;
 
 const inputStyle: React.CSSProperties = {
@@ -62,13 +63,13 @@ function ErrorBanner({ message }: { message?: string }) {
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = [
-  { label: "Магазин" },
-  { label: "Контакты" },
-  { label: "Готово" },
-];
-
 function ProgressBar({ step }: { step: number }) {
+  const { t } = useTranslation();
+  const STEPS = [
+    { label: t('onboarding.stepStore') },
+    { label: t('onboarding.stepContacts') },
+    { label: t('onboarding.stepDone') },
+  ];
   return (
     <div className="flex items-center gap-2 mb-8">
       {STEPS.map((s, i) => {
@@ -119,6 +120,7 @@ interface Step1Data { name: string; slug: string }
 
 function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Step1Data>();
+  const { t } = useTranslation();
   const name = watch('name', '');
 
   function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -129,22 +131,22 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Создайте магазин</h1>
+        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>{t('onboarding.createStoreTitle')}</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
-          Придумайте название — покупатели увидят его первым
+          {t('onboarding.createStoreSubtitle')}
         </p>
       </div>
 
       <div>
-        <Label required>Название магазина</Label>
+        <Label required>{t('onboarding.storeNameLabel')}</Label>
         <input
           className="focus:outline-none"
           style={inputStyle}
           placeholder="Texno Shop"
           {...register('name', {
-            required: 'Введите название магазина',
-            minLength: { value: 2, message: 'Минимум 2 символа' },
-            maxLength: { value: 255, message: 'Максимум 255 символов' },
+            required: t('onboarding.storeNameRequired'),
+            minLength: { value: 2, message: t('onboarding.minTwoChars') },
+            maxLength: { value: 255, message: t('onboarding.maxNameChars') },
             onChange: handleNameChange,
           })}
         />
@@ -152,7 +154,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
       </div>
 
       <div>
-        <Label>Адрес магазина</Label>
+        <Label>{t('onboarding.storeAddressLabel')}</Label>
         <div className="flex items-center rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
           <span
             className="px-3 py-[0.625rem] text-sm flex-shrink-0"
@@ -165,10 +167,10 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
             style={{ background: colors.surfaceSunken, color: colors.textPrimary }}
             placeholder="texno-shop"
             {...register('slug', {
-              required: 'Укажите адрес',
-              pattern: { value: /^[a-z0-9-]+$/, message: 'Только строчные буквы, цифры и дефис' },
-              minLength: { value: 2, message: 'Минимум 2 символа' },
-              maxLength: { value: 60, message: 'Максимум 60 символов' },
+              required: t('onboarding.slugRequired'),
+              pattern: { value: /^[a-z0-9-]+$/, message: t('onboarding.slugPattern') },
+              minLength: { value: 2, message: t('onboarding.minTwoChars') },
+              maxLength: { value: 60, message: t('onboarding.maxSlugChars') },
             })}
           />
         </div>
@@ -185,7 +187,7 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
         className="w-full py-3 rounded-xl text-sm font-semibold"
         style={{ background: colors.accent, color: colors.accentTextOnBg }}
       >
-        Далее →
+        {t('onboarding.nextButton')}
       </button>
     </form>
   );
@@ -211,13 +213,14 @@ function Step2({
   error?: string;
 }) {
   const { register, handleSubmit, formState: { errors } } = useForm<Step2Data>();
+  const { t } = useTranslation();
 
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Контакты</h1>
+        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>{t('onboarding.contactsTitle')}</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
-          Покупатели свяжутся с вами через Telegram
+          {t('onboarding.contactsSubtitle')}
         </p>
       </div>
 
@@ -235,10 +238,10 @@ function Step2({
             style={{ background: colors.surfaceSunken, color: colors.textPrimary }}
             placeholder="texnoshop"
             {...register('telegramUsername', {
-              required: 'Введите Telegram username',
+              required: t('onboarding.telegramUsernameRequired'),
               pattern: {
                 value: /^@?[a-zA-Z0-9_]{3,32}$/,
-                message: 'Только буквы, цифры и _. От 3 до 32 символов',
+                message: t('onboarding.telegramUsernamePattern'),
               },
             })}
           />
@@ -247,34 +250,34 @@ function Step2({
       </div>
 
       <div>
-        <Label required>Telegram-ссылка для покупателей</Label>
+        <Label required>{t('onboarding.telegramLinkLabel')}</Label>
         <input
           className="focus:outline-none"
           style={inputStyle}
           placeholder="https://t.me/texnoshop"
           {...register('telegramContactLink', {
-            required: 'Введите ссылку',
+            required: t('onboarding.telegramLinkRequired'),
             pattern: {
               value: /^https:\/\/t\.me\/.+/,
-              message: 'Должна начинаться с https://t.me/',
+              message: t('onboarding.telegramLinkPattern'),
             },
           })}
         />
         <FieldError message={errors.telegramContactLink?.message} />
         <p className="mt-1 text-xs" style={{ color: colors.textDim }}>
-          Ссылка на ваш канал, группу или личный чат
+          {t('onboarding.telegramLinkHint')}
         </p>
       </div>
 
       <div>
-        <Label required>Город</Label>
+        <Label required>{t('onboarding.cityLabel')}</Label>
         <input
           className="focus:outline-none"
           style={inputStyle}
           placeholder="Ташкент"
           {...register('city', {
-            required: 'Укажите город',
-            minLength: { value: 2, message: 'Минимум 2 символа' },
+            required: t('onboarding.cityRequired'),
+            minLength: { value: 2, message: t('onboarding.minTwoChars') },
           })}
         />
         <FieldError message={errors.city?.message} />
@@ -289,7 +292,7 @@ function Step2({
           className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
           style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
         >
-          ← Назад
+          {t('onboarding.backButton')}
         </button>
         <button
           type="submit"
@@ -297,7 +300,7 @@ function Step2({
           className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
           style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
-          {isLoading ? 'Создание...' : 'Далее →'}
+          {isLoading ? t('onboarding.creatingStore') : t('onboarding.nextButton')}
         </button>
       </div>
     </form>
@@ -319,6 +322,12 @@ function Step4({
   isLoading: boolean;
   error?: string;
 }) {
+  const { t } = useTranslation();
+  const checklistItems = [
+    { key: 'onboarding.checklistAccountCreated', done: true },
+    { key: 'onboarding.checklistStoreConfigured', done: true },
+    { key: 'onboarding.checklistContactsAdded', done: true },
+  ];
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
@@ -328,20 +337,16 @@ function Step4({
         >
           <Rocket size={28} color={colors.accentTextOnBg} />
         </div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>Почти готово!</h1>
+        <h1 className="text-xl font-bold mb-1" style={{ color: colors.textPrimary }}>{t('onboarding.almostReadyTitle')}</h1>
         <p className="text-sm" style={{ color: colors.textMuted }}>
-          Отправьте магазин <span style={{ color: colors.accent }}>{storeName}</span> на проверку — после одобрения он станет доступен покупателям
+          {t('onboarding.almostReadySubtitle', { storeName })}
         </p>
       </div>
 
       {/* Checklist */}
       <div className="rounded-2xl p-4 flex flex-col gap-2" style={glass}>
-        {[
-          { label: "Аккаунт создан", done: true },
-          { label: "Магазин настроен", done: true },
-          { label: "Контакты добавлены", done: true },
-        ].map(({ label, done }) => (
-          <div key={label} className="flex items-center gap-3">
+        {checklistItems.map(({ key, done }) => (
+          <div key={key} className="flex items-center gap-3">
             <div
               className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
               style={{ background: done ? "rgba(52,211,153,.20)" : colors.surfaceMuted, border: done ? "1px solid rgba(52,211,153,.40)" : `1px solid ${colors.border}` }}
@@ -353,7 +358,7 @@ function Step4({
               )}
             </div>
             <span className="text-sm" style={{ color: done ? colors.textPrimary : colors.textDim }}>
-              {label}
+              {t(key)}
             </span>
           </div>
         ))}
@@ -368,14 +373,14 @@ function Step4({
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
           style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
-          {isLoading ? 'Отправка...' : 'Отправить на проверку'}
+          {isLoading ? t('onboarding.submitting') : t('onboarding.submitForReview')}
         </button>
         <button
           onClick={onSkip}
           className="text-xs text-center transition-opacity hover:opacity-80"
           style={{ color: colors.textDim }}
         >
-          Сделаю позже, перейти в дашборд
+          {t('onboarding.skipToDashboard')}
         </button>
       </div>
     </div>
@@ -387,6 +392,7 @@ function Step4({
 export default function OnboardingPage() {
   const router      = useRouter();
   const { isAuthenticated, user, login } = useAuth();
+  const { t } = useTranslation();
   const { data: store, isLoading: storeLoading } = useStore({ enabled: user?.role === 'SELLER' });
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string>();
@@ -429,7 +435,7 @@ export default function OnboardingPage() {
         const applied = await applySeller();
         login(applied.accessToken, applied.refreshToken, applied.user);
       } catch {
-        setError('Не удалось оформить продавца. Попробуйте ещё раз.');
+        setError(t('onboarding.errorApplySeller'));
         return;
       }
     }
@@ -451,7 +457,7 @@ export default function OnboardingPage() {
         telegramContactLink: data.telegramContactLink,
       });
     } catch {
-      setError('Не удалось создать магазин. Попробуйте ещё раз.');
+      setError(t('onboarding.errorCreateStore'));
       return;
     }
 
@@ -475,7 +481,7 @@ export default function OnboardingPage() {
       track.storeSubmittedForReview(store.id);
       router.push('/dashboard');
     } catch {
-      setError('Не удалось отправить на проверку.');
+      setError(t('onboarding.errorSubmitStore'));
     }
   }
 

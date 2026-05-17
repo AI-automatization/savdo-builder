@@ -7,12 +7,14 @@ import { useAuth } from '../../../lib/auth/context';
 import { useStore } from '../../../hooks/use-seller';
 import { track } from '../../../lib/analytics';
 import { card, colors } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 const BUYER_URL = process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz';
 
 export default function BecomeSellerPage() {
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuth();
+  const { t } = useTranslation();
 
   // Если SELLER уже с store — сразу в dashboard.
   const { data: store } = useStore({
@@ -76,14 +78,13 @@ export default function BecomeSellerPage() {
           className="text-xl font-bold mb-2"
           style={{ color: colors.textPrimary }}
         >
-          У вас ещё нет магазина
+          {t('onboarding.noStoreTitle')}
         </h1>
         <p
           className="text-sm leading-relaxed"
           style={{ color: colors.textMuted }}
         >
-          Откройте свой магазин в Savdo — принимайте заказы прямо в Telegram,
-          без сайта и без посредников.
+          {t('onboarding.noStoreSubtitle')}
         </p>
       </div>
 
@@ -93,7 +94,7 @@ export default function BecomeSellerPage() {
           className="w-full py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
           style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
-          Открыть магазин
+          {t('onboarding.openStore')}
         </button>
         <button
           onClick={handleDismiss}
@@ -104,7 +105,7 @@ export default function BecomeSellerPage() {
             color: colors.textPrimary,
           }}
         >
-          Перейти к покупкам
+          {t('onboarding.goShopping')}
         </button>
       </div>
 
@@ -114,7 +115,7 @@ export default function BecomeSellerPage() {
           className="text-xs transition-opacity hover:opacity-80 underline"
           style={{ color: colors.textDim }}
         >
-          Выйти из аккаунта
+          {t('onboarding.logout')}
         </button>
       </div>
     </div>
