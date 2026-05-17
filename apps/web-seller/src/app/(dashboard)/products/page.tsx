@@ -8,32 +8,7 @@ import { useStore } from '@/hooks/use-seller';
 import { ProductStatus } from 'types';
 import { buyerProductUrl } from '@/lib/buyer-url';
 import { card, colors, dangerTint, inputStyle } from '@/lib/styles';
-
-const STATUS_LABELS: Record<string, string> = {
-  [ProductStatus.ACTIVE]:         "Активен",
-  [ProductStatus.DRAFT]:          "Черновик",
-  [ProductStatus.ARCHIVED]:       "Архив",
-  [ProductStatus.HIDDEN_BY_ADMIN]:"Скрыт",
-};
-
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  [ProductStatus.ACTIVE]:         { bg: "rgba(52,211,153,.15)",   color: colors.success },
-  [ProductStatus.DRAFT]:          { bg: "rgba(251,191,36,.13)",   color: colors.warning },
-  [ProductStatus.ARCHIVED]:       { bg: colors.surfaceElevated,   color: colors.textDim },
-  [ProductStatus.HIDDEN_BY_ADMIN]:{ bg: dangerTint(0.13),         color: colors.danger },
-};
-
-const STATUS_FILTERS: { key: ProductStatus | 'ALL'; label: string }[] = [
-  { key: 'ALL',                      label: 'Все' },
-  { key: ProductStatus.ACTIVE,       label: 'Активные' },
-  { key: ProductStatus.DRAFT,        label: 'Черновики' },
-  { key: ProductStatus.ARCHIVED,     label: 'Архив' },
-];
-
-function fmt(n: unknown) {
-  const num = typeof n === "number" ? n : Number(n);
-  return (Number.isFinite(num) ? num : 0).toLocaleString('ru-RU') + ' сум';
-}
+import { useTranslation } from '@/lib/i18n';
 
 function Skeleton({ className }: { className?: string }) {
   return (
@@ -47,6 +22,29 @@ function Skeleton({ className }: { className?: string }) {
 const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
 
 export default function ProductsPage() {
+  const { t } = useTranslation();
+
+  const STATUS_LABELS: Record<string, string> = {
+    [ProductStatus.ACTIVE]:          t('products.status.ACTIVE'),
+    [ProductStatus.DRAFT]:           t('products.status.DRAFT'),
+    [ProductStatus.ARCHIVED]:        t('products.status.ARCHIVED'),
+    [ProductStatus.HIDDEN_BY_ADMIN]: t('products.status.HIDDEN_BY_ADMIN'),
+  };
+
+  const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+    [ProductStatus.ACTIVE]:         { bg: "rgba(52,211,153,.15)",   color: colors.success },
+    [ProductStatus.DRAFT]:          { bg: "rgba(251,191,36,.13)",   color: colors.warning },
+    [ProductStatus.ARCHIVED]:       { bg: colors.surfaceElevated,   color: colors.textDim },
+    [ProductStatus.HIDDEN_BY_ADMIN]:{ bg: dangerTint(0.13),         color: colors.danger },
+  };
+
+  const STATUS_FILTERS: { key: ProductStatus | 'ALL'; label: string }[] = [
+    { key: 'ALL',                      label: t('products.filterAll') },
+    { key: ProductStatus.ACTIVE,       label: t('products.filterActive') },
+    { key: ProductStatus.DRAFT,        label: t('products.filterDraft') },
+    { key: ProductStatus.ARCHIVED,     label: t('products.filterArchived') },
+  ];
+
   const { data: productsData, isLoading } = useSellerProducts();
   const products = productsData?.products;
   const { mutate: updateStatus, isPending: isStatusPending, variables: statusVars } = useUpdateProductStatus();
@@ -83,14 +81,19 @@ export default function ProductsPage() {
     });
   }, [products, search, statusFilter]);
 
+  function fmt(n: unknown) {
+    const num = typeof n === "number" ? n : Number(n);
+    return (Number.isFinite(num) ? num : 0).toLocaleString('ru-RU') + ' сум';
+  }
+
   return (
     <div className="flex flex-col gap-5 max-w-4xl">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Товары</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t('products.title')}</h1>
           <p className="text-sm mt-0.5" style={{ color: colors.textDim }}>
-            {isLoading ? "Загрузка..." : `${products?.length ?? 0} товаров`}
+            {isLoading ? t('common.loading') : `${products?.length ?? 0} ${t('products.countSuffix')}`}
           </p>
         </div>
         <Link
@@ -98,7 +101,7 @@ export default function ProductsPage() {
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shrink-0 transition-opacity hover:opacity-90"
           style={{ background: colors.accent, color: colors.accentTextOnBg }}
         >
-          + Добавить
+          {t('products.addBtn')}
         </Link>
       </div>
 
@@ -115,7 +118,7 @@ export default function ProductsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по названию..."
+            placeholder={t('products.searchPlaceholder')}
             className="w-full h-9 pl-9 pr-3 rounded-lg text-sm focus:outline-none focus:ring-2"
             style={{
               ...inputStyle,
@@ -152,9 +155,9 @@ export default function ProductsPage() {
           style={{ color: colors.textDim, borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}
         >
           <span></span>
-          <span>Товар</span>
-          <span>Цена</span>
-          <span>Статус</span>
+          <span>{t('products.colProduct')}</span>
+          <span>{t('products.colPrice')}</span>
+          <span>{t('products.colStatus')}</span>
           <span></span>
           <span></span>
         </div>
@@ -179,8 +182,8 @@ export default function ProductsPage() {
         ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm" style={{ color: colors.textDim }}>
             {products?.length === 0
-              ? <><span>Товаров пока нет. </span><Link href="/products/create" style={{ color: colors.accent }}>Добавить первый →</Link></>
-              : "Ничего не найдено"}
+              ? <><span>{t('products.empty')}</span><Link href="/products/create" style={{ color: colors.accent }}>{t('products.emptyAddLink')}</Link></>
+              : t('products.notFound')}
           </div>
         ) : (
           filtered.map((p) => {
@@ -219,7 +222,7 @@ export default function ProductsPage() {
                           <span
                             className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
                             style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
-                            title={`${p.variantCount} активных вариантов`}
+                            title={t('products.variantCountTitle', { count: p.variantCount })}
                           >
                             <Layers size={10} />
                             {p.variantCount}
@@ -248,12 +251,12 @@ export default function ProductsPage() {
                       className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
                       style={{ color: p.status === ProductStatus.ACTIVE ? colors.danger : colors.success }}
                     >
-                      {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? "Скрыть" : "Опубликовать"}
+                      {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? t('products.hide') : t('products.publish')}
                     </button>
                   )}
                   <button
                     onClick={() => copyProductLink(p.id)}
-                    aria-label="Скопировать веб-ссылку"
+                    aria-label={t('products.copyWebLink')}
                     className="p-1.5 -m-1.5 transition-opacity hover:opacity-80"
                     style={{ color: copiedId === p.id ? colors.success : colors.textDim }}
                   >
@@ -261,7 +264,7 @@ export default function ProductsPage() {
                   </button>
                   <button
                     onClick={() => copyTelegramLink(p.id)}
-                    aria-label="Скопировать Telegram-ссылку"
+                    aria-label={t('products.copyTgLinkAria')}
                     className="p-1.5 -m-1.5 transition-opacity hover:opacity-80"
                     style={{ color: tgCopiedId === p.id ? colors.success : colors.info }}
                   >
@@ -272,7 +275,7 @@ export default function ProductsPage() {
                     className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-md transition-opacity hover:opacity-90"
                     style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
                   >
-                    Изменить
+                    {t('products.edit')}
                   </Link>
                 </div>
 
@@ -296,7 +299,7 @@ export default function ProductsPage() {
                     <span
                       className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
                       style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
-                      title={`${p.variantCount} активных вариантов`}
+                      title={t('products.variantCountTitle', { count: p.variantCount })}
                     >
                       <Layers size={10} />
                       {p.variantCount}
@@ -325,7 +328,7 @@ export default function ProductsPage() {
                     className="hidden sm:inline text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
                     style={{ color: p.status === ProductStatus.ACTIVE ? colors.danger : colors.success }}
                   >
-                    {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? "Скрыть" : "Опубликовать"}
+                    {isUpdating ? "..." : p.status === ProductStatus.ACTIVE ? t('products.hide') : t('products.publish')}
                   </button>
                 ) : (
                   <span className="hidden sm:inline" />
@@ -335,7 +338,7 @@ export default function ProductsPage() {
                 <div className="hidden sm:flex items-center gap-2.5">
                   <button
                     onClick={() => copyProductLink(p.id)}
-                    title="Скопировать веб-ссылку"
+                    title={t('products.copyWebLink')}
                     className="text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ color: copiedId === p.id ? colors.success : colors.textDim }}
                   >
@@ -343,7 +346,7 @@ export default function ProductsPage() {
                   </button>
                   <button
                     onClick={() => copyTelegramLink(p.id)}
-                    title="Скопировать Telegram-ссылку (открывает TMA)"
+                    title={t('products.copyTgLink')}
                     className="text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ color: tgCopiedId === p.id ? colors.success : colors.info }}
                   >
@@ -354,7 +357,7 @@ export default function ProductsPage() {
                     className="text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ color: colors.accent }}
                   >
-                    Изменить
+                    {t('products.edit')}
                   </Link>
                 </div>
               </div>

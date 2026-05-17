@@ -11,10 +11,12 @@ import {
 import { Pencil, Trash2, Plus, Check, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { card, cardMuted, colors, dangerTint, inputStyle } from '@/lib/styles';
 import { ConfirmModal } from '@/components/confirm-modal';
+import { useTranslation } from '@/lib/i18n';
 
 const MAX_NAME_LEN = 60;
 
 export default function StoreCategoriesPage() {
+  const { t } = useTranslation();
   const { data: categories, isLoading, error } = useStoreCategories();
   const createMut = useCreateStoreCategory();
   const updateMut = useUpdateStoreCategory();
@@ -85,17 +87,17 @@ export default function StoreCategoriesPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-          Категории магазина
+          {t('categories.title')}
         </h1>
         <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-          Группируйте товары на витрине — покупатели смогут фильтровать по категориям.
+          {t('categories.subtitle')}
         </p>
       </div>
 
       {/* Add form */}
       <div className="p-4 rounded-xl flex flex-col gap-2.5" style={card}>
         <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Добавить категорию
+          {t('categories.addLabel')}
         </label>
         <div className="flex gap-2">
           <input
@@ -103,7 +105,7 @@ export default function StoreCategoriesPage() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            placeholder="Например: Одежда, Электроника"
+            placeholder={t('categories.addPlaceholder')}
             maxLength={MAX_NAME_LEN}
             className="flex-1 px-3 h-10 text-sm rounded-md"
             style={inputStyle}
@@ -116,7 +118,7 @@ export default function StoreCategoriesPage() {
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
             <Plus size={14} aria-hidden="true" />
-            {createMut.isPending ? 'Добавление…' : 'Добавить'}
+            {createMut.isPending ? t('categories.adding') : t('categories.addBtn')}
           </button>
         </div>
       </div>
@@ -127,24 +129,24 @@ export default function StoreCategoriesPage() {
           className="text-xs px-3 py-2 rounded-md"
           style={{ color: colors.danger, background: dangerTint(0.10), border: `1px solid ${dangerTint(0.25)}` }}
         >
-          {(apiError as Error).message ?? 'Не удалось выполнить операцию'}
+          {(apiError as Error).message ?? t('categories.apiError')}
         </p>
       )}
 
       {/* List */}
       {isLoading ? (
-        <p className="text-sm" style={{ color: colors.textMuted }}>Загрузка…</p>
+        <p className="text-sm" style={{ color: colors.textMuted }}>{t('categories.loading')}</p>
       ) : error ? (
         <p
           className="text-sm px-3 py-2 rounded-md"
           style={{ color: colors.danger, background: dangerTint(0.10), border: `1px solid ${dangerTint(0.25)}` }}
         >
-          Не удалось загрузить категории.
+          {t('categories.loadError')}
         </p>
       ) : sorted.length === 0 ? (
         <div className="p-6 rounded-xl text-center" style={cardMuted}>
           <p className="text-sm" style={{ color: colors.textMuted }}>
-            Пока нет категорий. Добавьте первую — она появится в фильтре магазина.
+            {t('categories.emptyHint')}
           </p>
         </div>
       ) : (
@@ -163,7 +165,7 @@ export default function StoreCategoriesPage() {
                     type="button"
                     onClick={() => moveUp(i)}
                     disabled={i === 0 || updateMut.isPending}
-                    aria-label="Поднять выше"
+                    aria-label={t('categories.moveUpAria')}
                     className="w-6 h-5 flex items-center justify-center rounded transition-opacity hover:opacity-80 disabled:opacity-25"
                     style={{ color: colors.textMuted }}
                   >
@@ -173,7 +175,7 @@ export default function StoreCategoriesPage() {
                     type="button"
                     onClick={() => moveDown(i)}
                     disabled={i === sorted.length - 1 || updateMut.isPending}
-                    aria-label="Опустить ниже"
+                    aria-label={t('categories.moveDownAria')}
                     className="w-6 h-5 flex items-center justify-center rounded transition-opacity hover:opacity-80 disabled:opacity-25"
                     style={{ color: colors.textMuted }}
                   >
@@ -210,8 +212,8 @@ export default function StoreCategoriesPage() {
                         type="button"
                         onClick={saveEdit}
                         disabled={updateMut.isPending || !editName.trim()}
-                        aria-label="Сохранить"
-                        title="Сохранить"
+                        aria-label={t('categories.saveAria')}
+                        title={t('categories.saveAria')}
                         className="w-8 h-8 rounded-md inline-flex items-center justify-center disabled:opacity-40 transition-opacity hover:opacity-80"
                         style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
                       >
@@ -220,8 +222,8 @@ export default function StoreCategoriesPage() {
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        aria-label="Отмена"
-                        title="Отмена"
+                        aria-label={t('categories.cancelAria')}
+                        title={t('categories.cancelAria')}
                         className="w-8 h-8 rounded-md inline-flex items-center justify-center transition-opacity hover:opacity-80"
                         style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
                       >
@@ -233,8 +235,8 @@ export default function StoreCategoriesPage() {
                       <button
                         type="button"
                         onClick={() => startEdit(c)}
-                        aria-label={`Редактировать ${c.name}`}
-                        title="Редактировать"
+                        aria-label={t('categories.editAria', { name: c.name })}
+                        title={t('categories.editAria', { name: c.name })}
                         className="w-8 h-8 rounded-md inline-flex items-center justify-center transition-opacity hover:opacity-80"
                         style={{ color: colors.textMuted }}
                       >
@@ -243,8 +245,8 @@ export default function StoreCategoriesPage() {
                       <button
                         type="button"
                         onClick={() => setDeletingId(c.id)}
-                        aria-label={`Удалить ${c.name}`}
-                        title="Удалить"
+                        aria-label={t('categories.deleteAria', { name: c.name })}
+                        title={t('categories.deleteAria', { name: c.name })}
                         className="w-8 h-8 rounded-md inline-flex items-center justify-center transition-opacity hover:opacity-80"
                         style={{ color: colors.danger }}
                       >
@@ -262,9 +264,9 @@ export default function StoreCategoriesPage() {
       {/* Delete confirm */}
       <ConfirmModal
         open={!!deletingItem}
-        title={`Удалить категорию «${deletingItem?.name ?? ''}»?`}
-        message="Товары останутся, но потеряют принадлежность к этой категории."
-        confirmLabel="Удалить"
+        title={t('categories.deleteTitle', { name: deletingItem?.name ?? '' })}
+        message={t('categories.deleteMsg')}
+        confirmLabel={t('categories.deleteConfirmLabel')}
         danger
         loading={deleteMut.isPending}
         onConfirm={confirmDelete}

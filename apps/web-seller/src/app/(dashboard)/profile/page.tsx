@@ -10,18 +10,10 @@ import { useStore, useSellerProfile, useUploadSellerAvatar } from '@/hooks/use-s
 import { useLogout } from '@/hooks/use-auth';
 import { card, cardMuted, colors } from '@/lib/styles';
 import { buyerStoreUrl } from '@/lib/buyer-url';
+import { useTranslation } from '@/lib/i18n';
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-
-const STATUS_LABEL: Record<string, { text: string; color: string }> = {
-  DRAFT:     { text: 'Черновик',     color: colors.textDim },
-  SUBMITTED: { text: 'На проверке',  color: colors.warning },
-  APPROVED:  { text: 'Одобрен',      color: colors.success },
-  REJECTED:  { text: 'Отклонён',     color: colors.danger },
-  SUSPENDED: { text: 'Заблокирован', color: colors.danger },
-  PUBLISHED: { text: 'Опубликован',  color: colors.success },
-};
 
 function avatarLetter(input?: string | null): string {
   if (!input) return '?';
@@ -34,6 +26,7 @@ function avatarLetter(input?: string | null): string {
 }
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
   const { data: store } = useStore({ enabled: user?.role === 'SELLER' });
@@ -43,7 +36,16 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  const displayName = profile?.fullName?.trim() || user?.phone || 'Продавец';
+  const STATUS_LABEL: Record<string, { text: string; color: string }> = {
+    DRAFT:     { text: t('profile.statusDraft'),     color: colors.textDim },
+    SUBMITTED: { text: t('profile.statusSubmitted'),  color: colors.warning },
+    APPROVED:  { text: t('profile.statusApproved'),   color: colors.success },
+    REJECTED:  { text: t('profile.statusRejected'),   color: colors.danger },
+    SUSPENDED: { text: t('profile.statusSuspended'),  color: colors.danger },
+    PUBLISHED: { text: t('profile.statusPublished'),  color: colors.success },
+  };
+
+  const displayName = profile?.fullName?.trim() || user?.phone || t('profile.seller');
   const letter = avatarLetter(profile?.fullName || user?.phone);
   const avatarUrl = profile?.avatarUrl ?? null;
   const statusInfo = store?.status ? STATUS_LABEL[store.status] ?? { text: store.status, color: colors.textDim } : null;
@@ -73,17 +75,17 @@ export default function ProfilePage() {
     e.target.value = '';
     if (!file) return;
     if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
-      setAvatarError('Только JPEG, PNG или WebP');
+      setAvatarError(t('profile.errorAvatarType'));
       return;
     }
     if (file.size > MAX_AVATAR_BYTES) {
-      setAvatarError('Файл больше 10 МБ');
+      setAvatarError(t('profile.errorAvatarSize'));
       return;
     }
     try {
       await uploadAvatar.mutateAsync(file);
     } catch {
-      setAvatarError('Не удалось загрузить фото');
+      setAvatarError(t('profile.errorAvatarUpload'));
     }
   }
 
@@ -101,10 +103,10 @@ export default function ProfilePage() {
               disabled={uploadAvatar.isPending}
               className="relative w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold overflow-hidden transition-opacity hover:opacity-90 disabled:opacity-60"
               style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
-              aria-label={avatarUrl ? 'Изменить фото' : 'Добавить фото'}
+              aria-label={avatarUrl ? t('profile.avatarChangeLabel') : t('profile.avatarAddLabel')}
             >
               {avatarUrl ? (
-                <Image src={avatarUrl} alt="Аватар" width={80} height={80} unoptimized className="object-cover w-full h-full" />
+                <Image src={avatarUrl} alt={t('profile.avatarAlt')} width={80} height={80} unoptimized className="object-cover w-full h-full" />
               ) : (
                 <span>{letter}</span>
               )}
@@ -121,10 +123,10 @@ export default function ProfilePage() {
               type="button"
               onClick={handlePickAvatar}
               disabled={uploadAvatar.isPending}
-              title={avatarUrl ? 'Изменить фото' : 'Добавить фото'}
+              title={avatarUrl ? t('profile.avatarChangeLabel') : t('profile.avatarAddLabel')}
               className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center disabled:opacity-60 transition-opacity hover:opacity-80"
               style={{ background: colors.surfaceElevated, color: colors.accent, border: `1px solid ${colors.border}` }}
-              aria-label={avatarUrl ? 'Изменить фото' : 'Добавить фото'}
+              aria-label={avatarUrl ? t('profile.avatarChangeLabel') : t('profile.avatarAddLabel')}
             >
               <Camera size={13} />
             </button>
@@ -150,14 +152,14 @@ export default function ProfilePage() {
                 className="text-[11px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide"
                 style={{ background: colors.accentMuted, color: colors.accent }}
               >
-                Продавец
+                {t('profile.seller')}
               </span>
               {profile?.sellerType && (
                 <span
                   className="text-[11px] px-2 py-0.5 rounded-md"
                   style={{ background: colors.surfaceMuted, color: colors.textMuted, border: `1px solid ${colors.border}` }}
                 >
-                  {profile.sellerType === 'business' ? 'Бизнес' : 'Физ. лицо'}
+                  {profile.sellerType === 'business' ? t('profile.typeBusiness') : t('profile.typeIndividual')}
                 </span>
               )}
               {profile?.telegramUsername && (
@@ -184,7 +186,7 @@ export default function ProfilePage() {
       {store && (
         <section className="rounded-xl overflow-hidden" style={card}>
           <div className="px-6 py-4" style={{ borderBottom: `1px solid ${colors.divider}` }}>
-            <p className="text-[11px] uppercase tracking-widest" style={{ color: colors.textDim }}>Ваш магазин</p>
+            <p className="text-[11px] uppercase tracking-widest" style={{ color: colors.textDim }}>{t('profile.yourStore')}</p>
           </div>
           <div className="p-6 flex items-start gap-4">
             <div
@@ -223,7 +225,7 @@ export default function ProfilePage() {
                   className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md transition-opacity hover:opacity-80"
                   style={{ background: colors.accentMuted, color: colors.accent }}
                 >
-                  <Copy size={12} /> Копировать
+                  <Copy size={12} /> {t('profile.copyStoreLink')}
                 </button>
                 <a
                   href={storeUrl}
@@ -232,7 +234,7 @@ export default function ProfilePage() {
                   className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md transition-opacity hover:opacity-80"
                   style={{ background: colors.surfaceElevated, color: colors.textPrimary, border: `1px solid ${colors.border}` }}
                 >
-                  <ExternalLink size={12} /> Открыть
+                  <ExternalLink size={12} /> {t('profile.openStore')}
                 </a>
               </div>
             </div>
@@ -249,8 +251,8 @@ export default function ProfilePage() {
         >
           <Settings size={16} style={{ color: colors.textMuted }} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>Настройки</p>
-            <p className="text-[11px] mt-0.5" style={{ color: colors.textDim }}>Магазин, доставка, профиль, уведомления</p>
+            <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>{t('profile.settings')}</p>
+            <p className="text-[11px] mt-0.5" style={{ color: colors.textDim }}>{t('profile.settingsHint')}</p>
           </div>
           <span className="text-xs" style={{ color: colors.textDim }}>→</span>
         </Link>
@@ -263,9 +265,9 @@ export default function ProfilePage() {
           <LogOut size={16} style={{ color: colors.danger }} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium" style={{ color: colors.danger }}>
-              {logoutMutation.isPending ? 'Выход…' : 'Выйти из аккаунта'}
+              {logoutMutation.isPending ? t('profile.loggingOut') : t('profile.logout')}
             </p>
-            <p className="text-[11px] mt-0.5" style={{ color: colors.textDim }}>Завершить сессию на этом устройстве</p>
+            <p className="text-[11px] mt-0.5" style={{ color: colors.textDim }}>{t('profile.logoutHint')}</p>
           </div>
         </button>
       </section>

@@ -18,6 +18,7 @@ import { addProductImage, createProductAttribute, createVariant } from '../../..
 import { createOptionGroup, createOptionValue } from '../../../../lib/api/product-options.api';
 import { useCategoryFilters } from '../../../../hooks/use-category-filters';
 import type { ProductDisplayType } from 'types';
+import { useTranslation } from '@/lib/i18n';
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
 // до тех пор, пока Полат не уберёт их из seed'а на бэке
@@ -64,6 +65,7 @@ function FieldError({ message }: { message?: string }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CreateProductPage() {
+  const { t } = useTranslation();
   const router  = useRouter();
   const create  = useCreateProduct();
 
@@ -244,12 +246,12 @@ export default function CreateProductPage() {
     // полном успехе. Показываем баннер с возможностью открыть товар и дозаполнить.
     if (failedPhotos > 0 || failedAttrs > 0 || failedVariants > 0) {
       const parts: string[] = [];
-      if (failedPhotos > 0) parts.push(`фото: ${failedPhotos}`);
-      if (failedAttrs > 0) parts.push(`характеристики: ${failedAttrs}`);
-      if (failedVariants > 0) parts.push(`варианты: ${failedVariants}`);
+      if (failedPhotos > 0) parts.push(`${t('products.create.partialPhotos')}: ${failedPhotos}`);
+      if (failedAttrs > 0) parts.push(`${t('products.create.partialAttrs')}: ${failedAttrs}`);
+      if (failedVariants > 0) parts.push(`${t('products.create.partialVariants')}: ${failedVariants}`);
       setCreatedProductId(productId);
       setPartialWarning(
-        `Товар создан, но не сохранилось — ${parts.join(', ')}. Откройте товар и добавьте недостающее.`,
+        t('products.create.partialMsg', { parts: parts.join(', ') }),
       );
       return;
     }
@@ -275,7 +277,7 @@ export default function CreateProductPage() {
       <div className="max-w-xl">
         <div className="rounded-xl p-6 flex flex-col gap-4" style={card}>
           <h1 className="text-lg font-bold" style={{ color: colors.textPrimary }}>
-            Товар создан
+            {t('products.create.partialTitle')}
           </h1>
           <div
             className="px-4 py-3 rounded-md text-sm"
@@ -294,7 +296,7 @@ export default function CreateProductPage() {
               className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-colors hover:opacity-80"
               style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
             >
-              К товарам
+              {t('products.create.partialToProducts')}
             </button>
             {createdProductId && (
               <button
@@ -303,7 +305,7 @@ export default function CreateProductPage() {
                 className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
                 style={{ background: colors.accent, color: colors.accentTextOnBg }}
               >
-                Открыть товар
+                {t('products.create.partialOpenProduct')}
               </button>
             )}
           </div>
@@ -320,15 +322,15 @@ export default function CreateProductPage() {
           onClick={() => router.back()}
           className="w-8 h-8 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
           style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
-          aria-label="Назад"
+          aria-label={t('common.back')}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: colors.textPrimary }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
         </button>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Новый товар</h1>
-          <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>Заполните основную информацию</p>
+          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>{t('products.create.title')}</h1>
+          <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>{t('products.create.subtitle')}</p>
         </div>
       </div>
 
@@ -340,12 +342,12 @@ export default function CreateProductPage() {
           <div className="flex flex-col gap-4">
             {/* Title */}
             <div>
-              <Label>Название <span style={{ color: colors.danger }}>*</span></Label>
+              <Label>{t('products.create.labelName')} <span style={{ color: colors.danger }}>*</span></Label>
               <input
                 className={inputFocusClass}
                 style={inputStyle}
                 placeholder={titleHint}
-                {...register('title', { required: 'Введите название товара' })}
+                {...register('title', { required: t('products.create.requiredName') })}
               />
               <FieldError message={errors.title?.message} />
             </div>
@@ -353,7 +355,7 @@ export default function CreateProductPage() {
             {/* Price + SKU row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Цена (сум) <span style={{ color: colors.danger }}>*</span></Label>
+                <Label>{t('products.create.labelPrice')} <span style={{ color: colors.danger }}>*</span></Label>
                 <input
                   type="number"
                   min={1}
@@ -361,15 +363,15 @@ export default function CreateProductPage() {
                   style={inputStyle}
                   placeholder="10 000"
                   {...register('basePrice', {
-                    required: 'Укажите цену',
-                    min: { value: 1, message: 'Цена должна быть больше 0' },
+                    required: t('products.create.requiredPrice'),
+                    min: { value: 1, message: t('products.create.priceMin') },
                     valueAsNumber: true,
                   })}
                 />
                 <FieldError message={errors.basePrice?.message} />
               </div>
               <div>
-                <Label>Артикул (SKU)</Label>
+                <Label>{t('products.create.labelSku')}</Label>
                 <input
                   className={inputFocusClass}
                   style={inputStyle}
@@ -382,13 +384,13 @@ export default function CreateProductPage() {
 
           {/* Photos */}
           <div>
-            <Label>Фото товара</Label>
+            <Label>{t('products.create.labelPhotos')}</Label>
             <MultiImageUploader value={images} onChange={setImages} maxFiles={8} />
           </div>
 
           {/* Display type — how product photos render on storefront card */}
           <div>
-            <Label>Как показывать товар на витрине</Label>
+            <Label>{t('products.create.labelDisplayType')}</Label>
             <DisplayTypeSelector
               value={displayType}
               onChange={(v) => setValue('displayType', v, { shouldDirty: true })}
@@ -398,16 +400,16 @@ export default function CreateProductPage() {
           {/* Global category — drives placeholders + future filter UX */}
           {globalCategories.length > 0 && (
             <div>
-              <Label>Категория товара</Label>
+              <Label>{t('products.create.labelGlobalCategory')}</Label>
               <input type="hidden" {...register('globalCategoryId')} />
               <Select
                 value={watchedCategoryId ?? ''}
                 onChange={(v) => setValue('globalCategoryId', v, { shouldValidate: true, shouldDirty: true })}
                 options={globalCategories.map((c) => ({ value: c.id, label: c.nameRu }))}
-                placeholder="— Выберите категорию —"
-                searchPlaceholder="Поиск категории…"
+                placeholder={t('products.create.categoryPlaceholder')}
+                searchPlaceholder={t('products.create.categorySearchPlaceholder')}
                 clearable
-                ariaLabel="Категория товара"
+                ariaLabel={t('products.create.labelGlobalCategory')}
               />
               {pickedCategory ? (
                 <div
@@ -416,15 +418,13 @@ export default function CreateProductPage() {
                 >
                   <Check size={14} style={{ color: colors.accent, flexShrink: 0 }} />
                   <span className="text-xs flex-1" style={{ color: colors.textPrimary }}>
-                    Товар появится у покупателей в категории{' '}
+                    {t('products.create.categoryConfirmMsg')}{' '}
                     <strong style={{ color: colors.accent }}>«{pickedCategory.nameRu}»</strong>{' '}
-                    и попадёт под её фильтры.
                   </span>
                 </div>
               ) : (
                 <p className="mt-1.5 text-[11px]" style={{ color: colors.textDim }}>
-                  Можно выбрать любую — одежда, обувь, электроника, мебель, книги и т.д. От выбора
-                  зависит, где товар увидят покупатели.
+                  {t('products.create.categoryHint')}
                 </p>
               )}
             </div>
@@ -432,7 +432,7 @@ export default function CreateProductPage() {
 
           {/* Description */}
           <div>
-            <Label>Описание</Label>
+            <Label>{t('products.create.labelDescription')}</Label>
             <textarea
               className={inputFocusClass}
               style={{ ...inputStyle, resize: "none", minHeight: 96 }}
@@ -444,13 +444,13 @@ export default function CreateProductPage() {
           {/* Dynamic category filters — после выбора категории */}
           {pickedCategory && filtersQuery.isLoading && (
             <p className="text-xs" style={{ color: colors.textDim }}>
-              Загружаем характеристики категории…
+              {t('products.create.categoryFiltersLoading')}
             </p>
           )}
           {pickedCategory && categoryFilters.length > 0 && (
             <>
               <div>
-                <Label>Характеристики «{pickedCategory.nameRu}»</Label>
+                <Label>{t('products.create.labelAttributes')} «{pickedCategory.nameRu}»</Label>
                 <CategoryFiltersSection
                   filters={categoryFilters}
                   values={filterValues}
@@ -461,7 +461,7 @@ export default function CreateProductPage() {
               {/* Variants matrix — только если у категории есть multi_select фильтры */}
               {categoryFilters.some((f) => f.fieldType === 'multi_select') && (
                 <div>
-                  <Label>Варианты товара (опц.)</Label>
+                  <Label>{t('products.create.labelVariants')}</Label>
                   <VariantsMatrixBuilder
                     filters={categoryFilters}
                     selection={variantSelection}
@@ -477,32 +477,32 @@ export default function CreateProductPage() {
           {/* Store category — optional sub-grouping inside the seller's own store */}
           {categories.length > 0 && (
             <div>
-              <Label>Раздел магазина</Label>
+              <Label>{t('products.create.labelStoreSection')}</Label>
               <Select
                 value={storeCategoryId ?? ''}
                 onChange={(v) => setStoreCategoryId(v || null)}
                 options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                placeholder="— Без раздела —"
-                searchPlaceholder="Поиск раздела…"
+                placeholder={t('products.create.sectionPlaceholder')}
+                searchPlaceholder={t('products.create.sectionSearchPlaceholder')}
                 clearable
                 searchable={categories.length > 6}
-                ariaLabel="Раздел магазина"
+                ariaLabel={t('products.create.labelStoreSection')}
               />
             </div>
           )}
 
           {/* Attributes (free-form key/value) */}
           <div>
-            <Label>Характеристики</Label>
+            <Label>{t('products.create.labelAttributes')}</Label>
             <ProductAttributesSection value={attributes} onChange={setAttributes} />
           </div>
 
           {/* Visible toggle */}
           <div className="flex items-center justify-between py-1">
             <div>
-              <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>Показывать в магазине</p>
+              <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>{t('products.create.labelVisibility')}</p>
               <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
-                Покупатели смогут видеть товар
+                {t('products.create.visibilityHint')}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -530,7 +530,7 @@ export default function CreateProductPage() {
             className="mt-4 px-4 py-3 rounded-md text-sm"
             style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
           >
-            Не удалось создать товар. Попробуйте ещё раз.
+            {t('products.create.errorCreate')}
           </div>
         )}
 
@@ -542,7 +542,7 @@ export default function CreateProductPage() {
             className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-colors hover:opacity-80"
             style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
           >
-            Отмена
+            {t('products.create.cancelBtn')}
           </button>
           <button
             type="submit"
@@ -550,7 +550,7 @@ export default function CreateProductPage() {
             className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
-            {create.isPending ? 'Создание...' : 'Создать товар'}
+            {create.isPending ? t('products.create.creating') : t('products.create.submitBtn')}
           </button>
         </div>
       </form>

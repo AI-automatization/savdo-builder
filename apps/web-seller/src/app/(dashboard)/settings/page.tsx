@@ -63,33 +63,43 @@ function Field({
 }
 
 function SavedBadge({ show }: { show: boolean }) {
+  const { t } = useTranslation();
   if (!show) return null;
   return (
     <span className="text-xs font-semibold px-2.5 py-1 rounded-md" style={{ background: 'rgba(52,211,153,0.15)', color: colors.success, border: '1px solid rgba(52,211,153,0.30)' }}>
-      Сохранено
+      {t('settings.saved')}
     </span>
   );
 }
 
 function StoreCategoriesSection() {
+  const { t } = useTranslation();
   const { data: categories = [], isLoading } = useStoreCategories();
   const count = categories.length;
 
+  function categoriesSubtext() {
+    if (isLoading) return t('settings.categoriesLoading');
+    if (count === 0) return t('settings.categoriesEmpty');
+    const suffix =
+      count === 1
+        ? t('settings.categoriesCount1')
+        : count < 5
+        ? t('settings.categoriesCountFew')
+        : t('settings.categoriesCountMany');
+    return `${count} ${suffix} ${t('settings.categoriesEditSuffix')}`;
+  }
+
   return (
-    <Section title="Категории магазина">
+    <Section title={t('settings.sectionCategories')}>
       <Link
         href="/store/categories"
         className="flex items-center gap-3 -mx-1 px-3 py-2.5 rounded-lg transition-colors row-hoverable"
         style={{ color: colors.textPrimary }}
       >
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">Управление категориями</p>
+          <p className="text-sm font-medium">{t('settings.manageCategoriesLink')}</p>
           <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
-            {isLoading
-              ? 'Загрузка…'
-              : count === 0
-                ? 'Группируйте товары на витрине магазина'
-                : `${count} ${count === 1 ? 'категория' : count < 5 ? 'категории' : 'категорий'} — открыть для редактирования`}
+            {categoriesSubtext()}
           </p>
         </div>
         <ChevronRight size={16} aria-hidden="true" style={{ color: colors.textDim }} />
@@ -106,6 +116,7 @@ type DeliveryFormValues = {
 };
 
 function DeliverySettingsSection() {
+  const { t } = useTranslation();
   const { data: store, isLoading } = useStore();
   const updateStore = useUpdateStore();
   const [saved, setSaved] = useState(false);
@@ -136,15 +147,13 @@ function DeliverySettingsSection() {
     reset(values);
   }
 
-  const FEE_TYPE_LABELS: Record<string, string> = {
-    none:   'Бесплатно',
-    fixed:  'Фиксированная сумма',
-    manual: 'Договорная',
-  };
-
   const feeTypeOptions: SelectOption[] = useMemo(
-    () => Object.entries(FEE_TYPE_LABELS).map(([value, label]) => ({ value, label })),
-    [], // eslint-disable-line react-hooks/exhaustive-deps
+    () => [
+      { value: 'none',   label: t('settings.deliveryFeeNone') },
+      { value: 'fixed',  label: t('settings.deliveryFeeFixed') },
+      { value: 'manual', label: t('settings.deliveryFeeManual') },
+    ],
+    [t],
   );
 
   if (isLoading) {
@@ -166,9 +175,9 @@ function DeliverySettingsSection() {
   }
 
   return (
-    <Section title="Доставка">
+    <Section title={t('settings.sectionDelivery')}>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <Field label="Стоимость доставки">
+        <Field label={t('settings.labelDeliveryCost')}>
           <Controller
             name="deliveryFeeType"
             control={control}
@@ -178,17 +187,17 @@ function DeliverySettingsSection() {
                 onChange={(v) => field.onChange(v as DeliveryFormValues['deliveryFeeType'])}
                 options={feeTypeOptions}
                 searchable={false}
-                ariaLabel="Тип стоимости доставки"
+                ariaLabel={t('settings.deliveryTypeAriaLabel')}
               />
             )}
           />
         </Field>
 
         {feeType === 'fixed' && (
-          <Field label="Сумма доставки (сум)">
+          <Field label={t('settings.labelDeliveryAmount')}>
             <input
               {...register('deliveryFeeAmount', {
-                pattern: { value: /^\d+$/, message: 'Только целые числа' },
+                pattern: { value: /^\d+$/, message: t('settings.deliveryAmountPattern') },
               })}
               type="number"
               min={0}
@@ -201,7 +210,7 @@ function DeliverySettingsSection() {
 
         {feeType === 'manual' && (
           <p className="text-xs" style={{ color: colors.textMuted }}>
-            Сумма доставки обсуждается с покупателем индивидуально.
+            {t('settings.deliveryManualHint')}
           </p>
         )}
 
@@ -212,11 +221,11 @@ function DeliverySettingsSection() {
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
-            {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
+            {updateStore.isPending ? t('settings.saving') : t('settings.saveBtn')}
           </button>
           <SavedBadge show={saved} />
           {updateStore.isError && (
-            <span className="text-xs" style={errorStyle}>Ошибка сохранения</span>
+            <span className="text-xs" style={errorStyle}>{t('settings.saveError')}</span>
           )}
         </div>
       </form>
@@ -235,6 +244,7 @@ type StoreFormValues = {
 };
 
 function StoreSettingsSection() {
+  const { t } = useTranslation();
   const { data: store, isLoading } = useStore();
   const updateStore = useUpdateStore();
   const [saved, setSaved] = useState(false);
@@ -289,10 +299,10 @@ function StoreSettingsSection() {
   }
 
   return (
-    <Section title="Магазин">
+    <Section title={t('settings.sectionStore')}>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* Cover */}
-        <Field label="Обложка магазина">
+        <Field label={t('settings.labelStoreCover')}>
           <ImageUploader
             value={coverMediaId}
             onChange={setCoverMediaId}
@@ -303,7 +313,7 @@ function StoreSettingsSection() {
         </Field>
 
         {/* Logo */}
-        <Field label="Логотип">
+        <Field label={t('settings.labelStoreLogo')}>
           <div style={{ width: 72, height: 72 }}>
             <ImageUploader
               value={logoMediaId}
@@ -314,46 +324,53 @@ function StoreSettingsSection() {
           </div>
         </Field>
 
-        <Field label="Название магазина" error={errors.name?.message}>
+        <Field label={t('settings.labelStoreName')} error={errors.name?.message}>
           <input
-            {...register('name', { required: 'Обязательное поле', minLength: { value: 2, message: 'Минимум 2 символа' }, maxLength: { value: 255, message: 'Максимум 255 символов' } })}
+            {...register('name', {
+              required: t('settings.requiredField'),
+              minLength: { value: 2, message: t('settings.minTwoChars') },
+              maxLength: { value: 255, message: t('settings.max255Chars') },
+            })}
             className={inputBase}
             style={inputStyle}
             placeholder="Nike Uzbekistan"
           />
         </Field>
 
-        <Field label="Описание" error={errors.description?.message}>
+        <Field label={t('settings.labelDescription')} error={errors.description?.message}>
           <textarea
-            {...register('description', { maxLength: { value: 2000, message: 'Максимум 2000 символов' } })}
+            {...register('description', { maxLength: { value: 2000, message: t('settings.max2000Chars') } })}
             rows={3}
             className="px-3.5 py-2.5 rounded-md text-sm focus:outline-none focus:ring-2 resize-none w-full"
             style={inputStyle}
-            placeholder="Расскажите о вашем магазине..."
+            placeholder={t('settings.storeDescriptionPlaceholder')}
           />
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Город" error={errors.city?.message}>
+          <Field label={t('settings.labelCity')} error={errors.city?.message}>
             <input
-              {...register('city', { required: 'Обязательное поле', minLength: { value: 2, message: 'Минимум 2 символа' } })}
+              {...register('city', {
+                required: t('settings.requiredField'),
+                minLength: { value: 2, message: t('settings.minTwoChars') },
+              })}
               className={inputBase}
               style={inputStyle}
-              placeholder="Ташкент"
+              placeholder={t('settings.storeCityPlaceholder')}
             />
           </Field>
 
-          <Field label="Регион" error={errors.region?.message}>
+          <Field label={t('settings.labelRegion')} error={errors.region?.message}>
             <input
-              {...register('region', { maxLength: { value: 100, message: 'Максимум 100 символов' } })}
+              {...register('region', { maxLength: { value: 100, message: t('settings.max100Chars') } })}
               className={inputBase}
               style={inputStyle}
-              placeholder="Ташкентская область"
+              placeholder={t('settings.storeRegionPlaceholder')}
             />
           </Field>
         </div>
 
-        <Field label="Telegram-контакт" error={errors.telegramContactLink?.message}>
+        <Field label={t('settings.labelTelegramContact')} error={errors.telegramContactLink?.message}>
           <input
             {...register('telegramContactLink')}
             className={inputBase}
@@ -369,11 +386,11 @@ function StoreSettingsSection() {
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
-            {updateStore.isPending ? 'Сохранение...' : 'Сохранить'}
+            {updateStore.isPending ? t('settings.saving') : t('settings.saveBtn')}
           </button>
           <SavedBadge show={saved} />
           {updateStore.isError && (
-            <span className="text-xs" style={errorStyle}>Ошибка сохранения</span>
+            <span className="text-xs" style={errorStyle}>{t('settings.saveError')}</span>
           )}
         </div>
       </form>
@@ -390,12 +407,15 @@ type ProfileFormValues = {
 };
 
 function ProfileSettingsSection() {
+  const { t } = useTranslation();
   const { data: profile, isLoading } = useSellerProfile();
   const updateProfile = useUpdateSellerProfile();
   const [saved, setSaved] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors, isDirty } } = useForm<ProfileFormValues>();
 
+  // NOTE: languageCode field is a backend profile field — it persists the user's
+  // preferred language on the server and is intentionally kept as-is.
   const languageOptions: SelectOption[] = useMemo(
     () => [
       { value: 'ru', label: 'Русский' },
@@ -444,28 +464,29 @@ function ProfileSettingsSection() {
   }
 
   return (
-    <Section title="Профиль продавца">
+    <Section title={t('settings.sectionProfile')}>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <Field label="Имя / название компании" error={errors.fullName?.message}>
+        <Field label={t('settings.labelFullName')} error={errors.fullName?.message}>
           <input
-            {...register('fullName', { required: 'Обязательное поле' })}
+            {...register('fullName', { required: t('settings.requiredField') })}
             className={inputBase}
             style={inputStyle}
-            placeholder="Алишер Каримов"
+            placeholder={t('settings.profileNamePlaceholder')}
           />
         </Field>
 
-        <Field label="Telegram username" error={errors.telegramUsername?.message}>
+        <Field label={t('settings.labelTgUsername')} error={errors.telegramUsername?.message}>
           <input
             {...register('telegramUsername', {
-              pattern: { value: /^(@[a-zA-Z0-9_]{3,32})?$/, message: 'Формат: @username (3–32 символа)' },
+              pattern: { value: /^(@[a-zA-Z0-9_]{3,32})?$/, message: t('settings.tgUsernamePattern') },
             })}
             className={inputBase}
             style={inputStyle}
-            placeholder="@yourhandle"
+            placeholder={t('settings.profileTgPlaceholder')}
           />
         </Field>
 
+        {/* languageCode — backend profile field (server-persisted preferred language). DO NOT remove. */}
         <Field label="Язык интерфейса" error={errors.languageCode?.message}>
           <Controller
             name="languageCode"
@@ -489,11 +510,11 @@ function ProfileSettingsSection() {
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
-            {updateProfile.isPending ? 'Сохранение...' : 'Сохранить'}
+            {updateProfile.isPending ? t('settings.saving') : t('settings.saveBtn')}
           </button>
           <SavedBadge show={saved} />
           {updateProfile.isError && (
-            <span className="text-xs" style={errorStyle}>Ошибка сохранения</span>
+            <span className="text-xs" style={errorStyle}>{t('settings.saveError')}</span>
           )}
         </div>
       </form>
@@ -548,6 +569,7 @@ function ToggleRow({ label, description, checked, disabled, onChange }: ToggleRo
 }
 
 function NotifPreferencesSection() {
+  const { t } = useTranslation();
   const { data: prefs, isLoading } = useNotifPreferences();
   const update = useUpdateNotifPreferences();
   const [saved, setSaved] = useState(false);
@@ -580,33 +602,33 @@ function NotifPreferencesSection() {
   }
 
   return (
-    <Section title="Уведомления">
+    <Section title={t('settings.sectionNotif')}>
       <ToggleRow
-        label="Telegram-уведомления"
-        description="Новые заказы и изменения статусов — в ваш Telegram"
+        label={t('settings.notifTelegram')}
+        description={t('settings.notifTelegramHint')}
         checked={prefs?.telegramEnabled ?? false}
         disabled={update.isPending}
         onChange={(v) => toggle('telegramEnabled', v)}
       />
       <ToggleRow
-        label="Push в браузере"
-        description="Уведомления на этом устройстве даже если вкладка закрыта"
+        label={t('settings.notifBrowserPush')}
+        description={t('settings.notifBrowserPushHint')}
         checked={prefs?.webPushEnabled ?? false}
         disabled={update.isPending}
         onChange={(v) => toggle('webPushEnabled', v)}
       />
       <ToggleRow
-        label="Push в мобильном"
-        description="Уведомления в Telegram-приложении продавца"
+        label={t('settings.notifMobilePush')}
+        description={t('settings.notifMobilePushHint')}
         checked={prefs?.mobilePushEnabled ?? false}
         disabled={update.isPending}
         onChange={(v) => toggle('mobilePushEnabled', v)}
       />
       {saved && (
-        <p className="text-xs" style={{ color: colors.success }}>Сохранено</p>
+        <p className="text-xs" style={{ color: colors.success }}>{t('settings.saved')}</p>
       )}
       {update.isError && (
-        <p className="text-xs" style={errorStyle}>Ошибка сохранения</p>
+        <p className="text-xs" style={errorStyle}>{t('settings.saveError')}</p>
       )}
     </Section>
   );
@@ -619,7 +641,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-5 max-w-5xl">
-      <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
+      <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t('settings.title')}</h1>
 
       {/* MARKETING-LOCALIZATION-UZ-001 — клиентский переключатель языка интерфейса */}
       <div

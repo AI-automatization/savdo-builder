@@ -23,6 +23,7 @@ import { ConfirmModal } from '../../../../../components/confirm-modal';
 import { Select } from '../../../../../components/select';
 import { titlePlaceholder, descriptionPlaceholder } from '../../../../../lib/product-examples';
 import { card, colors, dangerTint, inputStyle as inputBase } from '@/lib/styles';
+import { useTranslation } from '@/lib/i18n';
 
 // Категории, которые мы не продаём на платформе. Скрываем из dropdown'а
 // до тех пор, пока Полат не уберёт их из seed'а на бэке
@@ -72,17 +73,18 @@ function Skeleton({ className }: { className?: string }) {
   );
 }
 
-const STATUS_LABELS: Partial<Record<ProductStatus, string>> = {
-  [ProductStatus.ACTIVE]:   "Активен",
-  [ProductStatus.DRAFT]:    "Черновик",
-  [ProductStatus.ARCHIVED]: "Архив",
-};
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useTranslation();
   const router  = useRouter();
+
+  const STATUS_LABELS: Partial<Record<ProductStatus, string>> = {
+    [ProductStatus.ACTIVE]:   t('products.status.ACTIVE'),
+    [ProductStatus.DRAFT]:    t('products.status.DRAFT'),
+    [ProductStatus.ARCHIVED]: t('products.status.ARCHIVED'),
+  };
 
   const { data: product, isLoading, isError } = useSellerProduct(id);
   const update       = useUpdateProduct();
@@ -238,7 +240,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         }
         return reconciled;
       });
-      setImageError('Не все фото удалось сохранить — список обновлён, попробуйте ещё раз.');
+      setImageError(t('products.edit.errorImages'));
     }
 
     queryClient.invalidateQueries({ queryKey: productKeys.detail(id) });
@@ -362,13 +364,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="max-w-xl">
         <div className="rounded-xl px-6 py-10 text-center" style={glass}>
-          <p className="text-sm" style={{ color: colors.danger }}>Товар не найден.</p>
+          <p className="text-sm" style={{ color: colors.danger }}>{t('products.edit.notFound')}</p>
           <button
             onClick={() => router.push('/products')}
             className="mt-4 text-sm underline"
             style={{ color: colors.accent }}
           >
-            Вернуться к списку
+            {t('products.edit.backToList')}
           </button>
         </div>
       </div>
@@ -385,14 +387,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           onClick={() => router.back()}
           className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80"
           style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}` }}
-          aria-label="Назад"
+          aria-label={t('common.back')}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" style={{ color: colors.textPrimary }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
         </button>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>Редактировать товар</h1>
+          <h1 className="text-xl font-bold" style={{ color: colors.textPrimary }}>{t('products.edit.title')}</h1>
           <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
             {STATUS_LABELS[product.status] ?? product.status}
           </p>
@@ -405,7 +407,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           className="mb-4 px-4 py-3 rounded-xl text-sm"
           style={{ background: "rgba(251,191,36,.10)", border: "1px solid rgba(251,191,36,.25)", color: colors.warning }}
         >
-          Этот товар скрыт администратором. Обратитесь в поддержку для разъяснений.
+          {t('products.edit.hiddenByAdmin')}
         </div>
       )}
 
@@ -415,7 +417,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
           {/* Photos */}
           <div>
-            <Label>Фото товара</Label>
+            <Label>{t('products.edit.labelPhotos')}</Label>
             <MultiImageUploader
               value={images}
               onChange={handleImagesChange}
@@ -431,7 +433,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
           {/* Display type */}
           <div>
-            <Label>Как показывать товар на витрине</Label>
+            <Label>{t('products.edit.labelDisplayType')}</Label>
             <DisplayTypeSelector
               value={displayType}
               onChange={(v) => setValue('displayType', v, { shouldDirty: true })}
@@ -441,21 +443,21 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {/* Global category */}
           {globalCategories.length > 0 && (
             <div>
-              <Label>Категория товара</Label>
+              <Label>{t('products.edit.labelGlobalCategory')}</Label>
               <input type="hidden" {...register('globalCategoryId')} />
               <Select
                 value={watchedCategoryId ?? ''}
                 onChange={(v) => setValue('globalCategoryId', v, { shouldValidate: true, shouldDirty: true })}
                 options={globalCategories.map((c) => ({ value: c.id, label: c.nameRu }))}
-                placeholder="— Выберите категорию —"
-                searchPlaceholder="Поиск категории…"
+                placeholder={t('products.edit.categoryPlaceholder')}
+                searchPlaceholder={t('products.edit.categorySearchPlaceholder')}
                 clearable
-                ariaLabel="Категория товара"
+                ariaLabel={t('products.edit.labelGlobalCategory')}
               />
               <p className="mt-1.5 text-[11px]" style={{ color: colors.textDim }}>
                 {pickedCategory
-                  ? 'Товар покажется в этой категории и попадёт под её фильтры.'
-                  : 'Выберите что продаёте: одежда, обувь, электроника, мебель, книги и т.д.'}
+                  ? t('products.edit.categoryWithHint')
+                  : t('products.edit.categoryWithoutHint')}
               </p>
             </div>
           )}
@@ -463,35 +465,35 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {/* Store-local section */}
           {categories.length > 0 && (
             <div>
-              <Label>Раздел магазина</Label>
+              <Label>{t('products.edit.labelStoreSection')}</Label>
               <Select
                 value={storeCategoryId ?? ''}
                 onChange={(v) => setStoreCategoryId(v || null)}
                 options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                placeholder="— Без раздела —"
-                searchPlaceholder="Поиск раздела…"
+                placeholder={t('products.edit.sectionPlaceholder')}
+                searchPlaceholder={t('products.edit.sectionSearchPlaceholder')}
                 clearable
                 searchable={categories.length > 6}
-                ariaLabel="Раздел магазина"
+                ariaLabel={t('products.edit.labelStoreSection')}
               />
             </div>
           )}
 
           {/* Title */}
           <div>
-            <Label>Название <span style={{ color: colors.danger }}>*</span></Label>
+            <Label>{t('products.edit.labelName')} <span style={{ color: colors.danger }}>*</span></Label>
             <input
               className={focusCls}
               style={inputStyle}
               placeholder={titleHint}
-              {...register('title', { required: 'Введите название товара' })}
+              {...register('title', { required: t('products.edit.requiredName') })}
             />
             <FieldError message={errors.title?.message} />
           </div>
 
           {/* Description */}
           <div>
-            <Label>Описание</Label>
+            <Label>{t('products.edit.labelDescription')}</Label>
             <textarea
               className={focusCls}
               style={{ ...inputStyle, resize: "none", minHeight: 96 }}
@@ -503,7 +505,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {/* Price + SKU */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Цена (сум) <span style={{ color: colors.danger }}>*</span></Label>
+              <Label>{t('products.edit.labelPrice')} <span style={{ color: colors.danger }}>*</span></Label>
               <input
                 type="number"
                 min={0}
@@ -511,15 +513,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 style={inputStyle}
                 placeholder="0"
                 {...register('basePrice', {
-                  required: 'Укажите цену',
-                  min: { value: 0, message: 'Цена не может быть отрицательной' },
+                  required: t('products.edit.requiredPrice'),
+                  min: { value: 0, message: t('products.edit.priceMin') },
                   valueAsNumber: true,
                 })}
               />
               <FieldError message={errors.basePrice?.message} />
             </div>
             <div>
-              <Label>Артикул (SKU)</Label>
+              <Label>{t('products.edit.labelSku')}</Label>
               <input
                 className={focusCls}
                 style={inputStyle}
@@ -532,9 +534,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {/* Visibility toggle */}
           <div className="flex items-center justify-between py-1">
             <div>
-              <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>Показывать в магазине</p>
+              <p className="text-sm font-medium" style={{ color: colors.textPrimary }}>{t('products.edit.labelVisibility')}</p>
               <p className="text-xs mt-0.5" style={{ color: colors.textDim }}>
-                Покупатели смогут видеть товар
+                {t('products.edit.visibilityHint')}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -559,7 +561,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             className="mt-4 px-4 py-3 rounded-xl text-sm"
             style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
           >
-            Не удалось сохранить изменения. Попробуйте ещё раз.
+            {t('products.edit.errorSave')}
           </div>
         )}
 
@@ -571,7 +573,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
           >
-            Отмена
+            {t('products.edit.cancelBtn')}
           </button>
           <button
             type="submit"
@@ -579,7 +581,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-40"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
-            {update.isPending ? 'Сохранение...' : 'Сохранить'}
+            {update.isPending ? t('products.edit.saving') : t('products.edit.saveBtn')}
           </button>
         </div>
       </form>
@@ -597,7 +599,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       {/* Attributes (free-form key/value) */}
       <div className="mt-4 rounded-xl p-5 flex flex-col gap-3" style={glass}>
         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-          Характеристики
+          {t('products.edit.labelAttributes')}
         </p>
         <ProductAttributesSection value={attributes} onChange={handleAttributesChange} />
       </div>
@@ -606,7 +608,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       {!isHiddenByAdmin && (
         <div className="mt-4 rounded-xl p-5 flex flex-col gap-3" style={glass}>
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: colors.textDim }}>
-            Статус товара
+            {t('products.edit.labelStatus')}
           </p>
 
           <div className="flex gap-2 flex-wrap">
@@ -617,7 +619,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ background: "rgba(52,211,153,.15)", border: "1px solid rgba(52,211,153,.25)", color: colors.success }}
               >
-                Сделать активным
+                {t('products.edit.makeActive')}
               </button>
             )}
             {product.status !== ProductStatus.DRAFT && (
@@ -627,7 +629,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
               >
-                В черновик
+                {t('products.edit.toDraft')}
               </button>
             )}
             {product.status !== ProductStatus.ARCHIVED && (
@@ -637,7 +639,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textDim }}
               >
-                В архив
+                {t('products.edit.toArchive')}
               </button>
             )}
           </div>
@@ -649,7 +651,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
               style={{ color: colors.danger }}
             >
-              {remove.isPending ? 'Удаление...' : 'Удалить товар'}
+              {remove.isPending ? t('products.edit.deleting') : t('products.edit.deleteBtn')}
             </button>
           </div>
         </div>
@@ -657,9 +659,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       <ConfirmModal
         open={confirmDelete}
-        title="Удалить товар?"
-        message="Это действие нельзя отменить."
-        confirmLabel="Удалить"
+        title={t('products.edit.deleteConfirmTitle')}
+        message={t('products.edit.deleteConfirmMsg')}
+        confirmLabel={t('products.edit.deleteConfirmLabel')}
         danger
         loading={remove.isPending}
         onConfirm={performDelete}
