@@ -10,6 +10,8 @@ import type { Store, StoreDeliverySettings } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
 import { Select, type SelectOption } from '@/components/select';
 import { card, colors, inputStyle as inputStyleBase } from '@/lib/styles';
+import { LanguageToggle } from '@/components/language-toggle';
+import { useTranslation } from '@/lib/i18n';
 
 // Seller Store-ответ включает nested deliverySettings; тип Store его пока не
 // моделирует (Полат добавил StoreDeliverySettings только в StorefrontStore —
@@ -613,9 +615,23 @@ function NotifPreferencesSection() {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col gap-5 max-w-5xl">
       <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Настройки</h1>
+
+      {/* MARKETING-LOCALIZATION-UZ-001 — клиентский переключатель языка интерфейса */}
+      <div
+        className="flex items-center justify-between rounded-xl px-4 py-3"
+        style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+      >
+        <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
+          {t('settings.language')}
+        </span>
+        <LanguageToggle />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <div className="flex flex-col gap-5 min-w-0">
           <StoreSettingsSection />
