@@ -68,7 +68,8 @@ function KpiCard({
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
 
-function Sparkline({ daily, t }: { daily: DailyPoint[]; t: (key: string, vars?: Record<string, string | number>) => string }) {
+function Sparkline({ daily }: { daily: DailyPoint[] }) {
+  const { t } = useTranslation();
   const W = 600;
   const H = 90;
   const pad = 6;
@@ -123,12 +124,11 @@ function Sparkline({ daily, t }: { daily: DailyPoint[]; t: (key: string, vars?: 
 function TopProductsList({
   products,
   loading,
-  t,
 }: {
   products: { productId: string | null; title: string; quantity: number; revenue: number }[];
   loading: boolean;
-  t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
+  const { t } = useTranslation();
   if (!loading && products.length === 0) return null;
 
   return (
@@ -177,13 +177,12 @@ function TopByViewsCard({
   productId,
   views,
   loading,
-  t,
 }: {
   productId: string | null;
   views: number;
   loading: boolean;
-  t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
+  const { t } = useTranslation();
   const { data: product, isLoading: productLoading } = useSellerProduct(productId ?? '');
   const isLoading = loading || (!!productId && productLoading);
   const title = product?.title ?? (productId ? `#${productId.slice(-6).toUpperCase()}` : null);
@@ -298,18 +297,18 @@ export default function AnalyticsPage() {
 
       {/* Sparkline */}
       {!isLoading && !isError && data && data.daily.length > 1 && (
-        <Sparkline daily={data.daily} t={t} />
+        <Sparkline daily={data.daily} />
       )}
 
       {/* Top products by revenue */}
-      <TopProductsList products={data?.topProducts ?? []} loading={isLoading} t={t} />
+      <TopProductsList products={data?.topProducts ?? []} loading={isLoading} />
 
       {/* Empty state */}
       {!isLoading && !isError && data && data.orders.total === 0 && (
         <div className="rounded-lg px-5 py-8 text-center" style={cardMuted}>
           <ShoppingBag size={28} className="mx-auto mb-2" style={{ color: colors.textDim }} />
           <p className="text-sm font-medium" style={{ color: colors.textMuted }}>
-            {t('analytics.emptyTitle', { period: t(PERIOD_KEY[period]).toLowerCase() })}
+            {t('analytics.emptyTitle', { period: t(PERIOD_KEY[period]) })}
           </p>
           <p className="text-xs mt-1" style={{ color: colors.textDim }}>
             {t('analytics.emptySub')}
@@ -355,7 +354,6 @@ export default function AnalyticsPage() {
           productId={summary?.topProduct?.productId ?? null}
           views={summary?.topProduct?.views ?? 0}
           loading={summaryLoading}
-          t={t}
         />
       </div>
     </div>

@@ -14,6 +14,7 @@ export const ru: Translations = {
   'common.retry': 'Повторить',
   'common.error': 'Что-то пошло не так',
   'common.empty': 'Ничего не найдено',
+  'common.yesterday': 'вчера',
   // settings — секция настроек
   'settings.title': 'Настройки',
   'settings.language': 'Язык интерфейса',
@@ -76,7 +77,6 @@ export const ru: Translations = {
   'onboarding.openStore': 'Открыть магазин',
   'onboarding.goShopping': 'Перейти к покупкам',
   'onboarding.logout': 'Выйти из аккаунта',
-  'common.yesterday': 'вчера',
   // common — store status labels
   'common.storeStatus.DRAFT': 'Черновик',
   'common.storeStatus.PENDING_REVIEW': 'На проверке',
