@@ -874,6 +874,21 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 
 > TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
 
+## 🟡 `WEB-UZ-TRANSLATION-REVIEW-001` — вычитка узбекских переводов (Азим, 18.05.2026)
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller`
+- **Контекст:** UZ-локализация реализована (`MARKETING-LOCALIZATION-UZ-001`,
+  ветки `web-buyer` `aac61e8` / `web-seller` `eb31728`). Узбекские переводы
+  сгенерированы Claude — нужна вычитка носителем/Азимом перед запуском.
+- **Что сделать:**
+  1. Просмотреть `apps/web-buyer/src/lib/i18n/uz.ts` (508 ключей) и
+     `apps/web-seller/src/lib/i18n/uz.ts` (533 ключа).
+  2. Особое внимание — юр-тексты web-buyer (offer/privacy/terms/refund),
+     помечены комментарием `// REVIEW` в `uz.ts`.
+  3. Ручная проверка на Railway: переключатель RU/UZ (buyer `/profile`,
+     seller `/settings`), пройти ключевые флоу, убедиться что RU-вид не поехал.
+- **Файлы:** `apps/web-buyer/src/lib/i18n/uz.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+
 ## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
 
 > **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
