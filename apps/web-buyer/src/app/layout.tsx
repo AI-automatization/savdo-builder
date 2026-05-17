@@ -6,6 +6,7 @@ import { QueryProvider } from "../providers/query-provider";
 import { AuthProvider } from "../lib/auth/context";
 import { ThemeProvider } from "../lib/theme/theme-provider";
 import { ThemeScript } from "../lib/theme/theme-script";
+import { I18nProvider } from "../lib/i18n";
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
@@ -68,7 +69,9 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <ThemeProvider defaultTheme="system">
-              {children}
+              <I18nProvider>
+                {children}
+              </I18nProvider>
             </ThemeProvider>
           </AuthProvider>
         </QueryProvider>
