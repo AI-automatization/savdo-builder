@@ -12,16 +12,17 @@ import {
   serverGetCategoryFilters,
 } from "@/lib/api/storefront-server";
 
-// generateMetadata + StorePage both fetch the same store — wrap in React.cache
-// so the request runs once per render, not twice.
-const serverGetStoreBySlug = cache(rawGetStoreBySlug);
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
 import { colors } from "@/lib/styles";
 import { StoreHeroBrandColumn } from "@/components/store/StoreHeroBrandColumn";
 import { StoreSectionLabels } from "@/components/store/StoreSectionLabels";
 import { StoreProductsLabel } from "@/components/store/StoreProductsLabel";
-import type { StoreCategoryItem } from "@/components/store/StoreSectionLabels";
+import type { StoreCategoryItem } from "@/components/store/store-types";
+
+// generateMetadata + StorePage both fetch the same store — wrap in React.cache
+// so the request runs once per render, not twice.
+const serverGetStoreBySlug = cache(rawGetStoreBySlug);
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
 

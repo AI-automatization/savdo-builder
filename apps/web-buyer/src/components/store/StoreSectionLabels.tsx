@@ -8,13 +8,7 @@
 import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
-
-export interface StoreCategoryItem {
-  id: string;
-  name: string;
-  sortOrder: number;
-  href: string;
-}
+import type { StoreCategoryItem } from '@/components/store/store-types';
 
 interface StoreSectionLabelsProps {
   categories: StoreCategoryItem[];
