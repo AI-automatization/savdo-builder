@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import ProductsWithSearch from "@/components/store/ProductsWithSearch";
@@ -19,19 +18,10 @@ const serverGetStoreBySlug = cache(rawGetStoreBySlug);
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
 import { colors } from "@/lib/styles";
-import { Send, Check, Star } from "lucide-react";
-
-// Plural «отзыв / отзыва / отзывов» — копия из components/store/StoreRating.tsx
-// (тот компонент рассчитан на light surface; в hero brand-color column нужна
-// light-on-dark inline версия).
-function pluralReviews(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'отзывов';
-  if (mod10 === 1) return 'отзыв';
-  if (mod10 >= 2 && mod10 <= 4) return 'отзыва';
-  return 'отзывов';
-}
+import { StoreHeroBrandColumn } from "@/components/store/StoreHeroBrandColumn";
+import { StoreSectionLabels } from "@/components/store/StoreSectionLabels";
+import { StoreProductsLabel } from "@/components/store/StoreProductsLabel";
+import type { StoreCategoryItem } from "@/components/store/StoreSectionLabels";
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
 
@@ -144,6 +134,15 @@ export default async function StorePage({
     return qs ? `/${slug}?${qs}` : `/${slug}`;
   };
 
+  // Pre-compute serializable hrefs — functions cannot cross server→client boundary.
+  const allCategoryHref = buildStoreCategoryHref(null);
+  const categoryItems: StoreCategoryItem[] = store.categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    sortOrder: cat.sortOrder,
+    href: buildStoreCategoryHref(cat.id),
+  }));
+
   return (
     <div className="relative pb-24 md:pb-12">
       <TrackStorefrontView storeId={store.id} storeSlug={slug} />
@@ -170,125 +169,33 @@ export default async function StorePage({
             )}
           </div>
 
-          {/* Brand-color column */}
-          <div
-            className="px-6 py-8 md:px-8 md:py-10 flex flex-col justify-center"
-            style={{ background: colors.brand, color: colors.brandTextOnBg }}
-          >
-            <div className="text-[10px] tracking-[0.2em] uppercase opacity-70 mb-3">— Магазин · {store.city}</div>
-            <h1 className="text-2xl md:text-4xl font-bold leading-[1.05] tracking-tight mb-3">
-              {store.name}
-            </h1>
-            {(store.isVerified || ((store.reviewCount ?? 0) > 0 && store.avgRating != null)) && (
-              <div className="flex items-center gap-3 mb-4 text-[12px]">
-                {store.isVerified && (
-                  <span
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold"
-                    style={{
-                      background: 'rgba(251,247,240,0.18)',
-                      border: '1px solid rgba(251,247,240,0.28)',
-                      color: colors.brandTextOnBg,
-                    }}
-                    aria-label="Проверенный магазин"
-                  >
-                    <Check size={12} strokeWidth={3} aria-hidden />
-                    <span>Проверенный</span>
-                  </span>
-                )}
-                {(store.reviewCount ?? 0) > 0 && store.avgRating != null && (
-                  <span
-                    className="inline-flex items-center gap-1.5"
-                    style={{ color: colors.brandTextOnBg }}
-                    aria-label={`Рейтинг ${store.avgRating.toFixed(1)} из 5, ${store.reviewCount} ${pluralReviews(store.reviewCount ?? 0)}`}
-                  >
-                    <Star size={13} fill={colors.brandTextOnBg} strokeWidth={0} aria-hidden />
-                    <span className="font-semibold">{store.avgRating.toFixed(1)}</span>
-                    <span className="opacity-75">·</span>
-                    <span className="opacity-75">{store.reviewCount} {pluralReviews(store.reviewCount ?? 0)}</span>
-                  </span>
-                )}
-              </div>
-            )}
-            {store.description && (
-              <p className="text-sm opacity-85 leading-relaxed mb-5 line-clamp-3 md:line-clamp-4">{store.description}</p>
-            )}
-            <div className="flex gap-2.5 flex-wrap">
-              <a
-                href="#products"
-                className="inline-flex items-center justify-center px-5 py-3 text-xs font-bold rounded transition-opacity hover:opacity-90"
-                style={{ background: colors.brandTextOnBg, color: colors.brand }}
-              >
-                Все товары →
-              </a>
-              {store.telegramContactLink && (
-                <a
-                  href={store.telegramContactLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold rounded border transition-opacity hover:opacity-90"
-                  style={{ borderColor: 'rgba(251,247,240,0.4)', color: colors.brandTextOnBg }}
-                >
-                  <Send size={14} />
-                  <span>Чат</span>
-                </a>
-              )}
-            </div>
-          </div>
+          {/* Brand-color column — localized via client component */}
+          <StoreHeroBrandColumn
+            name={store.name}
+            city={store.city}
+            isVerified={store.isVerified}
+            avgRating={store.avgRating ?? null}
+            reviewCount={store.reviewCount ?? 0}
+            description={store.description}
+            telegramContactLink={store.telegramContactLink}
+          />
         </div>
       </section>
 
       {/* ── Content wrapper ─────────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* ── Store categories chip row ──────────────────────────────────────── */}
-        {store.categories.length > 0 && (
-          <section className="mt-6">
-            <div className="flex justify-between items-baseline mb-3">
-              <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
-                — По категориям
-              </div>
-            </div>
-            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-              <Link
-                href={buildStoreCategoryHref(null)}
-                className="flex-shrink-0 px-4 py-2 text-xs font-semibold rounded transition-colors"
-                style={
-                  !categoryId
-                    ? { background: colors.textStrong, color: colors.brandTextOnBg, border: `1px solid ${colors.textStrong}` }
-                    : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
-                }
-              >
-                Все
-              </Link>
-              {store.categories
-                .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((cat) => {
-                  const isActive = categoryId === cat.id;
-                  return (
-                    <Link
-                      key={cat.id}
-                      href={buildStoreCategoryHref(cat.id)}
-                      className="flex-shrink-0 px-4 py-2 text-xs font-semibold rounded transition-colors"
-                      style={
-                        isActive
-                          ? { background: colors.textStrong, color: colors.brandTextOnBg, border: `1px solid ${colors.textStrong}` }
-                          : { background: colors.surface, color: colors.textBody, border: `1px solid ${colors.border}` }
-                      }
-                    >
-                      {cat.name}
-                    </Link>
-                  );
-                })}
-            </div>
-          </section>
-        )}
+        {/* ── Store categories chip row — localized via client component ──────── */}
+        <StoreSectionLabels
+          categories={categoryItems}
+          activeCategoryId={categoryId}
+          allCategoryHref={allCategoryHref}
+        />
 
         {/* ── Products section ───────────────────────────────────────────────── */}
         <section id="products" className="mt-8">
           <div className="flex justify-between items-baseline mb-4">
-            <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: colors.textMuted }}>
-              — Товары{products.length > 0 ? ` · ${products.length}` : ''}
-            </div>
+            <StoreProductsLabel productCount={products.length} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 lg:gap-8">

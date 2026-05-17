@@ -41,7 +41,7 @@ export function StoreRating({ rating, reviewCount, hideWhenEmpty = true, size = 
       <Star size={iconPx} fill={colors.warning} strokeWidth={0} aria-hidden />
       <span style={{ color: colors.textBody, fontWeight: 600 }}>{formatted}</span>
       <span aria-hidden>·</span>
-      <span>{reviewCount} {locale === 'uz' ? 'ta sharh' : pluralReviews(reviewCount)}</span>
+      <span>{reviewCount} {locale === 'uz' ? t('store.reviewWordUz') : pluralReviews(reviewCount)}</span>
     </span>
   );
 }

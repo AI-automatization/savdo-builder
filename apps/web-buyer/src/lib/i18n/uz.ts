@@ -45,6 +45,9 @@ export const uz: Translations = {
   'store.byCategory': '— Kategoriyalar boʻyicha',
   'store.allCategory': 'Barchasi',
   'store.productsSection': '— Mahsulotlar',
+  'store.shopSubLabel': '— Doʻkon · {city}',
+  'store.reviewWordUz': 'ta sharh',
+  'store.ratingAriaLabel': 'Reyting {rating} dan 5, {count} ta sharh',
   'store.noPhoto': 'Fotosiz',
   'store.outOfStock': 'Mavjud emas',
   'store.inStock': 'Mavjud · {count} dona',
@@ -91,7 +94,6 @@ export const uz: Translations = {
   'product.reviews.empty': 'Hali sharh yoʻq. Buyurtmani olgandan keyin birinchi boʻling.',
   'product.reviews.ratingLabel': 'Reyting {rating} dan 5',
   'product.defaultCategory': 'Mahsulot',
-  'store.ratingAriaLabel': 'Reyting {rating} dan 5, {count} ta sharh',
 
   // catalog — /stores va /products sahifalari
   'catalog.all': 'Barchasi',

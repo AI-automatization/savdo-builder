@@ -47,6 +47,9 @@ export const ru: Translations = {
   'store.byCategory': '— По категориям',
   'store.allCategory': 'Все',
   'store.productsSection': '— Товары',
+  'store.shopSubLabel': '— Магазин · {city}',
+  'store.reviewWordUz': 'ta sharh',
+  'store.ratingAriaLabel': 'Рейтинг {rating} из 5, {count} отзывов',
   'store.noPhoto': 'Без фото',
   'store.outOfStock': 'Нет в наличии',
   'store.inStock': 'В наличии · {count} шт',
@@ -93,7 +96,6 @@ export const ru: Translations = {
   'product.reviews.empty': 'Пока нет отзывов. Будьте первым после получения заказа.',
   'product.reviews.ratingLabel': 'Рейтинг {rating} из 5',
   'product.defaultCategory': 'Товар',
-  'store.ratingAriaLabel': 'Рейтинг {rating} из 5, {count} отзывов',
 
   // catalog — страницы /stores и /products
   'catalog.all': 'Все',

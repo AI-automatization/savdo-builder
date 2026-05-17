@@ -86,7 +86,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
             {avgRating.toFixed(1)}
           </span>
           <span className="text-xs" style={{ color: colors.textMuted }}>
-            · {data.total} {locale === 'uz' ? 'ta sharh' : pluralizeReview(data.total)}
+            · {data.total} {locale === 'uz' ? t('store.reviewWordUz') : pluralizeReview(data.total)}
           </span>
         </div>
       </div>
