@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-05-18 (Азим) — UZ-локализация web-buyer + web-seller
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] UZ-локализация web-buyer + web-seller 🔴
+
+- **Важность:** 🔴
+- **Дата:** 17–18.05.2026
+- **Ветки/HEAD:** `web-buyer` → `aac61e8`, `web-seller` → `eb31728` (обе запушены, Railway деплоит)
+- **Спека:** `docs/superpowers/specs/2026-05-16-uz-localization-web-design.md`
+- **План:** `docs/superpowers/plans/2026-05-17-uz-localization-web.md`
+- **Что сделано:** Зеркалена i18n-инфраструктура `apps/admin` в обе апы — `src/lib/i18n/`
+  (React Context, плоский словарь ru/uz dot.notation, `useTranslation()`, fallback
+  `uz→ru→key`, детект localStorage→navigator, ключи `savdo_buyer_locale` /
+  `savdo_seller_locale`). Переключатель RU/UZ — в web-buyer `/profile`, web-seller
+  `/settings`. Извлечение строк волнами: **web-buyer** 5 волн (storefront+catalog,
+  orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared) —
+  508 ключей. **web-seller** 3 волны (auth/onboarding, 12 dashboard-страниц, shared) —
+  533 ключа. Server Components с видимым текстом (HomeHero, `[slug]/page.tsx`,
+  4 юр-страницы) обёрнуты в client-подкомпоненты. Каждая волна: spec-review +
+  code-review субагентами, `tsc --noEmit` чист, push в service-ветку. SEO-metadata,
+  форматирование чисел и «сум» оставлены на RU (вне scope по спеке).
+- **Осталось (не блокер):** ревью узбекских переводов Азимом — юр-тексты web-buyer
+  Wave 4 помечены `// REVIEW` в `uz.ts`; ручная проверка переключателя на Railway.
+
 ## 2026-05-17 (Азим) — типы
 
 ### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Список `as`-кастов response-объектов web-buyer 🟡
