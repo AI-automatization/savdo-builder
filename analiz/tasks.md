@@ -902,16 +902,26 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 ## 🟡 `WEB-UZ-TRANSLATION-REVIEW-001` — вычитка узбекских переводов (Азим, 18.05.2026)
 
 - **Домен:** `apps/web-buyer`, `apps/web-seller`
-- **Контекст:** UZ-локализация реализована (`MARKETING-LOCALIZATION-UZ-001`,
-  ветки `web-buyer` `aac61e8` / `web-seller` `eb31728`). Узбекские переводы
-  сгенерированы Claude — нужна вычитка носителем/Азимом перед запуском.
-- **Что сделать:**
-  1. Просмотреть `apps/web-buyer/src/lib/i18n/uz.ts` (508 ключей) и
-     `apps/web-seller/src/lib/i18n/uz.ts` (533 ключа).
-  2. Особое внимание — юр-тексты web-buyer (offer/privacy/terms/refund),
-     помечены комментарием `// REVIEW` в `uz.ts`.
-  3. Ручная проверка на Railway: переключатель RU/UZ (buyer `/profile`,
-     seller `/settings`), пройти ключевые флоу, убедиться что RU-вид не поехал.
+- **Контекст:** UZ-локализация реализована (`MARKETING-LOCALIZATION-UZ-001`).
+  Узбекские переводы сгенерированы Claude — нужна вычитка перед запуском.
+- **✅ Машинная вычитка выполнена 18.05.2026** (Claude):
+  - web-buyer `uz.ts` — `741f482`: 3 опечатки (masʼul/isteʼmol — бэктик
+    вместо тутуқ белгиси; murojaatingizga — тройная «a»); смягчён тон
+    `checkout.submitError`; фикс ru.ts `cart.itemCountUz`.
+  - web-seller `uz.ts` — `b15ea0a`: `maʻlumot` использовал ʻ U+02BB вместо
+    тутуқ белгиси ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» →
+    «...boʻlmadi». Ключи uz↔ru — паритет 524/524.
+  - Юр-тексты web-buyer (offer/privacy/terms/refund) — просмотрены,
+    качество формального юр-узбекского ОК, 3 опечатки выше были как раз там.
+- **Осталось (для Азима как носителя):**
+  1. 🟢 Терминология web-seller — `orders.nextProcess` / `orders.detail.nextProcess`
+     = `«Ishga olish»` («нанять на работу»). Для «Взять в обработку» уместнее
+     `«Jarayonga olish»` (консистентно со статусом `Jarayonda`). Решение Азима.
+  2. 🟢 Кросс-app расхождения: PENDING `Kutmoqda`(seller)/`Kutilmoqda`(buyer);
+     тема `Yorugʻ/Toʻq`(seller)/`Yorqin/Qorongʻu`(buyer). Не ошибка, но не
+     унифицировано — на усмотрение Азима.
+  3. 🟡 Ручная проверка на Railway: переключатель RU/UZ (buyer `/profile`,
+     seller `/settings`), RU-регрессия. **Заблокировано** `INFRA-API-PROD-DOWN-001`.
 - **Файлы:** `apps/web-buyer/src/lib/i18n/uz.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
 
 ## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)

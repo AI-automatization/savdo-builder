@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-18 (Азим) — вычитка uz-переводов web-buyer + web-seller
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001] Машинная вычитка узбекских словарей
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/lib/i18n/{uz,ru}.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+- **Ветки/HEAD:** `web-buyer` → `741f482`, `web-seller` → `b15ea0a`
+- **Что сделано:** Сверены uz.ts ↔ ru.ts обеих апп. Найдено и исправлено:
+  - web-buyer: 3 опечатки в юр-текстах (`masʼul`/`isteʼmol` — был бэктик
+    вместо тутуқ белгиси U+02BC; `murojaatingizga` — тройная «a»); смягчён
+    `checkout.submitError`; фикс гибрида `cart.itemCountUz` в ru.ts.
+  - web-seller: `maʻlumot` использовал ʻ U+02BB вместо тутуқ белгиси
+    ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» → «...boʻlmadi».
+  - Орфография `oʻ`/`gʻ` чистая в обеих, паритет ключей uz↔ru сохранён.
+  - Юр-тексты web-buyer просмотрены — формальный юр-узбекский ОК.
+  - tsc --noEmit чист в обеих аппах.
+- **Остаток:** терминология (`Ishga olish`), кросс-app унификация,
+  ручная Railway-проверка — на Азиме (см. тикет в tasks.md).
+
 ## 2026-05-18 (Азим) — OtpGate error surfacing
 
 ### ✅ [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] OtpGate показывает реальную ошибку API
