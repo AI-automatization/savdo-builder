@@ -35,9 +35,17 @@
 
 # 🚨 DEVOPS HARDENING 18.05.2026 (Полат) — устойчивость Railway-деплоя
 
-## 🔴 `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` — Railway-деплой хрупкий, 3 сервиса легли разом
+## 🟡 `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` — Railway-деплой хрупкий, 3 сервиса легли разом
 - **Домен:** `apps/api` + инфра (railway.toml, Dockerfile, deploy-конфиги)
 - **Кто взял:** Полат
+- **ПРОГРЕСС 18.05.2026:** п.1 ✅ (`d7324e9` resilient ioredis), п.2 ✅ (BullMQ
+  `maxRetriesPerRequest:null`+`retryStrategy` в `queues.module.ts`), п.3 ✅
+  (`restartPolicyMaxRetries` 3→10 во всех трёх `railway.toml`), п.5 ✅ (CI
+  `deploy-config-check.yml` — падает если `railway.toml` сломан; CODEOWNERS —
+  нужен GitHub-handle Полата, не сделан), п.7 ✅ (`docs/runbooks/railway-recovery.md`).
+  **Осталось:** п.4 (Root Directory для telegram-app — Railway dashboard),
+  п.6 (watchPatterns — пропущен, риск stale-деплоя выше пользы), п.8 (алертинг
+  Railway — dashboard). Все три — действия в Railway UI, не код.
 - **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
   18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
   исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack
