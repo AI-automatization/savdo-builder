@@ -5,6 +5,77 @@
 
 ---
 
+# 🚨 DEVOPS HARDENING 18.05.2026 (Полат) — устойчивость Railway-деплоя
+
+## 🔴 `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` — Railway-деплой хрупкий, 3 сервиса легли разом
+- **Домен:** `apps/api` + инфра (railway.toml, Dockerfile, deploy-конфиги)
+- **Кто взял:** Полат
+- **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
+  18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
+  исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack
+  вместо Dockerfile), `savdo-builder_ADMIN` (нет активного деплоя).
+- **Детали — что сделать (по приоритету):**
+  1. **🔴 Resilient Redis-клиент.** В `apps/api/src/shared/redis.service.ts`
+     `new Redis(url, …)` создаётся без отказоустойчивых опций. Добавить:
+     - `retryStrategy: (times) => Math.min(times * 200, 5000)` — backoff, не bare-loop;
+     - `maxRetriesPerRequest: 3` — команда не висит вечно;
+     - `enableOfflineQueue: false` для не-критичных операций ИЛИ обрабатывать
+       ошибки graceful, чтобы недоступность Redis не валила процесс;
+     - подавить спам `ETIMEDOUT` в логах (логировать reconnect-состояние раз в N,
+       а не каждую попытку).
+  2. **🔴 BullMQ должен переживать недоступность Redis на старте.**
+     `apps/api/src/queues/queues.module.ts` — `BullModule.forRootAsync` с теми же
+     resilient-опциями (`retryStrategy`, `maxRetriesPerRequest`). Цель: при
+     отсутствии Redis API стартует в degraded-режиме (healthcheck уже это умеет —
+     отдаёт `degraded`, не 503), а не крашится на bootstrap. Очереди публикуют
+     задачи best-effort или ставят в backlog после восстановления Redis.
+  3. **🔴 Поднять `restartPolicyMaxRetries`.** Во ВСЕХ трёх `apps/*/railway.toml`
+     стоит `restartPolicyMaxRetries=3` — мало для сервиса с внешними зависимостями
+     (моргнул Redis → 3 краша → сервис мёртв навсегда). Поднять до `10` для
+     `apps/api/railway.toml`. Альтернатива — `restartPolicyType="ALWAYS"` для API,
+     чтобы Railway не снимал деплой совсем (взвесить риск crash-loop vs. ручной
+     Redeploy). Решение зафиксировать ADR-записью.
+  4. **🟡 Устранить дубль конфигов на ветке `tma`.** Сейчас на `tma` есть И
+     корневой `railway.toml`, И `apps/tma/railway.toml` (оба `builder=DOCKERFILE`).
+     Railway читает один (по Root Directory сервиса), второй — мёртвый, источник
+     путаницы. Решение: задать сервису `telegram-app` **Root Directory = `apps/tma`**
+     в дашборде Railway → он будет читать `apps/tma/railway.toml`, а корневой
+     `railway.toml` удалить с ветки `tma`. Так конфиг деплоя живёт ТОЛЬКО в
+     `apps/<app>/railway.toml` (этот файл уже есть в main → не теряется при merge).
+  5. **🟡 Защита деплой-конфига от удаления мержем.** Главная ловушка инцидента:
+     корневой `railway.toml` жил только на одной ветке → удалён в Wave 19.
+     После п.4 конфиг каждого сервиса = `apps/<app>/railway.toml`, присутствует и
+     в `main`, и в деплой-ветках → merge `main`→ветка его НЕ удаляет (файл есть с
+     обеих сторон). Дополнительно:
+     - добавить CI-проверку (`.github/workflows`): job, который на push в
+       `api`/`admin`/`tma` падает, если `apps/<app>/railway.toml` отсутствует или
+       в нём нет `builder = "DOCKERFILE"`;
+     - в `CODEOWNERS` пометить `apps/*/railway.toml` как требующий ревью Полата.
+  6. **🟡 Согласовать `watchPatterns` с Dockerfile.** `apps/tma/railway.toml`
+     watch'ит `packages/types/**` и `packages/ui/**`, но `apps/tma/Dockerfile`
+     эти пакеты не копирует (TMA от них не зависит) — убрать лишнее. Для
+     `apps/api` и `apps/admin` — сверить, что watch'ятся ровно те пути, что
+     реально влияют на образ. После любой правки самого `railway.toml` нужен
+     ОДИН ручной Redeploy (коммит-только-конфиг не самотриггерится).
+  7. **🟢 Recovery-runbook.** Завести `docs/runbooks/railway-recovery.md`:
+     как поднять упавший сервис (Redeploy на зелёном коммите), как проверить
+     build driver = Dockerfile, как проверить `REDIS_URL`/доступность Redis-сервиса,
+     что делать при «No active deployment». Использовать skill `runbook-generator`.
+  8. **🟢 Алертинг.** Настроить Railway-нотификации (или внешний healthcheck-пинг
+     на `/api/v1/health`) на падение деплоя, чтобы инцидент ловился сразу, а не
+     постфактум.
+- **Файлы:**
+  - `apps/api/src/shared/redis.service.ts`
+  - `apps/api/src/queues/queues.module.ts`
+  - `apps/api/railway.toml`, `apps/admin/railway.toml`, `apps/tma/railway.toml`
+  - корневой `railway.toml` (ветка `tma`) — удалить после п.4
+  - `.github/workflows/*` — новый CI-чек deploy-конфига
+  - `docs/runbooks/railway-recovery.md` — новый
+- **Не блокирует** прод-фиксы checkout; но до закрытия п.1–3 любой сбой Redis
+  снова уронит `savdo-api` без авто-восстановления.
+
+---
+
 # 🔒 SECURITY AUDIT 16.05.2026 (Полат) — middleware / CORS / guards
 
 > Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.

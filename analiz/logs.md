@@ -1,5 +1,80 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-18] [DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18] 🔴 Все 3 Railway-сервиса легли одновременно
+- **Статус:** 🔴 Инцидент — 3 сервиса offline. Аудит проведён, hardening-тикет
+  `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` заведён в `tasks.md` (Полат). Код не правился.
+- **Что случилось:** на Railway одновременно недоступны 3 сервиса монорепо:
+  1. **savdo-api** — offline, «There is no active deployment». Билд проходит,
+     но при старте логи забиты `Error: connect ETIMEDOUT` от ioredis (Redis
+     недостижим). `apps/api/railway.toml`: `restartPolicyType=ON_FAILURE`,
+     `restartPolicyMaxRetries=3` → после 3 крашей подряд Railway снял деплой.
+  2. **telegram-app** (ветка `tma`) — build FAILED 15.05. Railway собрал через
+     Railpack (НЕ Dockerfile) → «✖ No start command detected». Корневой
+     `railway.toml` ветки `tma` был удалён по ошибке в Wave 19 (commit `68d1389`),
+     восстановлен (`798f720`/`6a39a06`/`0c57bad`), но Railway после восстановления
+     ни разу не передеплоил → активным остался сломанный build.
+  3. **savdo-builder_ADMIN** (ветка `admin`) — offline, нет активного деплоя.
+- **Root cause 1 (API, главный):** `apps/api/src/shared/redis.service.ts` создаёт
+  `new Redis(url, { lazyConnect: false })` БЕЗ `retryStrategy`, `maxRetriesPerRequest`,
+  лимита reconnect. При недоступном Redis ioredis крутит бесконечные reconnect,
+  заливает логи `ETIMEDOUT`. BullMQ (`queues.module.ts`) на старте требует Redis;
+  при его отсутствии модуль падает на bootstrap → процесс крашится. Healthcheck
+  `/api/v1/health` трактует Redis корректно как non-critical (degraded, не 503) —
+  но до healthcheck дело не доходит, процесс умирает раньше. `restartPolicyMaxRetries=3`
+  слишком мало для сервиса, зависящего от внешнего Redis: при моргании Redis сервис
+  исчерпывает 3 ретрая и **умирает навсегда** (нужен ручной Redeploy).
+- **Root cause 2 (TMA):** корневой `railway.toml` существует ТОЛЬКО на ветке `tma`
+  (сервис `telegram-app` имеет Root Directory = корень репо). Его удаление мгновенно
+  ломает деплой (Railpack auto-detect не понимает Vite SPA в pnpm-workspace).
+  Коммит-только-конфиг не самотриггерится по `watchPatterns` («No changes to
+  watched files») — нужен parallel-change или ручной Redeploy.
+- **Root cause 3 (Admin):** причина offline не подтверждена логами. Вероятно тот же
+  паттерн «нет активного деплоя» после серии падений / отсутствие свежего деплоя.
+  Конфиг `apps/admin/railway.toml` корректен (`builder=DOCKERFILE`).
+- **Найденные риски (аудит railway.toml + Dockerfile на main/api/admin/tma):**
+  - `restartPolicyMaxRetries=3` во ВСЕХ трёх `apps/*/railway.toml` — мало для
+    сервисов с внешними зависимостями (Redis/DB). При временном сбое зависимости
+    сервис исчерпывает ретраи и остаётся мёртвым.
+  - **Дубль конфигов на ветке `tma`:** есть И корневой `railway.toml`, И
+    `apps/tma/railway.toml` — оба с `builder=DOCKERFILE`. Railway читает один
+    (по Root Directory), второй — мёртвый код, источник путаницы.
+  - **`watchPatterns` несогласован с Dockerfile:** `apps/tma/railway.toml` и
+    корневой watch'ат `packages/types/**` и `packages/ui/**`, но `apps/tma/Dockerfile`
+    эти пакеты НЕ копирует (TMA от них не зависит) → лишние триггеры пересборки,
+    и наоборот — изменения, реально влияющие на образ, могут не покрываться.
+  - `apps/admin/railway.toml` watch'ит `packages/ui/**`, при этом Dockerfile
+    копирует `packages/ui/package.json` — зависимость есть, ОК.
+  - **Корневой `railway.toml` живёт только на одной ветке** — это хрупко:
+    любая правка/ребейз/неаккуратный merge может его снести (что и случилось в Wave 19).
+  - `apps/api` healthcheck timeout 300с — ОК; admin/tma — 120с, ОК.
+- **Что сделано:** проведён полный аудит конфигов Railway (railway.toml +
+  Dockerfile на ветках main/api/admin/tma). Код НЕ правился. Заведён hardening-тикет
+  `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` в `analiz/tasks.md` (домен `apps/api` +
+  инфра, Полат) с конкретными пунктами фикса (resilient ioredis, повышение
+  `restartPolicyMaxRetries`, устранение дубля конфигов, защита деплой-конфига от
+  удаления через Root Directory, recovery-runbook).
+- **Немедленное восстановление (вручную в Railway, до фикса):** для каждого из 3
+  сервисов нажать Redeploy на последнем зелёном коммите; убедиться что Redis-сервис
+  Railway поднят и `REDIS_URL` у `savdo-api` указывает на него; у `telegram-app`
+  проверить что build driver = Dockerfile, а не Railpack.
+- **[2026-05-18] ФИКС API-устойчивости (Полат, не закоммичено):** устранена
+  корневая причина краша `savdo-api`. Подтверждено расследованием: главный
+  killer — `main.ts` делал блокирующий `await redisIoAdapter.connectToRedis()`
+  на этапе bootstrap; при недоступном Redis это бросало `ETIMEDOUT` → bootstrap
+  падал → процесс крашился на старте → Railway `ON_FAILURE` исчерпывал ретраи →
+  деплой «Removed». Healthcheck `/api/v1/health` НЕ был причиной — он корректно
+  отдаёт 200 `degraded` при Redis-down. Правки:
+  - `main.ts` — `connectToRedis` обёрнут в try/catch (API стартует без
+    Socket.IO Redis-адаптера, single-instance); `bootstrap().catch()` с
+    `process.exit(1)`.
+  - `shared/redis.service.ts` — ioredis: `retryStrategy` (backoff cap 10с),
+    `connectTimeout: 10s`, `maxRetriesPerRequest: 2`, `enableOfflineQueue: false`;
+    безопасный `onModuleDestroy`.
+  - `socket/redis-io.adapter.ts` — node-redis: `socket.connectTimeout` +
+    `reconnectStrategy`.
+  - `railway.toml` — `healthcheckPath` → `/api/v1/health/live` (чистый
+    liveness, без БД/Redis ping); `restartPolicyMaxRetries` 3 → 10.
+
 ## [2026-05-16] [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] 🟡 «Самовывоз» всё равно платит доставку
 - **Статус:** 🟡 Предупреждение — тикет Полату заведён в `tasks.md`, не исправлено.
 - **Что случилось:** при закрытии `WB-B01` обнаружено: `confirm-checkout.use-case`
