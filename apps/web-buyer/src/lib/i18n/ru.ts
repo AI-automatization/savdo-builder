@@ -297,7 +297,7 @@ export const ru: Translations = {
   'cart.notify': 'Уведомить',
   'cart.storeFallback': 'Магазин',
   'cart.productFallback': 'Товар',
-  'cart.itemCountUz': '{count} та товар',
+  'cart.itemCountUz': '{count} ta mahsulot',
   'cart.writeSeller': 'написать продавцу',
   'cart.chat': '💬 Чат',
   'cart.freeDeliveryRemaining': 'До бесплатной доставки {amount} сум',

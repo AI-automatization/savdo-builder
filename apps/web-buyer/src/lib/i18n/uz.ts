@@ -367,7 +367,7 @@ export const uz: Translations = {
   'checkout.previewErrorDesc': 'Aloqani tekshirib, qayta urinib koʻring. Savat boʻsh boʻlsa — qaytib mahsulot qoʻshing.',
   'checkout.previewLoading': 'Yuklanmoqda…',
   'checkout.toCart': 'Savatga',
-  'checkout.submitError': 'Buyurtmani rasmiylashtirish imkonsiz. Qayta urinib koʻring.',
+  'checkout.submitError': 'Buyurtmani rasmiylashtirib boʻlmadi. Qayta urinib koʻring.',
 
   // wishlist — sevimlilar sahifasi
   'wishlist.header': '— Sevimlilar',
@@ -525,7 +525,7 @@ export const uz: Translations = {
   'legal.terms.s1.p1': 'Ushbu Foydalanish shartlari Savdo platformasi (bundan keyin — «Platforma») va savdo.uz sayti hamda bogʻliq Telegram-botlar orqali tovar joylashtiradigan yoki xarid qiladigan foydalanuvchilar oʻrtasidagi munosabatlarni tartibga soladi. Platformadan foydalanish orqali siz ushbu Shartlarga roziligingizni bildirasiz.',
   'legal.terms.s2.heading': '2. Roʻyxatdan oʻtish va hisob',
   'legal.terms.s2.p1': 'Xaridorlar Telegram-bot yuboradigan bir martalik kod (OTP) orqali telefon raqamini tasdiqlab, roʻyxatdan oʻtmasdan buyurtma bera oladi. Sotuvchilar Oʻzbekiston Respublikasi qonunchiligiga muvofiq hujjatlar taqdim etgan holda tekshiruv tartib-taomilini oʻtadilar.',
-  'legal.terms.s2.p2': 'Foydalanuvchi haqqoniy maʼlumot taqdim etishga majbur boʻlib, profilga bogʻlangan Telegram-hisobi va kirish maʼlumotlarini saqlab qolish uchun oʻzi mas`ul hisoblanadi.',
+  'legal.terms.s2.p2': 'Foydalanuvchi haqqoniy maʼlumot taqdim etishga majbur boʻlib, profilga bogʻlangan Telegram-hisobi va kirish maʼlumotlarini saqlab qolish uchun oʻzi masʼul hisoblanadi.',
   'legal.terms.s3.heading': '3. Tovarlarni joylashtirish',
   'legal.terms.s3.p1': 'Sotuvchi assortiment, narxlar va yetkazib berish shartlarini mustaqil belgilaydi. Joylashtirish taqiqlanadi:',
   'legal.terms.s3.li1': 'muomalasi Oʻzbekiston Respublikasi qonunchiligi bilan cheklangan yoki taqiqlangan tovarlar;',
@@ -545,7 +545,7 @@ export const uz: Translations = {
   'legal.refund.title': 'Tovarni qaytarish va almashtirish',
   'legal.refund.effectiveDate': '2026-yil 11-may',
   'legal.refund.s1.heading': '1. Qaytarish huquqi',
-  'legal.refund.s1.p1': 'Xaridor toʻgʻri sifatli tovardan olgan kunidan boshlab 14 (oʻn toʻrt) kalendar kun ichida voz kechish huquqiga ega, agar tovar ishlatilmagan boʻlsa, uning tovar koʻrinishi, iste`mol xossalari, qadogʻi va xaridni tasdiqlovchi hujjat saqlangan boʻlsa. Qaytarish huquqi Oʻzbekiston Respublikasining amaldagi qonunchiligida koʻrsatilgan tovarlar (shaxsiy gigiyena mollari, parfyumeriya-kosmetika tovarlari, ichki kiyim-bosh, paypoq, qimmatbaho metallardan yasalgan buyumlar va boshq.) ga tatbiq etilmaydi.',
+  'legal.refund.s1.p1': 'Xaridor toʻgʻri sifatli tovardan olgan kunidan boshlab 14 (oʻn toʻrt) kalendar kun ichida voz kechish huquqiga ega, agar tovar ishlatilmagan boʻlsa, uning tovar koʻrinishi, isteʼmol xossalari, qadogʻi va xaridni tasdiqlovchi hujjat saqlangan boʻlsa. Qaytarish huquqi Oʻzbekiston Respublikasining amaldagi qonunchiligida koʻrsatilgan tovarlar (shaxsiy gigiyena mollari, parfyumeriya-kosmetika tovarlari, ichki kiyim-bosh, paypoq, qimmatbaho metallardan yasalgan buyumlar va boshq.) ga tatbiq etilmaydi.',
   'legal.refund.s2.heading': '2. Sifatsiz tovarni qaytarish',
   'legal.refund.s2.p1': 'Tovarda nuqsonlar aniqlanganda Xaridor kafolat muddati ichida (kafolat muddati boʻlmasa — olgan kunidan boshlab 2 yil ichida) oʻz tanloviga koʻra quyidagilarni talab qilishga haqli:',
   'legal.refund.s2.li1': 'tovarni oʻxshash yoki boshqasiga narxini qayta hisoblagan holda almashtirish;',
@@ -564,5 +564,5 @@ export const uz: Translations = {
   'legal.refund.s6.heading': '6. Platforma roli',
   'legal.refund.s6.p1': 'Savdo platformasi oldi-sotdi shartnomasining tomoni emas va oʻz nomidan pul mablagʻlarini qaytarmaydi. Xaridor va Sotuvchi oʻrtasida nizo yuzaga kelganda Platforma vositachi vazifasini bajarishi mumkin, ammo yakuniy qaror tomonlar yoki sud tomonidan qabul qilinadi.',
   'legal.refund.s7.heading': '7. Shikoyat uchun aloqa',
-  'legal.refund.s7.p1': 'Agar Sotuvchi murojaaatingizga javob bermasa yoki qonuniy qaytarishdan bosh tortsa, Platforma qoʻllab-quvvatlash xizmatiga shikoyat yuboring: support@savdo.uz.',
+  'legal.refund.s7.p1': 'Agar Sotuvchi murojaatingizga javob bermasa yoki qonuniy qaytarishdan bosh tortsa, Platforma qoʻllab-quvvatlash xizmatiga shikoyat yuboring: support@savdo.uz.',
 };
