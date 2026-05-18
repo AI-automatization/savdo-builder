@@ -1,5 +1,22 @@
 # Done — Азим + Полат
 
+## 2026-05-18 (Азим) — OtpGate error surfacing
+
+### ✅ [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] OtpGate показывает реальную ошибку API
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx`,
+  `apps/web-buyer/src/lib/i18n/ru.ts`, `apps/web-buyer/src/lib/i18n/uz.ts`
+- **Ветка/HEAD:** `web-buyer` → `24011be`
+- **Что сделано:** `handleSend`/`handleVerify` ловили ошибку через `catch {}`
+  без переменной — реальное сообщение API (`TELEGRAM_NOT_LINKED`,
+  `OTP_SEND_LIMIT` 429, сетевой сбой) терялось, всегда показывалось
+  «Не удалось отправить код. Проверьте номер.». Теперь `catch (e)`
+  пробрасывает `err.response.data.message` (идиома web-buyer из checkout/chat),
+  fallback — i18n-ключ. Текст `auth.sendError`: «Проверьте номер» →
+  «Попробуйте ещё раз» (ru+uz). `tsc --noEmit` чист.
+
 ## 2026-05-18 (Азим) — UZ-локализация web-buyer + web-seller
 
 ### ✅ [MARKETING-LOCALIZATION-UZ-001] UZ-локализация web-buyer + web-seller 🔴
