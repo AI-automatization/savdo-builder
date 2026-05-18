@@ -273,23 +273,24 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 Коммит `fb3eea0`, специ checkout 61/61. **Азиму:** web-buyer теперь может слать
 `deliveryMode: 'pickup'` — backend согласует сумму preview/confirm.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — ЗАКРЫТО 18.05.2026
 
-- **Домен:** `packages/types` (Полат)
+- **Домен:** `packages/types` + `apps/api` (Полат)
 - **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
-  `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
-  web-seller читал через `as any`). Коммит `4cf0993`.
-- **Осталось:** web-buyer ~9 `as`-кастов на 4 shape'ах.
-- **✅ Список callsite'ов собран Азимом 17.05.2026** — см. секцию
-  `API-RESPONSE-TYPES-RECONCILE-001` в «Tasks — Азим». Сводка нужных правок типов:
-  - `CartItem` += `unitPrice`, `salePriceSnapshot`, `unitPriceSnapshot`,
-    `product?:{ basePrice, salePrice, title, mediaUrl, stock, isAvailable, isVisible }`,
-    `variant?:{ priceOverride, salePriceOverride }`
-  - `AuthUser` += `name?: string`
-  - `Order` / `OrderListItem` += `itemCount?: number`
-  - `Product` += `inWishlist?: boolean`
-  - `store.slug` каста НЕТ — `StoreRef.slug` уже в типе.
-  Полат правит тип, дальше Азим снимает касты.
+  `addressLine2` + `subtotalAmount`/`discountAmount`. Коммит `4cf0993`.
+- **✅ Закрыто 18.05.2026 (коммит `7791238`)** — все 9 `as`-кастов web-buyer
+  закрыты. Не просто правка типов — для cart/auth/order пришлось расширять
+  backend-ответы (маппер/repository/контроллер), т.к. поля реально не отдавались:
+  - **Cart:** `cart.repository` include += `product.{salePrice,totalStock,isVisible}`,
+    `variant.salePriceOverride`; `cart.mapper` отдаёт `unitPriceSnapshot`/
+    `salePriceSnapshot`, `product.{basePrice,salePrice,stock,isAvailable,isVisible}`,
+    `variant.{priceOverride,salePriceOverride}`; типы `CartItemProduct`/`CartItemVariant`.
+  - **Auth:** `/auth/me` отдаёт top-level `name` (firstName+lastName); `AuthUser += name?`.
+  - **Orders:** `getBuyerOrders` отдаёт top-level `itemCount` (из `_count`);
+    `OrderListItem += itemCount?`.
+  - **Product:** `GET /storefront/products/:id` += `OptionalJwtAuthGuard` +
+    `inWishlist` enrichment; поле `inWishlist?` в типе уже было.
+  - tsc чист, jest 288/288. **Азим:** касты можно снимать (см. список ниже).
 
 ## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
@@ -1022,7 +1023,15 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
     `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
     stack trace в `analiz/logs.md` — Полат разберёт root cause.
 
-## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — список callsite'ов собран (Азим → Полату)
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — типы готовы, касты можно снимать (Полат → Азиму)
+
+> **18.05.2026 (коммит `7791238`):** Полат закрыл backend+типы. Все 9 полей
+> теперь реально отдаются API и объявлены в `packages/types`. **Азим: снять
+> `as`-касты по списку ниже, читать поля напрямую.** Деталь — `CartItem.product`
+> теперь интерфейс `CartItemProduct` (полный shape), `variant` — `CartItemVariant`.
+
+---
+### (исходный список callsite'ов, собран Азимом 17.05.2026)
 
 > **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
 > ✅ Список собран Азимом 17.05.2026. Дальше правит тип Полат.
