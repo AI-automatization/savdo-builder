@@ -5,6 +5,77 @@
 
 ---
 
+# 🚨 DEVOPS HARDENING 18.05.2026 (Полат) — устойчивость Railway-деплоя
+
+## 🔴 `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` — Railway-деплой хрупкий, 3 сервиса легли разом
+- **Домен:** `apps/api` + инфра (railway.toml, Dockerfile, deploy-конфиги)
+- **Кто взял:** Полат
+- **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
+  18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
+  исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack
+  вместо Dockerfile), `savdo-builder_ADMIN` (нет активного деплоя).
+- **Детали — что сделать (по приоритету):**
+  1. **🔴 Resilient Redis-клиент.** В `apps/api/src/shared/redis.service.ts`
+     `new Redis(url, …)` создаётся без отказоустойчивых опций. Добавить:
+     - `retryStrategy: (times) => Math.min(times * 200, 5000)` — backoff, не bare-loop;
+     - `maxRetriesPerRequest: 3` — команда не висит вечно;
+     - `enableOfflineQueue: false` для не-критичных операций ИЛИ обрабатывать
+       ошибки graceful, чтобы недоступность Redis не валила процесс;
+     - подавить спам `ETIMEDOUT` в логах (логировать reconnect-состояние раз в N,
+       а не каждую попытку).
+  2. **🔴 BullMQ должен переживать недоступность Redis на старте.**
+     `apps/api/src/queues/queues.module.ts` — `BullModule.forRootAsync` с теми же
+     resilient-опциями (`retryStrategy`, `maxRetriesPerRequest`). Цель: при
+     отсутствии Redis API стартует в degraded-режиме (healthcheck уже это умеет —
+     отдаёт `degraded`, не 503), а не крашится на bootstrap. Очереди публикуют
+     задачи best-effort или ставят в backlog после восстановления Redis.
+  3. **🔴 Поднять `restartPolicyMaxRetries`.** Во ВСЕХ трёх `apps/*/railway.toml`
+     стоит `restartPolicyMaxRetries=3` — мало для сервиса с внешними зависимостями
+     (моргнул Redis → 3 краша → сервис мёртв навсегда). Поднять до `10` для
+     `apps/api/railway.toml`. Альтернатива — `restartPolicyType="ALWAYS"` для API,
+     чтобы Railway не снимал деплой совсем (взвесить риск crash-loop vs. ручной
+     Redeploy). Решение зафиксировать ADR-записью.
+  4. **🟡 Устранить дубль конфигов на ветке `tma`.** Сейчас на `tma` есть И
+     корневой `railway.toml`, И `apps/tma/railway.toml` (оба `builder=DOCKERFILE`).
+     Railway читает один (по Root Directory сервиса), второй — мёртвый, источник
+     путаницы. Решение: задать сервису `telegram-app` **Root Directory = `apps/tma`**
+     в дашборде Railway → он будет читать `apps/tma/railway.toml`, а корневой
+     `railway.toml` удалить с ветки `tma`. Так конфиг деплоя живёт ТОЛЬКО в
+     `apps/<app>/railway.toml` (этот файл уже есть в main → не теряется при merge).
+  5. **🟡 Защита деплой-конфига от удаления мержем.** Главная ловушка инцидента:
+     корневой `railway.toml` жил только на одной ветке → удалён в Wave 19.
+     После п.4 конфиг каждого сервиса = `apps/<app>/railway.toml`, присутствует и
+     в `main`, и в деплой-ветках → merge `main`→ветка его НЕ удаляет (файл есть с
+     обеих сторон). Дополнительно:
+     - добавить CI-проверку (`.github/workflows`): job, который на push в
+       `api`/`admin`/`tma` падает, если `apps/<app>/railway.toml` отсутствует или
+       в нём нет `builder = "DOCKERFILE"`;
+     - в `CODEOWNERS` пометить `apps/*/railway.toml` как требующий ревью Полата.
+  6. **🟡 Согласовать `watchPatterns` с Dockerfile.** `apps/tma/railway.toml`
+     watch'ит `packages/types/**` и `packages/ui/**`, но `apps/tma/Dockerfile`
+     эти пакеты не копирует (TMA от них не зависит) — убрать лишнее. Для
+     `apps/api` и `apps/admin` — сверить, что watch'ятся ровно те пути, что
+     реально влияют на образ. После любой правки самого `railway.toml` нужен
+     ОДИН ручной Redeploy (коммит-только-конфиг не самотриггерится).
+  7. **🟢 Recovery-runbook.** Завести `docs/runbooks/railway-recovery.md`:
+     как поднять упавший сервис (Redeploy на зелёном коммите), как проверить
+     build driver = Dockerfile, как проверить `REDIS_URL`/доступность Redis-сервиса,
+     что делать при «No active deployment». Использовать skill `runbook-generator`.
+  8. **🟢 Алертинг.** Настроить Railway-нотификации (или внешний healthcheck-пинг
+     на `/api/v1/health`) на падение деплоя, чтобы инцидент ловился сразу, а не
+     постфактум.
+- **Файлы:**
+  - `apps/api/src/shared/redis.service.ts`
+  - `apps/api/src/queues/queues.module.ts`
+  - `apps/api/railway.toml`, `apps/admin/railway.toml`, `apps/tma/railway.toml`
+  - корневой `railway.toml` (ветка `tma`) — удалить после п.4
+  - `.github/workflows/*` — новый CI-чек deploy-конфига
+  - `docs/runbooks/railway-recovery.md` — новый
+- **Не блокирует** прод-фиксы checkout; но до закрытия п.1–3 любой сбой Redis
+  снова уронит `savdo-api` без авто-восстановления.
+
+---
+
 # 🔒 SECURITY AUDIT 16.05.2026 (Полат) — middleware / CORS / guards
 
 > Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.
@@ -102,13 +173,15 @@ root cause ещё не подтверждён.
    500 оставит полный stack trace в Railway stderr. Коммит `faaa36c`.
 
 **Что осталось:**
-1. Дождаться redeploy `api` ветки на Railway.
-2. Если 500 повторится — взять stack trace из stderr (structured JSON,
-   `type:"exception"`, `source:"GlobalExceptionFilter"`, `path` содержит
-   `/checkout/confirm`).
-3. Если 500 ВНУТРИ транзакции `createOrder()` — root cause там (DB
-   constraint / stock race / Decimal). Если исчез — был side-effect,
-   задача закрыта.
+1. ✅ Redeploy `api` сделан 16.05.2026 — деплой `ebe374f8` активен,
+   стартап чистый, ошибок нет.
+2. **Проверка передана Азиму** → `VERIFY-CHECKOUT-CONFIRM-500-001` в секции
+   «Tasks — Азим». Воспроизвести корзинный checkout на проде нельзя из
+   backend-сессии — нужен фронт.
+3. Если Азим отпишет «заказ создаётся (201)» — Полат закрывает задачу.
+   Если снова 500 — Азим приложит stack trace (`type:"exception"`,
+   `path` ~ `/checkout/confirm`), Полат разберёт: 500 внутри транзакции
+   `createOrder()` = root cause там (DB constraint / stock race / Decimal).
 
 **Файлы:** `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`,
 `repositories/checkout.repository.ts`.
@@ -181,7 +254,9 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
   `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
   Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
-  типа вслепую. Передать Азиму запрос на список.
+  типа вслепую.
+- **✅ Запрос Азиму передан 16.05.2026** — задача `API-RESPONSE-TYPES-RECONCILE-001`
+  в секции «Tasks — Азим». Полат правит тип после получения списка.
 
 ## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
@@ -823,9 +898,11 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 > Когда придёт время монетизации — добавить subscription модель поверх
 > существующего flow. Все PAY-NNN тикеты ниже остаются как roadmap.
 >
-> **TODO для admin frontend:** добавить кнопку «Активировать продавца на рынке»
-> в `apps/admin/src/pages/UserDetailPage.tsx` (или где сейчас make-seller) —
-> модалка со всеми полями → один POST. Тикет: `ADMIN-MANUAL-ACTIVATION-UI-001`.
+> ✅ **`ADMIN-MANUAL-ACTIVATION-UI-001` закрыт 16.05.2026** — кнопка
+> «Активировать продавца на рынке» + модалка со всеми полями добавлены в
+> `apps/admin/src/pages/UserDetailPage.tsx`. Показывается только для не-админов
+> без профиля продавца. Один POST на `/admin/users/:id/activate-seller-on-market`.
+> Коммит см. `analiz/done.md`.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`
@@ -862,6 +939,41 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 Домен: `apps/web-buyer`, `apps/web-seller`, `apps/tma`
 
 > TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
+
+## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
+
+> **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
+> стороны — нужна проверка из фронта, дальше двигаться без неё нельзя.
+
+- **Домен:** `apps/web-buyer` + `apps/tma` (проверка, без правки кода если 500 нет)
+- **Контекст:** Полат задеплоил на прод (`api` ветка, деплой `ebe374f8`):
+  fault-isolation fix (post-commit side-effects обёрнуты в try/catch — сбой
+  WS/TG/clearCart больше НЕ превращает успешный заказ в 500) + ErrorReporter
+  (любой следующий 500 оставит полный stack trace в Railway stderr).
+- **Что сделать:**
+  1. Пройти именно **корзинный** checkout: товар → корзина → «Оформить заказ»
+     → подтвердить. (Это `POST /checkout/confirm`, НЕ «купить сейчас» —
+     direct-order это другой эндпоинт, он на проде уже работает без ошибок.)
+  2. Прогнать оба режима: `delivery` и `pickup` — заодно проверка нового
+     `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` (pickup → deliveryFee 0,
+     суммы preview и confirm должны совпасть).
+- **Результат:**
+  - ✅ Заказ создаётся (201) → отписать Полату, он закроет
+    `API-CHECKOUT-CONFIRM-500-001`.
+  - ❌ Снова 500 → взять из Railway-логов `savdo-api` JSON-строку
+    `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
+    stack trace в `analiz/logs.md` — Полат разберёт root cause.
+
+## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — нужен список callsite'ов (Азим → Полату)
+
+> **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
+
+- **Домен:** список собирает Азим, правит тип Полат.
+- **Что нужно:** в web-buyer осталось ~9 `as`-кастов response-объектов
+  (`store.slug`, `itemCount`, `name`, `stock` и т.п.). `StoreRef.slug` в типе
+  уже есть — значит касты на других shape'ах. Прислать Полату список конкретных
+  callsite'ов в формате `файл:строка` + какое поле кастится. Без списка Полат
+  правит тип вслепую.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 
