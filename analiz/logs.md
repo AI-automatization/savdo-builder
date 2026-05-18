@@ -1,5 +1,34 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-18] [INFRA-API-PROD-DOWN-001] 🔴 PROD API лежит — весь web-buyer не работает
+- **Статус:** 🔴 Баг — тикет Полату заведён в `tasks.md`, не исправлено (инфра, не наш домен).
+- **Что случилось:** Азим тестировал регистрацию на проде buyer
+  (`savdo-builder-by-production.up.railway.app`). Консоль: все запросы к API
+  падают с «CORS policy: No 'Access-Control-Allow-Origin' header» +
+  `net::ERR_FAILED` (`/storefront/featured`, `/storefront/categories/tree`,
+  `/auth/request-otp` preflight). Ошибка «Не удалось отправить код. Проверьте
+  номер.» в OtpGate — следствие того же сбоя.
+- **Диагностика:** curl по `https://savdo-api-production.up.railway.app` —
+  **любой** путь, включая `/` и `/api/v1/health`, отдаёт `404` + `Server:
+  railway-edge`. NestJS-приложение не отвечает: за доменом нет живого деплоя,
+  отвечает edge-прокси Railway. Браузер ошибочно называет это CORS (у
+  railway-edge-404 нет ACAO-заголовка → стандартное CORS-сообщение браузера).
+- **Не CORS-баг:** allow-list в `main.ts` корректен (`savdo-builder-by-production`
+  есть и в `main`, и в `origin/api`). Корень — API-сервис на Railway не поднят
+  (краш / упавший build / остановлен / домен отвязан). Чинит Полат в Railway.
+- **Что сделано:** заведён тикет `INFRA-API-PROD-DOWN-001` (Полат, P0).
+
+## [2026-05-18] [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] 🟡 OtpGate проглатывает ошибку API
+- **Статус:** 🟡 Предупреждение — наш домен (web-buyer), не исправлено, ждёт решения Азима.
+- **Что случилось:** `OtpGate.tsx` `handleSend()`/`handleVerify()` ловят ошибку
+  через `catch {}` без переменной и всегда показывают статичный текст
+  (`auth.sendError` = «Не удалось отправить код. Проверьте номер.»). Реальное
+  сообщение API (`TELEGRAM_NOT_LINKED`, `OTP_SEND_LIMIT` 429, сетевой сбой,
+  даун API) теряется. Пользователя дезориентирует: «Проверьте номер», когда
+  номер ни при чём.
+- **Что сделано:** записано. Фикс — пробрасывать `error.response.data.message`
+  из axios-ошибки. Ждёт согласования с Азимом.
+
 ## [2026-05-16] [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] 🟡 «Самовывоз» всё равно платит доставку
 - **Статус:** 🟡 Предупреждение — тикет Полату заведён в `tasks.md`, не исправлено.
 - **Что случилось:** при закрытии `WB-B01` обнаружено: `confirm-checkout.use-case`

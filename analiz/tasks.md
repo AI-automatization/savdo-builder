@@ -5,6 +5,31 @@
 
 ---
 
+## 🔴🔴 [INFRA-API-PROD-DOWN-001] PROD API лежит — весь web-buyer не работает
+- **Домен:** apps/api / Railway (инфра)
+- **Кто берёт:** Полат
+- **Приоритет:** P0 — buyer на проде полностью нерабочий (каталог, OTP, профиль).
+- **Симптом:** в браузере на `https://savdo-builder-by-production.up.railway.app`
+  все запросы к API падают с «CORS policy: No 'Access-Control-Allow-Origin'
+  header» + `net::ERR_FAILED` (`/storefront/featured`, `/storefront/categories/tree`,
+  `/auth/request-otp` preflight).
+- **Это НЕ CORS-баг.** Проверено curl'ом 18.05.2026: **любой** путь на
+  `https://savdo-api-production.up.railway.app` — включая `/` и `/api/v1/health` —
+  отдаёт `HTTP 404` + `Server: railway-edge`. Это значит, что за доменом нет
+  живого деплоя: отвечает edge-прокси Railway, NestJS-приложение не поднято.
+  Браузер списывает на CORS, потому что у railway-edge-404 нет ACAO-заголовка.
+- **CORS allow-list в коде корректен** — `savdo-builder-by-production.up.railway.app`
+  присутствует и в `main`, и в `origin/api` (`main.ts` `SAVDO_PROD_ORIGINS`).
+  Править код CORS НЕ нужно.
+- **Что нужно:** зайти в Railway dashboard, сервис API → проверить
+  деплой/логи. Вероятные причины: краш на старте, упавший build, сервис
+  остановлен/удалён, либо домен `savdo-api-production` отвязан от сервиса.
+  Если API переехал на новый домен — сообщить Азиму (надо обновить
+  `NEXT_PUBLIC_API_URL` в Railway-env web-buyer/web-seller).
+- **Файлы:** Railway-конфиг API; `apps/api/src/main.ts` (только для справки).
+
+---
+
 # 🔒 SECURITY AUDIT 16.05.2026 (Полат) — middleware / CORS / guards
 
 > Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.
