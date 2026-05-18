@@ -1,5 +1,37 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-18] [INFRA-API-PROD-DOWN-001] 🔴 PROD API лежит — весь web-buyer не работает
+- **Статус:** 🔴 Баг — тикет Полату заведён в `tasks.md`, не исправлено (инфра, не наш домен).
+- **Что случилось:** Азим тестировал регистрацию на проде buyer
+  (`savdo-builder-by-production.up.railway.app`). Консоль: все запросы к API
+  падают с «CORS policy: No 'Access-Control-Allow-Origin' header» +
+  `net::ERR_FAILED` (`/storefront/featured`, `/storefront/categories/tree`,
+  `/auth/request-otp` preflight). Ошибка «Не удалось отправить код. Проверьте
+  номер.» в OtpGate — следствие того же сбоя.
+- **Диагностика:** curl по `https://savdo-api-production.up.railway.app` —
+  **любой** путь, включая `/` и `/api/v1/health`, отдаёт `404` + `Server:
+  railway-edge`. NestJS-приложение не отвечает: за доменом нет живого деплоя,
+  отвечает edge-прокси Railway. Браузер ошибочно называет это CORS (у
+  railway-edge-404 нет ACAO-заголовка → стандартное CORS-сообщение браузера).
+- **Не CORS-баг:** allow-list в `main.ts` корректен (`savdo-builder-by-production`
+  есть и в `main`, и в `origin/api`). Корень — API-сервис на Railway не поднят
+  (краш / упавший build / остановлен / домен отвязан). Чинит Полат в Railway.
+- **Что сделано:** заведён тикет `INFRA-API-PROD-DOWN-001` (Полат, P0).
+
+## [2026-05-18] [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] ✅ OtpGate проглатывал ошибку API
+- **Статус:** ✅ Исправлено 18.05.2026 (web-buyer `24011be`).
+- **Что случилось:** `OtpGate.tsx` `handleSend()`/`handleVerify()` ловили ошибку
+  через `catch {}` без переменной и всегда показывали статичный текст
+  (`auth.sendError` = «Не удалось отправить код. Проверьте номер.»). Реальное
+  сообщение API (`TELEGRAM_NOT_LINKED`, `OTP_SEND_LIMIT` 429, сетевой сбой,
+  даун API) терялось. Пользователя дезориентировало: «Проверьте номер», когда
+  номер ни при чём.
+- **Что сделано:** `catch (e)` пробрасывает `err.response.data.message`
+  (идиома web-buyer из checkout/chat), fallback — i18n-ключ. Текст
+  `auth.sendError` смягчён: «Проверьте номер» → «Попробуйте ещё раз»
+  (ru+uz) для случаев без `message` (сетевой сбой). `tsc --noEmit` чист.
+  Коммит на ветке `web-buyer` — `24011be` (не запушен на момент записи).
+
 ## [2026-05-18] [DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18] 🔴 Все 3 Railway-сервиса легли одновременно
 - **Статус:** 🔴 Инцидент — 3 сервиса offline. Аудит проведён, hardening-тикет
   `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` заведён в `tasks.md` (Полат). Код не правился.

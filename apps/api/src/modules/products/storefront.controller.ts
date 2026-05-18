@@ -354,7 +354,11 @@ export class StorefrontController {
   }
 
   @Get('storefront/products/:id')
-  async getStorefrontProduct(@Param('id') id: string) {
+  @UseGuards(OptionalJwtAuthGuard)
+  async getStorefrontProduct(
+    @CurrentUser() user: JwtPayload | undefined,
+    @Param('id') id: string,
+  ) {
     const product = await this.productsRepo.findPublicById(id);
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
@@ -365,6 +369,18 @@ export class StorefrontController {
     }));
     // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
     const storeRef = await this.presenter.mapProductStoreRef(product.store);
+
+    // API-RESPONSE-TYPES-RECONCILE-001: inWishlist enrichment для залогиненного
+    // buyer (как в listStorefrontProducts feed). Анонимные — поле undefined.
+    let inWishlist: boolean | undefined;
+    if (user?.sub) {
+      const buyerId = await this.resolveBuyerIdOrNull(user.sub);
+      if (buyerId) {
+        const wishedIds = await this.wishlistRepo.findExistingProductIds(buyerId, [product.id]);
+        inWishlist = wishedIds.has(product.id);
+      }
+    }
+
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
@@ -372,6 +388,7 @@ export class StorefrontController {
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
       store: storeRef,
+      ...(inWishlist !== undefined ? { inWishlist } : {}),
     };
   }
 

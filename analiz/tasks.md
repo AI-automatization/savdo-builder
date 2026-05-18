@@ -5,6 +5,34 @@
 
 ---
 
+## 🔴🔴 [INFRA-API-PROD-DOWN-001] PROD API лежит — весь web-buyer не работает
+- **Домен:** apps/api / Railway (инфра)
+- **Кто берёт:** Полат
+- **Приоритет:** P0 — buyer на проде полностью нерабочий (каталог, OTP, профиль).
+- **Симптом:** в браузере на `https://savdo-builder-by-production.up.railway.app`
+  все запросы к API падают с «CORS policy: No 'Access-Control-Allow-Origin'
+  header» + `net::ERR_FAILED` (`/storefront/featured`, `/storefront/categories/tree`,
+  `/auth/request-otp` preflight).
+- **Это НЕ CORS-баг.** Проверено curl'ом 18.05.2026: **любой** путь на
+  `https://savdo-api-production.up.railway.app` — включая `/` и `/api/v1/health` —
+  отдаёт `HTTP 404` + `Server: railway-edge`. Это значит, что за доменом нет
+  живого деплоя: отвечает edge-прокси Railway, NestJS-приложение не поднято.
+  Браузер списывает на CORS, потому что у railway-edge-404 нет ACAO-заголовка.
+- **CORS allow-list в коде корректен** — `savdo-builder-by-production.up.railway.app`
+  присутствует и в `main`, и в `origin/api` (`main.ts` `SAVDO_PROD_ORIGINS`).
+  Править код CORS НЕ нужно.
+- **Что нужно:** зайти в Railway dashboard, сервис API → проверить
+  деплой/логи. Вероятные причины: краш на старте, упавший build, сервис
+  остановлен/удалён, либо домен `savdo-api-production` отвязан от сервиса.
+  Если API переехал на новый домен — сообщить Азиму (надо обновить
+  `NEXT_PUBLIC_API_URL` в Railway-env web-buyer/web-seller).
+- **Файлы:** Railway-конфиг API; `apps/api/src/main.ts` (только для справки).
+- **🟢 ОБНОВЛЕНИЕ 18.05.2026:** root cause найден и исправлен — см.
+  `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` в `logs.md` + `API-REDIS-RESILIENCE-001`
+  (коммит `909de8b`). Redis/Postgres подняты, savdo-api редеплоится.
+
+---
+
 # 🚨 DEVOPS HARDENING 18.05.2026 (Полат) — устойчивость Railway-деплоя
 
 ## 🔴 `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` — Railway-деплой хрупкий, 3 сервиса легли разом
@@ -245,18 +273,24 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 Коммит `fb3eea0`, специ checkout 61/61. **Азиму:** web-buyer теперь может слать
 `deliveryMode: 'pickup'` — backend согласует сумму preview/confirm.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — ЗАКРЫТО 18.05.2026
 
-- **Домен:** `packages/types` (Полат)
+- **Домен:** `packages/types` + `apps/api` (Полат)
 - **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
-  `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
-  web-seller читал через `as any`). Коммит `4cf0993`.
-- **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
-  `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
-  Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
-  типа вслепую.
-- **✅ Запрос Азиму передан 16.05.2026** — задача `API-RESPONSE-TYPES-RECONCILE-001`
-  в секции «Tasks — Азим». Полат правит тип после получения списка.
+  `addressLine2` + `subtotalAmount`/`discountAmount`. Коммит `4cf0993`.
+- **✅ Закрыто 18.05.2026 (коммит `7791238`)** — все 9 `as`-кастов web-buyer
+  закрыты. Не просто правка типов — для cart/auth/order пришлось расширять
+  backend-ответы (маппер/repository/контроллер), т.к. поля реально не отдавались:
+  - **Cart:** `cart.repository` include += `product.{salePrice,totalStock,isVisible}`,
+    `variant.salePriceOverride`; `cart.mapper` отдаёт `unitPriceSnapshot`/
+    `salePriceSnapshot`, `product.{basePrice,salePrice,stock,isAvailable,isVisible}`,
+    `variant.{priceOverride,salePriceOverride}`; типы `CartItemProduct`/`CartItemVariant`.
+  - **Auth:** `/auth/me` отдаёт top-level `name` (firstName+lastName); `AuthUser += name?`.
+  - **Orders:** `getBuyerOrders` отдаёт top-level `itemCount` (из `_count`);
+    `OrderListItem += itemCount?`.
+  - **Product:** `GET /storefront/products/:id` += `OptionalJwtAuthGuard` +
+    `inWishlist` enrichment; поле `inWishlist?` в типе уже было.
+  - tsc чист, jest 288/288. **Азим:** касты можно снимать (см. список ниже).
 
 ## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
@@ -331,7 +365,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
-- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания), web-buyer/web-seller (Азим).
+- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания, Полат); ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 
@@ -940,6 +974,31 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 
 > TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
 
+## 🟡 `WEB-UZ-TRANSLATION-REVIEW-001` — вычитка узбекских переводов (Азим, 18.05.2026)
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller`
+- **Контекст:** UZ-локализация реализована (`MARKETING-LOCALIZATION-UZ-001`).
+  Узбекские переводы сгенерированы Claude — нужна вычитка перед запуском.
+- **✅ Машинная вычитка выполнена 18.05.2026** (Claude):
+  - web-buyer `uz.ts` — `741f482`: 3 опечатки (masʼul/isteʼmol — бэктик
+    вместо тутуқ белгиси; murojaatingizga — тройная «a»); смягчён тон
+    `checkout.submitError`; фикс ru.ts `cart.itemCountUz`.
+  - web-seller `uz.ts` — `b15ea0a`: `maʻlumot` использовал ʻ U+02BB вместо
+    тутуқ белгиси ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» →
+    «...boʻlmadi». Ключи uz↔ru — паритет 524/524.
+  - Юр-тексты web-buyer (offer/privacy/terms/refund) — просмотрены,
+    качество формального юр-узбекского ОК, 3 опечатки выше были как раз там.
+- **Осталось (для Азима как носителя):**
+  1. 🟢 Терминология web-seller — `orders.nextProcess` / `orders.detail.nextProcess`
+     = `«Ishga olish»` («нанять на работу»). Для «Взять в обработку» уместнее
+     `«Jarayonga olish»` (консистентно со статусом `Jarayonda`). Решение Азима.
+  2. 🟢 Кросс-app расхождения: PENDING `Kutmoqda`(seller)/`Kutilmoqda`(buyer);
+     тема `Yorugʻ/Toʻq`(seller)/`Yorqin/Qorongʻu`(buyer). Не ошибка, но не
+     унифицировано — на усмотрение Азима.
+  3. 🟡 Ручная проверка на Railway: переключатель RU/UZ (buyer `/profile`,
+     seller `/settings`), RU-регрессия. **Заблокировано** `INFRA-API-PROD-DOWN-001`.
+- **Файлы:** `apps/web-buyer/src/lib/i18n/uz.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+
 ## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
 
 > **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
@@ -964,16 +1023,46 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
     `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
     stack trace в `analiz/logs.md` — Полат разберёт root cause.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — нужен список callsite'ов (Азим → Полату)
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — типы готовы, касты можно снимать (Полат → Азиму)
+
+> **18.05.2026 (коммит `7791238`):** Полат закрыл backend+типы. Все 9 полей
+> теперь реально отдаются API и объявлены в `packages/types`. **Азим: снять
+> `as`-касты по списку ниже, читать поля напрямую.** Деталь — `CartItem.product`
+> теперь интерфейс `CartItemProduct` (полный shape), `variant` — `CartItemVariant`.
+
+---
+### (исходный список callsite'ов, собран Азимом 17.05.2026)
 
 > **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
+> ✅ Список собран Азимом 17.05.2026. Дальше правит тип Полат.
 
-- **Домен:** список собирает Азим, правит тип Полат.
-- **Что нужно:** в web-buyer осталось ~9 `as`-кастов response-объектов
-  (`store.slug`, `itemCount`, `name`, `stock` и т.п.). `StoreRef.slug` в типе
-  уже есть — значит касты на других shape'ах. Прислать Полату список конкретных
-  callsite'ов в формате `файл:строка` + какое поле кастится. Без списка Полат
-  правит тип вслепую.
+**9 `as`-кастов response-объектов в web-buyer на 4 shape'ах:**
+
+### 1. `CartItem` — нет полей цены/снапшотов + вложенных `product`/`variant`
+- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:32` — `CartItem` →
+  `{ unitPrice?, salePriceSnapshot?, unitPriceSnapshot?, product?:{basePrice?,salePrice?}, variant?:{priceOverride?,salePriceOverride?} }`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:47` — тот же shape, что cart:32
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:716` — `CartItem` →
+  `{ product?:{ title?, mediaUrl? } }`
+- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:99` — `CartItem.product` →
+  `{ stock?: number, isAvailable?: boolean, isVisible?: boolean }`
+
+### 2. `AuthUser` — нет поля `name`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:319` — `(user as { name?: string }).name`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:367` — то же
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:408` — то же
+
+### 3. `Order` / `OrderListItem` — нет поля `itemCount`
+- `apps/web-buyer/src/app/(shop)/orders/page.tsx:252` — `(order as { itemCount?: number }).itemCount`
+
+### 4. `Product` — нет поля `inWishlist`
+- `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:88` — `(product as { inWishlist?: boolean }).inWishlist`
+
+> Примечание: `store.slug` каста в web-buyer не найдено — `StoreRef.slug` в типе
+> уже есть и используется напрямую. Остальные `as` в web-buyer — это error-касты
+> (`e as { response?... }`), CSS-переменные (`'--tw-ring-color' as string`),
+> query-ключи (`as const`) и route-params (`params.slug as string`) —
+> к response-типам не относятся, не трогать.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 

@@ -1,5 +1,83 @@
 # Done — Азим + Полат
 
+## 2026-05-18 (Азим) — вычитка uz-переводов web-buyer + web-seller
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001] Машинная вычитка узбекских словарей
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/lib/i18n/{uz,ru}.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+- **Ветки/HEAD:** `web-buyer` → `741f482`, `web-seller` → `b15ea0a`
+- **Что сделано:** Сверены uz.ts ↔ ru.ts обеих апп. Найдено и исправлено:
+  - web-buyer: 3 опечатки в юр-текстах (`masʼul`/`isteʼmol` — был бэктик
+    вместо тутуқ белгиси U+02BC; `murojaatingizga` — тройная «a»); смягчён
+    `checkout.submitError`; фикс гибрида `cart.itemCountUz` в ru.ts.
+  - web-seller: `maʻlumot` использовал ʻ U+02BB вместо тутуқ белгиси
+    ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» → «...boʻlmadi».
+  - Орфография `oʻ`/`gʻ` чистая в обеих, паритет ключей uz↔ru сохранён.
+  - Юр-тексты web-buyer просмотрены — формальный юр-узбекский ОК.
+  - tsc --noEmit чист в обеих аппах.
+- **Остаток:** терминология (`Ishga olish`), кросс-app унификация,
+  ручная Railway-проверка — на Азиме (см. тикет в tasks.md).
+
+## 2026-05-18 (Азим) — OtpGate error surfacing
+
+### ✅ [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] OtpGate показывает реальную ошибку API
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx`,
+  `apps/web-buyer/src/lib/i18n/ru.ts`, `apps/web-buyer/src/lib/i18n/uz.ts`
+- **Ветка/HEAD:** `web-buyer` → `24011be`
+- **Что сделано:** `handleSend`/`handleVerify` ловили ошибку через `catch {}`
+  без переменной — реальное сообщение API (`TELEGRAM_NOT_LINKED`,
+  `OTP_SEND_LIMIT` 429, сетевой сбой) терялось, всегда показывалось
+  «Не удалось отправить код. Проверьте номер.». Теперь `catch (e)`
+  пробрасывает `err.response.data.message` (идиома web-buyer из checkout/chat),
+  fallback — i18n-ключ. Текст `auth.sendError`: «Проверьте номер» →
+  «Попробуйте ещё раз» (ru+uz). `tsc --noEmit` чист.
+
+## 2026-05-18 (Азим) — UZ-локализация web-buyer + web-seller
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] UZ-локализация web-buyer + web-seller 🔴
+
+- **Важность:** 🔴
+- **Дата:** 17–18.05.2026
+- **Ветки/HEAD:** `web-buyer` → `aac61e8`, `web-seller` → `eb31728` (обе запушены, Railway деплоит)
+- **Спека:** `docs/superpowers/specs/2026-05-16-uz-localization-web-design.md`
+- **План:** `docs/superpowers/plans/2026-05-17-uz-localization-web.md`
+- **Что сделано:** Зеркалена i18n-инфраструктура `apps/admin` в обе апы — `src/lib/i18n/`
+  (React Context, плоский словарь ru/uz dot.notation, `useTranslation()`, fallback
+  `uz→ru→key`, детект localStorage→navigator, ключи `savdo_buyer_locale` /
+  `savdo_seller_locale`). Переключатель RU/UZ — в web-buyer `/profile`, web-seller
+  `/settings`. Извлечение строк волнами: **web-buyer** 5 волн (storefront+catalog,
+  orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared) —
+  508 ключей. **web-seller** 3 волны (auth/onboarding, 12 dashboard-страниц, shared) —
+  533 ключа. Server Components с видимым текстом (HomeHero, `[slug]/page.tsx`,
+  4 юр-страницы) обёрнуты в client-подкомпоненты. Каждая волна: spec-review +
+  code-review субагентами, `tsc --noEmit` чист, push в service-ветку. SEO-metadata,
+  форматирование чисел и «сум» оставлены на RU (вне scope по спеке).
+- **Осталось (не блокер):** ревью узбекских переводов Азимом — юр-тексты web-buyer
+  Wave 4 помечены `// REVIEW` в `uz.ts`; ручная проверка переключателя на Railway.
+
+## 2026-05-17 (Азим) — типы
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Список `as`-кастов response-объектов web-buyer 🟡
+
+- **Важность:** 🟡
+- **Дата:** 17.05.2026
+- **Файлы:** анализ — `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/orders/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`;
+  результат — `analiz/tasks.md`
+- **Что сделано:** Собран список из 9 `as`-кастов response-объектов в web-buyer
+  на 4 shape'ах (`CartItem`, `AuthUser`, `Order`, `Product`). Полный список
+  callsite'ов (`файл:строка` + кастуемые поля) записан в тикет
+  `API-RESPONSE-TYPES-RECONCILE-001` в `tasks.md` для Полата. Каста `store.slug`
+  не найдено — `StoreRef.slug` уже в типе. Дальше Полат правит `packages/types`,
+  затем Азим снимает касты. Sub-task Азима закрыт.
+
 ## 2026-05-16 (Полат) — admin: ручная активация продавца
 
 ### ✅ [ADMIN-MANUAL-ACTIVATION-UI-001] Кнопка «Активировать продавца на рынке» 🟡
