@@ -8,6 +8,22 @@ export class GetMeUseCase {
   async execute(userId: string) {
     const user = await this.authRepository.findUserById(userId);
     if (!user) throw new UnauthorizedException('User not found');
-    return { success: true, data: user };
+
+    // API-RESPONSE-TYPES-RECONCILE-001: отдаём собранное `name` (firstName +
+    // lastName), которое web-buyer checkout уже ожидает на AuthUser. Сами
+    // firstName/lastName наружу не выносим — buyer-объект остаётся { id, avatarUrl }.
+    const { buyer, ...rest } = user;
+    const name = buyer
+      ? [buyer.firstName, buyer.lastName].filter(Boolean).join(' ').trim() || undefined
+      : undefined;
+
+    return {
+      success: true,
+      data: {
+        ...rest,
+        ...(name ? { name } : {}),
+        buyer: buyer ? { id: buyer.id, avatarUrl: buyer.avatarUrl } : null,
+      },
+    };
   }
 }
