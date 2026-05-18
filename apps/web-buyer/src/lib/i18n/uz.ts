@@ -412,7 +412,7 @@ export const uz: Translations = {
   // auth — OtpGate (phone entry, OTP, errors)
   'auth.phoneFallbackSubtitle': 'Kirish uchun telefon raqamingizni kiriting',
   'auth.codeSentTo': 'Kod Telegramga {phone} raqamiga yuborildi',
-  'auth.sendError': 'Kodni yuborib boʻlmadi. Raqamni tekshiring.',
+  'auth.sendError': 'Kodni yuborib boʻlmadi. Qayta urinib koʻring.',
   'auth.wrongCode': 'Notoʻgʻri kod. Qayta urinib koʻring.',
   'auth.sending': 'Yuborilmoqda...',
   'auth.getCode': 'Kodni olish',

@@ -37,8 +37,12 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
     try {
       await requestOtp.mutateAsync({ phone, purpose });
       setStep('code');
-    } catch {
-      setError(t('auth.sendError'));
+    } catch (e: unknown) {
+      // Пробрасываем реальное сообщение API (TELEGRAM_NOT_LINKED,
+      // OTP_SEND_LIMIT и т.п.) — раньше catch {} глотал его и всегда
+      // показывал статичное «Проверьте номер», что дезориентировало.
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message ?? t('auth.sendError'));
     }
   }
 
@@ -46,8 +50,9 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
     setError('');
     try {
       await verifyOtp.mutateAsync({ phone, code, purpose });
-    } catch {
-      setError(t('auth.wrongCode'));
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err?.response?.data?.message ?? t('auth.wrongCode'));
     }
   }
 

@@ -414,7 +414,7 @@ export const ru: Translations = {
   // auth — OtpGate (phone entry, OTP, errors)
   'auth.phoneFallbackSubtitle': 'Введите номер телефона для входа',
   'auth.codeSentTo': 'Код отправлен в Telegram на {phone}',
-  'auth.sendError': 'Не удалось отправить код. Проверьте номер.',
+  'auth.sendError': 'Не удалось отправить код. Попробуйте ещё раз.',
   'auth.wrongCode': 'Неверный код. Попробуйте ещё раз.',
   'auth.sending': 'Отправка...',
   'auth.getCode': 'Получить код',
