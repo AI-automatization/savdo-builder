@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Star } from 'lucide-react';
 import { useProductReviews } from '@/hooks/use-storefront';
+import type { ProductReviewItem } from '@/lib/api/storefront.api';
 import { colors } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
 
@@ -33,18 +34,41 @@ function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
 }
 
 export function ProductReviews({ productId }: ProductReviewsProps) {
-  const { data, isLoading, isError } = useProductReviews(productId);
+  const [page, setPage] = useState(1);
+  // Accumulate pages — нужно и для пагинации, и чтобы средний рейтинг считался
+  // по всем отзывам, а не по первой странице (20 шт).
+  const [items, setItems] = useState<ProductReviewItem[]>([]);
+  const { data, isLoading, isError, isFetching } = useProductReviews(productId, page);
   const { t, locale } = useTranslation();
 
-  const avgRating = useMemo(() => {
-    if (!data?.items.length) return 0;
-    const sum = data.items.reduce((acc, r) => acc + r.rating, 0);
-    return sum / data.items.length;
+  // Reset accumulator when product changes
+  useEffect(() => {
+    setPage(1);
+    setItems([]);
+  }, [productId]);
+
+  // Append each freshly-loaded page (page 1 заменяет, остальные добавляют)
+  useEffect(() => {
+    if (!data) return;
+    setItems((prev) => {
+      const base = data.page === 1 ? [] : prev;
+      const seen = new Set(base.map((r) => r.id));
+      return [...base, ...data.items.filter((r) => !seen.has(r.id))];
+    });
   }, [data]);
+
+  const total = data?.total ?? 0;
+  const allLoaded = items.length >= total;
+
+  // Точный средний рейтинг доступен только когда загружены ВСЕ отзывы.
+  const avgRating = useMemo(() => {
+    if (!items.length) return 0;
+    return items.reduce((acc, r) => acc + r.rating, 0) / items.length;
+  }, [items]);
 
   if (isError) return null;
 
-  if (isLoading) {
+  if (isLoading && items.length === 0) {
     return (
       <section className="mb-8">
         <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
@@ -58,7 +82,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     );
   }
 
-  if (!data || data.total === 0) {
+  if (total === 0) {
     return (
       <section className="mb-8">
         <div className="text-[10px] tracking-[0.18em] uppercase mb-3" style={{ color: colors.textMuted }}>
@@ -74,6 +98,8 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     );
   }
 
+  const reviewWord = locale === 'uz' ? t('store.reviewWordUz') : pluralizeReview(total);
+
   return (
     <section className="mb-8">
       <div className="flex items-baseline justify-between mb-3 max-w-[680px]">
@@ -81,18 +107,24 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
           {t('product.reviews.section')}
         </div>
         <div className="flex items-center gap-2">
-          <Stars rating={Math.round(avgRating)} />
-          <span className="text-sm font-semibold" style={{ color: colors.textStrong }}>
-            {avgRating.toFixed(1)}
-          </span>
+          {/* Средний рейтинг показываем только когда загружены все отзывы —
+              иначе он считался бы по неполной выборке (см. аудит 15.05). */}
+          {allLoaded && (
+            <>
+              <Stars rating={Math.round(avgRating)} />
+              <span className="text-sm font-semibold" style={{ color: colors.textStrong }}>
+                {avgRating.toFixed(1)}
+              </span>
+            </>
+          )}
           <span className="text-xs" style={{ color: colors.textMuted }}>
-            · {data.total} {locale === 'uz' ? t('store.reviewWordUz') : pluralizeReview(data.total)}
+            {allLoaded ? '· ' : ''}{total} {reviewWord}
           </span>
         </div>
       </div>
 
       <div className="flex flex-col gap-3 max-w-[680px]">
-        {data.items.map((review) => (
+        {items.map((review) => (
           <article
             key={review.id}
             className="rounded-md p-4"
@@ -117,6 +149,18 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
           </article>
         ))}
       </div>
+
+      {!allLoaded && (
+        <button
+          type="button"
+          onClick={() => setPage((p) => p + 1)}
+          disabled={isFetching}
+          className="mt-3 w-full max-w-[680px] py-2.5 text-sm font-semibold rounded-md transition-opacity disabled:opacity-50"
+          style={{ background: colors.surface, color: colors.brand, border: `1px solid ${colors.divider}` }}
+        >
+          {t('product.reviews.showMore')}
+        </button>
+      )}
     </section>
   );
 }

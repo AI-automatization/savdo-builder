@@ -95,6 +95,7 @@ export const ru: Translations = {
   'product.reviews.section': '— Отзывы',
   'product.reviews.empty': 'Пока нет отзывов. Будьте первым после получения заказа.',
   'product.reviews.ratingLabel': 'Рейтинг {rating} из 5',
+  'product.reviews.showMore': 'Показать ещё отзывы',
   'product.defaultCategory': 'Товар',
 
   // catalog — страницы /stores и /products

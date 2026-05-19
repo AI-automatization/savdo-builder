@@ -93,6 +93,7 @@ export const uz: Translations = {
   'product.reviews.section': '— Sharhlar',
   'product.reviews.empty': 'Hali sharh yoʻq. Buyurtmani olgandan keyin birinchi boʻling.',
   'product.reviews.ratingLabel': 'Reyting {rating} dan 5',
+  'product.reviews.showMore': 'Yana sharhlarni koʻrsatish',
   'product.defaultCategory': 'Mahsulot',
 
   // catalog — /stores va /products sahifalari
