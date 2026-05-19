@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-05-19 (Азим) — снятие as-кастов web-buyer
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Сняты 9 `as`-кастов response-объектов
+
+- **Важность:** 🟡
+- **Дата:** 19.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `.../(minimal)/checkout/page.tsx`, `.../(shop)/orders/page.tsx`,
+  `.../(shop)/[slug]/products/[id]/page.tsx`
+- **Ветка/HEAD:** `web-buyer` → `e0a7efa` (предварительно merge `main` → `web-buyer` `f116525`,
+  чтобы подтянуть расширенные типы Полата `7791238`)
+- **Что сделано:** Полат закрыл backend+типы (`7791238`) — все 9 полей реально
+  отдаются API и объявлены в `packages/types`. Сняты касты, поля читаются напрямую:
+  - `CartItem` / `CartItemProduct` / `CartItemVariant` — `itemUnitPrice`,
+    `cartItemUnitPrice`, `outOfStock`, рендер позиций в checkout.
+  - `AuthUser.name` — поля контакта в checkout (3 callsite).
+  - `OrderListItem.itemCount` — карточка заказа в orders.
+  - `Product.inWishlist` — detail page (наследует от `ProductListItem`).
+  - `CartItemProduct`/`CartItemVariant` — супермножества старых
+    `ProductRef`/`VariantRef`, существующие обращения не затронуты.
+  - Поведение не менялось, net −30 строк.
+- **Проверка:** локальный tsc не запускался (запрет на локальный запуск) —
+  типобезопасность проверит Railway-сборка `web-buyer` (`next build`).
+
 ## 2026-05-18 (Азим) — вычитка uz-переводов web-buyer + web-seller
 
 ### ✅ [WEB-UZ-TRANSLATION-REVIEW-001] Машинная вычитка узбекских словарей

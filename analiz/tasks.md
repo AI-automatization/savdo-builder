@@ -1035,46 +1035,10 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
     `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
     stack trace в `analiz/logs.md` — Полат разберёт root cause.
 
-## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — типы готовы, касты можно снимать (Полат → Азиму)
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ПОЛНОСТЬЮ ЗАКРЫТО 19.05.2026
 
-> **18.05.2026 (коммит `7791238`):** Полат закрыл backend+типы. Все 9 полей
-> теперь реально отдаются API и объявлены в `packages/types`. **Азим: снять
-> `as`-касты по списку ниже, читать поля напрямую.** Деталь — `CartItem.product`
-> теперь интерфейс `CartItemProduct` (полный shape), `variant` — `CartItemVariant`.
-
----
-### (исходный список callsite'ов, собран Азимом 17.05.2026)
-
-> **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
-> ✅ Список собран Азимом 17.05.2026. Дальше правит тип Полат.
-
-**9 `as`-кастов response-объектов в web-buyer на 4 shape'ах:**
-
-### 1. `CartItem` — нет полей цены/снапшотов + вложенных `product`/`variant`
-- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:32` — `CartItem` →
-  `{ unitPrice?, salePriceSnapshot?, unitPriceSnapshot?, product?:{basePrice?,salePrice?}, variant?:{priceOverride?,salePriceOverride?} }`
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:47` — тот же shape, что cart:32
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:716` — `CartItem` →
-  `{ product?:{ title?, mediaUrl? } }`
-- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:99` — `CartItem.product` →
-  `{ stock?: number, isAvailable?: boolean, isVisible?: boolean }`
-
-### 2. `AuthUser` — нет поля `name`
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:319` — `(user as { name?: string }).name`
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:367` — то же
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:408` — то же
-
-### 3. `Order` / `OrderListItem` — нет поля `itemCount`
-- `apps/web-buyer/src/app/(shop)/orders/page.tsx:252` — `(order as { itemCount?: number }).itemCount`
-
-### 4. `Product` — нет поля `inWishlist`
-- `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:88` — `(product as { inWishlist?: boolean }).inWishlist`
-
-> Примечание: `store.slug` каста в web-buyer не найдено — `StoreRef.slug` в типе
-> уже есть и используется напрямую. Остальные `as` в web-buyer — это error-касты
-> (`e as { response?... }`), CSS-переменные (`'--tw-ring-color' as string`),
-> query-ключи (`as const`) и route-params (`params.slug as string`) —
-> к response-типам не относятся, не трогать.
+> Backend+типы — Полат (`7791238`). Снятие 9 `as`-кастов в web-buyer — Азим
+> (`e0a7efa`, ветка `web-buyer`). Подробности в `done.md`.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 
