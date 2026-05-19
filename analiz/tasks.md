@@ -5,7 +5,11 @@
 
 ---
 
-## 🔴🔴 [INFRA-API-PROD-DOWN-001] PROD API лежит — весь web-buyer не работает
+## ✅ [INFRA-API-PROD-DOWN-001] PROD API лежит — ВОССТАНОВЛЕНО 19.05.2026
+- **Статус:** ✅ API снова жив — проверено curl'ом 19.05.2026: `/api/v1/health`,
+  `/api/v1/storefront/featured`, `/api/v1/storefront/categories/tree` все `200`.
+  Домен `savdo-api-production` не менялся. Полату — формально перенести в done.md
+  с описанием root cause (что именно крашило сервис).
 - **Домен:** apps/api / Railway (инфра)
 - **Кто берёт:** Полат
 - **Приоритет:** P0 — buyer на проде полностью нерабочий (каталог, OTP, профиль).
