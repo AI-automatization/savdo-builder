@@ -19,6 +19,9 @@ type Props = {
 
 const MAX_DOTS = 5;
 
+const fmt = (n: number | null | undefined) =>
+  (typeof n === "number" && Number.isFinite(n) ? n : 0).toLocaleString("ru-RU");
+
 export default function ProductCard({ product, storeSlug }: Props) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
@@ -52,6 +55,9 @@ export default function ProductCard({ product, storeSlug }: Props) {
   ).filter((u) => u.length > 0);
   const isUnavailable = product.status !== ProductStatus.ACTIVE || !product.isVisible;
   const displayType = product.displayType ?? 'SINGLE';
+
+  // P3-004: товар на распродаже — salePrice/oldPrice/discountPercent от API.
+  const onSale = product.isSale && typeof product.salePrice === "number";
 
   const useCollage = displayType === 'COLLAGE_2X2' && mediaUrls.length >= 2;
   const showSliderDots = displayType === 'SLIDER' && mediaUrls.length > 1;
@@ -108,21 +114,30 @@ export default function ProductCard({ product, storeSlug }: Props) {
             </div>
           )}
 
-          {/* Variants badge */}
-          {product.variantCount > 0 && !isUnavailable && (
-            <div
-              className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-              style={{
-                background: colors.brandTextOnBg,
-                color: colors.brand,
-                border: `1px solid ${colors.brandBorder}`,
-                zIndex: 1,
-              }}
-            >
-              <Layers size={10} />
-              {product.variantCount}
-            </div>
-          )}
+          {/* Top-left badge stack: скидка → варианты */}
+          <div className="absolute top-2 left-2 flex flex-col items-start gap-1" style={{ zIndex: 1 }}>
+            {onSale && product.discountPercent != null && (
+              <span
+                className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                style={{ background: colors.danger, color: '#fff' }}
+              >
+                -{product.discountPercent}%
+              </span>
+            )}
+            {product.variantCount > 0 && !isUnavailable && (
+              <div
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                style={{
+                  background: colors.brandTextOnBg,
+                  color: colors.brand,
+                  border: `1px solid ${colors.brandBorder}`,
+                }}
+              >
+                <Layers size={10} />
+                {product.variantCount}
+              </div>
+            )}
+          </div>
 
           {/* Wishlist heart */}
           <button
@@ -166,8 +181,23 @@ export default function ProductCard({ product, storeSlug }: Props) {
           <p className="text-[12px] md:text-[13px] leading-snug line-clamp-2" style={{ color: colors.textBody }}>
             {product.title}
           </p>
-          <div className="text-[13px] font-bold mt-auto" style={{ color: colors.textStrong }}>
-            {Number(product.basePrice).toLocaleString("ru-RU")} <span className="font-normal text-[11px]" style={{ color: colors.textMuted }}>сум</span>
+          <div className="text-[13px] font-bold mt-auto">
+            {onSale ? (
+              <span className="flex items-baseline gap-1.5 flex-wrap">
+                <span style={{ color: colors.danger }}>
+                  {fmt(product.salePrice)}{" "}
+                  <span className="font-normal text-[11px]">сум</span>
+                </span>
+                <span className="font-normal text-[11px] line-through" style={{ color: colors.textMuted }}>
+                  {fmt(product.oldPrice ?? product.basePrice)}
+                </span>
+              </span>
+            ) : (
+              <span style={{ color: colors.textStrong }}>
+                {fmt(product.basePrice)}{" "}
+                <span className="font-normal text-[11px]" style={{ color: colors.textMuted }}>сум</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
