@@ -89,7 +89,7 @@ export default function ProductPage() {
   const toggleWishlist = useToggleWishlist();
   const { t } = useTranslation();
   const inWishlist = product
-    ? ((product as { inWishlist?: boolean }).inWishlist ?? wishlistIds.has(product.id))
+    ? (product.inWishlist ?? wishlistIds.has(product.id))
     : false;
 
   function handleWishlistToggle() {

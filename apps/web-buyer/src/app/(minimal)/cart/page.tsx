@@ -29,25 +29,15 @@ const toNum = (v: unknown): number => {
   return 0;
 };
 
-const itemUnitPrice = (i: CartItem) => {
-  const raw = i as unknown as {
-    unitPrice?: number | string;
-    salePriceSnapshot?: number | string | null;
-    unitPriceSnapshot?: number | string | null;
-    product?: { basePrice?: number | string; salePrice?: number | string | null };
-    variant?: { priceOverride?: number | string | null; salePriceOverride?: number | string | null };
-  };
-  return (
-    toNum(raw.variant?.salePriceOverride) ||
-    toNum(raw.variant?.priceOverride) ||
-    toNum(raw.salePriceSnapshot) ||
-    toNum(raw.unitPrice) ||
-    toNum(raw.unitPriceSnapshot) ||
-    toNum(raw.product?.salePrice) ||
-    toNum(raw.product?.basePrice) ||
-    0
-  );
-};
+const itemUnitPrice = (i: CartItem) =>
+  toNum(i.variant?.salePriceOverride) ||
+  toNum(i.variant?.priceOverride) ||
+  toNum(i.salePriceSnapshot) ||
+  toNum(i.unitPrice) ||
+  toNum(i.unitPriceSnapshot) ||
+  toNum(i.product?.salePrice) ||
+  toNum(i.product?.basePrice) ||
+  0;
 
 const itemSubtotal = (i: CartItem) =>
   typeof i.subtotal === "number" ? i.subtotal : itemUnitPrice(i) * (i.quantity || 0);
@@ -97,12 +87,9 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
 
   const busy = update.isPending || remove.isPending;
 
-  // OOS detection: ProductRef doesn't expose stock, so we check for a hint
-  // via cast — future: add stock field to ProductRef
-  const rawProduct = item.product as unknown as { stock?: number; isAvailable?: boolean; isVisible?: boolean };
+  // OOS detection — CartItemProduct exposes the current stock snapshot
   const outOfStock =
-    (typeof rawProduct.stock === "number" && rawProduct.stock === 0) ||
-    rawProduct.isAvailable === false;
+    item.product.stock === 0 || item.product.isAvailable === false;
 
   function adjustQty(next: number) {
     if (next <= 0) {

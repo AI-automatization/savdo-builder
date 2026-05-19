@@ -264,9 +264,7 @@ function OrdersList() {
         <div className="px-4 space-y-2 pb-4">
           {orders.map((order) => {
             const itemCount =
-              order.preview?.itemCount ??
-              (order as unknown as { itemCount?: number }).itemCount ??
-              0;
+              order.preview?.itemCount ?? order.itemCount ?? 0;
             return (
               <Link
                 key={order.id}

@@ -45,25 +45,15 @@ const toNum = (v: unknown): number => {
   return 0;
 };
 
-const cartItemUnitPrice = (i: CartItem) => {
-  const raw = i as unknown as {
-    unitPrice?: number | string;
-    salePriceSnapshot?: number | string | null;
-    unitPriceSnapshot?: number | string | null;
-    product?: { basePrice?: number | string; salePrice?: number | string | null };
-    variant?: { priceOverride?: number | string | null; salePriceOverride?: number | string | null };
-  };
-  return (
-    toNum(raw.variant?.salePriceOverride) ||
-    toNum(raw.variant?.priceOverride) ||
-    toNum(raw.salePriceSnapshot) ||
-    toNum(raw.unitPrice) ||
-    toNum(raw.unitPriceSnapshot) ||
-    toNum(raw.product?.salePrice) ||
-    toNum(raw.product?.basePrice) ||
-    0
-  );
-};
+const cartItemUnitPrice = (i: CartItem) =>
+  toNum(i.variant?.salePriceOverride) ||
+  toNum(i.variant?.priceOverride) ||
+  toNum(i.salePriceSnapshot) ||
+  toNum(i.unitPrice) ||
+  toNum(i.unitPriceSnapshot) ||
+  toNum(i.product?.salePrice) ||
+  toNum(i.product?.basePrice) ||
+  0;
 
 // ── Reusable field style ──────────────────────────────────────────────────────
 
@@ -298,9 +288,7 @@ export default function CheckoutPage() {
 
   // Contacts editing
   const [editContacts, setEditContacts] = useState(false);
-  const [contactName, setContactName] = useState(
-    (user as unknown as { name?: string })?.name ?? "",
-  );
+  const [contactName, setContactName] = useState(user?.name ?? "");
   const [contactPhone, setContactPhone] = useState(user?.phone ?? "");
 
   // Payment
@@ -382,7 +370,7 @@ export default function CheckoutPage() {
   // Sync contact fields when user loads
   useEffect(() => {
     if (user) {
-      setContactName((user as unknown as { name?: string })?.name ?? "");
+      setContactName(user?.name ?? "");
       setContactPhone(user.phone ?? "");
     }
   }, [user?.phone]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -423,7 +411,7 @@ export default function CheckoutPage() {
   }
 
   // Display name for contacts step
-  const displayName = contactName.trim() || (user as unknown as { name?: string })?.name || "";
+  const displayName = contactName.trim() || user?.name || "";
   const displayPhone = formatUzPhone(contactPhone || user?.phone || "");
   const contactsLine =
     displayName && displayPhone
@@ -772,11 +760,8 @@ export default function CheckoutPage() {
                   style={{ borderBottom: `1px solid ${colors.divider}` }}
                 >
                   {cartItems.map((item) => {
-                    const productRaw = item as unknown as {
-                      product?: { title?: string; mediaUrl?: string };
-                    };
-                    const title = productRaw.product?.title ?? t('cart.productFallback');
-                    const mediaUrl = productRaw.product?.mediaUrl ?? null;
+                    const title = item.product?.title ?? t('cart.productFallback');
+                    const mediaUrl = item.product?.mediaUrl ?? null;
                     const unit = cartItemUnitPrice(item);
                     const lineSubtotal =
                       typeof item.subtotal === "number"
