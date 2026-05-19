@@ -6,7 +6,7 @@
 
 - **Важность:** 🟢
 - **Дата:** 19.05.2026
-- **Ветка/HEAD:** `web-buyer` → `1e1b7cb`
+- **Ветка/HEAD:** `web-buyer` → `3e2cee2`
 - **Источник:** `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`, секция «🟢 После запуска».
 - **Что сделано (5 коммитов):**
   - `63f641c` — **`ProductCard` рисует скидку.** `ProductListItem` нёс
@@ -24,6 +24,12 @@
     `HomeTopStores` = null → заменён на `Link /stores`; пустой placeholder
     «Из этого магазина» подключён — грузит товары того же магазина
     (`useProducts` по storeId, до 6 шт), скрывается если товаров нет.
+  - `3e2cee2` — **a11y модалок чата.** Новый shared `ConfirmModal`
+    (`components/confirm-modal.tsx`): Esc, focus-trap (Tab циклится),
+    `role=dialog`/`aria-modal`/`aria-labelledby`, возврат фокуса. Два
+    inline confirm-оверлея в `chats/page.tsx` (удалить сообщение/чат)
+    заменены на него — заодно убран дубль разметки. `ChatComposerModal`
+    получил Esc + focus-trap + `role=dialog`.
 - **НЕ сделано (ждёт решения Азима):** «Free-delivery прогресс — мёртвое
   обещание» (`cart/page.tsx`: `delivery = subtotal >= MIN ? 0 : 0`). Фикс =
   удаление блока, т.к. в backend нет порога бесплатной доставки

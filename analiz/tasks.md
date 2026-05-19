@@ -272,10 +272,10 @@ root cause ещё не подтверждён.
 каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
 
 **Статус:** все 🔴-блокеры закрыты, 🟡-волна закрыта.
-🟢-«после запуска»: **скидки ProductCard, пагинация отзывов, desktop-галерея,
-NaN-guard, #top-stores, секция «Из этого магазина» — закрыты 19.05.2026**
-(`WEB-QA-GREEN-2026-05-15`, web-buyer `1e1b7cb`, см. `done.md`). Осталось:
-модалки a11y (`ChatComposerModal` + confirm-overlays в chats), рефактор дублей.
+🟢-«после запуска» — **закрыто 19.05.2026** (`WEB-QA-GREEN-2026-05-15`,
+web-buyer `3e2cee2`, см. `done.md`): скидки ProductCard, пагинация отзывов,
+desktop-галерея, NaN-guard, #top-stores, секция «Из этого магазина»,
+a11y модалок чата (Esc/focus-trap/role — shared `ConfirmModal`).
 **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
 
 ## 🟡 `WEB-BUYER-FREE-DELIVERY-DEAD-PROMISE-001` — решение Азима
