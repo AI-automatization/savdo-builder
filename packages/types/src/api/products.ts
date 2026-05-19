@@ -99,8 +99,9 @@ export interface ProductListItem {
   displayType: ProductDisplayType;
   /**
    * True when the current authenticated buyer has this product in their wishlist.
-   * Only set on storefront feed responses for authenticated buyers; undefined
-   * otherwise (anonymous storefront, seller-side responses).
+   * Set on storefront feed (`GET /storefront/products`) and storefront product
+   * detail (`GET /storefront/products/:id`) for authenticated buyers; undefined
+   * otherwise (anonymous storefront, store-slug routes, seller-side responses).
    */
   inWishlist?: boolean;
 }

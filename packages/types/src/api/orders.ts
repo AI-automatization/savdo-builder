@@ -41,6 +41,12 @@ export interface OrderListItem {
   addressLine1?: string | null;
   addressLine2?: string | null;
   createdAt: string;
+  /**
+   * API-RESPONSE-TYPES-RECONCILE-001: число позиций (order items) в заказе.
+   * Buyer orders-list (`GET /buyer/orders`) отдаёт его всегда (из `_count.items`).
+   * Опционально — seller-list пока не присылает.
+   */
+  itemCount?: number;
   /** Buyer's registered account phone (from User record) */
   buyer?: { phone: string } | null;
   /** Phone entered at checkout — shown as backup/reserve number to seller */

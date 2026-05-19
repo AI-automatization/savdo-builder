@@ -1,5 +1,131 @@
 # Done — Азим + Полат
 
+## 2026-05-18 (Азим) — вычитка uz-переводов web-buyer + web-seller
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001] Машинная вычитка узбекских словарей
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/lib/i18n/{uz,ru}.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+- **Ветки/HEAD:** `web-buyer` → `741f482`, `web-seller` → `b15ea0a`
+- **Что сделано:** Сверены uz.ts ↔ ru.ts обеих апп. Найдено и исправлено:
+  - web-buyer: 3 опечатки в юр-текстах (`masʼul`/`isteʼmol` — был бэктик
+    вместо тутуқ белгиси U+02BC; `murojaatingizga` — тройная «a»); смягчён
+    `checkout.submitError`; фикс гибрида `cart.itemCountUz` в ru.ts.
+  - web-seller: `maʻlumot` использовал ʻ U+02BB вместо тутуқ белгиси
+    ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» → «...boʻlmadi».
+  - Орфография `oʻ`/`gʻ` чистая в обеих, паритет ключей uz↔ru сохранён.
+  - Юр-тексты web-buyer просмотрены — формальный юр-узбекский ОК.
+  - tsc --noEmit чист в обеих аппах.
+- **Остаток:** терминология (`Ishga olish`), кросс-app унификация,
+  ручная Railway-проверка — на Азиме (см. тикет в tasks.md).
+
+## 2026-05-18 (Азим) — OtpGate error surfacing
+
+### ✅ [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] OtpGate показывает реальную ошибку API
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx`,
+  `apps/web-buyer/src/lib/i18n/ru.ts`, `apps/web-buyer/src/lib/i18n/uz.ts`
+- **Ветка/HEAD:** `web-buyer` → `24011be`
+- **Что сделано:** `handleSend`/`handleVerify` ловили ошибку через `catch {}`
+  без переменной — реальное сообщение API (`TELEGRAM_NOT_LINKED`,
+  `OTP_SEND_LIMIT` 429, сетевой сбой) терялось, всегда показывалось
+  «Не удалось отправить код. Проверьте номер.». Теперь `catch (e)`
+  пробрасывает `err.response.data.message` (идиома web-buyer из checkout/chat),
+  fallback — i18n-ключ. Текст `auth.sendError`: «Проверьте номер» →
+  «Попробуйте ещё раз» (ru+uz). `tsc --noEmit` чист.
+
+## 2026-05-18 (Азим) — UZ-локализация web-buyer + web-seller
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] UZ-локализация web-buyer + web-seller 🔴
+
+- **Важность:** 🔴
+- **Дата:** 17–18.05.2026
+- **Ветки/HEAD:** `web-buyer` → `aac61e8`, `web-seller` → `eb31728` (обе запушены, Railway деплоит)
+- **Спека:** `docs/superpowers/specs/2026-05-16-uz-localization-web-design.md`
+- **План:** `docs/superpowers/plans/2026-05-17-uz-localization-web.md`
+- **Что сделано:** Зеркалена i18n-инфраструктура `apps/admin` в обе апы — `src/lib/i18n/`
+  (React Context, плоский словарь ru/uz dot.notation, `useTranslation()`, fallback
+  `uz→ru→key`, детект localStorage→navigator, ключи `savdo_buyer_locale` /
+  `savdo_seller_locale`). Переключатель RU/UZ — в web-buyer `/profile`, web-seller
+  `/settings`. Извлечение строк волнами: **web-buyer** 5 волн (storefront+catalog,
+  orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared) —
+  508 ключей. **web-seller** 3 волны (auth/onboarding, 12 dashboard-страниц, shared) —
+  533 ключа. Server Components с видимым текстом (HomeHero, `[slug]/page.tsx`,
+  4 юр-страницы) обёрнуты в client-подкомпоненты. Каждая волна: spec-review +
+  code-review субагентами, `tsc --noEmit` чист, push в service-ветку. SEO-metadata,
+  форматирование чисел и «сум» оставлены на RU (вне scope по спеке).
+- **Осталось (не блокер):** ревью узбекских переводов Азимом — юр-тексты web-buyer
+  Wave 4 помечены `// REVIEW` в `uz.ts`; ручная проверка переключателя на Railway.
+
+## 2026-05-17 (Азим) — типы
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Список `as`-кастов response-объектов web-buyer 🟡
+
+- **Важность:** 🟡
+- **Дата:** 17.05.2026
+- **Файлы:** анализ — `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/orders/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`;
+  результат — `analiz/tasks.md`
+- **Что сделано:** Собран список из 9 `as`-кастов response-объектов в web-buyer
+  на 4 shape'ах (`CartItem`, `AuthUser`, `Order`, `Product`). Полный список
+  callsite'ов (`файл:строка` + кастуемые поля) записан в тикет
+  `API-RESPONSE-TYPES-RECONCILE-001` в `tasks.md` для Полата. Каста `store.slug`
+  не найдено — `StoreRef.slug` уже в типе. Дальше Полат правит `packages/types`,
+  затем Азим снимает касты. Sub-task Азима закрыт.
+
+## 2026-05-16 (Полат) — admin: ручная активация продавца
+
+### ✅ [ADMIN-MANUAL-ACTIVATION-UI-001] Кнопка «Активировать продавца на рынке» 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/admin/src/pages/UserDetailPage.tsx`,
+  `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Что сделано:** Закрыт последний UI-хвост из замороженного блока монетизации.
+  В `UserDetailPage` добавлена кнопка «Активировать продавца на рынке» (зелёная,
+  в ActionPanel) — показывается только для не-админов без профиля продавца и не
+  заблокированных. Открывает модалку со всеми полями backend-контракта
+  (`fullName`, `sellerType` select, `telegramUsername`, `storeName`, `storeCity`,
+  `telegramContactLink` — обязательные; `region`, `slug`, `description` —
+  опциональные). `fullName` префиллится из `buyer.fullName`. Один POST на
+  `/admin/users/:id/activate-seller-on-market` — backend-endpoint уже был
+  (`super-admin.controller.ts`, `seller:create` permission). +19 i18n-ключей
+  ru/uz. tsc admin чистый.
+
+## 2026-05-16 (Полат) — checkout pickup + Store type
+
+### ✅ [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] «Самовывоз» больше не платит доставку 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/api/src/modules/checkout/dto/confirm-checkout.dto.ts`,
+  `checkout.controller.ts`, `use-cases/confirm-checkout.use-case.ts`,
+  `use-cases/preview-checkout.use-case.ts`, `packages/types/src/api/cart.ts`
+- **Что сделано:** Закрыт money/UX-баг из находки Азима (`WB-B01`-класс для
+  pickup-ветки). Выбран вариант 1 — явный `deliveryMode` в контракте, а не
+  угадывание по тексту адреса. `ConfirmCheckoutDto` принимает
+  `deliveryMode: 'delivery'|'pickup'`; `GET /checkout/preview` — query-параметр
+  `?deliveryMode`. При `pickup` backend принудительно обнуляет `deliveryFee`
+  (пропускает `computeDeliveryFee`) одинаково в preview и confirm → суммы
+  согласованы. `CheckoutConfirmRequest.deliveryMode` + `CheckoutDeliveryMode`
+  в `packages/types`. Default `delivery` (backward-compat). Коммит `fb3eea0`,
+  специ checkout 61/61.
+
+### ✅ [API-STORE-TYPE-DELIVERY-SETTINGS-001] `deliverySettings` в тип `Store` 🟢
+
+- **Важность:** 🟢
+- **Дата:** 16.05.2026
+- **Файлы:** `packages/types/src/api/stores.ts`
+- **Что сделано:** Добавлено `deliverySettings?: StoreDeliverySettings` в
+  интерфейс `Store` — `GET /seller/store` его уже возвращает (nested include),
+  но тип не моделировал. Азим может убрать UI-extension `StoreWithDelivery`.
+  Коммит `fb3eea0`.
+
 ## 2026-05-16 (Азим) — WB-B01: доставка в checkout
 
 ### ✅ [WB-B01] Плата за доставку отображается и списывается согласованно 🔴
@@ -9,56 +135,11 @@
 - **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
 - **Что сделано:** Закрыт последний 🔴-блокер QA-аудита 15.05. Backend-часть
   (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`, `484694a`, Полат) научила
-  `/checkout/preview` отдавать реальный `deliveryFee`+`total` из
-  `store.deliverySettings` — раньше хардкодил `0`, из-за чего поле
-  `previewData.deliveryFee` всегда было `undefined` и summary показывал
-  «Бесплатно», хотя confirm списывал fixed-плату. Тип `CheckoutPreview` теперь
-  канонически несёт `deliveryFee: number` + `total: number`; убран избыточный
-  loose-cast (`PreviewWithFee` оставлен только под legacy-поле `validItems`).
-  Режим «Доставка»: summary и итог заказа согласованы с backend. `tsc --noEmit`
-  чист. **Смежная находка** — режим «Самовывоз» всё равно облагается доставкой
-  на backend → отдельный тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` Полату.
-
-## 2026-05-13 (Азим) — Part 4: MARKETING-VERIFIED-SELLER-001 web-buyer Frontend (Tasks 15-19)
-
-### ✅ [MARKETING-VERIFIED-SELLER-001 FE] Product detail refactor — seller card up + Обсудить primary 🟠
-
-- **Важность:** 🟠
-- **Дата:** 13.05.2026
-- **Файлы:**
-  - `apps/web-buyer/src/components/store/VerifiedBadge.tsx` (новый)
-  - `apps/web-buyer/src/components/store/StoreRating.tsx` (новый)
-  - `apps/web-buyer/src/components/store/StoreCard.tsx` (новый, card+compact variants)
-  - `apps/web-buyer/src/components/store/SellerCard.tsx` (новый, thin wrapper)
-  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` (re-order + CTA promotion)
-- **Что сделано:** Product page seller card перемещён между title-block и variant pickers (раньше был в конце правой колонки как мини-блок с initial-letter avatar и `→`). Новый `SellerCard` показывает логотип/название/город + `VerifiedBadge` ✓ (когда `store.isVerified=true`) + `StoreRating` ★ X.X · N отзывов (когда `reviewCount > 0`). Trust signals — через `useStoreWithTrust(slug)` (workaround пока Полат не сделает `API-PRODUCT-STORE-TRUST-SIGNALS-001`). «Обсудить» поднят в primary CTA row рядом с «В корзину» (filled accent), на mobile — sticky icon-only кнопка 48×48. 5 коммитов `1800f84`, `cbe60e3`, `bf647c2`, `1cabd33`, `d65319e` на ветке web-buyer.
-
----
-
-## 2026-05-13 (Азим) — Part 3: MARKETING-HOMEPAGE-DISCOVERY-001 Frontend (Tasks 7-13)
-
-### ✅ [MARKETING-HOMEPAGE-DISCOVERY-001 FE] Homepage Discovery — 7 компонентов + page rewrite 🔴
-
-- **Важность:** 🔴
-- **Дата:** 13.05.2026
-- **Файлы:**
-  - `apps/web-buyer/src/lib/storefront-adapters.ts` (новый)
-  - `apps/web-buyer/src/components/home/HomeHero.tsx` (новый)
-  - `apps/web-buyer/src/components/home/HomeCategoryChips.tsx` (новый)
-  - `apps/web-buyer/src/components/home/HomeTopStores.tsx` (новый)
-  - `apps/web-buyer/src/components/home/HomeFeaturedFeed.tsx` (новый)
-  - `apps/web-buyer/src/components/home/HomeQuickLinks.tsx` (новый)
-  - `apps/web-buyer/src/app/(shop)/page.tsx` (перезаписан)
-- **Что сделано:** Заменил slug-форму на discovery page. 7 коммитов:
-  `eae0a1f` adapter, `49e9818` HomeHero, `9ba1186` HomeCategoryChips,
-  `11343f2` HomeTopStores, `8a85c0d` HomeFeaturedFeed, `ca69cda` HomeQuickLinks,
-  `bec2d2d` page.tsx rewrite.
-  Страница: Hero (server SC, metadata/OG) + CategoryChips (?cat= URL filter) +
-  TopStores (8 карточек через /storefront/featured) + FeaturedFeed (featured или
-  platform-feed по категории) + RecentStores (localStorage, guards empty) +
-  QuickLinks (Orders/Chats). RecentStores.tsx уже имеет guard `if (!mounted || stores.length === 0) return null`.
-
----
+  `/checkout/preview` отдавать реальный `deliveryFee`+`total`; тип
+  `CheckoutPreview` теперь канонически несёт `deliveryFee`/`total` — убран
+  избыточный loose-cast. Режим «Доставка» согласован с backend. Commit
+  `6d9f527` (ветка web-buyer). Смежная находка — pickup облагается доставкой
+  на backend → тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` Полату.
 
 ## 2026-05-15 (Азим) — QA-аудит wave 2: 🟡 «сильно желательно»
 

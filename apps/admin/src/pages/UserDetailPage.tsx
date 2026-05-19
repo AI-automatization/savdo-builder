@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye } from 'lucide-react'
+import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { auth, api } from '../lib/api'
 import { useImpersonation } from '../lib/impersonation'
 import { PageHeader } from '../components/admin/PageHeader'
@@ -44,15 +45,17 @@ interface UserDetail {
   admin: AdminUser | null
 }
 
-const ROLE_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  SELLER: { bg: 'rgba(129,140,248,0.12)', text: '#818CF8', label: 'Продавец' },
-  BUYER:  { bg: 'rgba(34,197,94,0.12)',   text: '#22C55E', label: 'Покупатель' },
-  ADMIN:  { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', label: 'Администратор' },
+const ROLE_CFG: Record<string, { bg: string; text: string; labelKey: string }> = {
+  SELLER: { bg: 'rgba(129,140,248,0.12)', text: '#818CF8', labelKey: 'users.roleSeller' },
+  BUYER:  { bg: 'rgba(34,197,94,0.12)',   text: '#22C55E', labelKey: 'users.roleBuyer' },
+  ADMIN:  { bg: 'rgba(245,158,11,0.12)',  text: '#F59E0B', labelKey: 'users.roleAdminFull' },
 }
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t, locale } = useTranslation()
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
   const impersonation = useImpersonation()
 
   const [suspendModal, setSuspendModal] = useState(false)
@@ -61,6 +64,21 @@ export default function UserDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [impersonateConfirm, setImpersonateConfirm] = useState(false)
   const [impersonating, setImpersonating] = useState(false)
+
+  // ADMIN-MANUAL-ACTIVATION-UI-001: ручная активация продавца на рынке.
+  const [activateModal, setActivateModal] = useState(false)
+  const [activating, setActivating] = useState(false)
+  const [activateForm, setActivateForm] = useState({
+    fullName: '',
+    sellerType: 'individual' as 'individual' | 'business',
+    telegramUsername: '',
+    storeName: '',
+    storeCity: '',
+    telegramContactLink: '',
+    region: '',
+    slug: '',
+    description: '',
+  })
 
   const { data: user, loading, error, refetch } = useFetch<UserDetail>(
     `/api/v1/admin/users/${id}`,
@@ -77,7 +95,7 @@ export default function UserDetailPage() {
       setReason('')
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(false)
     }
@@ -91,7 +109,7 @@ export default function UserDetailPage() {
       await api.post(`/api/v1/admin/users/${id}/unsuspend`, { reason: 'Admin unsuspend' })
       refetch()
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(false)
     }
@@ -118,26 +136,59 @@ export default function UserDetailPage() {
         originalRefresh,
       )
       auth.setTokens(res.accessToken, res.refreshToken ?? originalRefresh ?? '')
-      toast.success(`Вы вошли как ${user.phone}`)
+      toast.success(t('userDetail.impersonateSuccess', { phone: user.phone }))
       const tmaUrl = (import.meta as any).env?.VITE_BUYER_URL ?? '/'
       window.open(tmaUrl, '_blank', 'noopener')
       setImpersonateConfirm(false)
     } catch (e: any) {
-      toast.error(e.message ?? 'Не удалось переключиться на пользователя')
+      toast.error(e.message ?? t('userDetail.impersonateError'))
     } finally {
       setImpersonating(false)
     }
   }
 
+  const activateRequiredFilled =
+    activateForm.fullName.trim() !== '' &&
+    activateForm.telegramUsername.trim() !== '' &&
+    activateForm.storeName.trim() !== '' &&
+    activateForm.storeCity.trim() !== '' &&
+    activateForm.telegramContactLink.trim() !== ''
+
+  async function activateSellerOnMarket() {
+    if (!id || !activateRequiredFilled) return
+    setActivating(true)
+    setActionError(null)
+    try {
+      await api.post(`/api/v1/admin/users/${id}/activate-seller-on-market`, {
+        fullName: activateForm.fullName.trim(),
+        sellerType: activateForm.sellerType,
+        telegramUsername: activateForm.telegramUsername.trim(),
+        storeName: activateForm.storeName.trim(),
+        storeCity: activateForm.storeCity.trim(),
+        telegramContactLink: activateForm.telegramContactLink.trim(),
+        region: activateForm.region.trim() || undefined,
+        slug: activateForm.slug.trim() || undefined,
+        description: activateForm.description.trim() || undefined,
+      })
+      toast.success(t('userDetail.activateSellerSuccess'))
+      setActivateModal(false)
+      refetch()
+    } catch (e: any) {
+      setActionError(e.message ?? t('common.error'))
+    } finally {
+      setActivating(false)
+    }
+  }
+
   if (loading) {
-    return <div className="p-8 text-[14px]" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+    return <div className="p-8 text-[14px]" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
   }
 
   if (error || !user) {
     return (
       <div className="p-8">
         <div className="flex items-center gap-2 text-[14px]" style={{ color: '#EF4444' }}>
-          <AlertCircle size={16} /> {error ?? 'Пользователь не найден'}
+          <AlertCircle size={16} /> {error ?? t('userDetail.notFound')}
         </div>
       </div>
     )
@@ -153,14 +204,14 @@ export default function UserDetailPage() {
         title={user.phone}
         subtitle={`ID: ${user.id}`}
         backTo="/users"
-        backLabel="Пользователи"
+        backLabel={t('nav.users')}
         actions={
           <div className="flex items-center gap-2">
             <span
               className="px-2.5 py-1 rounded-full text-[12px] font-semibold"
               style={{ background: roleCfg.bg, color: roleCfg.text }}
             >
-              {roleCfg.label}
+              {t(roleCfg.labelKey)}
             </span>
             <StatusBadge status={user.status} />
           </div>
@@ -177,46 +228,46 @@ export default function UserDetailPage() {
       <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 320px', alignItems: 'start' }}>
         {/* Left column */}
         <div className="flex flex-col gap-5">
-          <Panel title="Основная информация">
-            <InfoRow label="Телефон">
+          <Panel title={t('userDetail.basicInfo')}>
+            <InfoRow label={t('userDetail.phone')}>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[14px] font-semibold" style={{ color: 'var(--text)' }}>
                   {user.phone}
                 </span>
                 {user.isPhoneVerified && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
-                    верифицирован
+                    {t('userDetail.verified')}
                   </span>
                 )}
               </div>
             </InfoRow>
-            <InfoRow label="Роль">
+            <InfoRow label={t('userDetail.role')}>
               <span
                 className="px-2.5 py-1 rounded-full text-[12px] font-semibold"
                 style={{ background: roleCfg.bg, color: roleCfg.text }}
               >
-                {roleCfg.label}
+                {t(roleCfg.labelKey)}
               </span>
             </InfoRow>
-            <InfoRow label="Статус">
+            <InfoRow label={t('userDetail.status')}>
               <StatusBadge status={user.status} />
             </InfoRow>
-            <InfoRow label="Язык">
+            <InfoRow label={t('userDetail.language')}>
               <span className="text-[13px]" style={{ color: 'var(--text)' }}>{user.languageCode ?? '—'}</span>
             </InfoRow>
-            <InfoRow label="Регистрация" border={false}>
+            <InfoRow label={t('userDetail.registration')} border={false}>
               <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
-                {new Date(user.createdAt).toLocaleString('ru-RU')}
+                {new Date(user.createdAt).toLocaleString(dateLocale)}
               </span>
             </InfoRow>
           </Panel>
 
           {user.seller && (
-            <Panel title="Профиль продавца" icon={<Store size={15} />}>
-              <InfoRow label="Верификация">
+            <Panel title={t('userDetail.sellerProfile')} icon={<Store size={15} />}>
+              <InfoRow label={t('userDetail.verification')}>
                 <StatusBadge status={user.seller.verificationStatus} />
               </InfoRow>
-              <InfoRow label="Telegram">
+              <InfoRow label={t('userDetail.telegram')}>
                 {user.seller.telegramChatId ? (
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[12px]" style={{ color: '#22C55E' }}>
@@ -229,12 +280,12 @@ export default function UserDetailPage() {
                     )}
                   </div>
                 ) : (
-                  <span className="text-[13px]" style={{ color: 'var(--text-dim)' }}>Не подключён</span>
+                  <span className="text-[13px]" style={{ color: 'var(--text-dim)' }}>{t('userDetail.notConnected')}</span>
                 )}
               </InfoRow>
-              <InfoRow label="Продавец с" border={false}>
+              <InfoRow label={t('userDetail.sellerSince')} border={false}>
                 <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
-                  {new Date(user.seller.createdAt).toLocaleDateString('ru-RU')}
+                  {new Date(user.seller.createdAt).toLocaleDateString(dateLocale)}
                 </span>
               </InfoRow>
               <div className="mt-3">
@@ -248,20 +299,20 @@ export default function UserDetailPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  <UserCheck size={13} /> Открыть профиль продавца
+                  <UserCheck size={13} /> {t('userDetail.openSellerProfile')}
                 </button>
               </div>
             </Panel>
           )}
 
           {user.buyer && (
-            <Panel title="Профиль покупателя" icon={<ShoppingBag size={15} />}>
-              <InfoRow label="Имя">
+            <Panel title={t('userDetail.buyerProfile')} icon={<ShoppingBag size={15} />}>
+              <InfoRow label={t('userDetail.name')}>
                 <span className="text-[13px]" style={{ color: 'var(--text)' }}>{user.buyer.fullName ?? '—'}</span>
               </InfoRow>
-              <InfoRow label="Покупатель с" border={false}>
+              <InfoRow label={t('userDetail.buyerSince')} border={false}>
                 <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
-                  {new Date(user.buyer.createdAt).toLocaleDateString('ru-RU')}
+                  {new Date(user.buyer.createdAt).toLocaleDateString(dateLocale)}
                 </span>
               </InfoRow>
             </Panel>
@@ -272,7 +323,7 @@ export default function UserDetailPage() {
               className="rounded-xl px-5 py-4 text-[13px] font-semibold"
               style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B' }}
             >
-              Системный администратор — ограниченные действия
+              {t('userDetail.systemAdminNote')}
             </div>
           )}
         </div>
@@ -282,7 +333,7 @@ export default function UserDetailPage() {
         <ActionPanel>
           {user.admin ? (
             <p className="m-0 text-[13px]" style={{ color: 'var(--text-muted)' }}>
-              Нельзя блокировать администраторов через UI.
+              {t('userDetail.cannotBlockAdmin')}
             </p>
           ) : isBlocked ? (
             <button
@@ -297,7 +348,7 @@ export default function UserDetailPage() {
                 opacity: actionLoading ? 0.6 : 1,
               }}
             >
-              <ShieldCheck size={14} /> {actionLoading ? 'Загрузка...' : 'Разблокировать'}
+              <ShieldCheck size={14} /> {actionLoading ? t('common.loading') : t('userDetail.unblock')}
             </button>
           ) : (
             <button
@@ -312,7 +363,7 @@ export default function UserDetailPage() {
                 opacity: actionLoading ? 0.6 : 1,
               }}
             >
-              <ShieldOff size={14} /> Заблокировать
+              <ShieldOff size={14} /> {t('userDetail.block')}
             </button>
           )}
 
@@ -326,9 +377,32 @@ export default function UserDetailPage() {
                 color: '#F59E0B',
                 cursor: 'pointer',
               }}
-              title="Войти в TMA от имени пользователя для диагностики"
+              title={t('userDetail.impersonateTitle')}
             >
-              <Eye size={14} /> Impersonate
+              <Eye size={14} /> {t('userDetail.impersonate')}
+            </button>
+          )}
+
+          {/* ADMIN-MANUAL-ACTIVATION-UI-001: только для не-админов без профиля продавца */}
+          {!user.admin && !user.seller && !isBlocked && (
+            <button
+              onClick={() => {
+                setActivateForm(f => ({
+                  ...f,
+                  fullName: user.buyer?.fullName ?? '',
+                }))
+                setActionError(null)
+                setActivateModal(true)
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[14px] font-semibold"
+              style={{
+                border: '1px solid rgba(34,197,94,0.3)',
+                background: 'rgba(34,197,94,0.08)',
+                color: '#22C55E',
+                cursor: 'pointer',
+              }}
+            >
+              <Rocket size={14} /> {t('userDetail.activateSeller')}
             </button>
           )}
         </ActionPanel>
@@ -337,7 +411,7 @@ export default function UserDetailPage() {
         <ActivityLogPanel
           entityType="User"
           entityId={user.id}
-          emptyText="С этим пользователем ещё не было админ-действий"
+          emptyText={t('userDetail.noActivity')}
         />
         </div>
       </div>
@@ -346,17 +420,17 @@ export default function UserDetailPage() {
       {suspendModal && (
         <DialogShell onClose={() => setSuspendModal(false)} width={420} ariaLabelledBy="suspend-modal-title">
             <h3 id="suspend-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
-              Заблокировать пользователя
+              {t('userDetail.suspendTitle')}
             </h3>
             <p className="m-0 mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>
-              <code className="font-mono">{user.phone}</code> потеряет доступ к платформе.
+              <code className="font-mono">{user.phone}</code> {t('userDetail.suspendWarning')}
             </p>
             <textarea
               value={reason}
               onChange={e => setReason(e.target.value)}
-              placeholder="Причина блокировки (обязательно)..."
+              placeholder={t('userDetail.suspendReasonPlaceholder')}
               rows={3}
-              aria-label="Причина блокировки"
+              aria-label={t('userDetail.suspendReasonAria')}
               aria-invalid={reason.trim().length > 0 && reason.trim().length < 5 || undefined}
               aria-describedby={actionError ? 'suspend-error' : undefined}
               className="w-full px-3.5 py-3 rounded-xl text-[14px] resize-y outline-none"
@@ -382,7 +456,7 @@ export default function UserDetailPage() {
                   cursor: 'pointer',
                 }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={suspend}
@@ -395,7 +469,7 @@ export default function UserDetailPage() {
                   color: reason.trim().length >= 5 ? 'white' : 'var(--text-muted)',
                 }}
               >
-                {actionLoading ? 'Загрузка...' : 'Заблокировать'}
+                {actionLoading ? t('common.loading') : t('userDetail.block')}
               </button>
             </div>
         </DialogShell>
@@ -411,16 +485,14 @@ export default function UserDetailPage() {
           closeOnEscape={!impersonating}
         >
             <h3 id="impersonate-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
-              Войти как {user.phone}?
+              {t('userDetail.impersonateConfirmTitle', { phone: user.phone })}
             </h3>
             <p className="m-0 mb-3 text-[13px]" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              Все ваши действия в TMA будут выполнены от имени пользователя
-              и записаны в audit-log с пометкой <code style={{ background: 'var(--bg)', padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>impersonated_by</code>.
+              {t('userDetail.impersonateConfirmText')} <code style={{ background: 'var(--bg)', padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>impersonated_by</code>.
             </p>
             <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: 12, marginBottom: 18 }}>
               <p className="m-0 text-[12px]" style={{ color: '#F59E0B' }}>
-                ⚠ Используйте только для диагностики проблем.
-                Не делайте покупок, не пишите сообщения от имени пользователя без согласия.
+                {t('userDetail.impersonateConfirmWarning')}
               </p>
             </div>
             <div className="flex gap-2.5 justify-end">
@@ -430,7 +502,7 @@ export default function UserDetailPage() {
                 className="px-5 py-2.5 rounded-xl text-[14px]"
                 style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleImpersonate}
@@ -438,9 +510,124 @@ export default function UserDetailPage() {
                 className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
                 style={{ border: 'none', background: '#F59E0B', color: 'white', cursor: impersonating ? 'wait' : 'pointer', opacity: impersonating ? 0.6 : 1 }}
               >
-                {impersonating ? 'Переключение...' : 'Войти как пользователь'}
+                {impersonating ? t('userDetail.impersonating') : t('userDetail.impersonateConfirmBtn')}
               </button>
             </div>
+        </DialogShell>
+      )}
+
+      {/* Activate Seller On Market — ADMIN-MANUAL-ACTIVATION-UI-001 */}
+      {activateModal && (
+        <DialogShell
+          onClose={() => !activating && setActivateModal(false)}
+          width={520}
+          ariaLabelledBy="activate-seller-title"
+          closeOnBackdrop={!activating}
+          closeOnEscape={!activating}
+        >
+          <h3 id="activate-seller-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+            {t('userDetail.activateSellerTitle')}
+          </h3>
+          <p className="m-0 mb-4 text-[13px]" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {t('userDetail.activateSellerDesc')}
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {([
+              { key: 'fullName', label: t('userDetail.activateSellerFullName'), required: true },
+              { key: 'telegramUsername', label: t('userDetail.activateSellerTgUsername'), required: true },
+              { key: 'storeName', label: t('userDetail.activateSellerStoreName'), required: true },
+              { key: 'storeCity', label: t('userDetail.activateSellerStoreCity'), required: true },
+              { key: 'telegramContactLink', label: t('userDetail.activateSellerContactLink'), required: true },
+              { key: 'region', label: t('userDetail.activateSellerRegion'), required: false },
+              { key: 'slug', label: t('userDetail.activateSellerSlug'), required: false },
+            ] as const).map(field => (
+              <label key={field.key} className="flex flex-col gap-1">
+                <span className="text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  {field.label}{field.required && <span style={{ color: '#EF4444' }}> *</span>}
+                </span>
+                <input
+                  type="text"
+                  value={activateForm[field.key]}
+                  onChange={e => setActivateForm(f => ({ ...f, [field.key]: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-[14px] outline-none"
+                  style={{
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </label>
+            ))}
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                {t('userDetail.activateSellerType')}
+              </span>
+              <select
+                value={activateForm.sellerType}
+                onChange={e => setActivateForm(f => ({ ...f, sellerType: e.target.value as 'individual' | 'business' }))}
+                className="w-full px-3.5 py-2.5 rounded-xl text-[14px] outline-none"
+                style={{
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="individual">{t('userDetail.activateSellerTypeIndividual')}</option>
+                <option value="business">{t('userDetail.activateSellerTypeBusiness')}</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                {t('userDetail.activateSellerDescription')}
+              </span>
+              <textarea
+                value={activateForm.description}
+                onChange={e => setActivateForm(f => ({ ...f, description: e.target.value }))}
+                rows={2}
+                className="w-full px-3.5 py-2.5 rounded-xl text-[14px] resize-y outline-none"
+                style={{
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </label>
+          </div>
+
+          {actionError && (
+            <div role="alert" className="mt-3 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
+          )}
+
+          <div className="flex gap-2.5 justify-end mt-5">
+            <button
+              onClick={() => setActivateModal(false)}
+              disabled={activating}
+              className="px-5 py-2.5 rounded-xl text-[14px]"
+              style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: activating ? 'not-allowed' : 'pointer' }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={activateSellerOnMarket}
+              disabled={!activateRequiredFilled || activating}
+              className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+              style={{
+                border: 'none',
+                cursor: activateRequiredFilled && !activating ? 'pointer' : 'not-allowed',
+                background: activateRequiredFilled ? '#22C55E' : 'var(--surface2)',
+                color: activateRequiredFilled ? 'white' : 'var(--text-muted)',
+              }}
+            >
+              {activating ? t('userDetail.activateSellerSubmitting') : t('userDetail.activateSellerSubmit')}
+            </button>
+          </div>
         </DialogShell>
       )}
     </div>

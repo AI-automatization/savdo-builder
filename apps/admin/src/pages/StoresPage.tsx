@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Store, Package, ShoppingCart, RefreshCw, AlertCircle, ChevronRight, Search, ShieldCheck, BadgeCheck } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -24,27 +25,28 @@ interface StoreItem {
 }
 interface StoresResponse { stores: StoreItem[]; total: number }
 
-const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | 'muted'; label: string }> = {
-  APPROVED:       { variant: 'success', label: 'Одобрен' },
-  PUBLISHED:      { variant: 'success', label: 'Опубликован' },
-  PENDING_REVIEW: { variant: 'warning', label: 'На проверке' },
-  SUSPENDED:      { variant: 'danger',  label: 'Заблокирован' },
-  REJECTED:       { variant: 'danger',  label: 'Отклонён' },
-  DRAFT:          { variant: 'muted',   label: 'Черновик' },
+const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | 'muted'; labelKey: string }> = {
+  APPROVED:       { variant: 'success', labelKey: 'stores.sApproved' },
+  PUBLISHED:      { variant: 'success', labelKey: 'stores.sPublished' },
+  PENDING_REVIEW: { variant: 'warning', labelKey: 'stores.sPendingReview' },
+  SUSPENDED:      { variant: 'danger',  labelKey: 'stores.sSuspended' },
+  REJECTED:       { variant: 'danger',  labelKey: 'stores.sRejected' },
+  DRAFT:          { variant: 'muted',   labelKey: 'stores.sDraft' },
 }
 
 const FILTERS = ['ALL', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'SUSPENDED', 'DRAFT'] as const
-const FILTER_LABEL: Record<string, string> = {
-  ALL: 'Все',
-  PENDING_REVIEW: 'На проверке',
-  APPROVED: 'Одобрены',
-  PUBLISHED: 'Опубликованы',
-  SUSPENDED: 'Заблокированы',
-  DRAFT: 'Черновики',
+const FILTER_LABEL_KEY: Record<string, string> = {
+  ALL: 'common.all',
+  PENDING_REVIEW: 'stores.sPendingReview',
+  APPROVED: 'stores.filterApproved',
+  PUBLISHED: 'stores.filterPublished',
+  SUSPENDED: 'stores.filterSuspended',
+  DRAFT: 'stores.filterDraft',
 }
 
 export default function StoresPage() {
   const navigate = useNavigate()
+  const { t, locale } = useTranslation()
   const [filter, setFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -80,7 +82,7 @@ export default function StoresPage() {
       await api.post(`/api/v1/admin/stores/${storeId}/approve`, {})
     } catch (e: any) {
       setLocalStores(data?.stores ?? [])
-      setActionError(e.message ?? 'Ошибка верификации')
+      setActionError(e.message ?? t('stores.errApprove'))
     } finally {
       setActionLoading(null)
     }
@@ -91,7 +93,7 @@ export default function StoresPage() {
   async function toggleVerify(storeId: string, willVerify: boolean) {
     let reason: string | undefined
     if (!willVerify) {
-      const input = window.prompt('Причина снятия верификации (обязательно):')
+      const input = window.prompt(t('stores.unverifyPrompt'))
       if (!input?.trim()) return
       reason = input.trim()
     }
@@ -103,7 +105,7 @@ export default function StoresPage() {
       await api.post(url, willVerify ? {} : { reason })
     } catch (e: any) {
       setLocalStores(data?.stores ?? [])
-      setActionError(e.message ?? 'Ошибка изменения верификации')
+      setActionError(e.message ?? t('stores.errVerifyChange'))
     } finally {
       setActionLoading(null)
     }
@@ -115,13 +117,13 @@ export default function StoresPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Магазины</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{t('stores.title')}</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {loading ? 'Загрузка...' : `${total} магазинов`}
+            {loading ? t('common.loading') : t('stores.count', { count: total })}
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={refetch}>
-          <RefreshCw size={13} /> Обновить
+          <RefreshCw size={13} /> {t('common.refresh')}
         </Button>
       </div>
 
@@ -140,7 +142,7 @@ export default function StoresPage() {
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Название, slug или продавец..."
+            placeholder={t('stores.searchPlaceholder')}
             className="pl-8"
           />
         </div>
@@ -156,7 +158,7 @@ export default function StoresPage() {
                   : 'border-transparent hover:bg-white/5',
               )}
             >
-              {FILTER_LABEL[f]}
+              {t(FILTER_LABEL_KEY[f])}
             </button>
           ))}
         </div>
@@ -167,7 +169,7 @@ export default function StoresPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-              {['Магазин', 'Продавец', 'Статус', 'Товары', 'Заказы', 'Зарегистрирован', ''].map(h => (
+              {[t('stores.colStore'), t('stores.colSeller'), t('stores.colStatus'), t('stores.colProducts'), t('stores.colOrders'), t('stores.colRegistered'), ''].map(h => (
                 <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
                   style={{ color: 'var(--text-dim)' }}>
                   {h}
@@ -177,9 +179,9 @@ export default function StoresPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Ничего не найдено</td></tr>
+              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.notFound')}</td></tr>
             ) : filtered.map((s, i) => {
               const cfg = STATUS_CFG[s.status] ?? STATUS_CFG.DRAFT
 
@@ -204,7 +206,7 @@ export default function StoresPage() {
                           {s.name}
                           {/* MARKETING-VERIFIED-SELLER-001 */}
                           {s.isVerified && (
-                            <BadgeCheck size={13} style={{ color: '#60a5fa' }} aria-label="Проверенный магазин" />
+                            <BadgeCheck size={13} style={{ color: '#60a5fa' }} aria-label={t('stores.verifiedStore')} />
                           )}
                           {s.reviewCount != null && s.reviewCount > 0 && s.avgRating != null && (
                             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
@@ -224,7 +226,7 @@ export default function StoresPage() {
 
                   {/* Status */}
                   <td className="px-4 py-3">
-                    <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                    <Badge variant={cfg.variant}>{t(cfg.labelKey)}</Badge>
                   </td>
 
                   {/* Products */}
@@ -245,7 +247,7 @@ export default function StoresPage() {
 
                   {/* Date */}
                   <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {new Date(s.createdAt).toLocaleDateString('ru-RU')}
+                    {new Date(s.createdAt).toLocaleDateString(locale === 'uz' ? 'uz-UZ' : 'ru-RU')}
                   </td>
 
                   {/* Actions */}
@@ -267,14 +269,14 @@ export default function StoresPage() {
                           }}
                         >
                           <ShieldCheck size={12} />
-                          Одобрить
+                          {t('stores.approve')}
                         </button>
                       )}
                       {/* MARKETING-VERIFIED-SELLER-001 — trust-signal toggle */}
                       <button
                         disabled={actionLoading === s.id}
                         onClick={(e) => { e.stopPropagation(); toggleVerify(s.id, !s.isVerified) }}
-                        title={s.isVerified ? 'Снять верификацию' : 'Поставить верификацию'}
+                        title={s.isVerified ? t('stores.unverifyTitle') : t('stores.verifyTitle')}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5,
                           padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
@@ -287,7 +289,7 @@ export default function StoresPage() {
                         }}
                       >
                         <BadgeCheck size={12} />
-                        {s.isVerified ? 'Verified' : 'Verify'}
+                        {s.isVerified ? t('stores.verified') : t('stores.verify')}
                       </button>
                       <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
                     </div>
@@ -301,7 +303,7 @@ export default function StoresPage() {
         {/* Pagination — ADMIN-PAGINATION-DISABLED-001: unified via PaginationBar */}
         {totalPages > 1 && (
           <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel="магазинов" />
+            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel={t('stores.itemsLabel')} />
           </div>
         )}
       </div>

@@ -1,6 +1,39 @@
-import { ProductRef, VariantRef } from './products';
-
 // ── Cart Item ─────────────────────────────────────────────────────────────────
+
+/**
+ * Compact product info embedded in a cart item.
+ * API-RESPONSE-TYPES-RECONCILE-001 (от Азима, 18.05.2026): расширено снимками
+ * текущей цены/стока/видимости продукта, чтобы web-buyer не кастовал `CartItem`
+ * через `as` к несуществующим полям. `id` присутствовал в ответе всегда — тип
+ * `ProductRef` из `products.ts` его не содержал, поэтому здесь объявлен
+ * отдельный, полный shape.
+ */
+export interface CartItemProduct {
+  id: string;
+  title: string;
+  mediaUrl: string | null;
+  /** Текущая базовая цена продукта (Product.basePrice). */
+  basePrice: number;
+  /** Текущая sale-цена продукта, null если не на скидке. */
+  salePrice: number | null;
+  /** Текущий складской агрегат продукта (Product.totalStock). */
+  stock: number;
+  /** status === ACTIVE && isVisible. */
+  isAvailable: boolean;
+  /** Product.isVisible. */
+  isVisible: boolean;
+}
+
+/** Compact variant info embedded in a cart item. */
+export interface CartItemVariant {
+  id: string;
+  sku: string | null;
+  title: string | null;
+  /** ProductVariant.priceOverride, null если вариант не переопределяет цену. */
+  priceOverride: number | null;
+  /** ProductVariant.salePriceOverride, null если вариант не переопределяет sale-цену. */
+  salePriceOverride: number | null;
+}
 
 export interface CartItem {
   id: string;
@@ -8,9 +41,13 @@ export interface CartItem {
   variantId: string | null;
   quantity: number;
   unitPrice: number;
+  /** Снапшот базовой цены на момент добавления (CartItem.unitPriceSnapshot). */
+  unitPriceSnapshot: number | null;
+  /** Снапшот sale-цены на момент добавления (CartItem.salePriceSnapshot). */
+  salePriceSnapshot: number | null;
   subtotal: number;
-  product: ProductRef;
-  variant: VariantRef | null;
+  product: CartItemProduct;
+  variant: CartItemVariant | null;
 }
 
 // ── Cart ──────────────────────────────────────────────────────────────────────
@@ -90,6 +127,14 @@ export interface CheckoutPreview {
  */
 export type CheckoutPaymentMethod = 'cash' | 'card' | 'online';
 
+/**
+ * Режим получения заказа.
+ * API-CHECKOUT-PICKUP-DELIVERY-FEE-001 (от Азима, 16.05.2026).
+ *  - `delivery` — курьерская доставка, deliveryFee из store.deliverySettings
+ *  - `pickup`   — самовывоз, backend принудительно обнуляет deliveryFee
+ */
+export type CheckoutDeliveryMode = 'delivery' | 'pickup';
+
 export interface CheckoutConfirmRequest {
   deliveryAddress: DeliveryAddress;
   buyerNote?: string;
@@ -103,4 +148,9 @@ export interface CheckoutConfirmRequest {
    * клиентами). `online` принимается только при PAYMENT_ONLINE_ENABLED.
    */
   paymentMethod?: CheckoutPaymentMethod;
+  /**
+   * Режим получения. Default `delivery` если не передан (backward-compat).
+   * `pickup` → backend обнуляет deliveryFee независимо от store.deliverySettings.
+   */
+  deliveryMode?: CheckoutDeliveryMode;
 }

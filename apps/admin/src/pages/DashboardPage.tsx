@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Users, Store, ShoppingCart, Clock, AlertCircle, ArrowUpRight, ChevronRight, TrendingUp, BarChart2 } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { cn } from '@/lib/utils'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { Badge } from '@/components/ui/badge'
@@ -30,27 +31,28 @@ interface TopStore { storeId: string; storeName: string; orderCount: number }
 interface AnalyticsSummary { ordersPerDay: DailyOrderStat[]; topStores: TopStore[] }
 
 const STATS = [
-  { key: 'sellers', label: 'Продавцов',    icon: Users,        accent: 'text-indigo-400', dim: 'bg-indigo-500/10', to: '/sellers' },
-  { key: 'stores',  label: 'Магазинов',    icon: Store,        accent: 'text-emerald-400', dim: 'bg-emerald-500/10', to: '/stores' },
-  { key: 'queue',   label: 'На модерации', icon: Clock,        accent: 'text-amber-400',   dim: 'bg-amber-500/10',  to: '/moderation' },
-  { key: 'orders',  label: 'Заказов',      icon: ShoppingCart, accent: 'text-sky-400',     dim: 'bg-sky-500/10',    to: '/orders' },
+  { key: 'sellers', labelKey: 'dashboard.statSellers',    icon: Users,        accent: 'text-indigo-400', dim: 'bg-indigo-500/10', to: '/sellers' },
+  { key: 'stores',  labelKey: 'dashboard.statStores',     icon: Store,        accent: 'text-emerald-400', dim: 'bg-emerald-500/10', to: '/stores' },
+  { key: 'queue',   labelKey: 'dashboard.statQueue',      icon: Clock,        accent: 'text-amber-400',   dim: 'bg-amber-500/10',  to: '/moderation' },
+  { key: 'orders',  labelKey: 'dashboard.statOrders',     icon: ShoppingCart, accent: 'text-sky-400',     dim: 'bg-sky-500/10',    to: '/orders' },
 ] as const
 
 // STATUS-LABEL-CANONICAL-* (web-sync audit 14.05.2026): единые лейблы.
-const ORDER_STATUS: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; label: string }> = {
-  PENDING:    { variant: 'warning', label: 'Ожидает' },
-  CONFIRMED:  { variant: 'info',    label: 'Подтверждён' },
-  PROCESSING: { variant: 'info',    label: 'Обработка' },
-  SHIPPED:    { variant: 'info',    label: 'В пути' },
-  DELIVERED:  { variant: 'success', label: 'Доставлен' },
-  CANCELLED:  { variant: 'danger',  label: 'Отменён' },
+const ORDER_STATUS: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; labelKey: string }> = {
+  PENDING:    { variant: 'warning', labelKey: 'orderStatus.PENDING' },
+  CONFIRMED:  { variant: 'info',    labelKey: 'orderStatus.CONFIRMED' },
+  PROCESSING: { variant: 'info',    labelKey: 'orderStatus.PROCESSING' },
+  SHIPPED:    { variant: 'info',    labelKey: 'orderStatus.SHIPPED' },
+  DELIVERED:  { variant: 'success', labelKey: 'orderStatus.DELIVERED' },
+  CANCELLED:  { variant: 'danger',  labelKey: 'orderStatus.CANCELLED' },
 }
 
 function StatCard({
-  label, value, loading, error, icon: Icon, accent, dim, onClick,
+  label, value, loading, error, icon: Icon, accent, dim, onClick, loadingLabel,
 }: {
   label: string; value: number; loading: boolean; error: string | null
   icon: React.ElementType; accent: string; dim: string; onClick: () => void
+  loadingLabel: string
 }) {
   return (
     <button
@@ -74,7 +76,7 @@ function StatCard({
         {loading
           ? (
             <span
-              aria-label="Загрузка значения"
+              aria-label={loadingLabel}
               className="inline-block animate-pulse rounded"
               style={{ width: 56, height: 22, background: 'var(--surface2)' }}
             />
@@ -91,6 +93,7 @@ function StatCard({
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { t, locale } = useTranslation()
 
   const sellers   = useFetch<SellersResponse>('/api/v1/admin/sellers?limit=1', [])
   const stores    = useFetch<StoresResponse>('/api/v1/admin/stores?limit=1', [])
@@ -98,7 +101,8 @@ export default function DashboardPage() {
   const recent    = useFetch<OrdersResponse>('/api/v1/admin/orders?limit=8', [])
   const analytics = useFetch<AnalyticsSummary>('/api/v1/admin/analytics/summary', [])
 
-  const today = new Date().toLocaleDateString('ru-RU', {
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
+  const today = new Date().toLocaleDateString(dateLocale, {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
@@ -122,7 +126,7 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Dashboard</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{t('dashboard.title')}</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{today}</p>
       </div>
 
@@ -131,7 +135,7 @@ export default function DashboardPage() {
         {STATS.map(s => (
           <StatCard
             key={s.key}
-            label={s.label}
+            label={t(s.labelKey)}
             value={statValues[s.key]}
             loading={statLoading[s.key]}
             error={statError[s.key]}
@@ -139,6 +143,7 @@ export default function DashboardPage() {
             accent={s.accent}
             dim={s.dim}
             onClick={() => navigate(s.to)}
+            loadingLabel={t('dashboard.loadingValue')}
           />
         ))}
       </div>
@@ -151,11 +156,11 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={14} style={{ color: 'var(--text-dim)' }} />
             <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
-              Заказы за 30 дней
+              {t('dashboard.ordersChart')}
             </span>
           </div>
           {analytics.loading ? (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <LineChart data={analytics.data?.ordersPerDay ?? []} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
@@ -177,7 +182,7 @@ export default function DashboardPage() {
                   contentStyle={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' }}
                   labelStyle={{ color: 'var(--text-muted)' }}
                   labelFormatter={d => String(d)}
-                  formatter={(v) => [`${v}`, 'Заказов']}
+                  formatter={(v) => [`${v}`, t('dashboard.ordersTooltip')]}
                 />
                 <Line type="monotone" dataKey="count" stroke="var(--primary)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
@@ -190,13 +195,13 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-4">
             <BarChart2 size={14} style={{ color: 'var(--text-dim)' }} />
             <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
-              Топ магазинов
+              {t('dashboard.topStores')}
             </span>
           </div>
           {analytics.loading ? (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
           ) : (analytics.data?.topStores ?? []).length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Нет данных</div>
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.noData')}</div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={analytics.data?.topStores ?? []} layout="vertical" margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
@@ -212,7 +217,7 @@ export default function DashboardPage() {
                 />
                 <Tooltip
                   contentStyle={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' }}
-                  formatter={(v) => [`${v}`, 'Заказов']}
+                  formatter={(v) => [`${v}`, t('dashboard.ordersTooltip')]}
                 />
                 <Bar dataKey="orderCount" radius={[0, 4, 4, 0]}>
                   {(analytics.data?.topStores ?? []).map((_, i) => (
@@ -232,7 +237,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <ShoppingCart size={14} style={{ color: 'var(--text-dim)' }} />
             <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
-              Последние заказы
+              {t('dashboard.recentOrders')}
             </span>
           </div>
           <button
@@ -242,14 +247,14 @@ export default function DashboardPage() {
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
           >
-            Все заказы <ChevronRight size={12} />
+            {t('dashboard.allOrders')} <ChevronRight size={12} />
           </button>
         </div>
 
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Номер', 'Магазин', 'Покупатель', 'Сумма', 'Статус', 'Дата'].map(h => (
+              {[t('dashboard.colNumber'), t('dashboard.colStore'), t('dashboard.colCustomer'), t('dashboard.colAmount'), t('dashboard.colStatus'), t('dashboard.colDate')].map(h => (
                 <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
                   style={{ color: 'var(--text-dim)' }}>
                   {h}
@@ -259,15 +264,16 @@ export default function DashboardPage() {
           </thead>
           <tbody>
             {recent.loading ? (
-              <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
             ) : (recent.data?.orders ?? []).length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Заказов пока нет
+                  {t('dashboard.noOrders')}
                 </td>
               </tr>
             ) : (recent.data?.orders ?? []).map((o, i, arr) => {
-              const cfg = ORDER_STATUS[o.status] ?? { variant: 'muted' as const, label: o.status }
+              const cfg = ORDER_STATUS[o.status] ?? { variant: 'muted' as const, labelKey: '' }
+              const statusLabel = cfg.labelKey ? t(cfg.labelKey) : o.status
               return (
                 <tr
                   key={o.id}
@@ -292,10 +298,10 @@ export default function DashboardPage() {
                     {new Intl.NumberFormat('ru-RU').format(Number(o.totalAmount))} {o.currencyCode}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                    <Badge variant={cfg.variant}>{statusLabel}</Badge>
                   </td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                    {new Date(o.placedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(o.placedAt).toLocaleString(dateLocale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </td>
                 </tr>
               )

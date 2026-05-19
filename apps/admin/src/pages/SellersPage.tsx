@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, CheckCircle, XCircle, Clock, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,19 +21,20 @@ interface Seller {
 }
 interface SellersResponse { sellers: Seller[]; total: number }
 
-const VSTATUS: Record<string, { variant: 'success' | 'warning' | 'danger' | 'muted'; icon: React.ElementType; label: string }> = {
-  VERIFIED: { variant: 'success', icon: CheckCircle, label: 'Проверен' },
-  PENDING:  { variant: 'warning', icon: Clock,       label: 'На проверке' },
-  REJECTED: { variant: 'danger',  icon: XCircle,     label: 'Отклонён' },
+const VSTATUS: Record<string, { variant: 'success' | 'warning' | 'danger' | 'muted'; icon: React.ElementType; labelKey: string }> = {
+  VERIFIED: { variant: 'success', icon: CheckCircle, labelKey: 'sellers.vVerified' },
+  PENDING:  { variant: 'warning', icon: Clock,       labelKey: 'sellers.vPending' },
+  REJECTED: { variant: 'danger',  icon: XCircle,     labelKey: 'sellers.vRejected' },
 }
 
 const FILTERS = ['ALL', 'PENDING', 'VERIFIED', 'REJECTED'] as const
-const FILTER_LABEL: Record<string, string> = {
-  ALL: 'Все', PENDING: 'На проверке', VERIFIED: 'Проверены', REJECTED: 'Отклонены',
+const FILTER_LABEL_KEY: Record<string, string> = {
+  ALL: 'common.all', PENDING: 'sellers.vPending', VERIFIED: 'sellers.filterVerified', REJECTED: 'sellers.filterRejected',
 }
 
 export default function SellersPage() {
   const navigate = useNavigate()
+  const { t, locale } = useTranslation()
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('ALL')
@@ -61,13 +63,13 @@ export default function SellersPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Продавцы</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{t('sellers.title')}</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {loading ? 'Загрузка...' : `${total} продавцов`}
+            {loading ? t('common.loading') : t('sellers.count', { count: total })}
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={refetch}>
-          <RefreshCw size={13} /> Обновить
+          <RefreshCw size={13} /> {t('common.refresh')}
         </Button>
       </div>
 
@@ -86,7 +88,7 @@ export default function SellersPage() {
           <Input
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
-            placeholder="Имя или телефон..."
+            placeholder={t('sellers.searchPlaceholder')}
             className="pl-8"
           />
         </div>
@@ -102,7 +104,7 @@ export default function SellersPage() {
                   : 'border-transparent hover:bg-white/5',
               )}
             >
-              {FILTER_LABEL[f]}
+              {t(FILTER_LABEL_KEY[f])}
             </button>
           ))}
         </div>
@@ -113,7 +115,7 @@ export default function SellersPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-              {['Продавец', 'Телефон', 'Верификация', 'Аккаунт', 'Зарегистрирован', ''].map(h => (
+              {[t('sellers.colSeller'), t('sellers.colPhone'), t('sellers.colVerification'), t('sellers.colAccount'), t('sellers.colRegistered'), ''].map(h => (
                 <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
                   style={{ color: 'var(--text-dim)' }}>
                   {h}
@@ -123,13 +125,13 @@ export default function SellersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
             ) : sellers.length === 0 ? (
-              <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Ничего не найдено</td></tr>
+              <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.notFound')}</td></tr>
             ) : sellers.map((s, i) => {
               const vstatus = s.isBlocked
-                ? { variant: 'danger' as const, icon: XCircle, label: 'Заблокирован' }
-                : VSTATUS[s.verificationStatus] ?? VSTATUS.PENDING
+                ? { variant: 'danger' as const, icon: XCircle, label: t('sellers.vBlocked') }
+                : (() => { const v = VSTATUS[s.verificationStatus] ?? VSTATUS.PENDING; return { variant: v.variant, icon: v.icon, label: t(v.labelKey) } })()
               const StatusIcon = vstatus.icon
 
               return (
@@ -175,7 +177,7 @@ export default function SellersPage() {
 
                   {/* Date */}
                   <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {new Date(s.createdAt).toLocaleDateString('ru-RU')}
+                    {new Date(s.createdAt).toLocaleDateString(locale === 'uz' ? 'uz-UZ' : 'ru-RU')}
                   </td>
 
                   {/* Arrow */}
@@ -191,7 +193,7 @@ export default function SellersPage() {
         {/* Pagination — ADMIN-PAGINATION-DISABLED-001: unified via PaginationBar */}
         {totalPages > 1 && (
           <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel="продавцов" />
+            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel={t('sellers.itemsLabel')} />
           </div>
         )}
       </div>

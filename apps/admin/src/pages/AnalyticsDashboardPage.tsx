@@ -1,5 +1,6 @@
 import { TrendingUp, ShoppingCart, XCircle, UserPlus, Store, DollarSign } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
@@ -87,6 +88,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function AnalyticsDashboardPage() {
+  const { t } = useTranslation()
   const { data, loading } = useFetch<AnalyticsSummary>('/api/v1/admin/analytics/summary', [])
 
   const kpi = data?.kpi
@@ -101,28 +103,28 @@ export default function AnalyticsDashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
-          Аналитика
+          {t('analytics.title')}
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Последние 30 дней
+          {t('analytics.last30days')}
         </p>
       </div>
 
       {/* KPI Cards */}
       <div>
-        <SectionTitle>Ключевые показатели</SectionTitle>
+        <SectionTitle>{t('analytics.kpiSection')}</SectionTitle>
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-          <KpiCard label="Заказов" value={kpi?.totalOrders ?? 0}
+          <KpiCard label={t('analytics.kpiOrders')} value={kpi?.totalOrders ?? 0}
             icon={ShoppingCart} accent="text-sky-400" dim="bg-sky-500/10" />
-          <KpiCard label="Выручка (UZS)" value={kpi?.totalRevenue ?? 0}
-            suffix=" сум" icon={DollarSign} accent="text-emerald-400" dim="bg-emerald-500/10" />
-          <KpiCard label="Средний чек" value={kpi?.avgOrderValue ?? 0}
-            suffix=" сум" icon={TrendingUp} accent="text-indigo-400" dim="bg-indigo-500/10" />
-          <KpiCard label="Отменено" value={kpi?.cancelledPct ?? 0}
-            suffix="%" sub="от всех заказов" icon={XCircle} accent="text-red-400" dim="bg-red-500/10" />
-          <KpiCard label="Новых продавцов" value={kpi?.newSellers ?? 0}
+          <KpiCard label={t('analytics.kpiRevenue')} value={kpi?.totalRevenue ?? 0}
+            suffix={t('analytics.sum')} icon={DollarSign} accent="text-emerald-400" dim="bg-emerald-500/10" />
+          <KpiCard label={t('analytics.kpiAvgOrder')} value={kpi?.avgOrderValue ?? 0}
+            suffix={t('analytics.sum')} icon={TrendingUp} accent="text-indigo-400" dim="bg-indigo-500/10" />
+          <KpiCard label={t('analytics.kpiCancelled')} value={kpi?.cancelledPct ?? 0}
+            suffix="%" sub={t('analytics.ofAllOrders')} icon={XCircle} accent="text-red-400" dim="bg-red-500/10" />
+          <KpiCard label={t('analytics.kpiNewSellers')} value={kpi?.newSellers ?? 0}
             icon={UserPlus} accent="text-violet-400" dim="bg-violet-500/10" />
-          <KpiCard label="Новых магазинов" value={kpi?.newStores ?? 0}
+          <KpiCard label={t('analytics.kpiNewStores')} value={kpi?.newStores ?? 0}
             icon={Store} accent="text-amber-400" dim="bg-amber-500/10" />
         </div>
       </div>
@@ -132,9 +134,9 @@ export default function AnalyticsDashboardPage() {
 
         {/* Orders per day */}
         <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <SectionTitle>Заказы по дням</SectionTitle>
+          <SectionTitle>{t('analytics.ordersByDay')}</SectionTitle>
           {loading ? (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <ComposedChart data={ordersPerDay} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
@@ -147,7 +149,7 @@ export default function AnalyticsDashboardPage() {
                 <XAxis dataKey="date" tickFormatter={d => d.slice(5)}
                   tick={{ fontSize: 10, fill: 'var(--text-dim)' }} tickLine={false} axisLine={false} interval={4} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-dim)' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip {...TOOLTIP_STYLE} labelFormatter={d => String(d)} formatter={(v) => [`${v}`, 'Заказов']} />
+                <Tooltip {...TOOLTIP_STYLE} labelFormatter={d => String(d)} formatter={(v) => [`${v}`, t('dashboard.ordersTooltip')]} />
                 <Area type="monotone" dataKey="count" stroke="var(--primary)" strokeWidth={2}
                   fill="url(#ordersGrad)" dot={false} activeDot={{ r: 4 }} />
               </ComposedChart>
@@ -157,17 +159,17 @@ export default function AnalyticsDashboardPage() {
 
         {/* Growth: sellers + stores per day */}
         <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <SectionTitle>Рост платформы</SectionTitle>
+          <SectionTitle>{t('analytics.platformGrowth')}</SectionTitle>
           {loading ? (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
           ) : (
             <>
               <div className="flex items-center gap-4 mb-3">
                 <span className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />Продавцы
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />{t('nav.sellers')}
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Магазины
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />{t('nav.stores')}
                 </span>
               </div>
               <ResponsiveContainer width="100%" height={140}>
@@ -176,8 +178,8 @@ export default function AnalyticsDashboardPage() {
                     tick={{ fontSize: 10, fill: 'var(--text-dim)' }} tickLine={false} axisLine={false} interval={4} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--text-dim)' }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip {...TOOLTIP_STYLE} labelFormatter={d => String(d)} />
-                  <Line type="monotone" dataKey="sellers" name="Продавцы" stroke="#818CF8" strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="stores" name="Магазины" stroke="#22C55E" strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="sellers" name={t('nav.sellers')} stroke="#818CF8" strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="stores" name={t('nav.stores')} stroke="#22C55E" strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </>
@@ -187,11 +189,11 @@ export default function AnalyticsDashboardPage() {
 
       {/* Funnel */}
       <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <SectionTitle>Воронка конверсии</SectionTitle>
+        <SectionTitle>{t('analytics.funnel')}</SectionTitle>
         {loading ? (
-          <div className="h-20 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+          <div className="h-20 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
         ) : funnel.length === 0 ? (
-          <div className="h-20 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Нет данных</div>
+          <div className="h-20 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.noData')}</div>
         ) : (
           <div className="space-y-2.5">
             {funnel.map((step, i) => (
@@ -221,12 +223,12 @@ export default function AnalyticsDashboardPage() {
       {/* Top stores table */}
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
         <div className="px-5 py-3.5" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-          <SectionTitle>Топ-10 магазинов</SectionTitle>
+          <SectionTitle>{t('analytics.top10Stores')}</SectionTitle>
         </div>
         {loading ? (
-          <div className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</div>
+          <div className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
         ) : topStores.length === 0 ? (
-          <div className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Нет данных</div>
+          <div className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.noData')}</div>
         ) : (
           <>
             {/* Bar chart */}
@@ -237,7 +239,7 @@ export default function AnalyticsDashboardPage() {
                   <YAxis type="category" dataKey="storeName" width={90}
                     tick={{ fontSize: 10, fill: 'var(--text-dim)' }} tickLine={false} axisLine={false}
                     tickFormatter={v => v.length > 12 ? v.slice(0, 12) + '…' : v} />
-                  <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [`${v}`, 'Заказов']} />
+                  <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [`${v}`, t('dashboard.ordersTooltip')]} />
                   <Bar dataKey="orderCount" radius={[0, 4, 4, 0]}>
                     {topStores.slice(0, 5).map((_, i) => (
                       <Cell key={i} fill={`rgba(99,102,241,${1 - i * 0.15})`} />
@@ -251,7 +253,7 @@ export default function AnalyticsDashboardPage() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                  {['#', 'Магазин', 'Заказов', 'Выручка (UZS)'].map(h => (
+                  {['#', t('analytics.colStore'), t('analytics.colOrders'), t('analytics.colRevenue')].map(h => (
                     <th key={h} className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-widest"
                       style={{ color: 'var(--text-dim)' }}>{h}</th>
                   ))}

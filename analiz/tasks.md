@@ -5,6 +5,117 @@
 
 ---
 
+## ✅ [INFRA-API-PROD-DOWN-001] PROD API лежит — ВОССТАНОВЛЕНО 19.05.2026
+- **Статус:** ✅ API снова жив — проверено curl'ом 19.05.2026: `/api/v1/health`,
+  `/api/v1/storefront/featured`, `/api/v1/storefront/categories/tree` все `200`.
+  Домен `savdo-api-production` не менялся. Полату — формально перенести в done.md
+  с описанием root cause (что именно крашило сервис).
+- **Домен:** apps/api / Railway (инфра)
+- **Кто берёт:** Полат
+- **Приоритет:** P0 — buyer на проде полностью нерабочий (каталог, OTP, профиль).
+- **Симптом:** в браузере на `https://savdo-builder-by-production.up.railway.app`
+  все запросы к API падают с «CORS policy: No 'Access-Control-Allow-Origin'
+  header» + `net::ERR_FAILED` (`/storefront/featured`, `/storefront/categories/tree`,
+  `/auth/request-otp` preflight).
+- **Это НЕ CORS-баг.** Проверено curl'ом 18.05.2026: **любой** путь на
+  `https://savdo-api-production.up.railway.app` — включая `/` и `/api/v1/health` —
+  отдаёт `HTTP 404` + `Server: railway-edge`. Это значит, что за доменом нет
+  живого деплоя: отвечает edge-прокси Railway, NestJS-приложение не поднято.
+  Браузер списывает на CORS, потому что у railway-edge-404 нет ACAO-заголовка.
+- **CORS allow-list в коде корректен** — `savdo-builder-by-production.up.railway.app`
+  присутствует и в `main`, и в `origin/api` (`main.ts` `SAVDO_PROD_ORIGINS`).
+  Править код CORS НЕ нужно.
+- **Что нужно:** зайти в Railway dashboard, сервис API → проверить
+  деплой/логи. Вероятные причины: краш на старте, упавший build, сервис
+  остановлен/удалён, либо домен `savdo-api-production` отвязан от сервиса.
+  Если API переехал на новый домен — сообщить Азиму (надо обновить
+  `NEXT_PUBLIC_API_URL` в Railway-env web-buyer/web-seller).
+- **Файлы:** Railway-конфиг API; `apps/api/src/main.ts` (только для справки).
+- **🟢 ОБНОВЛЕНИЕ 18.05.2026:** root cause найден и исправлен — см.
+  `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` в `logs.md` + `API-REDIS-RESILIENCE-001`
+  (коммит `909de8b`). Redis/Postgres подняты, savdo-api редеплоится.
+
+---
+
+# 🚨 DEVOPS HARDENING 18.05.2026 (Полат) — устойчивость Railway-деплоя
+
+## 🟡 `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` — Railway-деплой хрупкий, 3 сервиса легли разом
+- **Домен:** `apps/api` + инфра (railway.toml, Dockerfile, deploy-конфиги)
+- **Кто взял:** Полат
+- **ПРОГРЕСС 18.05.2026:** п.1 ✅ (`d7324e9` resilient ioredis), п.2 ✅ (BullMQ
+  `maxRetriesPerRequest:null`+`retryStrategy` в `queues.module.ts`), п.3 ✅
+  (`restartPolicyMaxRetries` 3→10 во всех трёх `railway.toml`), п.5 ✅ (CI
+  `deploy-config-check.yml` — падает если `railway.toml` сломан; CODEOWNERS —
+  нужен GitHub-handle Полата, не сделан), п.7 ✅ (`docs/runbooks/railway-recovery.md`).
+  **Осталось:** п.4 (Root Directory для telegram-app — Railway dashboard),
+  п.6 (watchPatterns — пропущен, риск stale-деплоя выше пользы), п.8 (алертинг
+  Railway — dashboard). Все три — действия в Railway UI, не код.
+- **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
+  18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
+  исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack
+  вместо Dockerfile), `savdo-builder_ADMIN` (нет активного деплоя).
+- **Детали — что сделать (по приоритету):**
+  1. **🔴 Resilient Redis-клиент.** В `apps/api/src/shared/redis.service.ts`
+     `new Redis(url, …)` создаётся без отказоустойчивых опций. Добавить:
+     - `retryStrategy: (times) => Math.min(times * 200, 5000)` — backoff, не bare-loop;
+     - `maxRetriesPerRequest: 3` — команда не висит вечно;
+     - `enableOfflineQueue: false` для не-критичных операций ИЛИ обрабатывать
+       ошибки graceful, чтобы недоступность Redis не валила процесс;
+     - подавить спам `ETIMEDOUT` в логах (логировать reconnect-состояние раз в N,
+       а не каждую попытку).
+  2. **🔴 BullMQ должен переживать недоступность Redis на старте.**
+     `apps/api/src/queues/queues.module.ts` — `BullModule.forRootAsync` с теми же
+     resilient-опциями (`retryStrategy`, `maxRetriesPerRequest`). Цель: при
+     отсутствии Redis API стартует в degraded-режиме (healthcheck уже это умеет —
+     отдаёт `degraded`, не 503), а не крашится на bootstrap. Очереди публикуют
+     задачи best-effort или ставят в backlog после восстановления Redis.
+  3. **🔴 Поднять `restartPolicyMaxRetries`.** Во ВСЕХ трёх `apps/*/railway.toml`
+     стоит `restartPolicyMaxRetries=3` — мало для сервиса с внешними зависимостями
+     (моргнул Redis → 3 краша → сервис мёртв навсегда). Поднять до `10` для
+     `apps/api/railway.toml`. Альтернатива — `restartPolicyType="ALWAYS"` для API,
+     чтобы Railway не снимал деплой совсем (взвесить риск crash-loop vs. ручной
+     Redeploy). Решение зафиксировать ADR-записью.
+  4. **🟡 Устранить дубль конфигов на ветке `tma`.** Сейчас на `tma` есть И
+     корневой `railway.toml`, И `apps/tma/railway.toml` (оба `builder=DOCKERFILE`).
+     Railway читает один (по Root Directory сервиса), второй — мёртвый, источник
+     путаницы. Решение: задать сервису `telegram-app` **Root Directory = `apps/tma`**
+     в дашборде Railway → он будет читать `apps/tma/railway.toml`, а корневой
+     `railway.toml` удалить с ветки `tma`. Так конфиг деплоя живёт ТОЛЬКО в
+     `apps/<app>/railway.toml` (этот файл уже есть в main → не теряется при merge).
+  5. **🟡 Защита деплой-конфига от удаления мержем.** Главная ловушка инцидента:
+     корневой `railway.toml` жил только на одной ветке → удалён в Wave 19.
+     После п.4 конфиг каждого сервиса = `apps/<app>/railway.toml`, присутствует и
+     в `main`, и в деплой-ветках → merge `main`→ветка его НЕ удаляет (файл есть с
+     обеих сторон). Дополнительно:
+     - добавить CI-проверку (`.github/workflows`): job, который на push в
+       `api`/`admin`/`tma` падает, если `apps/<app>/railway.toml` отсутствует или
+       в нём нет `builder = "DOCKERFILE"`;
+     - в `CODEOWNERS` пометить `apps/*/railway.toml` как требующий ревью Полата.
+  6. **🟡 Согласовать `watchPatterns` с Dockerfile.** `apps/tma/railway.toml`
+     watch'ит `packages/types/**` и `packages/ui/**`, но `apps/tma/Dockerfile`
+     эти пакеты не копирует (TMA от них не зависит) — убрать лишнее. Для
+     `apps/api` и `apps/admin` — сверить, что watch'ятся ровно те пути, что
+     реально влияют на образ. После любой правки самого `railway.toml` нужен
+     ОДИН ручной Redeploy (коммит-только-конфиг не самотриггерится).
+  7. **🟢 Recovery-runbook.** Завести `docs/runbooks/railway-recovery.md`:
+     как поднять упавший сервис (Redeploy на зелёном коммите), как проверить
+     build driver = Dockerfile, как проверить `REDIS_URL`/доступность Redis-сервиса,
+     что делать при «No active deployment». Использовать skill `runbook-generator`.
+  8. **🟢 Алертинг.** Настроить Railway-нотификации (или внешний healthcheck-пинг
+     на `/api/v1/health`) на падение деплоя, чтобы инцидент ловился сразу, а не
+     постфактум.
+- **Файлы:**
+  - `apps/api/src/shared/redis.service.ts`
+  - `apps/api/src/queues/queues.module.ts`
+  - `apps/api/railway.toml`, `apps/admin/railway.toml`, `apps/tma/railway.toml`
+  - корневой `railway.toml` (ветка `tma`) — удалить после п.4
+  - `.github/workflows/*` — новый CI-чек deploy-конфига
+  - `docs/runbooks/railway-recovery.md` — новый
+- **Не блокирует** прод-фиксы checkout; но до закрытия п.1–3 любой сбой Redis
+  снова уронит `savdo-api` без авто-восстановления.
+
+---
+
 # 🔒 SECURITY AUDIT 16.05.2026 (Полат) — middleware / CORS / guards
 
 > Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.
@@ -102,13 +213,15 @@ root cause ещё не подтверждён.
    500 оставит полный stack trace в Railway stderr. Коммит `faaa36c`.
 
 **Что осталось:**
-1. Дождаться redeploy `api` ветки на Railway.
-2. Если 500 повторится — взять stack trace из stderr (structured JSON,
-   `type:"exception"`, `source:"GlobalExceptionFilter"`, `path` содержит
-   `/checkout/confirm`).
-3. Если 500 ВНУТРИ транзакции `createOrder()` — root cause там (DB
-   constraint / stock race / Decimal). Если исчез — был side-effect,
-   задача закрыта.
+1. ✅ Redeploy `api` сделан 16.05.2026 — деплой `ebe374f8` активен,
+   стартап чистый, ошибок нет.
+2. **Проверка передана Азиму** → `VERIFY-CHECKOUT-CONFIRM-500-001` в секции
+   «Tasks — Азим». Воспроизвести корзинный checkout на проде нельзя из
+   backend-сессии — нужен фронт.
+3. Если Азим отпишет «заказ создаётся (201)» — Полат закрывает задачу.
+   Если снова 500 — Азим приложит stack trace (`type:"exception"`,
+   `path` ~ `/checkout/confirm`), Полат разберёт: 500 внутри транзакции
+   `createOrder()` = root cause там (DB constraint / stock race / Decimal).
 
 **Файлы:** `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`,
 `repositories/checkout.repository.ts`.
@@ -127,16 +240,11 @@ root cause ещё не подтверждён.
   имя типа — переименовать свободно, внешних потребителей нет.
 - **Подробности:** `analiz/logs.md` под `[API-TYPES-PAYMENT-METHOD-COLLISION-001]`.
 
-## 🟢 P3 — `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store`
+## ✅ `API-STORE-TYPE-DELIVERY-SETTINGS-001` — `deliverySettings` в тип `Store` — закрыт 16.05.2026
 
-- **Домен:** `packages/types` (Полат)
-- **Детали:** Wave 20 добавил `deliverySettings?: StoreDeliverySettings` только
-  в `StorefrontStore`. Seller-эндпоинт `GET /seller/store` тоже возвращает
-  nested `deliverySettings` (`stores.repository.ts` include), но интерфейс
-  `Store` его не моделирует. Из-за этого в web-seller `settings/page.tsx`
-  остаётся UI-extension `StoreWithDelivery = Store & { deliverySettings? }`.
-- **Фикс:** добавить `deliverySettings?: StoreDeliverySettings` в `Store`.
-  После — Азим уберёт `StoreWithDelivery` полностью.
+Добавлено `deliverySettings?: StoreDeliverySettings` в интерфейс `Store`
+(`packages/types/src/api/stores.ts`). Азим может убрать UI-extension
+`StoreWithDelivery`. Коммит `fb3eea0`.
 
 ---
 
@@ -157,7 +265,7 @@ root cause ещё не подтверждён.
   `484694a`) отдаёт реальный `deliveryFee`+`total`; web-buyer уже читал поле,
   убран избыточный loose-cast `PreviewWithFee` (тип `CheckoutPreview` теперь
   канонически несёт `deliveryFee`/`total`). Режим «Доставка» показывает и
-  списывает согласованную сумму. Детали — `analiz/done.md`.
+  списывает согласованную сумму. Commit `6d9f527` (ветка web-buyer).
 
 **Волна 2 ✅ 15.05.2026** — `fb5febf` (web-buyer) + `47ea98d` (web-seller).
 Закрыты: `WB-B05/B06/B11/B12/B13` (чат/уведомления + checkout auth), error-UI
@@ -167,36 +275,34 @@ root cause ещё не подтверждён.
 Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
 дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
 
-## 🟡 `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» всё равно платит доставку
+## ✅ `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» платил доставку — закрыт 16.05.2026
 
-- **Домен:** `apps/api` (Полат)
-- **Кто нашёл:** Азим, при закрытии `WB-B01` (16.05.2026)
-- **Что не так:** `confirm-checkout.use-case.ts` считает `deliveryFee` через
-  `computeDeliveryFee(store.deliverySettings)` **безусловно** — про режим
-  «Самовывоз» backend не знает (в `ConfirmCheckoutDto` нет `deliveryMode`,
-  pickup отличается только текстом `"Самовывоз"` в `deliveryAddress.street`).
-  Для магазина с `fixed`-тарифом покупатель, выбравший самовывоз, видит в
-  checkout «Бесплатно», но при подтверждении ему списывается fixed-плата →
-  тот же класс money/UX-бага, что `WB-B01`, но для pickup-ветки.
-- **Варианты фикса (нужно решение product):**
-  1. Добавить `deliveryMode: 'delivery' | 'pickup'` в `ConfirmCheckoutDto` +
-     `CheckoutPreview`; при `pickup` → `deliveryFee = 0` и в preview, и в confirm.
-  2. Либо: pickup всегда бесплатен — тогда web-buyer должен слать признак, а
-     backend обнулять плату.
-- **Пока не решено** — web-buyer в режиме «Самовывоз» показывает `deliveryFee=0`
-  (`checkout/page.tsx`: `mode === "delivery" ? storeDeliveryFee : 0`). Это
-  совпадёт с реальностью только после backend-фикса.
+Выбран вариант 1: явный `deliveryMode: 'delivery' | 'pickup'` в контракте.
+`ConfirmCheckoutDto` + `GET /checkout/preview?deliveryMode` принимают режим;
+при `pickup` backend принудительно обнуляет `deliveryFee` и в preview, и в
+confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest.deliveryMode`
++ `CheckoutDeliveryMode` в `packages/types`. Default `delivery` (backward-compat).
+Коммит `fb3eea0`, специ checkout 61/61. **Азиму:** web-buyer теперь может слать
+`deliveryMode: 'pickup'` — backend согласует сумму preview/confirm.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — ЗАКРЫТО 18.05.2026
 
-- **Домен:** `packages/types` (Полат)
+- **Домен:** `packages/types` + `apps/api` (Полат)
 - **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
-  `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
-  web-seller читал через `as any`). Коммит `4cf0993`.
-- **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
-  `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
-  Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
-  типа вслепую. Передать Азиму запрос на список.
+  `addressLine2` + `subtotalAmount`/`discountAmount`. Коммит `4cf0993`.
+- **✅ Закрыто 18.05.2026 (коммит `7791238`)** — все 9 `as`-кастов web-buyer
+  закрыты. Не просто правка типов — для cart/auth/order пришлось расширять
+  backend-ответы (маппер/repository/контроллер), т.к. поля реально не отдавались:
+  - **Cart:** `cart.repository` include += `product.{salePrice,totalStock,isVisible}`,
+    `variant.salePriceOverride`; `cart.mapper` отдаёт `unitPriceSnapshot`/
+    `salePriceSnapshot`, `product.{basePrice,salePrice,stock,isAvailable,isVisible}`,
+    `variant.{priceOverride,salePriceOverride}`; типы `CartItemProduct`/`CartItemVariant`.
+  - **Auth:** `/auth/me` отдаёт top-level `name` (firstName+lastName); `AuthUser += name?`.
+  - **Orders:** `getBuyerOrders` отдаёт top-level `itemCount` (из `_count`);
+    `OrderListItem += itemCount?`.
+  - **Product:** `GET /storefront/products/:id` += `OptionalJwtAuthGuard` +
+    `inWishlist` enrichment; поле `inWishlist?` в типе уже было.
+  - tsc чист, jest 288/288. **Азим:** касты можно снимать (см. список ниже).
 
 ## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
@@ -262,7 +368,7 @@ root cause ещё не подтверждён.
 
 ## 🔴 P0 — Marketing blockers для launch (Полат + Азим, согласовать)
 
-- [x] **`MARKETING-HOMEPAGE-DISCOVERY-001`** ✅ 13.05.2026 — **Backend (Полат) ✅ 12.05.2026** + **Frontend (Азим) ✅ 13.05.2026** — slug-форма заменена на discovery page: HomeHero + HomeCategoryChips (?cat=) + HomeTopStores + HomeFeaturedFeed + RecentStores + HomeQuickLinks. 7 коммитов `eae0a1f`–`bec2d2d` на ветке web-buyer.
+- [x] **`MARKETING-HOMEPAGE-DISCOVERY-001`** ✅ 13.05.2026 — Backend (Полат) + Frontend (Азим) закрыты. Slug-форма заменена на discovery page (HomeHero + chips + top stores + featured + recent + quick links). См. `analiz/done.md` 2026-05-13.
 - [x] **`WEB-BUYER-CATALOG-001`** ✅ 13.05.2026 — /stores и /products catalog pages + homepage «Все →» links + desktop header nav `Магазины`/`Товары`. См. `analiz/done.md`.
 - [x] **`WEB-SELLER-ONBOARDING-INTERCEPT-001`** ✅ 13.05.2026 — /become-seller explainer + onboarding 4→3 шага (-Step3 товар) + dashboard empty-state «Добавьте товар» + auth guards в seller-хуках (401-spam fix). См. `analiz/done.md`.
 - [x] **`API-STORES-PAGINATION-001`** ✅ 15.05.2026 (Полат) — `GET /storefront/stores` поддерживает `?page=&limit=` (server-side pagination, $transaction findMany+count, clamp 1..100, default 50). Ответ всегда `{ data, meta }` — meta добавлен non-breaking. Коммит `8a60131`.
@@ -271,16 +377,14 @@ root cause ещё не подтверждён.
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
-- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания), web-buyer/web-seller (Азим).
+- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания, Полат); ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 
 ## 🟠 P1 — Marketing should-have
 
 - [x] **`MARKETING-REVIEWS-SHOW-001`** ✅ 11.05.2026 — `ProductReviews` компонент (`components/store/ProductReviews.tsx`) рендерит секцию между Characteristics и «Из этого магазина». `useProductReviews` hook. Average rating + count + плюрализ + Stars + author + date + comment. API уже был, фронт его не использовал.
-- [x] **`MARKETING-VERIFIED-SELLER-001`** ✅ 12.05.2026 (Полат: BE/admin/TMA) + ✅ 13.05.2026 (Азим: web-buyer FE) — Store schema fields (`isVerified` / `avgRating` / `reviewCount`) добавлены параллельной сессией с индексом `[isVerified, avgRating desc]`. Полат (12.05): admin `POST /admin/stores/:id/verify|/unverify` (+ INV-A02 reason при unverify, INV-A01 audit, идемпотентность), сортировка `findAllPublished` / `searchPublic` в `stores.repository.ts` теперь `[isVerified desc, publishedAt desc]`, `reviews.repository.refreshStoreAggregate` (weighted-by-reviewCount). UI: TMA `StoresPage` карточки + `StorePage` шапка показывают ✓ badge + ⭐ rating (reviewCount), admin `StoresPage` имеет toggle Verify/Unverify в actions + галочку рядом с именем магазина в таблице. **Азим (13.05):** web-buyer product page seller card перемещён выше variant pickers, `VerifiedBadge` + `StoreRating` (rating/reviewCount) интегрированы через `useStoreWithTrust`, «Обсудить» поднят в primary CTA row (desktop + mobile sticky icon-only). Коммиты `1800f84`–`d65319e` на ветке web-buyer.
-
-- [ ] **`API-PRODUCT-STORE-TRUST-SIGNALS-001`** 🟡 — расширить `Product.store` в `GET /storefront/products/:id` и `GET /stores/:slug/products/:id` тремя полями: `isVerified: boolean`, `avgRating: number | null`, `reviewCount: number`. Также обновить `StoreRef` в `packages/types/src/api/stores.ts` (+ `Store` / `StorefrontStore`). Зачем: web-buyer product page сейчас делает второй request на `/storefront/stores/:slug` для trust signals (см. `useStoreWithTrust` hook + `apps/web-buyer/src/types/storefront.ts` локальные расширения). После backend extension — Азим удалит hook и локальные типы.
+- [x] **`MARKETING-VERIFIED-SELLER-001`** ✅ 12.05.2026 — Store schema fields (`isVerified` / `avgRating` / `reviewCount`) уже добавлены параллельной сессией с индексом `[isVerified, avgRating desc]`. **Сейчас добавил:** admin `POST /admin/stores/:id/verify|/unverify` (+ INV-A02 reason при unverify, INV-A01 audit, идемпотентность), сортировка `findAllPublished` / `searchPublic` в `stores.repository.ts` теперь `[isVerified desc, publishedAt desc]`, `reviews.repository.refreshStoreAggregate` (weighted-by-reviewCount). UI: TMA `StoresPage` карточки + `StorePage` шапка показывают ✓ badge + ⭐ rating (reviewCount), admin `StoresPage` имеет toggle Verify/Unverify в actions + galочку рядом с именем магазина в таблице.
 - [x] **`MARKETING-CART-ABANDONMENT-001`** ✅ 12.05.2026 — cron `@EVERY_HOUR` в `CartAbandonmentService` сканирует `ACTIVE` корзины с `updatedAt < now-4h`, `items > 0`, `buyer.user.telegramId != null` (не ghost), `nudgeCount < 1`. Idempotency: помечаем `nudgeSentAt`+`nudgeCount` в БД ДО `queue.add` (через `updateMany WHERE nudgeCount < MAX` — защита от race между инстансами). Job `TELEGRAM_JOB_CART_ABANDONED` шлёт TG nudge с deep-link `?startapp=cart_<slug>`. Schema: `Cart.nudgeSentAt`, `Cart.nudgeCount` + композитный индекс `[status, nudgeSentAt, updatedAt]`. Migration `20260512180000_cart_abandonment_tracking`. Env-flag `CART_ABANDONMENT_ENABLED=false` для отключения. Все 57 cart-тестов passed.
 - [x] **`MARKETING-WISHLIST-NOTIFY-001`** ✅ 13.05.2026 — Schema: `BuyerWishlistItem.priceSnapshot`/`inStockSnapshot`/`notifiedAt`/`notifiedReason` + индекс `notifiedAt`. Migration `20260513150000_wishlist_notify_tracking`. `AddToWishlistUseCase` сохраняет snapshot из product (basePrice/salePrice + status/isVisible + variants stock). `WishlistNotifyService` cron `@EVERY_4_HOURS` сканирует кандидатов с заполненным snapshot, детектит PRICE_DROP (≥10%) и BACK_IN_STOCK (was OOS → now ACTIVE+stock), idempotency через updateMany WHERE notifiedAt expired, cooldown 7 дней, обновляет snapshot после nudge. Jobs `TELEGRAM_JOB_WISHLIST_PRICE_DROP` / `TELEGRAM_JOB_WISHLIST_BACK_IN_STOCK` в processor с HTML-template + deep-link `?startapp=product_<slug>_<id>`. Env-flag `WISHLIST_NOTIFY_ENABLED=false` отключает. Spec +5 cases, все 17 wishlist-тестов passed.
 - [x] **`MARKETING-FAKE-RESPONSE-TIME-001`** ✅ 11.05.2026 — убраны 3 false claims: product page «отвечает за час» → conditional city, order detail PENDING eta «в течение часа» → «скоро рассмотрит», cart sticky strip «отвечает за час» → «написать продавцу».
@@ -840,9 +944,11 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 > Когда придёт время монетизации — добавить subscription модель поверх
 > существующего flow. Все PAY-NNN тикеты ниже остаются как roadmap.
 >
-> **TODO для admin frontend:** добавить кнопку «Активировать продавца на рынке»
-> в `apps/admin/src/pages/UserDetailPage.tsx` (или где сейчас make-seller) —
-> модалка со всеми полями → один POST. Тикет: `ADMIN-MANUAL-ACTIVATION-UI-001`.
+> ✅ **`ADMIN-MANUAL-ACTIVATION-UI-001` закрыт 16.05.2026** — кнопка
+> «Активировать продавца на рынке» + модалка со всеми полями добавлены в
+> `apps/admin/src/pages/UserDetailPage.tsx`. Показывается только для не-админов
+> без профиля продавца. Один POST на `/admin/users/:id/activate-seller-on-market`.
+> Коммит см. `analiz/done.md`.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`
@@ -879,6 +985,96 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 Домен: `apps/web-buyer`, `apps/web-seller`, `apps/tma`
 
 > TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
+
+## 🟡 `WEB-UZ-TRANSLATION-REVIEW-001` — вычитка узбекских переводов (Азим, 18.05.2026)
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller`
+- **Контекст:** UZ-локализация реализована (`MARKETING-LOCALIZATION-UZ-001`).
+  Узбекские переводы сгенерированы Claude — нужна вычитка перед запуском.
+- **✅ Машинная вычитка выполнена 18.05.2026** (Claude):
+  - web-buyer `uz.ts` — `741f482`: 3 опечатки (masʼul/isteʼmol — бэктик
+    вместо тутуқ белгиси; murojaatingizga — тройная «a»); смягчён тон
+    `checkout.submitError`; фикс ru.ts `cart.itemCountUz`.
+  - web-seller `uz.ts` — `b15ea0a`: `maʻlumot` использовал ʻ U+02BB вместо
+    тутуқ белгиси ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» →
+    «...boʻlmadi». Ключи uz↔ru — паритет 524/524.
+  - Юр-тексты web-buyer (offer/privacy/terms/refund) — просмотрены,
+    качество формального юр-узбекского ОК, 3 опечатки выше были как раз там.
+- **Осталось (для Азима как носителя):**
+  1. 🟢 Терминология web-seller — `orders.nextProcess` / `orders.detail.nextProcess`
+     = `«Ishga olish»` («нанять на работу»). Для «Взять в обработку» уместнее
+     `«Jarayonga olish»` (консистентно со статусом `Jarayonda`). Решение Азима.
+  2. 🟢 Кросс-app расхождения: PENDING `Kutmoqda`(seller)/`Kutilmoqda`(buyer);
+     тема `Yorugʻ/Toʻq`(seller)/`Yorqin/Qorongʻu`(buyer). Не ошибка, но не
+     унифицировано — на усмотрение Азима.
+  3. 🟡 Ручная проверка на Railway: переключатель RU/UZ (buyer `/profile`,
+     seller `/settings`), RU-регрессия. **Заблокировано** `INFRA-API-PROD-DOWN-001`.
+- **Файлы:** `apps/web-buyer/src/lib/i18n/uz.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+
+## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
+
+> **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
+> стороны — нужна проверка из фронта, дальше двигаться без неё нельзя.
+
+- **Домен:** `apps/web-buyer` + `apps/tma` (проверка, без правки кода если 500 нет)
+- **Контекст:** Полат задеплоил на прод (`api` ветка, деплой `ebe374f8`):
+  fault-isolation fix (post-commit side-effects обёрнуты в try/catch — сбой
+  WS/TG/clearCart больше НЕ превращает успешный заказ в 500) + ErrorReporter
+  (любой следующий 500 оставит полный stack trace в Railway stderr).
+- **Что сделать:**
+  1. Пройти именно **корзинный** checkout: товар → корзина → «Оформить заказ»
+     → подтвердить. (Это `POST /checkout/confirm`, НЕ «купить сейчас» —
+     direct-order это другой эндпоинт, он на проде уже работает без ошибок.)
+  2. Прогнать оба режима: `delivery` и `pickup` — заодно проверка нового
+     `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` (pickup → deliveryFee 0,
+     суммы preview и confirm должны совпасть).
+- **Результат:**
+  - ✅ Заказ создаётся (201) → отписать Полату, он закроет
+    `API-CHECKOUT-CONFIRM-500-001`.
+  - ❌ Снова 500 → взять из Railway-логов `savdo-api` JSON-строку
+    `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
+    stack trace в `analiz/logs.md` — Полат разберёт root cause.
+
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — типы готовы, касты можно снимать (Полат → Азиму)
+
+> **18.05.2026 (коммит `7791238`):** Полат закрыл backend+типы. Все 9 полей
+> теперь реально отдаются API и объявлены в `packages/types`. **Азим: снять
+> `as`-касты по списку ниже, читать поля напрямую.** Деталь — `CartItem.product`
+> теперь интерфейс `CartItemProduct` (полный shape), `variant` — `CartItemVariant`.
+
+---
+### (исходный список callsite'ов, собран Азимом 17.05.2026)
+
+> **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
+> ✅ Список собран Азимом 17.05.2026. Дальше правит тип Полат.
+
+**9 `as`-кастов response-объектов в web-buyer на 4 shape'ах:**
+
+### 1. `CartItem` — нет полей цены/снапшотов + вложенных `product`/`variant`
+- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:32` — `CartItem` →
+  `{ unitPrice?, salePriceSnapshot?, unitPriceSnapshot?, product?:{basePrice?,salePrice?}, variant?:{priceOverride?,salePriceOverride?} }`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:47` — тот же shape, что cart:32
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:716` — `CartItem` →
+  `{ product?:{ title?, mediaUrl? } }`
+- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:99` — `CartItem.product` →
+  `{ stock?: number, isAvailable?: boolean, isVisible?: boolean }`
+
+### 2. `AuthUser` — нет поля `name`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:319` — `(user as { name?: string }).name`
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:367` — то же
+- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:408` — то же
+
+### 3. `Order` / `OrderListItem` — нет поля `itemCount`
+- `apps/web-buyer/src/app/(shop)/orders/page.tsx:252` — `(order as { itemCount?: number }).itemCount`
+
+### 4. `Product` — нет поля `inWishlist`
+- `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:88` — `(product as { inWishlist?: boolean }).inWishlist`
+
+> Примечание: `store.slug` каста в web-buyer не найдено — `StoreRef.slug` в типе
+> уже есть и используется напрямую. Остальные `as` в web-buyer — это error-касты
+> (`e as { response?... }`), CSS-переменные (`'--tw-ring-color' as string`),
+> query-ключи (`as const`) и route-params (`params.slug as string`) —
+> к response-типам не относятся, не трогать.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 

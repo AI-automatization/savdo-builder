@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { useTranslation } from '../lib/i18n'
 
 interface FeatureFlag {
   key: string
@@ -16,6 +17,7 @@ interface FlagsResponse {
 }
 
 export default function FeatureFlagsPage() {
+  const { t } = useTranslation()
   const [data, setData] = useState<FlagsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,20 +25,20 @@ export default function FeatureFlagsPage() {
   useEffect(() => {
     api.get<FlagsResponse>('/api/v1/admin/system/feature-flags')
       .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Не удалось загрузить'))
+      .catch((e) => setError(e instanceof Error ? e.message : t('featureFlags.loadError')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
-  if (loading) return <div style={{ padding: 24, color: 'var(--text-muted)' }}>Загрузка...</div>
+  if (loading) return <div style={{ padding: 24, color: 'var(--text-muted)' }}>{t('common.loading')}</div>
   if (error)   return <div style={{ padding: 24, color: '#ef4444' }}>⚠ {error}</div>
   if (!data)   return null
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Feature Flags</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('featureFlags.title')}</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-          Управляющие флаги платформы — какие фичи включены прямо сейчас в продакшене.
+          {t('featureFlags.subtitle')}
         </p>
       </div>
 
@@ -46,25 +48,25 @@ export default function FeatureFlagsPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {data.flags.map((flag) => (
-          <FlagRow key={flag.key} flag={flag} />
+          <FlagRow key={flag.key} flag={flag} t={t} />
         ))}
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-        <p style={{ margin: 0, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Как изменить флаг:</p>
+        <p style={{ margin: 0, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>{t('featureFlags.howToTitle')}</p>
         <ol style={{ margin: 0, paddingLeft: 18, lineHeight: 1.8 }}>
-          <li>Railway Dashboard → savdo-api → Variables</li>
-          <li>Найти переменную (напр. <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>STORE_APPROVAL_REQUIRED</code>)</li>
-          <li>Изменить на <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>true</code> или <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>false</code></li>
-          <li>Save → api перезапустится автоматически (~30 сек)</li>
-          <li>Refresh эту страницу — увидишь новое значение</li>
+          <li>{t('featureFlags.step1')}</li>
+          <li>{t('featureFlags.step2')} <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>STORE_APPROVAL_REQUIRED</code>)</li>
+          <li>{t('featureFlags.step3')} <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>true</code> {t('common.or')} <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>false</code></li>
+          <li>{t('featureFlags.step4')}</li>
+          <li>{t('featureFlags.step5')}</li>
         </ol>
       </div>
     </div>
   )
 }
 
-function FlagRow({ flag }: { flag: FeatureFlag }) {
+function FlagRow({ flag, t }: { flag: FeatureFlag; t: (k: string, v?: Record<string, string | number>) => string }) {
   return (
     <div
       style={{
@@ -99,7 +101,7 @@ function FlagRow({ flag }: { flag: FeatureFlag }) {
           color: flag.value ? '#34d399' : 'var(--text-muted)',
         }}
       >
-        {flag.value ? 'ENABLED' : 'DISABLED'}
+        {flag.value ? t('featureFlags.enabled') : t('featureFlags.disabled')}
       </span>
     </div>
   )

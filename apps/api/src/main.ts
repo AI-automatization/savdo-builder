@@ -122,10 +122,25 @@ async function bootstrap() {
 
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
-    const redisIoAdapter = new RedisIoAdapter(app);
-    await redisIoAdapter.connectToRedis(redisUrl);
-    app.useWebSocketAdapter(redisIoAdapter);
-    Logger.log('Socket.IO using Redis adapter', 'Bootstrap');
+    // API-REDIS-RESILIENCE-001: подключение Redis-адаптера НЕ должно валить
+    // bootstrap. Раньше `await connectToRedis()` бросал ETIMEDOUT когда Redis
+    // недоступен в момент старта → bootstrap падал → Railway рестартил pod 3
+    // раза → деплой "Removed". Теперь при недоступном Redis API всё равно
+    // поднимается: Socket.IO работает в single-instance режиме (без
+    // cross-instance fan-out), адаптер можно подключить позже после деплоя.
+    try {
+      const redisIoAdapter = new RedisIoAdapter(app);
+      await redisIoAdapter.connectToRedis(redisUrl);
+      app.useWebSocketAdapter(redisIoAdapter);
+      Logger.log('Socket.IO using Redis adapter', 'Bootstrap');
+    } catch (err) {
+      Logger.error(
+        `Socket.IO Redis adapter failed to connect — running single-instance: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+        'Bootstrap',
+      );
+    }
 
     // ── Bull Board UI: monitoring очередей jobs (telegram, in-app, otp) ──
     // Доступно только под Telegram OTP auth + ADMIN role (см. middleware ниже).
@@ -236,4 +251,15 @@ async function bootstrap() {
   Logger.log(`API running on http://0.0.0.0:${port}/api/v1`, 'Bootstrap');
 }
 
-bootstrap();
+// API-REDIS-RESILIENCE-001: явный catch на bootstrap. Если старт всё же упал
+// (БД/конфиг — НЕ Redis, Redis-фейлы теперь не валят bootstrap), логируем
+// осмысленно через ErrorReporter и выходим с кодом 1 — чтобы Railway понял
+// fail и сделал рестарт, а не считал процесс зависшим.
+bootstrap().catch((err: unknown) => {
+  ErrorReporter.captureException(err, { source: 'bootstrap' });
+  Logger.error(
+    `Bootstrap failed: ${err instanceof Error ? err.message : String(err)}`,
+    'Bootstrap',
+  );
+  process.exit(1);
+});

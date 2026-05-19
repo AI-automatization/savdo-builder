@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { useTranslation } from '../lib/i18n'
 
 interface HealthCheck {
   ok: boolean
@@ -46,13 +47,14 @@ const STATUS_FG: Record<SystemHealth['status'], string> = {
   degraded: '#fbbf24',
   down:     '#ef4444',
 }
-const STATUS_LABEL: Record<SystemHealth['status'], string> = {
-  ok:       'Все системы работают',
-  degraded: 'Частичная деградация',
-  down:     'Критический сбой',
+const STATUS_LABEL_KEY: Record<SystemHealth['status'], string> = {
+  ok:       'systemHealth.statusOk',
+  degraded: 'systemHealth.statusDegraded',
+  down:     'systemHealth.statusDown',
 }
 
 export default function SystemHealthPage() {
+  const { t, locale } = useTranslation()
   const [data, setData] = useState<SystemHealth | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -64,7 +66,7 @@ export default function SystemHealthPage() {
       setData(res)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось получить health')
+      setError(e instanceof Error ? e.message : t('systemHealth.fetchError'))
     } finally {
       setLoading(false)
     }
@@ -78,14 +80,14 @@ export default function SystemHealthPage() {
   }, [autoRefresh])
 
   if (loading && !data) {
-    return <div style={{ padding: 24, color: 'var(--text-muted)' }}>Загрузка...</div>
+    return <div style={{ padding: 24, color: 'var(--text-muted)' }}>{t('common.loading')}</div>
   }
 
   if (error && !data) {
     return (
       <div style={{ padding: 24 }}>
         <p style={{ color: 'var(--danger, #ef4444)' }}>⚠ {error}</p>
-        <button onClick={fetchHealth} style={{ marginTop: 12, padding: '8px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text)' }}>↻ Повторить</button>
+        <button onClick={fetchHealth} style={{ marginTop: 12, padding: '8px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text)' }}>↻ {t('common.retry')}</button>
       </div>
     )
   }
@@ -99,42 +101,42 @@ export default function SystemHealthPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0 }}>System Health</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-            Обновлено: {new Date(data.timestamp).toLocaleTimeString('ru')} · Auto-refresh каждые 10s
+            {t('systemHealth.updated', { time: new Date(data.timestamp).toLocaleTimeString(locale === 'uz' ? 'uz-UZ' : 'ru') })}
           </p>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
           <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
-          Auto-refresh
+          {t('systemHealth.autoRefresh')}
         </label>
       </div>
 
       <div style={{ background: STATUS_BG[data.status], border: `1px solid ${STATUS_FG[data.status]}`, borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 12, height: 12, borderRadius: '50%', background: STATUS_FG[data.status], boxShadow: `0 0 12px ${STATUS_FG[data.status]}` }} />
-        <span style={{ fontWeight: 700, fontSize: 16, color: STATUS_FG[data.status] }}>{STATUS_LABEL[data.status]}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-muted)' }}>Uptime: {formatUptime(data.uptime)}</span>
+        <span style={{ fontWeight: 700, fontSize: 16, color: STATUS_FG[data.status] }}>{t(STATUS_LABEL_KEY[data.status])}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-muted)' }}>{t('systemHealth.uptime')}: {formatUptime(data.uptime)}</span>
       </div>
 
       {/* Health checks grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-        <HealthCard title="🗄  Database (Postgres)" check={data.checks.database} />
-        <HealthCard title="⚡  Redis"               check={data.checks.redis} />
-        <HealthCard title="📦  Storage (Supabase S3)" check={data.checks.storage} configurable />
+        <HealthCard title="🗄  Database (Postgres)" check={data.checks.database} t={t} />
+        <HealthCard title="⚡  Redis"               check={data.checks.redis} t={t} />
+        <HealthCard title="📦  Storage (Supabase S3)" check={data.checks.storage} configurable t={t} />
       </div>
 
       {/* Metrics */}
       <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0, marginBottom: 12 }}>Server Metrics</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0, marginBottom: 12 }}>{t('systemHealth.serverMetrics')}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
           <Metric label="Node.js"      value={data.metrics.nodeVersion} />
           <Metric label="Heap"          value={`${data.metrics.memoryMb} MB`} />
           <Metric label="RSS"           value={`${data.metrics.rssMb} MB`} />
-          <Metric label="Uptime"        value={formatUptime(data.uptime)} />
+          <Metric label={t('systemHealth.uptime')} value={formatUptime(data.uptime)} />
         </div>
       </section>
 
       {/* Feature flags */}
       <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0, marginBottom: 12 }}>Active Features</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0, marginBottom: 12 }}>{t('systemHealth.activeFeatures')}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
           {Object.entries(data.features).map(([k, v]) => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
@@ -149,10 +151,10 @@ export default function SystemHealthPage() {
   )
 }
 
-function HealthCard({ title, check, configurable }: { title: string; check: HealthCheck; configurable?: boolean }) {
+function HealthCard({ title, check, configurable, t }: { title: string; check: HealthCheck; configurable?: boolean; t: (k: string, v?: Record<string, string | number>) => string }) {
   const ok = check.ok || (configurable && check.configured)
   const color = ok ? '#34d399' : configurable && !check.configured ? '#fbbf24' : '#ef4444'
-  const label = configurable && !check.configured ? 'Не настроен' : ok ? 'OK' : 'Сбой'
+  const label = configurable && !check.configured ? t('systemHealth.notConfigured') : ok ? 'OK' : t('systemHealth.checkFailed')
 
   return (
     <div style={{ background: 'var(--surface)', border: `1px solid var(--border)`, borderRadius: 12, padding: 16, position: 'relative' }}>

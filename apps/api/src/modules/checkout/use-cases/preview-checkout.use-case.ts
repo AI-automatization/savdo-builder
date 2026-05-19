@@ -11,6 +11,9 @@ import { computeDeliveryFee } from '../delivery-fee.util';
 
 export interface PreviewCheckoutInput {
   buyerId: string;
+  // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: режим получения. pickup → fee 0.
+  // preview и confirm считают доставку одинаково, чтобы суммы совпадали.
+  deliveryMode?: 'delivery' | 'pickup';
 }
 
 export interface PreviewItem {
@@ -146,8 +149,10 @@ export class PreviewCheckoutUseCase {
     // store.deliverySettings — тот же computeDeliveryFee, что и confirm-checkout.
     // Раньше хардкодили 0 → preview показывал «Бесплатно», confirm списывал
     // fixed-плату (WB-B01).
+    // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: при самовывозе доставка не оказывается.
     const store = await this.checkoutRepo.findStoreWithSeller(cart.storeId);
-    const deliveryFee = computeDeliveryFee(store?.deliverySettings);
+    const deliveryFee =
+      input.deliveryMode === 'pickup' ? 0 : computeDeliveryFee(store?.deliverySettings);
     const stockWarnings = invalidItems.map((i) => i.reason);
 
     return {

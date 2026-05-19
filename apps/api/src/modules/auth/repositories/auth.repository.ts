@@ -106,7 +106,9 @@ export class AuthRepository {
         phone: true,
         isPhoneVerified: true,
         role: true,
-        buyer: { select: { id: true, avatarUrl: true } },
+        // API-RESPONSE-TYPES-RECONCILE-001: firstName/lastName нужны GetMeUseCase
+        // для сборки `name` (web-buyer checkout уже его ожидает).
+        buyer: { select: { id: true, avatarUrl: true, firstName: true, lastName: true } },
       },
     });
   }

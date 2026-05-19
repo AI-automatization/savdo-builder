@@ -34,6 +34,13 @@ export interface AuthUser {
   phone: string;
   role: UserRole;
   isPhoneVerified: boolean;
+  /**
+   * API-RESPONSE-TYPES-RECONCILE-001: отображаемое имя пользователя (для buyer —
+   * собранное из Buyer.firstName + Buyer.lastName). Заполняется только
+   * `GET /auth/me`; undefined если имя не задано. Login/telegram-auth ответы
+   * имя не присылают.
+   */
+  name?: string;
   buyer?: BuyerProfile | null;
 }
 
