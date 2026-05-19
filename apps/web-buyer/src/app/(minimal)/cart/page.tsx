@@ -14,10 +14,6 @@ import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import { colors } from "@/lib/styles";
 import { useTranslation } from "@/lib/i18n";
 
-// Free-delivery threshold — placeholder until real per-store rule lands
-// totalAmount in Cart is in major units (сум), so threshold also in сум
-const FREE_DELIVERY_MIN = 600_000; // 600,000 сум
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = (n: number | null | undefined) =>
@@ -217,8 +213,9 @@ export default function CartPage() {
       ? cart.totalAmount
       : items.reduce((s, it) => s + itemSubtotal(it), 0);
   // Delivery: 0 if above threshold (placeholder — real per-store rule TBD)
-  const delivery = subtotal >= FREE_DELIVERY_MIN ? 0 : 0; // always 0 for now (calculated at checkout)
-  const total = subtotal + delivery;
+  // Доставка считается на checkout (per-store deliverySettings) — в корзине
+  // total равен subtotal.
+  const total = subtotal;
 
   const storeId = cart?.storeId ?? "";
   const firstItem = items[0];
@@ -260,10 +257,6 @@ export default function CartPage() {
   const chatInitialText = items.length > 0
     ? t('cart.chatInitialText', { items: cartAsChatMessage })
     : "";
-
-  // Free-delivery progress
-  const remaining = Math.max(0, FREE_DELIVERY_MIN - subtotal);
-  const progress = Math.min(100, (subtotal / FREE_DELIVERY_MIN) * 100);
 
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textPrimary }}>
@@ -372,31 +365,6 @@ export default function CartPage() {
             </button>
           </div>
 
-          {/* Free-delivery hint */}
-          <div
-            className="mx-4 md:mx-6 mt-2.5 p-2.5 rounded-md"
-            style={{ background: colors.brandMuted }}
-          >
-            <div className="text-[11px]" style={{ color: colors.textBody }}>
-              {remaining > 0 ? (
-                t('cart.freeDeliveryRemaining', { amount: fmt(remaining) })
-              ) : (
-                t('cart.freeDeliveryIncluded')
-              )}
-            </div>
-            {remaining > 0 && (
-              <div
-                className="mt-1.5 h-1 rounded overflow-hidden"
-                style={{ background: colors.divider }}
-              >
-                <div
-                  className="h-full"
-                  style={{ width: `${progress}%`, background: colors.brand }}
-                />
-              </div>
-            )}
-          </div>
-
           {/* Desktop grid: items left, summary right */}
           <div className="md:grid md:grid-cols-[7fr_5fr] gap-6 md:p-6 md:max-w-5xl md:mx-auto">
             {/* Items list */}
@@ -425,7 +393,7 @@ export default function CartPage() {
                 <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
                   <span>{t('cart.delivery')}</span>
                   <span style={{ color: colors.textDim }}>
-                    {delivery === 0 && subtotal >= FREE_DELIVERY_MIN ? t('cart.deliveryFree') : t('cart.deliveryAtCheckout')}
+                    {t('cart.deliveryAtCheckout')}
                   </span>
                 </div>
                 <div
@@ -475,7 +443,7 @@ export default function CartPage() {
             <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
               <span>{t('cart.delivery')}</span>
               <span style={{ color: colors.textDim }}>
-                {delivery === 0 && subtotal >= FREE_DELIVERY_MIN ? t('cart.deliveryFree') : t('cart.deliveryAtCheckout')}
+                {t('cart.deliveryAtCheckout')}
               </span>
             </div>
             <div
