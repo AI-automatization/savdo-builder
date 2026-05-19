@@ -370,10 +370,10 @@ export default function ProductPage() {
                   )}
                 </div>
 
-                {/* Desktop: 4-thumb row */}
+                {/* Desktop: thumbnail grid — все фото (доп. ряды переносятся) */}
                 {images.length > 1 && (
                   <div className="hidden md:grid grid-cols-4 gap-2 mt-2.5">
-                    {images.slice(0, 4).map((src, i) => (
+                    {images.map((src, i) => (
                       <button
                         key={i}
                         onClick={() => setActiveImage(i)}
