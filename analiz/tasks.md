@@ -272,8 +272,25 @@ root cause ещё не подтверждён.
 каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
 
 **Статус:** все 🔴-блокеры закрыты, 🟡-волна закрыта.
-Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
-дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+🟢-«после запуска»: **скидки ProductCard, пагинация отзывов, desktop-галерея,
+NaN-guard, #top-stores, секция «Из этого магазина» — закрыты 19.05.2026**
+(`WEB-QA-GREEN-2026-05-15`, web-buyer `1e1b7cb`, см. `done.md`). Осталось:
+модалки a11y (`ChatComposerModal` + confirm-overlays в chats), рефактор дублей.
+**Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+
+## 🟡 `WEB-BUYER-FREE-DELIVERY-DEAD-PROMISE-001` — решение Азима
+
+- **Домен:** `apps/web-buyer` (Азим)
+- **Проблема:** `cart/page.tsx` рисует блок «До бесплатной доставки X сум» +
+  прогресс-бар, но `delivery = subtotal >= FREE_DELIVERY_MIN ? 0 : 0` — обе
+  ветки 0, `FREE_DELIVERY_MIN = 600_000` захардкожен. `total` от порога не
+  меняется — обещание мёртвое.
+- **Почему не починено в fix-волне 19.05:** в backend НЕТ порога бесплатной
+  доставки — `StoreDeliverySettings` = `fixed`/`manual`/`none` без threshold.
+  Чинить нечем, кроме как убрать блок. Удаление UI требует подтверждения Азима.
+- **Варианты:** (1) удалить free-delivery блок целиком; (2) ввести в backend
+  per-store `freeDeliveryThreshold` (тикет Полату) и подключить по-настоящему.
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx`.
 
 ## ✅ `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» платил доставку — закрыт 16.05.2026
 
