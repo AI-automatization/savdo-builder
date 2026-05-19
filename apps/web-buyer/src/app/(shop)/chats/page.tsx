@@ -21,6 +21,7 @@ import {
 import { ChevronRight, MessageSquare, MoreVertical, Package, Pencil, Search, Send, Store, Trash2 } from "lucide-react";
 import { colors, dangerTint } from "@/lib/styles";
 import { EmojiPicker } from "@/components/emoji-picker";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { useTranslation } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
@@ -307,69 +308,31 @@ function ChatView({ thread, onBack, onDeleted }: { thread: ChatThread; onBack: (
 
       <PinnedProductStrip thread={thread} />
 
-      {/* Confirm delete message modal */}
-      {confirmDeleteMsg && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: "rgba(15,17,21,0.5)" }}>
-          <div
-            className="rounded-lg p-5 max-w-xs w-full flex flex-col gap-3"
-            style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-          >
-            <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>{t('chat.confirmDeleteMsg.title')}</p>
-            <p className="text-xs" style={{ color: colors.textMuted }}>
-              {t('chat.confirmDeleteMsg.hint')}
-            </p>
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => setConfirmDeleteMsg(null)}
-                className="flex-1 py-2.5 rounded-md text-sm font-medium"
-                style={{ background: colors.surfaceMuted, color: colors.textBody, border: `1px solid ${colors.border}` }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={() => handleDeleteMessage(confirmDeleteMsg)}
-                disabled={deleteMessageMutation.isPending}
-                className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.danger, color: colors.brandTextOnBg }}
-              >
-                {deleteMessageMutation.isPending ? "..." : t('common.delete')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirm delete message */}
+      <ConfirmModal
+        open={confirmDeleteMsg !== null}
+        title={t('chat.confirmDeleteMsg.title')}
+        message={t('chat.confirmDeleteMsg.hint')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        danger
+        loading={deleteMessageMutation.isPending}
+        onConfirm={() => { if (confirmDeleteMsg) handleDeleteMessage(confirmDeleteMsg); }}
+        onClose={() => setConfirmDeleteMsg(null)}
+      />
 
-      {/* Confirm delete thread modal */}
-      {confirmDeleteThread && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{ background: "rgba(15,17,21,0.5)" }}>
-          <div
-            className="rounded-lg p-5 max-w-xs w-full flex flex-col gap-3"
-            style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
-          >
-            <p className="text-sm font-semibold" style={{ color: colors.textStrong }}>{t('chat.confirmDeleteThread.title')}</p>
-            <p className="text-xs" style={{ color: colors.textMuted }}>
-              {t('chat.confirmDeleteThread.hint')}
-            </p>
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => setConfirmDeleteThread(false)}
-                className="flex-1 py-2.5 rounded-md text-sm font-medium"
-                style={{ background: colors.surfaceMuted, color: colors.textBody, border: `1px solid ${colors.border}` }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={handleDeleteThread}
-                disabled={deleteThreadMutation.isPending}
-                className="flex-1 py-2.5 rounded-md text-sm font-semibold disabled:opacity-50"
-                style={{ background: colors.danger, color: colors.brandTextOnBg }}
-              >
-                {deleteThreadMutation.isPending ? "..." : t('common.delete')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirm delete thread */}
+      <ConfirmModal
+        open={confirmDeleteThread}
+        title={t('chat.confirmDeleteThread.title')}
+        message={t('chat.confirmDeleteThread.hint')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        danger
+        loading={deleteThreadMutation.isPending}
+        onConfirm={handleDeleteThread}
+        onClose={() => setConfirmDeleteThread(false)}
+      />
 
       {/* Messages */}
       <div

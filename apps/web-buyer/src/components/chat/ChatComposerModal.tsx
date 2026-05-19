@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquare, X } from "lucide-react";
 import { ThreadType } from "types";
@@ -25,6 +25,38 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
   const create = useCreateThread();
   const [text, setText] = useState(initialText ?? "");
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // A11y: Esc закрывает, focus заперт внутри (Tab/Shift+Tab циклятся)
+  useEffect(() => {
+    const prevFocus = document.activeElement as HTMLElement | null;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && dialogRef.current) {
+        const nodes = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]),[href],input,textarea,[tabindex]:not([tabindex="-1"])',
+        );
+        if (nodes.length === 0) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prevFocus?.focus?.();
+    };
+  }, [onClose]);
 
   async function handleSend() {
     const trimmed = text.trim();
@@ -47,9 +79,13 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-md rounded-lg p-5 flex flex-col gap-4 relative"
         style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('chat.composer.title')}
       >
         <button
           onClick={onClose}
