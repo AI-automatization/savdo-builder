@@ -178,7 +178,10 @@ function WishlistCard({ item }: { item: WishlistItem }) {
 
       {/* Price */}
       <div className="text-[13px] font-bold mt-0.5" style={{ color: colors.textStrong }}>
-        {Number(product.basePrice).toLocaleString("ru-RU")}
+        {(() => {
+          const n = Number(product.basePrice);
+          return (Number.isFinite(n) ? n : 0).toLocaleString("ru-RU");
+        })()}
         <span className="text-[11px] font-normal ml-1" style={{ color: colors.textMuted }}>сум</span>
       </div>
     </Link>

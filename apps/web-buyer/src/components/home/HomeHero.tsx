@@ -4,6 +4,7 @@
 // 'use client' does NOT remove SSR — Next.js App Router still SSRs this for initial HTML.
 'use client';
 
+import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
 
@@ -43,13 +44,13 @@ export function HomeHero() {
           {t('home.hero.subtitle')}
         </p>
         <div className="flex flex-wrap items-center gap-2.5">
-          <a
-            href="#top-stores"
+          <Link
+            href="/stores"
             className="inline-flex items-center justify-center px-5 py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: colors.brand, color: colors.brandTextOnBg }}
           >
             {t('home.hero.browseStores')}
-          </a>
+          </Link>
           <a
             href={becomeSellerHref}
             target="_blank"

@@ -5,12 +5,13 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
-import { useProduct } from "@/hooks/use-storefront";
+import { useProduct, useProducts } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus, ThreadType } from "types";
 import { track } from "@/lib/analytics";
 import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Heart, Minus, Plus } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
+import ProductCard from "@/components/store/ProductCard";
 import { ProductReviews } from "@/components/store/ProductReviews";
 import { SellerCard } from "@/components/store/SellerCard";
 import { colors } from "@/lib/styles";
@@ -91,6 +92,12 @@ export default function ProductPage() {
   const inWishlist = product
     ? (product.inWishlist ?? wishlistIds.has(product.id))
     : false;
+
+  // «Из этого магазина» — другие товары того же продавца (без текущего)
+  const { data: storeProducts } = useProducts({ storeId: product?.storeId ?? "" });
+  const relatedProducts = (storeProducts ?? [])
+    .filter((p) => p.id !== id)
+    .slice(0, 6);
 
   function handleWishlistToggle() {
     if (!product) return;
@@ -730,8 +737,8 @@ export default function ProductPage() {
             {/* Reviews */}
             {!isLoading && product && <ProductReviews productId={product.id} />}
 
-            {/* Related products placeholder — fetching out of scope; editorial section kept */}
-            {!isLoading && product && (
+            {/* «Из этого магазина» — секция скрыта, если других товаров нет */}
+            {!isLoading && product && relatedProducts.length > 0 && (
               <section className="mt-2 mb-10">
                 <div className="flex justify-between items-baseline mb-4">
                   <div
@@ -748,7 +755,11 @@ export default function ProductPage() {
                     {t('product.allFromStore')}
                   </Link>
                 </div>
-                {/* Related products grid — populated when fetched upstream; currently empty placeholder */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {relatedProducts.map((p) => (
+                    <ProductCard key={p.id} product={p} storeSlug={storeSlug} />
+                  ))}
+                </div>
               </section>
             )}
           </div>
