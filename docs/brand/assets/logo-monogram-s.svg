@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Savdo — monogram S (starter, geometric placeholder)
+  Background plate: terracotta #7C3F2E with 22% rounded corners (Apple HIG iOS friendly).
+  Foreground S: cream #FBF7F0, stroke-based geometric, 6px stroke on 64x64 grid.
+  Azim should redraw as proper filled path with optical correction for production.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Savdo">
+  <title>Savdo</title>
+  <!-- Brand-color plate with iOS-style continuous corners -->
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="#7C3F2E"/>
+  <!-- Stylized S in cream (inverse) -->
+  <path
+    d="M44 18 H24 a6 6 0 0 0 0 12 h16 a6 6 0 0 1 0 12 H20"
+    stroke="#FBF7F0"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"/>
+</svg>
