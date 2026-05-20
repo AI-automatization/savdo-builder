@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-05-20 (Полат, frontend) — Vitest + smoke-тесты для TMA
+
+### ✅ [TMA-FRONTEND-TESTS-001] vitest + RTL setup + 4 smoke-теста (API-FRONTEND-TESTS-001 part 2)
+
+- **Важность:** 🟡 P2 tech-debt из `API-FRONTEND-TESTS-001`. Admin закрыт ранее, теперь TMA.
+- **Дата:** 20.05.2026
+- **Файлы:**
+  - `apps/tma/package.json` — devDeps: vitest@^3.2.0, @testing-library/react@^16.1.0, @testing-library/jest-dom@^6.6.3, jsdom@^25.0.1. Скрипт `"test": "vitest run --reporter=default"`. Vite pin `^6.4.2` (workspace overrides всё равно поднимают до vite@8, поэтому vitest 3.x обязателен — vitest@2.1.x несовместим с rolldown-vite, падает `__vite_ssr_exportName__ is not defined`).
+  - `apps/tma/vitest.config.ts` — отдельный от vite.config.ts (без proxy), `environment: 'jsdom'`, `globals: true`, `setupFiles: ['./src/test/setup.ts']`, `css: false`.
+  - `apps/tma/src/test/setup.ts` — jest-dom матчеры, полифилл `window.matchMedia` (jsdom), полифилл `window.Telegram.WebApp` (MainButton/BackButton/HapticFeedback/initData) — критично, иначе ErrorBoundary и страницы падают на импорте.
+  - `apps/tma/tsconfig.app.json` — добавлен `"types": ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/tma/src/__tests__/smoke/telegram-stub.test.ts` (5 tests) — infra-тест: stub существует, MainButton.{show,hide,setText,enable,disable,onClick}, BackButton.{show,hide,onClick}, HapticFeedback API, initData пустая.
+  - `apps/tma/src/__tests__/smoke/i18n.test.tsx` (3 tests) — `useTranslation()` отдаёт ru по умолчанию (`nav.cart` → `Корзина`), переключается на uz (`Savat`), unknown key → сам ключ как fallback. Wrapper = TelegramProvider + I18nProvider.
+  - `apps/tma/src/__tests__/smoke/stars.test.tsx` (3 tests) — `<Stars/>`: рендер 5 звёзд, read-only без role=radiogroup, interactive onChange(3) по клику на 3-ю звезду.
+  - `apps/tma/src/__tests__/smoke/badge.test.tsx` (3 tests) — статус-чип: PENDING→Обрабатывается, DELIVERED→Доставлен, unknown→raw status.
+- **Что сделано:** vitest@3 + RTL + jsdom + Telegram WebApp stub в setup. 4 файла smoke-тестов, 14/14 passed (`npx vitest run`). `npx tsc --noEmit` чисто.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают vite до 8.0.10 (rolldown-vite) во всём монорепо. Vitest 2.1.x ломается на TSX-импортах из src/ (`__vite_ssr_exportName__ is not defined`). Admin случайно работает потому что его node_modules/vite сидит на старом 6.4.1 (stale install), но любой свежий install получит 8.0.10. Vitest 3.2.4 совместим с rolldown.
+- **Скоуп:** только `apps/tma/**`. web-buyer/web-seller — Азиму (он во фронт-зоне).
+- **Не сделано:** AppShell smoke — пропущен, требует мокать AuthProvider + socket.io + sellerNotifications + lazy routes (>3 моков); вместо него взят Badge + Stars (чистые презентационные).
+
+---
+
 ## 2026-05-20 (Полат, SRE) — Backups / restore drill — закрытие launch-блокера
 
 ### ✅ [INFRA-BACKUP-RUNBOOK-001] Backup policy + runbook + restore-drill инструментарий
