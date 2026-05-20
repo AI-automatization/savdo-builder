@@ -1,7 +1,7 @@
 # Logs — локальные тесты и баги
 
-## [2026-05-18] [INFRA-API-PROD-DOWN-001] 🔴 PROD API лежит — весь web-buyer не работает
-- **Статус:** 🔴 Баг — тикет Полату заведён в `tasks.md`, не исправлено (инфра, не наш домен).
+## [2026-05-18] [INFRA-API-PROD-DOWN-001] 🔴→✅ PROD API лежит — весь web-buyer не работает
+- **Статус:** ✅ Восстановлено 19.05.2026 — проверено curl'ом.
 - **Что случилось:** Азим тестировал регистрацию на проде buyer
   (`savdo-builder-by-production.up.railway.app`). Консоль: все запросы к API
   падают с «CORS policy: No 'Access-Control-Allow-Origin' header» +
@@ -17,6 +17,11 @@
   есть и в `main`, и в `origin/api`). Корень — API-сервис на Railway не поднят
   (краш / упавший build / остановлен / домен отвязан). Чинит Полат в Railway.
 - **Что сделано:** заведён тикет `INFRA-API-PROD-DOWN-001` (Полат, P0).
+- **Восстановление (19.05.2026):** `https://savdo-api-production.up.railway.app/api/v1`
+  снова жив — `/health` `200`, `/storefront/featured` `200`, `/storefront/categories/tree`
+  `200`. Корневой `/` отдаёт `404` — это норма (global prefix `api/v1`).
+  API-сервис на Railway поднят. Что именно чинил Полат — неизвестно, домен
+  `savdo-api-production` не менялся, `NEXT_PUBLIC_API_URL` править не нужно.
 
 ## [2026-05-18] [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] ✅ OtpGate проглатывал ошибку API
 - **Статус:** ✅ Исправлено 18.05.2026 (web-buyer `24011be`).
