@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import type { Product } from 'types';
+import { API_BASE } from '@/lib/api/env';
 
-const BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1`;
 const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz';
 
 async function fetchProduct(id: string): Promise<Product | null> {
   try {
-    const res = await fetch(`${BASE}/storefront/products/${id}`, {
+    const res = await fetch(`${API_BASE}/storefront/products/${id}`, {
       next: { revalidate: process.env.NODE_ENV === 'development' ? 0 : 30 },
     });
     if (!res.ok) return null;

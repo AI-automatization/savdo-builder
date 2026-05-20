@@ -1,13 +1,12 @@
 import { io, Socket } from 'socket.io-client';
 import { getAccessToken } from './auth/storage';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { API_ORIGIN } from './api/env';
 
 let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
-    socket = io(BASE_URL, {
+    socket = io(API_ORIGIN, {
       autoConnect: false,
       auth: (cb) => cb({ token: getAccessToken() ?? '' }),
     });

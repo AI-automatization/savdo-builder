@@ -6,11 +6,10 @@
 
 import type { GlobalCategory, ProductListItem, StorefrontStore } from 'types';
 import type { StorefrontCategoryFilter } from './storefront.api';
-
-const BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1`;
+import { API_BASE } from './env';
 
 async function sfetch<T>(path: string, search?: URLSearchParams | Record<string, string>): Promise<T> {
-  const url = new URL(`${BASE}${path}`);
+  const url = new URL(`${API_BASE}${path}`);
   if (search instanceof URLSearchParams) {
     search.forEach((v, k) => url.searchParams.append(k, v));
   } else if (search) {

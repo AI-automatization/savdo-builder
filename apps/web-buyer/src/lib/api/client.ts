@@ -7,15 +7,10 @@ import {
   setTokens,
   clearTokens,
 } from '../auth/storage';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
-if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== 'undefined') {
-  console.warn('[savdo] NEXT_PUBLIC_API_URL not set — API requests go to localhost');
-}
+import { API_BASE } from './env';
 
 export const apiClient = axios.create({
-  baseURL: `${BASE_URL}/api/v1`,
+  baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -54,7 +49,7 @@ apiClient.interceptors.response.use(
     try {
       if (!refreshPromise) {
         refreshPromise = axios
-          .post(`${BASE_URL}/api/v1/auth/refresh`, { refreshToken })
+          .post(`${API_BASE}/auth/refresh`, { refreshToken })
           .then(({ data }) => {
             setTokens(data.accessToken, data.refreshToken);
             return data.accessToken;
