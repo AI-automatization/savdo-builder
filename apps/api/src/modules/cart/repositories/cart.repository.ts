@@ -20,7 +20,10 @@ const CART_ITEMS_INCLUDE = {
           id: true,
           title: true,
           basePrice: true,
+          salePrice: true,
+          totalStock: true,
           status: true,
+          isVisible: true,
           storeId: true,
           images: {
             where: { isPrimary: true },
@@ -35,6 +38,7 @@ const CART_ITEMS_INCLUDE = {
           sku: true,
           titleOverride: true,
           priceOverride: true,
+          salePriceOverride: true,
           stockQuantity: true,
           isActive: true,
           optionValues: {

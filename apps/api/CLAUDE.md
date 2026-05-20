@@ -37,3 +37,62 @@ database → auth → users/sellers/stores → categories → products → media
 - No `console.log` — use NestJS `Logger`
 - No direct `prisma` calls outside repositories
 - All routes under `/api/v1/`
+
+## Observability — Sentry (API-SENTRY-001)
+
+`ErrorReporter` (apps/api/src/shared/error-reporter.ts) — единый фасад для
+телеметрии ошибок. Работает в двух режимах:
+
+- **stderr-only** (default, dev): структурированный JSON в stderr, Railway
+  log aggregation, alerting через Railway.
+- **Sentry-enabled** (prod): дополнительно отправка в Sentry SaaS — source maps,
+  releases, perf traces, alerting UI. Активируется заданием `SENTRY_DSN`.
+
+### Как включить Sentry в проде
+
+1. Получить DSN из Sentry: Project → Settings → Client Keys (DSN).
+2. Добавить в Railway env переменные API-сервиса:
+   - `SENTRY_DSN=https://<key>@<org>.ingest.sentry.io/<project>`
+   - (опц.) `SENTRY_TRACES_SAMPLE_RATE=0.1`
+   - (опц.) `SENTRY_PROFILES_SAMPLE_RATE=0.1`
+3. Railway → Redeploy сервиса api.
+4. Проверить лог bootstrap: должен появиться `Sentry enabled (env=production, release=<sha>, …)`.
+5. Спровоцировать ошибку (например, `GET /api/v1/__nonexistent__` для 404 — это
+   `breadcrumb`, не event; для реального теста — вызвать endpoint с broken state)
+   и проверить, что event появился в Sentry UI.
+
+### PII-скраббинг
+
+Sentry `beforeSend` хук вырезает:
+- Заголовки: `authorization`, `cookie`, `x-telegram-bot-api-secret-token`,
+  любые `*token*` / `*secret*`.
+- Поля body/query/extra: `password`, `code` (OTP), `secret`, `token`,
+  `refreshToken`, `authorization`, `apiKey` → `[REDACTED]`.
+- Телефоны (`phone`, `*phone`): маскируются через `maskPhone()` (+998 *** ** XX).
+
+### Использование в коде
+
+```ts
+import { ErrorReporter } from '../../shared/error-reporter';
+
+try {
+  await doSomething();
+} catch (err) {
+  ErrorReporter.captureException(err, {
+    userId: ctx.userId,
+    op: 'createOrder',
+    orderId,
+  });
+  throw err;
+}
+
+// Не-exception инциденты:
+ErrorReporter.captureMessage('Suspicious cart manipulation', 'warning', { userId });
+
+// После auth middleware (опционально):
+ErrorReporter.setUser(req.user.sub);
+```
+
+`GlobalExceptionFilter` уже зеркалит 5xx exceptions автоматически — ручной
+`captureException` нужен только когда вы ловите/глотаете exception и хотите его
+залогировать.

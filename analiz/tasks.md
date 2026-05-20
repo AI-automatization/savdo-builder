@@ -5,6 +5,166 @@
 
 ---
 
+## 🟡 [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый реальный restore drill на прод-дампе
+
+- **Домен:** SRE / DBA (Полат)
+- **Кто берёт:** Полат
+- **Приоритет:** P1 — закрывает остаточный риск **R2** из launch-readiness 2026-05-20.
+- **Контекст:** документация и инструментарий готовы (`INFRA-BACKUP-RUNBOOK-001`,
+  см. `done.md` 2026-05-20). Осталось **один раз реально прогнать** drill
+  end-to-end на свежем прод-дампе — это закрывает блокер Data integrity
+  по существу (а не только по бумагам).
+- **Что сделать:**
+  1. Включить Railway public networking для Postgres (Networking → Public →
+     Enable) или поднять `pg_dump` через `railway shell` внутри savdo-api.
+  2. Снять свежий dump: `DATABASE_URL='postgresql://postgres:***@<host>:5432/railway'
+     bash scripts/db/backup.sh`.
+  3. Поднять локальный Postgres: `docker run -d --name savdo-staging-pg
+     -e POSTGRES_USER=savdo -e POSTGRES_PASSWORD=savdo -e POSTGRES_DB=savdo_staging
+     -p 55432:5432 postgres:16-alpine`.
+  4. Запустить drill: `bash scripts/db/restore-drill.sh --dump backups/savdo-*.dump
+     --target-db postgresql://savdo:savdo@localhost:55432/savdo_staging
+     --source-db "$DATABASE_URL"`.
+  5. Результат (PASS/FAIL + JSON-репорт) — зафиксировать в `analiz/logs.md`
+     по шаблону из runbook'а §4.4.
+  6. Если PASS — поставить календарный reminder на последнюю пятницу
+     июня для следующего drill.
+- **Файлы:**
+  - `docs/runbooks/postgres-backup-restore.md` — runbook
+  - `scripts/db/backup.sh`, `scripts/db/restore-drill.sh`, `scripts/db/integrity-check.sql`
+- **Definition of done:** один JSON-репорт `drill_status: PASS` в `analiz/logs.md`.
+
+---
+
+## 🟡 [INFRA-BACKUP-R2-SETUP-001] Завести R2 bucket для off-platform дампов
+
+- **Домен:** инфра (Полат)
+- **Кто берёт:** Полат
+- **Приоритет:** P2 — пока drill PASS, можно держать дампы локально / в Google Drive
+  Полата. Off-platform хранение — следующий уровень защиты.
+- **Что сделать:**
+  1. Cloudflare → R2 → создать bucket `savdo-backups` (region `auto`).
+  2. Сгенерировать R2 API token (scope: Object Read & Write только этого bucket'а).
+  3. Lifecycle rule: `weekly/*` → expire after 84 дня (12 weeks retention).
+  4. Сохранить в Railway env savdo-api (или в локальный `.env` для CLI):
+     `R2_BACKUP_BUCKET=savdo-backups`, `R2_ENDPOINT_URL=https://<acct>.r2.cloudflarestorage.com`,
+     `AWS_ACCESS_KEY_ID=...`, `AWS_SECRET_ACCESS_KEY=...`.
+  5. Прогнать `bash scripts/db/backup.sh --upload` — проверить, что upload идёт.
+- **Файлы:** none code; настройка во внешних сервисах.
+
+---
+
+## ✅ [INFRA-API-PROD-DOWN-001] PROD API лежит — ВОССТАНОВЛЕНО 19.05.2026
+- **Статус:** ✅ API снова жив — проверено curl'ом 19.05.2026: `/api/v1/health`,
+  `/api/v1/storefront/featured`, `/api/v1/storefront/categories/tree` все `200`.
+  Домен `savdo-api-production` не менялся. Полату — формально перенести в done.md
+  с описанием root cause (что именно крашило сервис).
+- **Домен:** apps/api / Railway (инфра)
+- **Кто берёт:** Полат
+- **Приоритет:** P0 — buyer на проде полностью нерабочий (каталог, OTP, профиль).
+- **Симптом:** в браузере на `https://savdo-builder-by-production.up.railway.app`
+  все запросы к API падают с «CORS policy: No 'Access-Control-Allow-Origin'
+  header» + `net::ERR_FAILED` (`/storefront/featured`, `/storefront/categories/tree`,
+  `/auth/request-otp` preflight).
+- **Это НЕ CORS-баг.** Проверено curl'ом 18.05.2026: **любой** путь на
+  `https://savdo-api-production.up.railway.app` — включая `/` и `/api/v1/health` —
+  отдаёт `HTTP 404` + `Server: railway-edge`. Это значит, что за доменом нет
+  живого деплоя: отвечает edge-прокси Railway, NestJS-приложение не поднято.
+  Браузер списывает на CORS, потому что у railway-edge-404 нет ACAO-заголовка.
+- **CORS allow-list в коде корректен** — `savdo-builder-by-production.up.railway.app`
+  присутствует и в `main`, и в `origin/api` (`main.ts` `SAVDO_PROD_ORIGINS`).
+  Править код CORS НЕ нужно.
+- **Что нужно:** зайти в Railway dashboard, сервис API → проверить
+  деплой/логи. Вероятные причины: краш на старте, упавший build, сервис
+  остановлен/удалён, либо домен `savdo-api-production` отвязан от сервиса.
+  Если API переехал на новый домен — сообщить Азиму (надо обновить
+  `NEXT_PUBLIC_API_URL` в Railway-env web-buyer/web-seller).
+- **Файлы:** Railway-конфиг API; `apps/api/src/main.ts` (только для справки).
+- **🟢 ОБНОВЛЕНИЕ 18.05.2026:** root cause найден и исправлен — см.
+  `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` в `logs.md` + `API-REDIS-RESILIENCE-001`
+  (коммит `909de8b`). Redis/Postgres подняты, savdo-api редеплоится.
+
+---
+
+# 🚨 DEVOPS HARDENING 18.05.2026 (Полат) — устойчивость Railway-деплоя
+
+## 🟡 `DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001` — Railway-деплой хрупкий, 3 сервиса легли разом
+- **Домен:** `apps/api` + инфра (railway.toml, Dockerfile, deploy-конфиги)
+- **Кто взял:** Полат
+- **ПРОГРЕСС 18.05.2026:** п.1 ✅ (`d7324e9` resilient ioredis), п.2 ✅ (BullMQ
+  `maxRetriesPerRequest:null`+`retryStrategy` в `queues.module.ts`), п.3 ✅
+  (`restartPolicyMaxRetries` 3→10 во всех трёх `railway.toml`), п.5 ✅ (CI
+  `deploy-config-check.yml` — падает если `railway.toml` сломан; CODEOWNERS —
+  нужен GitHub-handle Полата, не сделан), п.7 ✅ (`docs/runbooks/railway-recovery.md`).
+  **Осталось:** п.4 (Root Directory для telegram-app — Railway dashboard),
+  п.6 (watchPatterns — пропущен, риск stale-деплоя выше пользы), п.8 (алертинг
+  Railway — dashboard). Все три — действия в Railway UI, не код.
+- **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
+  18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
+  исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack
+  вместо Dockerfile), `savdo-builder_ADMIN` (нет активного деплоя).
+- **Детали — что сделать (по приоритету):**
+  1. **🔴 Resilient Redis-клиент.** В `apps/api/src/shared/redis.service.ts`
+     `new Redis(url, …)` создаётся без отказоустойчивых опций. Добавить:
+     - `retryStrategy: (times) => Math.min(times * 200, 5000)` — backoff, не bare-loop;
+     - `maxRetriesPerRequest: 3` — команда не висит вечно;
+     - `enableOfflineQueue: false` для не-критичных операций ИЛИ обрабатывать
+       ошибки graceful, чтобы недоступность Redis не валила процесс;
+     - подавить спам `ETIMEDOUT` в логах (логировать reconnect-состояние раз в N,
+       а не каждую попытку).
+  2. **🔴 BullMQ должен переживать недоступность Redis на старте.**
+     `apps/api/src/queues/queues.module.ts` — `BullModule.forRootAsync` с теми же
+     resilient-опциями (`retryStrategy`, `maxRetriesPerRequest`). Цель: при
+     отсутствии Redis API стартует в degraded-режиме (healthcheck уже это умеет —
+     отдаёт `degraded`, не 503), а не крашится на bootstrap. Очереди публикуют
+     задачи best-effort или ставят в backlog после восстановления Redis.
+  3. **🔴 Поднять `restartPolicyMaxRetries`.** Во ВСЕХ трёх `apps/*/railway.toml`
+     стоит `restartPolicyMaxRetries=3` — мало для сервиса с внешними зависимостями
+     (моргнул Redis → 3 краша → сервис мёртв навсегда). Поднять до `10` для
+     `apps/api/railway.toml`. Альтернатива — `restartPolicyType="ALWAYS"` для API,
+     чтобы Railway не снимал деплой совсем (взвесить риск crash-loop vs. ручной
+     Redeploy). Решение зафиксировать ADR-записью.
+  4. **🟡 Устранить дубль конфигов на ветке `tma`.** Сейчас на `tma` есть И
+     корневой `railway.toml`, И `apps/tma/railway.toml` (оба `builder=DOCKERFILE`).
+     Railway читает один (по Root Directory сервиса), второй — мёртвый, источник
+     путаницы. Решение: задать сервису `telegram-app` **Root Directory = `apps/tma`**
+     в дашборде Railway → он будет читать `apps/tma/railway.toml`, а корневой
+     `railway.toml` удалить с ветки `tma`. Так конфиг деплоя живёт ТОЛЬКО в
+     `apps/<app>/railway.toml` (этот файл уже есть в main → не теряется при merge).
+  5. **🟡 Защита деплой-конфига от удаления мержем.** Главная ловушка инцидента:
+     корневой `railway.toml` жил только на одной ветке → удалён в Wave 19.
+     После п.4 конфиг каждого сервиса = `apps/<app>/railway.toml`, присутствует и
+     в `main`, и в деплой-ветках → merge `main`→ветка его НЕ удаляет (файл есть с
+     обеих сторон). Дополнительно:
+     - добавить CI-проверку (`.github/workflows`): job, который на push в
+       `api`/`admin`/`tma` падает, если `apps/<app>/railway.toml` отсутствует или
+       в нём нет `builder = "DOCKERFILE"`;
+     - в `CODEOWNERS` пометить `apps/*/railway.toml` как требующий ревью Полата.
+  6. **🟡 Согласовать `watchPatterns` с Dockerfile.** `apps/tma/railway.toml`
+     watch'ит `packages/types/**` и `packages/ui/**`, но `apps/tma/Dockerfile`
+     эти пакеты не копирует (TMA от них не зависит) — убрать лишнее. Для
+     `apps/api` и `apps/admin` — сверить, что watch'ятся ровно те пути, что
+     реально влияют на образ. После любой правки самого `railway.toml` нужен
+     ОДИН ручной Redeploy (коммит-только-конфиг не самотриггерится).
+  7. **🟢 Recovery-runbook.** Завести `docs/runbooks/railway-recovery.md`:
+     как поднять упавший сервис (Redeploy на зелёном коммите), как проверить
+     build driver = Dockerfile, как проверить `REDIS_URL`/доступность Redis-сервиса,
+     что делать при «No active deployment». Использовать skill `runbook-generator`.
+  8. **🟢 Алертинг.** Настроить Railway-нотификации (или внешний healthcheck-пинг
+     на `/api/v1/health`) на падение деплоя, чтобы инцидент ловился сразу, а не
+     постфактум.
+- **Файлы:**
+  - `apps/api/src/shared/redis.service.ts`
+  - `apps/api/src/queues/queues.module.ts`
+  - `apps/api/railway.toml`, `apps/admin/railway.toml`, `apps/tma/railway.toml`
+  - корневой `railway.toml` (ветка `tma`) — удалить после п.4
+  - `.github/workflows/*` — новый CI-чек deploy-конфига
+  - `docs/runbooks/railway-recovery.md` — новый
+- **Не блокирует** прод-фиксы checkout; но до закрытия п.1–3 любой сбой Redis
+  снова уронит `savdo-api` без авто-восстановления.
+
+---
+
 # 🔒 SECURITY AUDIT 16.05.2026 (Полат) — middleware / CORS / guards
 
 > Аудит по OWASP (skill security-pen-testing). Полный разбор — в этой сессии.
@@ -102,13 +262,15 @@ root cause ещё не подтверждён.
    500 оставит полный stack trace в Railway stderr. Коммит `faaa36c`.
 
 **Что осталось:**
-1. Дождаться redeploy `api` ветки на Railway.
-2. Если 500 повторится — взять stack trace из stderr (structured JSON,
-   `type:"exception"`, `source:"GlobalExceptionFilter"`, `path` содержит
-   `/checkout/confirm`).
-3. Если 500 ВНУТРИ транзакции `createOrder()` — root cause там (DB
-   constraint / stock race / Decimal). Если исчез — был side-effect,
-   задача закрыта.
+1. ✅ Redeploy `api` сделан 16.05.2026 — деплой `ebe374f8` активен,
+   стартап чистый, ошибок нет.
+2. **Проверка передана Азиму** → `VERIFY-CHECKOUT-CONFIRM-500-001` в секции
+   «Tasks — Азим». Воспроизвести корзинный checkout на проде нельзя из
+   backend-сессии — нужен фронт.
+3. Если Азим отпишет «заказ создаётся (201)» — Полат закрывает задачу.
+   Если снова 500 — Азим приложит stack trace (`type:"exception"`,
+   `path` ~ `/checkout/confirm`), Полат разберёт: 500 внутри транзакции
+   `createOrder()` = root cause там (DB constraint / stock race / Decimal).
 
 **Файлы:** `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`,
 `repositories/checkout.repository.ts`.
@@ -159,8 +321,20 @@ root cause ещё не подтверждён.
 каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
 
 **Статус:** все 🔴-блокеры закрыты, 🟡-волна закрыта.
-Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
-дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+🟢-«после запуска» — **закрыто 19.05.2026** (`WEB-QA-GREEN-2026-05-15`,
+web-buyer `3e2cee2`, см. `done.md`): скидки ProductCard, пагинация отзывов,
+desktop-галерея, NaN-guard, #top-stores, секция «Из этого магазина»,
+a11y модалок чата (Esc/focus-trap/role — shared `ConfirmModal`).
+**Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+
+## ✅ `WEB-BUYER-FREE-DELIVERY-DEAD-PROMISE-001` — закрыто 19.05.2026
+
+- Фиктивный блок «До бесплатной доставки X сум» удалён из `cart/page.tsx`
+  (web-buyer `a8dbbdf`) — обещание было мёртвым (`delivery` всегда 0), в
+  backend нет порога бесплатной доставки. Решение делегировано Азимом.
+- 💡 **Идея на будущее:** настоящая фича «бесплатная доставка от N сум» —
+  потребует per-store `freeDeliveryThreshold` в `StoreDeliverySettings`
+  (backend, Полат) + UI прогресса в корзине. Не для MVP.
 
 ## ✅ `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» платил доставку — закрыт 16.05.2026
 
@@ -172,16 +346,24 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 Коммит `fb3eea0`, специ checkout 61/61. **Азиму:** web-buyer теперь может слать
 `deliveryMode: 'pickup'` — backend согласует сумму preview/confirm.
 
-## 🟡 `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — частично
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ревизия response-типов (Полат) — ЗАКРЫТО 18.05.2026
 
-- **Домен:** `packages/types` (Полат)
+- **Домен:** `packages/types` + `apps/api` (Полат)
 - **Сделано 15.05.2026:** `OrderListItem` += плоские `city`/`region`/`addressLine1`/
-  `addressLine2` + `subtotalAmount`/`discountAmount` (их отдаёт `GET /seller/orders`,
-  web-seller читал через `as any`). Коммит `4cf0993`.
-- **Осталось:** web-buyer ~9 `as`-кастов (`store.slug`, `itemCount`, `name`,
-  `stock`) — `StoreRef.slug` в типе ЕСТЬ, значит касты на других shape'ах.
-  Нужен от Азима список конкретных callsite'ов (файл:строка) — без них правка
-  типа вслепую. Передать Азиму запрос на список.
+  `addressLine2` + `subtotalAmount`/`discountAmount`. Коммит `4cf0993`.
+- **✅ Закрыто 18.05.2026 (коммит `7791238`)** — все 9 `as`-кастов web-buyer
+  закрыты. Не просто правка типов — для cart/auth/order пришлось расширять
+  backend-ответы (маппер/repository/контроллер), т.к. поля реально не отдавались:
+  - **Cart:** `cart.repository` include += `product.{salePrice,totalStock,isVisible}`,
+    `variant.salePriceOverride`; `cart.mapper` отдаёт `unitPriceSnapshot`/
+    `salePriceSnapshot`, `product.{basePrice,salePrice,stock,isAvailable,isVisible}`,
+    `variant.{priceOverride,salePriceOverride}`; типы `CartItemProduct`/`CartItemVariant`.
+  - **Auth:** `/auth/me` отдаёт top-level `name` (firstName+lastName); `AuthUser += name?`.
+  - **Orders:** `getBuyerOrders` отдаёт top-level `itemCount` (из `_count`);
+    `OrderListItem += itemCount?`.
+  - **Product:** `GET /storefront/products/:id` += `OptionalJwtAuthGuard` +
+    `inWishlist` enrichment; поле `inWishlist?` в типе уже было.
+  - tsc чист, jest 288/288. **Азим:** касты можно снимать (см. список ниже).
 
 ## ✅ `API-CHECKOUT-PREVIEW-DELIVERY-FEE-001` — контракт preview (Полат) — закрыт 15.05.2026
 
@@ -256,7 +438,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
-- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания), web-buyer/web-seller (Азим).
+- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания, Полат); ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 
@@ -308,7 +490,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-SENTRY-001`** ✅ 14.05.2026 — lightweight error reporter без зависимости от Sentry SDK. `apps/api/src/shared/error-reporter.ts` — auto-capture `uncaughtException`/`unhandledRejection`, manual `captureException(err, context)` + `captureMessage(msg, level, context)`. JSON output в stderr (Railway log aggregation), PII-скраббинг для context keys (password/secret/token/authorization → `[REDACTED]`). Tags: `release` (`RAILWAY_GIT_COMMIT_SHA[:7]`) + `environment` (`NODE_ENV`). Env-flag `ERROR_REPORTER_ENABLED=false`. **Init в `main.ts` перед bootstrap** — ловит ошибки на этапе загрузки модулей. Когда нужен полный Sentry — добавить `@sentry/node` и заменить `ErrorReporter.captureException` на `Sentry.captureException` (API совместимый). 60% Sentry-функций без install.
 - [x] **`API-PINO-LOGGING-001`** ✅ 14.05.2026 — без новых зависимостей. `apps/api/src/shared/structured-logger.ts` — custom `ConsoleLogger` extension: в `NODE_ENV=production` emit single-line JSON `{ts, level, context, msg, trace}` (stdout/stderr split для Railway log aggregation), в dev — fallback на цветной ConsoleLogger. Подключено в `main.ts` через `NestFactory.create({ logger: new StructuredLogger() })`. Override `isLevelEnabled` для конфигурации через `LOG_LEVEL` env. Все существующие `Logger.log/warn/error` работают автоматически. Pino не подключаем — нужен `pnpm install` (4 пакета: nestjs-pino + pino + pino-http + pino-pretty), wrapper даёт 80% value (JSON-логи) без новых deps.
 - [x] **`API-PII-MASKING-001`** ✅ verified done 12.05.2026 — `apps/api/src/shared/pii.ts` (`maskPhone`: `+998901234567` → `+998 *** ** 67`, ghost `tg_*` → `tg_***`). Использован во ВСЕХ logger.* с phone: otp.processor, otp.service, telegram-auth.use-case, admin-auth.use-case (impersonation), telegram-demo.handler (linked/registered logs), ghost-cleanup.service. Также есть unit-тесты `pii.spec.ts`. Verified grep — 0 plain-text phone в logger calls.
-- [ ] **`API-FRONTEND-TESTS-001`** — 0 frontend tests для admin / web-buyer / web-seller / TMA. Хотя бы smoke.
+- [~] **`API-FRONTEND-TESTS-001`** — admin ✅ (10 тестов) + TMA ✅ (14 тестов, 20.05.2026 — см. `done.md` TMA-FRONTEND-TESTS-001). Осталось web-buyer + web-seller — Азиму.
 - [⏸️] **`API-PAGINATION-ENVELOPE-001`** — см. отложено в разделе ниже (Sprint B).
 
 ---
@@ -823,9 +1005,11 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 > Когда придёт время монетизации — добавить subscription модель поверх
 > существующего flow. Все PAY-NNN тикеты ниже остаются как roadmap.
 >
-> **TODO для admin frontend:** добавить кнопку «Активировать продавца на рынке»
-> в `apps/admin/src/pages/UserDetailPage.tsx` (или где сейчас make-seller) —
-> модалка со всеми полями → один POST. Тикет: `ADMIN-MANUAL-ACTIVATION-UI-001`.
+> ✅ **`ADMIN-MANUAL-ACTIVATION-UI-001` закрыт 16.05.2026** — кнопка
+> «Активировать продавца на рынке» + модалка со всеми полями добавлены в
+> `apps/admin/src/pages/UserDetailPage.tsx`. Показывается только для не-админов
+> без профиля продавца. Один POST на `/admin/users/:id/activate-seller-on-market`.
+> Коммит см. `analiz/done.md`.
 
 - [ ] **[PAY-001]** DB schema: таблицы `subscription_plans`, `subscriptions`, `payment_transactions`
   - **Домен:** `packages/db`
@@ -862,6 +1046,60 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 Домен: `apps/web-buyer`, `apps/web-seller`, `apps/tma`
 
 > TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
+
+## 🟡 `WEB-UZ-TRANSLATION-REVIEW-001` — вычитка узбекских переводов (Азим, 18.05.2026)
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller`
+- **Контекст:** UZ-локализация реализована (`MARKETING-LOCALIZATION-UZ-001`).
+  Узбекские переводы сгенерированы Claude — нужна вычитка перед запуском.
+- **✅ Машинная вычитка выполнена 18.05.2026** (Claude):
+  - web-buyer `uz.ts` — `741f482`: 3 опечатки (masʼul/isteʼmol — бэктик
+    вместо тутуқ белгиси; murojaatingizga — тройная «a»); смягчён тон
+    `checkout.submitError`; фикс ru.ts `cart.itemCountUz`.
+  - web-seller `uz.ts` — `b15ea0a`: `maʻlumot` использовал ʻ U+02BB вместо
+    тутуқ белгиси ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» →
+    «...boʻlmadi». Ключи uz↔ru — паритет 524/524.
+  - Юр-тексты web-buyer (offer/privacy/terms/refund) — просмотрены,
+    качество формального юр-узбекского ОК, 3 опечатки выше были как раз там.
+- **Осталось (для Азима как носителя):**
+  1. 🟢 Терминология web-seller — `orders.nextProcess` / `orders.detail.nextProcess`
+     = `«Ishga olish»` («нанять на работу»). Для «Взять в обработку» уместнее
+     `«Jarayonga olish»` (консистентно со статусом `Jarayonda`). Решение Азима.
+  2. 🟢 Кросс-app расхождения: PENDING `Kutmoqda`(seller)/`Kutilmoqda`(buyer);
+     тема `Yorugʻ/Toʻq`(seller)/`Yorqin/Qorongʻu`(buyer). Не ошибка, но не
+     унифицировано — на усмотрение Азима.
+  3. 🟡 Ручная проверка на Railway: переключатель RU/UZ (buyer `/profile`,
+     seller `/settings`), RU-регрессия. **Заблокировано** `INFRA-API-PROD-DOWN-001`.
+- **Файлы:** `apps/web-buyer/src/lib/i18n/uz.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+
+## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
+
+> **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
+> стороны — нужна проверка из фронта, дальше двигаться без неё нельзя.
+
+- **Домен:** `apps/web-buyer` + `apps/tma` (проверка, без правки кода если 500 нет)
+- **Контекст:** Полат задеплоил на прод (`api` ветка, деплой `ebe374f8`):
+  fault-isolation fix (post-commit side-effects обёрнуты в try/catch — сбой
+  WS/TG/clearCart больше НЕ превращает успешный заказ в 500) + ErrorReporter
+  (любой следующий 500 оставит полный stack trace в Railway stderr).
+- **Что сделать:**
+  1. Пройти именно **корзинный** checkout: товар → корзина → «Оформить заказ»
+     → подтвердить. (Это `POST /checkout/confirm`, НЕ «купить сейчас» —
+     direct-order это другой эндпоинт, он на проде уже работает без ошибок.)
+  2. Прогнать оба режима: `delivery` и `pickup` — заодно проверка нового
+     `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` (pickup → deliveryFee 0,
+     суммы preview и confirm должны совпасть).
+- **Результат:**
+  - ✅ Заказ создаётся (201) → отписать Полату, он закроет
+    `API-CHECKOUT-CONFIRM-500-001`.
+  - ❌ Снова 500 → взять из Railway-логов `savdo-api` JSON-строку
+    `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
+    stack trace в `analiz/logs.md` — Полат разберёт root cause.
+
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ПОЛНОСТЬЮ ЗАКРЫТО 19.05.2026
+
+> Backend+типы — Полат (`7791238`). Снятие 9 `as`-кастов в web-buyer — Азим
+> (`e0a7efa`, ветка `web-buyer`). Подробности в `done.md`.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 

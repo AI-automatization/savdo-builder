@@ -125,7 +125,13 @@ describe('GetCartUseCase', () => {
         }],
       });
       const result = await useCase.execute({ buyerId: 'b-1' }) as any;
-      expect(result.items[0].variant).toEqual({ id: 'v-1', sku: 'SKU1', title: 'Red XL' });
+      expect(result.items[0].variant).toEqual({
+        id: 'v-1',
+        sku: 'SKU1',
+        title: 'Red XL',
+        priceOverride: null,
+        salePriceOverride: null,
+      });
     });
 
     it('variant без titleOverride → optionValues join через " / "', async () => {

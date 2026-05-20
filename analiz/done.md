@@ -1,5 +1,296 @@
 # Done — Азим + Полат
 
+## 2026-05-20 (Полат, frontend) — Vitest + smoke-тесты для TMA
+
+### ✅ [TMA-FRONTEND-TESTS-001] vitest + RTL setup + 4 smoke-теста (API-FRONTEND-TESTS-001 part 2)
+
+- **Важность:** 🟡 P2 tech-debt из `API-FRONTEND-TESTS-001`. Admin закрыт ранее, теперь TMA.
+- **Дата:** 20.05.2026
+- **Файлы:**
+  - `apps/tma/package.json` — devDeps: vitest@^3.2.0, @testing-library/react@^16.1.0, @testing-library/jest-dom@^6.6.3, jsdom@^25.0.1. Скрипт `"test": "vitest run --reporter=default"`. Vite pin `^6.4.2` (workspace overrides всё равно поднимают до vite@8, поэтому vitest 3.x обязателен — vitest@2.1.x несовместим с rolldown-vite, падает `__vite_ssr_exportName__ is not defined`).
+  - `apps/tma/vitest.config.ts` — отдельный от vite.config.ts (без proxy), `environment: 'jsdom'`, `globals: true`, `setupFiles: ['./src/test/setup.ts']`, `css: false`.
+  - `apps/tma/src/test/setup.ts` — jest-dom матчеры, полифилл `window.matchMedia` (jsdom), полифилл `window.Telegram.WebApp` (MainButton/BackButton/HapticFeedback/initData) — критично, иначе ErrorBoundary и страницы падают на импорте.
+  - `apps/tma/tsconfig.app.json` — добавлен `"types": ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/tma/src/__tests__/smoke/telegram-stub.test.ts` (5 tests) — infra-тест: stub существует, MainButton.{show,hide,setText,enable,disable,onClick}, BackButton.{show,hide,onClick}, HapticFeedback API, initData пустая.
+  - `apps/tma/src/__tests__/smoke/i18n.test.tsx` (3 tests) — `useTranslation()` отдаёт ru по умолчанию (`nav.cart` → `Корзина`), переключается на uz (`Savat`), unknown key → сам ключ как fallback. Wrapper = TelegramProvider + I18nProvider.
+  - `apps/tma/src/__tests__/smoke/stars.test.tsx` (3 tests) — `<Stars/>`: рендер 5 звёзд, read-only без role=radiogroup, interactive onChange(3) по клику на 3-ю звезду.
+  - `apps/tma/src/__tests__/smoke/badge.test.tsx` (3 tests) — статус-чип: PENDING→Обрабатывается, DELIVERED→Доставлен, unknown→raw status.
+- **Что сделано:** vitest@3 + RTL + jsdom + Telegram WebApp stub в setup. 4 файла smoke-тестов, 14/14 passed (`npx vitest run`). `npx tsc --noEmit` чисто.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают vite до 8.0.10 (rolldown-vite) во всём монорепо. Vitest 2.1.x ломается на TSX-импортах из src/ (`__vite_ssr_exportName__ is not defined`). Admin случайно работает потому что его node_modules/vite сидит на старом 6.4.1 (stale install), но любой свежий install получит 8.0.10. Vitest 3.2.4 совместим с rolldown.
+- **Скоуп:** только `apps/tma/**`. web-buyer/web-seller — Азиму (он во фронт-зоне).
+- **Не сделано:** AppShell smoke — пропущен, требует мокать AuthProvider + socket.io + sellerNotifications + lazy routes (>3 моков); вместо него взят Badge + Stars (чистые презентационные).
+
+---
+
+## 2026-05-20 (Полат, SRE) — Backups / restore drill — закрытие launch-блокера
+
+### ✅ [INFRA-BACKUP-RUNBOOK-001] Backup policy + runbook + restore-drill инструментарий
+
+- **Важность:** 🔴 (launch-блокер из `docs/readiness/launch-readiness-2026-05-20.md`,
+  Data integrity 7 → 8)
+- **Дата:** 20.05.2026
+- **Контекст:** `docs/V1.1/08_operations_model.md` декларирует daily PG dumps +
+  monthly restore drill, но в репо не было ни runbook'а, ни автоматизации.
+  Аудит 20.05 поставил это **🔴 blocker**: «Команда полагается на Railway managed
+  snapshot без проверки. Один реальный restore drill закроет вопрос на 90%»
+  (см. Risk register R2).
+- **Стратегия (defense-in-depth):** Railway native snapshots (daily, passive) +
+  off-platform `pg_dump --format=custom` weekly в Cloudflare R2. RPO 7 дней worst
+  case, RTO 30 мин (snapshot) / 2 ч (off-platform restore).
+- **Что сделано:**
+  - **`docs/runbooks/postgres-backup-restore.md`** (new, ~300 строк) —
+    операционный runbook: стратегия + backup procedures (Railway UI + pg_dump) +
+    restore procedures (snapshot + off-platform) + полная monthly drill процедура +
+    RPO/RTO/calendar + decision tree аварий + эскалация (Полат → Азим →
+    Railway Support).
+  - **`scripts/db/backup.sh`** (new) — weekly dump:
+    `pg_dump --no-owner --no-privileges --format=custom --compress=9` →
+    `backups/savdo-YYYYMMDD-HHMMSS.dump`. Опциональный `--upload` в R2 через
+    `aws s3 cp --endpoint-url`. `set -euo pipefail`, проверки prerequisites,
+    `pg_restore --list` верификация дампа, summary с размером/числом таблиц/elapsed.
+    Поддерживает env vars `BACKUP_DIR`, `BACKUP_PREFIX`, `R2_*`.
+  - **`scripts/db/restore-drill.sh`** (new) — monthly drill:
+    DROP SCHEMA → `pg_restore --clean --if-exists --jobs=4` → integrity check
+    через `psql -f integrity-check.sql` → опциональный row-count diff vs
+    source-db (порог `MAX_ROWCOUNT_DRIFT_PCT`, default 5%). Печатает JSON-репорт
+    в stdout (parseable for CI). Exit codes 0/2/3/4 для разных failure modes.
+    Поддерживает `--keep-data` (не дропать staging БД после).
+  - **`scripts/db/integrity-check.sql`** (new) — 30+ SELECT'ов:
+    count_* (15 таблиц), reference_category_filters_present, orphan_*
+    (10 FK-orphan checks: order_items↔orders, orders↔store/seller/buyer,
+    cart_items↔cart/product, products↔stores, stores↔sellers,
+    buyers/sellers↔users), INV-S01 duplicate stores per seller,
+    migrations_applied, INV-O04 negative stock products/variants,
+    INV-C04 missing order_item snapshots. Колонки в кавычках (Prisma
+    camelCase без `@map`).
+  - **`analiz/tasks.md`** — две новых open task'и:
+    `INFRA-BACKUP-DRILL-FIRST-RUN-001` (реально прогнать drill на прод-дампе) +
+    `INFRA-BACKUP-R2-SETUP-001` (завести R2 bucket).
+- **Файлы:**
+  - `docs/runbooks/postgres-backup-restore.md` (new)
+  - `scripts/db/backup.sh` (new, chmod +x, `bash -n` OK)
+  - `scripts/db/restore-drill.sh` (new, chmod +x, `bash -n` OK)
+  - `scripts/db/integrity-check.sql` (new)
+  - `analiz/tasks.md` (две новых задачи в начале)
+  - `analiz/done.md` (эта запись)
+- **НЕ сделано (отдельные задачи):**
+  - Реальный первый запуск drill'а на прод-дампе → `INFRA-BACKUP-DRILL-FIRST-RUN-001`.
+  - R2 bucket setup + credentials → `INFRA-BACKUP-R2-SETUP-001`.
+  - GitHub Actions cron на weekly dump → постMVP (нужен secret-scan baseline,
+    блокируется `SEC-AUDIT-04`).
+  - PITR через continuous WAL archiving → постMVP, после Click/Payme (требование
+    к RPO ≤ 1ч появится с онлайн-эквайрингом).
+- **Sanity check:**
+  - `bash -n scripts/db/backup.sh` → OK.
+  - `bash -n scripts/db/restore-drill.sh` → OK.
+  - Имена колонок сверены с `packages/db/prisma/migrations/20260322203830_init/migration.sql`
+    (Prisma camelCase: `buyerId`, `storeId`, `sellerId`, `stockQuantity`,
+    `productTitleSnapshot`, `unitPriceSnapshot` — все в `"кавычках"` в SQL).
+- **Impact на launch-readiness:** Data integrity score **7 → 8** (документация
+  и инструментарий закрыты, осталось один раз прогнать drill для перехода
+  до 8.5). R2 risk register от **🔴 Critical** до **🟡 Med** (план есть, нужно
+  одно выполнение).
+
+---
+
+## 2026-05-20 (Азим) — рефактор дублей `NEXT_PUBLIC_API_URL` (web-buyer)
+
+### ✅ [WEB-BUYER-API-URL-DEDUP-001] Свести 4 копии fallback'а API URL в один источник
+
+- **Важность:** 🟢
+- **Дата:** 20.05.2026
+- **Ветка/HEAD:** `web-buyer` → `8f1c4f5` (запушено)
+- **Контекст:** 🟢-хвост из resume_session_67 — 4 файла повторяли
+  `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'` с разными
+  суффиксами (`/api/v1` или без), `client.ts` дублировал console.warn
+  про отсутствие env. Любое изменение fallback'а требовало синхронных
+  правок в 4 местах.
+- **Что сделано:** новый `apps/web-buyer/src/lib/api/env.ts` экспортирует
+  две константы — `API_ORIGIN` (используется socket.io + refresh-эндпоинтом
+  как голый origin) и `API_BASE` (`${API_ORIGIN}/api/v1`, используется
+  axios `baseURL` и SSR-fetch'ами). Warning срабатывает один раз, только
+  на клиенте (server-импортёры — `storefront-server.ts`, product layout —
+  warning не триггерят, что правильно: в SSR-логах он шумит зря).
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/env.ts` (new)
+  - `apps/web-buyer/src/lib/api/client.ts` — `BASE_URL` → `API_BASE`,
+    refresh URL короче (`${API_BASE}/auth/refresh`), warning удалён
+  - `apps/web-buyer/src/lib/api/storefront-server.ts` — `BASE` → `API_BASE`
+  - `apps/web-buyer/src/lib/socket.ts` — `BASE_URL` → `API_ORIGIN`
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx` — `BASE`
+    → `API_BASE` (через alias `@/lib/api/env`)
+- **Sanity check:** `grep NEXT_PUBLIC_API_URL` под `src/` — только `env.ts`.
+  Поведение равенство, net −7 строк (5 файлов +18/−16). Прод-сборка проверится
+  Railway-автодеплоем на `web-buyer`.
+- **НЕ сделано:** uz-терминология (`Ishga olish` → `Jarayonga olish`,
+  PENDING `Kutmoqda/Kutilmoqda`, темы `Yorug'/Yorqin`) — решение Азима как
+  носителя. `VERIFY-CHECKOUT-CONFIRM-500-001` — вручную на проде, на Азиме.
+
+---
+
+## 2026-05-19 (Азим) — fix-волна 🟢-хвоста QA-аудита 15.05 (web-buyer)
+
+### ✅ [WEB-QA-GREEN-2026-05-15] Видимые баги web-buyer из 🟢-хвоста
+
+- **Важность:** 🟢
+- **Дата:** 19.05.2026
+- **Ветка/HEAD:** `web-buyer` → `a8dbbdf`
+- **Источник:** `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`, секция «🟢 После запуска».
+- **Что сделано (5 коммитов):**
+  - `63f641c` — **`ProductCard` рисует скидку.** `ProductListItem` нёс
+    `isSale`/`salePrice`/`oldPrice`/`discountPercent`, но карточка показывала
+    только `basePrice`. Теперь: цена продажи (danger), старая цена зачёркнута,
+    бейдж `-NN%` в стопке top-left.
+  - `6a715c3` — **пагинация отзывов + корректный средний рейтинг.**
+    `ProductReviews` показывал только первые 20 отзывов и усреднял по странице
+    (неверно при 21+). Аккумуляция страниц + «Показать ещё»; средний рейтинг
+    показывается только когда загружены ВСЕ отзывы. i18n `product.reviews.showMore`.
+  - `798dfa7` — **desktop-галерея товара** рендерила `images.slice(0,4)` —
+    5-е фото недоступно на десктопе. Убран slice.
+  - `1e1b7cb` — NaN-guard цены в wishlist (`NaN сум` при null); hero-CTA
+    «Просмотреть магазины» вёл на якорь `#top-stores`, исчезающий когда
+    `HomeTopStores` = null → заменён на `Link /stores`; пустой placeholder
+    «Из этого магазина» подключён — грузит товары того же магазина
+    (`useProducts` по storeId, до 6 шт), скрывается если товаров нет.
+  - `3e2cee2` — **a11y модалок чата.** Новый shared `ConfirmModal`
+    (`components/confirm-modal.tsx`): Esc, focus-trap (Tab циклится),
+    `role=dialog`/`aria-modal`/`aria-labelledby`, возврат фокуса. Два
+    inline confirm-оверлея в `chats/page.tsx` (удалить сообщение/чат)
+    заменены на него — заодно убран дубль разметки. `ChatComposerModal`
+    получил Esc + focus-trap + `role=dialog`.
+  - `a8dbbdf` — **убран фиктивный блок «бесплатная доставка»** из корзины
+    (`WEB-BUYER-FREE-DELIVERY-DEAD-PROMISE-001`). «До бесплатной доставки
+    X сум» + прогресс рисовались, но `delivery` всегда 0 — обещание мёртвое,
+    в backend нет порога. Блок удалён (решение делегировано Азимом),
+    честная строка «Доставка: рассчитывается при оформлении» оставлена.
+- **НЕ сделано (ждёт решения Азима):** «Free-delivery прогресс — мёртвое
+  обещание» (`cart/page.tsx`: `delivery = subtotal >= MIN ? 0 : 0`). Фикс =
+  удаление блока, т.к. в backend нет порога бесплатной доставки
+  (`StoreDeliverySettings` = `fixed`/`manual`/`none`, без threshold). Удаление
+  UI требует подтверждения Азима — см. tasks.md.
+- **Проверка:** локальный tsc не запускался (запрет) — типы проверит Railway-сборка.
+
+## 2026-05-19 (Азим) — снятие as-кастов web-buyer
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Сняты 9 `as`-кастов response-объектов
+
+- **Важность:** 🟡
+- **Дата:** 19.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `.../(minimal)/checkout/page.tsx`, `.../(shop)/orders/page.tsx`,
+  `.../(shop)/[slug]/products/[id]/page.tsx`
+- **Ветка/HEAD:** `web-buyer` → `e0a7efa` (предварительно merge `main` → `web-buyer` `f116525`,
+  чтобы подтянуть расширенные типы Полата `7791238`)
+- **Что сделано:** Полат закрыл backend+типы (`7791238`) — все 9 полей реально
+  отдаются API и объявлены в `packages/types`. Сняты касты, поля читаются напрямую:
+  - `CartItem` / `CartItemProduct` / `CartItemVariant` — `itemUnitPrice`,
+    `cartItemUnitPrice`, `outOfStock`, рендер позиций в checkout.
+  - `AuthUser.name` — поля контакта в checkout (3 callsite).
+  - `OrderListItem.itemCount` — карточка заказа в orders.
+  - `Product.inWishlist` — detail page (наследует от `ProductListItem`).
+  - `CartItemProduct`/`CartItemVariant` — супермножества старых
+    `ProductRef`/`VariantRef`, существующие обращения не затронуты.
+  - Поведение не менялось, net −30 строк.
+- **Проверка:** локальный tsc не запускался (запрет на локальный запуск) —
+  типобезопасность проверит Railway-сборка `web-buyer` (`next build`).
+
+## 2026-05-18 (Азим) — вычитка uz-переводов web-buyer + web-seller
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001] Машинная вычитка узбекских словарей
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/lib/i18n/{uz,ru}.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+- **Ветки/HEAD:** `web-buyer` → `741f482`, `web-seller` → `b15ea0a`
+- **Что сделано:** Сверены uz.ts ↔ ru.ts обеих апп. Найдено и исправлено:
+  - web-buyer: 3 опечатки в юр-текстах (`masʼul`/`isteʼmol` — был бэктик
+    вместо тутуқ белгиси U+02BC; `murojaatingizga` — тройная «a»); смягчён
+    `checkout.submitError`; фикс гибрида `cart.itemCountUz` в ru.ts.
+  - web-seller: `maʻlumot` использовал ʻ U+02BB вместо тутуқ белгиси
+    ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» → «...boʻlmadi».
+  - Орфография `oʻ`/`gʻ` чистая в обеих, паритет ключей uz↔ru сохранён.
+  - Юр-тексты web-buyer просмотрены — формальный юр-узбекский ОК.
+  - tsc --noEmit чист в обеих аппах.
+- **Остаток:** терминология (`Ishga olish`), кросс-app унификация,
+  ручная Railway-проверка — на Азиме (см. тикет в tasks.md).
+
+## 2026-05-18 (Азим) — OtpGate error surfacing
+
+### ✅ [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] OtpGate показывает реальную ошибку API
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx`,
+  `apps/web-buyer/src/lib/i18n/ru.ts`, `apps/web-buyer/src/lib/i18n/uz.ts`
+- **Ветка/HEAD:** `web-buyer` → `24011be`
+- **Что сделано:** `handleSend`/`handleVerify` ловили ошибку через `catch {}`
+  без переменной — реальное сообщение API (`TELEGRAM_NOT_LINKED`,
+  `OTP_SEND_LIMIT` 429, сетевой сбой) терялось, всегда показывалось
+  «Не удалось отправить код. Проверьте номер.». Теперь `catch (e)`
+  пробрасывает `err.response.data.message` (идиома web-buyer из checkout/chat),
+  fallback — i18n-ключ. Текст `auth.sendError`: «Проверьте номер» →
+  «Попробуйте ещё раз» (ru+uz). `tsc --noEmit` чист.
+
+## 2026-05-18 (Азим) — UZ-локализация web-buyer + web-seller
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] UZ-локализация web-buyer + web-seller 🔴
+
+- **Важность:** 🔴
+- **Дата:** 17–18.05.2026
+- **Ветки/HEAD:** `web-buyer` → `aac61e8`, `web-seller` → `eb31728` (обе запушены, Railway деплоит)
+- **Спека:** `docs/superpowers/specs/2026-05-16-uz-localization-web-design.md`
+- **План:** `docs/superpowers/plans/2026-05-17-uz-localization-web.md`
+- **Что сделано:** Зеркалена i18n-инфраструктура `apps/admin` в обе апы — `src/lib/i18n/`
+  (React Context, плоский словарь ru/uz dot.notation, `useTranslation()`, fallback
+  `uz→ru→key`, детект localStorage→navigator, ключи `savdo_buyer_locale` /
+  `savdo_seller_locale`). Переключатель RU/UZ — в web-buyer `/profile`, web-seller
+  `/settings`. Извлечение строк волнами: **web-buyer** 5 волн (storefront+catalog,
+  orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared) —
+  508 ключей. **web-seller** 3 волны (auth/onboarding, 12 dashboard-страниц, shared) —
+  533 ключа. Server Components с видимым текстом (HomeHero, `[slug]/page.tsx`,
+  4 юр-страницы) обёрнуты в client-подкомпоненты. Каждая волна: spec-review +
+  code-review субагентами, `tsc --noEmit` чист, push в service-ветку. SEO-metadata,
+  форматирование чисел и «сум» оставлены на RU (вне scope по спеке).
+- **Осталось (не блокер):** ревью узбекских переводов Азимом — юр-тексты web-buyer
+  Wave 4 помечены `// REVIEW` в `uz.ts`; ручная проверка переключателя на Railway.
+
+## 2026-05-17 (Азим) — типы
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Список `as`-кастов response-объектов web-buyer 🟡
+
+- **Важность:** 🟡
+- **Дата:** 17.05.2026
+- **Файлы:** анализ — `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/orders/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`;
+  результат — `analiz/tasks.md`
+- **Что сделано:** Собран список из 9 `as`-кастов response-объектов в web-buyer
+  на 4 shape'ах (`CartItem`, `AuthUser`, `Order`, `Product`). Полный список
+  callsite'ов (`файл:строка` + кастуемые поля) записан в тикет
+  `API-RESPONSE-TYPES-RECONCILE-001` в `tasks.md` для Полата. Каста `store.slug`
+  не найдено — `StoreRef.slug` уже в типе. Дальше Полат правит `packages/types`,
+  затем Азим снимает касты. Sub-task Азима закрыт.
+
+## 2026-05-16 (Полат) — admin: ручная активация продавца
+
+### ✅ [ADMIN-MANUAL-ACTIVATION-UI-001] Кнопка «Активировать продавца на рынке» 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/admin/src/pages/UserDetailPage.tsx`,
+  `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Что сделано:** Закрыт последний UI-хвост из замороженного блока монетизации.
+  В `UserDetailPage` добавлена кнопка «Активировать продавца на рынке» (зелёная,
+  в ActionPanel) — показывается только для не-админов без профиля продавца и не
+  заблокированных. Открывает модалку со всеми полями backend-контракта
+  (`fullName`, `sellerType` select, `telegramUsername`, `storeName`, `storeCity`,
+  `telegramContactLink` — обязательные; `region`, `slug`, `description` —
+  опциональные). `fullName` префиллится из `buyer.fullName`. Один POST на
+  `/admin/users/:id/activate-seller-on-market` — backend-endpoint уже был
+  (`super-admin.controller.ts`, `seller:create` permission). +19 i18n-ключей
+  ru/uz. tsc admin чистый.
+
 ## 2026-05-16 (Полат) — checkout pickup + Store type
 
 ### ✅ [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] «Самовывоз» больше не платит доставку 🟡

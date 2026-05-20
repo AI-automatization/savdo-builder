@@ -9,7 +9,16 @@ export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
 
   async connectToRedis(redisUrl: string): Promise<void> {
-    const pubClient = createClient({ url: redisUrl });
+    // API-REDIS-RESILIENCE-001: connectTimeout — connect() не висит вечно
+    // (caller в main.ts ловит ошибку и стартует API без адаптера).
+    // reconnectStrategy — backoff с потолком 10с после первого коннекта.
+    const pubClient = createClient({
+      url: redisUrl,
+      socket: {
+        connectTimeout: 10_000,
+        reconnectStrategy: (retries: number) => Math.min(retries * 200, 10_000),
+      },
+    });
     const subClient = pubClient.duplicate();
 
     pubClient.on('error', (err) =>

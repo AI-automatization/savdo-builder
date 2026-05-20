@@ -17,9 +17,35 @@ export interface MappedCartItem {
   variantId: string | null;
   quantity: number;
   unitPrice: number;
+  /** Снапшот базовой цены из CartItem.unitPriceSnapshot на момент добавления. */
+  unitPriceSnapshot: number | null;
+  /** Снапшот sale-цены из CartItem.salePriceSnapshot на момент добавления. */
+  salePriceSnapshot: number | null;
   subtotal: number;
-  product: { id: string; title: string; mediaUrl: string | null };
-  variant: { id: string; sku: string | null; title: string | null } | null;
+  product: {
+    id: string;
+    title: string;
+    mediaUrl: string | null;
+    /** Текущая базовая цена продукта (Product.basePrice). */
+    basePrice: number;
+    /** Текущая sale-цена продукта (Product.salePrice), null если не на скидке. */
+    salePrice: number | null;
+    /** Текущий складской агрегат продукта (Product.totalStock). */
+    stock: number;
+    /** status === ACTIVE && isVisible. */
+    isAvailable: boolean;
+    /** Product.isVisible. */
+    isVisible: boolean;
+  };
+  variant: {
+    id: string;
+    sku: string | null;
+    title: string | null;
+    /** ProductVariant.priceOverride, null если вариант не переопределяет цену. */
+    priceOverride: number | null;
+    /** ProductVariant.salePriceOverride, null если вариант не переопределяет sale-цену. */
+    salePriceOverride: number | null;
+  } | null;
 }
 
 export interface MappedCart {
@@ -55,20 +81,38 @@ export function mapCart(cart: CartWithItems): MappedCart {
           null))
       : null;
 
+    const productStatus = product?.status as string | undefined;
+    const productIsVisible = product?.isVisible === true;
+    const isAvailable = productStatus === 'ACTIVE' && productIsVisible;
+
     return {
       id: item.id,
       productId: item.productId,
       variantId: item.variantId ?? null,
       quantity: item.quantity,
       unitPrice,
+      unitPriceSnapshot: item.unitPriceSnapshot != null ? toNum(item.unitPriceSnapshot) : null,
+      salePriceSnapshot: item.salePriceSnapshot != null ? toNum(item.salePriceSnapshot) : null,
       subtotal,
       product: {
         id: product?.id ?? item.productId,
         title: product?.title ?? '',
         mediaUrl: resolveMediaUrl(product?.images?.[0]?.media) ?? null,
+        basePrice: toNum(product?.basePrice),
+        salePrice: product?.salePrice != null ? toNum(product.salePrice) : null,
+        stock: product?.totalStock != null ? toNum(product.totalStock) : 0,
+        isAvailable,
+        isVisible: productIsVisible,
       },
       variant: variant
-        ? { id: variant.id, sku: variant.sku ?? null, title: variantTitle }
+        ? {
+            id: variant.id,
+            sku: variant.sku ?? null,
+            title: variantTitle,
+            priceOverride: variant.priceOverride != null ? toNum(variant.priceOverride) : null,
+            salePriceOverride:
+              variant.salePriceOverride != null ? toNum(variant.salePriceOverride) : null,
+          }
         : null,
     };
   });

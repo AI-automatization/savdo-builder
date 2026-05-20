@@ -1,0 +1,51 @@
+name: Deploy Config Guard
+
+# DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001 — защита от инцидента 18.05.2026.
+# В Wave 19 был удалён railway.toml → Railway свалился в Railpack auto-detect
+# → telegram-app не собирался. Этот workflow падает, если deploy-конфиг
+# любого сервиса сломан или удалён — раньше, чем кривой коммит дойдёт до прода.
+
+on:
+  push:
+    branches: [main, api, admin, tma]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: railway.toml integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify each app has a valid railway.toml
+        run: |
+          set -e
+          fail=0
+          for app in api admin tma; do
+            f="apps/$app/railway.toml"
+            if [ ! -f "$f" ]; then
+              echo "::error file=$f::отсутствует — Railway свалится в Railpack auto-detect"
+              fail=1
+              continue
+            fi
+            if ! grep -q 'builder = "DOCKERFILE"' "$f"; then
+              echo "::error file=$f::нет builder = \"DOCKERFILE\""
+              fail=1
+            fi
+            if ! grep -q 'dockerfilePath' "$f"; then
+              echo "::error file=$f::нет dockerfilePath"
+              fail=1
+            fi
+            dfp=$(grep -oP 'dockerfilePath\s*=\s*"\K[^"]+' "$f" || true)
+            if [ -n "$dfp" ] && [ ! -f "$dfp" ]; then
+              echo "::error file=$f::dockerfilePath указывает на несуществующий $dfp"
+              fail=1
+            fi
+          done
+          if [ "$fail" = "1" ]; then
+            echo "Deploy-конфиг сломан — см. DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001 в analiz/tasks.md"
+            exit 1
+          fi
+          echo "OK — все apps/<app>/railway.toml на месте и собираются через Dockerfile"

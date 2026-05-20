@@ -140,9 +140,11 @@ describe('GetMeUseCase', () => {
   it('happy: { success: true, data: user }', async () => {
     repo.findUserById.mockResolvedValue({ id: 'u-1', phone: '+998900000001' });
     const result = await useCase.execute('u-1');
+    // API-RESPONSE-TYPES-RECONCILE-001: get-me всегда отдаёт `buyer` (null
+    // если профиля нет) — стабильный shape AuthUser для web-buyer/admin.
     expect(result).toEqual({
       success: true,
-      data: { id: 'u-1', phone: '+998900000001' },
+      data: { id: 'u-1', phone: '+998900000001', buyer: null },
     });
   });
 });

@@ -79,6 +79,9 @@ export class OrdersController {
         createdAt: (o.placedAt ?? o.createdAt ?? new Date()).toISOString(),
         customerPhone: o.customerPhone ?? undefined,
         customerFullName: o.customerFullName ?? undefined,
+        // API-RESPONSE-TYPES-RECONCILE-001: число позиций в заказе.
+        // `_count.items` уже включён в findByBuyerId — фронту больше не нужен `as`.
+        itemCount: o._count?.items ?? (o.items?.length ?? 0),
         preview: o.items?.[0]
           ? { title: o.items[0].productTitleSnapshot, imageUrl: o.items[0].primaryImageUrlSnapshot ?? null, itemCount: o._count?.items ?? 1 }
           : null,
