@@ -1,5 +1,40 @@
 # Done — Азим + Полат
 
+## 2026-05-20 (Азим) — рефактор дублей `NEXT_PUBLIC_API_URL` (web-buyer)
+
+### ✅ [WEB-BUYER-API-URL-DEDUP-001] Свести 4 копии fallback'а API URL в один источник
+
+- **Важность:** 🟢
+- **Дата:** 20.05.2026
+- **Ветка/HEAD:** `web-buyer` → `8f1c4f5` (запушено)
+- **Контекст:** 🟢-хвост из resume_session_67 — 4 файла повторяли
+  `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'` с разными
+  суффиксами (`/api/v1` или без), `client.ts` дублировал console.warn
+  про отсутствие env. Любое изменение fallback'а требовало синхронных
+  правок в 4 местах.
+- **Что сделано:** новый `apps/web-buyer/src/lib/api/env.ts` экспортирует
+  две константы — `API_ORIGIN` (используется socket.io + refresh-эндпоинтом
+  как голый origin) и `API_BASE` (`${API_ORIGIN}/api/v1`, используется
+  axios `baseURL` и SSR-fetch'ами). Warning срабатывает один раз, только
+  на клиенте (server-импортёры — `storefront-server.ts`, product layout —
+  warning не триггерят, что правильно: в SSR-логах он шумит зря).
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/env.ts` (new)
+  - `apps/web-buyer/src/lib/api/client.ts` — `BASE_URL` → `API_BASE`,
+    refresh URL короче (`${API_BASE}/auth/refresh`), warning удалён
+  - `apps/web-buyer/src/lib/api/storefront-server.ts` — `BASE` → `API_BASE`
+  - `apps/web-buyer/src/lib/socket.ts` — `BASE_URL` → `API_ORIGIN`
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx` — `BASE`
+    → `API_BASE` (через alias `@/lib/api/env`)
+- **Sanity check:** `grep NEXT_PUBLIC_API_URL` под `src/` — только `env.ts`.
+  Поведение равенство, net −7 строк (5 файлов +18/−16). Прод-сборка проверится
+  Railway-автодеплоем на `web-buyer`.
+- **НЕ сделано:** uz-терминология (`Ishga olish` → `Jarayonga olish`,
+  PENDING `Kutmoqda/Kutilmoqda`, темы `Yorug'/Yorqin`) — решение Азима как
+  носителя. `VERIFY-CHECKOUT-CONFIRM-500-001` — вручную на проде, на Азиме.
+
+---
+
 ## 2026-05-19 (Азим) — fix-волна 🟢-хвоста QA-аудита 15.05 (web-buyer)
 
 ### ✅ [WEB-QA-GREEN-2026-05-15] Видимые баги web-buyer из 🟢-хвоста
