@@ -1,5 +1,76 @@
 # Done — Азим + Полат
 
+## 2026-05-20 (Полат, SRE) — Backups / restore drill — закрытие launch-блокера
+
+### ✅ [INFRA-BACKUP-RUNBOOK-001] Backup policy + runbook + restore-drill инструментарий
+
+- **Важность:** 🔴 (launch-блокер из `docs/readiness/launch-readiness-2026-05-20.md`,
+  Data integrity 7 → 8)
+- **Дата:** 20.05.2026
+- **Контекст:** `docs/V1.1/08_operations_model.md` декларирует daily PG dumps +
+  monthly restore drill, но в репо не было ни runbook'а, ни автоматизации.
+  Аудит 20.05 поставил это **🔴 blocker**: «Команда полагается на Railway managed
+  snapshot без проверки. Один реальный restore drill закроет вопрос на 90%»
+  (см. Risk register R2).
+- **Стратегия (defense-in-depth):** Railway native snapshots (daily, passive) +
+  off-platform `pg_dump --format=custom` weekly в Cloudflare R2. RPO 7 дней worst
+  case, RTO 30 мин (snapshot) / 2 ч (off-platform restore).
+- **Что сделано:**
+  - **`docs/runbooks/postgres-backup-restore.md`** (new, ~300 строк) —
+    операционный runbook: стратегия + backup procedures (Railway UI + pg_dump) +
+    restore procedures (snapshot + off-platform) + полная monthly drill процедура +
+    RPO/RTO/calendar + decision tree аварий + эскалация (Полат → Азим →
+    Railway Support).
+  - **`scripts/db/backup.sh`** (new) — weekly dump:
+    `pg_dump --no-owner --no-privileges --format=custom --compress=9` →
+    `backups/savdo-YYYYMMDD-HHMMSS.dump`. Опциональный `--upload` в R2 через
+    `aws s3 cp --endpoint-url`. `set -euo pipefail`, проверки prerequisites,
+    `pg_restore --list` верификация дампа, summary с размером/числом таблиц/elapsed.
+    Поддерживает env vars `BACKUP_DIR`, `BACKUP_PREFIX`, `R2_*`.
+  - **`scripts/db/restore-drill.sh`** (new) — monthly drill:
+    DROP SCHEMA → `pg_restore --clean --if-exists --jobs=4` → integrity check
+    через `psql -f integrity-check.sql` → опциональный row-count diff vs
+    source-db (порог `MAX_ROWCOUNT_DRIFT_PCT`, default 5%). Печатает JSON-репорт
+    в stdout (parseable for CI). Exit codes 0/2/3/4 для разных failure modes.
+    Поддерживает `--keep-data` (не дропать staging БД после).
+  - **`scripts/db/integrity-check.sql`** (new) — 30+ SELECT'ов:
+    count_* (15 таблиц), reference_category_filters_present, orphan_*
+    (10 FK-orphan checks: order_items↔orders, orders↔store/seller/buyer,
+    cart_items↔cart/product, products↔stores, stores↔sellers,
+    buyers/sellers↔users), INV-S01 duplicate stores per seller,
+    migrations_applied, INV-O04 negative stock products/variants,
+    INV-C04 missing order_item snapshots. Колонки в кавычках (Prisma
+    camelCase без `@map`).
+  - **`analiz/tasks.md`** — две новых open task'и:
+    `INFRA-BACKUP-DRILL-FIRST-RUN-001` (реально прогнать drill на прод-дампе) +
+    `INFRA-BACKUP-R2-SETUP-001` (завести R2 bucket).
+- **Файлы:**
+  - `docs/runbooks/postgres-backup-restore.md` (new)
+  - `scripts/db/backup.sh` (new, chmod +x, `bash -n` OK)
+  - `scripts/db/restore-drill.sh` (new, chmod +x, `bash -n` OK)
+  - `scripts/db/integrity-check.sql` (new)
+  - `analiz/tasks.md` (две новых задачи в начале)
+  - `analiz/done.md` (эта запись)
+- **НЕ сделано (отдельные задачи):**
+  - Реальный первый запуск drill'а на прод-дампе → `INFRA-BACKUP-DRILL-FIRST-RUN-001`.
+  - R2 bucket setup + credentials → `INFRA-BACKUP-R2-SETUP-001`.
+  - GitHub Actions cron на weekly dump → постMVP (нужен secret-scan baseline,
+    блокируется `SEC-AUDIT-04`).
+  - PITR через continuous WAL archiving → постMVP, после Click/Payme (требование
+    к RPO ≤ 1ч появится с онлайн-эквайрингом).
+- **Sanity check:**
+  - `bash -n scripts/db/backup.sh` → OK.
+  - `bash -n scripts/db/restore-drill.sh` → OK.
+  - Имена колонок сверены с `packages/db/prisma/migrations/20260322203830_init/migration.sql`
+    (Prisma camelCase: `buyerId`, `storeId`, `sellerId`, `stockQuantity`,
+    `productTitleSnapshot`, `unitPriceSnapshot` — все в `"кавычках"` в SQL).
+- **Impact на launch-readiness:** Data integrity score **7 → 8** (документация
+  и инструментарий закрыты, осталось один раз прогнать drill для перехода
+  до 8.5). R2 risk register от **🔴 Critical** до **🟡 Med** (план есть, нужно
+  одно выполнение).
+
+---
+
 ## 2026-05-20 (Азим) — рефактор дублей `NEXT_PUBLIC_API_URL` (web-buyer)
 
 ### ✅ [WEB-BUYER-API-URL-DEDUP-001] Свести 4 копии fallback'а API URL в один источник

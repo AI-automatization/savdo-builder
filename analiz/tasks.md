@@ -5,6 +5,55 @@
 
 ---
 
+## 🟡 [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый реальный restore drill на прод-дампе
+
+- **Домен:** SRE / DBA (Полат)
+- **Кто берёт:** Полат
+- **Приоритет:** P1 — закрывает остаточный риск **R2** из launch-readiness 2026-05-20.
+- **Контекст:** документация и инструментарий готовы (`INFRA-BACKUP-RUNBOOK-001`,
+  см. `done.md` 2026-05-20). Осталось **один раз реально прогнать** drill
+  end-to-end на свежем прод-дампе — это закрывает блокер Data integrity
+  по существу (а не только по бумагам).
+- **Что сделать:**
+  1. Включить Railway public networking для Postgres (Networking → Public →
+     Enable) или поднять `pg_dump` через `railway shell` внутри savdo-api.
+  2. Снять свежий dump: `DATABASE_URL='postgresql://postgres:***@<host>:5432/railway'
+     bash scripts/db/backup.sh`.
+  3. Поднять локальный Postgres: `docker run -d --name savdo-staging-pg
+     -e POSTGRES_USER=savdo -e POSTGRES_PASSWORD=savdo -e POSTGRES_DB=savdo_staging
+     -p 55432:5432 postgres:16-alpine`.
+  4. Запустить drill: `bash scripts/db/restore-drill.sh --dump backups/savdo-*.dump
+     --target-db postgresql://savdo:savdo@localhost:55432/savdo_staging
+     --source-db "$DATABASE_URL"`.
+  5. Результат (PASS/FAIL + JSON-репорт) — зафиксировать в `analiz/logs.md`
+     по шаблону из runbook'а §4.4.
+  6. Если PASS — поставить календарный reminder на последнюю пятницу
+     июня для следующего drill.
+- **Файлы:**
+  - `docs/runbooks/postgres-backup-restore.md` — runbook
+  - `scripts/db/backup.sh`, `scripts/db/restore-drill.sh`, `scripts/db/integrity-check.sql`
+- **Definition of done:** один JSON-репорт `drill_status: PASS` в `analiz/logs.md`.
+
+---
+
+## 🟡 [INFRA-BACKUP-R2-SETUP-001] Завести R2 bucket для off-platform дампов
+
+- **Домен:** инфра (Полат)
+- **Кто берёт:** Полат
+- **Приоритет:** P2 — пока drill PASS, можно держать дампы локально / в Google Drive
+  Полата. Off-platform хранение — следующий уровень защиты.
+- **Что сделать:**
+  1. Cloudflare → R2 → создать bucket `savdo-backups` (region `auto`).
+  2. Сгенерировать R2 API token (scope: Object Read & Write только этого bucket'а).
+  3. Lifecycle rule: `weekly/*` → expire after 84 дня (12 weeks retention).
+  4. Сохранить в Railway env savdo-api (или в локальный `.env` для CLI):
+     `R2_BACKUP_BUCKET=savdo-backups`, `R2_ENDPOINT_URL=https://<acct>.r2.cloudflarestorage.com`,
+     `AWS_ACCESS_KEY_ID=...`, `AWS_SECRET_ACCESS_KEY=...`.
+  5. Прогнать `bash scripts/db/backup.sh --upload` — проверить, что upload идёт.
+- **Файлы:** none code; настройка во внешних сервисах.
+
+---
+
 ## ✅ [INFRA-API-PROD-DOWN-001] PROD API лежит — ВОССТАНОВЛЕНО 19.05.2026
 - **Статус:** ✅ API снова жив — проверено curl'ом 19.05.2026: `/api/v1/health`,
   `/api/v1/storefront/featured`, `/api/v1/storefront/categories/tree` все `200`.
