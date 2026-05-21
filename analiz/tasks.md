@@ -54,6 +54,156 @@
 
 ---
 
+## 🟠 [CI-PNPM-AUDIT-001] Weekly `pnpm audit` в CI + baseline
+
+- **Домен:** `.github/workflows` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P1 must-pass для public launch (закрывает Deps 6 → 7 в
+  `docs/decisions/launch-go-no-go-2026-05-20.md`). Overrides в `package.json:46`
+  патчат конкретные CVE, но нет регулярного скана.
+- **Что сделать:**
+  1. `.github/workflows/dependency-audit.yml` — cron `0 9 * * 1` (понедельник
+     9:00 UTC), `pnpm audit --prod --json`, fail если есть `high`/`critical`.
+  2. Зафиксировать baseline (`pnpm audit --prod --json > .audit-baseline.json`,
+     коммитнуть, в job сравнивать diff).
+  3. Опционально: `.github/dependabot.yml` weekly PR-bump'ы для `apps/api`,
+     `apps/web-*`, корень.
+- **Файлы:** `.github/workflows/dependency-audit.yml` (new), `.audit-baseline.json`
+  (new), `.github/dependabot.yml` (optional).
+
+---
+
+## 🔴 [LEGAL-OFFER-REQUISITES-001] Реквизиты юр.лица в /offer
+
+- **Домен:** `apps/web-buyer` (заполняется после регистрации ИП/ООО).
+- **Кто берёт:** Бизнес (регистрация) → Полат (правка placeholder'а).
+- **Приоритет:** P0 must-pass для public launch (закрывает Legal 5 → 7).
+- **Что:** заменить placeholder в `apps/web-buyer/src/app/offer/page.tsx:71-75`
+  на ИНН/ОКЭД/юр.адрес/расчётный счёт. Настроить MX `support@savdo.uz` +
+  `legal@savdo.uz` через Cloudflare Email Routing → Telegram-чат команды.
+- **Скоуп:** 3–7 календарных дней регистрации + 30 мин правки. Для closed-beta
+  не блокер (договариваемся с beta-sellers, что договор будет в течение 2 недель).
+
+---
+
+## 🟠 [INFRA-UPTIME-ALERTS-001] UptimeRobot + Telegram-алерты
+
+- **Домен:** инфра (Полат).
+- **Кто берёт:** Полат (внешний сервис, no-code).
+- **Приоритет:** P1 hardening — поднимает Observability 6 → 7 в go-no-go,
+  закрывает риск R7 в readiness (downtime замечается реактивно).
+- **Что:** UptimeRobot бесплатный план (5 endpoint'ов), пинг каждые 5 мин:
+  `savdo-api/health/live`, `savdo-builder-by`, `savdo-builder-sl`, admin, TMA.
+  Алерт в Telegram-чат команды при failure.
+- **Скоуп:** 30 минут setup.
+- **Источник:** `docs/readiness/launch-readiness-2026-05-20.md` §3 + §Risk R7.
+
+---
+
+## 🟠 [SENTRY-DSN-001] Подключить real Sentry DSN к ErrorReporter
+
+- **Домен:** `apps/api` + Railway env (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P1 hardening — поднимает Observability 6 → 7. Sentry SDK
+  уже задеплоен 20.05 (`8024cbd`), нужен только DSN + замена в коде.
+- **Что:**
+  1. Создать Sentry проект (free-tier, 5k events/месяц).
+  2. `SENTRY_DSN` env в Railway Variables для api / admin / web-buyer / web-seller / tma.
+  3. В `apps/api/src/shared/error-reporter.ts` — добавить опциональный
+     `@sentry/node` под `if (process.env.SENTRY_DSN)`. Reporter уже API-совместим.
+- **Скоуп:** 30 минут.
+- **Источник:** readiness §4 «Observability» + Risk R9.
+
+---
+
+## 🟠 [SUPPORT-CHANNEL-001] `@savdo_support` TG-чат + ссылки в фронтах
+
+- **Домен:** `apps/web-buyer` (footer) + `apps/web-seller` (settings) +
+  `apps/tma` (settings) + `apps/admin` (login) — координация Полата.
+- **Кто берёт:** Полат (создаёт чат) + Азим (ссылки в web-buyer/web-seller).
+- **Приоритет:** P1 — закрывает Support 5.5 → 6.5 (should-pass для launch).
+- **Что:**
+  1. Создать Telegram-канал/чат `@savdo_support` (manned by Полат+Азим).
+  2. Добавить ссылку в `apps/web-buyer` footer, `apps/web-seller/settings`,
+     `apps/tma` settings (buyer + seller views), `apps/admin/login`.
+- **Скоуп:** 0.5 дня (создание + 4 frontend-вставки).
+- **Источник:** readiness §13 + Risk R8.
+
+---
+
+## 🟢 [FAQ-001] `/help` страница в web-buyer — 8-10 Q&A
+
+- **Домен:** `apps/web-buyer` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** P2 — поднимает Support 5.5 → 6.5 вместе с SUPPORT-CHANNEL-001.
+- **Что:** `apps/web-buyer/src/app/help/page.tsx` — статический FAQ:
+  как сделать заказ, как стать продавцом, как оплатить (cash-only сейчас),
+  что делать если не пришёл товар, как связаться с поддержкой и т.п.
+  i18n (ru + uz). Ссылка из footer.
+- **Скоуп:** 1 день.
+
+---
+
+## 🟢 [FRONTEND-SMOKE-PLAYWRIGHT-001] Playwright smoke на web-buyer + cron
+
+- **Домен:** `apps/web-buyer` + CI (Азим, при участии Полата для CI).
+- **Кто берёт:** Азим (тесты) + Полат (CI cron на Railway prod URL).
+- **Приоритет:** P2 — закрывает Tests 5 → 6 (should-pass). Параллельная сессия
+  Полата 20.05 уже добавила admin (4 теста) + TMA (14 тестов), web-buyer/web-seller
+  всё ещё на 0.
+- **Что:**
+  1. `apps/web-buyer/playwright.config.ts` + `playwright/smoke.spec.ts` — 3 теста:
+     `/` рендерится, `/[slug]` рендерится, `/cart` добавление-удаление работает.
+  2. (Опционально, Азим) `apps/web-seller/playwright/smoke.spec.ts` — 1 тест:
+     login-page рендерится.
+  3. `.github/workflows/playwright-prod-smoke.yml` — hourly cron против
+     Railway prod URL. Алерт в TG при FAIL.
+- **Скоуп:** 2 дня.
+- **Источник:** `API-FRONTEND-TESTS-001` (web-buyer/web-seller часть) +
+  readiness §6 + Risk R6.
+
+---
+
+## 🟢 [ADMIN-I18N-DARK-THEME-CANONICAL-001] `Qorongʻi` → `Qorongʻu` в admin uz.ts
+
+- **Домен:** `apps/admin/src/lib/i18n/uz.ts` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P3 — опечатка в латинизации, не функциональная проблема.
+- **Что:** в `apps/admin/src/lib/i18n/uz.ts:138-140` стоит `Qorongʻi` (с `i` на
+  конце). Стандартная форма в латинском узбекском — `Qorongʻu` (с `u`). Также:
+  - line 138: `'theme.dark': 'Qorongʻi mavzu'` → `'Qorongʻu mavzu'`
+  - line 140: `'theme.toDark': 'Qorongʻi mavzuga oʻtish'` → `'Qorongʻu mavzuga oʻtish'`
+- **Контекст:** web-buyer/web-seller сегодня (21.05.2026, см. `done.md`
+  `UZ-CANONICAL-WEB-2026-05-21`) приведены к канону `Qorongʻu`. Admin остался
+  единственным outlier'ом с `Qorongʻi` — для единообразия имеет смысл унифицировать.
+
+---
+
+## 🟢 [PRE-LAUNCH-VITE-VERIFY-001] Sanity-проверка vite-override
+
+- **Домен:** web-buyer / web-seller / pnpm-lock (Азим).
+- **Кто берёт:** Азим — локально (разовое исключение из `feedback_no_local_run`).
+- **Приоритет:** P3 — overrides уже в `package.json:46`
+  (`"vite": ">=6.4.2"`). Полат предупредил в `done.md` 20.05 (TMA-FRONTEND-TESTS-001):
+  workspace-override фактически поднимает до **vite@8.0.10 (rolldown-vite)**,
+  не до 6.4.2 — это надо иметь в виду при чтении lockfile.
+- **Что сделать:**
+  1. `pnpm install` в корне.
+  2. `grep -E "^\s*vite@" pnpm-lock.yaml | sort -u` — увидеть фактическую
+     версию (ожидается 8.x rolldown). Это норма.
+  3. `cd apps/web-buyer && pnpm exec tsc --noEmit` — чистый. Web-buyer на Next 16,
+     vite в нём — только транзитивная dev-зависимость, type-check не должен трогать.
+  4. `cd apps/web-seller && pnpm exec tsc --noEmit` — чистый.
+  5. Если 3/4 падает с vite-related TS-ошибкой — откат: `package.json:46`
+     `"vite": ">=6.4.2"` → `"vite": "^6.4.1"` (явный pin до старой стабильной),
+     `pnpm install`, повторить.
+- **Файлы:** `package.json:46`, `pnpm-lock.yaml`.
+- **Note:** admin/tma уже проверены Полатом — TMA-тесты прошли 14/14 на vitest@3
+  поверх rolldown-vite; admin держится на stale vite@6.4.1 install (см.
+  `done.md` 20.05 TMA-FRONTEND-TESTS-001).
+
+---
+
 ## ✅ [INFRA-API-PROD-DOWN-001] PROD API лежит — ВОССТАНОВЛЕНО 19.05.2026
 - **Статус:** ✅ API снова жив — проверено curl'ом 19.05.2026: `/api/v1/health`,
   `/api/v1/storefront/featured`, `/api/v1/storefront/categories/tree` все `200`.

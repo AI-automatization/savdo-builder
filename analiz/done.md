@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, docs) — Корректировка pre-launch package по Полатовскому фидбэку
+
+### ✅ [PRE-LAUNCH-DOCS-RECONCILE-001] Реальные readiness-скоры в go-no-go + переформулировка brand-selection как рекомендация + authorship палитры
+- **Важность:** 🟡 P2 — pre-launch гигиена документов, blocker for ADR-008 / финального подписания go-no-go.
+- **Дата:** 21.05.2026
+- **Файлы:**
+  - `docs/decisions/launch-go-no-go-2026-05-20.md` — ⏳-stub-скоры заменены на реальные из `docs/readiness/launch-readiness-2026-05-20.md`. Verdict сменился с **🔴 NO-GO (4 must-pass < threshold)** на **🟡 Conditional Go (3 must-pass < threshold: Data 7<8, Deps 6<7, Legal 5<7)**. Security 6→8 закрыл порог; Observability 4→6 на грани; Tests 4→5, i18n 6→8, Performance 6→7.5, Onboarding 5→7 — все подтянулись после волны 15.05 fix-волн. Deps переоценился вниз (нет `pnpm audit` в CI). План фикса блокеров и Подписи переписаны соответственно.
+  - `docs/decisions/brand-selection-2026-05-20.md` — переформулирован: «Decision document» → «Recommendation document»; «Решение по NAME/PALETTE/LOGO: X» → «Рекомендация по числам: X». Шапка отмечает, что палитра Terracotta+cream уже **зафиксирована в коде** Азимом (session 52 + 55) — документ объясняет почему зафиксированное решение работает, а не выбирает на чистом листе.
+  - `docs/brand/palette.md` — шапка + §13 история изменений атрибутируют авторство палитры: session 52 (05.05.2026, plan Soft Color Lifestyle, 10 task'ов, commits `c117723`/`654f067`/`b2884bb`/`4f0cea2`/`756cf3b`/`af4b2b9`/`e20a1c2`/`7ed9eb2`/`0ba9561`) + dark-вариант session 55 (09.05.2026, commit `b894589`). Аудит 20.05 — фиксация status-quo + план синхронизации seller, а не первичное решение.
+  - `analiz/audits/web-buyer-vs-seller-design-2026-05-20.md` — Win 4 («Dark `--app-bg` градиент перекрасить») получил cross-ref на session 55: для **buyer** ровно такая миграция уже сделана (commit `b894589`, terracotta lifted `#A05A45`, warm near-black `#16120D`); Win 4 — распространение на seller, не дубль.
+  - `analiz/tasks.md` — добавлены 3 тикета: `CI-PNPM-AUDIT-001` (Полат, must-pass Deps blocker), `LEGAL-OFFER-REQUISITES-001` (Бизнес→Полат, must-pass Legal blocker), `PRE-LAUNCH-VITE-VERIFY-001` (Азим, P3 sanity-проверка vite-override с учётом Полатовской заметки про rolldown-vite@8.0.10). Drill-задача (`INFRA-BACKUP-DRILL-FIRST-RUN-001`) — у Полата уже была заведена, не дублирую.
+- **Что НЕ менялось (decisions framework):** `docs/decisions/framework.md` — оставлен как roadmap-материал на T-26, в скоуп пересчёта не входил.
+- **Контекст:** Полат вчера запушил pre-launch package (`cf70b07` brand book + decisions + readiness, `8024cbd` Sentry + backup scripts). Я (тогда) написал `web-buyer-vs-seller-design-2026-05-20.md` (commit `74d0eef`). Сегодня — корректировка по фидбэку Полата.
+
+---
+
 ## 2026-05-20 (Полат, frontend) — Vitest + smoke-тесты для TMA
 
 ### ✅ [TMA-FRONTEND-TESTS-001] vitest + RTL setup + 4 smoke-теста (API-FRONTEND-TESTS-001 part 2)
