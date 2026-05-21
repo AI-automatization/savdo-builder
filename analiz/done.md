@@ -1,5 +1,46 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, web-buyer) — vitest@3 + 4 smoke-теста
+
+### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part A] vitest setup + 4 spec файла (~16 тестов)
+- **Важность:** 🟡 P2 — закрывает Tests 5 → 6 (should-pass из go-no-go) для
+  web-buyer. Зеркалит Полатов admin (4 теста) + TMA (14 тестов) от 20.05.2026.
+- **Дата:** 21.05.2026
+- **Коммиты:** web-buyer `7a94a92` (setup + specs), main `<TBD>` (CI workflow).
+- **Файлы:**
+  - `apps/web-buyer/vitest.config.ts` (new) — jsdom env, alias `@`, отдельный от
+    Next.js build pipeline. Зеркало `apps/admin/vitest.config.ts`.
+  - `apps/web-buyer/src/test/setup.ts` (new) — jest-dom матчеры + полифилл
+    `window.matchMedia` (jsdom не реализует).
+  - `apps/web-buyer/package.json` — devDeps: vitest@^3.2.0, RTL@^16, jest-dom@^6,
+    user-event@^14, @vitejs/plugin-react@^4, jsdom@^25. Скрипт `test`.
+  - `apps/web-buyer/tsconfig.json` — `types: ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/web-buyer/src/__tests__/smoke/phone.test.ts` — 10 тестов на
+    `formatUzPhone`/`stripUzPhone`/`isValidUzPhone` (pure functions, без рендера).
+  - `apps/web-buyer/src/__tests__/smoke/i18n.test.tsx` — 4 теста: initial ru,
+    переключение uz↔ru, unknown key fallback, интерполяция `{count}`.
+  - `apps/web-buyer/src/__tests__/smoke/HelpContent.test.tsx` — 3 теста: 8 h2,
+    intro с `support@savdo.uz`, h1 title.
+  - `apps/web-buyer/src/__tests__/smoke/uz-canonical.test.ts` — 3 теста: защита
+    `UZ-CANONICAL-WEB-2026-05-21` — `theme.light` = `Yorugʻ`, `theme.dark` =
+    `Qorongʻu`, апостроф `ʻ` U+02BB.
+  - `.github/workflows/ci-web-buyer-tests.yml` (new, на main) — push в main/web-buyer
+    с изменением `apps/web-buyer/**` или `packages/types/**` → pnpm install +
+    `pnpm --filter web-buyer test`.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают
+  vite до 8.0.10 (rolldown-vite) — vitest@2.1.x ломается с
+  `__vite_ssr_exportName__ is not defined`. Полатова заметка от 20.05 в TMA done.md.
+- **Скоуп части A:** только helpers + i18n + новая фича (HelpContent). НЕ покрыты:
+  компоненты с `next/image`/`next/link`, hooks с QueryClient, страницы с
+  AuthContext — потребуют MSW или Playwright (отдельный part B/C).
+- **CI:** workflow срабатывает на push в main или web-buyer с изменением в
+  `apps/web-buyer/**`. После первого pnpm install в CI получим лог 14-16 passed.
+  Локально Азим не запускал (`feedback_no_local_run`).
+- **Native sign-off:** Азим проверит результат первого CI-прогона на GitHub
+  Actions; если что-то не сходится — точечно поправим.
+
+---
+
 ## 2026-05-21 (Азим, web-buyer) — FAQ-001 `/help` страница
 
 ### ✅ [FAQ-001] `/help` страница с 8 Q&A на ru+uz

@@ -140,21 +140,23 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
 
 ---
 
-## 🟢 [FRONTEND-SMOKE-PLAYWRIGHT-001] Playwright smoke на web-buyer + cron
+## 🟡 [FRONTEND-SMOKE-PLAYWRIGHT-001] Smoke-тесты web-buyer / web-seller
 
-- **Домен:** `apps/web-buyer` + CI (Азим, при участии Полата для CI).
-- **Кто берёт:** Азим (тесты) + Полат (CI cron на Railway prod URL).
-- **Приоритет:** P2 — закрывает Tests 5 → 6 (should-pass). Параллельная сессия
-  Полата 20.05 уже добавила admin (4 теста) + TMA (14 тестов), web-buyer/web-seller
-  всё ещё на 0.
-- **Что:**
-  1. `apps/web-buyer/playwright.config.ts` + `playwright/smoke.spec.ts` — 3 теста:
-     `/` рендерится, `/[slug]` рендерится, `/cart` добавление-удаление работает.
-  2. (Опционально, Азим) `apps/web-seller/playwright/smoke.spec.ts` — 1 тест:
-     login-page рендерится.
-  3. `.github/workflows/playwright-prod-smoke.yml` — hourly cron против
-     Railway prod URL. Алерт в TG при FAIL.
-- **Скоуп:** 2 дня.
+- **Домен:** `apps/web-buyer` + `apps/web-seller` + CI (Азим).
+- **Приоритет:** P2 — закрывает Tests 5 → 6 (should-pass).
+- **Part A ✅ 21.05.2026 (Азим, web-buyer `7a94a92`):** vitest@3 + RTL@16 +
+  4 spec файла (phone helpers, i18n provider, HelpContent, uz-canonical),
+  ~16 тестов. CI workflow `ci-web-buyer-tests.yml` запускает на push в main/web-buyer.
+  Зеркалит admin/TMA-паттерн (Полат `74d0eef`/`ae1f61a`).
+- **Part B (open, отдельным заходом):** web-seller smoke (аналогичный паттерн —
+  expected ~10 тестов: phone helpers, i18n, settings page, uz-canonical).
+- **Part C (open, опционально):** Playwright integration:
+  - `apps/web-buyer/playwright.config.ts` + spec'и `/`, `/[slug]`, `/cart`
+    против Railway prod URL.
+  - `.github/workflows/playwright-prod-smoke.yml` — hourly cron + TG-алерт на FAIL.
+  - Решение: имеет ли смысл при наличии vitest smoke + UptimeRobot из
+    `INFRA-UPTIME-ALERTS-001` (закрывает 80% того же риска без flakiness
+    реального браузера). Возможно — пропустить.
 - **Источник:** `API-FRONTEND-TESTS-001` (web-buyer/web-seller часть) +
   readiness §6 + Risk R6.
 
