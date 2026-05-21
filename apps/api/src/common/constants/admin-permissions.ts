@@ -69,6 +69,18 @@ export const ADMIN_PERMISSIONS: Record<string, string[]> = {
 };
 
 /**
+ * SEC-ADMIN-ACCESS-MODEL стадия B: роли, которым разрешён вход в savdo-admin.
+ * `super_admin` = владелец, `admin` = разработчик. Остальные роли
+ * (moderator/support/finance/read_only) — резерв, в панель не пускаются.
+ * `AdminAccessGuard` отбивает всех не из этого списка.
+ */
+export const ADMIN_PANEL_ROLES = ['super_admin', 'admin'] as const;
+
+export function canEnterAdminPanel(adminRole: string | null | undefined): boolean {
+  return !!adminRole && (ADMIN_PANEL_ROLES as readonly string[]).includes(adminRole);
+}
+
+/**
  * Проверка совпадает ли требуемое разрешение хотя бы с одним из выданных роли.
  * Логика wildcard:
  *  - `*`        → matches anything

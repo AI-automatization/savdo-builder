@@ -7,6 +7,7 @@ import { ChatRepository } from '../repositories/chat.repository';
 import { ChatGateway } from '../../../socket/chat.gateway';
 import { SellerNotificationService } from '../../telegram/services/seller-notification.service';
 import { MappedChatMessage } from './get-thread-messages.use-case';
+import { t } from '../../../shared/i18n';
 
 const PREVIEW_MAX_LENGTH = 80;
 
@@ -19,7 +20,13 @@ function makePreview(text: string): string {
 
 export interface SendMessageInput {
   threadId: string;
-  senderUserId: string;
+  /**
+   * Buyer profile id юзера (если есть). Use-case резолвит senderUserId
+   * по тому, в какой роли юзер участвует в треде (dual-role support).
+   */
+  buyerProfileId?: string;
+  /** Seller profile id юзера (если есть). */
+  sellerProfileId?: string;
   text?: string;
   parentMessageId?: string;
   mediaId?: string;
@@ -57,10 +64,16 @@ export class SendMessageUseCase {
       );
     }
 
-    const isParticipant =
-      thread.buyerId === input.senderUserId || thread.sellerId === input.senderUserId;
+    // Dual-role: senderUserId — это профиль юзера, совпавший с участником треда.
+    // JWT хранит одну активную роль, но профилей у юзера может быть два.
+    const senderUserId =
+      input.buyerProfileId && thread.buyerId === input.buyerProfileId
+        ? input.buyerProfileId
+        : input.sellerProfileId && thread.sellerId === input.sellerProfileId
+          ? input.sellerProfileId
+          : null;
 
-    if (!isParticipant) {
+    if (!senderUserId) {
       throw new DomainException(
         ErrorCode.NOT_THREAD_PARTICIPANT,
         'You are not a participant of this thread',
@@ -98,14 +111,14 @@ export class SendMessageUseCase {
 
     const message = await this.chatRepo.addMessage({
       threadId: input.threadId,
-      senderUserId: input.senderUserId,
+      senderUserId,
       body: input.text?.trim() || null,
       parentMessageId: input.parentMessageId ?? null,
       mediaId: input.mediaId ?? null,
       messageType: input.mediaId ? ChatMessageType.IMAGE : ChatMessageType.TEXT,
     });
 
-    this.logger.log(`Message sent to thread ${input.threadId} by user ${input.senderUserId}`);
+    this.logger.log(`Message sent to thread ${input.threadId} by user ${senderUserId}`);
 
     // Build mediaUrl + parentMessage preview for socket payload
     const mediaUrl = input.mediaId
@@ -125,11 +138,11 @@ export class SendMessageUseCase {
     }
 
     const senderRole = message.senderUserId === thread.buyerId ? 'BUYER' : 'SELLER';
-    this.chatGateway.emitChatMessage({ ...message, mediaUrl, parentMessage: parentPreview } as any, senderRole);
+    this.chatGateway.emitChatMessage({ ...message, mediaUrl, parentMessage: parentPreview }, senderRole);
 
     // Notify seller-room when buyer sends a message
     const storeId = thread.seller.store?.id;
-    const isBuyerSending = thread.buyerId !== null && thread.sellerId !== input.senderUserId;
+    const isBuyerSending = thread.buyerId !== null && thread.sellerId !== senderUserId;
     if (storeId && isBuyerSending) {
       this.chatGateway.emitChatNewMessage(storeId, { threadId: input.threadId });
     }
@@ -151,9 +164,10 @@ export class SendMessageUseCase {
     const storeName = thread.seller.store?.name ?? null;
 
     if (senderRole === 'BUYER') {
-      // → seller
+      // → seller. MARKETING-LOCALIZATION-UZ-001: уведомление на языке продавца.
       const sellerChatId = thread.seller.telegramChatId;
-      const buyerName = thread.buyer?.user.phone ?? 'Покупатель';
+      const sellerLocale = thread.seller.user.languageCode ?? undefined;
+      const buyerName = thread.buyer?.user.phone ?? t(sellerLocale, 'notify.senderFallback.buyer');
       if (sellerChatId) {
         this.tgNotifier.notifyChatMessage({
           recipientChatId: String(sellerChatId),
@@ -163,21 +177,24 @@ export class SendMessageUseCase {
           messagePreview: preview,
           threadId: input.threadId,
           recipientRole: 'SELLER',
+          locale: sellerLocale,
         });
       }
     } else {
-      // → buyer
+      // → buyer. MARKETING-LOCALIZATION-UZ-001: уведомление на языке покупателя.
       const buyerChatId = thread.buyer?.user.telegramId;
+      const buyerLocale = thread.buyer?.user.languageCode ?? undefined;
       if (buyerChatId) {
         this.tgNotifier.notifyChatMessage({
           recipientChatId: String(buyerChatId),
-          senderName: storeName ?? 'Продавец',
+          senderName: storeName ?? t(buyerLocale, 'notify.senderFallback.seller'),
           productTitle,
           orderNumber,
           storeName,
           messagePreview: preview,
           threadId: input.threadId,
           recipientRole: 'BUYER',
+          locale: buyerLocale,
         });
       }
     }
@@ -185,9 +202,9 @@ export class SendMessageUseCase {
     return {
       id: message.id,
       threadId: message.threadId,
-      text: message.isDeleted ? '' : ((message as any).body ?? ''),
+      text: message.isDeleted ? '' : (message.body ?? ''),
       senderRole,
-      editedAt: (message as any).editedAt ? new Date((message as any).editedAt).toISOString() : null,
+      editedAt: message.editedAt ? message.editedAt.toISOString() : null,
       isDeleted: message.isDeleted,
       createdAt: message.createdAt.toISOString(),
       mediaUrl,

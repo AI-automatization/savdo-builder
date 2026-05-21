@@ -72,7 +72,10 @@ export class RefreshSessionUseCase {
       role: user.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
-      ...(adminClaims?.mfaEnabled && { mfaPending: true }),
+      // SEC-ADMIN-ACCESS-MODEL стадия C: mfaPending у ЛЮБОГО админа (не только
+      // mfaEnabled). Иначе refresh выдавал чистый токен админу без MFA —
+      // обход обязательного MFA через refresh.
+      ...(adminClaims && { mfaPending: true }),
       ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 

@@ -127,6 +127,8 @@ export class UpdateOrderStatusUseCase {
         newStatus: input.newStatus,
         total,
         currency,
+        // MARKETING-LOCALIZATION-UZ-001: уведомление на языке покупателя.
+        locale: order.buyer?.user.languageCode ?? undefined,
       });
     }
 
@@ -143,6 +145,8 @@ export class UpdateOrderStatusUseCase {
           newStatus: input.newStatus,
           total,
           currency,
+          // MARKETING-LOCALIZATION-UZ-001: уведомление на языке продавца.
+          locale: order.store?.seller.user.languageCode ?? undefined,
         });
       }
     }

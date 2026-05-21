@@ -52,6 +52,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'notify.chat.context.product': '\n📦 <i>{productTitle}</i>',
     'notify.chat.context.order':   '\n🧾 <i>Заказ #{orderNumber}</i>',
     'notify.chat.openButton': '✉️ Открыть чат',
+    'notify.senderFallback.buyer': 'Покупатель',
+    'notify.senderFallback.seller': 'Продавец',
 
     // ── Cart abandonment ──────────────────────────────────────────────────
     'notify.cartAbandoned.title': '🛒 <b>Вы оставили товары в корзине</b>',
@@ -105,6 +107,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'notify.chat.context.product': '\n📦 <i>{productTitle}</i>',
     'notify.chat.context.order':   '\n🧾 <i>Buyurtma #{orderNumber}</i>',
     'notify.chat.openButton': '✉️ Suhbatni ochish',
+    'notify.senderFallback.buyer': 'Xaridor',
+    'notify.senderFallback.seller': 'Sotuvchi',
 
     // ── Cart abandonment ──────────────────────────────────────────────────
     'notify.cartAbandoned.title': '🛒 <b>Savatda mahsulotlar qoldi</b>',

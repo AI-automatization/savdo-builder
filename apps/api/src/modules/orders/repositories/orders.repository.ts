@@ -5,10 +5,12 @@ import { PrismaService } from '../../../database/prisma.service';
 export type OrderWithDetails = Order & {
   items: OrderItem[];
   history: OrderStatusHistory[];
-  buyer: (Buyer & { user: Pick<User, 'phone' | 'telegramId'> }) | null;
+  buyer: (Buyer & { user: Pick<User, 'phone' | 'telegramId' | 'languageCode'> }) | null;
   store:
     | (Pick<Store, 'name' | 'telegramContactLink'> & {
-        seller: Pick<Seller, 'telegramUsername' | 'telegramChatId' | 'telegramNotificationsActive'>;
+        seller: Pick<Seller, 'telegramUsername' | 'telegramChatId' | 'telegramNotificationsActive'> & {
+          user: Pick<User, 'languageCode'>;
+        };
       })
     | null;
 };
@@ -123,7 +125,7 @@ export class OrdersRepository {
         },
         buyer: {
           include: {
-            user: { select: { phone: true, telegramId: true } },
+            user: { select: { phone: true, telegramId: true, languageCode: true } },
           },
         },
         store: {
@@ -135,6 +137,7 @@ export class OrdersRepository {
                 telegramUsername: true,
                 telegramChatId: true,
                 telegramNotificationsActive: true,
+                user: { select: { languageCode: true } },
               },
             },
           },

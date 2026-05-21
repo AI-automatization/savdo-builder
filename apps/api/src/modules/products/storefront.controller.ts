@@ -78,12 +78,30 @@ export class StorefrontController {
 
   // ─── Stores ──────────────────────────────────────────────────────────────
 
+  // API-STORES-PAGINATION-001: opt-in пагинация через ?page=&limit=.
+  // Без параметров — первая страница, limit 50 (прежнее поведение).
+  // Ответ всегда `{ data, meta }` — meta добавлен, старые клиенты читают data.
   @Get('storefront/stores')
-  async listStorefrontStores() {
-    const stores = await this.storesRepo.findAllPublished();
-    if (!stores.length) return { data: [] };
-    const data = await this.presenter.attachStoreImageUrls(stores);
-    return { data };
+  async listStorefrontStores(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.storesRepo.findAllPublished({
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+    const data = result.stores.length
+      ? await this.presenter.attachStoreImageUrls(result.stores)
+      : [];
+    return {
+      data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Get('storefront/stores/:slug')
@@ -336,7 +354,11 @@ export class StorefrontController {
   }
 
   @Get('storefront/products/:id')
-  async getStorefrontProduct(@Param('id') id: string) {
+  @UseGuards(OptionalJwtAuthGuard)
+  async getStorefrontProduct(
+    @CurrentUser() user: JwtPayload | undefined,
+    @Param('id') id: string,
+  ) {
     const product = await this.productsRepo.findPublicById(id);
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
@@ -347,6 +369,18 @@ export class StorefrontController {
     }));
     // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
     const storeRef = await this.presenter.mapProductStoreRef(product.store);
+
+    // API-RESPONSE-TYPES-RECONCILE-001: inWishlist enrichment для залогиненного
+    // buyer (как в listStorefrontProducts feed). Анонимные — поле undefined.
+    let inWishlist: boolean | undefined;
+    if (user?.sub) {
+      const buyerId = await this.resolveBuyerIdOrNull(user.sub);
+      if (buyerId) {
+        const wishedIds = await this.wishlistRepo.findExistingProductIds(buyerId, [product.id]);
+        inWishlist = wishedIds.has(product.id);
+      }
+    }
+
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
@@ -354,6 +388,7 @@ export class StorefrontController {
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
       store: storeRef,
+      ...(inWishlist !== undefined ? { inWishlist } : {}),
     };
   }
 

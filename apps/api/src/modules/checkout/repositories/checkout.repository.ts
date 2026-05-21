@@ -58,6 +58,8 @@ export interface StoreWithSeller {
     telegramUsername: string;
     telegramChatId: bigint | null;
     telegramNotificationsActive: boolean;
+    // MARKETING-LOCALIZATION-UZ-001: язык продавца для локализации TG-уведомлений.
+    user: { languageCode: string | null };
   };
   // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend computes deliveryFee
   // из store.deliverySettings. Buyer не контролирует сумму.
@@ -99,6 +101,7 @@ export class CheckoutRepository {
             telegramUsername: true,
             telegramChatId: true,
             telegramNotificationsActive: true,
+            user: { select: { languageCode: true } },
           },
         },
         deliverySettings: {

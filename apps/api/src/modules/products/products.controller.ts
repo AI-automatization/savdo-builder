@@ -41,6 +41,7 @@ import { UpdateOptionGroupDto } from './dto/update-option-group.dto';
 import { CreateOptionValueDto } from './dto/create-option-value.dto';
 import { UpdateOptionValueDto } from './dto/update-option-value.dto';
 import { AttachProductImageDto } from './dto/attach-product-image.dto';
+import { UpdateProductImageDto } from './dto/update-product-image.dto';
 import { PrismaService } from '../../database/prisma.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
@@ -506,6 +507,60 @@ export class ProductsController {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
     await this.prisma.productImage.deleteMany({ where: { id: imageId, productId } });
+  }
+
+  // API-PRODUCT-IMAGES-PATCH-001: reorder (`sortOrder`) + toggle обложки
+  // (`isPrimary`). Раньше web-seller edit мог только delete+recreate — порядок
+  // и primary-флаг при правке терялись.
+  @Patch('seller/products/:id/images/:imageId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async updateProductImage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') productId: string,
+    @Param('imageId') imageId: string,
+    @Body() dto: UpdateProductImageDto,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    await this.ensureProductOwnership(productId, storeId);
+
+    if (dto.sortOrder === undefined && dto.isPrimary === undefined) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'At least one of sortOrder / isPrimary must be provided',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Фото должно принадлежать этому товару — нельзя править чужое по id.
+    const image = await this.prisma.productImage.findFirst({
+      where: { id: imageId, productId },
+      select: { id: true },
+    });
+    if (!image) {
+      throw new DomainException(
+        ErrorCode.NOT_FOUND,
+        'Product image not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Одна обложка на товар: isPrimary=true снимает флаг с остальных.
+    if (dto.isPrimary === true) {
+      await this.prisma.productImage.updateMany({
+        where: { productId, isPrimary: true, id: { not: imageId } },
+        data: { isPrimary: false },
+      });
+    }
+
+    return this.prisma.productImage.update({
+      where: { id: imageId },
+      data: {
+        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+        ...(dto.isPrimary !== undefined ? { isPrimary: dto.isPrimary } : {}),
+      },
+      include: { media: true },
+    });
   }
 
   // ─── Product Attributes ──────────────────────────────────────────────────

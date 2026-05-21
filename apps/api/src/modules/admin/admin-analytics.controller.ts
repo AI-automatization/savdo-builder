@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
+import { AdminAccessGuard } from '../../common/guards/admin-access.guard';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
@@ -29,7 +30,7 @@ import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
 @ApiTags('admin')
 @ApiBearerAuth('jwt')
 @Controller('admin/analytics')
-@UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, AdminAccessGuard, MfaEnforcedGuard, AdminPermissionGuard)
 @Roles('ADMIN')
 export class AdminAnalyticsController {
   constructor(

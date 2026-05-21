@@ -29,7 +29,24 @@ export interface OrderListItem {
   /** May be undefined for orders created before address migration */
   deliveryAddress?: DeliveryAddress;
   deliveryFee: number;
+  /**
+   * API-RESPONSE-TYPES-RECONCILE-001: seller orders-list (`GET /seller/orders`)
+   * отдаёт также плоские поля адреса и суммы — рядом с nested `deliveryAddress`.
+   * Buyer-list их не присылает (отсюда `?`). Раньше фронт читал их через `as any`.
+   */
+  subtotalAmount?: number;
+  discountAmount?: number;
+  city?: string | null;
+  region?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
   createdAt: string;
+  /**
+   * API-RESPONSE-TYPES-RECONCILE-001: число позиций (order items) в заказе.
+   * Buyer orders-list (`GET /buyer/orders`) отдаёт его всегда (из `_count.items`).
+   * Опционально — seller-list пока не присылает.
+   */
+  itemCount?: number;
   /** Buyer's registered account phone (from User record) */
   buyer?: { phone: string } | null;
   /** Phone entered at checkout — shown as backup/reserve number to seller */

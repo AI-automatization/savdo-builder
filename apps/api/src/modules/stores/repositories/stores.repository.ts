@@ -36,28 +36,48 @@ export class StoresRepository {
     });
   }
 
-  async findAllPublished() {
-    return this.prisma.store.findMany({
-      where: { isPublic: true, deletedAt: null },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        status: true,
-        city: true,
-        telegramContactLink: true,
-        logoMediaId: true,
-        coverMediaId: true,
-        // MARKETING-VERIFIED-SELLER-001
-        isVerified: true,
-        avgRating: true,
-        reviewCount: true,
-      },
-      // Verified магазины сверху, потом по дате публикации
-      orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],
-      take: 50,
-    });
+  /**
+   * API-STORES-PAGINATION-001: server-side пагинация публичного списка магазинов.
+   * Раньше `take: 50` хардкодом — при росте >50 магазинов хвост был недоступен.
+   * Возвращает `{ stores, total, page, limit }`. Default limit 50 (как раньше),
+   * clamp 1..100. Невалидные page/limit → дефолты.
+   */
+  async findAllPublished(opts: { page?: number; limit?: number } = {}) {
+    const rawPage = Number(opts.page);
+    const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.trunc(rawPage) : 1;
+    const rawLimit = Number(opts.limit);
+    const limit = Number.isFinite(rawLimit)
+      ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100)
+      : 50;
+
+    const where = { isPublic: true, deletedAt: null };
+    const [stores, total] = await this.prisma.$transaction([
+      this.prisma.store.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          status: true,
+          city: true,
+          telegramContactLink: true,
+          logoMediaId: true,
+          coverMediaId: true,
+          // MARKETING-VERIFIED-SELLER-001
+          isVerified: true,
+          avgRating: true,
+          reviewCount: true,
+        },
+        // Verified магазины сверху, потом по дате публикации
+        orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.store.count({ where }),
+    ]);
+
+    return { stores, total, page, limit };
   }
 
   // FEAT-001: case-insensitive поиск по публичным магазинам.

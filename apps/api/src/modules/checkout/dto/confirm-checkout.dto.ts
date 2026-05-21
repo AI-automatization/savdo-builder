@@ -13,6 +13,9 @@ import { Type } from 'class-transformer';
 export const PAYMENT_METHODS = ['cash', 'card', 'online'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
+export const DELIVERY_MODES = ['delivery', 'pickup'] as const;
+export type DeliveryMode = (typeof DELIVERY_MODES)[number];
+
 export class DeliveryAddressDto {
   @IsString()
   @IsNotEmpty()
@@ -72,4 +75,11 @@ export class ConfirmCheckoutDto {
   @IsOptional()
   @IsIn(PAYMENT_METHODS)
   paymentMethod?: PaymentMethod;
+
+  // API-CHECKOUT-PICKUP-DELIVERY-FEE-001 (от Азима, 16.05.2026): режим
+  // получения. `pickup` → backend обнуляет deliveryFee. Default 'delivery'
+  // (backward-compat: старые клиенты без поля считаются доставкой).
+  @IsOptional()
+  @IsIn(DELIVERY_MODES)
+  deliveryMode?: DeliveryMode;
 }

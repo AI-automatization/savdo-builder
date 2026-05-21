@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ShoppingCart, Search, RefreshCw, AlertCircle, XCircle, ChevronRight, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
+import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -26,20 +27,20 @@ interface OrdersResponse { orders: Order[]; total: number }
 
 // STATUS-LABEL-CANONICAL-* (от Азима, web-sync audit 14.05.2026):
 // единые лейблы по всей платформе — PENDING='Ожидает', SHIPPED='В пути'.
-const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; label: string }> = {
-  PENDING:    { variant: 'warning', label: 'Ожидает' },
-  CONFIRMED:  { variant: 'info',    label: 'Подтверждён' },
-  PROCESSING: { variant: 'info',    label: 'Обработка' },
-  SHIPPED:    { variant: 'info',    label: 'В пути' },
-  DELIVERED:  { variant: 'success', label: 'Доставлен' },
-  CANCELLED:  { variant: 'danger',  label: 'Отменён' },
+const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | 'info' | 'muted'; labelKey: string }> = {
+  PENDING:    { variant: 'warning', labelKey: 'orderStatus.PENDING' },
+  CONFIRMED:  { variant: 'info',    labelKey: 'orderStatus.CONFIRMED' },
+  PROCESSING: { variant: 'info',    labelKey: 'orderStatus.PROCESSING' },
+  SHIPPED:    { variant: 'info',    labelKey: 'orderStatus.SHIPPED' },
+  DELIVERED:  { variant: 'success', labelKey: 'orderStatus.DELIVERED' },
+  CANCELLED:  { variant: 'danger',  labelKey: 'orderStatus.CANCELLED' },
 }
 
 const STATUSES = ['', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
-const FILTER_LABEL: Record<string, string> = {
-  '': 'Все',
-  PENDING: 'Ожидают', CONFIRMED: 'Подтверждены', PROCESSING: 'В обработке',
-  SHIPPED: 'В пути', DELIVERED: 'Доставлены', CANCELLED: 'Отменены',
+const FILTER_LABEL_KEY: Record<string, string> = {
+  '': 'common.all',
+  PENDING: 'orders.fPending', CONFIRMED: 'orders.fConfirmed', PROCESSING: 'orders.fProcessing',
+  SHIPPED: 'orders.fShipped', DELIVERED: 'orders.fDelivered', CANCELLED: 'orders.fCancelled',
 }
 
 const TERMINAL = new Set(['DELIVERED', 'CANCELLED'])
@@ -47,6 +48,8 @@ const TERMINAL = new Set(['DELIVERED', 'CANCELLED'])
 interface CancelModal { orderId: string; orderNumber: string }
 
 export default function OrdersPage() {
+  const { t, locale } = useTranslation()
+  const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -97,7 +100,7 @@ export default function OrdersPage() {
       setCancelReason('')
       refetch()
     } catch (e: any) {
-      setCancelError(e.message ?? 'Ошибка')
+      setCancelError(e.message ?? t('common.error'))
     } finally {
       setCancelLoading(false)
     }
@@ -109,13 +112,13 @@ export default function OrdersPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Заказы</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{t('orders.title')}</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {loading ? 'Загрузка...' : `${total} заказов`}
+            {loading ? t('common.loading') : t('orders.count', { count: total })}
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={refetch}>
-          <RefreshCw size={13} /> Обновить
+          <RefreshCw size={13} /> {t('common.refresh')}
         </Button>
       </div>
 
@@ -134,7 +137,7 @@ export default function OrdersPage() {
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Номер, телефон, магазин..."
+            placeholder={t('orders.searchPlaceholder')}
             className="pl-8"
           />
         </div>
@@ -150,7 +153,7 @@ export default function OrdersPage() {
                   : 'border-transparent hover:bg-white/5',
               )}
             >
-              {FILTER_LABEL[s]}
+              {t(FILTER_LABEL_KEY[s])}
             </button>
           ))}
         </div>
@@ -161,7 +164,7 @@ export default function OrdersPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-              {['Номер', 'Магазин', 'Покупатель', 'Сумма', 'Статус', 'Дата', ''].map(h => (
+              {[t('dashboard.colNumber'), t('dashboard.colStore'), t('dashboard.colCustomer'), t('dashboard.colAmount'), t('dashboard.colStatus'), t('dashboard.colDate'), ''].map(h => (
                 <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
                   style={{ color: 'var(--text-dim)' }}>
                   {h}
@@ -171,17 +174,18 @@ export default function OrdersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
             ) : orders.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
                   <ShoppingCart size={28} className="mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium mb-1">Заказов не найдено</p>
-                  {search && <p className="text-xs">Попробуйте изменить запрос</p>}
+                  <p className="text-sm font-medium mb-1">{t('orders.noOrders')}</p>
+                  {search && <p className="text-xs">{t('orders.tryChangeQuery')}</p>}
                 </td>
               </tr>
             ) : orders.map((o, i) => {
-              const cfg = STATUS_CFG[o.status] ?? { variant: 'muted' as const, label: o.status }
+              const cfg = STATUS_CFG[o.status] ?? { variant: 'muted' as const, labelKey: '' }
+              const statusLabel = cfg.labelKey ? t(cfg.labelKey) : o.status
               return (
                 <tr
                   key={o.id}
@@ -205,10 +209,10 @@ export default function OrdersPage() {
                     {new Intl.NumberFormat('ru-RU').format(Number(o.totalAmount))} {o.currencyCode}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                    <Badge variant={cfg.variant}>{statusLabel}</Badge>
                   </td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                    {new Date(o.placedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(o.placedAt).toLocaleString(dateLocale, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className="px-4 py-3">
                     {!TERMINAL.has(o.status) ? (
@@ -217,16 +221,16 @@ export default function OrdersPage() {
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium border"
                         style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: 'var(--error)' }}
                       >
-                        <XCircle size={11} /> Отменить
+                        <XCircle size={11} /> {t('orders.cancel')}
                       </button>
                     ) : o.status === 'DELIVERED' ? (
                       <button
                         onClick={() => setRefundOrder(o)}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium border"
                         style={{ borderColor: 'rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.06)', color: '#F59E0B' }}
-                        title="Оформить возврат средств"
+                        title={t('orders.refundTitle')}
                       >
-                        <Wallet size={11} /> Возврат
+                        <Wallet size={11} /> {t('orders.refund')}
                       </button>
                     ) : (
                       <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
@@ -241,7 +245,7 @@ export default function OrdersPage() {
         {/* Pagination — ADMIN-PAGINATION-DISABLED-001: unified via PaginationBar */}
         {totalPages > 1 && (
           <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel="заказов" />
+            <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemsLabel={t('orders.itemsLabel')} />
           </div>
         )}
       </div>
@@ -253,14 +257,14 @@ export default function OrdersPage() {
           width={448}
           ariaLabelledBy="cancel-order-title"
         >
-          <h3 id="cancel-order-title" className="text-base font-semibold mb-1" style={{ color: 'var(--text)' }}>Отменить заказ</h3>
+          <h3 id="cancel-order-title" className="text-base font-semibold mb-1" style={{ color: 'var(--text)' }}>{t('orders.cancelTitle')}</h3>
           <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-            Заказ <span className="font-mono font-semibold" style={{ color: 'var(--text)' }}>{cancelModal.orderNumber}</span> будет отменён.
+            {t('orders.cancelOrderLabel')} <span className="font-mono font-semibold" style={{ color: 'var(--text)' }}>{cancelModal.orderNumber}</span> {t('orders.cancelOrderSuffix')}
           </p>
           <textarea
             value={cancelReason}
             onChange={e => setCancelReason(e.target.value)}
-            placeholder="Причина отмены (обязательно)..."
+            placeholder={t('orders.cancelReasonPlaceholder')}
             rows={3}
             className="w-full px-3 py-2.5 rounded-lg text-sm resize-y outline-none"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', marginBottom: 12 }}
@@ -276,14 +280,14 @@ export default function OrdersPage() {
               variant="secondary"
               onClick={() => { setCancelModal(null); setCancelReason(''); setCancelError(null) }}
             >
-              Отмена
+              {t('common.cancel')}
             </Button>
             <Button
               variant="danger"
               onClick={handleCancelConfirm}
               disabled={cancelLoading || !cancelReason.trim()}
             >
-              {cancelLoading ? 'Загрузка...' : 'Отменить заказ'}
+              {cancelLoading ? t('common.loading') : t('orders.cancelTitle')}
             </Button>
           </div>
         </DialogShell>
@@ -308,6 +312,7 @@ function RefundDialog({ order, onClose, onSuccess }: {
   onClose: () => void
   onSuccess: () => void
 }) {
+  const { t } = useTranslation()
   const fullAmount = Number(order.totalAmount)
   const [partial, setPartial] = useState(false)
   const [amount, setAmount] = useState(String(fullAmount))
@@ -330,10 +335,10 @@ function RefundDialog({ order, onClose, onSuccess }: {
       }
       if (partial) body.amount = numAmount
       await api.post(`/api/v1/admin/orders/${order.id}/refund`, body)
-      toast.success(`Возврат оформлен · ${new Intl.NumberFormat('ru-RU').format(partial ? numAmount : fullAmount)} ${order.currencyCode}`)
+      toast.success(t('orders.refundDone', { amount: `${new Intl.NumberFormat('ru-RU').format(partial ? numAmount : fullAmount)} ${order.currencyCode}` }))
       onSuccess()
     } catch (e: any) {
-      toast.error(e.message ?? 'Не удалось оформить возврат')
+      toast.error(e.message ?? t('orders.refundError'))
     } finally {
       setLoading(false)
     }
@@ -352,9 +357,9 @@ function RefundDialog({ order, onClose, onSuccess }: {
             <Wallet size={18} color="#F59E0B" />
           </div>
           <div>
-            <h3 id="refund-title" className="text-base font-semibold" style={{ color: 'var(--text)' }}>Возврат средств</h3>
+            <h3 id="refund-title" className="text-base font-semibold" style={{ color: 'var(--text)' }}>{t('orders.refundDialogTitle')}</h3>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Заказ <span className="font-mono">{order.orderNumber}</span> · {order.customerFullName || order.customerPhone}
+              {t('orders.orderWord')} <span className="font-mono">{order.orderNumber}</span> · {order.customerFullName || order.customerPhone}
             </p>
           </div>
         </div>
@@ -362,7 +367,7 @@ function RefundDialog({ order, onClose, onSuccess }: {
         {/* Amount section */}
         <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: 12, marginBottom: 16 }}>
           <div className="flex items-center justify-between mb-2">
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Сумма заказа</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('orders.orderAmount')}</span>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace' }}>
               {new Intl.NumberFormat('ru-RU').format(fullAmount)} {order.currencyCode}
             </span>
@@ -374,7 +379,7 @@ function RefundDialog({ order, onClose, onSuccess }: {
               onChange={e => { setPartial(e.target.checked); if (!e.target.checked) setAmount(String(fullAmount)) }}
               style={{ accentColor: 'var(--primary)' }}
             />
-            Частичный возврат
+            {t('orders.partialRefund')}
           </label>
           {partial && (
             <div className="mt-3">
@@ -393,7 +398,7 @@ function RefundDialog({ order, onClose, onSuccess }: {
               />
               {!isAmountValid && (
                 <div style={{ marginTop: 4, fontSize: 11, color: '#EF4444' }}>
-                  Сумма должна быть от 0 до {fullAmount}
+                  {t('orders.amountRange', { max: fullAmount })}
                 </div>
               )}
             </div>
@@ -403,12 +408,12 @@ function RefundDialog({ order, onClose, onSuccess }: {
         {/* Reason */}
         <div className="mb-3">
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-            Причина возврата
+            {t('orders.refundReason')}
           </label>
           <textarea
             value={reason}
             onChange={e => setReason(e.target.value)}
-            placeholder="Например: брак, неверный товар, отказ покупателя..."
+            placeholder={t('orders.refundReasonPlaceholder')}
             rows={3}
             className="w-full px-3 py-2.5 rounded-lg text-sm resize-y outline-none"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
@@ -424,17 +429,17 @@ function RefundDialog({ order, onClose, onSuccess }: {
             style={{ marginTop: 3, accentColor: 'var(--primary)' }}
           />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Вернуть на внутренний кошелёк</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t('orders.returnToWallet')}</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
               {returnToWallet
-                ? 'Покупатель сможет потратить эти средства на следующий заказ'
-                : 'Только пометка в системе — деньги перечисляются продавцом вручную'}
+                ? t('orders.returnToWalletOn')
+                : t('orders.returnToWalletOff')}
             </div>
           </div>
         </label>
 
         <div className="flex gap-2.5 justify-end">
-          <Button variant="secondary" onClick={onClose} disabled={loading}>Отмена</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
           <button
             onClick={submit}
             disabled={!canSubmit}
@@ -446,7 +451,7 @@ function RefundDialog({ order, onClose, onSuccess }: {
               display: 'flex', alignItems: 'center', gap: 6,
             }}
           >
-            <Wallet size={13} /> {loading ? 'Возврат...' : 'Подтвердить возврат'}
+            <Wallet size={13} /> {loading ? t('orders.refundProgress') : t('orders.refundConfirm')}
           </button>
         </div>
     </DialogShell>

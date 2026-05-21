@@ -24,7 +24,7 @@ const PRODUCT_1 = {
 };
 const STORE = {
   id: 'store-1', name: 'Test Store', sellerId: 'seller-1',
-  seller: { telegramUsername: 'testseller' },
+  seller: { telegramUsername: 'testseller', user: { languageCode: 'ru' } },
 };
 
 const VALID_DTO = {

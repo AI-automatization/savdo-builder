@@ -20,6 +20,17 @@ export const QUEUE_OTP = 'otp';
           // custom ioredis instance. Here we parse the URL so BullMQ can build
           // its own ioredis connection without extra dependencies.
           ...parseRedisUrl(config.get<string>('redis.url') ?? 'redis://localhost:6379'),
+          // API-REDIS-RESILIENCE-001: устойчивость к недоступности Redis.
+          //  - maxRetriesPerRequest: null — ОБЯЗАТЕЛЬНО для BullMQ (worker'ы
+          //    используют блокирующие команды; любое число их ломает).
+          //  - retryStrategy — экспоненциальный backoff с потолком 10с вместо
+          //    bare-loop reconnect, чтобы Redis-down не спамил ETIMEDOUT в лог.
+          //  - connectTimeout — попытка коннекта не висит вечно.
+          //  Цель: при недоступном Redis на старте API поднимается в degraded-
+          //  режиме (healthcheck /health/live это переживает), а не крашится.
+          maxRetriesPerRequest: null,
+          retryStrategy: (times: number) => Math.min(times * 200, 10_000),
+          connectTimeout: 10_000,
         },
       }),
     }),

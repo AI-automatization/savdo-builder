@@ -9,7 +9,8 @@ import { SellerNotificationService } from '../../telegram/services/seller-notifi
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ErrorReporter } from '../../../shared/error-reporter';
-import { DeliveryAddressDto, PaymentMethod as PaymentMethodInput } from '../dto/confirm-checkout.dto';
+import { computeDeliveryFee } from '../delivery-fee.util';
+import { DeliveryAddressDto, PaymentMethod as PaymentMethodInput, DeliveryMode } from '../dto/confirm-checkout.dto';
 
 export interface ConfirmCheckoutInput {
   buyerId: string;
@@ -23,6 +24,8 @@ export interface ConfirmCheckoutInput {
   customerPhone?: string;
   // API-CHECKOUT-PAYMENT-METHOD-001: способ оплаты (cash/card/online).
   paymentMethod?: PaymentMethodInput;
+  // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: режим получения. pickup → fee 0.
+  deliveryMode?: DeliveryMode;
 }
 
 /**
@@ -123,16 +126,14 @@ export class ConfirmCheckoutUseCase {
 
     const subtotalAmount = validatedItems.reduce((sum, item) => sum + item.lineTotalAmount, 0);
 
-    // API-DELIVERY-FEE-CLIENT-CONTROLLED-001: backend сам считает deliveryFee
-    // из store.deliverySettings. Раньше buyer мог прислать `deliveryFee: 0`
-    // и платить без доставки. Теперь input.deliveryFee игнорируется (DTO
-    // оставлен для backward-compat). 'manual' = 0 (продавец сам выставит
-    // при confirm заказа), 'none' = 0, 'fixed' = fixedDeliveryFee ?? 0.
-    const ds = store.deliverySettings;
+    // API-DELIVERY-FEE-CLIENT-CONTROLLED-001 + API-CHECKOUT-PREVIEW-DELIVERY-FEE-001:
+    // backend сам считает deliveryFee из store.deliverySettings (input.deliveryFee
+    // игнорируется, DTO оставлен для backward-compat). Тот же helper использует
+    // preview — суммы preview и confirm всегда согласованы.
+    // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: при самовывозе (pickup) доставка не
+    // оказывается → fee принудительно 0, store.deliverySettings не учитывается.
     const deliveryFeeAmount =
-      ds?.deliveryFeeType === 'fixed' && ds.fixedDeliveryFee != null
-        ? Number(String(ds.fixedDeliveryFee))
-        : 0;
+      input.deliveryMode === 'pickup' ? 0 : computeDeliveryFee(store.deliverySettings);
     const totalAmount = subtotalAmount + deliveryFeeAmount;
 
     const firstName = buyerWithUser.firstName ?? '';
@@ -209,6 +210,8 @@ export class ConfirmCheckoutUseCase {
         itemCount: validatedItems.length,
         total: totalAmount,
         currency: cart.currencyCode,
+        // MARKETING-LOCALIZATION-UZ-001: уведомление на языке продавца.
+        locale: store.seller.user.languageCode ?? undefined,
       });
     } catch (err) {
       ErrorReporter.captureException(err, {

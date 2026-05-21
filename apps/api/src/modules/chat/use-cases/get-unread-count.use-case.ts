@@ -24,7 +24,7 @@ export class GetUnreadCountUseCase {
       if (!buyerId) return empty;
       const threads = await this.chatRepo.findThreadsByBuyer(buyerId);
       const counts = await this.chatRepo.getUnreadCounts(
-        threads.map((t) => ({ id: t.id, buyerLastReadAt: (t as any).buyerLastReadAt ?? null, sellerLastReadAt: (t as any).sellerLastReadAt ?? null })),
+        threads.map((t) => ({ id: t.id, buyerLastReadAt: t.buyerLastReadAt, sellerLastReadAt: t.sellerLastReadAt })),
         'buyer',
       );
       return this.summarise(counts);
@@ -34,7 +34,7 @@ export class GetUnreadCountUseCase {
       if (!sellerId) return empty;
       const threads = await this.chatRepo.findThreadsBySeller(sellerId);
       const counts = await this.chatRepo.getUnreadCounts(
-        threads.map((t) => ({ id: t.id, buyerLastReadAt: (t as any).buyerLastReadAt ?? null, sellerLastReadAt: (t as any).sellerLastReadAt ?? null })),
+        threads.map((t) => ({ id: t.id, buyerLastReadAt: t.buyerLastReadAt, sellerLastReadAt: t.sellerLastReadAt })),
         'seller',
       );
       return this.summarise(counts);

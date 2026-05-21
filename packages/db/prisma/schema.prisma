@@ -1104,10 +1104,16 @@ model NotificationLog {
 model AdminUser {
   id           String   @id @default(uuid())
   userId       String   @unique
-  isSuperadmin Boolean  @default(true)
+  // SEC-ADMIN-ACCESS-MODEL стадия A: default true→false. Раньше любой новый
+  // AdminUser без явного указания становился суперадмином. Реальное значение
+  // выставляет admin-users-management.use-case (= adminRole === 'super_admin').
+  isSuperadmin Boolean  @default(false)
   // DB-AUDIT-001: добавлено в migration 20260503020000_super_admin_rbac_mfa_refunds,
   // но schema.prisma не обновили — код использовал (prisma as any). Schema drift fix.
   adminRole    String   @default("admin")  // super_admin | admin | moderator | support | finance | read_only
+  // SEC-ADMIN-ACCESS-MODEL стадия A: мягкая блокировка админа без удаления
+  // строки. Entry-gate (стадия B) проверяет isActive при входе в admin-панель.
+  isActive     Boolean  @default(true)
   mfaSecret    String?
   mfaEnabled   Boolean  @default(false)
   mfaEnabledAt DateTime?

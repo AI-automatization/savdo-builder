@@ -1,5 +1,433 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, docs) — Корректировка pre-launch package по Полатовскому фидбэку
+
+### ✅ [PRE-LAUNCH-DOCS-RECONCILE-001] Реальные readiness-скоры в go-no-go + переформулировка brand-selection как рекомендация + authorship палитры
+- **Важность:** 🟡 P2 — pre-launch гигиена документов, blocker for ADR-008 / финального подписания go-no-go.
+- **Дата:** 21.05.2026
+- **Файлы:**
+  - `docs/decisions/launch-go-no-go-2026-05-20.md` — ⏳-stub-скоры заменены на реальные из `docs/readiness/launch-readiness-2026-05-20.md`. Verdict сменился с **🔴 NO-GO (4 must-pass < threshold)** на **🟡 Conditional Go (3 must-pass < threshold: Data 7<8, Deps 6<7, Legal 5<7)**. Security 6→8 закрыл порог; Observability 4→6 на грани; Tests 4→5, i18n 6→8, Performance 6→7.5, Onboarding 5→7 — все подтянулись после волны 15.05 fix-волн. Deps переоценился вниз (нет `pnpm audit` в CI). План фикса блокеров и Подписи переписаны соответственно.
+  - `docs/decisions/brand-selection-2026-05-20.md` — переформулирован: «Decision document» → «Recommendation document»; «Решение по NAME/PALETTE/LOGO: X» → «Рекомендация по числам: X». Шапка отмечает, что палитра Terracotta+cream уже **зафиксирована в коде** Азимом (session 52 + 55) — документ объясняет почему зафиксированное решение работает, а не выбирает на чистом листе.
+  - `docs/brand/palette.md` — шапка + §13 история изменений атрибутируют авторство палитры: session 52 (05.05.2026, plan Soft Color Lifestyle, 10 task'ов, commits `c117723`/`654f067`/`b2884bb`/`4f0cea2`/`756cf3b`/`af4b2b9`/`e20a1c2`/`7ed9eb2`/`0ba9561`) + dark-вариант session 55 (09.05.2026, commit `b894589`). Аудит 20.05 — фиксация status-quo + план синхронизации seller, а не первичное решение.
+  - `analiz/audits/web-buyer-vs-seller-design-2026-05-20.md` — Win 4 («Dark `--app-bg` градиент перекрасить») получил cross-ref на session 55: для **buyer** ровно такая миграция уже сделана (commit `b894589`, terracotta lifted `#A05A45`, warm near-black `#16120D`); Win 4 — распространение на seller, не дубль.
+  - `analiz/tasks.md` — добавлены 3 тикета: `CI-PNPM-AUDIT-001` (Полат, must-pass Deps blocker), `LEGAL-OFFER-REQUISITES-001` (Бизнес→Полат, must-pass Legal blocker), `PRE-LAUNCH-VITE-VERIFY-001` (Азим, P3 sanity-проверка vite-override с учётом Полатовской заметки про rolldown-vite@8.0.10). Drill-задача (`INFRA-BACKUP-DRILL-FIRST-RUN-001`) — у Полата уже была заведена, не дублирую.
+- **Что НЕ менялось (decisions framework):** `docs/decisions/framework.md` — оставлен как roadmap-материал на T-26, в скоуп пересчёта не входил.
+- **Контекст:** Полат вчера запушил pre-launch package (`cf70b07` brand book + decisions + readiness, `8024cbd` Sentry + backup scripts). Я (тогда) написал `web-buyer-vs-seller-design-2026-05-20.md` (commit `74d0eef`). Сегодня — корректировка по фидбэку Полата.
+
+---
+
+## 2026-05-20 (Полат, frontend) — Vitest + smoke-тесты для TMA
+
+### ✅ [TMA-FRONTEND-TESTS-001] vitest + RTL setup + 4 smoke-теста (API-FRONTEND-TESTS-001 part 2)
+
+- **Важность:** 🟡 P2 tech-debt из `API-FRONTEND-TESTS-001`. Admin закрыт ранее, теперь TMA.
+- **Дата:** 20.05.2026
+- **Файлы:**
+  - `apps/tma/package.json` — devDeps: vitest@^3.2.0, @testing-library/react@^16.1.0, @testing-library/jest-dom@^6.6.3, jsdom@^25.0.1. Скрипт `"test": "vitest run --reporter=default"`. Vite pin `^6.4.2` (workspace overrides всё равно поднимают до vite@8, поэтому vitest 3.x обязателен — vitest@2.1.x несовместим с rolldown-vite, падает `__vite_ssr_exportName__ is not defined`).
+  - `apps/tma/vitest.config.ts` — отдельный от vite.config.ts (без proxy), `environment: 'jsdom'`, `globals: true`, `setupFiles: ['./src/test/setup.ts']`, `css: false`.
+  - `apps/tma/src/test/setup.ts` — jest-dom матчеры, полифилл `window.matchMedia` (jsdom), полифилл `window.Telegram.WebApp` (MainButton/BackButton/HapticFeedback/initData) — критично, иначе ErrorBoundary и страницы падают на импорте.
+  - `apps/tma/tsconfig.app.json` — добавлен `"types": ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/tma/src/__tests__/smoke/telegram-stub.test.ts` (5 tests) — infra-тест: stub существует, MainButton.{show,hide,setText,enable,disable,onClick}, BackButton.{show,hide,onClick}, HapticFeedback API, initData пустая.
+  - `apps/tma/src/__tests__/smoke/i18n.test.tsx` (3 tests) — `useTranslation()` отдаёт ru по умолчанию (`nav.cart` → `Корзина`), переключается на uz (`Savat`), unknown key → сам ключ как fallback. Wrapper = TelegramProvider + I18nProvider.
+  - `apps/tma/src/__tests__/smoke/stars.test.tsx` (3 tests) — `<Stars/>`: рендер 5 звёзд, read-only без role=radiogroup, interactive onChange(3) по клику на 3-ю звезду.
+  - `apps/tma/src/__tests__/smoke/badge.test.tsx` (3 tests) — статус-чип: PENDING→Обрабатывается, DELIVERED→Доставлен, unknown→raw status.
+- **Что сделано:** vitest@3 + RTL + jsdom + Telegram WebApp stub в setup. 4 файла smoke-тестов, 14/14 passed (`npx vitest run`). `npx tsc --noEmit` чисто.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают vite до 8.0.10 (rolldown-vite) во всём монорепо. Vitest 2.1.x ломается на TSX-импортах из src/ (`__vite_ssr_exportName__ is not defined`). Admin случайно работает потому что его node_modules/vite сидит на старом 6.4.1 (stale install), но любой свежий install получит 8.0.10. Vitest 3.2.4 совместим с rolldown.
+- **Скоуп:** только `apps/tma/**`. web-buyer/web-seller — Азиму (он во фронт-зоне).
+- **Не сделано:** AppShell smoke — пропущен, требует мокать AuthProvider + socket.io + sellerNotifications + lazy routes (>3 моков); вместо него взят Badge + Stars (чистые презентационные).
+
+---
+
+## 2026-05-20 (Полат, SRE) — Backups / restore drill — закрытие launch-блокера
+
+### ✅ [INFRA-BACKUP-RUNBOOK-001] Backup policy + runbook + restore-drill инструментарий
+
+- **Важность:** 🔴 (launch-блокер из `docs/readiness/launch-readiness-2026-05-20.md`,
+  Data integrity 7 → 8)
+- **Дата:** 20.05.2026
+- **Контекст:** `docs/V1.1/08_operations_model.md` декларирует daily PG dumps +
+  monthly restore drill, но в репо не было ни runbook'а, ни автоматизации.
+  Аудит 20.05 поставил это **🔴 blocker**: «Команда полагается на Railway managed
+  snapshot без проверки. Один реальный restore drill закроет вопрос на 90%»
+  (см. Risk register R2).
+- **Стратегия (defense-in-depth):** Railway native snapshots (daily, passive) +
+  off-platform `pg_dump --format=custom` weekly в Cloudflare R2. RPO 7 дней worst
+  case, RTO 30 мин (snapshot) / 2 ч (off-platform restore).
+- **Что сделано:**
+  - **`docs/runbooks/postgres-backup-restore.md`** (new, ~300 строк) —
+    операционный runbook: стратегия + backup procedures (Railway UI + pg_dump) +
+    restore procedures (snapshot + off-platform) + полная monthly drill процедура +
+    RPO/RTO/calendar + decision tree аварий + эскалация (Полат → Азим →
+    Railway Support).
+  - **`scripts/db/backup.sh`** (new) — weekly dump:
+    `pg_dump --no-owner --no-privileges --format=custom --compress=9` →
+    `backups/savdo-YYYYMMDD-HHMMSS.dump`. Опциональный `--upload` в R2 через
+    `aws s3 cp --endpoint-url`. `set -euo pipefail`, проверки prerequisites,
+    `pg_restore --list` верификация дампа, summary с размером/числом таблиц/elapsed.
+    Поддерживает env vars `BACKUP_DIR`, `BACKUP_PREFIX`, `R2_*`.
+  - **`scripts/db/restore-drill.sh`** (new) — monthly drill:
+    DROP SCHEMA → `pg_restore --clean --if-exists --jobs=4` → integrity check
+    через `psql -f integrity-check.sql` → опциональный row-count diff vs
+    source-db (порог `MAX_ROWCOUNT_DRIFT_PCT`, default 5%). Печатает JSON-репорт
+    в stdout (parseable for CI). Exit codes 0/2/3/4 для разных failure modes.
+    Поддерживает `--keep-data` (не дропать staging БД после).
+  - **`scripts/db/integrity-check.sql`** (new) — 30+ SELECT'ов:
+    count_* (15 таблиц), reference_category_filters_present, orphan_*
+    (10 FK-orphan checks: order_items↔orders, orders↔store/seller/buyer,
+    cart_items↔cart/product, products↔stores, stores↔sellers,
+    buyers/sellers↔users), INV-S01 duplicate stores per seller,
+    migrations_applied, INV-O04 negative stock products/variants,
+    INV-C04 missing order_item snapshots. Колонки в кавычках (Prisma
+    camelCase без `@map`).
+  - **`analiz/tasks.md`** — две новых open task'и:
+    `INFRA-BACKUP-DRILL-FIRST-RUN-001` (реально прогнать drill на прод-дампе) +
+    `INFRA-BACKUP-R2-SETUP-001` (завести R2 bucket).
+- **Файлы:**
+  - `docs/runbooks/postgres-backup-restore.md` (new)
+  - `scripts/db/backup.sh` (new, chmod +x, `bash -n` OK)
+  - `scripts/db/restore-drill.sh` (new, chmod +x, `bash -n` OK)
+  - `scripts/db/integrity-check.sql` (new)
+  - `analiz/tasks.md` (две новых задачи в начале)
+  - `analiz/done.md` (эта запись)
+- **НЕ сделано (отдельные задачи):**
+  - Реальный первый запуск drill'а на прод-дампе → `INFRA-BACKUP-DRILL-FIRST-RUN-001`.
+  - R2 bucket setup + credentials → `INFRA-BACKUP-R2-SETUP-001`.
+  - GitHub Actions cron на weekly dump → постMVP (нужен secret-scan baseline,
+    блокируется `SEC-AUDIT-04`).
+  - PITR через continuous WAL archiving → постMVP, после Click/Payme (требование
+    к RPO ≤ 1ч появится с онлайн-эквайрингом).
+- **Sanity check:**
+  - `bash -n scripts/db/backup.sh` → OK.
+  - `bash -n scripts/db/restore-drill.sh` → OK.
+  - Имена колонок сверены с `packages/db/prisma/migrations/20260322203830_init/migration.sql`
+    (Prisma camelCase: `buyerId`, `storeId`, `sellerId`, `stockQuantity`,
+    `productTitleSnapshot`, `unitPriceSnapshot` — все в `"кавычках"` в SQL).
+- **Impact на launch-readiness:** Data integrity score **7 → 8** (документация
+  и инструментарий закрыты, осталось один раз прогнать drill для перехода
+  до 8.5). R2 risk register от **🔴 Critical** до **🟡 Med** (план есть, нужно
+  одно выполнение).
+
+---
+
+## 2026-05-20 (Азим) — рефактор дублей `NEXT_PUBLIC_API_URL` (web-buyer)
+
+### ✅ [WEB-BUYER-API-URL-DEDUP-001] Свести 4 копии fallback'а API URL в один источник
+
+- **Важность:** 🟢
+- **Дата:** 20.05.2026
+- **Ветка/HEAD:** `web-buyer` → `8f1c4f5` (запушено)
+- **Контекст:** 🟢-хвост из resume_session_67 — 4 файла повторяли
+  `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'` с разными
+  суффиксами (`/api/v1` или без), `client.ts` дублировал console.warn
+  про отсутствие env. Любое изменение fallback'а требовало синхронных
+  правок в 4 местах.
+- **Что сделано:** новый `apps/web-buyer/src/lib/api/env.ts` экспортирует
+  две константы — `API_ORIGIN` (используется socket.io + refresh-эндпоинтом
+  как голый origin) и `API_BASE` (`${API_ORIGIN}/api/v1`, используется
+  axios `baseURL` и SSR-fetch'ами). Warning срабатывает один раз, только
+  на клиенте (server-импортёры — `storefront-server.ts`, product layout —
+  warning не триггерят, что правильно: в SSR-логах он шумит зря).
+- **Файлы:**
+  - `apps/web-buyer/src/lib/api/env.ts` (new)
+  - `apps/web-buyer/src/lib/api/client.ts` — `BASE_URL` → `API_BASE`,
+    refresh URL короче (`${API_BASE}/auth/refresh`), warning удалён
+  - `apps/web-buyer/src/lib/api/storefront-server.ts` — `BASE` → `API_BASE`
+  - `apps/web-buyer/src/lib/socket.ts` — `BASE_URL` → `API_ORIGIN`
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx` — `BASE`
+    → `API_BASE` (через alias `@/lib/api/env`)
+- **Sanity check:** `grep NEXT_PUBLIC_API_URL` под `src/` — только `env.ts`.
+  Поведение равенство, net −7 строк (5 файлов +18/−16). Прод-сборка проверится
+  Railway-автодеплоем на `web-buyer`.
+- **НЕ сделано:** uz-терминология (`Ishga olish` → `Jarayonga olish`,
+  PENDING `Kutmoqda/Kutilmoqda`, темы `Yorug'/Yorqin`) — решение Азима как
+  носителя. `VERIFY-CHECKOUT-CONFIRM-500-001` — вручную на проде, на Азиме.
+
+---
+
+## 2026-05-19 (Азим) — fix-волна 🟢-хвоста QA-аудита 15.05 (web-buyer)
+
+### ✅ [WEB-QA-GREEN-2026-05-15] Видимые баги web-buyer из 🟢-хвоста
+
+- **Важность:** 🟢
+- **Дата:** 19.05.2026
+- **Ветка/HEAD:** `web-buyer` → `a8dbbdf`
+- **Источник:** `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`, секция «🟢 После запуска».
+- **Что сделано (5 коммитов):**
+  - `63f641c` — **`ProductCard` рисует скидку.** `ProductListItem` нёс
+    `isSale`/`salePrice`/`oldPrice`/`discountPercent`, но карточка показывала
+    только `basePrice`. Теперь: цена продажи (danger), старая цена зачёркнута,
+    бейдж `-NN%` в стопке top-left.
+  - `6a715c3` — **пагинация отзывов + корректный средний рейтинг.**
+    `ProductReviews` показывал только первые 20 отзывов и усреднял по странице
+    (неверно при 21+). Аккумуляция страниц + «Показать ещё»; средний рейтинг
+    показывается только когда загружены ВСЕ отзывы. i18n `product.reviews.showMore`.
+  - `798dfa7` — **desktop-галерея товара** рендерила `images.slice(0,4)` —
+    5-е фото недоступно на десктопе. Убран slice.
+  - `1e1b7cb` — NaN-guard цены в wishlist (`NaN сум` при null); hero-CTA
+    «Просмотреть магазины» вёл на якорь `#top-stores`, исчезающий когда
+    `HomeTopStores` = null → заменён на `Link /stores`; пустой placeholder
+    «Из этого магазина» подключён — грузит товары того же магазина
+    (`useProducts` по storeId, до 6 шт), скрывается если товаров нет.
+  - `3e2cee2` — **a11y модалок чата.** Новый shared `ConfirmModal`
+    (`components/confirm-modal.tsx`): Esc, focus-trap (Tab циклится),
+    `role=dialog`/`aria-modal`/`aria-labelledby`, возврат фокуса. Два
+    inline confirm-оверлея в `chats/page.tsx` (удалить сообщение/чат)
+    заменены на него — заодно убран дубль разметки. `ChatComposerModal`
+    получил Esc + focus-trap + `role=dialog`.
+  - `a8dbbdf` — **убран фиктивный блок «бесплатная доставка»** из корзины
+    (`WEB-BUYER-FREE-DELIVERY-DEAD-PROMISE-001`). «До бесплатной доставки
+    X сум» + прогресс рисовались, но `delivery` всегда 0 — обещание мёртвое,
+    в backend нет порога. Блок удалён (решение делегировано Азимом),
+    честная строка «Доставка: рассчитывается при оформлении» оставлена.
+- **НЕ сделано (ждёт решения Азима):** «Free-delivery прогресс — мёртвое
+  обещание» (`cart/page.tsx`: `delivery = subtotal >= MIN ? 0 : 0`). Фикс =
+  удаление блока, т.к. в backend нет порога бесплатной доставки
+  (`StoreDeliverySettings` = `fixed`/`manual`/`none`, без threshold). Удаление
+  UI требует подтверждения Азима — см. tasks.md.
+- **Проверка:** локальный tsc не запускался (запрет) — типы проверит Railway-сборка.
+
+## 2026-05-19 (Азим) — снятие as-кастов web-buyer
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Сняты 9 `as`-кастов response-объектов
+
+- **Важность:** 🟡
+- **Дата:** 19.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `.../(minimal)/checkout/page.tsx`, `.../(shop)/orders/page.tsx`,
+  `.../(shop)/[slug]/products/[id]/page.tsx`
+- **Ветка/HEAD:** `web-buyer` → `e0a7efa` (предварительно merge `main` → `web-buyer` `f116525`,
+  чтобы подтянуть расширенные типы Полата `7791238`)
+- **Что сделано:** Полат закрыл backend+типы (`7791238`) — все 9 полей реально
+  отдаются API и объявлены в `packages/types`. Сняты касты, поля читаются напрямую:
+  - `CartItem` / `CartItemProduct` / `CartItemVariant` — `itemUnitPrice`,
+    `cartItemUnitPrice`, `outOfStock`, рендер позиций в checkout.
+  - `AuthUser.name` — поля контакта в checkout (3 callsite).
+  - `OrderListItem.itemCount` — карточка заказа в orders.
+  - `Product.inWishlist` — detail page (наследует от `ProductListItem`).
+  - `CartItemProduct`/`CartItemVariant` — супермножества старых
+    `ProductRef`/`VariantRef`, существующие обращения не затронуты.
+  - Поведение не менялось, net −30 строк.
+- **Проверка:** локальный tsc не запускался (запрет на локальный запуск) —
+  типобезопасность проверит Railway-сборка `web-buyer` (`next build`).
+
+## 2026-05-18 (Азим) — вычитка uz-переводов web-buyer + web-seller
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001] Машинная вычитка узбекских словарей
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/lib/i18n/{uz,ru}.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+- **Ветки/HEAD:** `web-buyer` → `741f482`, `web-seller` → `b15ea0a`
+- **Что сделано:** Сверены uz.ts ↔ ru.ts обеих апп. Найдено и исправлено:
+  - web-buyer: 3 опечатки в юр-текстах (`masʼul`/`isteʼmol` — был бэктик
+    вместо тутуқ белгиси U+02BC; `murojaatingizga` — тройная «a»); смягчён
+    `checkout.submitError`; фикс гибрида `cart.itemCountUz` в ru.ts.
+  - web-seller: `maʻlumot` использовал ʻ U+02BB вместо тутуқ белгиси
+    ʼ U+02BC (2 ключа); 5 error-сообщений «imkonsiz» → «...boʻlmadi».
+  - Орфография `oʻ`/`gʻ` чистая в обеих, паритет ключей uz↔ru сохранён.
+  - Юр-тексты web-buyer просмотрены — формальный юр-узбекский ОК.
+  - tsc --noEmit чист в обеих аппах.
+- **Остаток:** терминология (`Ishga olish`), кросс-app унификация,
+  ручная Railway-проверка — на Азиме (см. тикет в tasks.md).
+
+## 2026-05-18 (Азим) — OtpGate error surfacing
+
+### ✅ [WEB-BUYER-OTPGATE-SWALLOWS-ERROR-001] OtpGate показывает реальную ошибку API
+
+- **Важность:** 🟡
+- **Дата:** 18.05.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx`,
+  `apps/web-buyer/src/lib/i18n/ru.ts`, `apps/web-buyer/src/lib/i18n/uz.ts`
+- **Ветка/HEAD:** `web-buyer` → `24011be`
+- **Что сделано:** `handleSend`/`handleVerify` ловили ошибку через `catch {}`
+  без переменной — реальное сообщение API (`TELEGRAM_NOT_LINKED`,
+  `OTP_SEND_LIMIT` 429, сетевой сбой) терялось, всегда показывалось
+  «Не удалось отправить код. Проверьте номер.». Теперь `catch (e)`
+  пробрасывает `err.response.data.message` (идиома web-buyer из checkout/chat),
+  fallback — i18n-ключ. Текст `auth.sendError`: «Проверьте номер» →
+  «Попробуйте ещё раз» (ru+uz). `tsc --noEmit` чист.
+
+## 2026-05-18 (Азим) — UZ-локализация web-buyer + web-seller
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] UZ-локализация web-buyer + web-seller 🔴
+
+- **Важность:** 🔴
+- **Дата:** 17–18.05.2026
+- **Ветки/HEAD:** `web-buyer` → `aac61e8`, `web-seller` → `eb31728` (обе запушены, Railway деплоит)
+- **Спека:** `docs/superpowers/specs/2026-05-16-uz-localization-web-design.md`
+- **План:** `docs/superpowers/plans/2026-05-17-uz-localization-web.md`
+- **Что сделано:** Зеркалена i18n-инфраструктура `apps/admin` в обе апы — `src/lib/i18n/`
+  (React Context, плоский словарь ru/uz dot.notation, `useTranslation()`, fallback
+  `uz→ru→key`, детект localStorage→navigator, ключи `savdo_buyer_locale` /
+  `savdo_seller_locale`). Переключатель RU/UZ — в web-buyer `/profile`, web-seller
+  `/settings`. Извлечение строк волнами: **web-buyer** 5 волн (storefront+catalog,
+  orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared) —
+  508 ключей. **web-seller** 3 волны (auth/onboarding, 12 dashboard-страниц, shared) —
+  533 ключа. Server Components с видимым текстом (HomeHero, `[slug]/page.tsx`,
+  4 юр-страницы) обёрнуты в client-подкомпоненты. Каждая волна: spec-review +
+  code-review субагентами, `tsc --noEmit` чист, push в service-ветку. SEO-metadata,
+  форматирование чисел и «сум» оставлены на RU (вне scope по спеке).
+- **Осталось (не блокер):** ревью узбекских переводов Азимом — юр-тексты web-buyer
+  Wave 4 помечены `// REVIEW` в `uz.ts`; ручная проверка переключателя на Railway.
+
+## 2026-05-17 (Азим) — типы
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] Список `as`-кастов response-объектов web-buyer 🟡
+
+- **Важность:** 🟡
+- **Дата:** 17.05.2026
+- **Файлы:** анализ — `apps/web-buyer/src/app/(minimal)/cart/page.tsx`,
+  `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/orders/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`;
+  результат — `analiz/tasks.md`
+- **Что сделано:** Собран список из 9 `as`-кастов response-объектов в web-buyer
+  на 4 shape'ах (`CartItem`, `AuthUser`, `Order`, `Product`). Полный список
+  callsite'ов (`файл:строка` + кастуемые поля) записан в тикет
+  `API-RESPONSE-TYPES-RECONCILE-001` в `tasks.md` для Полата. Каста `store.slug`
+  не найдено — `StoreRef.slug` уже в типе. Дальше Полат правит `packages/types`,
+  затем Азим снимает касты. Sub-task Азима закрыт.
+
+## 2026-05-16 (Полат) — admin: ручная активация продавца
+
+### ✅ [ADMIN-MANUAL-ACTIVATION-UI-001] Кнопка «Активировать продавца на рынке» 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/admin/src/pages/UserDetailPage.tsx`,
+  `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Что сделано:** Закрыт последний UI-хвост из замороженного блока монетизации.
+  В `UserDetailPage` добавлена кнопка «Активировать продавца на рынке» (зелёная,
+  в ActionPanel) — показывается только для не-админов без профиля продавца и не
+  заблокированных. Открывает модалку со всеми полями backend-контракта
+  (`fullName`, `sellerType` select, `telegramUsername`, `storeName`, `storeCity`,
+  `telegramContactLink` — обязательные; `region`, `slug`, `description` —
+  опциональные). `fullName` префиллится из `buyer.fullName`. Один POST на
+  `/admin/users/:id/activate-seller-on-market` — backend-endpoint уже был
+  (`super-admin.controller.ts`, `seller:create` permission). +19 i18n-ключей
+  ru/uz. tsc admin чистый.
+
+## 2026-05-16 (Полат) — checkout pickup + Store type
+
+### ✅ [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] «Самовывоз» больше не платит доставку 🟡
+
+- **Важность:** 🟡
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/api/src/modules/checkout/dto/confirm-checkout.dto.ts`,
+  `checkout.controller.ts`, `use-cases/confirm-checkout.use-case.ts`,
+  `use-cases/preview-checkout.use-case.ts`, `packages/types/src/api/cart.ts`
+- **Что сделано:** Закрыт money/UX-баг из находки Азима (`WB-B01`-класс для
+  pickup-ветки). Выбран вариант 1 — явный `deliveryMode` в контракте, а не
+  угадывание по тексту адреса. `ConfirmCheckoutDto` принимает
+  `deliveryMode: 'delivery'|'pickup'`; `GET /checkout/preview` — query-параметр
+  `?deliveryMode`. При `pickup` backend принудительно обнуляет `deliveryFee`
+  (пропускает `computeDeliveryFee`) одинаково в preview и confirm → суммы
+  согласованы. `CheckoutConfirmRequest.deliveryMode` + `CheckoutDeliveryMode`
+  в `packages/types`. Default `delivery` (backward-compat). Коммит `fb3eea0`,
+  специ checkout 61/61.
+
+### ✅ [API-STORE-TYPE-DELIVERY-SETTINGS-001] `deliverySettings` в тип `Store` 🟢
+
+- **Важность:** 🟢
+- **Дата:** 16.05.2026
+- **Файлы:** `packages/types/src/api/stores.ts`
+- **Что сделано:** Добавлено `deliverySettings?: StoreDeliverySettings` в
+  интерфейс `Store` — `GET /seller/store` его уже возвращает (nested include),
+  но тип не моделировал. Азим может убрать UI-extension `StoreWithDelivery`.
+  Коммит `fb3eea0`.
+
+## 2026-05-16 (Азим) — WB-B01: доставка в checkout
+
+### ✅ [WB-B01] Плата за доставку отображается и списывается согласованно 🔴
+
+- **Важность:** 🔴
+- **Дата:** 16.05.2026
+- **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Что сделано:** Закрыт последний 🔴-блокер QA-аудита 15.05. Backend-часть
+  (`API-CHECKOUT-PREVIEW-DELIVERY-FEE-001`, `484694a`, Полат) научила
+  `/checkout/preview` отдавать реальный `deliveryFee`+`total`; тип
+  `CheckoutPreview` теперь канонически несёт `deliveryFee`/`total` — убран
+  избыточный loose-cast. Режим «Доставка» согласован с backend. Commit
+  `6d9f527` (ветка web-buyer). Смежная находка — pickup облагается доставкой
+  на backend → тикет `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` Полату.
+
+## 2026-05-15 (Азим) — QA-аудит wave 2: 🟡 «сильно желательно»
+
+Коммиты `fb5febf` (ветка web-buyer), `47ea98d` (ветка web-seller).
+`tsc --noEmit` чист в обоих апах.
+
+### ✅ web-buyer (`fb5febf`)
+- **WB-B05** — checkout: протухший токен запирал на форме (`confirm` молча
+  401). Слушатель `savdo:auth:expired` → возврат на OTP-шаг. Убран мёртвый
+  `isAuthed`.
+- **WB-B06** — chats: удаление открытого треда перекидывало в чужой чат.
+  Авто-выбор `threads[0]` теперь только при первой загрузке (ref-guard).
+- **WB-B11** — `use-chat`: входящее сообщение помечало тред прочитанным даже
+  при свёрнутой вкладке → терялся unread. Гейт по `document.visibilityState`.
+- **WB-B12** — `use-notifications`: `readAll` давал flicker (unread→read).
+  `onMutate` с оптимистичным `isRead=true`.
+- **WB-B13** — notifications: строка не-order уведомления имела `cursor-pointer`,
+  но клик — no-op. cursor/hover/onClick только при наличии цели.
+- **error-UI** — каталоги `/stores` и `/products` игнорировали `isError` →
+  сбой сети показывался как «пусто». Добавлен error-state + «Повторить»
+  (`refetch`); `EmptyState` расширен опциональным `onCta`.
+- **Файлы:** `hooks/use-chat.ts`, `hooks/use-notifications.ts`,
+  `app/(shop)/{chats,notifications,stores,products}/page.tsx`,
+  `app/(minimal)/checkout/page.tsx`, `components/catalog/EmptyState.tsx`.
+
+### ✅ web-seller (`47ea98d`)
+- **WS-B07** — `InlineStockEditor`: `draft` не ре-синхронизировался с `current`
+  после `adjustStock` → возможно двойное применение delta. `key` с
+  `stockQuantity` → remount после рефетча.
+- **WS-B08** — варианты: дубль с той же комбинацией опций не блокировался.
+  Проверка `optionValueIds` + inline-ошибка.
+- **WS-B16** — orders: аккумулятор страниц дублировал строки при фоновом
+  рефетче текущей страницы (>1). `lastAppendedPage`-ref: append только для
+  новой страницы, рефетч обновляет строки на месте.
+- **WS-B17** — dashboard: «Ожидают обработки» считался по 5 загруженным
+  строкам → занижение при >5. Отдельный запрос `status=PENDING` → `meta.total`.
+- **WS-B19** — orders + order detail: показывали `shortId(id)` вместо
+  канонического `orderNumber` (продавец видел не тот «номер», что покупатель/
+  уведомления/Telegram). Везде → `orderNumber`, поиск тоже.
+- **Файлы:** `components/product-variants-section.tsx`,
+  `app/(dashboard)/orders/page.tsx`, `orders/[id]/page.tsx`, `dashboard/page.tsx`.
+
+## 2026-05-15 (Азим) — QA-аудит wave 1: 🔴 блокеры запуска
+
+Закрыты 🔴-блокеры из `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+Коммиты `123b70a` (ветка web-buyer), `73ff29f` (ветка web-seller).
+
+### ✅ web-buyer (`123b70a`)
+- **WB-B02** — в корзине у in-stock товара не было кнопки удаления (степпер не
+  доходит до 0). Добавлена «Удалить» рядом со степпером.
+- **WB-B04** — при сбое `/checkout/preview` показывалась форма с «0 сум» без
+  объяснения. Добавлен error-state (`AlertCircle` + «Повторить» через
+  `preview.refetch()` + «В корзину»); форма скрыта при `preview.isError`.
+- **Файлы:** `app/(minimal)/cart/page.tsx`, `app/(minimal)/checkout/page.tsx`.
+
+### ✅ web-seller (`73ff29f`)
+- **WS-B01** — refresh-interceptor скипал OTP по несуществующему `/auth/otp/`
+  → неверный код ломал логин. → `/auth/request-otp` + `/auth/verify-otp`.
+- **WS-B02** — онбординг: `createStore`+`updateProfile` в `Promise.all`, при
+  сбое профиля retry падал дублём (INV-S01). → последовательно, профиль
+  non-fatal.
+- **WS-B04** — edit page: при сбое add/remove фото UI расходился с сервером.
+  → сверка: упавший add убирается, упавший delete возвращается + ошибка.
+- **WS-B05** — edit page: drag-реордер фото молча не сохранялся (нет backend
+  PATCH). → `MultiImageUploader` проп `reorderable`; edit передаёт `false`.
+- **WS-B06** — ключ варианта `join('/')/split('/')` ломался на значении опции
+  с `« / »`. → `VARIANT_LABEL_SEP` (U+001F) + `variantLabelDisplay()`.
+- **WS-B09** — атрибуты слали POST на каждый символ, без id-writeback → дубли.
+  → дебаунс 700мс + in-flight lock + запись id обратно.
+- **WS-B10** — create product: сбой фото/вариантов давал молчаливый «успех».
+  → подсчёт сбоев + экран «Товар создан, но не сохранилось …».
+- **Файлы:** `lib/api/client.ts`, `app/(onboarding)/onboarding/page.tsx`,
+  `app/(dashboard)/products/[id]/edit/page.tsx`, `products/create/page.tsx`,
+  `components/multi-image-uploader.tsx`, `components/variants-matrix-builder.tsx`.
+
+**Verification:** `npx tsc --noEmit` чист в обоих апах.
+**Не закрыт из 🔴:** `WB-B01` (доставка) — ждёт контракт preview от Полата.
+
 ## 2026-05-15 (Азим) — Consumption-задачи web-sync аудита (3 типовых дубля убраны)
 
 Полат в Wave 20 поднял типы в `packages/types`; закрыл фронтовую часть —
@@ -43,6 +471,129 @@
 При прогоне `tsc` обнаружен дубль экспорта `PaymentMethod` в `packages/types`
 (`enums.ts` enum vs `cart.ts` type из Wave 20). Ломает type-check всех фронтов.
 Заведено Полату — `analiz/logs.md` + tasks.md. Не правил (зона `packages/types`).
+
+## 2026-05-16 (Полат) — Wave 29: security audit fixes (часть 1)
+
+### ✅ [SEC-AUDIT-03] 🟠 — trust proxy
+`main.ts`: `app.set('trust proxy', 1)`. За Railway-прокси `req.ip` был IP
+эджа → ThrottlerGuard считал всех в одном ведре. Теперь rate-limit per-IP.
+Коммит `6751b12`.
+
+### ✅ [SEC-AUDIT-04] 🟠→🟡 — проверено, активной дыры нет
+Прошёл все 28 контроллеров: защищённые эндпоинты под guard'ами, незащищённые —
+публичные by design (storefront/media/reviews/health/telegram-webhook
+с secret-token). Понижено до 🟡 hardening. Коммит `2a814eb`.
+
+### ✅ [SEC-AUDIT-07] 🟡 — JWT session-check безусловный
+`jwt.strategy.ts`: проверка сессии на отзыв больше не условная — токен без
+`sessionId` отклоняется. Все 6 флоу выдачи токена ставят sessionId.
+Коммит `31a5187`, auth-специ 97/97.
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] (chat) 🧱 — рефактор chat.controller
+`chat.controller.ts` 659→379 LOC, прямых prisma-вызовов 19→0, `as any` 12→0
+по всему модулю. +9 методов в `ChatRepository`, +6 use-cases (MarkThreadRead,
+DeleteThread, Delete/EditMessage, ReportMessage, AdminChat). `as any` оказался
+schema-drift — ушёл после `db:generate`. Поведение идентично. chat-специ 48/48,
+api tsc clean. Коммит `6d3c8d7` (через фонового агента, проверено + закоммичено).
+Осталось по тикету: products/stores/categories контроллеры.
+
+### ✅ [SEC-ADMIN-ACCESS-MODEL] 🔐 — план ролей admin закрыт целиком (стадии A-D)
+Активировано в проде 16.05.2026 (merge `main→api` `37b481f`, подтверждено владельцем).
+- **B** — `AdminAccessGuard` на 10 admin-контроллерах: вход только `super_admin`/
+  `admin` + `isActive`. Закрыл `SEC-AUDIT-05`. Коммит `bb19395`.
+- **C** — mandatory MFA: `mfaPending` всем админам (verify-otp/refresh/
+  telegram-auth). Закрыл `SEC-AUDIT-01`. Коммит `f0d6618`.
+- **D** — LoginPage MFA-setup branch (QR → /mfa/verify → /mfa/login). `c1e125c`.
+Тесты: auth 97/97, admin+guard 236/236, admin build clean.
+
+### ✅ [SEC-ADMIN-ACCESS-MODEL стадия A] 🔐 — флаги AdminUser
+`AdminUser.isSuperadmin` default `true`→`false` (опасный дефолт) + новое поле
+`isActive Boolean @default(true)` (мягкая блокировка). Миграция
+`20260516140000_admin_user_access_flags` написана вручную (нет dev-БД),
+Expand-safe. Коммит `5a977b8`. Дальше — стадии B/C/D (entry-gate + MFA).
+
+### ✅ [SEC-AUDIT-02 + 06] 🟠 — CORS allow-list
+Убран wildcard `*.up.railway.app` (пропускал любой Railway-проект) → явный
+список 4 прод-доменов фронтов + `ALLOWED_ORIGINS` env. Dev-доступ через
+localhost-regex, не зависит от `NODE_ENV` (закрыт и `06`). Коммит `8ead898`.
+
+**Осталось из аудита:** `SEC-AUDIT-01/05` (в плане ролей `SEC-ADMIN-ACCESS-MODEL`),
+`SEC-AUDIT-04` global-guard (🟡 hardening), `SEC-AUDIT-07` (🟡 JWT session-check).
+
+## 2026-05-16 (Полат) — Wave 28: admin i18n инфра + layout/login
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (admin — инфра + первый слой)
+У admin не было i18n — последняя незакрытая часть локализации платформы.
+- **Инфра** `apps/admin/src/lib/i18n/` (zero-deps, зеркалит TMA): types/ru/uz/
+  I18nProvider/index. Detect: localStorage → navigator.language → 'ru'.
+  `useTranslation()` → `{ t, locale, setLocale }`, `{var}`-интерполяция.
+- **App.tsx** — `I18nProvider` обёртка, PageFallback + QueuesRedirect.
+- **DashboardLayout** — навигация (4 группы, 21 пункт), поиск, тема, logout
+  + переключатель языка RU/UZ в футере сайдбара.
+- **LoginPage** — все строки (OTP/MFA шаги, ошибки, плейсхолдеры, aria).
+Коммит `666b88b`, admin build чисто.
+**Осталось:** 24 page'и admin — инкрементальная миграция по мере касания.
+
+## 2026-05-15 (Полат) — Wave 27: тест AuditBrokenMediaUrlsUseCase
+
+### ✅ [AUDIT-N1] 🟢
+Unit-spec для `AuditBrokenMediaUrlsUseCase` (был gap из self-audit Wave 21).
+10 кейсов: STORAGE_PUBLIC_URL guard, живые/мёртвые URL, cursor-пагинация
+(nextCursor full/partial), clamp limit. axios замокан. 10/10 passed.
+Коммит `d336977`.
+
+## 2026-05-15 (Полат) — Wave 26: storefront stores pagination
+
+### ✅ [API-STORES-PAGINATION-001] 🟢
+`GET /storefront/stores` — server-side пагинация `?page=&limit=`. Раньше
+`findAllPublished` хардкодил `take: 50` → хвост каталога недоступен при
+>50 магазинов. Репозиторий: `$transaction` findMany+count, возвращает
+`{ stores, total, page, limit }`, clamp limit 1..100, дефолты на невалид.
+Ответ `{ data, meta }` — meta non-breaking. Коммит `8a60131`, api tsc clean.
+
+## 2026-05-15 (Полат) — Wave 25: PATCH product image endpoint
+
+### ✅ [API-PRODUCT-IMAGES-PATCH-001] 🟢
+`PATCH /seller/products/:id/images/:imageId` — reorder (`sortOrder`) + toggle
+обложки (`isPrimary`). Раньше только POST/DELETE → web-seller edit не мог
+сохранить порядок фото (`WS-B05`). Ownership-проверка, 404 на чужое фото,
+400 если не передано ни одно поле, isPrimary=true снимает обложку с остальных.
+DTO `UpdateProductImageDto`. Коммит `788aeb3`, api tsc clean.
+
+## 2026-05-15 (Полат) — Wave 24: checkout preview delivery fee + типы
+
+### ✅ [API-CHECKOUT-PREVIEW-DELIVERY-FEE-001] 🔴 (разблокирует WB-B01)
+`PreviewCheckoutUseCase` хардкодил `deliveryFee = 0`, а `ConfirmCheckoutUseCase`
+считал реальную плату из `store.deliverySettings` → покупатель видел «Бесплатно»
+в preview, но платил fixed-плату при подтверждении (money-bug).
+- Новый `checkout/delivery-fee.util.ts` → `computeDeliveryFee()` — единый расчёт.
+- preview-checkout инжектит `CheckoutRepository`, считает реальную плату.
+- confirm-checkout переведён на тот же helper (убран дублирующий inline).
+- `packages/types` `CheckoutPreview` += `deliveryFee` + `total`.
+- Тесты: +2 (fixed/manual), checkout-специ 61/61. Коммит `484694a`.
+
+### ✅ [API-RESPONSE-TYPES-RECONCILE-001] (частично) 🟡
+`OrderListItem` += плоские `city`/`region`/`addressLine1`/`addressLine2` +
+`subtotalAmount`/`discountAmount` — их отдаёт `GET /seller/orders`, web-seller
+читал через `as any`. Коммит `4cf0993`. Осталось: web-buyer ~9 кастов — нужен
+список callsite'ов от Азима.
+
+## 2026-05-15 (Полат) — Wave 23: API Telegram-уведомления i18n
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] (API notifications) 🔴
+TG-notification processor уже рендерил через `t(locale,...)`, но producer
+use-cases не прокидывали `locale` → `d.locale` был undefined → всегда 'ru'.
+Узбекские пользователи получали русские уведомления.
+Теперь `locale = User.languageCode` получателя резолвится и пробрасывается:
+- `notifyNewOrder` (confirm-checkout, create-direct-order) — язык продавца;
+  `checkout.repository.findStoreWithSeller` селектит `seller.user.languageCode`.
+- `notifyOrderStatusChanged` (update-order-status) — язык buyer/seller;
+  `orders.repository.findById` селектит `buyer.user`+`seller.user.languageCode`.
+- `notifyChatMessage` (send-message) — язык получателя;
+  `chat.repository.findThreadById` селектит обе стороны. Fallback-имена
+  отправителя локализованы через `notify.senderFallback.*`.
+**Тесты:** api tsc clean, checkout+orders+chat 70/70. Коммит `0e18129`.
+**Осталось по локализации:** admin i18n (нет инфры).
 
 ## 2026-05-15 (Полат) — Wave 22: TMA buyer i18n + TMA deploy fix
 
