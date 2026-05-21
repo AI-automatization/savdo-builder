@@ -30,6 +30,12 @@ async function bootstrap() {
     logger: new StructuredLogger(),
   });
 
+  // API-SENTRY-001: подключаем Sentry request handler (tracing + breadcrumbs).
+  // No-op если SENTRY_DSN не задан — нет риска для прода.
+  if (ErrorReporter.isSentryEnabled()) {
+    app.use(ErrorReporter.getRequestHandler());
+  }
+
   // SEC-AUDIT-03: за Railway-прокси без `trust proxy` Express видит `req.ip`
   // как IP эджа → ThrottlerGuard считает всех в одном ведре, X-Forwarded-For
   // игнорируется. `1` = доверяем одному хопу (Railway edge сам выставляет XFF).
@@ -245,6 +251,30 @@ async function bootstrap() {
     );
   }
 
+  // API-SENTRY-001: подключаем Sentry's Express error handler ПОСЛЕ маунта
+  // всех routes. NestJS GlobalExceptionFilter всё равно ловит первым и сам
+  // зеркалит exceptions через ErrorReporter.captureException — этот handler
+  // нужен только для not-caught-by-Nest сценариев (raw express middlewares
+  // типа Bull Board).
+  if (ErrorReporter.isSentryEnabled()) {
+    ErrorReporter.setupExpressErrorHandler(app);
+  }
+
+  // Graceful shutdown: дослать буферизованные Sentry events перед exit.
+  // Railway шлёт SIGTERM с 30-сек grace period — 2-сек flush вписывается.
+  const shutdown = async (signal: string) => {
+    Logger.log(`Received ${signal} — flushing telemetry and shutting down`, 'Bootstrap');
+    try {
+      await ErrorReporter.flush(2000);
+    } catch {
+      /* nothing to do — мы уже на выходе */
+    }
+    await app.close();
+    process.exit(0);
+  };
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+  process.once('SIGINT', () => void shutdown('SIGINT'));
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');
 
@@ -255,11 +285,13 @@ async function bootstrap() {
 // (БД/конфиг — НЕ Redis, Redis-фейлы теперь не валят bootstrap), логируем
 // осмысленно через ErrorReporter и выходим с кодом 1 — чтобы Railway понял
 // fail и сделал рестарт, а не считал процесс зависшим.
-bootstrap().catch((err: unknown) => {
+bootstrap().catch(async (err: unknown) => {
   ErrorReporter.captureException(err, { source: 'bootstrap' });
   Logger.error(
     `Bootstrap failed: ${err instanceof Error ? err.message : String(err)}`,
     'Bootstrap',
   );
+  // Дослать события в Sentry до exit — иначе теряем bootstrap-failure repots.
+  await ErrorReporter.flush(2000);
   process.exit(1);
 });

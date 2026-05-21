@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Savdo — wordmark (starter)
+  Light mode color: #7C3F2E (terracotta). Dark mode override via CSS / другой файл.
+  Note: SVG ссылается на системный Inter. Для production embed font или convert to paths.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="48" viewBox="0 0 160 48" role="img" aria-label="Savdo">
+  <title>Savdo</title>
+  <text
+    x="0"
+    y="36"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif"
+    font-size="36"
+    font-weight="600"
+    letter-spacing="-0.36"
+    fill="#7C3F2E">Savdo</text>
+</svg>

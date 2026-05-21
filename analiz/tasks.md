@@ -5,6 +5,205 @@
 
 ---
 
+## 🟡 [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый реальный restore drill на прод-дампе
+
+- **Домен:** SRE / DBA (Полат)
+- **Кто берёт:** Полат
+- **Приоритет:** P1 — закрывает остаточный риск **R2** из launch-readiness 2026-05-20.
+- **Контекст:** документация и инструментарий готовы (`INFRA-BACKUP-RUNBOOK-001`,
+  см. `done.md` 2026-05-20). Осталось **один раз реально прогнать** drill
+  end-to-end на свежем прод-дампе — это закрывает блокер Data integrity
+  по существу (а не только по бумагам).
+- **Что сделать:**
+  1. Включить Railway public networking для Postgres (Networking → Public →
+     Enable) или поднять `pg_dump` через `railway shell` внутри savdo-api.
+  2. Снять свежий dump: `DATABASE_URL='postgresql://postgres:***@<host>:5432/railway'
+     bash scripts/db/backup.sh`.
+  3. Поднять локальный Postgres: `docker run -d --name savdo-staging-pg
+     -e POSTGRES_USER=savdo -e POSTGRES_PASSWORD=savdo -e POSTGRES_DB=savdo_staging
+     -p 55432:5432 postgres:16-alpine`.
+  4. Запустить drill: `bash scripts/db/restore-drill.sh --dump backups/savdo-*.dump
+     --target-db postgresql://savdo:savdo@localhost:55432/savdo_staging
+     --source-db "$DATABASE_URL"`.
+  5. Результат (PASS/FAIL + JSON-репорт) — зафиксировать в `analiz/logs.md`
+     по шаблону из runbook'а §4.4.
+  6. Если PASS — поставить календарный reminder на последнюю пятницу
+     июня для следующего drill.
+- **Файлы:**
+  - `docs/runbooks/postgres-backup-restore.md` — runbook
+  - `scripts/db/backup.sh`, `scripts/db/restore-drill.sh`, `scripts/db/integrity-check.sql`
+- **Definition of done:** один JSON-репорт `drill_status: PASS` в `analiz/logs.md`.
+
+---
+
+## 🟡 [INFRA-BACKUP-R2-SETUP-001] Завести R2 bucket для off-platform дампов
+
+- **Домен:** инфра (Полат)
+- **Кто берёт:** Полат
+- **Приоритет:** P2 — пока drill PASS, можно держать дампы локально / в Google Drive
+  Полата. Off-platform хранение — следующий уровень защиты.
+- **Что сделать:**
+  1. Cloudflare → R2 → создать bucket `savdo-backups` (region `auto`).
+  2. Сгенерировать R2 API token (scope: Object Read & Write только этого bucket'а).
+  3. Lifecycle rule: `weekly/*` → expire after 84 дня (12 weeks retention).
+  4. Сохранить в Railway env savdo-api (или в локальный `.env` для CLI):
+     `R2_BACKUP_BUCKET=savdo-backups`, `R2_ENDPOINT_URL=https://<acct>.r2.cloudflarestorage.com`,
+     `AWS_ACCESS_KEY_ID=...`, `AWS_SECRET_ACCESS_KEY=...`.
+  5. Прогнать `bash scripts/db/backup.sh --upload` — проверить, что upload идёт.
+- **Файлы:** none code; настройка во внешних сервисах.
+
+---
+
+## 🟠 [CI-PNPM-AUDIT-001] Weekly `pnpm audit` в CI + baseline
+
+- **Домен:** `.github/workflows` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P1 must-pass для public launch (закрывает Deps 6 → 7 в
+  `docs/decisions/launch-go-no-go-2026-05-20.md`). Overrides в `package.json:46`
+  патчат конкретные CVE, но нет регулярного скана.
+- **Что сделать:**
+  1. `.github/workflows/dependency-audit.yml` — cron `0 9 * * 1` (понедельник
+     9:00 UTC), `pnpm audit --prod --json`, fail если есть `high`/`critical`.
+  2. Зафиксировать baseline (`pnpm audit --prod --json > .audit-baseline.json`,
+     коммитнуть, в job сравнивать diff).
+  3. Опционально: `.github/dependabot.yml` weekly PR-bump'ы для `apps/api`,
+     `apps/web-*`, корень.
+- **Файлы:** `.github/workflows/dependency-audit.yml` (new), `.audit-baseline.json`
+  (new), `.github/dependabot.yml` (optional).
+
+---
+
+## 🔴 [LEGAL-OFFER-REQUISITES-001] Реквизиты юр.лица в /offer
+
+- **Домен:** `apps/web-buyer` (заполняется после регистрации ИП/ООО).
+- **Кто берёт:** Бизнес (регистрация) → Полат (правка placeholder'а).
+- **Приоритет:** P0 must-pass для public launch (закрывает Legal 5 → 7).
+- **Что:** заменить placeholder в `apps/web-buyer/src/app/offer/page.tsx:71-75`
+  на ИНН/ОКЭД/юр.адрес/расчётный счёт. Настроить MX `support@savdo.uz` +
+  `legal@savdo.uz` через Cloudflare Email Routing → Telegram-чат команды.
+- **Скоуп:** 3–7 календарных дней регистрации + 30 мин правки. Для closed-beta
+  не блокер (договариваемся с beta-sellers, что договор будет в течение 2 недель).
+
+---
+
+## 🟠 [INFRA-UPTIME-ALERTS-001] UptimeRobot + Telegram-алерты
+
+- **Домен:** инфра (Полат).
+- **Кто берёт:** Полат (внешний сервис, no-code).
+- **Приоритет:** P1 hardening — поднимает Observability 6 → 7 в go-no-go,
+  закрывает риск R7 в readiness (downtime замечается реактивно).
+- **Что:** UptimeRobot бесплатный план (5 endpoint'ов), пинг каждые 5 мин:
+  `savdo-api/health/live`, `savdo-builder-by`, `savdo-builder-sl`, admin, TMA.
+  Алерт в Telegram-чат команды при failure.
+- **Скоуп:** 30 минут setup.
+- **Источник:** `docs/readiness/launch-readiness-2026-05-20.md` §3 + §Risk R7.
+
+---
+
+## 🟠 [SENTRY-DSN-001] Подключить real Sentry DSN к ErrorReporter
+
+- **Домен:** `apps/api` + Railway env (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P1 hardening — поднимает Observability 6 → 7. Sentry SDK
+  уже задеплоен 20.05 (`8024cbd`), нужен только DSN + замена в коде.
+- **Что:**
+  1. Создать Sentry проект (free-tier, 5k events/месяц).
+  2. `SENTRY_DSN` env в Railway Variables для api / admin / web-buyer / web-seller / tma.
+  3. В `apps/api/src/shared/error-reporter.ts` — добавить опциональный
+     `@sentry/node` под `if (process.env.SENTRY_DSN)`. Reporter уже API-совместим.
+- **Скоуп:** 30 минут.
+- **Источник:** readiness §4 «Observability» + Risk R9.
+
+---
+
+## 🟠 [SUPPORT-CHANNEL-001] `@savdo_support` TG-чат + ссылки в фронтах
+
+- **Домен:** `apps/web-buyer` (footer) + `apps/web-seller` (settings) +
+  `apps/tma` (settings) + `apps/admin` (login) — координация Полата.
+- **Кто берёт:** Полат (создаёт чат) + Азим (ссылки в web-buyer/web-seller).
+- **Приоритет:** P1 — закрывает Support 5.5 → 6.5 (should-pass для launch).
+- **Что:**
+  1. Создать Telegram-канал/чат `@savdo_support` (manned by Полат+Азим).
+  2. Добавить ссылку в `apps/web-buyer` footer, `apps/web-seller/settings`,
+     `apps/tma` settings (buyer + seller views), `apps/admin/login`.
+- **Скоуп:** 0.5 дня (создание + 4 frontend-вставки).
+- **Источник:** readiness §13 + Risk R8.
+
+---
+
+## 🟢 [FAQ-001] `/help` страница в web-buyer — 8-10 Q&A
+
+- **Домен:** `apps/web-buyer` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** P2 — поднимает Support 5.5 → 6.5 вместе с SUPPORT-CHANNEL-001.
+- **Что:** `apps/web-buyer/src/app/help/page.tsx` — статический FAQ:
+  как сделать заказ, как стать продавцом, как оплатить (cash-only сейчас),
+  что делать если не пришёл товар, как связаться с поддержкой и т.п.
+  i18n (ru + uz). Ссылка из footer.
+- **Скоуп:** 1 день.
+
+---
+
+## 🟢 [FRONTEND-SMOKE-PLAYWRIGHT-001] Playwright smoke на web-buyer + cron
+
+- **Домен:** `apps/web-buyer` + CI (Азим, при участии Полата для CI).
+- **Кто берёт:** Азим (тесты) + Полат (CI cron на Railway prod URL).
+- **Приоритет:** P2 — закрывает Tests 5 → 6 (should-pass). Параллельная сессия
+  Полата 20.05 уже добавила admin (4 теста) + TMA (14 тестов), web-buyer/web-seller
+  всё ещё на 0.
+- **Что:**
+  1. `apps/web-buyer/playwright.config.ts` + `playwright/smoke.spec.ts` — 3 теста:
+     `/` рендерится, `/[slug]` рендерится, `/cart` добавление-удаление работает.
+  2. (Опционально, Азим) `apps/web-seller/playwright/smoke.spec.ts` — 1 тест:
+     login-page рендерится.
+  3. `.github/workflows/playwright-prod-smoke.yml` — hourly cron против
+     Railway prod URL. Алерт в TG при FAIL.
+- **Скоуп:** 2 дня.
+- **Источник:** `API-FRONTEND-TESTS-001` (web-buyer/web-seller часть) +
+  readiness §6 + Risk R6.
+
+---
+
+## 🟢 [ADMIN-I18N-DARK-THEME-CANONICAL-001] `Qorongʻi` → `Qorongʻu` в admin uz.ts
+
+- **Домен:** `apps/admin/src/lib/i18n/uz.ts` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P3 — опечатка в латинизации, не функциональная проблема.
+- **Что:** в `apps/admin/src/lib/i18n/uz.ts:138-140` стоит `Qorongʻi` (с `i` на
+  конце). Стандартная форма в латинском узбекском — `Qorongʻu` (с `u`). Также:
+  - line 138: `'theme.dark': 'Qorongʻi mavzu'` → `'Qorongʻu mavzu'`
+  - line 140: `'theme.toDark': 'Qorongʻi mavzuga oʻtish'` → `'Qorongʻu mavzuga oʻtish'`
+- **Контекст:** web-buyer/web-seller сегодня (21.05.2026, см. `done.md`
+  `UZ-CANONICAL-WEB-2026-05-21`) приведены к канону `Qorongʻu`. Admin остался
+  единственным outlier'ом с `Qorongʻi` — для единообразия имеет смысл унифицировать.
+
+---
+
+## 🟢 [PRE-LAUNCH-VITE-VERIFY-001] Sanity-проверка vite-override
+
+- **Домен:** web-buyer / web-seller / pnpm-lock (Азим).
+- **Кто берёт:** Азим — локально (разовое исключение из `feedback_no_local_run`).
+- **Приоритет:** P3 — overrides уже в `package.json:46`
+  (`"vite": ">=6.4.2"`). Полат предупредил в `done.md` 20.05 (TMA-FRONTEND-TESTS-001):
+  workspace-override фактически поднимает до **vite@8.0.10 (rolldown-vite)**,
+  не до 6.4.2 — это надо иметь в виду при чтении lockfile.
+- **Что сделать:**
+  1. `pnpm install` в корне.
+  2. `grep -E "^\s*vite@" pnpm-lock.yaml | sort -u` — увидеть фактическую
+     версию (ожидается 8.x rolldown). Это норма.
+  3. `cd apps/web-buyer && pnpm exec tsc --noEmit` — чистый. Web-buyer на Next 16,
+     vite в нём — только транзитивная dev-зависимость, type-check не должен трогать.
+  4. `cd apps/web-seller && pnpm exec tsc --noEmit` — чистый.
+  5. Если 3/4 падает с vite-related TS-ошибкой — откат: `package.json:46`
+     `"vite": ">=6.4.2"` → `"vite": "^6.4.1"` (явный pin до старой стабильной),
+     `pnpm install`, повторить.
+- **Файлы:** `package.json:46`, `pnpm-lock.yaml`.
+- **Note:** admin/tma уже проверены Полатом — TMA-тесты прошли 14/14 на vitest@3
+  поверх rolldown-vite; admin держится на stale vite@6.4.1 install (см.
+  `done.md` 20.05 TMA-FRONTEND-TESTS-001).
+
+---
+
 ## ✅ [INFRA-API-PROD-DOWN-001] PROD API лежит — ВОССТАНОВЛЕНО 19.05.2026
 - **Статус:** ✅ API снова жив — проверено curl'ом 19.05.2026: `/api/v1/health`,
   `/api/v1/storefront/featured`, `/api/v1/storefront/categories/tree` все `200`.
@@ -272,8 +471,20 @@ root cause ещё не подтверждён.
 каталогов `/stores` и `/products`; `WS-B07/B08/B16/B17/B19`. Детали — `done.md`.
 
 **Статус:** все 🔴-блокеры закрыты, 🟡-волна закрыта.
-Осталось 🟢-«после запуска» (модалки a11y, скидки в ProductCard, рефактор
-дублей) — не блокирует. **Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+🟢-«после запуска» — **закрыто 19.05.2026** (`WEB-QA-GREEN-2026-05-15`,
+web-buyer `3e2cee2`, см. `done.md`): скидки ProductCard, пагинация отзывов,
+desktop-галерея, NaN-guard, #top-stores, секция «Из этого магазина»,
+a11y модалок чата (Esc/focus-trap/role — shared `ConfirmModal`).
+**Детали** — `analiz/audits/web-buyer-seller-bugs-2026-05-15.md`.
+
+## ✅ `WEB-BUYER-FREE-DELIVERY-DEAD-PROMISE-001` — закрыто 19.05.2026
+
+- Фиктивный блок «До бесплатной доставки X сум» удалён из `cart/page.tsx`
+  (web-buyer `a8dbbdf`) — обещание было мёртвым (`delivery` всегда 0), в
+  backend нет порога бесплатной доставки. Решение делегировано Азимом.
+- 💡 **Идея на будущее:** настоящая фича «бесплатная доставка от N сум» —
+  потребует per-store `freeDeliveryThreshold` в `StoreDeliverySettings`
+  (backend, Полат) + UI прогресса в корзине. Не для MVP.
 
 ## ✅ `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` — «Самовывоз» платил доставку — закрыт 16.05.2026
 
@@ -429,7 +640,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-SENTRY-001`** ✅ 14.05.2026 — lightweight error reporter без зависимости от Sentry SDK. `apps/api/src/shared/error-reporter.ts` — auto-capture `uncaughtException`/`unhandledRejection`, manual `captureException(err, context)` + `captureMessage(msg, level, context)`. JSON output в stderr (Railway log aggregation), PII-скраббинг для context keys (password/secret/token/authorization → `[REDACTED]`). Tags: `release` (`RAILWAY_GIT_COMMIT_SHA[:7]`) + `environment` (`NODE_ENV`). Env-flag `ERROR_REPORTER_ENABLED=false`. **Init в `main.ts` перед bootstrap** — ловит ошибки на этапе загрузки модулей. Когда нужен полный Sentry — добавить `@sentry/node` и заменить `ErrorReporter.captureException` на `Sentry.captureException` (API совместимый). 60% Sentry-функций без install.
 - [x] **`API-PINO-LOGGING-001`** ✅ 14.05.2026 — без новых зависимостей. `apps/api/src/shared/structured-logger.ts` — custom `ConsoleLogger` extension: в `NODE_ENV=production` emit single-line JSON `{ts, level, context, msg, trace}` (stdout/stderr split для Railway log aggregation), в dev — fallback на цветной ConsoleLogger. Подключено в `main.ts` через `NestFactory.create({ logger: new StructuredLogger() })`. Override `isLevelEnabled` для конфигурации через `LOG_LEVEL` env. Все существующие `Logger.log/warn/error` работают автоматически. Pino не подключаем — нужен `pnpm install` (4 пакета: nestjs-pino + pino + pino-http + pino-pretty), wrapper даёт 80% value (JSON-логи) без новых deps.
 - [x] **`API-PII-MASKING-001`** ✅ verified done 12.05.2026 — `apps/api/src/shared/pii.ts` (`maskPhone`: `+998901234567` → `+998 *** ** 67`, ghost `tg_*` → `tg_***`). Использован во ВСЕХ logger.* с phone: otp.processor, otp.service, telegram-auth.use-case, admin-auth.use-case (impersonation), telegram-demo.handler (linked/registered logs), ghost-cleanup.service. Также есть unit-тесты `pii.spec.ts`. Verified grep — 0 plain-text phone в logger calls.
-- [ ] **`API-FRONTEND-TESTS-001`** — 0 frontend tests для admin / web-buyer / web-seller / TMA. Хотя бы smoke.
+- [~] **`API-FRONTEND-TESTS-001`** — admin ✅ (10 тестов) + TMA ✅ (14 тестов, 20.05.2026 — см. `done.md` TMA-FRONTEND-TESTS-001). Осталось web-buyer + web-seller — Азиму.
 - [⏸️] **`API-PAGINATION-ENVELOPE-001`** — см. отложено в разделе ниже (Sprint B).
 
 ---
@@ -1035,46 +1246,10 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
     `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
     stack trace в `analiz/logs.md` — Полат разберёт root cause.
 
-## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — типы готовы, касты можно снимать (Полат → Азиму)
+## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ПОЛНОСТЬЮ ЗАКРЫТО 19.05.2026
 
-> **18.05.2026 (коммит `7791238`):** Полат закрыл backend+типы. Все 9 полей
-> теперь реально отдаются API и объявлены в `packages/types`. **Азим: снять
-> `as`-касты по списку ниже, читать поля напрямую.** Деталь — `CartItem.product`
-> теперь интерфейс `CartItemProduct` (полный shape), `variant` — `CartItemVariant`.
-
----
-### (исходный список callsite'ов, собран Азимом 17.05.2026)
-
-> **От Полата.** Чтобы доделать ревизию response-типов в `packages/types`.
-> ✅ Список собран Азимом 17.05.2026. Дальше правит тип Полат.
-
-**9 `as`-кастов response-объектов в web-buyer на 4 shape'ах:**
-
-### 1. `CartItem` — нет полей цены/снапшотов + вложенных `product`/`variant`
-- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:32` — `CartItem` →
-  `{ unitPrice?, salePriceSnapshot?, unitPriceSnapshot?, product?:{basePrice?,salePrice?}, variant?:{priceOverride?,salePriceOverride?} }`
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:47` — тот же shape, что cart:32
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:716` — `CartItem` →
-  `{ product?:{ title?, mediaUrl? } }`
-- `apps/web-buyer/src/app/(minimal)/cart/page.tsx:99` — `CartItem.product` →
-  `{ stock?: number, isAvailable?: boolean, isVisible?: boolean }`
-
-### 2. `AuthUser` — нет поля `name`
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:319` — `(user as { name?: string }).name`
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:367` — то же
-- `apps/web-buyer/src/app/(minimal)/checkout/page.tsx:408` — то же
-
-### 3. `Order` / `OrderListItem` — нет поля `itemCount`
-- `apps/web-buyer/src/app/(shop)/orders/page.tsx:252` — `(order as { itemCount?: number }).itemCount`
-
-### 4. `Product` — нет поля `inWishlist`
-- `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:88` — `(product as { inWishlist?: boolean }).inWishlist`
-
-> Примечание: `store.slug` каста в web-buyer не найдено — `StoreRef.slug` в типе
-> уже есть и используется напрямую. Остальные `as` в web-buyer — это error-касты
-> (`e as { response?... }`), CSS-переменные (`'--tw-ring-color' as string`),
-> query-ключи (`as const`) и route-params (`params.slug as string`) —
-> к response-типам не относятся, не трогать.
+> Backend+типы — Полат (`7791238`). Снятие 9 `as`-кастов в web-buyer — Азим
+> (`e0a7efa`, ветка `web-buyer`). Подробности в `done.md`.
 
 ## ✅ Сессия 13 (07.04.2026) — все блокеры закрыты
 
