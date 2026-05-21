@@ -1,5 +1,23 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-21] [BUILD-VITE-OVERRIDE-2026-05-20] 🟢 vite override `>=6.4.2` не ломает web-buyer/web-seller
+- **Статус:** 🟢 OK, ничего чинить не нужно. Опасение #5 Азима — закрыто.
+- **Контекст:** В корневом `package.json` стоит `pnpm.overrides.vite: ">=6.4.2"` (после bump'а TMA с `^6.0.5` до `^6.4.2`). По факту override резолвит **vite@8.0.10 (rolldown-vite)** во всём workspace.
+- **Где vite реально присутствует (pnpm list vite -r --depth=0):**
+  - `apps/admin` → vite@8.0.10 (devDep)
+  - `apps/tma` → vite@8.0.10 (devDep)
+  - `apps/web-buyer` → **vite НЕ установлен** (Next.js 16 → Turbopack, vite не в дереве)
+  - `apps/web-seller` → **vite НЕ установлен** (Next.js 16 → Turbopack, vite не в дереве)
+- **Проверки на c:\Users\USER\Desktop\debug\savdo-builder:**
+  - `pnpm install --frozen-lockfile=false` — OK (lockfile up to date, 8.1s).
+  - `apps/web-buyer && pnpm build` — ✅ Next 16.2.1 Turbopack, compile 5.0s, 18 routes (5 static + 3 dynamic + остальные).
+  - `apps/web-seller && pnpm build` — ✅ Next 16.2.1 Turbopack, compile 3.6s, 16 routes. Единственное предупреждение — `middleware → proxy` (это deprecation Next 16, не связано с vite, зона Азима).
+  - `apps/web-buyer && npx tsc --noEmit` — ✅ exit 0, без вывода.
+  - `apps/web-seller && npx tsc --noEmit` — ✅ exit 0, без вывода.
+- **Почему override безопасен для web-*:** Next.js 16 не использует vite ни в build pipeline, ни как транзитивную зависимость. Override применяется только к веткам зависимостей, где vite уже был в дереве (admin/tma через `@vitejs/plugin-react`, `vitest`, `@tailwindcss/vite`). На web-buyer/web-seller (Next.js + webpack/turbopack) override не имеет точек приложения.
+- **Что сделано:** ничего править не нужно. Опасение Азима #5 не подтверждается. Откатывать override не требуется — он защищает admin/tma от старых уязвимых vite <6.4.2.
+- **TODO для TMA-агента (не блокирующее):** vite@8.0.10 — это rolldown-vite (форк под Rollup→Rolldown). Стабильность под React 19 + vitest 3 проверена этим build'ом для admin/tma неявно, но желательно отдельно прогнать `pnpm --filter tma test` и `pnpm --filter tma build` в отдельной сессии.
+
 ## [2026-05-18] [INFRA-API-PROD-DOWN-001] 🔴→✅ PROD API лежит — весь web-buyer не работает
 - **Статус:** ✅ Восстановлено 19.05.2026 — проверено curl'ом.
 - **Что случилось:** Азим тестировал регистрацию на проде buyer

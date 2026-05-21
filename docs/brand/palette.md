@@ -11,6 +11,16 @@
 
 ---
 
+## 0. Авторство
+
+Soft Color Lifestyle (terracotta `#7C3F2E` + cream `#FBF7F0`) — спроектирована и довёл до прода **Азим** в `apps/web-buyer` в session 52 (05.05.2026). Это не «новая находка» — это уже работающая палитра buyer'а.
+
+Аудит buyer-vs-seller (`analiz/audits/web-buyer-vs-seller-design-2026-05-20.md`, session 55) подтвердил её как **«материнскую»** — winner по контрасту, brand-identity и UZ-fit против Indigo+amber / Sapphire+coral / Olive+wheat.
+
+Текущий документ — **формализация этих токенов** в parent brand book для применения seller / admin / TMA. Не пересматривает palette, а распространяет её.
+
+---
+
 ## 1. Brand primary — Terracotta
 
 Brand-цвет — **terracotta**. Тёплый, материальный, отсылает к глине, ремеслу, узбекской керамике (риштан, кашгар). Уникальный для UZ-рынка: ни один маркетплейс / банк / e-commerce платформа в UZ его не использует.

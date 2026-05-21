@@ -212,6 +212,8 @@ Savdo — это не маркетплейс. Это **инструмент дл
 **Surface:** кремовый `#FBF7F0` (light) / warm near-black `#16120D` (dark).
 **Запрещено:** generic SaaS-violet (`#7C3AED` остаётся только как technical accent в seller-CRM, никогда в brand-точках).
 
+**Авторство:** Soft Color Lifestyle (terracotta + cream) — авторская decision Азима, доведённая до прода в `apps/web-buyer` (session 52, 05.05.2026). Brand book формализует эти токены и распространяет на seller / admin / TMA. См. `docs/brand/palette.md` §0.
+
 ### 6.2 Типографика
 
 **Шрифт:** Inter (`latin + cyrillic`) с feature settings `cv11 ss01`.
