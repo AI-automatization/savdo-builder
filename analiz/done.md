@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Полат, infra) — CI dependency audit + baseline
+
+### ✅ [CI-PNPM-AUDIT-001] Weekly pnpm audit с baseline (запускает новые high/critical)
+
+- **Важность:** 🟡 (закрывает Deps 6→7 из launch-readiness)
+- **Дата:** 21.05.2026
+- **Файлы:** `.github/workflows/dependency-audit.yml`, `.github/dependency-audit-baseline.json`, `scripts/dependency-audit-check.mjs`
+- **Что сделано:**
+  - `.github/workflows/dependency-audit.yml` — cron понедельник 06:00 UTC + on push/PR при изменениях `**/package.json`, `pnpm-lock.yaml`, baseline или workflow + `workflow_dispatch`.
+  - `scripts/dependency-audit-check.mjs` — парсит `pnpm audit --prod --audit-level=moderate --json`, фильтрует high/critical, сравнивает с baseline. Exit 1 на НОВЫЕ advisories, exit 0 на known + moderate (информативно). С опцией `--include-moderate` дополнительно листит moderate'ы (не валит CI).
+  - `.github/dependency-audit-baseline.json` — снимок 8 known high advisories (все `next`, owner: Азим). Каждый ID имеет note с patched-версией и owner-ом фикса.
+  - Локальный прогон: exit 0, 8 known high'ей в baseline, 10 moderate'ов (информативно).
+- **Замечания:**
+  - 8 high → bump Next.js ≥16.2.6 в `apps/web-buyer` + `apps/web-seller` (Azim's зона). Когда сделает — удалить ID из baseline.
+  - 1 moderate `@nestjs/core` (моя зона): advisory `<=11.1.17` patched `>=11.1.18`. Текущий 10.4.22 → требует major-bump 10→11, отдельный тикет.
+
 ## 2026-05-21 (Азим, web-buyer) — vitest@3 + 4 smoke-теста
 
 ### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part A] vitest setup + 4 spec файла (~16 тестов)
