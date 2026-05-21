@@ -30,6 +30,12 @@ async function bootstrap() {
     logger: new StructuredLogger(),
   });
 
+  // API-SENTRY-001: подключаем Sentry request handler (tracing + breadcrumbs).
+  // No-op если SENTRY_DSN не задан — нет риска для прода.
+  if (ErrorReporter.isSentryEnabled()) {
+    app.use(ErrorReporter.getRequestHandler());
+  }
+
   // SEC-AUDIT-03: за Railway-прокси без `trust proxy` Express видит `req.ip`
   // как IP эджа → ThrottlerGuard считает всех в одном ведре, X-Forwarded-For
   // игнорируется. `1` = доверяем одному хопу (Railway edge сам выставляет XFF).
@@ -122,10 +128,25 @@ async function bootstrap() {
 
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
-    const redisIoAdapter = new RedisIoAdapter(app);
-    await redisIoAdapter.connectToRedis(redisUrl);
-    app.useWebSocketAdapter(redisIoAdapter);
-    Logger.log('Socket.IO using Redis adapter', 'Bootstrap');
+    // API-REDIS-RESILIENCE-001: подключение Redis-адаптера НЕ должно валить
+    // bootstrap. Раньше `await connectToRedis()` бросал ETIMEDOUT когда Redis
+    // недоступен в момент старта → bootstrap падал → Railway рестартил pod 3
+    // раза → деплой "Removed". Теперь при недоступном Redis API всё равно
+    // поднимается: Socket.IO работает в single-instance режиме (без
+    // cross-instance fan-out), адаптер можно подключить позже после деплоя.
+    try {
+      const redisIoAdapter = new RedisIoAdapter(app);
+      await redisIoAdapter.connectToRedis(redisUrl);
+      app.useWebSocketAdapter(redisIoAdapter);
+      Logger.log('Socket.IO using Redis adapter', 'Bootstrap');
+    } catch (err) {
+      Logger.error(
+        `Socket.IO Redis adapter failed to connect — running single-instance: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+        'Bootstrap',
+      );
+    }
 
     // ── Bull Board UI: monitoring очередей jobs (telegram, in-app, otp) ──
     // Доступно только под Telegram OTP auth + ADMIN role (см. middleware ниже).
@@ -230,10 +251,47 @@ async function bootstrap() {
     );
   }
 
+  // API-SENTRY-001: подключаем Sentry's Express error handler ПОСЛЕ маунта
+  // всех routes. NestJS GlobalExceptionFilter всё равно ловит первым и сам
+  // зеркалит exceptions через ErrorReporter.captureException — этот handler
+  // нужен только для not-caught-by-Nest сценариев (raw express middlewares
+  // типа Bull Board).
+  if (ErrorReporter.isSentryEnabled()) {
+    ErrorReporter.setupExpressErrorHandler(app);
+  }
+
+  // Graceful shutdown: дослать буферизованные Sentry events перед exit.
+  // Railway шлёт SIGTERM с 30-сек grace period — 2-сек flush вписывается.
+  const shutdown = async (signal: string) => {
+    Logger.log(`Received ${signal} — flushing telemetry and shutting down`, 'Bootstrap');
+    try {
+      await ErrorReporter.flush(2000);
+    } catch {
+      /* nothing to do — мы уже на выходе */
+    }
+    await app.close();
+    process.exit(0);
+  };
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+  process.once('SIGINT', () => void shutdown('SIGINT'));
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');
 
   Logger.log(`API running on http://0.0.0.0:${port}/api/v1`, 'Bootstrap');
 }
 
-bootstrap();
+// API-REDIS-RESILIENCE-001: явный catch на bootstrap. Если старт всё же упал
+// (БД/конфиг — НЕ Redis, Redis-фейлы теперь не валят bootstrap), логируем
+// осмысленно через ErrorReporter и выходим с кодом 1 — чтобы Railway понял
+// fail и сделал рестарт, а не считал процесс зависшим.
+bootstrap().catch(async (err: unknown) => {
+  ErrorReporter.captureException(err, { source: 'bootstrap' });
+  Logger.error(
+    `Bootstrap failed: ${err instanceof Error ? err.message : String(err)}`,
+    'Bootstrap',
+  );
+  // Дослать события в Sentry до exit — иначе теряем bootstrap-failure repots.
+  await ErrorReporter.flush(2000);
+  process.exit(1);
+});

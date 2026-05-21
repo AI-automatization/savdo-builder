@@ -135,9 +135,9 @@ export const uz: Translations = {
 
   // ── Theme ─────────────────────────────────────────────────────────────
   'theme.light': 'Yorugʻ mavzu',
-  'theme.dark': 'Qorongʻi mavzu',
+  'theme.dark': 'Qorongʻu mavzu',
   'theme.toLight': 'Yorugʻ mavzuga oʻtish',
-  'theme.toDark': 'Qorongʻi mavzuga oʻtish',
+  'theme.toDark': 'Qorongʻu mavzuga oʻtish',
 
   // ── Layout / sidebar ──────────────────────────────────────────────────
   'layout.adminPanel': 'Admin panel',

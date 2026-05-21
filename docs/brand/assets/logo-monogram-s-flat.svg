@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Savdo — monogram S flat (no plate)
+  Используется когда логотип размещается на cream background (= app-bg).
+  S — solid terracotta fill через path.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Savdo">
+  <title>Savdo</title>
+  <!-- Stylized S in terracotta, no plate -->
+  <path
+    d="M48 14 H22 a8 8 0 0 0 0 16 h20 a8 8 0 0 1 0 16 H16"
+    stroke="#7C3F2E"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"/>
+</svg>
