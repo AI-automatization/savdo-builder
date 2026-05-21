@@ -121,6 +121,22 @@
 
 ---
 
+## 2026-05-21 (Азим, web-buyer) — Slim homepage: убрать «лишние вещи»
+
+### ✅ [WEB-BUYER-HOMEPAGE-SLIM-2026-05-21] Homepage `/` → Hero + TopStores
+
+- **Важность:** 🟡 P2 — UX-фидбэк Азима, направление зафиксировано.
+- **Дата:** 21.05.2026
+- **Коммит:** web-buyer `2a4ee2a`.
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — удалены `HomeCategoryChips`, `HomeFeaturedFeed`, `RecentStores` (компонент-обёртка homepage), `HomeQuickLinks`. Остались: `HomeHero` + `HomeTopStores` + © footer + `BottomNavBar`. Убраны `Suspense`-обёртки (нужны были только для chips/featured из-за useSearchParams). Шапка-комментарий объясняет решение.
+- **Что сделано:** реализован вариант **B (Slim)** из обсуждения сессии 69. Из 6 секций оставлены 2 — Hero (orient + CTA) и TopStores (discovery). Аргументация: RecentStores дублирует TopStores логически, Featured-feed без контекста магазина = шум, QuickLinks — навигация ради навигации (`/products`, `/stores` достижимы из других мест), chips тоже доступны на `/stores`.
+- **Что НЕ удалено с диска:** `HomeCategoryChips.tsx`, `HomeFeaturedFeed.tsx`, `HomeQuickLinks.tsx`, `RecentStores.tsx` оставлены в `src/components/home/` — на случай возврата (импорта в page.tsx можно восстановить одной строкой). `lib/recent-stores.ts` остаётся в употреблении (BottomNavBar, cart page).
+- **Контекст:** `MARKETING-HOMEPAGE-DISCOVERY-001` 13.05.2026 расширил homepage до 6 секций под marketing-landing трафик. Сегодня Азим сказал «было лучше без лишних вещей» — откат в скоупе UX, без откатa инфраструктуры (SEO metadata, OG-tags, сами компоненты).
+- **Не сделано:** замер LCP до/после — у Азима локальный запуск выключен (`feedback_no_local_run`); проверим в прод-метриках после деплоя web-buyer.
+
+---
+
 ## 2026-05-21 (Азим, docs) — Корректировка pre-launch package по Полатовскому фидбэку
 
 ### ✅ [PRE-LAUNCH-DOCS-RECONCILE-001] Реальные readiness-скоры в go-no-go + переформулировка brand-selection как рекомендация + authorship палитры
