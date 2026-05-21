@@ -1,17 +1,13 @@
 // apps/web-buyer/src/app/(shop)/page.tsx
 //
-// Server component с metadata для SEO. Hero — server, остальные блоки
-// (chips/top stores/featured) — client с TanStack Query.
+// Slim homepage: Hero + TopStores. Решение 21.05.2026 после фидбэка Азима
+// «было лучше без лишних вещей». Chips / Featured / Recent / QuickLinks
+// убраны со страницы (компоненты на диске оставлены — на случай возврата).
 
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import { RecentStores } from '@/components/home/RecentStores';
 import { BottomNavBar } from '@/components/layout/BottomNavBar';
 import { HomeHero } from '@/components/home/HomeHero';
-import { HomeCategoryChips } from '@/components/home/HomeCategoryChips';
 import { HomeTopStores } from '@/components/home/HomeTopStores';
-import { HomeFeaturedFeed } from '@/components/home/HomeFeaturedFeed';
-import { HomeQuickLinks } from '@/components/home/HomeQuickLinks';
 import { colors } from '@/lib/styles';
 
 export const metadata: Metadata = {
@@ -31,18 +27,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       <HomeHero />
-      {/* useSearchParams внутри chips/featured требует Suspense для static pre-render (Next 16). */}
-      <Suspense fallback={null}>
-        <HomeCategoryChips />
-      </Suspense>
       <HomeTopStores />
-      <Suspense fallback={null}>
-        <HomeFeaturedFeed />
-      </Suspense>
-      <div className="px-4 sm:px-6 mt-10 max-w-7xl mx-auto w-full">
-        <RecentStores />
-      </div>
-      <HomeQuickLinks />
       <p
         className="text-[11px] text-center mt-10 pb-6"
         style={{ color: colors.textMuted }}
