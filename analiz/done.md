@@ -1,5 +1,35 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, web-buyer) — FAQ-001 `/help` страница
+
+### ✅ [FAQ-001] `/help` страница с 8 Q&A на ru+uz
+- **Важность:** 🟢 P2 — поднимает Support 5.5 → 6.5 (should-pass из go-no-go);
+  вместе с SUPPORT-CHANNEL-001 закрывает «нет канала поддержки» риск R8.
+- **Дата:** 21.05.2026
+- **Коммит:** web-buyer `d61db84`
+- **Файлы:**
+  - `apps/web-buyer/src/components/legal/HelpContent.tsx` (new) — client component
+    на паттерне legal-страниц (LegalPage + H2/P), 8 секций Q→A + intro.
+  - `apps/web-buyer/src/app/help/page.tsx` (new) — server wrapper с metadata
+    (title «Помощь и частые вопросы — Savdo», description).
+  - `apps/web-buyer/src/lib/i18n/ru.ts` — +20 ключей `legal.help.*` (title,
+    effectiveDate, intro, s1-s8 q/a) + 2 ключа `profile.menu.help/helpSub`.
+  - `apps/web-buyer/src/lib/i18n/uz.ts` — те же 22 ключа на UZ (latinitsa,
+    апостроф `ʻ` U+02BB, по uzbek-translator skill).
+  - `apps/web-buyer/src/app/sitemap.ts` — `/help` добавлен (priority 0.4,
+    changeFrequency monthly — выше юр-страниц 0.3).
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — MenuRow «Помощь» с
+    `HelpCircle` icon, под Notifications, перед language toggle.
+- **8 Q&A покрывают:** оформление заказа, оплата (cash + manual transfer,
+  online — «скоро»), доставка, возврат/«товар не пришёл», связь с продавцом
+  (чат), стать продавцом (→ Telegram bot), OTP-код не приходит (проверка
+  Telegram + формат номера + интернет), смена языка интерфейса.
+- **Не сделано (отдельно):** ссылка из checkout footer (там сейчас только
+  /offer + /privacy); native UZ review Азимом на проде после деплоя; ссылка
+  из homepage / store footer.
+
+---
+
 ## 2026-05-21 (Азим, web-buyer + web-seller) — UZ канонизация кросс-app
 
 ### ✅ [UZ-CANONICAL-WEB-2026-05-21] orders.PENDING / nextProcess / theme — единый канон
