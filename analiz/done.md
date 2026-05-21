@@ -1,5 +1,48 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, web-seller) — vitest@3 + 3 smoke specs
+
+### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part B] vitest setup + 3 spec файла (~13 тестов)
+- **Важность:** 🟡 P2 — закрывает Tests на стороне web-seller (зеркалит part A
+  web-buyer 21.05 и TMA от Полата 20.05).
+- **Дата:** 21.05.2026
+- **Коммиты:** web-seller `881b225` (setup + specs), main `<TBD>` (CI workflow + close).
+- **Файлы:**
+  - `apps/web-seller/vitest.config.ts` (new) — jsdom env, alias `@`, отдельный от
+    Next.js build pipeline. Зеркало `apps/web-buyer/vitest.config.ts`.
+  - `apps/web-seller/src/test/setup.ts` (new) — jest-dom матчеры + полифилл
+    `window.matchMedia` (jsdom не реализует).
+  - `apps/web-seller/package.json` — devDeps: vitest@^3.2.0, RTL@^16, jest-dom@^6,
+    user-event@^14, @vitejs/plugin-react@^4, jsdom@^25. Скрипт `test`.
+  - `apps/web-seller/tsconfig.json` — `types: ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/web-seller/src/__tests__/smoke/buyer-url.test.ts` — 7 тестов на
+    `buyerOrigin`/`buyerStoreUrl`/`buyerStoreDisplay`/`buyerHostDisplay`/`buyerProductUrl`
+    (pure helpers, `NEXT_PUBLIC_BUYER_URL` env + savdo.uz fallback).
+  - `apps/web-seller/src/__tests__/smoke/i18n.test.tsx` — 4 теста: default ru
+    (`common.cancel`=Отмена), switch uz↔ru (Bekor qilish), unknown key fallback,
+    интерполяция `{count}` в `orders.totalCount`. renderHook + act, не render.
+  - `apps/web-seller/src/__tests__/smoke/uz-canonical.test.ts` — 4 теста защиты
+    канона `UZ-CANONICAL-WEB-2026-05-21`: `orders.status.PENDING`/`orders.filterPending`
+    = `Kutilmoqda`, `orders.nextProcess`/`orders.detail.nextProcess` = `Jarayonga olish`,
+    `theme.light` = `Yorugʻ`, `theme.dark` = `Qorongʻu`, плюс проверка апострофа
+    `ʻ` (U+02BB).
+  - `.github/workflows/ci-web-seller-tests.yml` (new, на main) — push в main/web-seller
+    с изменением `apps/web-seller/**` или `packages/types/**` → pnpm install +
+    `pnpm --filter web-seller test`. Зеркало `ci-web-buyer-tests.yml`.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают
+  vite до 8.0.10 (rolldown-vite) — vitest@2.1.x ломается с
+  `__vite_ssr_exportName__ is not defined`. Полатова заметка от 20.05 в TMA done.md.
+- **Скоуп части B:** только helpers (buyer-url) + i18n + uz-canonical guard.
+  НЕ покрыты: страницы с AuthContext, формы с react-hook-form, socket-зависимые
+  компоненты — потребуют MSW или Playwright (part C). Сложные провайдеры избегаем
+  по принципу «smoke не тестирует chains of 3+ моков» (см. Полатов TMA-FRONTEND-TESTS-001).
+- **CI:** workflow срабатывает на push в main или web-seller с изменением в
+  `apps/web-seller/**`. Локально Азим не запускал (`feedback_no_local_run`).
+- **Native sign-off:** Азим проверит первый CI-прогон на GitHub Actions; если
+  что-то не сходится — точечно поправим.
+
+---
+
 ## 2026-05-21 (Полат, infra) — CI dependency audit + baseline
 
 ### ✅ [CI-PNPM-AUDIT-001] Weekly pnpm audit с baseline (запускает новые high/critical)
