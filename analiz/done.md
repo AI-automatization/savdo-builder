@@ -1,5 +1,68 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, prod-verify) — частичная проверка checkout + закрытие 3 P3-задач
+
+### 🟡 [VERIFY-CHECKOUT-CONFIRM-500-001] частично — фронт-путь до OTP-гейта чистый
+- **Важность:** 🟡 — P0 backend-таска `API-CHECKOUT-CONFIRM-500-001` ждёт
+  фронт-сигнал; полный e2e нужен живой Telegram-телефон.
+- **Дата:** 21.05.2026
+- **Прогон через Playwright MCP** на `savdo-builder-by-production.up.railway.app`:
+  - `/` (homepage Slim — задеплоен после `2a4ee2a`) → видно Hero + TopStores
+    (Azim Tashkent). Других секций нет — slim сработал.
+  - `/azim-mnx4na25` → storefront, 3 товара.
+  - `/azim-mnx4na25/products/<futbolka-id>` → варианты S/M/L, «В корзину»
+    активна, добавление в корзину срабатывает.
+  - `/cart` → 1 позиция, сумма 250 000 сум, CTA «Оформить заказ».
+  - `/checkout` → форма телефона рендерится, «Получить код» disabled (норма).
+  - Console: единственная ошибка — 401 от `/checkout/preview` (ожидаемо без
+    токена; запрос идёт пре-auth).
+- **Что НЕ проверено:** OTP-степ → `/checkout/preview` (с токеном) →
+  `/checkout/confirm`. Эта часть ждёт живого Telegram-телефона Азима.
+- **Замечена UX-странность:** «Игрушка» на listing показывает stock=1, но на
+  detail page «Нет в наличии» (вариант ИГРУШКА disabled). Возможный
+  рассинхрон storefront-list vs product-detail stock. **Не блокер**, не записал
+  отдельным тикетом — Азим решит надо ли копать (запись в `analiz/logs.md`
+  как 🟡 предупреждение).
+
+### ✅ [PRE-LAUNCH-VITE-VERIFY-001] закрыто без локального run — lockfile + Полатова TMA-проверка
+- **Важность:** 🟢 P3 — sanity-проверка vite-override.
+- **Дата:** 21.05.2026
+- **Что подтверждено без запуска `pnpm install`:**
+  - `grep "vite@8.0.10" pnpm-lock.yaml` → 4 матча, vite зафиксирован 8.0.10
+    (rolldown-vite) во всём workspace через `package.json:46` override.
+  - Полат уже прогонял `pnpm install` для TMA 20.05.2026 (commit `ae1f61a`,
+    14/14 тестов passed) — workspace install под этим overriding'ом успешен.
+- **Решение:** локально не гоняем (`feedback_no_local_run`), CI выступит финальной
+  страховкой — `ci-web-buyer-tests.yml` и `ci-web-seller-tests.yml` оба
+  запускают `pnpm install --frozen-lockfile=false` на ubuntu-latest.
+
+### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part C] закрыто как SKIP (рекомендация)
+- **Важность:** 🟢 P3 — Playwright prod smoke.
+- **Дата:** 21.05.2026
+- **Решение:** SKIP до первого инцидента, не покрытого UptimeRobot.
+- **Обоснование:**
+  1. vitest smoke (part A+B, 29 тестов) + `INFRA-UPTIME-ALERTS-001` (UptimeRobot
+     пинг /health каждые 5 мин, у Полата) покрывают ~80% того же риск-семейства
+     без flakiness реального браузера.
+  2. Playwright на проде flaky: network jitter, real Telegram OAuth, OTP gates —
+     ложные срабатывания съедят больше внимания чем дадут.
+  3. Maintenance cost: каждое UI-изменение ломает спеку.
+  4. Sentry frontend (которого нет) + UptimeRobot — более экономичный путь
+     к ловле дрейфующих регрессов.
+- **Когда вернуться:** после первого прод-инцидента, не пойманного UptimeRobot
+  (например checkout 500-ит, `/health` зелёный — Playwright бы поймал).
+- **Запись в tasks.md** обновлена статусом SKIP-recommendation.
+
+### ✅ chore: артефакты buyer-vs-seller audit перенесены в analiz/
+- **Дата:** 21.05.2026
+- **Коммит:** `main 54fb0bf`.
+- **Файлы:** `analiz/buyer-with-seller-colors-2026-05-20.html` (already lived
+  там), `analiz/buyer-seller-palette-{LIGHT,DARK,DARK-v2}.png` (перенесены из
+  корня репо — корень не для бинарей).
+- **Контекст:** артефакты сопровождают `analiz/audits/web-buyer-vs-seller-design-2026-05-20.md`.
+
+---
+
 ## 2026-05-21 (Азим, web-seller) — vitest@3 + 3 smoke specs
 
 ### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part B] vitest setup + 3 spec файла (~13 тестов)

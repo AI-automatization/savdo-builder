@@ -121,50 +121,30 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
 
 ---
 
-## 🟡 [FRONTEND-SMOKE-PLAYWRIGHT-001] Smoke-тесты web-buyer / web-seller
+## 🟢 [FRONTEND-SMOKE-PLAYWRIGHT-001 part C] Playwright prod smoke — **рекомендую SKIP**
 
-- **Домен:** `apps/web-buyer` + `apps/web-seller` + CI (Азим).
-- **Приоритет:** P2 — закрывает Tests 5 → 6 (should-pass).
-- **Part A ✅ 21.05.2026 (Азим, web-buyer `7a94a92`):** vitest@3 + RTL@16 +
-  4 spec файла (phone helpers, i18n provider, HelpContent, uz-canonical),
-  ~16 тестов. CI workflow `ci-web-buyer-tests.yml` запускает на push в main/web-buyer.
-  Зеркалит admin/TMA-паттерн (Полат `74d0eef`/`ae1f61a`).
-- **Part B (open, отдельным заходом):** web-seller smoke (аналогичный паттерн —
-  expected ~10 тестов: phone helpers, i18n, settings page, uz-canonical).
-- **Part C (open, опционально):** Playwright integration:
+- **Домен:** `apps/web-buyer` + CI (Азим).
+- **Приоритет:** P3 — нет launch-блокера.
+- **Контекст part A/B уже закрыты** (см. done.md 21.05.2026): vitest smoke
+  покрывает helpers + i18n + uz-canonical для web-buyer и web-seller.
+  UptimeRobot из `INFRA-UPTIME-ALERTS-001` (у Полата) будет пинговать прод
+  каждые 5 мин на /health endpoints.
+- **Что would-be делать:**
   - `apps/web-buyer/playwright.config.ts` + spec'и `/`, `/[slug]`, `/cart`
     против Railway prod URL.
   - `.github/workflows/playwright-prod-smoke.yml` — hourly cron + TG-алерт на FAIL.
-  - Решение: имеет ли смысл при наличии vitest smoke + UptimeRobot из
-    `INFRA-UPTIME-ALERTS-001` (закрывает 80% того же риска без flakiness
-    реального браузера). Возможно — пропустить.
+- **Аргументы за skip:**
+  1. vitest smoke + UptimeRobot покрывают ~80% того же риск-семейства без
+     flakiness реального браузера.
+  2. Playwright на проде flaky (network jitter, real Telegram OAuth, OTP gates) —
+     ложные срабатывания съедят больше внимания чем дадут.
+  3. Maintenance cost: каждое изменение UI ломает специку, нужно поддерживать.
+  4. Если ловить дросчий регресс — лучше Sentry frontend (которого ещё нет) +
+     UptimeRobot, чем Playwright crons.
+- **Когда вернуться:** после первого прод-инцидента, не покрытого UptimeRobot
+  (например, чекаут 500-ит, но `/health` зелёный — Playwright бы поймал).
 - **Источник:** `API-FRONTEND-TESTS-001` (web-buyer/web-seller часть) +
   readiness §6 + Risk R6.
-
----
-
-## 🟢 [PRE-LAUNCH-VITE-VERIFY-001] Sanity-проверка vite-override
-
-- **Домен:** web-buyer / web-seller / pnpm-lock (Азим).
-- **Кто берёт:** Азим — локально (разовое исключение из `feedback_no_local_run`).
-- **Приоритет:** P3 — overrides уже в `package.json:46`
-  (`"vite": ">=6.4.2"`). Полат предупредил в `done.md` 20.05 (TMA-FRONTEND-TESTS-001):
-  workspace-override фактически поднимает до **vite@8.0.10 (rolldown-vite)**,
-  не до 6.4.2 — это надо иметь в виду при чтении lockfile.
-- **Что сделать:**
-  1. `pnpm install` в корне.
-  2. `grep -E "^\s*vite@" pnpm-lock.yaml | sort -u` — увидеть фактическую
-     версию (ожидается 8.x rolldown). Это норма.
-  3. `cd apps/web-buyer && pnpm exec tsc --noEmit` — чистый. Web-buyer на Next 16,
-     vite в нём — только транзитивная dev-зависимость, type-check не должен трогать.
-  4. `cd apps/web-seller && pnpm exec tsc --noEmit` — чистый.
-  5. Если 3/4 падает с vite-related TS-ошибкой — откат: `package.json:46`
-     `"vite": ">=6.4.2"` → `"vite": "^6.4.1"` (явный pin до старой стабильной),
-     `pnpm install`, повторить.
-- **Файлы:** `package.json:46`, `pnpm-lock.yaml`.
-- **Note:** admin/tma уже проверены Полатом — TMA-тесты прошли 14/14 на vitest@3
-  поверх rolldown-vite; admin держится на stale vite@6.4.1 install (см.
-  `done.md` 20.05 TMA-FRONTEND-TESTS-001).
 
 ---
 
@@ -1186,7 +1166,7 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
      seller `/settings`), RU-регрессия. **Заблокировано** `INFRA-API-PROD-DOWN-001`.
 - **Файлы:** `apps/web-buyer/src/lib/i18n/uz.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
 
-## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
+## 🟡 `VERIFY-CHECKOUT-CONFIRM-500-001` — частично проверено (21.05.2026), ждёт OTP-степ
 
 > **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
 > стороны — нужна проверка из фронта, дальше двигаться без неё нельзя.
@@ -1196,13 +1176,28 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
   fault-isolation fix (post-commit side-effects обёрнуты в try/catch — сбой
   WS/TG/clearCart больше НЕ превращает успешный заказ в 500) + ErrorReporter
   (любой следующий 500 оставит полный stack trace в Railway stderr).
-- **Что сделать:**
-  1. Пройти именно **корзинный** checkout: товар → корзина → «Оформить заказ»
-     → подтвердить. (Это `POST /checkout/confirm`, НЕ «купить сейчас» —
-     direct-order это другой эндпоинт, он на проде уже работает без ошибок.)
-  2. Прогнать оба режима: `delivery` и `pickup` — заодно проверка нового
-     `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` (pickup → deliveryFee 0,
-     суммы preview и confirm должны совпасть).
+- **Прогон 21.05.2026 (Claude через Playwright MCP) — частично:**
+  1. ✅ `/` → топ-сторов виден (Azim Tashkent), homepage Slim задеплоился.
+  2. ✅ `/azim-mnx4na25` storefront рендерится, 3 товара видны.
+  3. ✅ Product detail (`/azim-mnx4na25/products/<id>` — «Белая футболка»)
+     рендерится с вариантами размеров S/M/L, кнопка «В корзину» активна.
+  4. ✅ Add to cart срабатывает (один клик через DOM evaluate).
+  5. ✅ `/cart` показывает «Белая футболка · 250 000 сум» + CTA «Оформить заказ».
+  6. ✅ `/checkout` грузится, форма телефона рендерится, кнопка «Получить код»
+     присутствует (disabled пока пусто). Без падений.
+  7. Console clean: единственная ошибка — 401 от `/checkout/preview` (ожидаемо,
+     запрос идёт до auth — не баг).
+- **Что НЕ проверено (требует живой Telegram-телефон):**
+  - OTP-степ (`POST /auth/request-otp` + `POST /auth/verify-otp`) → токен.
+  - `POST /checkout/preview` с токеном → суммы delivery vs pickup.
+  - `POST /checkout/confirm` — это тот самый endpoint, который 14.05 500-ил.
+- **Что сделать Азиму (5–10 мин на живом телефоне):**
+  1. Зайти `https://savdo-builder-by-production.up.railway.app/azim-mnx4na25`,
+     добавить «Белая футболка» (S) → «Оформить заказ».
+  2. Ввести свой телефон, получить OTP в @savdo_builderBOT.
+  3. Подтвердить delivery (любой адрес из истории), потом отдельным заходом
+     pickup (`API-CHECKOUT-PICKUP-DELIVERY-FEE-001` проверка — pickup
+     deliveryFee должен быть 0, суммы preview и confirm совпадают).
 - **Результат:**
   - ✅ Заказ создаётся (201) → отписать Полату, он закроет
     `API-CHECKOUT-CONFIRM-500-001`.
