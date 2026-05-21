@@ -423,9 +423,9 @@ export const uz: Translations = {
   'auth.phoneAriaLabel': 'Telefon',
 
   // theme — theme-toggle labels
-  'theme.enableLight': 'Yorqin mavzuni yoqish',
+  'theme.enableLight': 'Yorugʻ mavzuni yoqish',
   'theme.enableDark': 'Qorongʻu mavzuni yoqish',
-  'theme.light': 'Yorqin',
+  'theme.light': 'Yorugʻ',
   'theme.dark': 'Qorongʻu',
   'theme.system': 'Tizim sozlamasi',
 
