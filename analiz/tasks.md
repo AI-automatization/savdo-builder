@@ -54,25 +54,6 @@
 
 ---
 
-## 🟠 [CI-PNPM-AUDIT-001] Weekly `pnpm audit` в CI + baseline
-
-- **Домен:** `.github/workflows` (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P1 must-pass для public launch (закрывает Deps 6 → 7 в
-  `docs/decisions/launch-go-no-go-2026-05-20.md`). Overrides в `package.json:46`
-  патчат конкретные CVE, но нет регулярного скана.
-- **Что сделать:**
-  1. `.github/workflows/dependency-audit.yml` — cron `0 9 * * 1` (понедельник
-     9:00 UTC), `pnpm audit --prod --json`, fail если есть `high`/`critical`.
-  2. Зафиксировать baseline (`pnpm audit --prod --json > .audit-baseline.json`,
-     коммитнуть, в job сравнивать diff).
-  3. Опционально: `.github/dependabot.yml` weekly PR-bump'ы для `apps/api`,
-     `apps/web-*`, корень.
-- **Файлы:** `.github/workflows/dependency-audit.yml` (new), `.audit-baseline.json`
-  (new), `.github/dependabot.yml` (optional).
-
----
-
 ## 🔴 [LEGAL-OFFER-REQUISITES-001] Реквизиты юр.лица в /offer
 
 - **Домен:** `apps/web-buyer` (заполняется после регистрации ИП/ООО).
@@ -159,21 +140,6 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
     реального браузера). Возможно — пропустить.
 - **Источник:** `API-FRONTEND-TESTS-001` (web-buyer/web-seller часть) +
   readiness §6 + Risk R6.
-
----
-
-## 🟢 [ADMIN-I18N-DARK-THEME-CANONICAL-001] `Qorongʻi` → `Qorongʻu` в admin uz.ts
-
-- **Домен:** `apps/admin/src/lib/i18n/uz.ts` (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P3 — опечатка в латинизации, не функциональная проблема.
-- **Что:** в `apps/admin/src/lib/i18n/uz.ts:138-140` стоит `Qorongʻi` (с `i` на
-  конце). Стандартная форма в латинском узбекском — `Qorongʻu` (с `u`). Также:
-  - line 138: `'theme.dark': 'Qorongʻi mavzu'` → `'Qorongʻu mavzu'`
-  - line 140: `'theme.toDark': 'Qorongʻi mavzuga oʻtish'` → `'Qorongʻu mavzuga oʻtish'`
-- **Контекст:** web-buyer/web-seller сегодня (21.05.2026, см. `done.md`
-  `UZ-CANONICAL-WEB-2026-05-21`) приведены к канону `Qorongʻu`. Admin остался
-  единственным outlier'ом с `Qorongʻi` — для единообразия имеет смысл унифицировать.
 
 ---
 
