@@ -566,4 +566,29 @@ export const uz: Translations = {
   'legal.refund.s6.p1': 'Savdo platformasi oldi-sotdi shartnomasining tomoni emas va oʻz nomidan pul mablagʻlarini qaytarmaydi. Xaridor va Sotuvchi oʻrtasida nizo yuzaga kelganda Platforma vositachi vazifasini bajarishi mumkin, ammo yakuniy qaror tomonlar yoki sud tomonidan qabul qilinadi.',
   'legal.refund.s7.heading': '7. Shikoyat uchun aloqa',
   'legal.refund.s7.p1': 'Agar Sotuvchi murojaatingizga javob bermasa yoki qonuniy qaytarishdan bosh tortsa, Platforma qoʻllab-quvvatlash xizmatiga shikoyat yuboring: support@savdo.uz.',
+
+  // legal.help — FAQ-001 (/help sahifa)
+  'legal.help.title': 'Yordam va tez-tez beriladigan savollar',
+  'legal.help.effectiveDate': '21-may, 2026-yil',
+  'legal.help.intro': 'Eng koʻp beriladigan savollarga qisqa javoblar. Agar savolingizga javob bu yerda boʻlmasa — support@savdo.uz manziliga yozing, yordam beramiz.',
+  'legal.help.s1.q': 'Buyurtma qanday qilinadi?',
+  'legal.help.s1.a': 'Magazinni savdo.uz/<magazin> manzili boʻyicha yoki Telegram-chatdan oching. Mahsulotlarni savatga qoʻshing, "Buyurtma berish" tugmasini bosing, ism, telefon va yetkazib berish manzilini koʻrsating. Raqamingizni @savdo_builderBOT botidan kelgan kod bilan tasdiqlang. Toʻlov — qabul qilishda naqd pul yoki sotuvchiga oʻtkazma.',
+  'legal.help.s2.q': 'Qanday toʻlov usullari mavjud?',
+  'legal.help.s2.a': 'Hozir naqd toʻlov (mahsulotni qoʻlga olishda) va sotuvchining Click/Payme hisobiga oʻtkazma orqali toʻlov mavjud. Karta bilan toʻliq onlayn toʻlov va Click/Payme orqali platforma ichida toʻgʻridan-toʻgʻri toʻlov keyinroq paydo boʻladi.',
+  'legal.help.s3.q': 'Yetkazib berish qanday amalga oshiriladi?',
+  'legal.help.s3.a': 'Shartlarni sotuvchining oʻzi belgilaydi va magazin kartasida koʻrsatadi: kuryer, oʻzi olib ketish yoki boshqa logistika. Buyurtma berishda siz "Yetkazib berish" yoki "Oʻzi olib ketish" rejimini tanlaysiz; narxi, agar bor boʻlsa, tasdiqlashdan oldin savatda koʻrsatiladi.',
+  'legal.help.s4.q': 'Agar mahsulot kelmasa yoki mos kelmasa, nima qilish kerak?',
+  'legal.help.s4.a': 'Avval buyurtma kartasidagi chat orqali sotuvchi bilan bogʻlaning ("Mening buyurtmalarim" → aniq buyurtma). Koʻpchilik savollar shu yoʻl bilan hal boʻladi. Toʻliq qoidalar — "Qaytarish va almashtirish" sahifasida. Agar sotuvchi javob bermasa yoki qonuniy qaytarishdan bosh tortsa — bizga yozing: support@savdo.uz.',
+  'legal.help.s5.q': 'Sotuvchi bilan qanday bogʻlanish mumkin?',
+  'legal.help.s5.a': 'Mahsulot yoki magazin kartasidan "Sotuvchi bilan chat" tugmasini bosing — platforma ichidagi chat ochiladi. Buyurtma berilgandan keyin "Mening buyurtmalarim" boʻlimida aniq buyurtma boʻyicha tafsilotlarni muhokama qilishingiz mumkin. Chat real vaqt rejimida ishlaydi.',
+  'legal.help.s6.q': 'Qanday qilib sotuvchi boʻlish mumkin?',
+  'legal.help.s6.a': '"Profil" boʻlimida "Sotuvchi boʻlish" tugmasini bosing — sizni @savdo_builderBOT botiga olib oʻtamiz, u yerda bir necha daqiqada oʻz magazinni ochasiz, dastlabki mahsulotlarni qoʻshasiz va savdo.uz/<sizning-magazin> havolasini olasiz. Roʻyxatdan oʻtish bepul, MVP bosqichida komissiya yoki obuna toʻlovi yoʻq.',
+  'legal.help.s7.q': 'Agar tasdiqlash kodi kelmasa, nima qilish kerak?',
+  'legal.help.s7.a': 'OTP-kod @savdo_builderBOT Telegram bot orqali yuboriladi. Quyidagilarni tekshiring: botni kamida bir marta ochgan boʻlsangiz ("Start" bosgan); telefon raqamingiz +998 XX XXX XX XX formatida koʻrsatilgan; Telegram ochiq va internet bor. Agar kod baribir kelmasa — support@savdo.uz ga yozing.',
+  'legal.help.s8.q': 'Interfeys tilini qanday oʻzgartirish mumkin?',
+  'legal.help.s8.a': '"Profil" boʻlimida tilni RU/UZ ga almashtiring. Oʻzgarish darhol qoʻllaniladi va shu qurilmada saqlanadi.',
+
+  // profile.menu — «Yordam» punkti (FAQ-001)
+  'profile.menu.help': 'Yordam',
+  'profile.menu.helpSub': 'Tez-tez beriladigan savollar',
 };

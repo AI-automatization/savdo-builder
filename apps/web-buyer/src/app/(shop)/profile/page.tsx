@@ -18,6 +18,7 @@ import {
   Package,
   Heart,
   Bell,
+  HelpCircle,
   ChevronRight,
   Store,
   ExternalLink,
@@ -244,6 +245,8 @@ function ProfileView() {
       />
       <div style={{ height: 1, background: colors.divider }} className="mx-4" />
       <MenuRow icon={<Bell size={16} />} label={t('profile.menu.notifications')} sub={t('profile.menu.notificationsSub')} href="/notifications" />
+      <div style={{ height: 1, background: colors.divider }} className="mx-4" />
+      <MenuRow icon={<HelpCircle size={16} />} label={t('profile.menu.help')} sub={t('profile.menu.helpSub')} href="/help" />
 
       {/* MARKETING-LOCALIZATION-UZ-001 — переключатель языка */}
       <SectionLabel>{t('settings.title')}</SectionLabel>
