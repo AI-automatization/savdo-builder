@@ -1,5 +1,39 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, web-buyer + web-seller) — UZ канонизация кросс-app
+
+### ✅ [UZ-CANONICAL-WEB-2026-05-21] orders.PENDING / nextProcess / theme — единый канон
+
+- **Важность:** 🟢 P3 — qualitative consistency, не блокер. Закрывает остаток
+  uz-review хвоста (см. `resume_session_67.md` pending pre-session 68).
+- **Дата:** 21.05.2026
+- **Контекст:** аудит 4 апов (TMA + admin + web-buyer + web-seller) выявил
+  расхождения в трёх семантических точках. Каноны выбраны по большинству
+  (3 из 4 апов) + uzbek-translator skill (семантика).
+- **Канон / правки:**
+
+  | Ключ | Канон | Изменения |
+  |------|-------|-----------|
+  | `orders.PENDING` (`filterPending`/`status.PENDING`) | `Kutilmoqda` (страд. залог = «ожидается») | web-seller был outlier `Kutmoqda` |
+  | `orders.nextProcess` (+ `orders.detail.nextProcess`) | `Jarayonga olish` («перевести в обработку») | web-seller был `Ishga olish` (HR-коннотация «нанять») |
+  | `theme.light` / `theme.enableLight` | `Yorugʻ` (освещённость) | web-buyer был `Yorqin` (насыщенность) |
+  | `theme.dark` / `theme.enableDark` | `Qorongʻu` (тёмный) | web-seller был `Toʻq` (насыщенный) |
+
+- **Коммиты:**
+  - **web-buyer `5be1afb`** — `theme.light` `Yorqin` → `Yorugʻ` (+ enableLight).
+    2 строки в `apps/web-buyer/src/lib/i18n/uz.ts:426,428`.
+  - **web-seller `8b24117`** — orders PENDING/nextProcess + theme.dark.
+    6 строк в `apps/web-seller/src/lib/i18n/uz.ts` (lines 111, 140, 143, 163, 465, 467).
+- **Не пушено пока** — жду команды Азима (ветки `web-buyer`/`web-seller`
+  деплоятся при пуше в origin).
+- **Не сделано (передано Полату):** `ADMIN-I18N-DARK-THEME-CANONICAL-001` —
+  admin `Qorongʻi` → `Qorongʻu` (мелкая опечатка в латинизации). Заведено
+  в `tasks.md`.
+- **Native sign-off:** канон выбран по большинству + семантике, Азим
+  верифицирует на проде после деплоя; если что-то режет ухо — точечная правка.
+
+---
+
 ## 2026-05-21 (Азим, docs) — Корректировка pre-launch package по Полатовскому фидбэку
 
 ### ✅ [PRE-LAUNCH-DOCS-RECONCILE-001] Реальные readiness-скоры в go-no-go + переформулировка brand-selection как рекомендация + authorship палитры
