@@ -2,8 +2,22 @@
 
 **Версия:** 1.0 · **Дата:** 2026-05-20
 **Source of truth (код):** `apps/web-buyer/src/app/globals.css`
+**Авторство:** палитра спроектирована и реализована **Азимом** в session 52
+(05.05.2026, plan «Soft Color Lifestyle») + dark-вариант в session 55
+(09.05.2026). Этот документ — описание зафиксированного решения, не выбор
+из альтернатив. См. §13 «История изменений».
 
 > Документ определяет полную цветовую систему Savdo: primary, surface, text, accent, semantic. Light + dark + контрастные пары + ready-to-paste CSS-токены.
+
+---
+
+## 0. Авторство
+
+Soft Color Lifestyle (terracotta `#7C3F2E` + cream `#FBF7F0`) — спроектирована и довёл до прода **Азим** в `apps/web-buyer` в session 52 (05.05.2026). Это не «новая находка» — это уже работающая палитра buyer'а.
+
+Аудит buyer-vs-seller (`analiz/audits/web-buyer-vs-seller-design-2026-05-20.md`, session 55) подтвердил её как **«материнскую»** — winner по контрасту, brand-identity и UZ-fit против Indigo+amber / Sapphire+coral / Olive+wheat.
+
+Текущий документ — **формализация этих токенов** в parent brand book для применения seller / admin / TMA. Не пересматривает palette, а распространяет её.
 
 ---
 
@@ -510,5 +524,7 @@ export const infoTint    = (α = 0.10) => `rgb(var(--color-info-rgb) / ${α})`;
 
 | Дата | Изменение | Источник решения |
 |------|-----------|------------------|
-| 2026-05-20 | Зафиксирована terracotta + cream как материнская палитра. Heritage violet — только seller-CRM utility. | Аудит `analiz/audits/web-buyer-vs-seller-design-2026-05-20.md` |
+| 2026-05-05 | **Соавтор: Азим.** Plan «Soft Color Lifestyle» (Direction B из 3 раундов), 10 task'ов закрыто в session 52. Базовые brand-токены + light-палитра + все компоненты web-buyer. Commits: `c117723`, `654f067`, `b2884bb`, `4f0cea2`, `756cf3b`, `af4b2b9`, `e20a1c2`, `7ed9eb2`, `0ba9561`. | Имплементация Azim'а |
+| 2026-05-09 | **Соавтор: Азим.** Dark-вариант: warm near-black `#16120D` + lifted terracotta `#A05A45`, отказ от legacy violet с session 45. Соответствие brand-семейству light↔dark. Commit: `b894589` (web-buyer). | Имплементация Azim'а |
+| 2026-05-20 | Зафиксирована terracotta + cream как материнская палитра проекта (не только web-buyer). Heritage violet — низведён до seller-CRM utility (filter chips, segments, internal links), убран с wordmark / CTA. План синхронизации web-seller с buyer'ом — 5 быстрых wins. | Аудит `analiz/audits/web-buyer-vs-seller-design-2026-05-20.md` (read-only) |
 | TBD | Per-store branding: продавец загружает HEX → перекрывает `--color-brand` на витрине, wordmark Savdo остаётся terracotta. | (запланировано) |

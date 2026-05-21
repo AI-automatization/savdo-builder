@@ -1,5 +1,148 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, web-buyer) — vitest@3 + 4 smoke-теста
+
+### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part A] vitest setup + 4 spec файла (~16 тестов)
+- **Важность:** 🟡 P2 — закрывает Tests 5 → 6 (should-pass из go-no-go) для
+  web-buyer. Зеркалит Полатов admin (4 теста) + TMA (14 тестов) от 20.05.2026.
+- **Дата:** 21.05.2026
+- **Коммиты:** web-buyer `7a94a92` (setup + specs), main `<TBD>` (CI workflow).
+- **Файлы:**
+  - `apps/web-buyer/vitest.config.ts` (new) — jsdom env, alias `@`, отдельный от
+    Next.js build pipeline. Зеркало `apps/admin/vitest.config.ts`.
+  - `apps/web-buyer/src/test/setup.ts` (new) — jest-dom матчеры + полифилл
+    `window.matchMedia` (jsdom не реализует).
+  - `apps/web-buyer/package.json` — devDeps: vitest@^3.2.0, RTL@^16, jest-dom@^6,
+    user-event@^14, @vitejs/plugin-react@^4, jsdom@^25. Скрипт `test`.
+  - `apps/web-buyer/tsconfig.json` — `types: ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/web-buyer/src/__tests__/smoke/phone.test.ts` — 10 тестов на
+    `formatUzPhone`/`stripUzPhone`/`isValidUzPhone` (pure functions, без рендера).
+  - `apps/web-buyer/src/__tests__/smoke/i18n.test.tsx` — 4 теста: initial ru,
+    переключение uz↔ru, unknown key fallback, интерполяция `{count}`.
+  - `apps/web-buyer/src/__tests__/smoke/HelpContent.test.tsx` — 3 теста: 8 h2,
+    intro с `support@savdo.uz`, h1 title.
+  - `apps/web-buyer/src/__tests__/smoke/uz-canonical.test.ts` — 3 теста: защита
+    `UZ-CANONICAL-WEB-2026-05-21` — `theme.light` = `Yorugʻ`, `theme.dark` =
+    `Qorongʻu`, апостроф `ʻ` U+02BB.
+  - `.github/workflows/ci-web-buyer-tests.yml` (new, на main) — push в main/web-buyer
+    с изменением `apps/web-buyer/**` или `packages/types/**` → pnpm install +
+    `pnpm --filter web-buyer test`.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают
+  vite до 8.0.10 (rolldown-vite) — vitest@2.1.x ломается с
+  `__vite_ssr_exportName__ is not defined`. Полатова заметка от 20.05 в TMA done.md.
+- **Скоуп части A:** только helpers + i18n + новая фича (HelpContent). НЕ покрыты:
+  компоненты с `next/image`/`next/link`, hooks с QueryClient, страницы с
+  AuthContext — потребуют MSW или Playwright (отдельный part B/C).
+- **CI:** workflow срабатывает на push в main или web-buyer с изменением в
+  `apps/web-buyer/**`. После первого pnpm install в CI получим лог 14-16 passed.
+  Локально Азим не запускал (`feedback_no_local_run`).
+- **Native sign-off:** Азим проверит результат первого CI-прогона на GitHub
+  Actions; если что-то не сходится — точечно поправим.
+
+---
+
+## 2026-05-21 (Азим, web-buyer) — FAQ-001 `/help` страница
+
+### ✅ [FAQ-001] `/help` страница с 8 Q&A на ru+uz
+- **Важность:** 🟢 P2 — поднимает Support 5.5 → 6.5 (should-pass из go-no-go);
+  вместе с SUPPORT-CHANNEL-001 закрывает «нет канала поддержки» риск R8.
+- **Дата:** 21.05.2026
+- **Коммит:** web-buyer `d61db84`
+- **Файлы:**
+  - `apps/web-buyer/src/components/legal/HelpContent.tsx` (new) — client component
+    на паттерне legal-страниц (LegalPage + H2/P), 8 секций Q→A + intro.
+  - `apps/web-buyer/src/app/help/page.tsx` (new) — server wrapper с metadata
+    (title «Помощь и частые вопросы — Savdo», description).
+  - `apps/web-buyer/src/lib/i18n/ru.ts` — +20 ключей `legal.help.*` (title,
+    effectiveDate, intro, s1-s8 q/a) + 2 ключа `profile.menu.help/helpSub`.
+  - `apps/web-buyer/src/lib/i18n/uz.ts` — те же 22 ключа на UZ (latinitsa,
+    апостроф `ʻ` U+02BB, по uzbek-translator skill).
+  - `apps/web-buyer/src/app/sitemap.ts` — `/help` добавлен (priority 0.4,
+    changeFrequency monthly — выше юр-страниц 0.3).
+  - `apps/web-buyer/src/app/(shop)/profile/page.tsx` — MenuRow «Помощь» с
+    `HelpCircle` icon, под Notifications, перед language toggle.
+- **8 Q&A покрывают:** оформление заказа, оплата (cash + manual transfer,
+  online — «скоро»), доставка, возврат/«товар не пришёл», связь с продавцом
+  (чат), стать продавцом (→ Telegram bot), OTP-код не приходит (проверка
+  Telegram + формат номера + интернет), смена языка интерфейса.
+- **Не сделано (отдельно):** ссылка из checkout footer (там сейчас только
+  /offer + /privacy); native UZ review Азимом на проде после деплоя; ссылка
+  из homepage / store footer.
+
+---
+
+## 2026-05-21 (Азим, web-buyer + web-seller) — UZ канонизация кросс-app
+
+### ✅ [UZ-CANONICAL-WEB-2026-05-21] orders.PENDING / nextProcess / theme — единый канон
+
+- **Важность:** 🟢 P3 — qualitative consistency, не блокер. Закрывает остаток
+  uz-review хвоста (см. `resume_session_67.md` pending pre-session 68).
+- **Дата:** 21.05.2026
+- **Контекст:** аудит 4 апов (TMA + admin + web-buyer + web-seller) выявил
+  расхождения в трёх семантических точках. Каноны выбраны по большинству
+  (3 из 4 апов) + uzbek-translator skill (семантика).
+- **Канон / правки:**
+
+  | Ключ | Канон | Изменения |
+  |------|-------|-----------|
+  | `orders.PENDING` (`filterPending`/`status.PENDING`) | `Kutilmoqda` (страд. залог = «ожидается») | web-seller был outlier `Kutmoqda` |
+  | `orders.nextProcess` (+ `orders.detail.nextProcess`) | `Jarayonga olish` («перевести в обработку») | web-seller был `Ishga olish` (HR-коннотация «нанять») |
+  | `theme.light` / `theme.enableLight` | `Yorugʻ` (освещённость) | web-buyer был `Yorqin` (насыщенность) |
+  | `theme.dark` / `theme.enableDark` | `Qorongʻu` (тёмный) | web-seller был `Toʻq` (насыщенный) |
+
+- **Коммиты:**
+  - **web-buyer `5be1afb`** — `theme.light` `Yorqin` → `Yorugʻ` (+ enableLight).
+    2 строки в `apps/web-buyer/src/lib/i18n/uz.ts:426,428`.
+  - **web-seller `8b24117`** — orders PENDING/nextProcess + theme.dark.
+    6 строк в `apps/web-seller/src/lib/i18n/uz.ts` (lines 111, 140, 143, 163, 465, 467).
+- **Не пушено пока** — жду команды Азима (ветки `web-buyer`/`web-seller`
+  деплоятся при пуше в origin).
+- **Не сделано (передано Полату):** `ADMIN-I18N-DARK-THEME-CANONICAL-001` —
+  admin `Qorongʻi` → `Qorongʻu` (мелкая опечатка в латинизации). Заведено
+  в `tasks.md`.
+- **Native sign-off:** канон выбран по большинству + семантике, Азим
+  верифицирует на проде после деплоя; если что-то режет ухо — точечная правка.
+
+---
+
+## 2026-05-21 (Азим, docs) — Корректировка pre-launch package по Полатовскому фидбэку
+
+### ✅ [PRE-LAUNCH-DOCS-RECONCILE-001] Реальные readiness-скоры в go-no-go + переформулировка brand-selection как рекомендация + authorship палитры
+- **Важность:** 🟡 P2 — pre-launch гигиена документов, blocker for ADR-008 / финального подписания go-no-go.
+- **Дата:** 21.05.2026
+- **Файлы:**
+  - `docs/decisions/launch-go-no-go-2026-05-20.md` — ⏳-stub-скоры заменены на реальные из `docs/readiness/launch-readiness-2026-05-20.md`. Verdict сменился с **🔴 NO-GO (4 must-pass < threshold)** на **🟡 Conditional Go (3 must-pass < threshold: Data 7<8, Deps 6<7, Legal 5<7)**. Security 6→8 закрыл порог; Observability 4→6 на грани; Tests 4→5, i18n 6→8, Performance 6→7.5, Onboarding 5→7 — все подтянулись после волны 15.05 fix-волн. Deps переоценился вниз (нет `pnpm audit` в CI). План фикса блокеров и Подписи переписаны соответственно.
+  - `docs/decisions/brand-selection-2026-05-20.md` — переформулирован: «Decision document» → «Recommendation document»; «Решение по NAME/PALETTE/LOGO: X» → «Рекомендация по числам: X». Шапка отмечает, что палитра Terracotta+cream уже **зафиксирована в коде** Азимом (session 52 + 55) — документ объясняет почему зафиксированное решение работает, а не выбирает на чистом листе.
+  - `docs/brand/palette.md` — шапка + §13 история изменений атрибутируют авторство палитры: session 52 (05.05.2026, plan Soft Color Lifestyle, 10 task'ов, commits `c117723`/`654f067`/`b2884bb`/`4f0cea2`/`756cf3b`/`af4b2b9`/`e20a1c2`/`7ed9eb2`/`0ba9561`) + dark-вариант session 55 (09.05.2026, commit `b894589`). Аудит 20.05 — фиксация status-quo + план синхронизации seller, а не первичное решение.
+  - `analiz/audits/web-buyer-vs-seller-design-2026-05-20.md` — Win 4 («Dark `--app-bg` градиент перекрасить») получил cross-ref на session 55: для **buyer** ровно такая миграция уже сделана (commit `b894589`, terracotta lifted `#A05A45`, warm near-black `#16120D`); Win 4 — распространение на seller, не дубль.
+  - `analiz/tasks.md` — добавлены 3 тикета: `CI-PNPM-AUDIT-001` (Полат, must-pass Deps blocker), `LEGAL-OFFER-REQUISITES-001` (Бизнес→Полат, must-pass Legal blocker), `PRE-LAUNCH-VITE-VERIFY-001` (Азим, P3 sanity-проверка vite-override с учётом Полатовской заметки про rolldown-vite@8.0.10). Drill-задача (`INFRA-BACKUP-DRILL-FIRST-RUN-001`) — у Полата уже была заведена, не дублирую.
+- **Что НЕ менялось (decisions framework):** `docs/decisions/framework.md` — оставлен как roadmap-материал на T-26, в скоуп пересчёта не входил.
+- **Контекст:** Полат вчера запушил pre-launch package (`cf70b07` brand book + decisions + readiness, `8024cbd` Sentry + backup scripts). Я (тогда) написал `web-buyer-vs-seller-design-2026-05-20.md` (commit `74d0eef`). Сегодня — корректировка по фидбэку Полата.
+
+---
+
+## 2026-05-20 (Полат, frontend) — Vitest + smoke-тесты для TMA
+
+### ✅ [TMA-FRONTEND-TESTS-001] vitest + RTL setup + 4 smoke-теста (API-FRONTEND-TESTS-001 part 2)
+
+- **Важность:** 🟡 P2 tech-debt из `API-FRONTEND-TESTS-001`. Admin закрыт ранее, теперь TMA.
+- **Дата:** 20.05.2026
+- **Файлы:**
+  - `apps/tma/package.json` — devDeps: vitest@^3.2.0, @testing-library/react@^16.1.0, @testing-library/jest-dom@^6.6.3, jsdom@^25.0.1. Скрипт `"test": "vitest run --reporter=default"`. Vite pin `^6.4.2` (workspace overrides всё равно поднимают до vite@8, поэтому vitest 3.x обязателен — vitest@2.1.x несовместим с rolldown-vite, падает `__vite_ssr_exportName__ is not defined`).
+  - `apps/tma/vitest.config.ts` — отдельный от vite.config.ts (без proxy), `environment: 'jsdom'`, `globals: true`, `setupFiles: ['./src/test/setup.ts']`, `css: false`.
+  - `apps/tma/src/test/setup.ts` — jest-dom матчеры, полифилл `window.matchMedia` (jsdom), полифилл `window.Telegram.WebApp` (MainButton/BackButton/HapticFeedback/initData) — критично, иначе ErrorBoundary и страницы падают на импорте.
+  - `apps/tma/tsconfig.app.json` — добавлен `"types": ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/tma/src/__tests__/smoke/telegram-stub.test.ts` (5 tests) — infra-тест: stub существует, MainButton.{show,hide,setText,enable,disable,onClick}, BackButton.{show,hide,onClick}, HapticFeedback API, initData пустая.
+  - `apps/tma/src/__tests__/smoke/i18n.test.tsx` (3 tests) — `useTranslation()` отдаёт ru по умолчанию (`nav.cart` → `Корзина`), переключается на uz (`Savat`), unknown key → сам ключ как fallback. Wrapper = TelegramProvider + I18nProvider.
+  - `apps/tma/src/__tests__/smoke/stars.test.tsx` (3 tests) — `<Stars/>`: рендер 5 звёзд, read-only без role=radiogroup, interactive onChange(3) по клику на 3-ю звезду.
+  - `apps/tma/src/__tests__/smoke/badge.test.tsx` (3 tests) — статус-чип: PENDING→Обрабатывается, DELIVERED→Доставлен, unknown→raw status.
+- **Что сделано:** vitest@3 + RTL + jsdom + Telegram WebApp stub в setup. 4 файла smoke-тестов, 14/14 passed (`npx vitest run`). `npx tsc --noEmit` чисто.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают vite до 8.0.10 (rolldown-vite) во всём монорепо. Vitest 2.1.x ломается на TSX-импортах из src/ (`__vite_ssr_exportName__ is not defined`). Admin случайно работает потому что его node_modules/vite сидит на старом 6.4.1 (stale install), но любой свежий install получит 8.0.10. Vitest 3.2.4 совместим с rolldown.
+- **Скоуп:** только `apps/tma/**`. web-buyer/web-seller — Азиму (он во фронт-зоне).
+- **Не сделано:** AppShell smoke — пропущен, требует мокать AuthProvider + socket.io + sellerNotifications + lazy routes (>3 моков); вместо него взят Badge + Stars (чистые презентационные).
+
+---
+
 ## 2026-05-20 (Полат, SRE) — Backups / restore drill — закрытие launch-блокера
 
 ### ✅ [INFRA-BACKUP-RUNBOOK-001] Backup policy + runbook + restore-drill инструментарий

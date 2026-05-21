@@ -252,6 +252,13 @@ Seller остаётся «строгим инструментом» — оста
 Также `--onboarding-bg` (строка 91) перекрасить из navy-purple в warm-brown.
 **Эффект:** signature CRM-look сохраняется (градиент остаётся), но семейство цвета совпадает с buyer dark-mode.
 
+> **Контекст / прецедент:** в session 55 (09.05.2026, commit `b894589`) Азим
+> уже сделал ровно такую миграцию для **web-buyer dark theme** — legacy violet
+> `#A78BFA` заменён на lifted terracotta `#A05A45`, bg `#0F0F12` (cool slate) →
+> `#16120D` (warm near-black). Этот Win 4 — распространение того же решения на
+> seller, а не дубль buyer-работы. Buyer-dark уже консистентен с brand-light,
+> seller-dark пока остаётся «2021-й purple→navy→green» — нужно подтянуть.
+
 ### Win 5 — Заменить inline-hex tints на хелперы
 **Файлы:**
 - `apps/web-seller/src/app/(dashboard)/dashboard/page.tsx` — строки 117, 158, 232 (`"rgba(251,191,36,.15)"`, `"rgba(52,211,153,.15)"`, `+ "22"`).

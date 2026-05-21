@@ -54,6 +54,154 @@
 
 ---
 
+## 🟠 [CI-PNPM-AUDIT-001] Weekly `pnpm audit` в CI + baseline
+
+- **Домен:** `.github/workflows` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P1 must-pass для public launch (закрывает Deps 6 → 7 в
+  `docs/decisions/launch-go-no-go-2026-05-20.md`). Overrides в `package.json:46`
+  патчат конкретные CVE, но нет регулярного скана.
+- **Что сделать:**
+  1. `.github/workflows/dependency-audit.yml` — cron `0 9 * * 1` (понедельник
+     9:00 UTC), `pnpm audit --prod --json`, fail если есть `high`/`critical`.
+  2. Зафиксировать baseline (`pnpm audit --prod --json > .audit-baseline.json`,
+     коммитнуть, в job сравнивать diff).
+  3. Опционально: `.github/dependabot.yml` weekly PR-bump'ы для `apps/api`,
+     `apps/web-*`, корень.
+- **Файлы:** `.github/workflows/dependency-audit.yml` (new), `.audit-baseline.json`
+  (new), `.github/dependabot.yml` (optional).
+
+---
+
+## 🔴 [LEGAL-OFFER-REQUISITES-001] Реквизиты юр.лица в /offer
+
+- **Домен:** `apps/web-buyer` (заполняется после регистрации ИП/ООО).
+- **Кто берёт:** Бизнес (регистрация) → Полат (правка placeholder'а).
+- **Приоритет:** P0 must-pass для public launch (закрывает Legal 5 → 7).
+- **Что:** заменить placeholder в `apps/web-buyer/src/app/offer/page.tsx:71-75`
+  на ИНН/ОКЭД/юр.адрес/расчётный счёт. Настроить MX `support@savdo.uz` +
+  `legal@savdo.uz` через Cloudflare Email Routing → Telegram-чат команды.
+- **Скоуп:** 3–7 календарных дней регистрации + 30 мин правки. Для closed-beta
+  не блокер (договариваемся с beta-sellers, что договор будет в течение 2 недель).
+
+---
+
+## 🟠 [INFRA-UPTIME-ALERTS-001] UptimeRobot + Telegram-алерты
+
+- **Домен:** инфра (Полат).
+- **Кто берёт:** Полат (внешний сервис, no-code).
+- **Приоритет:** P1 hardening — поднимает Observability 6 → 7 в go-no-go,
+  закрывает риск R7 в readiness (downtime замечается реактивно).
+- **Что:** UptimeRobot бесплатный план (5 endpoint'ов), пинг каждые 5 мин:
+  `savdo-api/health/live`, `savdo-builder-by`, `savdo-builder-sl`, admin, TMA.
+  Алерт в Telegram-чат команды при failure.
+- **Скоуп:** 30 минут setup.
+- **Источник:** `docs/readiness/launch-readiness-2026-05-20.md` §3 + §Risk R7.
+
+---
+
+## 🟠 [SENTRY-DSN-001] Подключить real Sentry DSN к ErrorReporter
+
+- **Домен:** `apps/api` + Railway env (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P1 hardening — поднимает Observability 6 → 7. Sentry SDK
+  уже задеплоен 20.05 (`8024cbd`), нужен только DSN + замена в коде.
+- **Что:**
+  1. Создать Sentry проект (free-tier, 5k events/месяц).
+  2. `SENTRY_DSN` env в Railway Variables для api / admin / web-buyer / web-seller / tma.
+  3. В `apps/api/src/shared/error-reporter.ts` — добавить опциональный
+     `@sentry/node` под `if (process.env.SENTRY_DSN)`. Reporter уже API-совместим.
+- **Скоуп:** 30 минут.
+- **Источник:** readiness §4 «Observability» + Risk R9.
+
+---
+
+## 🟠 [SUPPORT-CHANNEL-001] `@savdo_support` TG-чат + ссылки в фронтах
+
+- **Домен:** `apps/web-buyer` (footer) + `apps/web-seller` (settings) +
+  `apps/tma` (settings) + `apps/admin` (login) — координация Полата.
+- **Кто берёт:** Полат (создаёт чат) + Азим (ссылки в web-buyer/web-seller).
+- **Приоритет:** P1 — закрывает Support 5.5 → 6.5 (should-pass для launch).
+- **Что:**
+  1. Создать Telegram-канал/чат `@savdo_support` (manned by Полат+Азим).
+  2. Добавить ссылку в `apps/web-buyer` footer, `apps/web-seller/settings`,
+     `apps/tma` settings (buyer + seller views), `apps/admin/login`.
+- **Скоуп:** 0.5 дня (создание + 4 frontend-вставки).
+- **Источник:** readiness §13 + Risk R8.
+
+---
+
+## ✅ [FAQ-001] `/help` страница в web-buyer — 8-10 Q&A — закрыто 21.05.2026
+
+Закрыто (Азим, web-buyer `d61db84`). 8 Q&A на ru+uz, MenuRow «Помощь» в
+profile под Notifications, добавлен в sitemap. Деталь — `done.md`. Не сделано
+(отдельно): ссылка из checkout footer; native UZ review Азимом на проде после
+деплоя.
+
+---
+
+## 🟡 [FRONTEND-SMOKE-PLAYWRIGHT-001] Smoke-тесты web-buyer / web-seller
+
+- **Домен:** `apps/web-buyer` + `apps/web-seller` + CI (Азим).
+- **Приоритет:** P2 — закрывает Tests 5 → 6 (should-pass).
+- **Part A ✅ 21.05.2026 (Азим, web-buyer `7a94a92`):** vitest@3 + RTL@16 +
+  4 spec файла (phone helpers, i18n provider, HelpContent, uz-canonical),
+  ~16 тестов. CI workflow `ci-web-buyer-tests.yml` запускает на push в main/web-buyer.
+  Зеркалит admin/TMA-паттерн (Полат `74d0eef`/`ae1f61a`).
+- **Part B (open, отдельным заходом):** web-seller smoke (аналогичный паттерн —
+  expected ~10 тестов: phone helpers, i18n, settings page, uz-canonical).
+- **Part C (open, опционально):** Playwright integration:
+  - `apps/web-buyer/playwright.config.ts` + spec'и `/`, `/[slug]`, `/cart`
+    против Railway prod URL.
+  - `.github/workflows/playwright-prod-smoke.yml` — hourly cron + TG-алерт на FAIL.
+  - Решение: имеет ли смысл при наличии vitest smoke + UptimeRobot из
+    `INFRA-UPTIME-ALERTS-001` (закрывает 80% того же риска без flakiness
+    реального браузера). Возможно — пропустить.
+- **Источник:** `API-FRONTEND-TESTS-001` (web-buyer/web-seller часть) +
+  readiness §6 + Risk R6.
+
+---
+
+## 🟢 [ADMIN-I18N-DARK-THEME-CANONICAL-001] `Qorongʻi` → `Qorongʻu` в admin uz.ts
+
+- **Домен:** `apps/admin/src/lib/i18n/uz.ts` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P3 — опечатка в латинизации, не функциональная проблема.
+- **Что:** в `apps/admin/src/lib/i18n/uz.ts:138-140` стоит `Qorongʻi` (с `i` на
+  конце). Стандартная форма в латинском узбекском — `Qorongʻu` (с `u`). Также:
+  - line 138: `'theme.dark': 'Qorongʻi mavzu'` → `'Qorongʻu mavzu'`
+  - line 140: `'theme.toDark': 'Qorongʻi mavzuga oʻtish'` → `'Qorongʻu mavzuga oʻtish'`
+- **Контекст:** web-buyer/web-seller сегодня (21.05.2026, см. `done.md`
+  `UZ-CANONICAL-WEB-2026-05-21`) приведены к канону `Qorongʻu`. Admin остался
+  единственным outlier'ом с `Qorongʻi` — для единообразия имеет смысл унифицировать.
+
+---
+
+## 🟢 [PRE-LAUNCH-VITE-VERIFY-001] Sanity-проверка vite-override
+
+- **Домен:** web-buyer / web-seller / pnpm-lock (Азим).
+- **Кто берёт:** Азим — локально (разовое исключение из `feedback_no_local_run`).
+- **Приоритет:** P3 — overrides уже в `package.json:46`
+  (`"vite": ">=6.4.2"`). Полат предупредил в `done.md` 20.05 (TMA-FRONTEND-TESTS-001):
+  workspace-override фактически поднимает до **vite@8.0.10 (rolldown-vite)**,
+  не до 6.4.2 — это надо иметь в виду при чтении lockfile.
+- **Что сделать:**
+  1. `pnpm install` в корне.
+  2. `grep -E "^\s*vite@" pnpm-lock.yaml | sort -u` — увидеть фактическую
+     версию (ожидается 8.x rolldown). Это норма.
+  3. `cd apps/web-buyer && pnpm exec tsc --noEmit` — чистый. Web-buyer на Next 16,
+     vite в нём — только транзитивная dev-зависимость, type-check не должен трогать.
+  4. `cd apps/web-seller && pnpm exec tsc --noEmit` — чистый.
+  5. Если 3/4 падает с vite-related TS-ошибкой — откат: `package.json:46`
+     `"vite": ">=6.4.2"` → `"vite": "^6.4.1"` (явный pin до старой стабильной),
+     `pnpm install`, повторить.
+- **Файлы:** `package.json:46`, `pnpm-lock.yaml`.
+- **Note:** admin/tma уже проверены Полатом — TMA-тесты прошли 14/14 на vitest@3
+  поверх rolldown-vite; admin держится на stale vite@6.4.1 install (см.
+  `done.md` 20.05 TMA-FRONTEND-TESTS-001).
+
+---
+
 ## ✅ [INFRA-API-PROD-DOWN-001] PROD API лежит — ВОССТАНОВЛЕНО 19.05.2026
 - **Статус:** ✅ API снова жив — проверено curl'ом 19.05.2026: `/api/v1/health`,
   `/api/v1/storefront/featured`, `/api/v1/storefront/categories/tree` все `200`.
@@ -490,7 +638,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-SENTRY-001`** ✅ 14.05.2026 — lightweight error reporter без зависимости от Sentry SDK. `apps/api/src/shared/error-reporter.ts` — auto-capture `uncaughtException`/`unhandledRejection`, manual `captureException(err, context)` + `captureMessage(msg, level, context)`. JSON output в stderr (Railway log aggregation), PII-скраббинг для context keys (password/secret/token/authorization → `[REDACTED]`). Tags: `release` (`RAILWAY_GIT_COMMIT_SHA[:7]`) + `environment` (`NODE_ENV`). Env-flag `ERROR_REPORTER_ENABLED=false`. **Init в `main.ts` перед bootstrap** — ловит ошибки на этапе загрузки модулей. Когда нужен полный Sentry — добавить `@sentry/node` и заменить `ErrorReporter.captureException` на `Sentry.captureException` (API совместимый). 60% Sentry-функций без install.
 - [x] **`API-PINO-LOGGING-001`** ✅ 14.05.2026 — без новых зависимостей. `apps/api/src/shared/structured-logger.ts` — custom `ConsoleLogger` extension: в `NODE_ENV=production` emit single-line JSON `{ts, level, context, msg, trace}` (stdout/stderr split для Railway log aggregation), в dev — fallback на цветной ConsoleLogger. Подключено в `main.ts` через `NestFactory.create({ logger: new StructuredLogger() })`. Override `isLevelEnabled` для конфигурации через `LOG_LEVEL` env. Все существующие `Logger.log/warn/error` работают автоматически. Pino не подключаем — нужен `pnpm install` (4 пакета: nestjs-pino + pino + pino-http + pino-pretty), wrapper даёт 80% value (JSON-логи) без новых deps.
 - [x] **`API-PII-MASKING-001`** ✅ verified done 12.05.2026 — `apps/api/src/shared/pii.ts` (`maskPhone`: `+998901234567` → `+998 *** ** 67`, ghost `tg_*` → `tg_***`). Использован во ВСЕХ logger.* с phone: otp.processor, otp.service, telegram-auth.use-case, admin-auth.use-case (impersonation), telegram-demo.handler (linked/registered logs), ghost-cleanup.service. Также есть unit-тесты `pii.spec.ts`. Verified grep — 0 plain-text phone в logger calls.
-- [ ] **`API-FRONTEND-TESTS-001`** — 0 frontend tests для admin / web-buyer / web-seller / TMA. Хотя бы smoke.
+- [~] **`API-FRONTEND-TESTS-001`** — admin ✅ (10 тестов) + TMA ✅ (14 тестов, 20.05.2026 — см. `done.md` TMA-FRONTEND-TESTS-001). Осталось web-buyer + web-seller — Азиму.
 - [⏸️] **`API-PAGINATION-ENVELOPE-001`** — см. отложено в разделе ниже (Sprint B).
 
 ---
