@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-05-22 late (Полат, admin) — bugfix impersonate flow
+
+### ✅ [ADMIN-IMPERSONATE-COPY-JWT-001] Impersonate показывает JWT в модалке вместо подмены сессии
+
+- **Важность:** 🔴 (старый flow делал admin UI неюзабельным после клика Impersonate)
+- **Дата:** 22.05.2026
+- **Файлы:** `apps/admin/src/pages/UserDetailPage.tsx`, `apps/admin/src/lib/i18n/ru.ts`, `uz.ts`
+- **Что было сломано:**
+  1. `auth.setTokens(buyerJWT)` подменял `sessionStorage.access_token` в admin-вкладке → все admin endpoints начинали возвращать 401/403 → admin UI ломался в бесконечный auth/refresh loop.
+  2. `window.open(VITE_BUYER_URL ?? '/')` открывал admin home в новой вкладке (env-var в Railway не задана для admin-сервиса) — sessionStorage tab-scoped, JWT в новую вкладку всё равно не передавался.
+  3. ImpersonationProvider показывал ярко-жёлтый баннер «вы как X» — формально, но JWT уже жил отдельной жизнью от UI state.
+- **Что сделано:**
+  - `handleImpersonate()` упрощён: POST → импер JWT → ставит в `impersonatedJwt` state → открывает модалку с textarea + Copy button.
+  - **Admin-сессия НЕ трогается** — Полат остаётся залогинен как admin.
+  - Убраны: `useImpersonation()`, `auth.setTokens()`, `window.open()`, импорт `auth`.
+  - Добавлен `copyImpersonatedJwt()` через `navigator.clipboard`.
+  - +10 i18n ключей ru/uz (`impersonateJwtTitle/Desc/Hint`, `impersonateCopyBtn/Copied/CopyFailed`).
+  - Кнопка переименована «Войти как пользователь» → «Сгенерировать JWT» (отражает реальное действие).
+  - tsc admin ✅, vite build ✅ (1.07s).
+- **Vitest сломан pre-existing** (rolldown-vite 8 vs vitest 2.1.x) — не от моих изменений, отдельная задача.
+- **Коммиты:** `444f03c` (main), `508de1a` (admin → Railway redeploy).
+
 ## 2026-05-21 (Азим, prod-verify) — частичная проверка checkout + закрытие 3 P3-задач
 
 ### 🟡 [VERIFY-CHECKOUT-CONFIRM-500-001] частично — фронт-путь до OTP-гейта чистый
