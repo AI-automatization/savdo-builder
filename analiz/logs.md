@@ -1,5 +1,24 @@
 # Logs — локальные тесты и баги
 
+## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡 Рассинхрон stock между storefront-list и product-detail
+- **Статус:** 🟡 Предупреждение — не блокер, заметка для оценки.
+- **Замечен:** через Playwright MCP в ходе `VERIFY-CHECKOUT-CONFIRM-500-001` (21.05.2026)
+  на проде `savdo-builder-by-production.up.railway.app/azim-mnx4na25`.
+- **Что:** товар «Игрушка» (`ae330060-d1da-4cba-a3ca-585a8ad6abdd`) на storefront-list
+  (`/azim-mnx4na25`) показан с stock-бейджем «1», но на product-detail
+  (`/azim-mnx4na25/products/<id>`) отображается «Нет в наличии», единственный
+  вариант (`ИГРУШКА`) disabled, кнопка добавления в корзину тоже disabled.
+- **Возможные причины (не подтверждены):**
+  - Storefront-list читает `Product.stock` aggregate, а detail читает per-variant
+    stock и складывает иначе.
+  - На variant «ИГРУШКА» stock=0, но на product-level есть «остаточные» 1 шт
+    в др. варианте, который не отображается в variant-picker.
+  - Кеш или stale аггрегация.
+- **Где смотреть:** `apps/web-buyer/src/components/store/ProductCard.tsx` (stock-бейдж),
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` или `useProductDetail`
+  (поле `available`/`outOfStock`).
+- **Не записан в tasks.md** — Азим решит, копать или жить так.
+
 ## [2026-05-21] [BUILD-VITE-OVERRIDE-2026-05-20] 🟢 vite override `>=6.4.2` не ломает web-buyer/web-seller
 - **Статус:** 🟢 OK, ничего чинить не нужно. Опасение #5 Азима — закрыто.
 - **Контекст:** В корневом `package.json` стоит `pnpm.overrides.vite: ">=6.4.2"` (после bump'а TMA с `^6.0.5` до `^6.4.2`). По факту override резолвит **vite@8.0.10 (rolldown-vite)** во всём workspace.

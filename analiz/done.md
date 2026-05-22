@@ -1,5 +1,127 @@
 # Done — Азим + Полат
 
+## 2026-05-21 (Азим, prod-verify) — частичная проверка checkout + закрытие 3 P3-задач
+
+### 🟡 [VERIFY-CHECKOUT-CONFIRM-500-001] частично — фронт-путь до OTP-гейта чистый
+- **Важность:** 🟡 — P0 backend-таска `API-CHECKOUT-CONFIRM-500-001` ждёт
+  фронт-сигнал; полный e2e нужен живой Telegram-телефон.
+- **Дата:** 21.05.2026
+- **Прогон через Playwright MCP** на `savdo-builder-by-production.up.railway.app`:
+  - `/` (homepage Slim — задеплоен после `2a4ee2a`) → видно Hero + TopStores
+    (Azim Tashkent). Других секций нет — slim сработал.
+  - `/azim-mnx4na25` → storefront, 3 товара.
+  - `/azim-mnx4na25/products/<futbolka-id>` → варианты S/M/L, «В корзину»
+    активна, добавление в корзину срабатывает.
+  - `/cart` → 1 позиция, сумма 250 000 сум, CTA «Оформить заказ».
+  - `/checkout` → форма телефона рендерится, «Получить код» disabled (норма).
+  - Console: единственная ошибка — 401 от `/checkout/preview` (ожидаемо без
+    токена; запрос идёт пре-auth).
+- **Что НЕ проверено:** OTP-степ → `/checkout/preview` (с токеном) →
+  `/checkout/confirm`. Эта часть ждёт живого Telegram-телефона Азима.
+- **Замечена UX-странность:** «Игрушка» на listing показывает stock=1, но на
+  detail page «Нет в наличии» (вариант ИГРУШКА disabled). Возможный
+  рассинхрон storefront-list vs product-detail stock. **Не блокер**, не записал
+  отдельным тикетом — Азим решит надо ли копать (запись в `analiz/logs.md`
+  как 🟡 предупреждение).
+
+### ✅ [PRE-LAUNCH-VITE-VERIFY-001] закрыто без локального run — lockfile + Полатова TMA-проверка
+- **Важность:** 🟢 P3 — sanity-проверка vite-override.
+- **Дата:** 21.05.2026
+- **Что подтверждено без запуска `pnpm install`:**
+  - `grep "vite@8.0.10" pnpm-lock.yaml` → 4 матча, vite зафиксирован 8.0.10
+    (rolldown-vite) во всём workspace через `package.json:46` override.
+  - Полат уже прогонял `pnpm install` для TMA 20.05.2026 (commit `ae1f61a`,
+    14/14 тестов passed) — workspace install под этим overriding'ом успешен.
+- **Решение:** локально не гоняем (`feedback_no_local_run`), CI выступит финальной
+  страховкой — `ci-web-buyer-tests.yml` и `ci-web-seller-tests.yml` оба
+  запускают `pnpm install --frozen-lockfile=false` на ubuntu-latest.
+
+### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part C] закрыто как SKIP (рекомендация)
+- **Важность:** 🟢 P3 — Playwright prod smoke.
+- **Дата:** 21.05.2026
+- **Решение:** SKIP до первого инцидента, не покрытого UptimeRobot.
+- **Обоснование:**
+  1. vitest smoke (part A+B, 29 тестов) + `INFRA-UPTIME-ALERTS-001` (UptimeRobot
+     пинг /health каждые 5 мин, у Полата) покрывают ~80% того же риск-семейства
+     без flakiness реального браузера.
+  2. Playwright на проде flaky: network jitter, real Telegram OAuth, OTP gates —
+     ложные срабатывания съедят больше внимания чем дадут.
+  3. Maintenance cost: каждое UI-изменение ломает спеку.
+  4. Sentry frontend (которого нет) + UptimeRobot — более экономичный путь
+     к ловле дрейфующих регрессов.
+- **Когда вернуться:** после первого прод-инцидента, не пойманного UptimeRobot
+  (например checkout 500-ит, `/health` зелёный — Playwright бы поймал).
+- **Запись в tasks.md** обновлена статусом SKIP-recommendation.
+
+### ✅ chore: артефакты buyer-vs-seller audit перенесены в analiz/
+- **Дата:** 21.05.2026
+- **Коммит:** `main 54fb0bf`.
+- **Файлы:** `analiz/buyer-with-seller-colors-2026-05-20.html` (already lived
+  там), `analiz/buyer-seller-palette-{LIGHT,DARK,DARK-v2}.png` (перенесены из
+  корня репо — корень не для бинарей).
+- **Контекст:** артефакты сопровождают `analiz/audits/web-buyer-vs-seller-design-2026-05-20.md`.
+
+---
+
+## 2026-05-21 (Азим, web-seller) — vitest@3 + 3 smoke specs
+
+### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part B] vitest setup + 3 spec файла (~13 тестов)
+- **Важность:** 🟡 P2 — закрывает Tests на стороне web-seller (зеркалит part A
+  web-buyer 21.05 и TMA от Полата 20.05).
+- **Дата:** 21.05.2026
+- **Коммиты:** web-seller `881b225` (setup + specs), main `<TBD>` (CI workflow + close).
+- **Файлы:**
+  - `apps/web-seller/vitest.config.ts` (new) — jsdom env, alias `@`, отдельный от
+    Next.js build pipeline. Зеркало `apps/web-buyer/vitest.config.ts`.
+  - `apps/web-seller/src/test/setup.ts` (new) — jest-dom матчеры + полифилл
+    `window.matchMedia` (jsdom не реализует).
+  - `apps/web-seller/package.json` — devDeps: vitest@^3.2.0, RTL@^16, jest-dom@^6,
+    user-event@^14, @vitejs/plugin-react@^4, jsdom@^25. Скрипт `test`.
+  - `apps/web-seller/tsconfig.json` — `types: ["vitest/globals", "@testing-library/jest-dom"]`.
+  - `apps/web-seller/src/__tests__/smoke/buyer-url.test.ts` — 7 тестов на
+    `buyerOrigin`/`buyerStoreUrl`/`buyerStoreDisplay`/`buyerHostDisplay`/`buyerProductUrl`
+    (pure helpers, `NEXT_PUBLIC_BUYER_URL` env + savdo.uz fallback).
+  - `apps/web-seller/src/__tests__/smoke/i18n.test.tsx` — 4 теста: default ru
+    (`common.cancel`=Отмена), switch uz↔ru (Bekor qilish), unknown key fallback,
+    интерполяция `{count}` в `orders.totalCount`. renderHook + act, не render.
+  - `apps/web-seller/src/__tests__/smoke/uz-canonical.test.ts` — 4 теста защиты
+    канона `UZ-CANONICAL-WEB-2026-05-21`: `orders.status.PENDING`/`orders.filterPending`
+    = `Kutilmoqda`, `orders.nextProcess`/`orders.detail.nextProcess` = `Jarayonga olish`,
+    `theme.light` = `Yorugʻ`, `theme.dark` = `Qorongʻu`, плюс проверка апострофа
+    `ʻ` (U+02BB).
+  - `.github/workflows/ci-web-seller-tests.yml` (new, на main) — push в main/web-seller
+    с изменением `apps/web-seller/**` или `packages/types/**` → pnpm install +
+    `pnpm --filter web-seller test`. Зеркало `ci-web-buyer-tests.yml`.
+- **Почему vitest 3, а не 2:** workspace `pnpm-workspace.yaml` overrides поднимают
+  vite до 8.0.10 (rolldown-vite) — vitest@2.1.x ломается с
+  `__vite_ssr_exportName__ is not defined`. Полатова заметка от 20.05 в TMA done.md.
+- **Скоуп части B:** только helpers (buyer-url) + i18n + uz-canonical guard.
+  НЕ покрыты: страницы с AuthContext, формы с react-hook-form, socket-зависимые
+  компоненты — потребуют MSW или Playwright (part C). Сложные провайдеры избегаем
+  по принципу «smoke не тестирует chains of 3+ моков» (см. Полатов TMA-FRONTEND-TESTS-001).
+- **CI:** workflow срабатывает на push в main или web-seller с изменением в
+  `apps/web-seller/**`. Локально Азим не запускал (`feedback_no_local_run`).
+- **Native sign-off:** Азим проверит первый CI-прогон на GitHub Actions; если
+  что-то не сходится — точечно поправим.
+
+---
+
+## 2026-05-21 (Полат, infra) — CI dependency audit + baseline
+
+### ✅ [CI-PNPM-AUDIT-001] Weekly pnpm audit с baseline (запускает новые high/critical)
+
+- **Важность:** 🟡 (закрывает Deps 6→7 из launch-readiness)
+- **Дата:** 21.05.2026
+- **Файлы:** `.github/workflows/dependency-audit.yml`, `.github/dependency-audit-baseline.json`, `scripts/dependency-audit-check.mjs`
+- **Что сделано:**
+  - `.github/workflows/dependency-audit.yml` — cron понедельник 06:00 UTC + on push/PR при изменениях `**/package.json`, `pnpm-lock.yaml`, baseline или workflow + `workflow_dispatch`.
+  - `scripts/dependency-audit-check.mjs` — парсит `pnpm audit --prod --audit-level=moderate --json`, фильтрует high/critical, сравнивает с baseline. Exit 1 на НОВЫЕ advisories, exit 0 на known + moderate (информативно). С опцией `--include-moderate` дополнительно листит moderate'ы (не валит CI).
+  - `.github/dependency-audit-baseline.json` — снимок 8 known high advisories (все `next`, owner: Азим). Каждый ID имеет note с patched-версией и owner-ом фикса.
+  - Локальный прогон: exit 0, 8 known high'ей в baseline, 10 moderate'ов (информативно).
+- **Замечания:**
+  - 8 high → bump Next.js ≥16.2.6 в `apps/web-buyer` + `apps/web-seller` (Azim's зона). Когда сделает — удалить ID из baseline.
+  - 1 moderate `@nestjs/core` (моя зона): advisory `<=11.1.17` patched `>=11.1.18`. Текущий 10.4.22 → требует major-bump 10→11, отдельный тикет.
+
 ## 2026-05-21 (Азим, web-buyer) — vitest@3 + 4 smoke-теста
 
 ### ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part A] vitest setup + 4 spec файла (~16 тестов)
@@ -102,6 +224,22 @@
   в `tasks.md`.
 - **Native sign-off:** канон выбран по большинству + семантике, Азим
   верифицирует на проде после деплоя; если что-то режет ухо — точечная правка.
+
+---
+
+## 2026-05-21 (Азим, web-buyer) — Slim homepage: убрать «лишние вещи»
+
+### ✅ [WEB-BUYER-HOMEPAGE-SLIM-2026-05-21] Homepage `/` → Hero + TopStores
+
+- **Важность:** 🟡 P2 — UX-фидбэк Азима, направление зафиксировано.
+- **Дата:** 21.05.2026
+- **Коммит:** web-buyer `2a4ee2a`.
+- **Файлы:**
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — удалены `HomeCategoryChips`, `HomeFeaturedFeed`, `RecentStores` (компонент-обёртка homepage), `HomeQuickLinks`. Остались: `HomeHero` + `HomeTopStores` + © footer + `BottomNavBar`. Убраны `Suspense`-обёртки (нужны были только для chips/featured из-за useSearchParams). Шапка-комментарий объясняет решение.
+- **Что сделано:** реализован вариант **B (Slim)** из обсуждения сессии 69. Из 6 секций оставлены 2 — Hero (orient + CTA) и TopStores (discovery). Аргументация: RecentStores дублирует TopStores логически, Featured-feed без контекста магазина = шум, QuickLinks — навигация ради навигации (`/products`, `/stores` достижимы из других мест), chips тоже доступны на `/stores`.
+- **Что НЕ удалено с диска:** `HomeCategoryChips.tsx`, `HomeFeaturedFeed.tsx`, `HomeQuickLinks.tsx`, `RecentStores.tsx` оставлены в `src/components/home/` — на случай возврата (импорта в page.tsx можно восстановить одной строкой). `lib/recent-stores.ts` остаётся в употреблении (BottomNavBar, cart page).
+- **Контекст:** `MARKETING-HOMEPAGE-DISCOVERY-001` 13.05.2026 расширил homepage до 6 секций под marketing-landing трафик. Сегодня Азим сказал «было лучше без лишних вещей» — откат в скоупе UX, без откатa инфраструктуры (SEO metadata, OG-tags, сами компоненты).
+- **Не сделано:** замер LCP до/после — у Азима локальный запуск выключен (`feedback_no_local_run`); проверим в прод-метриках после деплоя web-buyer.
 
 ---
 
