@@ -4,8 +4,8 @@ import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingB
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
-import { auth, api } from '../lib/api'
-import { useImpersonation } from '../lib/impersonation'
+import { api } from '../lib/api'
+// ADMIN-IMPERSONATE-COPY-JWT-001: импер не подменяет сессию, JWT даём в модалке.
 import { PageHeader } from '../components/admin/PageHeader'
 import { Panel } from '../components/admin/Panel'
 import { InfoRow } from '../components/admin/InfoRow'
@@ -56,7 +56,6 @@ export default function UserDetailPage() {
   const navigate = useNavigate()
   const { t, locale } = useTranslation()
   const dateLocale = locale === 'uz' ? 'uz-UZ' : 'ru-RU'
-  const impersonation = useImpersonation()
 
   const [suspendModal, setSuspendModal] = useState(false)
   const [reason, setReason] = useState('')
@@ -64,6 +63,8 @@ export default function UserDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [impersonateConfirm, setImpersonateConfirm] = useState(false)
   const [impersonating, setImpersonating] = useState(false)
+  // ADMIN-IMPERSONATE-COPY-JWT-001: JWT показывается в модалке для копирования.
+  const [impersonatedJwt, setImpersonatedJwt] = useState<string | null>(null)
 
   // ADMIN-MANUAL-ACTIVATION-UI-001: ручная активация продавца на рынке.
   const [activateModal, setActivateModal] = useState(false)
@@ -115,6 +116,15 @@ export default function UserDetailPage() {
     }
   }
 
+  // ADMIN-IMPERSONATE-COPY-JWT-001: bugfix архитектуры impersonation.
+  // Старый flow подменял sessionStorage.access_token в текущей вкладке (ломал
+  // admin UI — все запросы становились 401/403, потому что admin endpoints
+  // отказывали buyer JWT) и открывал /VITE_BUYER_URL в новой вкладке
+  // (а в проде env не задан → открывал admin home, никакого толку).
+  //
+  // Новый flow: запрашиваем impersonate JWT и показываем его в модалке с
+  // кнопкой Copy. Admin-сессия НЕ трогается. Полат сам решает что с этим JWT
+  // делать (curl, devtools, паста в TMA).
   async function handleImpersonate() {
     if (!id || !user) return
     setImpersonating(true)
@@ -123,27 +133,23 @@ export default function UserDetailPage() {
         `/api/v1/admin/auth/impersonate/${id}`,
         {},
       )
-      const originalAccess = auth.getAccess() ?? ''
-      const originalRefresh = auth.getRefresh()
-      impersonation.start(
-        {
-          userId: id,
-          userPhone: user.phone,
-          userName: user.buyer?.fullName ?? null,
-          startedAt: new Date().toISOString(),
-        },
-        originalAccess,
-        originalRefresh,
-      )
-      auth.setTokens(res.accessToken, res.refreshToken ?? originalRefresh ?? '')
-      toast.success(t('userDetail.impersonateSuccess', { phone: user.phone }))
-      const tmaUrl = (import.meta as any).env?.VITE_BUYER_URL ?? '/'
-      window.open(tmaUrl, '_blank', 'noopener')
+      setImpersonatedJwt(res.accessToken)
       setImpersonateConfirm(false)
+      toast.success(t('userDetail.impersonateSuccess', { phone: user.phone }))
     } catch (e: any) {
       toast.error(e.message ?? t('userDetail.impersonateError'))
     } finally {
       setImpersonating(false)
+    }
+  }
+
+  async function copyImpersonatedJwt() {
+    if (!impersonatedJwt) return
+    try {
+      await navigator.clipboard.writeText(impersonatedJwt)
+      toast.success(t('userDetail.impersonateCopied'))
+    } catch {
+      toast.error(t('userDetail.impersonateCopyFailed'))
     }
   }
 
@@ -513,6 +519,60 @@ export default function UserDetailPage() {
                 {impersonating ? t('userDetail.impersonating') : t('userDetail.impersonateConfirmBtn')}
               </button>
             </div>
+        </DialogShell>
+      )}
+
+      {/* Impersonate JWT Display — ADMIN-IMPERSONATE-COPY-JWT-001
+          Старая архитектура подменяла session в текущей вкладке — ломала admin
+          UI. Новая: JWT показывается в этой модалке, admin-сессия не трогается. */}
+      {impersonatedJwt && (
+        <DialogShell
+          onClose={() => setImpersonatedJwt(null)}
+          width={560}
+          ariaLabelledBy="impersonate-jwt-title"
+        >
+          <h3 id="impersonate-jwt-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+            {t('userDetail.impersonateJwtTitle')}
+          </h3>
+          <p className="m-0 mb-3 text-[13px]" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {t('userDetail.impersonateJwtDesc')}
+          </p>
+          <textarea
+            value={impersonatedJwt}
+            readOnly
+            rows={5}
+            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            className="w-full px-3 py-2 rounded-xl text-[11px] font-mono resize-none outline-none"
+            style={{
+              background: 'var(--surface2)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              wordBreak: 'break-all',
+              whiteSpace: 'pre-wrap',
+              boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: 10, marginTop: 10, marginBottom: 14 }}>
+            <p className="m-0 text-[11px]" style={{ color: '#22C55E', lineHeight: 1.5 }}>
+              {t('userDetail.impersonateJwtHint')}
+            </p>
+          </div>
+          <div className="flex gap-2.5 justify-end">
+            <button
+              onClick={() => setImpersonatedJwt(null)}
+              className="px-5 py-2.5 rounded-xl text-[14px]"
+              style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              {t('common.close')}
+            </button>
+            <button
+              onClick={copyImpersonatedJwt}
+              className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+              style={{ border: 'none', background: '#22C55E', color: 'white', cursor: 'pointer' }}
+            >
+              {t('userDetail.impersonateCopyBtn')}
+            </button>
+          </div>
         </DialogShell>
       )}
 
