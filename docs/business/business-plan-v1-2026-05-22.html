@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Plan v1 — Telegram-native e-commerce platform (working name: maxsavdo)</title>
+<style>
+  :root {
+    --brand: #7C3F2E;
+    --brand-light: #A05A45;
+    --brand-muted: rgba(124,63,46,0.08);
+    --brand-border: rgba(124,63,46,0.18);
+    --cream: #FBF7F0;
+    --cream-sunken: #F4EEE0;
+    --cream-border: #EFE8DA;
+    --text-primary: #1F1A12;
+    --text-body: #3D3525;
+    --text-muted: #8A7D6A;
+    --text-dim: #B5A88E;
+    --success: #4A6B45;
+    --warning: #9C7A2E;
+    --danger: #8B3A3A;
+    --info: #3B6C8C;
+    --shadow-sm: 0 1px 2px rgba(31,26,18,0.04);
+    --shadow-md: 0 4px 12px rgba(31,26,18,0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--cream);
+    color: var(--text-body);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 32px; }
+  h1, h2, h3, h4 { color: var(--text-primary); font-weight: 700; line-height: 1.25; margin: 0; }
+  h1 { font-size: 36px; letter-spacing: -0.02em; }
+  h2 { font-size: 26px; margin-top: 56px; margin-bottom: 8px; }
+  h2::before {
+    content: ''; display: inline-block; width: 4px; height: 22px;
+    background: var(--brand); margin-right: 12px; vertical-align: -3px; border-radius: 2px;
+  }
+  h3 { font-size: 18px; margin-top: 32px; margin-bottom: 12px; }
+  h4 { font-size: 14px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  p { margin: 8px 0 16px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+    color: var(--cream);
+    padding: 48px 32px;
+    border-radius: 0 0 24px 24px;
+    margin-bottom: 16px;
+  }
+  .header .container { padding: 0; max-width: 1200px; margin: 0 auto; }
+  .header h1 { color: var(--cream); font-size: 42px; }
+  .header .subtitle { font-size: 18px; opacity: 0.9; margin-top: 8px; }
+  .header .meta { display: flex; gap: 24px; margin-top: 24px; flex-wrap: wrap; }
+  .header .meta-item {
+    background: rgba(251,247,240,0.15); padding: 10px 16px; border-radius: 8px;
+    backdrop-filter: blur(4px);
+  }
+  .header .meta-item strong { display: block; font-size: 11px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.05em; }
+  .header .meta-item span { font-size: 15px; font-weight: 600; }
+
+  /* Status badges */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .badge-draft { background: rgba(156,122,46,0.12); color: var(--warning); }
+  .badge-ok { background: rgba(74,107,69,0.12); color: var(--success); }
+  .badge-todo { background: var(--brand-muted); color: var(--brand); }
+  .badge-danger { background: rgba(139,58,58,0.12); color: var(--danger); }
+
+  /* TL;DR */
+  .tldr {
+    background: white; padding: 24px 28px; border-radius: 16px;
+    border-left: 4px solid var(--brand); box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+  }
+  .tldr h3 { margin-top: 0; color: var(--brand); }
+  .tldr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+  .tldr-stat { text-align: center; padding: 12px; background: var(--cream-sunken); border-radius: 10px; }
+  .tldr-stat .value { font-size: 24px; font-weight: 700; color: var(--brand); }
+  .tldr-stat .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+
+  /* Persona cards */
+  .persona-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .persona {
+    background: white; border-radius: 14px; padding: 20px;
+    box-shadow: var(--shadow-sm); border: 1px solid var(--cream-border);
+  }
+  .persona-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .persona-name { font-weight: 700; font-size: 16px; color: var(--text-primary); }
+  .persona-size { font-size: 11px; color: var(--text-muted); }
+  .persona-desc { font-size: 13px; color: var(--text-body); margin-bottom: 10px; }
+  .persona-pain { font-size: 12px; padding: 8px 10px; background: rgba(139,58,58,0.05); border-radius: 6px; border-left: 2px solid var(--danger); color: var(--text-body); }
+
+  /* Feature map */
+  .feature-map { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .feature-area {
+    background: white; border-radius: 14px; padding: 20px;
+    box-shadow: var(--shadow-sm); border: 1px solid var(--cream-border);
+  }
+  .feature-area h4 {
+    color: var(--brand); font-size: 14px; margin-top: 0;
+    padding-bottom: 8px; border-bottom: 1px solid var(--cream-border); margin-bottom: 12px;
+  }
+  .feature-list { list-style: none; padding: 0; margin: 0; }
+  .feature-list li {
+    padding: 6px 0 6px 24px; position: relative;
+    font-size: 13px; line-height: 1.5;
+  }
+  .feature-list li::before {
+    content: ''; position: absolute; left: 8px; top: 13px;
+    width: 6px; height: 6px; background: var(--brand); border-radius: 50%;
+  }
+  .feature-list li.phase2::before { background: var(--warning); opacity: 0.6; }
+  .feature-list li.phase3::before { background: var(--text-dim); opacity: 0.5; }
+  .feature-list li.phase2 { color: var(--text-muted); }
+  .feature-list li.phase3 { color: var(--text-muted); font-style: italic; }
+
+  /* Tables */
+  table {
+    width: 100%; border-collapse: collapse; background: white;
+    border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-sm);
+    margin: 12px 0;
+  }
+  th, td { padding: 12px 14px; text-align: left; font-size: 14px; }
+  th { background: var(--cream-sunken); color: var(--text-primary); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:not(:last-child) td { border-bottom: 1px solid var(--cream-border); }
+  td.numeric { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--brand); }
+  td.muted { color: var(--text-muted); }
+
+  /* Roadmap */
+  .roadmap {
+    background: white; padding: 24px; border-radius: 14px;
+    box-shadow: var(--shadow-md); margin: 16px 0;
+  }
+  .timeline {
+    position: relative; padding-left: 0;
+  }
+  .timeline-track {
+    position: absolute; left: 24px; top: 16px; bottom: 16px; width: 2px;
+    background: var(--cream-border);
+  }
+  .milestone {
+    position: relative; padding-left: 60px; margin-bottom: 20px;
+  }
+  .milestone-dot {
+    position: absolute; left: 16px; top: 6px; width: 16px; height: 16px;
+    background: var(--brand); border-radius: 50%; border: 3px solid white;
+    box-shadow: 0 0 0 2px var(--brand-border);
+  }
+  .milestone-dot.phase1 { background: var(--brand); }
+  .milestone-dot.phase2 { background: var(--warning); }
+  .milestone-dot.phase3 { background: var(--text-dim); }
+  .milestone-when {
+    display: inline-block; font-size: 11px; padding: 2px 8px;
+    background: var(--brand-muted); color: var(--brand); border-radius: 8px;
+    font-weight: 600; margin-bottom: 4px;
+  }
+  .milestone-title { font-weight: 700; font-size: 16px; color: var(--text-primary); margin: 4px 0; }
+  .milestone-desc { font-size: 13px; color: var(--text-body); margin: 0; }
+
+  /* Funnel */
+  .funnel {
+    display: flex; flex-direction: column; gap: 4px;
+    max-width: 600px; margin: 16px auto;
+  }
+  .funnel-row {
+    background: white; padding: 14px 20px; border-radius: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: var(--shadow-sm); border-left: 4px solid var(--brand);
+  }
+  .funnel-row .tier { font-weight: 700; font-size: 14px; }
+  .funnel-row .num { font-size: 18px; font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
+  .funnel-row .desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .funnel-row:nth-child(1) { margin-left: 0; margin-right: 0; }
+  .funnel-row:nth-child(2) { margin-left: 60px; margin-right: 60px; }
+  .funnel-row:nth-child(3) { margin-left: 120px; margin-right: 120px; }
+
+  /* Pricing cards */
+  .pricing-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0;
+  }
+  .pricing-card {
+    background: white; border-radius: 14px; padding: 20px;
+    border: 1px solid var(--cream-border); box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column;
+  }
+  .pricing-card.pro { border-color: var(--brand); border-width: 2px; position: relative; }
+  .pricing-card.pro::after {
+    content: 'Sweet spot'; position: absolute; top: -10px; right: 16px;
+    background: var(--brand); color: white; font-size: 10px;
+    padding: 3px 8px; border-radius: 8px; font-weight: 600;
+  }
+  .pricing-name { font-weight: 700; font-size: 18px; color: var(--text-primary); }
+  .pricing-price { font-size: 28px; font-weight: 700; color: var(--brand); margin: 8px 0; }
+  .pricing-price small { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+  .pricing-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  .pricing-card ul { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+  .pricing-card li { padding: 4px 0 4px 16px; position: relative; }
+  .pricing-card li::before { content: '✓'; position: absolute; left: 0; color: var(--success); font-weight: 700; }
+
+  /* Risk heatmap */
+  .heatmap {
+    display: grid; grid-template-columns: 80px repeat(3, 1fr);
+    gap: 4px; max-width: 600px; margin: 12px 0;
+  }
+  .heatmap-cell {
+    padding: 14px 10px; text-align: center; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+  }
+  .heatmap-axis { background: var(--cream-sunken); color: var(--text-muted); }
+  .heatmap-low { background: rgba(74,107,69,0.18); color: var(--success); }
+  .heatmap-med { background: rgba(156,122,46,0.22); color: var(--warning); }
+  .heatmap-high { background: rgba(139,58,58,0.22); color: var(--danger); }
+  .heatmap-empty { background: var(--cream-sunken); color: var(--text-dim); }
+
+  /* Channels */
+  .channels {
+    display: grid; grid-template-columns: 1fr; gap: 6px; margin: 12px 0;
+  }
+  .channel-row {
+    background: white; padding: 12px 16px; border-radius: 8px;
+    display: grid; grid-template-columns: 30px 1fr 80px 80px 60px;
+    gap: 12px; align-items: center; font-size: 13px;
+    border: 1px solid var(--cream-border);
+  }
+  .channel-num { font-weight: 700; color: var(--brand); }
+  .channel-name { font-weight: 600; color: var(--text-primary); }
+  .channel-desc { font-size: 11px; color: var(--text-muted); display: block; }
+  .channel-tag {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    font-size: 10px; font-weight: 600; text-align: center;
+  }
+  .tag-low { background: rgba(74,107,69,0.15); color: var(--success); }
+  .tag-med { background: rgba(156,122,46,0.15); color: var(--warning); }
+  .tag-high { background: rgba(139,58,58,0.15); color: var(--danger); }
+
+  /* Footer */
+  .footer {
+    margin-top: 80px; padding: 24px;
+    background: var(--cream-sunken); border-radius: 14px;
+    font-size: 13px; color: var(--text-muted); text-align: center;
+  }
+  .footer strong { color: var(--text-primary); }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .container { padding: 16px; }
+    .header { background: var(--brand); border-radius: 0; }
+    h2 { page-break-after: avoid; }
+    .feature-map, .pricing-grid, .persona-grid, .channels { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <span class="badge badge-draft" style="background: rgba(251,247,240,0.2); color: white;">DRAFT v1</span>
+    <h1 style="margin-top: 12px;">Business Plan v1</h1>
+    <p class="subtitle">Telegram-native e-commerce платформа для малых UZ-продавцов</p>
+    <div class="meta">
+      <div class="meta-item"><strong>Working name</strong><span>maxsavdo</span></div>
+      <div class="meta-item"><strong>Дата</strong><span>22.05.2026</span></div>
+      <div class="meta-item"><strong>Owner</strong><span>Полат + Азим</span></div>
+      <div class="meta-item"><strong>Status</strong><span>⏳ ждёт sign-off</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- TL;DR -->
+<div class="tldr">
+  <h3>TL;DR</h3>
+  <p>Storefront + checkout + buyer CRM, встроенные в Telegram. Между «продаю в DM» и «выкладываюсь на Uzum (15% комиссии)». UZ-локально, малые продавцы, без посредников.</p>
+  <div class="tldr-grid">
+    <div class="tldr-stat"><div class="value">50-100k</div><div class="label">TAM (продавцы UZ)</div></div>
+    <div class="tldr-stat"><div class="value">$50k</div><div class="label">Revenue год 1 (300 sellers)</div></div>
+    <div class="tldr-stat"><div class="value">$500k</div><div class="label">Revenue год 2-3 (2k sellers)</div></div>
+    <div class="tldr-stat"><div class="value">9 мес</div><div class="label">До first $5k MRR</div></div>
+  </div>
+</div>
+
+<!-- AUDIENCE -->
+<h2>1. Аудитория</h2>
+<p>Платформа двухсторонняя: B2B (продавцы платят) и B2C (покупатели бесплатно).</p>
+
+<h3>🛍 B2B — продавцы (paying side)</h3>
+<div class="persona-grid">
+  <div class="persona">
+    <div class="persona-header">
+      <span class="persona-name">Telegram-channel seller</span>
+      <span class="persona-size">~15-30k в UZ</span>
+    </div>
+    <div class="persona-desc">Малый бизнес уже продаёт в TG-канале (одежда, food, crafts). Канал 1-50k подписчиков.</div>
+    <div class="persona-pain">😩 Корзина и заказы — вручную в DM. Заказы теряются. Нет аналитики.</div>
+  </div>
+  <div class="persona">
+    <div class="persona-header">
+      <span class="persona-name">Instagram-микро-продавец</span>
+      <span class="persona-size">~20-40k в UZ</span>
+    </div>
+    <div class="persona-desc">Продаёт через сторис/DM. Хочет упорядочить flow и не терять заказы.</div>
+    <div class="persona-pain">😩 IG не оптимален для commerce, всё руками, нет checkout.</div>
+  </div>
+  <div class="persona">
+    <div class="persona-header">
+      <span class="persona-name">Региональный продавец</span>
+      <span class="persona-size">~10-20k в UZ</span>
+    </div>
+    <div class="persona-desc">Не-Tashkent: Самарканд, Бухара, Фергана, регионы. Локальная аудитория.</div>
+    <div class="persona-pain">😩 Uzum логистика медленная/дорогая в регионах, локальный охват слабый.</div>
+  </div>
+  <div class="persona">
+    <div class="persona-header">
+      <span class="persona-name">Self-employed / ремесленник</span>
+      <span class="persona-size">~5-10k в UZ</span>
+    </div>
+    <div class="persona-desc">Керамика Риштана, сюзани, атлас, food-artisan (мясо-молочка, выпечка).</div>
+    <div class="persona-pain">😩 Аутентика не вписывается в массовые маркетплейсы; нужен свой storefront.</div>
+  </div>
+</div>
+
+<h3>🛒 B2C — покупатели (free side)</h3>
+<div class="persona-grid">
+  <div class="persona">
+    <div class="persona-header">
+      <span class="persona-name">TG-активный молодой UZ</span>
+      <span class="persona-size">~8-10M в UZ</span>
+    </div>
+    <div class="persona-desc">18-35 лет, 80% времени в Telegram, открыт к новым платформам.</div>
+  </div>
+  <div class="persona">
+    <div class="persona-header">
+      <span class="persona-name">Региональный покупатель</span>
+      <span class="persona-size">~10-12M в UZ</span>
+    </div>
+    <div class="persona-desc">Uzum-доставка слабая/дорогая, доверяет локальным продавцам.</div>
+  </div>
+  <div class="persona">
+    <div class="persona-header">
+      <span class="persona-name">Loyal buyer конкретного канала</span>
+      <span class="persona-size">~3-5M в UZ</span>
+    </div>
+    <div class="persona-desc">Уже покупал у продавца в DM, хочет normal checkout без торгов.</div>
+  </div>
+  <div class="persona" style="opacity: 0.6;">
+    <div class="persona-header">
+      <span class="persona-name">НЕ наша аудитория</span>
+      <span class="persona-size">—</span>
+    </div>
+    <div class="persona-desc">Покупатели бытовой электроники (Uzum/Asaxiy); cross-border (AliExpress); большие brands (свои сайты).</div>
+  </div>
+</div>
+
+<!-- MARKET SIZING -->
+<h2>2. Market Sizing</h2>
+<p>TAM → SAM → SOM funnel. Продавцов в UZ-Telegram около 50-100k, но не все «нанимаемые» нашим продуктом.</p>
+
+<div class="funnel">
+  <div class="funnel-row" style="border-left-color: var(--brand);">
+    <div>
+      <div class="tier">TAM — Total Addressable</div>
+      <div class="desc">Все малые TG/IG-продавцы UZ</div>
+    </div>
+    <div class="num">50-100k</div>
+  </div>
+  <div class="funnel-row" style="border-left-color: var(--brand-light);">
+    <div>
+      <div class="tier">SAM — Serviceable Available</div>
+      <div class="desc">≥500 заказов/мес — экономика билдинга оправдана</div>
+    </div>
+    <div class="num">15-25k</div>
+  </div>
+  <div class="funnel-row" style="border-left-color: var(--warning);">
+    <div>
+      <div class="tier">SOM — Year 1 obtainable</div>
+      <div class="desc">Реалистичная adoption первого года (1-3% от SAM)</div>
+    </div>
+    <div class="num">200-500</div>
+  </div>
+</div>
+
+<h3>Revenue projection</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Период</th>
+      <th>Sellers</th>
+      <th>Mix Free / Starter / Pro / Business</th>
+      <th>ARPU (UZS/mo)</th>
+      <th>Revenue/год</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Год 1</td>
+      <td class="numeric">300</td>
+      <td>50 / 35 / 12 / 3</td>
+      <td class="numeric">~175k</td>
+      <td class="numeric">$50k</td>
+    </tr>
+    <tr>
+      <td>Год 2</td>
+      <td class="numeric">1,000</td>
+      <td>30 / 40 / 22 / 8</td>
+      <td class="numeric">~340k</td>
+      <td class="numeric">$320k</td>
+    </tr>
+    <tr>
+      <td>Год 3</td>
+      <td class="numeric">2,000+</td>
+      <td>20 / 40 / 28 / 12</td>
+      <td class="numeric">~420k</td>
+      <td class="numeric">$790k</td>
+    </tr>
+  </tbody>
+</table>
+<p style="font-size: 12px; color: var(--text-muted);">+ commission overlay после Click/Payme (1-5%) даёт ещё +20-40% к выручке.</p>
+
+<!-- WHAT'S INSIDE -->
+<h2>3. Что внутри платформы — Feature Map</h2>
+<p>Три приложения: <strong>storefront для покупателя</strong> (web + TMA), <strong>dashboard для продавца</strong> (TMA + web-seller), <strong>admin-панель</strong> (Полат + Азим).</p>
+
+<h3>🛒 Buyer-side (web-buyer + TMA buyer)</h3>
+<div class="feature-map">
+  <div class="feature-area">
+    <h4>Discovery</h4>
+    <ul class="feature-list">
+      <li>Главная с топ-магазинами и категориями</li>
+      <li>Каталог магазинов с фильтрами и сортировкой</li>
+      <li>Каталог товаров платформа-wide</li>
+      <li>Поиск по магазинам/товарам</li>
+      <li>Категории первого уровня (тренды UZ)</li>
+      <li class="phase2">Персонализированная feed (recommendation)</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Storefront</h4>
+    <ul class="feature-list">
+      <li>Per-seller storefront по slug-URL</li>
+      <li>Cover image, лого, описание магазина</li>
+      <li>Список товаров с вариантами</li>
+      <li>Trust signals: verified badge, rating, reviews count</li>
+      <li>Direct link для шейринга в TG</li>
+      <li class="phase2">Custom storefront templates (Pro+)</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Product detail</h4>
+    <ul class="feature-list">
+      <li>Галерея фото (multi-image)</li>
+      <li>Цена + sale (со скидкой —NN%)</li>
+      <li>Варианты (размер, цвет, etc) с отдельным stock</li>
+      <li>Описание, характеристики (attributes)</li>
+      <li>Отзывы с рейтингом</li>
+      <li>Stock indicator (есть/мало/нет)</li>
+      <li>Wishlist (heart icon)</li>
+      <li>«Из этого магазина» — кросс-продажи</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Cart & Checkout</h4>
+    <ul class="feature-list">
+      <li>Корзина = один store (INV-C01)</li>
+      <li>Quantity controls, удалить</li>
+      <li>Cross-store warning (новый store → reset)</li>
+      <li>Sync между TMA и web-buyer (cart sync API)</li>
+      <li>Checkout с OTP-gate (Telegram-auth)</li>
+      <li>Delivery mode: доставка / самовывоз</li>
+      <li>Address autocomplete (Yandex Suggest)</li>
+      <li>Payment method: cash / card (disabled / online (Phase 2)</li>
+      <li>Idempotent confirm (защита от двойных заказов)</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Post-purchase</h4>
+    <ul class="feature-list">
+      <li>История заказов (статусы PENDING → DELIVERED)</li>
+      <li>Order detail с timeline статусов</li>
+      <li>Chat buyer↔seller на заказ</li>
+      <li>Push-нотификация в Telegram при смене статуса</li>
+      <li>Wishlist с notify (price drop, back-in-stock)</li>
+      <li>Reviews после доставки</li>
+      <li class="phase2">Возвраты/refunds</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Profile</h4>
+    <ul class="feature-list">
+      <li>Telegram-привязанный аккаунт</li>
+      <li>Имя, аватар (синк с TG)</li>
+      <li>Сохранённые адреса доставки</li>
+      <li>Уведомления в TG + in-app</li>
+      <li>Языковой переключатель ru/uz</li>
+      <li>Login через Telegram OTP</li>
+      <li>CTA «Стать продавцом» (upgrade flow)</li>
+    </ul>
+  </div>
+</div>
+
+<h3>🏪 Seller-side (web-seller + TMA seller)</h3>
+<div class="feature-map">
+  <div class="feature-area">
+    <h4>Dashboard</h4>
+    <ul class="feature-list">
+      <li>Метрики: продажи за период, заказы, GMV</li>
+      <li>Графики (last 30 days)</li>
+      <li>Топ товаров</li>
+      <li>Recent orders (последние 10)</li>
+      <li>Уведомления о новых заказах (WS + TG)</li>
+      <li>Quick actions: добавить товар, новый магазин</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Каталог товаров</h4>
+    <ul class="feature-list">
+      <li>CRUD товаров (добавить/изменить/удалить)</li>
+      <li>Multi-image upload + crop</li>
+      <li>Variants matrix (size × color × material)</li>
+      <li>Stock per variant</li>
+      <li>Attributes (динамические по категории)</li>
+      <li>Category filters (мульти-выбор)</li>
+      <li>Sale price (со скидкой)</li>
+      <li>Status: DRAFT / ACTIVE / ARCHIVED</li>
+      <li>Bulk операции (hide/show, archive)</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Заказы</h4>
+    <ul class="feature-list">
+      <li>Список заказов с фильтрами по статусу</li>
+      <li>Order detail с buyer info + items</li>
+      <li>State machine: PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED</li>
+      <li>«Взять в обработку» / отмена</li>
+      <li>Chat с покупателем</li>
+      <li>Stock auto-deduction при создании заказа</li>
+      <li>Stock restoration при отмене</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Магазин</h4>
+    <ul class="feature-list">
+      <li>Название, slug-URL, описание</li>
+      <li>Logo + cover image</li>
+      <li>Категории магазина (внутренние)</li>
+      <li>Контакты: TG-username, телефон</li>
+      <li>Настройки доставки: fixed / manual / none</li>
+      <li>Поддерживаемые регионы доставки</li>
+      <li>Pickup-настройки</li>
+      <li>Статус публикации (DRAFT → APPROVED → PUBLISHED)</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Chat</h4>
+    <ul class="feature-list">
+      <li>Buyer-to-seller threads с привязкой к заказу/товару</li>
+      <li>Text + photo messages</li>
+      <li>Read/unread indicators</li>
+      <li>WebSocket real-time</li>
+      <li>Edit (15 min window) + delete (soft)</li>
+      <li>Report message (модерация)</li>
+      <li>TG-нотификация о новом сообщении</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Подписка & биллинг</h4>
+    <ul class="feature-list">
+      <li class="phase2">Просмотр текущего тарифа</li>
+      <li class="phase2">История платежей</li>
+      <li class="phase2">Upgrade / downgrade тарифа</li>
+      <li class="phase2">Annual discount применение</li>
+      <li class="phase2">Реферальный код, статистика приглашений</li>
+      <li class="phase3">White-label (Business+)</li>
+    </ul>
+  </div>
+</div>
+
+<h3>⚙️ Admin / Platform Ops (наш control panel)</h3>
+<div class="feature-map">
+  <div class="feature-area">
+    <h4>Управление</h4>
+    <ul class="feature-list">
+      <li>Пользователи (поиск, suspend, impersonate via JWT)</li>
+      <li>Продавцы (verify/unverify, история)</li>
+      <li>Магазины (approve, suspend, archive)</li>
+      <li>Товары (hide, restore, delete)</li>
+      <li>Manual seller activation (POS/ERP flow)</li>
+      <li>Admin users (super_admin / admin / moderator)</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Модерация</h4>
+    <ul class="feature-list">
+      <li>Очередь модерации с SLA-таймером</li>
+      <li>Action history (approve/reject/comment)</li>
+      <li>Detail page по кейсу</li>
+      <li>Reject требует комментария (INV-A02)</li>
+      <li>Audit log всех admin actions (INV-A01)</li>
+      <li>Reports (жалобы на сообщения)</li>
+    </ul>
+  </div>
+  <div class="feature-area">
+    <h4>Operations</h4>
+    <ul class="feature-list">
+      <li>Dashboard с key metrics платформы</li>
+      <li>Analytics: events, summary</li>
+      <li>System health, feature flags</li>
+      <li>Broadcast (Telegram-рассылка)</li>
+      <li>DB CRUD (super_admin only)</li>
+      <li>Media migration tools (TG→R2/Supabase)</li>
+      <li>Audit log viewer + filters</li>
+      <li>Audit broken media URLs</li>
+    </ul>
+  </div>
+</div>
+
+<!-- COMPETITION -->
+<h2>4. Конкуренция и позиционирование</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Конкурент</th>
+      <th>Их позиционирование</th>
+      <th>Наша отстройка</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Uzum</strong></td>
+      <td>National marketplace, всё в одном</td>
+      <td>Per-seller storefront, без 15% commission</td>
+    </tr>
+    <tr>
+      <td><strong>Olcha</strong></td>
+      <td>Marketplace + electronics</td>
+      <td>Малые продавцы, не электроника</td>
+    </tr>
+    <tr>
+      <td><strong>Asaxiy</strong></td>
+      <td>Marketplace + finance</td>
+      <td>Не финансовая платформа</td>
+    </tr>
+    <tr>
+      <td><strong>Tilda / Shopify</strong></td>
+      <td>Хостинг сайтов</td>
+      <td>$30+/mo, сложно настроить, не Telegram-native</td>
+    </tr>
+    <tr>
+      <td><strong>ManyChat / TG-боты builders</strong></td>
+      <td>Conversation-focused</td>
+      <td>Мы про structured commerce, не диалог</td>
+    </tr>
+    <tr>
+      <td><strong>DM в Telegram (status quo)</strong></td>
+      <td>Бесплатно, есть</td>
+      <td>Корзина, заказы, аналитика, оплата</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Наша позиция:</strong> «Storefront в Telegram за 5 минут — без сайтостроения, без маркетплейса.»</p>
+
+<!-- PRICING -->
+<h2>5. Pricing Model</h2>
+<p>Phase 1 — Subscription only (Click/Payme заморожены). Phase 2 — Hybrid (sub + commission) после открытия бизнес-счёта.</p>
+
+<div class="pricing-grid">
+  <div class="pricing-card">
+    <div class="pricing-name">Free Beta</div>
+    <div class="pricing-price">0<small> UZS/mo</small></div>
+    <div class="pricing-desc">Первые 100 продавцов (PMF)</div>
+    <ul>
+      <li>Все фичи открыты</li>
+      <li>Manual activation</li>
+      <li>До окончания beta (Q3 2026)</li>
+      <li>Direct support от команды</li>
+    </ul>
+  </div>
+  <div class="pricing-card">
+    <div class="pricing-name">Starter</div>
+    <div class="pricing-price">200k<small> UZS/mo</small></div>
+    <div class="pricing-desc">~$16 · Микро-продавцы</div>
+    <ul>
+      <li>До 50 товаров</li>
+      <li>До 100 заказов/мес</li>
+      <li>Базовая аналитика</li>
+      <li>1 магазин</li>
+      <li>ru/uz</li>
+    </ul>
+  </div>
+  <div class="pricing-card pro">
+    <div class="pricing-name">Pro</div>
+    <div class="pricing-price">500k<small> UZS/mo</small></div>
+    <div class="pricing-desc">~$40 · Активные продавцы</div>
+    <ul>
+      <li>Безлимит товаров</li>
+      <li>До 500 заказов/мес</li>
+      <li>Custom branding</li>
+      <li>Priority поддержка</li>
+      <li>Advanced analytics</li>
+      <li>Abandoned-cart push</li>
+    </ul>
+  </div>
+  <div class="pricing-card">
+    <div class="pricing-name">Business</div>
+    <div class="pricing-price">1.5M<small> UZS/mo</small></div>
+    <div class="pricing-desc">~$120 · Крупные продавцы</div>
+    <ul>
+      <li>Безлимит всего</li>
+      <li>Multi-store</li>
+      <li>Dedicated manager</li>
+      <li>API access</li>
+      <li>White-label</li>
+    </ul>
+  </div>
+</div>
+
+<p style="font-size: 13px; color: var(--text-muted);"><strong>Модификаторы:</strong> Annual −20% · Referral −50% мес · Migration discount −50% первые 3 мес для тех кто уже продаёт в Telegram.</p>
+
+<!-- ROADMAP -->
+<h2>6. Roadmap</h2>
+
+<div class="roadmap">
+  <div class="timeline">
+    <div class="timeline-track"></div>
+
+    <div class="milestone">
+      <div class="milestone-dot phase1"></div>
+      <span class="milestone-when">T-0 · сейчас</span>
+      <div class="milestone-title">Soft Launch (closed beta)</div>
+      <div class="milestone-desc">50 продавцов на Free Beta. Manual onboarding Полат+Азим. Финализация Legal (offer ИНН/ОКЭД), restore-drill, Sentry активация.</div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-dot phase1"></div>
+      <span class="milestone-when">T+1 мес</span>
+      <div class="milestone-title">Public Launch</div>
+      <div class="milestone-desc">Open для всех. Starter тариф активен. Content marketing on, 1-2 micro-influencer кампании. Целевая дата: июль-август 2026.</div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-dot phase1"></div>
+      <span class="milestone-when">T+3 мес</span>
+      <div class="milestone-title">First Paying Milestone</div>
+      <div class="milestone-desc">50 paying sellers на Starter+Pro. $5k MRR. PMF индикатор: NPS &gt; 40, churn &lt; 8%/мес.</div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-dot phase2"></div>
+      <span class="milestone-when">T+4-6 мес</span>
+      <div class="milestone-title">Click/Payme Integration</div>
+      <div class="milestone-desc">После открытия бизнес-счёта. Commission tariff layer (1-5%). Pay-as-you-go тариф добавлен.</div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-dot phase2"></div>
+      <span class="milestone-when">T+12 мес</span>
+      <div class="milestone-title">Scale Milestone</div>
+      <div class="milestone-desc">500+ sellers, $20-30k MRR. Promoted listings (платное продвижение). 2-3 sales reps в команде.</div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-dot phase3"></div>
+      <span class="milestone-when">T+18 мес</span>
+      <div class="milestone-title">Series A consideration</div>
+      <div class="milestone-desc">Если ramp ровный — fundraise для региональной экспансии (Tashkent → области → CIS). Pre-money valuation целевая $3-5M.</div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-dot phase3"></div>
+      <span class="milestone-when">T+24+ мес</span>
+      <div class="milestone-title">White-label + B2B SaaS direction</div>
+      <div class="milestone-desc">Возможная диверсификация: white-label для брендов, экспорт платформы за пределы Telegram (mobile-native apps в Phase 3), интеграции с POS системами (потенциально RAOS).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ACQUISITION -->
+<h2>7. Acquisition Channels</h2>
+<p>10 каналов привлечения с приоритетом. Phase A (weeks 1-2) — personal outreach + 20-30 sellers. Phase B (3-6) — referrals + influencers. Phase C (7-12) — content + ads.</p>
+
+<div class="channels">
+  <div class="channel-row">
+    <div class="channel-num">1</div>
+    <div>
+      <div class="channel-name">Referral program</div>
+      <span class="channel-desc">Продавец привёл → 50% off месяц. Viral mechanic.</span>
+    </div>
+    <div><span class="channel-tag tag-low">Free</span></div>
+    <div><span class="channel-tag tag-med">🐢 ramp</span></div>
+    <div><span class="channel-tag tag-high">🔥 high</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">2</div>
+    <div>
+      <div class="channel-name">IG/TG микро-инфлюенсеры UZ</div>
+      <span class="channel-desc">10-50k подписчиков, $50-200 за post.</span>
+    </div>
+    <div><span class="channel-tag tag-med">$200-500</span></div>
+    <div><span class="channel-tag tag-low">⚡ fast</span></div>
+    <div><span class="channel-tag tag-med">medium</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">3</div>
+    <div>
+      <div class="channel-name">TG-чаты Uzum/OLX продавцов</div>
+      <span class="channel-desc">Там жалуются на 15% commission — наша audience.</span>
+    </div>
+    <div><span class="channel-tag tag-low">Free</span></div>
+    <div><span class="channel-tag tag-med">🐢 ramp</span></div>
+    <div><span class="channel-tag tag-high">high</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">4</div>
+    <div>
+      <div class="channel-name">IT Park UZ</div>
+      <span class="channel-desc">Startup community, networking.</span>
+    </div>
+    <div><span class="channel-tag tag-low">Free</span></div>
+    <div><span class="channel-tag tag-med">medium</span></div>
+    <div><span class="channel-tag tag-low">low vol</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">5</div>
+    <div>
+      <div class="channel-name">Click/Payme партнёрство (Phase 2)</div>
+      <span class="channel-desc">После открытия бизнес-счёта и интеграции.</span>
+    </div>
+    <div><span class="channel-tag tag-med">TBD</span></div>
+    <div><span class="channel-tag tag-high">long</span></div>
+    <div><span class="channel-tag tag-high">high</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">6</div>
+    <div>
+      <div class="channel-name">Региональные TG-каналы</div>
+      <span class="channel-desc">Samarkand, Bukhara, Andijan — локальный охват.</span>
+    </div>
+    <div><span class="channel-tag tag-low">Cheap</span></div>
+    <div><span class="channel-tag tag-med">medium</span></div>
+    <div><span class="channel-tag tag-med">medium</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">7</div>
+    <div>
+      <div class="channel-name">Content marketing (uz/ru блог)</div>
+      <span class="channel-desc">Telegram-commerce статьи, SEO long-tail.</span>
+    </div>
+    <div><span class="channel-tag tag-low">Free</span></div>
+    <div><span class="channel-tag tag-high">long</span></div>
+    <div><span class="channel-tag tag-med">long-tail</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">8</div>
+    <div>
+      <div class="channel-name">Direct outreach (Полат+Азим)</div>
+      <span class="channel-desc">Продавцам в TG/IG которые продают вручную.</span>
+    </div>
+    <div><span class="channel-tag tag-med">Время</span></div>
+    <div><span class="channel-tag tag-high">slow</span></div>
+    <div><span class="channel-tag tag-high">hyper-targeted</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">9</div>
+    <div>
+      <div class="channel-name">Web-buyer SEO</div>
+      <span class="channel-desc">Как покупатели находят магазины через Google.</span>
+    </div>
+    <div><span class="channel-tag tag-low">Free</span></div>
+    <div><span class="channel-tag tag-high">long</span></div>
+    <div><span class="channel-tag tag-med">indirect</span></div>
+  </div>
+  <div class="channel-row">
+    <div class="channel-num">10</div>
+    <div>
+      <div class="channel-name">Paid ads (FB/IG/TG-ads)</div>
+      <span class="channel-desc">После PMF. $500+/mo для scale.</span>
+    </div>
+    <div><span class="channel-tag tag-high">$500+</span></div>
+    <div><span class="channel-tag tag-low">fast</span></div>
+    <div><span class="channel-tag tag-high">scale</span></div>
+  </div>
+</div>
+
+<!-- RISKS -->
+<h2>8. Risk Register</h2>
+<p>Heatmap (Probability × Impact). Цвет = combined severity.</p>
+
+<div class="heatmap">
+  <div class="heatmap-cell heatmap-axis"></div>
+  <div class="heatmap-cell heatmap-axis">LOW impact</div>
+  <div class="heatmap-cell heatmap-axis">MED impact</div>
+  <div class="heatmap-cell heatmap-axis">HIGH impact</div>
+
+  <div class="heatmap-cell heatmap-axis">HIGH<br>prob</div>
+  <div class="heatmap-cell heatmap-empty">—</div>
+  <div class="heatmap-cell heatmap-med">Регуляторика UZ</div>
+  <div class="heatmap-cell heatmap-high">—</div>
+
+  <div class="heatmap-cell heatmap-axis">MED<br>prob</div>
+  <div class="heatmap-cell heatmap-low">—</div>
+  <div class="heatmap-cell heatmap-med">Click/Payme delay</div>
+  <div class="heatmap-cell heatmap-high">Uzum-аналог · UZ-cash culture</div>
+
+  <div class="heatmap-cell heatmap-axis">LOW<br>prob</div>
+  <div class="heatmap-cell heatmap-low">—</div>
+  <div class="heatmap-cell heatmap-med">Telegram API breaking</div>
+  <div class="heatmap-cell heatmap-med">Демпинг конкурент</div>
+</div>
+
+<table style="margin-top: 16px;">
+  <thead>
+    <tr><th>Риск</th><th>Mitigation</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Uzum-аналог</strong> (Telegram Mini App-storefront)</td>
+      <td>Скорость до PMF, отстройка через local-vibe / маленькие продавцы / no-commission</td>
+    </tr>
+    <tr>
+      <td><strong>UZ cash-on-delivery culture</strong></td>
+      <td>Free Beta для PMF, низкий Starter (200k), manual onboarding</td>
+    </tr>
+    <tr>
+      <td><strong>Click/Payme не подключим вовремя</strong></td>
+      <td>Subscription-only model survives (Phase 1 design)</td>
+    </tr>
+    <tr>
+      <td><strong>Регуляторика UZ</strong> (e-commerce юр.требования)</td>
+      <td>Регистрация ИП/ООО в процессе. Offer/privacy/terms готовы (privacy=production-ready).</td>
+    </tr>
+    <tr>
+      <td><strong>Telegram API breaking</strong></td>
+      <td>Watch Telegram changelog, fallback на web-buyer (Next.js, vanilla web)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- TEAM -->
+<h2>9. Команда</h2>
+<table>
+  <thead>
+    <tr><th>Роль</th><th>Кто</th><th>Зона</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Backend / API / Admin</strong></td><td>Полат</td><td>apps/api, apps/admin, packages/db, packages/types, infra (Railway)</td></tr>
+    <tr><td><strong>Frontend (web-buyer + web-seller)</strong></td><td>Азим</td><td>apps/web-buyer, apps/web-seller</td></tr>
+    <tr><td><strong>TMA</strong></td><td>Полат (i18n, smoke) + Азим (UI features)</td><td>apps/tma (shared zone)</td></tr>
+    <tr><td><strong>Design / Brand</strong></td><td>Азим (lead)</td><td>Soft Color Lifestyle palette (session 52). См. docs/brand/</td></tr>
+    <tr><td><strong>Product / Strategy</strong></td><td>Полат + Азим совместно</td><td>ADRs + decisions в docs/decisions/</td></tr>
+  </tbody>
+</table>
+
+<!-- OPEN QUESTIONS -->
+<h2>10. Open Questions для sign-off</h2>
+
+<ol>
+  <li><strong>Имя бренда</strong> — окончательно <code>maxsavdo</code>? Или Round 3 ребренда? <span class="badge badge-todo">unconfirmed</span></li>
+  <li><strong>Pricing v1</strong> — 5 вопросов в <code>pricing-tiers-v1-2026-05-21.md</code>. <span class="badge badge-todo">pending</span></li>
+  <li><strong>Soft launch размер</strong> — 50 или 100 sellers? <span class="badge badge-todo">unify</span></li>
+  <li><strong>Phase A outreach list</strong> — кому конкретно первыми? Список 20-30 имён нужен. <span class="badge badge-todo">need list</span></li>
+  <li><strong>Inflocer budget Phase B</strong> — $200-500 на 1-2 кампании есть? <span class="badge badge-todo">budget?</span></li>
+  <li><strong>Content marketing writer</strong> — Азим/Полат сам или подрядчик? <span class="badge badge-todo">tbd</span></li>
+  <li><strong>Public launch дата</strong> — июль / сентябрь / Q4 2026? <span class="badge badge-todo">date?</span></li>
+  <li><strong>RAOS статус</strong> — отдельный продукт, не сливаем. Подтверждено? <span class="badge badge-ok">decided 22.05</span></li>
+</ol>
+
+<!-- NOT IN SCOPE -->
+<h2>11. Что НЕ в scope</h2>
+<ul>
+  <li><strong>RAOS</strong> — отдельный продукт (POS/ERP/CRM), не сливаем</li>
+  <li><strong>Cross-border</strong> — UZ-only первые 18 мес</li>
+  <li><strong>B2B SaaS для крупных компаний</strong> — мы для малых продавцов</li>
+  <li><strong>Mobile-native apps</strong> — Phase 3+. TMA покрывает mobile через Telegram</li>
+</ul>
+
+<div class="footer">
+  <strong>maxsavdo Business Plan v1</strong> · 22.05.2026 · Полат + Азим<br>
+  Status: ⏳ ждёт sign-off Полат + Азим по 7 open questions выше.<br>
+  Связано: <code>docs/decisions/business-plan-v1-2026-05-22.md</code> (markdown source), <code>pricing-tiers-v1-2026-05-21.md</code>, <code>launch-readiness-2026-05-20.md</code>.
+</div>
+
+</div>
+</body>
+</html>
