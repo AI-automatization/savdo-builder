@@ -2,7 +2,7 @@
 
 ## 1. Product Overview
 
-Название: TBD (working: Savdo / StoreGo / Shop Builder)
+Название: TBD (working: maxsavdo / StoreGo / Shop Builder)
 
 Продукт представляет собой e-commerce платформу для продавцов, которые сейчас продают товары через Telegram и другие мессенджеры.
 

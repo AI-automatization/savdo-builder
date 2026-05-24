@@ -5,8 +5,7 @@
 
 ## Контекст
 
-`savdo.uz` занят (триггер ребрендинга). Команда (Полат + Азим) рассмотрела
-несколько раундов кандидатов:
+Домен `savdo.uz` (старого рабочего имени) был занят — это триггер ребрендинга. Команда (Полат + Азим) рассмотрела несколько раундов кандидатов:
 
 - **Round 1** (`docs/decisions/platform-rename-shortlist-round1-2026-05-21.md`):
   scoring-based матрица 8 кандидатов (OlSot, Bizniki, Anorbozor, Soddabozor,
@@ -17,11 +16,11 @@
   «Boqcham» получил скоринг 8.20, тоже отклонён («что за хуйня»).
 - **Round 3** — модерн-tech wave (Diyor, Tarmoq, Almash, ...). Все короткие
   `.uz` или `.com` заняты или премиум.
-- **Финальная итерация** — Полат предложил `maxsavdo` (max + savdo, mass
+- **Финальная итерация** — Полат предложил `maxsavdo` (max + *savdo* — узб. «торговля», mass
   concept). Подтверждено свободно на reg.uz: **`maxsavdo.uz`**.
 - Параллельный список Азима (`analiz/brand-name-candidates.md`): MassMarket,
   MassSeller, Arvex, AuraShop. `maxsavdo` оценен как лучший компромисс —
-  сохраняет «savdo»-наследие, добавляет «mass»-смысл.
+  сохраняет узб. корень *savdo* (торговля), добавляет «mass»-смысл.
 
 ## Решение
 
@@ -35,7 +34,7 @@
 | Критерий | Оценка |
 |----------|--------|
 | **Mass concept** | ✅ `max` сразу читается как «максимум, большой ассортимент» |
-| **UZ-fit** | ✅ Сохраняет «savdo» — узнаваемый узбекский корень |
+| **UZ-fit** | ✅ Сохраняет узбекский корень *savdo* («торговля») — узнаваемое слово |
 | **Произношение** | ✅ Идентично ru/uz/en — «макс-савдо» |
 | **Длина** | ✅ 8 букв — приемлемо |
 | **Domain доступность** | ✅ `maxsavdo.uz` свободен (подтверждено) |
@@ -44,7 +43,7 @@
 
 ### Что меняется
 
-- Все упоминания «Savdo» в брендинге → `maxsavdo`
+- Все упоминания старого имени «Savdo» в брендинге → `maxsavdo`
 - Wordmark в логотипе (см. `docs/brand/logo-spec.md`) — обновить
 - Маркетинговые тексты, landing-pages — `maxsavdo`
 - Email-домены: `support@maxsavdo.uz`, `privacy@maxsavdo.uz` (после регистрации
@@ -64,7 +63,7 @@
 
 ## Альтернативы (рассмотрены и отклонены)
 
-- **Сохранить «Savdo»** — `.uz` занят, плохая SEO-история на чужой домен.
+- **Сохранить старое имя «Savdo»** — `savdo.uz` занят, плохая SEO-история на чужой домен.
 - **OlSot** (Round 1 winner) — Азим: «не впечатляет».
 - **Boqcham** (Round 2 winner) — Полат сам: «что за хуйня».
 - **MassMarket / MassSeller** (Азим из brand-name-candidates) — generic, не
@@ -86,7 +85,7 @@
 
 ### Положительные
 - Имя bookable + domain свободен → запуск не блокируется.
-- «Savdo»-наследие сохраняется → не теряем уже сформированной mental association
+- Узб. корень *savdo* сохраняется → не теряем уже сформированной mental association
   с продуктом.
 - Mass concept позиционирует против Uzum/Olcha (узкоспециализированные
   «маркетплейс электроники», «маркетплейс еды») — у нас «всё для малых».
@@ -95,7 +94,7 @@
 - 8 букв — длиннее чем Uzum (4) или Olcha (5).
 - `max-` префикс уже используется multiple brands (Maxi, MaxStore, MaxiMart) —
   не уникально, но и не conflict.
-- Если будем международно расширяться — `maxsavdo` нерусскоязычной аудитории
+- Если будем международно расширяться — корень *savdo* нерусскоязычной аудитории
   бессмысленно. Mitigation: возможен domain `maxsavdo.com` + suffix-translation
   («maxsavdo: marketplace builder for Telegram»).
 
@@ -125,7 +124,7 @@
 maxsavdo) Азим выбрал **maxsavdo**.
 
 **Аргументы за maxsavdo на финальной развилке:**
-- Локальный якорь (`savdo` родное узбекское слово) — то, чего нет у MassMarket
+- Локальный якорь (корень *savdo* — родное узбекское слово «торговля») — то, чего нет у MassMarket
 - Полатовский бизнес-план v1 уже написан под этим именем (217 строк)
 - `maxsavdo.uz` свободен и закрепляется за командой
 - Закрытие brand-loop'а разблокирует дизайн и продукт (см. session 71 — Азим
@@ -138,7 +137,7 @@ maxsavdo) Азим выбрал **maxsavdo**.
 
 - `analiz/brand-name-candidates.md` — список кандидатов (Полат + Азим)
 - `docs/decisions/platform-rename-shortlist-round1-2026-05-21.md` — Round 1
-- `docs/decisions/brand-selection-2026-05-20.md` — pre-Savdo scoring
+- `docs/decisions/brand-selection-2026-05-20.md` — pre-maxsavdo scoring
 - `docs/decisions/business-plan-v1-2026-05-22.md` — бизнес-план под maxsavdo
 - `docs/business/business-plan-v1-2026-05-22.html` — visual версия
 - `docs/brand/brand-book.md` — обновить wordmark color на terracotta

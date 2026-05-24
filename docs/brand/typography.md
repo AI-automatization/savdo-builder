@@ -1,4 +1,4 @@
-# Savdo — Typography
+# maxsavdo — Typography
 
 **Версия:** 1.0 · **Дата:** 2026-05-20
 
@@ -112,7 +112,7 @@ Inter subset `cyrillic` — полный (вся кириллическая ба
 | `body-sm` | 0.875rem (14px) | 1.5 | 0 | 400 regular | secondary body, help text, footer |
 | `caption` | 0.75rem (12px) | 1.4 | 0.01em | 500 medium | captions, micro-labels (rare) |
 | `overline` | 0.6875rem (11px) | 1.3 | 0.18em | 600 semibold uppercase | section eyebrow «— ПЕРЕЙТИ В МАГАЗИН» |
-| `mono` | 0.875rem (14px) | 1.5 | 0 | 400 monospace | code, slug `savdo.uz/<slug>` |
+| `mono` | 0.875rem (14px) | 1.5 | 0 | 400 monospace | code, slug `maxsavdo.uz/<slug>` |
 
 ### Применение через Tailwind
 
@@ -178,14 +178,14 @@ Inter variable — все веса. Используем 4 уровня:
 |--------|-------|--------------|
 | Regular | 400 | body, descriptions, default |
 | Medium | 500 | secondary labels, captions с акцентом, navigation links |
-| Semibold | 600 | h3/h4, card titles, button text, wordmark «Savdo» |
+| Semibold | 600 | h3/h4, card titles, button text, wordmark «maxsavdo» |
 | Bold | 700 | h1/h2, important values, prices |
 
 **Не используем:** 100/200/300 (light) — на cream-bg они теряются и режут читаемость. 800/900 (extra-bold/black) — overkill, тяжеловесно для retail-warmth.
 
 ---
 
-## 6. Wordmark «Savdo» — типографическая спецификация
+## 6. Wordmark «maxsavdo» — типографическая спецификация
 
 | Параметр | Значение |
 |----------|----------|
@@ -193,7 +193,7 @@ Inter variable — все веса. Используем 4 уровня:
 | Weight | 600 Semibold |
 | Tracking | -0.01em |
 | Color | `var(--color-brand)` (terracotta) |
-| Letter case | Capital S, lowercase avdo — «Savdo» |
+| Letter case | Capital S, lowercase avdo — «maxsavdo» |
 | Italic | Никогда |
 | Underline | Никогда (кроме hover state в link-context — opciоnально) |
 
@@ -203,7 +203,7 @@ Inter variable — все веса. Используем 4 уровня:
 
 ```html
 <span style="font: 600 24px/1 var(--font-inter); color: var(--color-brand); letter-spacing: -0.01em;">
-  Savdo
+  maxsavdo
 </span>
 ```
 
@@ -211,7 +211,7 @@ Inter variable — все веса. Используем 4 уровня:
 
 ```html
 <span class="font-semibold text-2xl tracking-tight" style="color: var(--color-brand)">
-  Savdo
+  maxsavdo
 </span>
 ```
 
@@ -249,7 +249,7 @@ Inter variable — все веса. Используем 4 уровня:
 
 ```html
 <code class="font-mono text-sm" style="color: var(--color-text-body)">
-  savdo.uz/<span style="color: var(--color-brand)">lola-shop</span>
+  maxsavdo.uz/<span style="color: var(--color-brand)">lola-shop</span>
 </code>
 ```
 
@@ -363,7 +363,7 @@ Desktop: Segoe UI / SF Pro
 - [ ] Long-form (> 3 абзаца) — `text-lg` + `max-w-prose` + line-height 1.55
 - [ ] Цены — `tabular-nums`, разделитель пробел ` `
 - [ ] Узб. apostrof — `ʻ` U+02BB, не `'`
-- [ ] Wordmark «Savdo» — semibold, terracotta, capital S
+- [ ] Wordmark «maxsavdo» — semibold, terracotta, capital S
 - [ ] Uppercase используется ≤ 4 слов подряд (capslock в копи запрещён)
 - [ ] Italic — никогда на UI (только foreign-language вкрапления типа «in vivo», и то редко)
 - [ ] Underline — только на hover для links

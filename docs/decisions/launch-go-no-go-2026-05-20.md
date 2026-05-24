@@ -14,7 +14,7 @@
 
 ## 1. Контекст запуска
 
-- **Что запускается:** публичный launch storefront (`savdo.uz/<slug>`) + seller-dashboard + admin panel
+- **Что запускается:** публичный launch storefront (`maxsavdo.uz/<slug>`) + seller-dashboard + admin panel
 - **Аудитория:** sellers (Telegram-каналы UZ) + buyers (web + TG WebApp)
 - **Scope:**
   - ✅ Витрина с товарами, корзина, оформление заказа

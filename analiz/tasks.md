@@ -28,7 +28,7 @@
   - Inverse-варианты (чёрный mark для светлого фона)
 - **После создания:**
   1. Положить в `docs/brand/assets/maxsavdo/` (JPG переместить в `docs/brand/assets/maxsavdo/originals/`).
-  2. Удалить deprecated `logo-monogram-s*.svg` и `logo-lockup-horizontal.svg` (старый savdo S).
+  2. Удалить deprecated `logo-monogram-s*.svg` и `logo-lockup-horizontal.svg` (старый maxsavdo S).
 - **Definition of done:** в `docs/brand/assets/maxsavdo/` лежат SVG-файлы выше.
 
 ---
@@ -86,7 +86,7 @@
 - **Что сделать:**
   1. Заменить логотип в layout/header (`apps/admin/.../layout.tsx` или эквивалент) на новый maxsavdo SVG.
   2. Заменить favicon (`apps/admin/public/favicon.ico`, `apple-touch-icon.png`).
-  3. Обновить `<title>` и meta-теги: "Savdo Admin" → "maxsavdo Admin".
+  3. Обновить `<title>` и meta-теги: "maxsavdo Admin" → "maxsavdo Admin".
   4. Обновить color tokens (если admin использует свои) — Rich Black bg + Champagne Gold accent.
   5. Обновить login-page (если есть отдельный) — лого вверху.
 - **Файлы:** `apps/admin/` (layout, public/, theme-конфиг если есть).
@@ -103,7 +103,7 @@
   1. Найти где лежат email-шаблоны (likely `apps/api/src/mail/templates/` или подобное).
   2. Заменить логотип в header'е писем на новый maxsavdo (PNG-фолбэк для email-клиентов).
   3. Обновить colors: основной background — Pure White, accent — Champagne Gold, текст — Rich Black.
-  4. Заменить "Savdo" → "maxsavdo" во всех transactional текстах.
+  4. Заменить "maxsavdo" → "maxsavdo" во всех transactional текстах.
   5. Footer: добавить maxsavdo wordmark, контакты, ссылки на offer/privacy.
 - **Файлы:** TBD (зависит от структуры email-кода).
 
@@ -115,7 +115,7 @@
 - **Кто берёт:** Полат.
 - **Приоритет:** P2.
 - **Что сделать:**
-  1. Welcome-сообщение бота: "Добро пожаловать в Savdo" → "Добро пожаловать в maxsavdo" + краткий tagline.
+  1. Welcome-сообщение бота: "Добро пожаловать в maxsavdo" → "Добро пожаловать в maxsavdo" + краткий tagline.
   2. OTP-сообщения: проверить упоминания бренда.
   3. Notifications (заказ создан / отменён / chat) — название бренда.
   4. Bot description (BotFather → /setdescription) — обновить.
@@ -171,10 +171,10 @@
   2. Снять свежий dump: `DATABASE_URL='postgresql://postgres:***@<host>:5432/railway'
      bash scripts/db/backup.sh`.
   3. Поднять локальный Postgres: `docker run -d --name savdo-staging-pg
-     -e POSTGRES_USER=savdo -e POSTGRES_PASSWORD=savdo -e POSTGRES_DB=savdo_staging
+     -e POSTGRES_USER=maxsavdo -e POSTGRES_PASSWORD=maxsavdo -e POSTGRES_DB=savdo_staging
      -p 55432:5432 postgres:16-alpine`.
   4. Запустить drill: `bash scripts/db/restore-drill.sh --dump backups/savdo-*.dump
-     --target-db postgresql://savdo:savdo@localhost:55432/savdo_staging
+     --target-db postgresql://maxsavdo:maxsavdo@localhost:55432/savdo_staging
      --source-db "$DATABASE_URL"`.
   5. Результат (PASS/FAIL + JSON-репорт) — зафиксировать в `analiz/logs.md`
      по шаблону из runbook'а §4.4.
@@ -211,8 +211,8 @@
 - **Кто берёт:** Бизнес (регистрация) → Полат (правка placeholder'а).
 - **Приоритет:** P0 must-pass для public launch (закрывает Legal 5 → 7).
 - **Что:** заменить placeholder в `apps/web-buyer/src/app/offer/page.tsx:71-75`
-  на ИНН/ОКЭД/юр.адрес/расчётный счёт. Настроить MX `support@savdo.uz` +
-  `legal@savdo.uz` через Cloudflare Email Routing → Telegram-чат команды.
+  на ИНН/ОКЭД/юр.адрес/расчётный счёт. Настроить MX `support@maxsavdo.uz` +
+  `legal@maxsavdo.uz` через Cloudflare Email Routing → Telegram-чат команды.
 - **Скоуп:** 3–7 календарных дней регистрации + 30 мин правки. Для closed-beta
   не блокер (договариваемся с beta-sellers, что договор будет в течение 2 недель).
 
@@ -682,7 +682,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-PRODUCT-IMAGES-PATCH-001`** ✅ 15.05.2026 (Полат) — `PATCH /seller/products/:id/images/:imageId` добавлен (reorder `sortOrder` + toggle `isPrimary`, ownership-проверка, 404 на чужое фото, одна обложка на товар). DTO `UpdateProductImageDto`. Коммит `788aeb3`. Web-seller может подключить вместо delete+recreate fallback (закрывает `WS-B05`).
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
-- [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
+- [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (maxsavdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
 - [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания, Полат); ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
@@ -722,7 +722,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 
 ## 🎨 P1 — Design quick wins (Полат + Азим)
 
-- [x] **`DESIGN-PHONE-INPUT-PACKAGE-001`** ✅ 14.05.2026 — **web-* (Азим) + packages/ui (Полат).** Web-*: `PhoneInput` в `apps/web-buyer/components/` + `apps/web-seller/components/` (дубль). **Полат 14.05.2026:** перенёс в `packages/ui/components/PhoneInput.tsx` + утилиты (formatUzPhone/stripUzPhone/isValidUzPhone), экспорт из `@savdo/ui`. `peerDependencies.react ^18||^19`. `packages/ui/README.md` с migration plan для Азима (подключить `"@savdo/ui": "workspace:*"` в web-buyer/web-seller package.json + `pnpm install` → удалить дубли + заменить импорты). TMA имеет свой `lib/phone.ts` (Wave 7), admin не нуждается. Дубли в web-* пока остаются — Азим уберёт после `pnpm install`.
+- [x] **`DESIGN-PHONE-INPUT-PACKAGE-001`** ✅ 14.05.2026 — **web-* (Азим) + packages/ui (Полат).** Web-*: `PhoneInput` в `apps/web-buyer/components/` + `apps/web-seller/components/` (дубль). **Полат 14.05.2026:** перенёс в `packages/ui/components/PhoneInput.tsx` + утилиты (formatUzPhone/stripUzPhone/isValidUzPhone), экспорт из `@maxsavdo/ui`. `peerDependencies.react ^18||^19`. `packages/ui/README.md` с migration plan для Азима (подключить `"@maxsavdo/ui": "workspace:*"` в web-buyer/web-seller package.json + `pnpm install` → удалить дубли + заменить импорты). TMA имеет свой `lib/phone.ts` (Wave 7), admin не нуждается. Дубли в web-* пока остаются — Азим уберёт после `pnpm install`.
 - [x] **`DESIGN-SEMANTIC-COLORS-001`** ✅ 14.05.2026 — **Web-* ✅ (Азим, hot-path)** + **Admin ✅ (Полат)**. Web-* теперь использует theme-aware `dangerTint(o)/warningTint(o)/successTint(o)` helpers (`rgb(var(--color-X-rgb)/o)` CSS color level 4). RGB-channels добавлены в `:root` и `[data-theme="dark"]` обоих апсов. **Admin (`apps/admin/src/lib/styles.ts`):** mirror helpers через `color-mix(in srgb, var(--error) X%, transparent)` (Chrome 111+/Safari 16.4+/FF 113+ — admin desktop-only). + готовые `errorBanner()`/`successBanner()`/`warningBanner()` CSSProperties stylesheets. **packages/design-tokens unified пакет НЕ делаем** — Soft Color Lifestyle (buyer) / Liquid Authority (seller+admin) by design разные.
 - [x] **`DESIGN-SEMANTIC-COLORS-RGBA-002`** ✅ 14.05.2026 (Азим) — все 15 точек hardcoded rgba заменены на `dangerTint(X)`: web-seller (14) в image-uploader, analytics, products list/create/edit, orders list+detail, notifications, chat (×3); web-buyer (1) в chats `⋮`-кнопке `rgba(220,38,38)` → `dangerTint()` (теперь подстраивается под Soft Color Lifestyle палитру buyer'а). Type-check `tsc --noEmit` чистый в обоих апах. Остатки `rgba(248,113,113)` в репо — только TMA + admin (зона Полата).
 - [x] **`DESIGN-TMA-BRAND-DIFF-001`** ✅ verified 14.05.2026 — реализовано параллельной FG-TOKENS сессией (TMA-DESIGN-ROLE-DIFF-001, Wave 7-12). `index.css` имеет `[data-role="SELLER"]` override на `--tg-accent` (cyan вместо orchid). `AppShell.tsx:21` ставит `data-role={role}` на root, `BottomNav.tsx:53` дублирует для bottom nav. Light + dark theme overrides оба покрыты. Buyer = orchid violet `#A855F7`, Seller = cyan `#22D3EE` — визуально различимы.
@@ -884,7 +884,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 ## 🆕 Аудит TMA (06.05.2026) — UI/UX + functional
 
 ### 🔴 P0 (исправлено)
-- [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `savdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
+- [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `maxsavdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
 
 ### 🟠 P1 — для Полата
 - [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
@@ -1335,7 +1335,7 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 - **Что сделать:**
   1. Положить SVG-файлы в `apps/web-buyer/public/brand/` и `apps/web-seller/public/brand/` (или импортировать из `packages/ui` если решим централизованно).
   2. **web-buyer:**
-     - Header — заменить старое лого (savdo S) на maxsavdo lockup или mark+wordmark.
+     - Header — заменить старое лого (maxsavdo S) на maxsavdo lockup или mark+wordmark.
      - Footer — wordmark.
      - `favicon.ico`, `apple-touch-icon.png` — из app-icon brand-book.
      - `manifest.json` — name "maxsavdo", icons, theme_color `#0A0A0A`.

@@ -1,4 +1,4 @@
-# Savdo — Application Examples
+# maxsavdo — Application Examples
 
 **Версия:** 1.0 · **Дата:** 2026-05-20
 
@@ -132,8 +132,8 @@ Android рекомендует **monochrome white** для status-bar notificati
 
 ```json
 {
-  "name": "Savdo",
-  "short_name": "Savdo",
+  "name": "maxsavdo",
+  "short_name": "maxsavdo",
   "description": "Telegram-native store builder for Uzbekistan",
   "start_url": "/",
   "display": "standalone",
@@ -168,13 +168,13 @@ Android рекомендует **monochrome white** для status-bar notificati
 - **Aspect:** 1.91:1.
 - **Max file size:** < 1MB (Telegram запрашивает быстро, тяжёлые файлы не показываются).
 
-### Design — главная Savdo
+### Design — главная maxsavdo
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
 │   ┌──────────┐                                                  │
-│   │   S      │   Savdo                       (160px lockup)     │
+│   │   S      │   maxsavdo                       (160px lockup)     │
 │   └──────────┘                                                  │
 │                                                                 │
 │   Telegram-магазин                                              │
@@ -184,7 +184,7 @@ Android рекомендует **monochrome white** для status-bar notificati
 │   регистрации клиентов                  (subtitle, 32px)        │
 │                                                                 │
 │                                                                 │
-│   savdo.uz                              (footer, 24px, muted)   │
+│   maxsavdo.uz                              (footer, 24px, muted)   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
    ↑ background: #FBF7F0 (cream)
@@ -206,12 +206,12 @@ Android рекомендует **monochrome white** для status-bar notificati
 │   │  pic1 │ │  pic2 │ │  pic3 │ │  pic4 │ │  pic5 │           │
 │   └───────┘ └───────┘ └───────┘ └───────┘ └───────┘           │
 │                                                                 │
-│   savdo.uz/lola-shop · powered by Savdo                        │
+│   maxsavdo.uz/lola-shop · powered by maxsavdo                        │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
    ↑ background: #FBF7F0
    shop logo and name from seller's data
-   "powered by Savdo" — wordmark в brand-цвете, всегда снизу справа
+   "powered by maxsavdo" — wordmark в brand-цвете, всегда снизу справа
 ```
 
 ### Implementation
@@ -270,7 +270,7 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
 ### Дизайн правила
 
 - **Bot avatar:** monogram S terracotta plate, 640×640
-- **Bot name:** `Savdo` (без «bot», «builder», «assistant»)
+- **Bot name:** `maxsavdo` (без «bot», «builder», «assistant»)
 - **Bot bio:** `Telegram-магазин за 60 секунд · @savdo_team`
 
 ---
@@ -301,7 +301,7 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
     <!-- Header with wordmark -->
     <tr>
       <td style="padding:24px 32px; border-bottom:1px solid #EFE8DA;">
-        <span style="font-size:24px; font-weight:600; letter-spacing:-0.01em; color:#7C3F2E;">Savdo</span>
+        <span style="font-size:24px; font-weight:600; letter-spacing:-0.01em; color:#7C3F2E;">maxsavdo</span>
       </td>
     </tr>
 
@@ -343,7 +343,7 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
         </table>
 
         <!-- CTA -->
-        <a href="https://savdo.uz/orders/142" style="display:inline-block; padding:12px 24px; background:#7C3F2E; color:#FBF7F0; text-decoration:none; font-size:14px; font-weight:600; border-radius:8px;">
+        <a href="https://maxsavdo.uz/orders/142" style="display:inline-block; padding:12px 24px; background:#7C3F2E; color:#FBF7F0; text-decoration:none; font-size:14px; font-weight:600; border-radius:8px;">
           Открыть заказ
         </a>
 
@@ -354,7 +354,7 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
     <tr>
       <td style="padding:24px 32px; background:#FBF7F0; border-top:1px solid #EFE8DA;">
         <p style="margin:0; font-size:12px; line-height:1.5; color:#8A7D6A;">
-          Это автоматическое письмо от <strong>Savdo</strong> — платформы Telegram-магазинов.<br>
+          Это автоматическое письмо от <strong>maxsavdo</strong> — платформы Telegram-магазинов.<br>
           Вопросы: <a href="https://t.me/savdo_support" style="color:#7C3F2E; text-decoration:none;">@savdo_support</a>
         </p>
       </td>
@@ -394,7 +394,7 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
 ```
 ┌──────────────────────────────────────────┐
 │                                          │
-│    ┌────┐  Savdo                         │
+│    ┌────┐  maxsavdo                         │
 │    │ S  │                                │ ← lockup, top-left
 │    └────┘                                │
 │                                          │
@@ -421,14 +421,14 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
 │   ────────────────────                   │ ← divider, brand-border
 │                                          │
 │   @polatkarimov                          │
-│   polat@savdo.uz                         │
+│   polat@maxsavdo.uz                         │
 │   +998 77 123 4567                       │
 │                                          │
-│                              savdo.uz    │ ← bottom-right
+│                              maxsavdo.uz    │ ← bottom-right
 └──────────────────────────────────────────┘
    background: #FBF7F0
    text: textBody
-   "savdo.uz" — brand color
+   "maxsavdo.uz" — brand color
 ```
 
 ### Printing
@@ -453,12 +453,12 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
 │  (left padding 80px)                                        │
 │                                                             │
 │      ┌──────┐                                               │
-│      │  S   │   Savdo                                       │
+│      │  S   │   maxsavdo                                       │
 │      └──────┘                                               │
 │                                                             │
 │      Telegram-магазин за 60 секунд                          │
 │                                                             │
-│      savdo.uz · @savdo_team                                 │
+│      maxsavdo.uz · @savdo_team                                 │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
    background: #FBF7F0
@@ -483,7 +483,7 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│   ┌────┐  Savdo                                  [Войти]        │ ← header
+│   ┌────┐  maxsavdo                                  [Войти]        │ ← header
 │   └────┘                                                        │
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
@@ -526,7 +526,7 @@ Next.js Open Graph generation через `app/opengraph-image.tsx` (next/og). Ш
 - **Size:** 512×512 max, transparent background.
 - **Pack size:** 30 stickers max.
 
-### Concept — «Savdo Daily Phrases»
+### Concept — «maxsavdo Daily Phrases»
 
 Стикеры с короткими фразами retail-продавца, использующими brand-цвет:
 

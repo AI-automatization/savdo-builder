@@ -46,7 +46,7 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 - Менять пропорции / искажать.
 - Менять цвета золотой части на другие.
 - Размещать на пёстром/контрастном фоне без подложки.
-- Использовать "savdo S" монограмму из старого brand-book (deprecated).
+- Использовать "S" монограмму из старого brand-book (deprecated).
 
 ---
 
@@ -127,7 +127,7 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 
 ---
 
-## 5. Web-применение (savdo monorepo)
+## 5. Web-применение (maxsavdo monorepo)
 
 ### Tailwind config tokens (proposed)
 
@@ -181,8 +181,8 @@ colors: {
 |----------------|----------------------|
 | Soft Color Lifestyle (terracotta + cream) | **Dark Luxury Minimalist** (black + gold + white) |
 | Violet brand color (`#7C3AED`) | **Champagne Gold** (`#C9A876`) |
-| Logo: монограмма "S" (savdo) | **Logo: монограмма "M" с bag handle (maxsavdo)** |
-| Brand name: "Savdo" / "Savdo Builder" | **maxsavdo** |
+| Logo: монограмма "S" (старый бренд) | **Logo: монограмма "M" с bag handle** |
+| Brand name: "Savdo" / "Savdo Builder" (старое) | **maxsavdo** |
 | `docs/brand/brand-book.md` | **`docs/brand/maxsavdo-brand-v2.md`** (этот файл) |
 | Старые `logo-monogram-s.svg`, `logo-lockup-horizontal.svg` | Заменить на maxsavdo SVG (`BRAND-LOGO-SVG-SOURCE-001`) |
 
