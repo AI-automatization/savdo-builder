@@ -1,6 +1,6 @@
 # ADR-008 — Brand name `maxsavdo`, domain `maxsavdo.uz`
 
-**Дата:** 2026-05-22
+**Дата:** 2026-05-22 (Полат), sign-off Азима 2026-05-24
 **Статус:** Accepted
 
 ## Контекст
@@ -70,7 +70,15 @@
 - **MassMarket / MassSeller** (Азим из brand-name-candidates) — generic, не
   UZ-rooted, conflict с возможными trademark в EN-зоне.
 - **Arvex** — coined, отсутствует mass-смысл, не resonate с UZ-аудиторией.
-- **AuraShop** — generic, занято в EN-зоне.
+  Подтверждено фидбэком друзей Азима 24.05.2026: «для узбекской аудитории не
+  пойдёт».
+- **AuraShop** — generic, занято в EN-зоне; суффикс `-Shop` приклеивает
+  продукт к роли «магазин», блокирует расширение в POS/CRM.
+- **FlySeller** (Азим, 24.05.2026) — B2B-перекос как у MassSeller, плюс «Fly» —
+  переполненная категория в SaaS (Fly.io и др.), плюс в Узбекистане первая
+  ассоциация — авиалинии.
+- **Imkon** (Claude предложил Азиму 24.05.2026) — концептуально нравилось
+  («возможность для каждого»), но домен `imkon.uz` занят.
 - **mcsavdo / mssavdo** — workaround-prefix вокруг занятого `msavdo.uz`, MS-связи
   с Microsoft, плохое UX.
 
@@ -103,11 +111,35 @@
    URL'ов.
 7. Bot username миграция — не сейчас, отдельный тикет в Phase 2.
 
+## Sign-off Азима — 2026-05-24
+
+24.05.2026 Азим открыл параллельный brainstorm (`analiz/brand-name-candidates.md`)
+со своим списком из 4 кандидатов (MassMarket, MassSeller, Arvex, AuraShop),
+позже добавил FlySeller. Claude провёл анализ по 6 критериям (локальный якорь,
+не привязано к роли, домен `.uz`, произношение, запоминаемость, история) и
+предложил альтернативы (Imkon, Fursat, Imkonia, Eshik, Nuro, Bazza, Savdofy).
+
+Триггер финального выбора — фидбэк друзей Азима по Arvex: «для узбекской
+аудитории не пойдёт». Та же логика похоронила MassMarket (англицизм без
+культурного якоря). Между двумя оставшимися финалистами (MassMarket vs
+maxsavdo) Азим выбрал **maxsavdo**.
+
+**Аргументы за maxsavdo на финальной развилке:**
+- Локальный якорь (`savdo` родное узбекское слово) — то, чего нет у MassMarket
+- Полатовский бизнес-план v1 уже написан под этим именем (217 строк)
+- `maxsavdo.uz` свободен и закрепляется за командой
+- Закрытие brand-loop'а разблокирует дизайн и продукт (см. session 71 — Азим
+  залип на дизайне после «too AI» фидбэка)
+
+Этот sign-off закрывает все open brand-questions. Дальнейшие итерации (логотип,
+визуальный язык, домен `.com`) исполняются под именем `maxsavdo`.
+
 ## Связано
 
-- `analiz/brand-name-candidates.md` — список кандидатов
+- `analiz/brand-name-candidates.md` — список кандидатов (Полат + Азим)
 - `docs/decisions/platform-rename-shortlist-round1-2026-05-21.md` — Round 1
 - `docs/decisions/brand-selection-2026-05-20.md` — pre-Savdo scoring
 - `docs/decisions/business-plan-v1-2026-05-22.md` — бизнес-план под maxsavdo
 - `docs/business/business-plan-v1-2026-05-22.html` — visual версия
 - `docs/brand/brand-book.md` — обновить wordmark color на terracotta
+- Memory (Claude): `brand_decision_maxsavdo.md`
