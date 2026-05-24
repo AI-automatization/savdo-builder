@@ -5,50 +5,75 @@
 
 ---
 
-## 🔴 [BRAND-LOGO-SVG-SOURCE-001] Получить SVG-исходники логотипа maxsavdo
+## 🔴 [BRAND-LOGO-SVG-CREATE-001] Создать SVG-исходники логотипа maxsavdo
 
-- **Домен:** brand assets (Полат — как точка контакта с дизайнером).
-- **Кто берёт:** Полат.
+- **Домен:** brand assets (Полат + Азим — сами).
+- **Кто берёт:** Полат (lead) или Азим — кому удобнее работать в Figma/Illustrator.
 - **Приоритет:** P0 — блокирует все brand-rollout задачи Азима и Полата ниже.
-- **Контекст:** 24.05.2026 получили brand book для `maxsavdo` (JPG-рендеры в `docs/brand/assets/maxsavdo/`). Финальная палитра + лого утверждены, но **SVG-исходников нет** — только растровые превью. Для web (favicon, header, app icon) нужен векторный исходник.
-- **Что сделать:**
-  1. Связаться с дизайнером (тот, кто сделал brand-book).
-  2. Получить:
-     - `logo-mark.svg` — монограмма "M" с bag handle (без wordmark)
-     - `logo-wordmark.svg` — только "MAXSAVDO" текст
-     - `logo-lockup.svg` — mark + wordmark в горизонтальном/вертикальном варианте
-     - `logo-app-icon.svg` — для favicon / TMA icon (rounded square с тёмным фоном)
-     - Inverse-варианты (для светлого фона — чёрная "M" вместо белой)
-  3. Положить в `docs/brand/assets/maxsavdo/` (заменить JPG-рендеры на SVG, JPG переместить в `originals/`).
-  4. Удалить deprecated `logo-monogram-s*.svg` и `logo-lockup-horizontal.svg` (старый savdo S).
-- **Файлы:** `docs/brand/assets/maxsavdo/`, `docs/brand/assets/` (cleanup старых).
+- **Контекст:** 24.05.2026 утверждены палитра + логотип maxsavdo (`docs/brand/assets/maxsavdo/` — 3 JPG, AI-mockup от Полата). У нас нет отдельного дизайнера, поэтому SVG надо создавать самим. Для web (favicon, header, app icon) JPG не подходит — нужен вектор.
+- **Что сделать (варианты):**
+  - **Вариант A (рекомендую) — AI-vectorize JPG:**
+    1. Загрузить `docs/brand/assets/maxsavdo/logo-app-icon.jpg` в [Vectorizer.ai](https://vectorizer.ai) или [Recraft](https://recraft.ai) (free credits есть).
+    2. Скачать SVG → почистить anchor points в Figma → разделить на слои (mark отдельно от wordmark).
+  - **Вариант B — нарисовать с нуля в Figma:**
+    1. M с bag handle — geometric shapes, две половины: левая Pure White, правая Champagne Gold.
+    2. Wordmark MAXSAVDO — выбрать шрифт (`BRAND-FONT-CHOOSE-001`), золотая "A" в центре.
+    3. Export SVG.
+  - **Вариант C — нанять freelancer-векторизатора** на Kwork/Upwork (~5-15$ за работу).
+- **Нужные файлы:**
+  - `logo-mark.svg` — монограмма M с bag handle (без wordmark)
+  - `logo-wordmark.svg` — только "MAXSAVDO" текст
+  - `logo-lockup.svg` — mark + wordmark в горизонталь / вертикаль
+  - `logo-app-icon.svg` — для favicon / TMA icon (rounded square с тёмным фоном)
+  - Inverse-варианты (чёрный mark для светлого фона)
+- **После создания:**
+  1. Положить в `docs/brand/assets/maxsavdo/` (JPG переместить в `docs/brand/assets/maxsavdo/originals/`).
+  2. Удалить deprecated `logo-monogram-s*.svg` и `logo-lockup-horizontal.svg` (старый savdo S).
 - **Definition of done:** в `docs/brand/assets/maxsavdo/` лежат SVG-файлы выше.
 
 ---
 
-## 🟡 [BRAND-PALETTE-HEX-CONFIRM-001] Подтвердить точные HEX-коды палитры maxsavdo
+## 🟡 [BRAND-PALETTE-HEX-PICK-001] Снять точные HEX-коды палитры из brand-book JPG
 
-- **Домен:** brand (Полат — как точка контакта).
-- **Кто берёт:** Полат.
-- **Приоритет:** P1 — Азим начнёт обновлять color tokens по предварительным значениям, но финальные HEX'ы должен подтвердить дизайнер.
-- **Контекст:** в brand-book swatches есть HEX-коды, но OCR показывает несовместимые с визуалом значения (например `#C0563D` вместо champagne gold). Текущие предварительные значения в `docs/brand/maxsavdo-brand-v2.md`:
+- **Домен:** brand (Азим или Полат).
+- **Кто берёт:** Азим (быстрее всего — Figma eyedropper).
+- **Приоритет:** P1 — color tokens работают на предварительных значениях, но финальные надо зафиксировать.
+- **Контекст:** в brand-book JPG (`docs/brand/assets/maxsavdo/`) есть swatches с цифровыми кодами, но они не читаются (OCR показывает несовместимые значения типа `#C0563D` вместо champagne gold). Текущие предварительные значения в `docs/brand/maxsavdo-brand-v2.md`:
   - Rich Black: `#0A0A0A`
   - Champagne Gold: `#C9A876` ⚠ **главный неподтверждённый**
   - Pure White: `#FFFFFF`
-- **Что сделать:** запросить у дизайнера финальные HEX-коды для 3 core цветов + supporting (dark/light surfaces, borders). Обновить `docs/brand/maxsavdo-brand-v2.md` секцию "Color palette".
+- **Что сделать:**
+  1. Открыть `docs/brand/assets/maxsavdo/brand-book-pages.jpg` в Figma (или Photoshop / [imagecolorpicker.com](https://imagecolorpicker.com)).
+  2. Eyedropper'ом снять цвета со swatches страницы "COLOR PALETTE":
+     - Pure White (верхний swatch)
+     - Champagne Gold (большой золотой swatch в центре)
+     - Rich Black (черный swatch)
+     - Dark Grey (если виден отдельным)
+  3. Записать точные HEX в `docs/brand/maxsavdo-brand-v2.md` секцию "Color palette".
+  4. Если результат сильно отличается от моих предварительных (`#C9A876`) — обновить Tailwind tokens в `BRAND-WEB-COLOR-TOKENS-001` (если он уже сделан).
 - **Файлы:** `docs/brand/maxsavdo-brand-v2.md`.
 - **Definition of done:** в brand-v2 doc убрана пометка ⚠ "нужно подтвердить", финальные HEX зафиксированы.
 
 ---
 
-## 🟡 [BRAND-FONT-CONFIRM-001] Уточнить шрифты maxsavdo brand
+## 🟡 [BRAND-FONT-CHOOSE-001] Выбрать шрифты maxsavdo (Google Fonts)
 
-- **Домен:** brand (Полат — как точка контакта).
-- **Кто берёт:** Полат.
-- **Приоритет:** P2 — пока Азим может использовать Inter как разумный default.
-- **Контекст:** в brand-book показаны Primary + Secondary шрифты, но имена не разборчивы. Нужно уточнить у дизайнера.
-- **Что сделать:** получить имена шрифтов + лицензионные источники (Google Fonts / Adobe Fonts / commercial). Обновить `docs/brand/maxsavdo-brand-v2.md` секцию "Типографика".
-- **Файлы:** `docs/brand/maxsavdo-brand-v2.md`.
+- **Домен:** brand (Азим или Полат).
+- **Кто берёт:** Азим (фронтенд использует, ему решать).
+- **Приоритет:** P2 — Inter работает как разумный default, но финальный выбор зафиксировать.
+- **Контекст:** в brand-book показаны "Primary" + "Secondary" шрифты, но имена в JPG не читаются. Нужно выбрать самим из Google Fonts (бесплатно, легко подключить в Next.js через `next/font/google`).
+- **Что сделать:**
+  1. Сравнить визуально brand-book wordmark `MAXSAVDO` (тонкий geometric sans с уплощёнными буквами) с кандидатами:
+     - **Inter** — самый универсальный, ровно подходит к minimalist
+     - **Manrope** — чуть более тёплый, тоже geometric
+     - **Space Grotesk** — более техничный, ближе к brand-book wordmark
+     - **Outfit** — тонкий, элегантный
+     - **DM Sans** — нейтральный, хорошо читается на body
+  2. Выбрать **один шрифт для всего** (proпы 400/500/600/700) — proще и лучше для consistency.
+  3. Подключить в `apps/web-buyer/src/app/layout.tsx` и `apps/web-seller/src/app/layout.tsx` через `next/font/google`.
+  4. Обновить `docs/brand/maxsavdo-brand-v2.md` секцию "Типографика" — финальное имя шрифта.
+- **Рекомендация:** **Inter** (если не определишься) — самый безопасный default, отлично работает в e-commerce, варианты для headings и body, кириллица + латиница.
+- **Файлы:** `docs/brand/maxsavdo-brand-v2.md`, `apps/web-buyer/src/app/layout.tsx`, `apps/web-seller/src/app/layout.tsx`.
 
 ---
 

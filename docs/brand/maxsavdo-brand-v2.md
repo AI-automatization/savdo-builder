@@ -32,8 +32,8 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 | Brand book pages (полный гайдлайн) | `docs/brand/assets/maxsavdo/brand-book-pages.jpg` |
 | Brand book mockup (cover + palette + typo) | `docs/brand/assets/maxsavdo/brand-guidelines-book.jpg` |
 
-> **TODO:** получить SVG-исходники у дизайнера (сейчас только JPG-рендеры).
-> Тикет: `BRAND-LOGO-SVG-SOURCE-001`.
+> **TODO:** создать SVG-исходники самим (AI-vectorize JPG или нарисовать в Figma).
+> Тикет: `BRAND-LOGO-SVG-CREATE-001`.
 
 ### Правила использования
 
@@ -60,7 +60,7 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 | **Champagne Gold** | `#C9A876` | `201,168,118` | `--brand-gold` | Accent, CTA, premium элементы, активные состояния |
 | **Pure White** | `#FFFFFF` | `255,255,255` | `--brand-white` | Light background, primary text on dark |
 
-> ⚠️ **Точные HEX-коды champagne gold нужно подтвердить у дизайнера.** В brand-book swatches OCR'ятся плохо (показывает #C0563D, что не соответствует визуалу). Текущее значение `#C9A876` — моя визуальная интерпретация. Тикет: `BRAND-PALETTE-HEX-CONFIRM-001`.
+> ⚠️ **Точные HEX-коды champagne gold нужно снять eyedropper'ом из brand-book JPG** (в команде нет отдельного дизайнера). Текущее значение `#C9A876` — моя визуальная интерпретация. Тикет: `BRAND-PALETTE-HEX-PICK-001`.
 
 ### Supporting (нейтрали)
 
@@ -91,7 +91,7 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 
 Из brand-book название "Primary" использует sans-serif с геометричным начертанием. **Рекомендация:** Inter (open-source, доступен), Manrope, или Space Grotesk.
 
-> **TODO:** уточнить у дизайнера какой именно шрифт. Тикет: `BRAND-FONT-CONFIRM-001`.
+> **TODO:** выбрать самим из Google Fonts. Тикет: `BRAND-FONT-CHOOSE-001`.
 
 ### Secondary Font
 
@@ -190,9 +190,9 @@ colors: {
 
 ## 7. Open questions
 
-1. **`BRAND-PALETTE-HEX-CONFIRM-001`** — подтвердить точный HEX champagne gold у дизайнера (моя интерпретация `#C9A876`).
-2. **`BRAND-FONT-CONFIRM-001`** — уточнить имя primary/secondary шрифта в brand-book.
-3. **`BRAND-LOGO-SVG-SOURCE-001`** — получить SVG-исходники логотипа (сейчас только JPG-рендеры).
+1. **`BRAND-PALETTE-HEX-PICK-001`** — снять точный HEX champagne gold eyedropper'ом (моя интерпретация `#C9A876`).
+2. **`BRAND-FONT-CHOOSE-001`** — выбрать шрифт из Google Fonts (рекомендуется Inter).
+3. **`BRAND-LOGO-SVG-CREATE-001`** — создать SVG (AI-vectorize JPG или Figma).
 4. **`BRAND-DARK-VS-LIGHT-DEFAULT-001`** — что default theme для web-buyer? Dark luxury или light?
 5. **`BRAND-MIGRATION-PLAN-001`** — план миграции: сразу заменить везде или поэтапно (landing → buyer → seller → admin)?
 
