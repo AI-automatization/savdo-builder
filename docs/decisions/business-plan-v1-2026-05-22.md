@@ -1,4 +1,4 @@
-# Business Plan v1 — maxsavdo (бывш. savdo-builder)
+# Business Plan v1 — maxsavdo
 
 **Дата:** 2026-05-22
 **Статус:** 🟡 **Draft v1** — требует sign-off Полата + Азима по open questions.
@@ -195,7 +195,7 @@ Weighted ARPU: ~0×0.5 + 200k×0.35 + 500k×0.12 + 1.5M×0.03 = **175k UZS/mo pe
 
 ## 10. Open questions для sign-off
 
-1. **Имя бренда** — окончательно `maxsavdo`? Или ребрендим целиком?
+1. ~~**Имя бренда** — окончательно `maxsavdo`?~~ ✅ **РЕШЕНО 22.05.2026** — `maxsavdo` + `maxsavdo.uz` (см. [ADR-008](../adr/ADR-008_brand_name_maxsavdo.md))
 2. **Pricing v1** — 5 вопросов из [`pricing-tiers-v1-2026-05-21.md`](./pricing-tiers-v1-2026-05-21.md).
 3. **Soft launch размер** — 50 sellers (как тут) или 100 (как в pricing)? Унифицировать.
 4. **Phase A outreach** — кому конкретно Полат/Азим напишут первыми? Список 20-30 имён нужен.
