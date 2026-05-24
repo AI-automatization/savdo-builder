@@ -1,23 +1,36 @@
 # Logs — локальные тесты и баги
 
-## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡 Рассинхрон stock между storefront-list и product-detail
-- **Статус:** 🟡 Предупреждение — не блокер, заметка для оценки.
+## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡→🟢 Реклассифицировано 24.05.2026
+- **Статус:** 🟢 Root cause найден; frontend-фикс применён локально (uncommitted), backend-тикет заведён.
 - **Замечен:** через Playwright MCP в ходе `VERIFY-CHECKOUT-CONFIRM-500-001` (21.05.2026)
   на проде `savdo-builder-by-production.up.railway.app/azim-mnx4na25`.
-- **Что:** товар «Игрушка» (`ae330060-d1da-4cba-a3ca-585a8ad6abdd`) на storefront-list
-  (`/azim-mnx4na25`) показан с stock-бейджем «1», но на product-detail
-  (`/azim-mnx4na25/products/<id>`) отображается «Нет в наличии», единственный
-  вариант (`ИГРУШКА`) disabled, кнопка добавления в корзину тоже disabled.
-- **Возможные причины (не подтверждены):**
-  - Storefront-list читает `Product.stock` aggregate, а detail читает per-variant
-    stock и складывает иначе.
-  - На variant «ИГРУШКА» stock=0, но на product-level есть «остаточные» 1 шт
-    в др. варианте, который не отображается в variant-picker.
-  - Кеш или stale аггрегация.
-- **Где смотреть:** `apps/web-buyer/src/components/store/ProductCard.tsx` (stock-бейдж),
-  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` или `useProductDetail`
-  (поле `available`/`outOfStock`).
-- **Не записан в tasks.md** — Азим решит, копать или жить так.
+- **Что выглядело так:** товар «Игрушка» (`ae330060-d1da-4cba-a3ca-585a8ad6abdd`)
+  на storefront-list показан с бейджем «1» (выглядит как stock=1), на detail —
+  «Нет в наличии», вариант disabled.
+- **Что оказалось на самом деле (расследование 24.05.2026):**
+  - Бейдж «1» на storefront-list — это **`variantCount`** (icon Layers, рендерится
+    в `ProductCard.tsx:104-117`), а **не stock**. Тип `ProductListItem`
+    (`packages/types/src/api/products.ts:64-107`) вообще не содержит поля `stock`
+    или `stockQuantity` — мой первичный диагноз «рассинхрон stock» был ошибочным.
+  - **`ProductCard` НЕ учитывал OOS-состояние:** `isUnavailable` (line 49)
+    проверял только `status + isVisible`, не stock. Поэтому товар со всеми
+    вариантами `stockQuantity===0` на list выглядел доступным, а на detail
+    (`page.tsx:135-137` — `activeVariants.every(v => v.stockQuantity === 0)`)
+    корректно становился OOS.
+  - **Backend УЖЕ отдаёт `totalStock`** в storefront-листе:
+    `apps/api/src/modules/products/storefront.controller.ts` lines 190, 300, 327, 334
+    делают `totalStock = variants.reduce(...stockQuantity)`. Но это поле не
+    задекларировано в `ProductListItem` → frontend о нём не знает.
+- **Что сделано:**
+  - Frontend-патч `apps/web-buyer/src/components/store/ProductCard.tsx`:
+    `isUnavailable` теперь учитывает `totalStock === 0` через временный cast
+    `(product as { totalStock?: number }).totalStock`. OOS-overlay появляется
+    автоматически (он уже был — line 141-153 — но триггерился только по
+    status/visibility). Variants-бейдж тоже скрывается на OOS (правильно).
+  - Tasks.md: тикет Полату `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` — добавить
+    `totalStock: number` в `ProductListItem`. После этого Азим уберёт cast.
+- **Не запушено:** правка `ProductCard.tsx` локальная (uncommitted на `main` —
+  будет в `web-buyer` после следующего push). Type-расширение — у Полата.
 
 ## [2026-05-21] [BUILD-VITE-OVERRIDE-2026-05-20] 🟢 vite override `>=6.4.2` не ломает web-buyer/web-seller
 - **Статус:** 🟢 OK, ничего чинить не нужно. Опасение #5 Азима — закрыто.
