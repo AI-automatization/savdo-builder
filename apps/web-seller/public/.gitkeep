@@ -1,0 +1,2 @@
+# Placeholder — Dockerfile COPY'ит apps/web-seller/public/, директория должна существовать.
+# Реальные ассеты (favicon, og-image) генерируются Next.js из src/app/icon.svg + apple-icon.tsx + opengraph-image.tsx.
