@@ -1,5 +1,5 @@
 /**
- * Savdo buyer — shared visual tokens.
+ * maxsavdo buyer — shared visual tokens (Dark Luxury palette).
  *
  * Values resolve to CSS variables defined in `apps/web-buyer/src/app/globals.css`,
  * which are themed by `[data-theme="dark|light"]` on <html>. This means every

@@ -77,7 +77,7 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
           >
             <ShoppingCart size={16} color={colors.accentTextOnBg} />
           </div>
-          <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
+          <span className="text-base font-bold" style={{ color: colors.brand }}>maxsavdo</span>
         </Link>
         <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: colors.accentMuted, color: colors.accent }}>Beta</span>
       </div>

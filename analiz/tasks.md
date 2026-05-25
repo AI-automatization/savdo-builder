@@ -33,47 +33,35 @@
 
 ---
 
-## 🟡 [BRAND-PALETTE-HEX-PICK-001] Снять точные HEX-коды палитры из brand-book JPG
+## ✅ [BRAND-PALETTE-HEX-PICK-001] Снять HEX палитры — закрыто 25.05.2026
 
-- **Домен:** brand (Азим или Полат).
-- **Кто берёт:** Азим (быстрее всего — Figma eyedropper).
-- **Приоритет:** P1 — color tokens работают на предварительных значениях, но финальные надо зафиксировать.
-- **Контекст:** в brand-book JPG (`docs/brand/assets/maxsavdo/`) есть swatches с цифровыми кодами, но они не читаются (OCR показывает несовместимые значения типа `#C0563D` вместо champagne gold). Текущие предварительные значения в `docs/brand/maxsavdo-brand-v2.md`:
-  - Rich Black: `#0A0A0A`
-  - Champagne Gold: `#C9A876` ⚠ **главный неподтверждённый**
-  - Pure White: `#FFFFFF`
-- **Что сделать:**
-  1. Открыть `docs/brand/assets/maxsavdo/brand-book-pages.jpg` в Figma (или Photoshop / [imagecolorpicker.com](https://imagecolorpicker.com)).
-  2. Eyedropper'ом снять цвета со swatches страницы "COLOR PALETTE":
-     - Pure White (верхний swatch)
-     - Champagne Gold (большой золотой swatch в центре)
-     - Rich Black (черный swatch)
-     - Dark Grey (если виден отдельным)
-  3. Записать точные HEX в `docs/brand/maxsavdo-brand-v2.md` секцию "Color palette".
-  4. Если результат сильно отличается от моих предварительных (`#C9A876`) — обновить Tailwind tokens в `BRAND-WEB-COLOR-TOKENS-001` (если он уже сделан).
-- **Файлы:** `docs/brand/maxsavdo-brand-v2.md`.
-- **Definition of done:** в brand-v2 doc убрана пометка ⚠ "нужно подтвердить", финальные HEX зафиксированы.
+Закрыто Азимом (visual eyedropper Opus 4.7 по brand-book JPG). Финал в
+`docs/brand/maxsavdo-brand-v2.md`: Rich Black `#0A0A0A`, Champagne Gold
+`#C9A876`, Champagne Gold Light `#E8C898`, Pure White `#FFFFFF`. OCR-цифры
+в JPG битые (terracotta для gold, красный для чёрного — ошибки), визуальная
+eyedropper-оценка использована. Деталь — `done.md`.
 
 ---
 
-## 🟡 [BRAND-FONT-CHOOSE-001] Выбрать шрифты maxsavdo (Google Fonts)
+## ✅ [BRAND-FONT-CHOOSE-001] Выбрать шрифт — закрыто 25.05.2026
 
-- **Домен:** brand (Азим или Полат).
-- **Кто берёт:** Азим (фронтенд использует, ему решать).
-- **Приоритет:** P2 — Inter работает как разумный default, но финальный выбор зафиксировать.
-- **Контекст:** в brand-book показаны "Primary" + "Secondary" шрифты, но имена в JPG не читаются. Нужно выбрать самим из Google Fonts (бесплатно, легко подключить в Next.js через `next/font/google`).
-- **Что сделать:**
-  1. Сравнить визуально brand-book wordmark `MAXSAVDO` (тонкий geometric sans с уплощёнными буквами) с кандидатами:
-     - **Inter** — самый универсальный, ровно подходит к minimalist
-     - **Manrope** — чуть более тёплый, тоже geometric
-     - **Space Grotesk** — более техничный, ближе к brand-book wordmark
-     - **Outfit** — тонкий, элегантный
-     - **DM Sans** — нейтральный, хорошо читается на body
-  2. Выбрать **один шрифт для всего** (proпы 400/500/600/700) — proще и лучше для consistency.
-  3. Подключить в `apps/web-buyer/src/app/layout.tsx` и `apps/web-seller/src/app/layout.tsx` через `next/font/google`.
-  4. Обновить `docs/brand/maxsavdo-brand-v2.md` секцию "Типографика" — финальное имя шрифта.
-- **Рекомендация:** **Inter** (если не определишься) — самый безопасный default, отлично работает в e-commerce, варианты для headings и body, кириллица + латиница.
-- **Файлы:** `docs/brand/maxsavdo-brand-v2.md`, `apps/web-buyer/src/app/layout.tsx`, `apps/web-seller/src/app/layout.tsx`.
+Закрыто Азимом. **Inter** weights 300-700, subsets latin+latin-ext+
+cyrillic+cyrillic-ext. Outfit/Geist (ближе к brand-book wordmark) не имеют
+Cyrillic → не подходят. Подключено в обоих апах через `next/font/google` →
+`--font-inter`. Деталь — `done.md`.
+
+---
+
+## ✅ [BRAND-WEB-COLOR-TOKENS-001 + UI-REPLACE-001] Tailwind tokens + UI rebrand — закрыто 25.05.2026
+
+Закрыто Азимом (web-buyer + web-seller). Палитра Dark Luxury в `globals.css`
+обоих апов (Rich Black + Champagne Gold + Pure White + neutral semantics).
+Заменены 13 файлов с хардкодед `Savdo` → `maxsavdo` и `savdo.uz` →
+`maxsavdo.uz` (Header wordmark, hero, legal pages, sitemap/robots, seller
+sidebar/login/onboarding). Backwards-compat regex parser принимает оба
+домена. Визуальная проверка через Playwright MCP — light + dark theme
+обоих апов выглядят production-grade. tsc + next build чисты в обоих.
+Деталь — `done.md`.
 
 ---
 

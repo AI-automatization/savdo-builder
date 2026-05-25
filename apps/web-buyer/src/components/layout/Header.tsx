@@ -36,7 +36,7 @@ export default function Header() {
           className="text-lg font-bold tracking-tight flex-shrink-0"
           style={{ color: colors.brand }}
         >
-          Savdo
+          maxsavdo
         </Link>
 
         {/* Search — grows */}

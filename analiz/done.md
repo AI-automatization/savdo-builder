@@ -1,5 +1,79 @@
 # Done — Азим + Полат
 
+## 2026-05-25 (Азим, web-buyer + web-seller) — maxsavdo brand rollout (Dark Luxury palette + Inter + UI replace)
+
+### ✅ [BRAND-PALETTE-HEX-PICK-001] Снять HEX палитры из brand-book JPG
+
+- **Важность:** 🟡 P1 — блокировал color tokens.
+- **Дата:** 25.05.2026
+- **Файлы:** `docs/brand/maxsavdo-brand-v2.md`
+- **Что сделано:** визуально (Opus 4.7 мультимодальный) eyedropper'нул swatches со
+  страницы COLOR PALETTE `brand-book-pages.jpg`. OCR-цифры в JPG битые
+  (`#C0563D` для gold = терракот, `#C13236` для чёрного = красный — ошибки
+  распознавания/дизайнера, проигнорированы). Финал: Rich Black `#0A0A0A`,
+  Champagne Gold `#C9A876` (подтверждение моего preliminary `#C9A876`),
+  Champagne Gold Light `#E8C898` (highlight, виден на app-icon), Pure White
+  `#FFFFFF`. Снята пометка ⚠ "нужно подтвердить".
+
+### ✅ [BRAND-FONT-CHOOSE-001] Выбрать шрифт maxsavdo (Google Fonts)
+
+- **Важность:** 🟡 P2.
+- **Дата:** 25.05.2026
+- **Файлы:** `docs/brand/maxsavdo-brand-v2.md`
+- **Что сделано:** **Inter** (weights 300-700, subsets latin + latin-ext +
+  cyrillic + cyrillic-ext). Обоснование: brand-book wordmark ближе к
+  Outfit/Geist, но они не имеют Cyrillic в Google Fonts → не подходят для
+  ru/uz UI. Inter — full Cyrillic, де-факто стандарт e-commerce/SaaS (Linear,
+  Vercel, Stripe), отлично читается на 14px body. Wordmark в header будет SVG
+  отдельно, поэтому несовпадение Inter с brand-book wordmark не критично.
+
+### ✅ [BRAND-WEB-COLOR-TOKENS-001 + LAYOUTS] Tailwind tokens + next/font в web-buyer + web-seller
+
+- **Важность:** 🟡 P1 — основа всего rebrand'а.
+- **Дата:** 25.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/app/globals.css` — переписан light + dark под Dark Luxury
+  - `apps/web-seller/src/app/globals.css` — переписан light + dark под Dark Luxury
+  - `apps/web-buyer/src/app/layout.tsx` — Inter weights 300-700, latin-ext + cyrillic-ext subsets, metadata Savdo → maxsavdo, siteUrl maxsavdo.uz
+  - `apps/web-seller/src/app/layout.tsx` — добавлен next/font Inter (раньше system fonts), metadata maxsavdo
+  - `apps/web-buyer/src/app/manifest.ts` — theme_color `#A05A45` → `#C9A876`, bg `#FBF7F0` → `#0A0A0A`, name maxsavdo
+  - `apps/web-buyer/src/lib/styles.ts` + `apps/web-seller/src/lib/styles.ts` — комментарии-заголовки
+- **Что сделано:** все color tokens (`--color-bg`, `--color-brand`, `--color-accent`,
+  `--color-text-primary`, etc.) переведены на Rich Black + Champagne Gold +
+  Pure White. styles.ts уже читали CSS-vars — компоненты обновились
+  автоматически без правок. `accent-text-on-bg = #0A0A0A` (black on gold —
+  contrast 8.94:1 AAA), `brand-hover` на dark theme = Champagne Gold Light
+  для brighter hover. `--app-bg` seller dark получил тонкий gold radial
+  orb (luxury feel). `tsc --noEmit` чист в обоих апах. `next build` ✅
+  (web-buyer 18 routes 4.8s compile, web-seller 16 routes 5.6s compile).
+
+### ✅ [BRAND-UI-REPLACE-001] Заменить хардкодед `Savdo` → `maxsavdo` в UI web-buyer/web-seller
+
+- **Важность:** 🟡 P1 — Полатов global-replace `9497c9a` касался только docs,
+  UI остался со старым брендом.
+- **Дата:** 25.05.2026
+- **Файлы:**
+  - `apps/web-buyer/src/components/layout/Header.tsx` — wordmark
+  - `apps/web-buyer/src/app/(shop)/page.tsx` — hero wordmark + footer copyright + backwards-compat regex parser
+  - `apps/web-buyer/src/app/(shop)/[slug]/page.tsx` — metadata
+  - `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx` — metadata
+  - `apps/web-buyer/src/app/{offer,privacy,refund,terms}/page.tsx` — legal pages
+  - `apps/web-buyer/src/app/{sitemap,robots}.ts` — fallback URLs
+  - `apps/web-seller/src/app/(auth)/login/page.tsx` — wordmark + footer
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — sidebar wordmark
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` — wordmark
+  - `apps/web-seller/src/lib/buyer-url.ts` — buyer URL fallback
+- **Что сделано:** все хардкодед `Savdo` → `maxsavdo`, `savdo.uz` → `maxsavdo.uz`.
+  Backwards-compat в `extractSlug()` парсере — regex принимает обе домены
+  (`(?:max)?savdo\.uz/`) чтобы старые ссылки в обороте у юзеров продолжали
+  работать. Хардкодед `rgba(124,63,46,0.15)` (terracotta shadow) заменён на
+  `rgba(201,168,118,0.25)` (gold shadow) в hero icon.
+- **Визуальная проверка через Playwright MCP** (mobile 390×844 + desktop 1280×800):
+  - web-buyer `/` light: Pure White bg, gold wordmark «maxsavdo», gold CTA «Перейти», Inter font, footer «© 2026 maxsavdo» ✅
+  - web-buyer `/` dark: Rich Black bg, gold accents, white headings, тёмные cards ✅
+  - web-seller `/login` dark: Rich Black + subtle gold radial orb, gold wordmark, dark card, Inter font ✅
+  - Computed CSS-vars подтверждены: `--color-brand: #c9a876`, `--color-accent-text-on-bg: #0a0a0a`, font-family Inter.
+
 ## 2026-05-22 late (Полат, admin) — bugfix impersonate flow
 
 ### ✅ [ADMIN-IMPERSONATE-COPY-JWT-001] Impersonate показывает JWT в модалке вместо подмены сессии

@@ -588,7 +588,7 @@ export default function OnboardingPage() {
         >
           <ShoppingCart size={16} color={colors.accentTextOnBg} />
         </div>
-        <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
+        <span className="text-base font-bold" style={{ color: colors.brand }}>maxsavdo</span>
       </div>
 
       <ProgressBar step={step} />

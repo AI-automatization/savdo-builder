@@ -58,9 +58,10 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 |-----|-----|-----|---------|-----------|
 | **Rich Black** | `#0A0A0A` | `10,10,10` | `--brand-black` | Primary background, primary text on light |
 | **Champagne Gold** | `#C9A876` | `201,168,118` | `--brand-gold` | Accent, CTA, premium элементы, активные состояния |
+| **Champagne Gold Light** | `#E8C898` | `232,200,152` | `--brand-gold-light` | Highlights, hover-gradients (виден на app-icon) |
 | **Pure White** | `#FFFFFF` | `255,255,255` | `--brand-white` | Light background, primary text on dark |
 
-> ⚠️ **Точные HEX-коды champagne gold нужно снять eyedropper'ом из brand-book JPG** (в команде нет отдельного дизайнера). Текущее значение `#C9A876` — моя визуальная интерпретация. Тикет: `BRAND-PALETTE-HEX-PICK-001`.
+> ✅ **Финализировано 25.05.2026** (Азим, visual eyedropper по brand-book JPG; OCR-цифры в JPG битые — `#C0563D` для gold = терракот, `#C13236` для чёрного = красный, ошибки распознавания/дизайнера, проигнорированы). Champagne Gold подтверждён как `#C9A876`. Закрывает `BRAND-PALETTE-HEX-PICK-001`.
 
 ### Supporting (нейтрали)
 
@@ -87,15 +88,30 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 
 ## 3. Типографика
 
-### Primary Font
+### Primary + Secondary Font: **Inter** ✅
 
-Из brand-book название "Primary" использует sans-serif с геометричным начертанием. **Рекомендация:** Inter (open-source, доступен), Manrope, или Space Grotesk.
+Один шрифт на всё (headings + body + UI) — простота, минимальный bundle, нет конфликтов между уровнями типографики.
 
-> **TODO:** выбрать самим из Google Fonts. Тикет: `BRAND-FONT-CHOOSE-001`.
+**Обоснование выбора (25.05.2026, Азим):**
+- Wordmark `MAXSAVDO` в brand-book — geometric sans с триангулярной "A" (ближе к Outfit / Geist), но **Outfit / Geist не имеют Cyrillic в Google Fonts** → не подходят для ru/uz UI.
+- **Inter** поддерживает Cyrillic + Cyrillic Ext + Latin Ext (нужно для узбекской латиницы) из коробки. Variable-font, weights 100-900.
+- De-facto стандарт в современном e-commerce/SaaS (Linear, Vercel, Stripe, GitHub). Покупатели подсознательно ассоциируют с premium-продуктом.
+- Wordmark в header будет SVG (не текст шрифта) → точное совпадение `Inter` с brand-book wordmark не требуется.
 
-### Secondary Font
+**Подключение:**
+```ts
+// apps/web-buyer/src/app/layout.tsx и apps/web-seller/src/app/layout.tsx
+import { Inter } from 'next/font/google';
 
-Аналогично — sans-serif для body. **Рекомендация:** Inter (один и тот же шрифт для primary/secondary, разные веса).
+const inter = Inter({
+  subsets: ['latin', 'latin-ext', 'cyrillic', 'cyrillic-ext'],
+  variable: '--font-sans',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
+});
+```
+
+> ✅ Закрывает `BRAND-FONT-CHOOSE-001`.
 
 ### Scale (пока без подтверждения)
 
@@ -190,9 +206,9 @@ colors: {
 
 ## 7. Open questions
 
-1. **`BRAND-PALETTE-HEX-PICK-001`** — снять точный HEX champagne gold eyedropper'ом (моя интерпретация `#C9A876`).
-2. **`BRAND-FONT-CHOOSE-001`** — выбрать шрифт из Google Fonts (рекомендуется Inter).
-3. **`BRAND-LOGO-SVG-CREATE-001`** — создать SVG (AI-vectorize JPG или Figma).
+1. ~~**`BRAND-PALETTE-HEX-PICK-001`** — снять точный HEX champagne gold eyedropper'ом~~ ✅ закрыто 25.05.2026 (Champagne Gold `#C9A876`, + Champagne Gold Light `#E8C898` для highlights).
+2. ~~**`BRAND-FONT-CHOOSE-001`** — выбрать шрифт из Google Fonts~~ ✅ закрыто 25.05.2026 (**Inter**, weights 300-700, full Cyrillic).
+3. **`BRAND-LOGO-SVG-CREATE-001`** — создать SVG (AI-vectorize JPG или Figma). 🔴 P0, не закрыто.
 4. **`BRAND-DARK-VS-LIGHT-DEFAULT-001`** — что default theme для web-buyer? Dark luxury или light?
 5. **`BRAND-MIGRATION-PLAN-001`** — план миграции: сразу заменить везде или поэтапно (landing → buyer → seller → admin)?
 

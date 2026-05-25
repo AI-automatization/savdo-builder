@@ -78,7 +78,7 @@ export default function LoginPage() {
           >
             <ShoppingCart size={28} color={colors.accentTextOnBg} />
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.brand }}>Savdo</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.brand }}>maxsavdo</h1>
           <p className="text-sm mt-1" style={{ color: colors.textMuted }}>Панель продавца</p>
         </div>
 
@@ -180,7 +180,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: colors.textDim }}>
-          © 2026 Savdo
+          © 2026 maxsavdo
         </p>
       </div>
     </div>

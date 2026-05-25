@@ -1,5 +1,5 @@
 /**
- * Savdo seller — shared visual tokens.
+ * maxsavdo seller — shared visual tokens (Dark Luxury palette).
  *
  * Values resolve to CSS variables defined in `apps/web-seller/src/app/globals.css`,
  * themed via `[data-theme="dark|light"]` on <html>. Every consumer of `colors.X`
@@ -34,7 +34,7 @@ export const colors = {
   accentBorder:    'var(--color-accent-border)',
   /** Text colour to use on accent-coloured backgrounds — always white for contrast */
   accentTextOnBg:  'var(--color-accent-text-on-bg)',
-  // Brand wordmark — single shared violet with buyer for "Savdo" logo
+  // Brand — Champagne Gold (shared with buyer for maxsavdo Dark Luxury)
   brand:           'var(--color-brand)',
   // Semantic
   success:         'var(--color-success)',

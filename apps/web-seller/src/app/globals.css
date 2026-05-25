@@ -2,50 +2,53 @@
 @plugin "daisyui";
 
 /* ──────────────────────────────────────────────────────────────────────────────
-   Theme tokens — seller dashboard
-   `[data-theme="dark"]` is the original CRM look (kept as default — see
-   ThemeScript in apps/web-seller/src/app/layout.tsx). Light is the new addition.
-   Values mirror `apps/web-seller/src/lib/styles.ts` for the dark palette.
-   See `docs/design/liquid-authority.md`.
+   Theme tokens — seller dashboard (maxsavdo Dark Luxury Minimalist)
+   Source of truth: docs/brand/maxsavdo-brand-v2.md (Rich Black + Champagne Gold + Pure White).
+   styles.ts reads these vars — менять токены = автоматически меняется UI.
+   `[data-theme="dark"]` остаётся default для seller-CRM (см. ThemeScript в layout.tsx).
    ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* ── Light (cream/slate, mirrors buyer light for unified brand) ──────────── */
-  --color-bg:                #F4F5F7;
+  /* ── Light — maxsavdo Pure White base + Champagne Gold accent ────────────── */
+  --color-bg:                #FAFAFA;
   --color-surface:           #FFFFFF;
-  --color-surface-muted:     #ECEEF1;
+  --color-surface-muted:     #F5F5F5;
   --color-surface-elevated:  #FFFFFF;
-  --color-surface-sunken:    #E4E7EB;
-  --color-divider:           rgba(15,23,42,0.06);
-  --color-border:            rgba(15,23,42,0.10);
-  --color-border-strong:     rgba(15,23,42,0.18);
-  --color-text-primary:      #0F172A;
-  --color-text-muted:        #475569;
-  --color-text-dim:          #94A3B8;
-  --color-accent:            #7C3AED;
-  --color-accent-muted:      rgba(124,58,237,0.10);
-  --color-accent-border:     rgba(124,58,237,0.30);
-  --color-accent-text-on-bg: #FFFFFF;
-  --color-brand:             #7C3AED;
-  --color-success:           #16A34A;
-  --color-warning:           #D97706;
-  --color-danger:            #DC2626;
-  --color-info:              #2563EB;
-  --color-skeleton:          rgba(15,23,42,0.06);
+  --color-surface-sunken:    #EFEFEF;
+  --color-divider:           rgba(10,10,10,0.06);
+  --color-border:            rgba(10,10,10,0.10);
+  --color-border-strong:     rgba(10,10,10,0.18);
+  --color-text-primary:      #0A0A0A;     /* Rich Black */
+  --color-text-muted:        #525252;
+  --color-text-dim:          #A3A3A3;
 
-  /* Semantic RGB channels — для theme-aware tints через rgb(var(...) / opacity) */
-  --color-success-rgb:       22, 163, 74;
-  --color-warning-rgb:       217, 119, 6;
-  --color-danger-rgb:        220, 38, 38;
-  --color-info-rgb:          37, 99, 235;
+  /* Brand & accent — Champagne Gold */
+  --color-brand:             #C9A876;
+  --color-accent:            #C9A876;
+  --color-accent-muted:      rgba(201,168,118,0.12);
+  --color-accent-border:     rgba(201,168,118,0.34);
+  --color-accent-text-on-bg: #0A0A0A;     /* black text on gold — 8.94:1 contrast */
+
+  /* Semantic */
+  --color-success:           #10B981;
+  --color-warning:           #F59E0B;
+  --color-danger:            #EF4444;
+  --color-info:              #3B82F6;
+  --color-skeleton:          rgba(10,10,10,0.06);
+
+  /* Semantic RGB channels — для theme-aware tints */
+  --color-success-rgb:       16, 185, 129;
+  --color-warning-rgb:       245, 158, 11;
+  --color-danger-rgb:        239, 68, 68;
+  --color-info-rgb:          59, 130, 246;
 
   /* App-shell background — light mode is solid */
   --app-bg: var(--color-bg);
 
-  /* Onboarding scene — soft light wash */
-  --onboarding-bg: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #EEF2F7 100%);
-  --onboarding-orb-1: radial-gradient(circle, rgba(124,58,237,0.10) 0%, transparent 70%);
-  --onboarding-orb-2: radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%);
+  /* Onboarding scene — clean light wash with subtle gold accent */
+  --onboarding-bg: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 50%, #FAFAFA 100%);
+  --onboarding-orb-1: radial-gradient(circle, rgba(201,168,118,0.10) 0%, transparent 70%);
+  --onboarding-orb-2: radial-gradient(circle, rgba(201,168,118,0.05) 0%, transparent 70%);
 
   /* Legacy aliases kept for any straggler reading old vars */
   --accent:     var(--color-accent);
@@ -55,42 +58,48 @@
 }
 
 [data-theme="dark"] {
-  /* ── Dark — the original CRM palette (slate-900 base + violet accent) ────── */
-  --color-bg:                #0F172A;
-  --color-surface:           #1E293B;
-  --color-surface-muted:     #172033;
-  --color-surface-elevated:  #293548;
-  --color-surface-sunken:    #0B1120;
-  --color-divider:           rgba(148,163,184,0.16);
-  --color-border:            rgba(148,163,184,0.20);
-  --color-border-strong:     rgba(148,163,184,0.32);
-  --color-text-primary:      #F1F5F9;
-  --color-text-muted:        #94A3B8;
-  --color-text-dim:          #64748B;
-  --color-accent:            #A78BFA;
-  --color-accent-muted:      rgba(167,139,250,0.14);
-  --color-accent-border:     rgba(167,139,250,0.40);
-  --color-accent-text-on-bg: #0F172A;
-  --color-brand:             #7C3AED;
+  /* ── Dark — maxsavdo Rich Black base + Champagne Gold accent ─────────────── */
+  --color-bg:                #0A0A0A;     /* Rich Black */
+  --color-surface:           #141414;
+  --color-surface-muted:     #101010;
+  --color-surface-elevated:  #1F1F1F;
+  --color-surface-sunken:    #050505;
+  --color-divider:           rgba(255,255,255,0.08);
+  --color-border:            rgba(255,255,255,0.14);
+  --color-border-strong:     rgba(255,255,255,0.24);
+  --color-text-primary:      #FFFFFF;
+  --color-text-muted:        #A3A3A3;
+  --color-text-dim:          #737373;
+
+  /* Brand & accent — Champagne Gold (brighter hover on dark) */
+  --color-brand:             #C9A876;
+  --color-accent:            #C9A876;
+  --color-accent-muted:      rgba(201,168,118,0.18);
+  --color-accent-border:     rgba(201,168,118,0.42);
+  --color-accent-text-on-bg: #0A0A0A;     /* black text on gold */
+
+  /* Semantic — lifted for dark visibility */
   --color-success:           #34D399;
   --color-warning:           #FBBF24;
   --color-danger:            #F87171;
   --color-info:              #60A5FA;
   --color-skeleton:          rgba(255,255,255,0.06);
 
-  /* Semantic RGB channels (dark theme — мягче для тёмного фона) */
+  /* Semantic RGB channels (dark theme — softer) */
   --color-success-rgb:       52, 211, 153;
   --color-warning-rgb:       251, 191, 36;
   --color-danger-rgb:        248, 113, 113;
   --color-info-rgb:          96, 165, 250;
 
-  /* Restore the signature gradient body background — only in dark mode */
-  --app-bg: linear-gradient(135deg, #1a0533 0%, #0d1f4f 40%, #0a2e1a 100%);
+  /* Signature gradient body background — Dark Luxury (pure black с deep gold orb) */
+  --app-bg:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(201,168,118,0.08), transparent),
+    linear-gradient(180deg, #050505 0%, #0A0A0A 100%);
 
-  /* Onboarding scene — original navy-purple wash */
-  --onboarding-bg: linear-gradient(135deg, #0f0a1e 0%, #1a0d2e 50%, #0d1a2e 100%);
-  --onboarding-orb-1: radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%);
-  --onboarding-orb-2: radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%);
+  /* Onboarding scene — Dark Luxury wash */
+  --onboarding-bg: linear-gradient(135deg, #050505 0%, #0A0A0A 50%, #141414 100%);
+  --onboarding-orb-1: radial-gradient(circle, rgba(201,168,118,0.14) 0%, transparent 70%);
+  --onboarding-orb-2: radial-gradient(circle, rgba(201,168,118,0.06) 0%, transparent 70%);
 
   --accent:     var(--color-accent);
   --accent-dim: var(--color-accent-muted);
@@ -101,12 +110,13 @@
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text-primary);
+  --font-sans: var(--font-inter);
 }
 
 body {
   background: var(--app-bg);
   color: var(--color-text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   /* Smooth swap when theme changes */
   transition: color 200ms ease;
