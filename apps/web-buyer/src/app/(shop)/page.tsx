@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { RecentStores } from "@/components/home/RecentStores";
-import { ShoppingCart, Package, MessageSquare, ChevronRight } from "lucide-react";
+import { Package, MessageSquare, ChevronRight } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { MaxsavdoLogo } from "@/components/brand/MaxsavdoLogo";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -47,12 +48,7 @@ export default function HomePage() {
       <div className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-32 md:pb-12 flex flex-col gap-8">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-20 h-20 rounded-lg flex items-center justify-center"
-            style={{ background: colors.brand, boxShadow: `0 4px 12px rgba(201,168,118,0.25)` }}
-          >
-            <ShoppingCart size={36} style={{ color: colors.brandTextOnBg }} />
-          </div>
+          <MaxsavdoLogo size={80} />
           <span className="text-2xl font-bold tracking-tight" style={{ color: colors.brand }}>
             maxsavdo
           </span>

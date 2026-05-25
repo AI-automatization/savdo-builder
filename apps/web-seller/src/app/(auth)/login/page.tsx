@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useRequestOtp, useVerifyOtp } from "../../../hooks/use-auth";
-import { ShoppingCart } from "lucide-react";
 import { useAuth } from "../../../lib/auth/context";
 import { track } from "../../../lib/analytics";
 import { card, colors, dangerTint, inputStyle as inputBase } from "@/lib/styles";
 import { PhoneInput, formatUzPhone, isValidUzPhone } from "../../../components/PhoneInput";
+import { MaxsavdoLogo } from "@/components/brand/MaxsavdoLogo";
 
 const inputStyle: React.CSSProperties = {
   ...inputBase,
@@ -72,11 +72,8 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="w-16 h-16 rounded-lg flex items-center justify-center text-3xl mx-auto mb-3"
-            style={{ background: colors.accent }}
-          >
-            <ShoppingCart size={28} color={colors.accentTextOnBg} />
+          <div className="flex justify-center mb-3">
+            <MaxsavdoLogo size={64} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: colors.brand }}>maxsavdo</h1>
           <p className="text-sm mt-1" style={{ color: colors.textMuted }}>Панель продавца</p>
