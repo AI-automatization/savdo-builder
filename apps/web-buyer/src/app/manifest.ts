@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Savdo — магазины Узбекистана',
-    short_name: 'Savdo',
+    name: 'maxsavdo — магазины Узбекистана',
+    short_name: 'maxsavdo',
     description: 'Покупайте у продавцов Узбекистана через Telegram. Быстро, удобно, без регистрации.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#FBF7F0',
-    theme_color: '#A05A45',
+    background_color: '#0A0A0A',
+    theme_color: '#C9A876',
     lang: 'ru',
     orientation: 'portrait',
     icons: [

@@ -17,6 +17,7 @@ import { colors, shell, shellTop } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { buyerHostDisplay, buyerStoreDisplay, buyerStoreUrl } from "@/lib/buyer-url";
 import { useTranslation } from "@/lib/i18n";
+import { MaxsavdoLogo } from "@/components/brand/MaxsavdoLogo";
 
 // ── Nav item definitions (icons only — labels resolved via t() in component) ──
 
@@ -75,14 +76,8 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
     <>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
-        <Link href="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: colors.accent }}
-          >
-            <ShoppingCart size={16} color={colors.accentTextOnBg} />
-          </div>
-          <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
+        <Link href="/dashboard" className="flex items-center transition-opacity hover:opacity-80" aria-label="maxsavdo dashboard">
+          <MaxsavdoLogo size={24} withWordmark />
         </Link>
         <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: colors.accentMuted, color: colors.accent }}>Beta</span>
       </div>

@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { Rocket, ShoppingCart } from 'lucide-react';
+import { Rocket } from 'lucide-react';
 import { useCreateStore, useSubmitStore, useStore } from '../../../hooks/use-seller';
 import { useUpdateSellerProfile } from '../../../hooks/use-seller';
 import { useAuth } from '../../../lib/auth/context';
 import { applySeller } from '../../../lib/api/seller.api';
 import { buyerHostDisplay } from '../../../lib/buyer-url';
 import { track } from '../../../lib/analytics';
+import { MaxsavdoLogo } from '@/components/brand/MaxsavdoLogo';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -495,13 +496,7 @@ export default function OnboardingPage() {
     <div className="rounded-3xl p-7" style={glass}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 mb-6">
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-          style={{ background: colors.accent }}
-        >
-          <ShoppingCart size={16} color={colors.accentTextOnBg} />
-        </div>
-        <span className="text-base font-bold" style={{ color: colors.brand }}>Savdo</span>
+        <MaxsavdoLogo size={24} withWordmark />
       </div>
 
       <ProgressBar step={step} />

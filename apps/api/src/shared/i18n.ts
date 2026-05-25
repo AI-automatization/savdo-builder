@@ -71,7 +71,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
   uz: {
     // ── Order statuses (buyer-facing) ─────────────────────────────────────
-    'orders.status.PENDING.buyer':    '⏳ tasdiqlanmoqda',
+    'orders.status.PENDING.buyer':    '⏳ kutilmoqda',
     'orders.status.CONFIRMED.buyer':  '✅ sotuvchi tomonidan tasdiqlangan',
     'orders.status.PROCESSING.buyer': '📦 joʻnatishga tayyorlanmoqda',
     'orders.status.SHIPPED.buyer':    '🚚 joʻnatildi',
@@ -79,7 +79,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'orders.status.CANCELLED.buyer':  '❌ bekor qilindi',
 
     // ── Order statuses (seller-facing) ────────────────────────────────────
-    'orders.status.PENDING.seller':    '⏳ tasdiqlanmoqda',
+    'orders.status.PENDING.seller':    '⏳ kutilmoqda',
     'orders.status.CONFIRMED.seller':  '✅ tasdiqlangan',
     'orders.status.PROCESSING.seller': '📦 tayyorlanmoqda',
     'orders.status.SHIPPED.seller':    '🚚 joʻnatildi',

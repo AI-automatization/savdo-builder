@@ -76,7 +76,7 @@
 - RBAC двухуровневый: `Roles('ADMIN'|'SELLER'|'BUYER')` + AdminPermissionGuard
   с матрицей `admin-permissions.ts` (super_admin / admin / moderator / support
   / finance / read_only). 23 destructive admin endpoints под `@AdminPermission`.
-- CORS allow-list 4 прод-домена + ALLOWED_ORIGINS env, паттерны `*.savdo.uz`,
+- CORS allow-list 4 прод-домена + ALLOWED_ORIGINS env, паттерны `*.maxsavdo.uz`,
   `telegram.org`. Wildcard `*.up.railway.app` убран (`SEC-AUDIT-02`, `8ead898`).
 - Rate-limiting: глобальный 120 req/min, локальные `@Throttle` на cart, wishlist,
   orders, media/upload, seller/products. `trust proxy: 1` (`SEC-AUDIT-03`).
@@ -433,16 +433,16 @@
 - LegalPage компонент shared, footer checkout линкует на /offer и /privacy.
 - `lang=ru`, schema.org/Organization JSON-LD, robots.txt, sitemap.xml,
   manifest.ts.
-- Refund flow в /refund: 14 дней, ст. 2 лет гарантия, контакт `support@savdo.uz`.
+- Refund flow в /refund: 14 дней, ст. 2 лет гарантия, контакт `support@maxsavdo.uz`.
 - Privacy упоминает Telegram OTP, нет SMS/Eskiz.
 
 ### Что отсутствует
 - **🔴 Реквизиты юр.лица в /offer — placeholder.** Цитата с line 73:
-  «Реквизиты юридического лица, оператора платформы Savdo, будут размещены
+  «Реквизиты юридического лица, оператора платформы maxsavdo, будут размещены
   после завершения регистрационных процедур». В УЗ публичная оферта без
   ИНН/ОКЭД/юр.адреса оператора имеет сомнительный статус договора.
   **Это блокер запуска под прод.**
-- `support@savdo.uz` и `legal@savdo.uz` — почтовые ящики не подтверждены
+- `support@maxsavdo.uz` и `legal@maxsavdo.uz` — почтовые ящики не подтверждены
   (не видно DNS/Mailgun-конфига в репо).
 - Нет cookie banner / GDPR-style consent (для УЗ необязательно, но Telegram WebApp
   на EU IP может попасть под GDPR territorial scope).
@@ -456,7 +456,7 @@
 
 ### Следующие шаги
 - После регистрации ИП/ООО — заменить placeholder в `apps/web-buyer/src/app/offer/page.tsx:71-75`.
-- Настроить email-forwarding на team-Telegram (savdo.uz MX → Cloudflare Email
+- Настроить email-forwarding на team-Telegram (maxsavdo.uz MX → Cloudflare Email
   Routing → ...).
 
 ---
@@ -468,7 +468,7 @@
   - `<html lang>` = ru.
   - `sitemap.ts` (home + 4 legal).
   - `robots.ts` (allow / disallow privates).
-  - `manifest.ts` (Savdo PWA).
+  - `manifest.ts` (maxsavdo PWA).
   - JSON-LD Organization sitewide.
   - JSON-LD Product schema на product layout (UZS pricing, schema.org/Offer).
 - `MARKETING-HOMEPAGE-DISCOVERY-001` ✅ 13.05 — discovery page (HomeHero,
@@ -484,12 +484,12 @@
 - Нет 404 / 500 кастомных страниц с retention CTA.
 - Google Search Console / Yandex Webmaster verification не подтверждено в репо.
 - Lighthouse SEO score не зафиксирован.
-- `metadataBase` — `process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz'`.
-  Если `savdo.uz` не куплен — production URL по факту Railway-домен, и все
+- `metadataBase` — `process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz'`.
+  Если `maxsavdo.uz` не куплен — production URL по факту Railway-домен, и все
   canonical-URL неверные.
 
 ### Blockers vs. nice-to-have
-- **🟠 Должно быть до запуска:** домен `savdo.uz` куплен и привязан к Railway,
+- **🟠 Должно быть до запуска:** домен `maxsavdo.uz` куплен и привязан к Railway,
   `NEXT_PUBLIC_BUYER_URL` корректен.
 
 ### Следующие шаги
@@ -540,7 +540,7 @@
 - Telegram bot @savdo_builderBOT — auth, deep-links, notifications.
 - `analytics-events` + `audit_logs` — admin может проследить заказ.
 - Cart abandonment nudge (после 4h) + wishlist price-drop / back-in-stock (cron'ы).
-- `support@savdo.uz` упоминается в /refund.
+- `support@maxsavdo.uz` упоминается в /refund.
 - `8 operations_model.md` SLA: P1 30мин, P2 2ч, P3 24ч.
 - Admin импеrsonation (`/admin/auth/impersonate/:userId`) — support может
   «зайти» как buyer/seller для дебага.
@@ -548,7 +548,7 @@
 ### Что отсутствует
 - **Канал поддержки клиентов не подключён** — нет TG-чата поддержки (`@savdo_support`?),
   нет FAQ-страницы на web-buyer.
-- `support@savdo.uz` mailbox не подтверждён.
+- `support@maxsavdo.uz` mailbox не подтверждён.
 - В TMA `Settings` нет «Связаться с поддержкой» CTA.
 - В web-buyer `/profile` нет блока поддержки.
 - Help-center / FAQ полностью отсутствует (страница `/help`).
@@ -645,7 +645,7 @@
 | # | Задача | Owner | Тип | Days |
 |---|--------|-------|-----|------|
 | 1 | **VERIFY-CHECKOUT-CONFIRM-500-001** — реально проверить корзинный checkout на проде (delivery+pickup). Без этого риск что мы запускаемся на сломанном critical-path. | Азим | КОД (verify) | 0.5 |
-| 2 | **PROD-DOMAIN-001** — купить `savdo.uz`, привязать к Railway (CNAME apex), обновить `NEXT_PUBLIC_BUYER_URL`, `SAVDO_PROD_ORIGINS` в `main.ts`, обновить deep-link в Telegram bot. | Полат + бизнес | ВН | 1–3 |
+| 2 | **PROD-DOMAIN-001** — купить `maxsavdo.uz`, привязать к Railway (CNAME apex), обновить `NEXT_PUBLIC_BUYER_URL`, `SAVDO_PROD_ORIGINS` в `main.ts`, обновить deep-link в Telegram bot. | Полат + бизнес | ВН | 1–3 |
 | 3 | **LEGAL-OFFER-REQUISITES-001** — зарегистрировать юр.лицо (ИП/ООО) → заполнить `apps/web-buyer/src/app/offer/page.tsx:71-75` ИНН/ОКЭД/юр.адрес/расчётный счёт. | Бизнес | ВН | 3–7 (внешняя процедура) |
 | 4 | **INFRA-BACKUP-RUNBOOK-001** — `docs/runbooks/postgres-backup-restore.md` (Railway managed snapshot retention, restore procedure, RPO=24ч RTO=2ч). Один реальный restore-drill на staging. | Полат | КОД+ВН | 1 |
 | 5 | **INFRA-UPTIME-ALERTS-001** — UptimeRobot или Betterstack для 5 endpoint'ов, Telegram-нотификации в team-чат. | Полат | ВН (no-code) | 0.5 |
@@ -672,7 +672,7 @@ frontend параллельно). С учётом что пп.3 — внешня
 | R2 | **Потеря prod БД без backup** — Railway снапшот retention не зафиксирован, restore drill не делался | Low | Critical | Backup runbook + один real restore drill в staging до запуска. |
 | R3 | **`/offer` без реквизитов = юр.недействительный договор** — buyer может оспорить сделку, продавец вправе отказаться от обязательств | High (после первой претензии) | High | Заполнить line 71-75 после регистрации ИП/ООО. |
 | R4 | **Cash-only = низкая конверсия** — 75% UZ e-com через Click/Payme; Telegram-аудитория особенно (молодёжь без cash). | High | High (для GMV) | Не критично для технического запуска. Plan-B: PAY-002/003 после счёта. |
-| R5 | **Domain savdo.uz не куплен / не на CNAME** — все canonical/OG ведут на Railway-домен → low SEO, странные share-cards в TG. | High | Med | Купить домен + Railway custom domain до объявления. |
+| R5 | **Domain maxsavdo.uz не куплен / не на CNAME** — все canonical/OG ведут на Railway-домен → low SEO, странные share-cards в TG. | High | Med | Купить домен + Railway custom domain до объявления. |
 | R6 | **0 frontend smoke tests** — критические регрессии ловятся пользователями. После prod-инцидента типа `WB-B01` (preview != confirm) можем не заметить. | High | Med | 3-4 Playwright smoke + hourly cron. |
 | R7 | **Отсутствие алертинга** — downtime замечается реактивно (1+ час задержка). | Med | High | UptimeRobot 5 минут setup. |
 | R8 | **No support channel** — пользователь жалуется в Telegram-канал @savdo_builderBOT или просто уходит. | High | Med | `@savdo_support` чат + footer link. |

@@ -9,7 +9,7 @@ import { track } from '../../../lib/analytics';
 import { card, colors } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
 
-const BUYER_URL = process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz';
+const BUYER_URL = process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://maxsavdo.uz';
 
 export default function BecomeSellerPage() {
   const router = useRouter();
@@ -63,7 +63,7 @@ export default function BecomeSellerPage() {
           <ShoppingCart size={16} color={colors.accentTextOnBg} />
         </div>
         <span className="text-base font-bold" style={{ color: colors.brand }}>
-          Savdo
+          maxsavdo
         </span>
       </div>
 

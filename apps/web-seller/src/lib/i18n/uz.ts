@@ -71,7 +71,7 @@ export const uz: Translations = {
   'onboarding.errorCreateStore': 'Doʻkon yaratib boʻlmadi. Qayta urinib koʻring.',
   'onboarding.errorSubmitStore': 'Yuborib boʻlmadi.',
   'onboarding.noStoreTitle': 'Sizda hali doʻkon yoʻq',
-  'onboarding.noStoreSubtitle': 'Savdoda oʻz doʻkoningizni oching — buyurtmalarni toʻgʻridan-toʻgʻri Telegramda qabul qiling, sayt va vositachilarsiz.',
+  'onboarding.noStoreSubtitle': 'maxsavdoda oʻz doʻkoningizni oching — buyurtmalarni toʻgʻridan-toʻgʻri Telegramda qabul qiling, sayt va vositachilarsiz.',
   'onboarding.openStore': 'Doʻkon ochish',
   'onboarding.goShopping': 'Xaridga oʻtish',
   'onboarding.logout': 'Hisobdan chiqish',

@@ -73,7 +73,7 @@ export const ru: Translations = {
   'onboarding.errorCreateStore': 'Не удалось создать магазин. Попробуйте ещё раз.',
   'onboarding.errorSubmitStore': 'Не удалось отправить на проверку.',
   'onboarding.noStoreTitle': 'У вас ещё нет магазина',
-  'onboarding.noStoreSubtitle': 'Откройте свой магазин в Savdo — принимайте заказы прямо в Telegram, без сайта и без посредников.',
+  'onboarding.noStoreSubtitle': 'Откройте свой магазин в maxsavdo — принимайте заказы прямо в Telegram, без сайта и без посредников.',
   'onboarding.openStore': 'Открыть магазин',
   'onboarding.goShopping': 'Перейти к покупкам',
   'onboarding.logout': 'Выйти из аккаунта',

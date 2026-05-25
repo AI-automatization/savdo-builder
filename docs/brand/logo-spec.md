@@ -1,12 +1,12 @@
-# Savdo — Logo Specification
+# maxsavdo — Logo Specification
 
 **Версия:** 1.0 · **Дата:** 2026-05-20
 
 ---
 
-## 1. Что есть «логотип Savdo»
+## 1. Что есть «логотип maxsavdo»
 
-Текущее (на 2026-05-20) — wordmark «Savdo» Inter Semibold в `--color-brand`. В разных приложениях рядом с wordmark стоят разные иконки (ShoppingCart в buyer, ShoppingCart в seller — разные размеры и цвета). Эта несогласованность — главная brand-проблема, которую нужно решить.
+Текущее (на 2026-05-20) — wordmark «maxsavdo» Inter Semibold в `--color-brand`. В разных приложениях рядом с wordmark стоят разные иконки (ShoppingCart в buyer, ShoppingCart в seller — разные размеры и цвета). Эта несогласованность — главная brand-проблема, которую нужно решить.
 
 Этот документ предлагает **пять концептов** логотипа от консервативного (просто wordmark) до художественного (mascot), с deg of commitment к brand-выражению. Финальный выбор — задача Азима + бизнес-решение.
 
@@ -38,7 +38,7 @@
 - App icon (iOS/Android/PWA): 180x180, 512x512
 - TG webapp icon: 256x256
 - Маленький лого в footer / в email-подписи (24x24 — 48x48)
-- В компании с wordmark: monogram (32px) + 12px gap + wordmark «Savdo» (24px)
+- В компании с wordmark: monogram (32px) + 12px gap + wordmark «maxsavdo» (24px)
 
 ### 2.B — Paper-plane + Shopping-bag Hybrid
 
@@ -57,9 +57,9 @@
 - Telegram-blue появляется в brand-точке — может конфликтовать с правилом «Telegram blue только для CTA».
 - Метафора может стать датированной если Telegram ребрендится.
 
-### 2.C — Pure Wordmark «Savdo»
+### 2.C — Pure Wordmark «maxsavdo»
 
-**Идея:** только текст «Savdo», без иконки. Wordmark становится самостоятельным знаком.
+**Идея:** только текст «maxsavdo», без иконки. Wordmark становится самостоятельным знаком.
 
 **Визуальный язык:**
 - Inter Semibold 600.
@@ -69,13 +69,13 @@
 
 **Pros:**
 - Минимум усилий на старте (буквально CSS).
-- Имя «Savdo» начинает само работать как знак.
+- Имя «maxsavdo» начинает само работать как знак.
 - Хорошо на marketing (большой текст), в email-подписи.
 
 **Cons:**
-- Favicon 16x16 — wordmark «Savdo» нечитаем, нужен fallback на «S» monogram.
+- Favicon 16x16 — wordmark «maxsavdo» нечитаем, нужен fallback на «S» monogram.
 - Меньше memorability чем у визуальной марки.
-- Trademark в UZ: «Savdo» — словарное слово, защитить сложно. Визуальный знак защищается легче.
+- Trademark в UZ: «maxsavdo» — словарное слово, защитить сложно. Визуальный знак защищается легче.
 
 ### 2.D — Orientalist Mark (узбекский орнамент)
 
@@ -103,7 +103,7 @@
 
 **Визуальный язык:**
 - Иллюстрация: warm-tinted, не cartoonish, geometric character (без расовых стереотипов!).
-- Mascot имеет имя — Лолабай, Эмиржон, или нейтральное «Savdo Baby».
+- Mascot имеет имя — Лолабай, Эмиржон, или нейтральное «maxsavdo Baby».
 
 **Pros:**
 - Сильный эмоциональный якорь.
@@ -122,13 +122,13 @@
 
 ## 3. Финальная рекомендация
 
-**Primary logo:** концепт **2.A — Polished Monogram S** (геометрическая S) + **wordmark «Savdo»** в Inter Semibold.
+**Primary logo:** концепт **2.A — Polished Monogram S** (геометрическая S) + **wordmark «maxsavdo»** в Inter Semibold.
 
 **Composition rules:**
-1. **Lockup (горизонтальный):** monogram-S (left) + 12px gap + «Savdo» (right). Используется в headers, sidebars, marketing.
-2. **Stacked (вертикальный):** monogram-S (top) + 4px gap + «Savdo» (bottom, под monogram). Используется в square layouts — share-cards, profile-pic, email-signature.
+1. **Lockup (горизонтальный):** monogram-S (left) + 12px gap + «maxsavdo» (right). Используется в headers, sidebars, marketing.
+2. **Stacked (вертикальный):** monogram-S (top) + 4px gap + «maxsavdo» (bottom, под monogram). Используется в square layouts — share-cards, profile-pic, email-signature.
 3. **Solo monogram:** только S — favicon, app icon, watermark.
-4. **Solo wordmark:** только «Savdo» — там, где места мало для monogram (very narrow header, footer-line).
+4. **Solo wordmark:** только «maxsavdo» — там, где места мало для monogram (very narrow header, footer-line).
 
 ---
 
@@ -142,17 +142,17 @@
 - **App icon corner radius (если используется как app icon):** 22.5% (Apple HIG iOS) или 15% (Android adaptive icon mask handles это сам).
 - **Aspect ratio:** strict 1:1. Никогда не растягивать в овал.
 
-### Wordmark «Savdo»
+### Wordmark «maxsavdo»
 
 - **Cap-height (S):** define как `1S` unit.
 - **x-height (a, v, d, o):** ≈ `0.72S`.
 - **Tracking:** `-0.01em`.
-- **No descenders** (нет букв с нижними хвостами кроме «p» — но в «Savdo» их нет → wordmark остаётся в верхней половине line-box, что облегчает alignment).
+- **No descenders** (нет букв с нижними хвостами кроме «p» — но в «maxsavdo» их нет → wordmark остаётся в верхней половине line-box, что облегчает alignment).
 
 ### Lockup (horizontal)
 
 ```
-[monogram-S 32x32]  [12px gap]  [wordmark "Savdo" 24px height]
+[monogram-S 32x32]  [12px gap]  [wordmark "maxsavdo" 24px height]
 ```
 
 Высота monogram должна быть **больше** высоты wordmark на ~30% — monogram становится визуальной точкой опоры, wordmark — подписью.
@@ -265,12 +265,12 @@
 3. **Не используй градиенты** — solid fill только.
 4. **Не используй другой шрифт для wordmark** — только Inter Semibold.
 5. **Не используй другой цвет для wordmark** — только terracotta или inverse cream / mono-white / mono-black.
-6. **Не используй кавычки в wordmark** — «Savdo», не "Savdo" или 'Savdo'.
+6. **Не используй кавычки в wordmark** — «maxsavdo», не "maxsavdo" или 'maxsavdo'.
 7. **Не пиши SAVDO** капс-локом — это лозунг, не wordmark.
-8. **Не пиши savdo** lowercase — большая S обязательна.
+8. **Не пиши maxsavdo** lowercase — большая S обязательна.
 9. **Не помещай logo на низкоконтрастный фон** — нужно ≥ 3:1 для logo vs bg.
 10. **Не используй monogram вверх ногами / зеркально** — даже для creative-задач. Это перестаёт быть logo.
-11. **Не комбинируй с другими wordmark-сами** — никаких «Savdo × Uzum», «Savdo for Telegram», «Savdo Pro» написанных в одну строку с logo. Это партнёрские lockups — отдельный документ.
+11. **Не комбинируй с другими wordmark-сами** — никаких «maxsavdo × Uzum», «maxsavdo for Telegram», «maxsavdo Pro» написанных в одну строку с logo. Это партнёрские lockups — отдельный документ.
 12. **Не накладывай иконки внутрь monogram** — S остаётся чистой S.
 
 ---
@@ -285,7 +285,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="120" height="36" viewBox="0 0 120 36">
   <text x="0" y="26" font-family="Inter, system-ui, sans-serif"
         font-size="28" font-weight="600" letter-spacing="-0.28"
-        fill="#7C3F2E">Savdo</text>
+        fill="#7C3F2E">maxsavdo</text>
 </svg>
 ```
 
@@ -329,7 +329,7 @@
 
 ## 11. Trademark / legal
 
-- **«Savdo»** — узбекское словарное слово, означает «торговля». **Не защищается** как самостоятельный word-mark в UZ без приставки / визуала.
+- **«maxsavdo»** — узбекское словарное слово, означает «торговля». **Не защищается** как самостоятельный word-mark в UZ без приставки / визуала.
 - **Monogram S + wordmark composition** — может быть зарегистрирована как combined-mark в Узпатенте (узпатенте.uz). Это **TODO**.
 - **Trademark класс:** 35 (реклама, бизнес-управление, торговые услуги), 42 (программное обеспечение).
 - **На каждом носителе** где появляется logo первый раз в документе/странице — допустимо добавлять `™` или `®` (после регистрации). На каждом повторе — не нужно.
@@ -347,7 +347,7 @@
 - [ ] Pixel-perfect: SVG в web, ≥2x raster для print
 - [ ] Без эффектов (тени, обводки, градиенты, 3D)
 - [ ] Не растянут, не зеркален, не повернут
-- [ ] Wordmark Inter Semibold, capital S «Savdo»
+- [ ] Wordmark Inter Semibold, capital S «maxsavdo»
 
 ---
 

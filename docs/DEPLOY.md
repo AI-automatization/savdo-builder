@@ -13,7 +13,7 @@
 
 1. Зайти на [dashboard.render.com](https://dashboard.render.com)
 2. **New** → **Blueprint**
-3. Выбрать репозиторий организации (например `savdo-org/savdo`)
+3. Выбрать репозиторий организации (например `savdo-org/maxsavdo`)
 4. Render найдёт `render.yaml` в корне и предложит создать все сервисы автоматически
 
 > CI/CD настроится сам: каждый push в ветку `main` → автоматический деплой.

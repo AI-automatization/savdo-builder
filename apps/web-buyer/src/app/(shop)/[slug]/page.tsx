@@ -33,7 +33,7 @@ export async function generateMetadata({
     const store = await serverGetStoreBySlug(slug);
     const desc = store.description ?? `Магазин ${store.name} в Telegram. Доставка по ${store.city}.`;
     const ogImage = store.coverUrl ?? store.logoUrl ?? undefined;
-    const title = `${store.name} — Savdo`;
+    const title = `${store.name} — maxsavdo`;
 
     return {
       title,
@@ -41,7 +41,7 @@ export async function generateMetadata({
       alternates: { canonical: `/${slug}` },
       openGraph: {
         type: 'website',
-        siteName: 'Savdo',
+        siteName: 'maxsavdo',
         title,
         description: desc,
         url: `/${slug}`,
@@ -56,7 +56,7 @@ export async function generateMetadata({
       },
     };
   } catch {
-    return { title: 'Магазин — Savdo' };
+    return { title: 'Магазин — maxsavdo' };
   }
 }
 
