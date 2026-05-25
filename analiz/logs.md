@@ -29,8 +29,8 @@
     status/visibility). Variants-бейдж тоже скрывается на OOS (правильно).
   - Tasks.md: тикет Полату `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` — добавить
     `totalStock: number` в `ProductListItem`. После этого Азим уберёт cast.
-- **Не запушено:** правка `ProductCard.tsx` локальная (uncommitted на `main` —
-  будет в `web-buyer` после следующего push). Type-расширение — у Полата.
+- **Закоммичено:** правка `ProductCard.tsx` на `main` (25.05.2026). Type-расширение
+  ещё у Полата — после закрытия `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` Азим уберёт cast.
 
 ## [2026-05-21] [BUILD-VITE-OVERRIDE-2026-05-20] 🟢 vite override `>=6.4.2` не ломает web-buyer/web-seller
 - **Статус:** 🟢 OK, ничего чинить не нужно. Опасение #5 Азима — закрыто.
