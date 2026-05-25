@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     url: '/',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'maxsavdo — магазины в Telegram',
     description: 'Покупайте у продавцов Узбекистана через Telegram',
   },
