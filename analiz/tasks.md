@@ -5,6 +5,145 @@
 
 ---
 
+## 🔴 [BRAND-LOGO-SVG-CREATE-001] Создать SVG-исходники логотипа maxsavdo
+
+- **Домен:** brand assets (Полат + Азим — сами).
+- **Кто берёт:** Полат (lead) или Азим — кому удобнее работать в Figma/Illustrator.
+- **Приоритет:** P0 — блокирует все brand-rollout задачи Азима и Полата ниже.
+- **Контекст:** 24.05.2026 утверждены палитра + логотип maxsavdo (`docs/brand/assets/maxsavdo/` — 3 JPG, AI-mockup от Полата). У нас нет отдельного дизайнера, поэтому SVG надо создавать самим. Для web (favicon, header, app icon) JPG не подходит — нужен вектор.
+- **Что сделать (варианты):**
+  - **Вариант A (рекомендую) — AI-vectorize JPG:**
+    1. Загрузить `docs/brand/assets/maxsavdo/logo-app-icon.jpg` в [Vectorizer.ai](https://vectorizer.ai) или [Recraft](https://recraft.ai) (free credits есть).
+    2. Скачать SVG → почистить anchor points в Figma → разделить на слои (mark отдельно от wordmark).
+  - **Вариант B — нарисовать с нуля в Figma:**
+    1. M с bag handle — geometric shapes, две половины: левая Pure White, правая Champagne Gold.
+    2. Wordmark MAXSAVDO — выбрать шрифт (`BRAND-FONT-CHOOSE-001`), золотая "A" в центре.
+    3. Export SVG.
+  - **Вариант C — нанять freelancer-векторизатора** на Kwork/Upwork (~5-15$ за работу).
+- **Нужные файлы:**
+  - `logo-mark.svg` — монограмма M с bag handle (без wordmark)
+  - `logo-wordmark.svg` — только "MAXSAVDO" текст
+  - `logo-lockup.svg` — mark + wordmark в горизонталь / вертикаль
+  - `logo-app-icon.svg` — для favicon / TMA icon (rounded square с тёмным фоном)
+  - Inverse-варианты (чёрный mark для светлого фона)
+- **После создания:**
+  1. Положить в `docs/brand/assets/maxsavdo/` (JPG переместить в `docs/brand/assets/maxsavdo/originals/`).
+  2. Удалить deprecated `logo-monogram-s*.svg` и `logo-lockup-horizontal.svg` (старый maxsavdo S).
+- **Definition of done:** в `docs/brand/assets/maxsavdo/` лежат SVG-файлы выше.
+
+---
+
+## ✅ [BRAND-PALETTE-HEX-PICK-001] Снять HEX палитры — закрыто 25.05.2026
+
+Закрыто Азимом (visual eyedropper Opus 4.7 по brand-book JPG). Финал в
+`docs/brand/maxsavdo-brand-v2.md`: Rich Black `#0A0A0A`, Champagne Gold
+`#C9A876`, Champagne Gold Light `#E8C898`, Pure White `#FFFFFF`. OCR-цифры
+в JPG битые (terracotta для gold, красный для чёрного — ошибки), визуальная
+eyedropper-оценка использована. Деталь — `done.md`.
+
+---
+
+## ✅ [BRAND-FONT-CHOOSE-001] Выбрать шрифт — закрыто 25.05.2026
+
+Закрыто Азимом. **Inter** weights 300-700, subsets latin+latin-ext+
+cyrillic+cyrillic-ext. Outfit/Geist (ближе к brand-book wordmark) не имеют
+Cyrillic → не подходят. Подключено в обоих апах через `next/font/google` →
+`--font-inter`. Деталь — `done.md`.
+
+---
+
+## ✅ [BRAND-WEB-COLOR-TOKENS-001 + UI-REPLACE-001] Tailwind tokens + UI rebrand — закрыто 25.05.2026
+
+Закрыто Азимом (web-buyer + web-seller). Палитра Dark Luxury в `globals.css`
+обоих апов (Rich Black + Champagne Gold + Pure White + neutral semantics).
+Заменены 13 файлов с хардкодед `Savdo` → `maxsavdo` и `savdo.uz` →
+`maxsavdo.uz` (Header wordmark, hero, legal pages, sitemap/robots, seller
+sidebar/login/onboarding). Backwards-compat regex parser принимает оба
+домена. Визуальная проверка через Playwright MCP — light + dark theme
+обоих апов выглядят production-grade. tsc + next build чисты в обоих.
+Деталь — `done.md`.
+
+---
+
+## 🟡 [BRAND-ADMIN-REBRAND-001] Обновить apps/admin под maxsavdo brand v2
+
+- **Домен:** `apps/admin` (Полат, c 01.04.2026).
+- **Кто берёт:** Полат.
+- **Приоритет:** P2 — admin видят только Полат и Азим, поэтому не блокирует launch. Но для консистентности — обновить вместе с фронтами.
+- **Зависит от:** `BRAND-LOGO-SVG-SOURCE-001` (нужны SVG), `BRAND-PALETTE-HEX-CONFIRM-001` (точные цвета).
+- **Что сделать:**
+  1. Заменить логотип в layout/header (`apps/admin/.../layout.tsx` или эквивалент) на новый maxsavdo SVG.
+  2. Заменить favicon (`apps/admin/public/favicon.ico`, `apple-touch-icon.png`).
+  3. Обновить `<title>` и meta-теги: "maxsavdo Admin" → "maxsavdo Admin".
+  4. Обновить color tokens (если admin использует свои) — Rich Black bg + Champagne Gold accent.
+  5. Обновить login-page (если есть отдельный) — лого вверху.
+- **Файлы:** `apps/admin/` (layout, public/, theme-конфиг если есть).
+- **Definition of done:** admin визуально консистентен с новым brand-book.
+
+---
+
+## 🟡 [BRAND-EMAIL-TEMPLATES-001] Обновить email-templates под maxsavdo
+
+- **Домен:** `apps/api` (если шаблоны там) / отдельный пакет (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P2 — email сейчас не критичны (OTP через Telegram), но если есть transactional emails (order confirmation, password reset) — обновить.
+- **Что сделать:**
+  1. Найти где лежат email-шаблоны (likely `apps/api/src/mail/templates/` или подобное).
+  2. Заменить логотип в header'е писем на новый maxsavdo (PNG-фолбэк для email-клиентов).
+  3. Обновить colors: основной background — Pure White, accent — Champagne Gold, текст — Rich Black.
+  4. Заменить "maxsavdo" → "maxsavdo" во всех transactional текстах.
+  5. Footer: добавить maxsavdo wordmark, контакты, ссылки на offer/privacy.
+- **Файлы:** TBD (зависит от структуры email-кода).
+
+---
+
+## 🟡 [BRAND-TG-BOT-COPY-001] Обновить тексты Telegram-бота под maxsavdo
+
+- **Домен:** `apps/api` (Telegram bot logic, Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P2.
+- **Что сделать:**
+  1. Welcome-сообщение бота: "Добро пожаловать в maxsavdo" → "Добро пожаловать в maxsavdo" + краткий tagline.
+  2. OTP-сообщения: проверить упоминания бренда.
+  3. Notifications (заказ создан / отменён / chat) — название бренда.
+  4. Bot description (BotFather → /setdescription) — обновить.
+  5. Bot about (/setabouttext) — обновить.
+  6. Bot profile picture — заменить на app-icon из brand-book (`docs/brand/assets/maxsavdo/logo-app-icon.jpg` → SVG → PNG 640x640).
+- **Файлы:** `apps/api/src/modules/telegram/` или эквивалент.
+
+---
+
+## 🟡 [BRAND-API-METADATA-001] Обновить metadata в api/admin (OG, favicon, manifest)
+
+- **Домен:** `apps/api` + `apps/admin` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P2.
+- **Что сделать:**
+  1. Если admin раздаёт OG-image для shared-ссылок (например на error pages) — заменить на maxsavdo OG (1200×630, тёмный фон + лого + wordmark).
+  2. `manifest.json` в admin/api статике — name, short_name, theme_color, background_color, icons (192, 512).
+  3. `robots.txt` если содержит брендинг.
+- **Файлы:** `apps/admin/public/`, `apps/api/public/` (если есть).
+
+---
+
+## 🟡 [API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001] Декларировать `totalStock` в `ProductListItem`
+
+- **Домен:** `packages/types` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** P2 — closing contract drift. Backend уже отдаёт поле, frontend сейчас читает его через cast.
+- **Контекст:** `apps/api/src/modules/products/storefront.controller.ts` в 4 точках map'а (lines 190, 300, 327, 334) добавляет `totalStock = variants.reduce(...stockQuantity)` в ответ storefront-листа. `packages/types/src/api/products.ts` `interface ProductListItem` это поле **не декларирует** → web-buyer (`apps/web-buyer/src/components/store/ProductCard.tsx`) читает через временный cast `(product as { totalStock?: number }).totalStock`, чтобы корректно показывать OOS-overlay для товаров со всеми вариантами `stockQuantity===0`.
+- **Что сделать:** в `packages/types/src/api/products.ts` добавить в `ProductListItem`:
+  ```ts
+  /** Сумма stockQuantity по всем активным variants. 0 = всё OOS. */
+  totalStock: number;
+  ```
+  Опционально: то же поле в `Product` (extends ProductListItem) автонаследуется.
+- **Файлы:** `packages/types/src/api/products.ts`.
+- **После закрытия:** Азим уберёт cast в `apps/web-buyer/src/components/store/ProductCard.tsx` (помечен комментарием с этим ID).
+- **Связано:** logs.md `[STOREFRONT-STOCK-LIST-VS-DETAIL-001]` 21.05.2026 (UX-замечание о том, что OOS-товары на storefront-list выглядят как доступные — это и есть root cause).
+
+---
+
 ## 🟡 [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый реальный restore drill на прод-дампе
 
 - **Домен:** SRE / DBA (Полат)
@@ -20,10 +159,10 @@
   2. Снять свежий dump: `DATABASE_URL='postgresql://postgres:***@<host>:5432/railway'
      bash scripts/db/backup.sh`.
   3. Поднять локальный Postgres: `docker run -d --name savdo-staging-pg
-     -e POSTGRES_USER=savdo -e POSTGRES_PASSWORD=savdo -e POSTGRES_DB=savdo_staging
+     -e POSTGRES_USER=maxsavdo -e POSTGRES_PASSWORD=maxsavdo -e POSTGRES_DB=savdo_staging
      -p 55432:5432 postgres:16-alpine`.
   4. Запустить drill: `bash scripts/db/restore-drill.sh --dump backups/savdo-*.dump
-     --target-db postgresql://savdo:savdo@localhost:55432/savdo_staging
+     --target-db postgresql://maxsavdo:maxsavdo@localhost:55432/savdo_staging
      --source-db "$DATABASE_URL"`.
   5. Результат (PASS/FAIL + JSON-репорт) — зафиксировать в `analiz/logs.md`
      по шаблону из runbook'а §4.4.
@@ -54,33 +193,14 @@
 
 ---
 
-## 🟠 [CI-PNPM-AUDIT-001] Weekly `pnpm audit` в CI + baseline
-
-- **Домен:** `.github/workflows` (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P1 must-pass для public launch (закрывает Deps 6 → 7 в
-  `docs/decisions/launch-go-no-go-2026-05-20.md`). Overrides в `package.json:46`
-  патчат конкретные CVE, но нет регулярного скана.
-- **Что сделать:**
-  1. `.github/workflows/dependency-audit.yml` — cron `0 9 * * 1` (понедельник
-     9:00 UTC), `pnpm audit --prod --json`, fail если есть `high`/`critical`.
-  2. Зафиксировать baseline (`pnpm audit --prod --json > .audit-baseline.json`,
-     коммитнуть, в job сравнивать diff).
-  3. Опционально: `.github/dependabot.yml` weekly PR-bump'ы для `apps/api`,
-     `apps/web-*`, корень.
-- **Файлы:** `.github/workflows/dependency-audit.yml` (new), `.audit-baseline.json`
-  (new), `.github/dependabot.yml` (optional).
-
----
-
 ## 🔴 [LEGAL-OFFER-REQUISITES-001] Реквизиты юр.лица в /offer
 
 - **Домен:** `apps/web-buyer` (заполняется после регистрации ИП/ООО).
 - **Кто берёт:** Бизнес (регистрация) → Полат (правка placeholder'а).
 - **Приоритет:** P0 must-pass для public launch (закрывает Legal 5 → 7).
 - **Что:** заменить placeholder в `apps/web-buyer/src/app/offer/page.tsx:71-75`
-  на ИНН/ОКЭД/юр.адрес/расчётный счёт. Настроить MX `support@savdo.uz` +
-  `legal@savdo.uz` через Cloudflare Email Routing → Telegram-чат команды.
+  на ИНН/ОКЭД/юр.адрес/расчётный счёт. Настроить MX `support@maxsavdo.uz` +
+  `legal@maxsavdo.uz` через Cloudflare Email Routing → Telegram-чат команды.
 - **Скоуп:** 3–7 календарных дней регистрации + 30 мин правки. Для closed-beta
   не блокер (договариваемся с beta-sellers, что договор будет в течение 2 недель).
 
@@ -131,76 +251,39 @@
 
 ---
 
-## 🟢 [FAQ-001] `/help` страница в web-buyer — 8-10 Q&A
+## ✅ [FAQ-001] `/help` страница в web-buyer — 8-10 Q&A — закрыто 21.05.2026
 
-- **Домен:** `apps/web-buyer` (Азим).
-- **Кто берёт:** Азим.
-- **Приоритет:** P2 — поднимает Support 5.5 → 6.5 вместе с SUPPORT-CHANNEL-001.
-- **Что:** `apps/web-buyer/src/app/help/page.tsx` — статический FAQ:
-  как сделать заказ, как стать продавцом, как оплатить (cash-only сейчас),
-  что делать если не пришёл товар, как связаться с поддержкой и т.п.
-  i18n (ru + uz). Ссылка из footer.
-- **Скоуп:** 1 день.
+Закрыто (Азим, web-buyer `d61db84`). 8 Q&A на ru+uz, MenuRow «Помощь» в
+profile под Notifications, добавлен в sitemap. Деталь — `done.md`. Не сделано
+(отдельно): ссылка из checkout footer; native UZ review Азимом на проде после
+деплоя.
 
 ---
 
-## 🟢 [FRONTEND-SMOKE-PLAYWRIGHT-001] Playwright smoke на web-buyer + cron
+## 🟢 [FRONTEND-SMOKE-PLAYWRIGHT-001 part C] Playwright prod smoke — **рекомендую SKIP**
 
-- **Домен:** `apps/web-buyer` + CI (Азим, при участии Полата для CI).
-- **Кто берёт:** Азим (тесты) + Полат (CI cron на Railway prod URL).
-- **Приоритет:** P2 — закрывает Tests 5 → 6 (should-pass). Параллельная сессия
-  Полата 20.05 уже добавила admin (4 теста) + TMA (14 тестов), web-buyer/web-seller
-  всё ещё на 0.
-- **Что:**
-  1. `apps/web-buyer/playwright.config.ts` + `playwright/smoke.spec.ts` — 3 теста:
-     `/` рендерится, `/[slug]` рендерится, `/cart` добавление-удаление работает.
-  2. (Опционально, Азим) `apps/web-seller/playwright/smoke.spec.ts` — 1 тест:
-     login-page рендерится.
-  3. `.github/workflows/playwright-prod-smoke.yml` — hourly cron против
-     Railway prod URL. Алерт в TG при FAIL.
-- **Скоуп:** 2 дня.
+- **Домен:** `apps/web-buyer` + CI (Азим).
+- **Приоритет:** P3 — нет launch-блокера.
+- **Контекст part A/B уже закрыты** (см. done.md 21.05.2026): vitest smoke
+  покрывает helpers + i18n + uz-canonical для web-buyer и web-seller.
+  UptimeRobot из `INFRA-UPTIME-ALERTS-001` (у Полата) будет пинговать прод
+  каждые 5 мин на /health endpoints.
+- **Что would-be делать:**
+  - `apps/web-buyer/playwright.config.ts` + spec'и `/`, `/[slug]`, `/cart`
+    против Railway prod URL.
+  - `.github/workflows/playwright-prod-smoke.yml` — hourly cron + TG-алерт на FAIL.
+- **Аргументы за skip:**
+  1. vitest smoke + UptimeRobot покрывают ~80% того же риск-семейства без
+     flakiness реального браузера.
+  2. Playwright на проде flaky (network jitter, real Telegram OAuth, OTP gates) —
+     ложные срабатывания съедят больше внимания чем дадут.
+  3. Maintenance cost: каждое изменение UI ломает специку, нужно поддерживать.
+  4. Если ловить дросчий регресс — лучше Sentry frontend (которого ещё нет) +
+     UptimeRobot, чем Playwright crons.
+- **Когда вернуться:** после первого прод-инцидента, не покрытого UptimeRobot
+  (например, чекаут 500-ит, но `/health` зелёный — Playwright бы поймал).
 - **Источник:** `API-FRONTEND-TESTS-001` (web-buyer/web-seller часть) +
   readiness §6 + Risk R6.
-
----
-
-## 🟢 [ADMIN-I18N-DARK-THEME-CANONICAL-001] `Qorongʻi` → `Qorongʻu` в admin uz.ts
-
-- **Домен:** `apps/admin/src/lib/i18n/uz.ts` (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P3 — опечатка в латинизации, не функциональная проблема.
-- **Что:** в `apps/admin/src/lib/i18n/uz.ts:138-140` стоит `Qorongʻi` (с `i` на
-  конце). Стандартная форма в латинском узбекском — `Qorongʻu` (с `u`). Также:
-  - line 138: `'theme.dark': 'Qorongʻi mavzu'` → `'Qorongʻu mavzu'`
-  - line 140: `'theme.toDark': 'Qorongʻi mavzuga oʻtish'` → `'Qorongʻu mavzuga oʻtish'`
-- **Контекст:** web-buyer/web-seller сегодня (21.05.2026, см. `done.md`
-  `UZ-CANONICAL-WEB-2026-05-21`) приведены к канону `Qorongʻu`. Admin остался
-  единственным outlier'ом с `Qorongʻi` — для единообразия имеет смысл унифицировать.
-
----
-
-## 🟢 [PRE-LAUNCH-VITE-VERIFY-001] Sanity-проверка vite-override
-
-- **Домен:** web-buyer / web-seller / pnpm-lock (Азим).
-- **Кто берёт:** Азим — локально (разовое исключение из `feedback_no_local_run`).
-- **Приоритет:** P3 — overrides уже в `package.json:46`
-  (`"vite": ">=6.4.2"`). Полат предупредил в `done.md` 20.05 (TMA-FRONTEND-TESTS-001):
-  workspace-override фактически поднимает до **vite@8.0.10 (rolldown-vite)**,
-  не до 6.4.2 — это надо иметь в виду при чтении lockfile.
-- **Что сделать:**
-  1. `pnpm install` в корне.
-  2. `grep -E "^\s*vite@" pnpm-lock.yaml | sort -u` — увидеть фактическую
-     версию (ожидается 8.x rolldown). Это норма.
-  3. `cd apps/web-buyer && pnpm exec tsc --noEmit` — чистый. Web-buyer на Next 16,
-     vite в нём — только транзитивная dev-зависимость, type-check не должен трогать.
-  4. `cd apps/web-seller && pnpm exec tsc --noEmit` — чистый.
-  5. Если 3/4 падает с vite-related TS-ошибкой — откат: `package.json:46`
-     `"vite": ">=6.4.2"` → `"vite": "^6.4.1"` (явный pin до старой стабильной),
-     `pnpm install`, повторить.
-- **Файлы:** `package.json:46`, `pnpm-lock.yaml`.
-- **Note:** admin/tma уже проверены Полатом — TMA-тесты прошли 14/14 на vitest@3
-  поверх rolldown-vite; admin держится на stale vite@6.4.1 install (см.
-  `done.md` 20.05 TMA-FRONTEND-TESTS-001).
 
 ---
 
@@ -587,7 +670,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-PRODUCT-IMAGES-PATCH-001`** ✅ 15.05.2026 (Полат) — `PATCH /seller/products/:id/images/:imageId` добавлен (reorder `sortOrder` + toggle `isPrimary`, ownership-проверка, 404 на чужое фото, одна обложка на товар). DTO `UpdateProductImageDto`. Коммит `788aeb3`. Web-seller может подключить вместо delete+recreate fallback (закрывает `WS-B05`).
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
-- [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (Savdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
+- [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (maxsavdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
 - [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания, Полат); ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
@@ -627,7 +710,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 
 ## 🎨 P1 — Design quick wins (Полат + Азим)
 
-- [x] **`DESIGN-PHONE-INPUT-PACKAGE-001`** ✅ 14.05.2026 — **web-* (Азим) + packages/ui (Полат).** Web-*: `PhoneInput` в `apps/web-buyer/components/` + `apps/web-seller/components/` (дубль). **Полат 14.05.2026:** перенёс в `packages/ui/components/PhoneInput.tsx` + утилиты (formatUzPhone/stripUzPhone/isValidUzPhone), экспорт из `@savdo/ui`. `peerDependencies.react ^18||^19`. `packages/ui/README.md` с migration plan для Азима (подключить `"@savdo/ui": "workspace:*"` в web-buyer/web-seller package.json + `pnpm install` → удалить дубли + заменить импорты). TMA имеет свой `lib/phone.ts` (Wave 7), admin не нуждается. Дубли в web-* пока остаются — Азим уберёт после `pnpm install`.
+- [x] **`DESIGN-PHONE-INPUT-PACKAGE-001`** ✅ 14.05.2026 — **web-* (Азим) + packages/ui (Полат).** Web-*: `PhoneInput` в `apps/web-buyer/components/` + `apps/web-seller/components/` (дубль). **Полат 14.05.2026:** перенёс в `packages/ui/components/PhoneInput.tsx` + утилиты (formatUzPhone/stripUzPhone/isValidUzPhone), экспорт из `@maxsavdo/ui`. `peerDependencies.react ^18||^19`. `packages/ui/README.md` с migration plan для Азима (подключить `"@maxsavdo/ui": "workspace:*"` в web-buyer/web-seller package.json + `pnpm install` → удалить дубли + заменить импорты). TMA имеет свой `lib/phone.ts` (Wave 7), admin не нуждается. Дубли в web-* пока остаются — Азим уберёт после `pnpm install`.
 - [x] **`DESIGN-SEMANTIC-COLORS-001`** ✅ 14.05.2026 — **Web-* ✅ (Азим, hot-path)** + **Admin ✅ (Полат)**. Web-* теперь использует theme-aware `dangerTint(o)/warningTint(o)/successTint(o)` helpers (`rgb(var(--color-X-rgb)/o)` CSS color level 4). RGB-channels добавлены в `:root` и `[data-theme="dark"]` обоих апсов. **Admin (`apps/admin/src/lib/styles.ts`):** mirror helpers через `color-mix(in srgb, var(--error) X%, transparent)` (Chrome 111+/Safari 16.4+/FF 113+ — admin desktop-only). + готовые `errorBanner()`/`successBanner()`/`warningBanner()` CSSProperties stylesheets. **packages/design-tokens unified пакет НЕ делаем** — Soft Color Lifestyle (buyer) / Liquid Authority (seller+admin) by design разные.
 - [x] **`DESIGN-SEMANTIC-COLORS-RGBA-002`** ✅ 14.05.2026 (Азим) — все 15 точек hardcoded rgba заменены на `dangerTint(X)`: web-seller (14) в image-uploader, analytics, products list/create/edit, orders list+detail, notifications, chat (×3); web-buyer (1) в chats `⋮`-кнопке `rgba(220,38,38)` → `dangerTint()` (теперь подстраивается под Soft Color Lifestyle палитру buyer'а). Type-check `tsc --noEmit` чистый в обоих апах. Остатки `rgba(248,113,113)` в репо — только TMA + admin (зона Полата).
 - [x] **`DESIGN-TMA-BRAND-DIFF-001`** ✅ verified 14.05.2026 — реализовано параллельной FG-TOKENS сессией (TMA-DESIGN-ROLE-DIFF-001, Wave 7-12). `index.css` имеет `[data-role="SELLER"]` override на `--tg-accent` (cyan вместо orchid). `AppShell.tsx:21` ставит `data-role={role}` на root, `BottomNav.tsx:53` дублирует для bottom nav. Light + dark theme overrides оба покрыты. Buyer = orchid violet `#A855F7`, Seller = cyan `#22D3EE` — визуально различимы.
@@ -789,7 +872,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 ## 🆕 Аудит TMA (06.05.2026) — UI/UX + functional
 
 ### 🔴 P0 (исправлено)
-- [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `savdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
+- [x] **`TMA-PROFILE-LINK-PRETTIFY-001`** ✅ — seller/ProfilePage хардкод `maxsavdo.uz/{slug}` → кнопка «↗ Перейти на сайт».
 
 ### 🟠 P1 — для Полата
 - [x] **`TMA-NATIVE-CONFIRM-001`** ✅ 06.05.2026 — `components/ui/ConfirmModal.tsx` (`confirmDialog()` Promise<boolean> + ESC/Enter, danger flag). Все 5 мест заменены: `seller/ProductsPage.tsx` (3× confirm/alert), `seller/StorePage.tsx` (1× confirm). Контейнер замонтирован в `AppShell.tsx`.
@@ -1197,6 +1280,140 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 
 > TMA создан (сессия 15). Ждём Полата по API-021 и API-022 чтобы подключить auth и бот.
 
+---
+
+## 🔴 [BRAND-WEB-COLOR-TOKENS-001] Внедрить новую палитру maxsavdo (Tailwind + CSS vars)
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** P0 — фундамент brand-rollout, блокирует визуальные таски ниже.
+- **Зависит от:** `BRAND-PALETTE-HEX-CONFIRM-001` (можно начинать на предварительных HEX, но финальные подтвердить).
+- **Контекст:** 24.05.2026 получен финальный brand-book maxsavdo: палитра Rich Black + Champagne Gold + Pure White (см. `docs/brand/maxsavdo-brand-v2.md`). Текущая система — Soft Color Lifestyle (cream + terracotta + violet) — устарела.
+- **Что сделать:**
+  1. **web-buyer:** добавить новые tokens в `tailwind.config.ts`:
+     ```ts
+     colors: {
+       brand: {
+         black: '#0A0A0A',
+         gold: '#C9A876',
+         white: '#FFFFFF',
+         surface: { dark: '#1A1A1A', mid: '#2A2A2A', light: '#F8F8F8' },
+         border: { dark: '#3A3A3A', light: '#E5E5E5' },
+       },
+       success: '#10B981',
+       warning: '#F59E0B',
+       error: '#EF4444',
+       info: '#3B82F6',
+     }
+     ```
+  2. **web-buyer:** в `app/globals.css` объявить CSS-переменные для dark/light темы (см. секцию 5 в `docs/brand/maxsavdo-brand-v2.md`).
+  3. **web-seller:** аналогично — те же tokens, те же CSS-переменные.
+  4. Старые токены (terracotta, violet, cream) — пометить deprecated комментариями, но **не удалять сразу** (могут использоваться в legacy компонентах — удалим в чистке после rollout).
+- **Файлы:** `apps/web-buyer/tailwind.config.ts`, `apps/web-buyer/src/app/globals.css`, `apps/web-seller/tailwind.config.ts`, `apps/web-seller/src/app/globals.css`.
+- **Definition of done:** оба приложения имеют доступ к `bg-brand-black`, `text-brand-gold` etc. через Tailwind. Old tokens deprecated но не сломаны.
+
+---
+
+## 🔴 [BRAND-WEB-LOGO-REPLACE-001] Заменить логотип в web-buyer и web-seller
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** P0.
+- **Зависит от:** `BRAND-LOGO-SVG-SOURCE-001` (нужны SVG-исходники).
+- **Что сделать:**
+  1. Положить SVG-файлы в `apps/web-buyer/public/brand/` и `apps/web-seller/public/brand/` (или импортировать из `packages/ui` если решим централизованно).
+  2. **web-buyer:**
+     - Header — заменить старое лого (maxsavdo S) на maxsavdo lockup или mark+wordmark.
+     - Footer — wordmark.
+     - `favicon.ico`, `apple-touch-icon.png` — из app-icon brand-book.
+     - `manifest.json` — name "maxsavdo", icons, theme_color `#0A0A0A`.
+     - OG-image (`apps/web-buyer/src/app/opengraph-image.tsx` или подобное) — обновить.
+  3. **web-seller:**
+     - Header / sidebar — то же.
+     - Favicon, manifest, OG — то же.
+  4. Найти и удалить все references на старый `logo-monogram-s.svg`, `logo-lockup-horizontal.svg`.
+- **Файлы:** `apps/web-buyer/public/`, `apps/web-buyer/src/components/layout/`, `apps/web-seller/public/`, `apps/web-seller/src/components/layout/`.
+- **Definition of done:** во всех точках (header, footer, favicon, OG, manifest) — новый maxsavdo logo.
+
+---
+
+## 🔴 [BRAND-WEB-COMPONENTS-REWORK-001] Переработать компоненты под dark luxury палитру
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** P0 — это основной визуальный rollout.
+- **Зависит от:** `BRAND-WEB-COLOR-TOKENS-001`, `BRAND-WEB-LOGO-REPLACE-001`.
+- **Контекст:** старые компоненты использовали Soft Color Lifestyle (cream backgrounds, terracotta CTA, violet accents). Новая эстетика — Dark Luxury Minimalist: чёрные/тёмные surfaces, золото точечно для CTA и accent, много negative space.
+- **Что сделать (приоритет сверху вниз):**
+
+  ### web-buyer
+  1. **Homepage / landing** (`src/app/page.tsx`) — hero на Rich Black, золотая CTA-кнопка, wordmark.
+  2. **Product card** (`src/components/store/ProductCard.tsx`) — обновить background, accent для wishlist heart, price color.
+  3. **Product detail** (`src/app/[slug]/products/[id]/page.tsx`) — image gallery, "Buy now" CTA в золоте.
+  4. **Header** (`src/components/layout/Header.tsx`) — лого, навигация, поиск.
+  5. **Footer** — тёмный bg, золотые ссылки.
+  6. **Cart** — обновить кнопку checkout.
+  7. **Checkout** — кнопки шагов, золотые accents.
+  8. **OTP / Login** — кнопка отправки, error states.
+  9. **Profile** — обновить меню, аватар, sections.
+
+  ### web-seller
+  1. **Sidebar** — тёмный bg, золотые active states.
+  2. **Dashboard** (`src/app/page.tsx`) — карточки метрик, графики (адаптировать цвета).
+  3. **Product editor** — формы, dropzone, save button.
+  4. **Orders list** — статусы в functional colors (success/warning/error), accent в gold.
+  5. **Chat** — message bubbles, send button.
+  6. **Settings** — секции, toggles.
+
+  ### Темы
+  - **Dark theme (primary):** Rich Black bg, white text, gold accent.
+  - **Light theme:** Pure White bg, Rich Black text, gold accent.
+  - **Default:** ждём решения по `BRAND-DARK-VS-LIGHT-DEFAULT-001`.
+
+- **Файлы:** широкая зона — почти все компоненты `apps/web-buyer/src/components/`, `apps/web-seller/src/components/`.
+- **Definition of done:** все основные user-facing экраны визуально консистентны с brand-book v2.
+
+---
+
+## 🟡 [BRAND-DARK-VS-LIGHT-DEFAULT-001] Решить default theme для web-buyer
+
+- **Домен:** `apps/web-buyer` (Азим решает + Полат для admin отдельно).
+- **Кто берёт:** Азим.
+- **Приоритет:** P1.
+- **Контекст:** старая система начинала с light (cream) и опционально была dark. Новая dark luxury эстетика тяготеет к dark, но для e-commerce storefront важна скорость восприятия товара (light часто лучше для фото).
+- **Варианты:**
+  - **A.** Dark default + light toggle — соответствует luxury aesthetic brand-book'а, но может ухудшить читаемость карточек товара.
+  - **B.** Light default + dark toggle — лучше для UX e-commerce, brand viewable через golden accent и dark header/footer.
+  - **C.** Гибрид: hero/landing — dark, каталог/product — light, чекаут/profile — pick.
+- **Решение:** Азим выбирает после визуального теста (можно сделать HTML-preview).
+
+---
+
+## 🟡 [BRAND-LIQUID-AUTHORITY-MIGRATION-001] Обновить design-system документ под maxsavdo v2
+
+- **Домен:** `docs/design/` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** P2.
+- **Контекст:** `docs/design/liquid-authority.md` — текущая дизайн-система с violet brand color. Устарела с переходом на maxsavdo v2.
+- **Что сделать:**
+  1. Перечитать `liquid-authority.md` — что остаётся (принципы UX, компоненты, паттерны), что меняется (палитра, лого, accent).
+  2. Либо обновить файл inplace, либо создать `docs/design/maxsavdo-design-v2.md` и пометить liquid-authority как deprecated.
+  3. Синхронизировать с `docs/brand/maxsavdo-brand-v2.md`.
+- **Файлы:** `docs/design/`.
+
+---
+
+## 🟢 [BRAND-WEB-SOFT-COLOR-CLEANUP-001] Удалить deprecated Soft Color Lifestyle tokens
+
+- **Домен:** `apps/web-buyer`, `apps/web-seller` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** P3 — после полного rollout brand v2.
+- **Зависит от:** `BRAND-WEB-COMPONENTS-REWORK-001` (все компоненты переехали).
+- **Что сделать:** найти и удалить все упоминания terracotta, cream, violet brand color в Tailwind config'ах, globals.css, компонентах. grep-cleanup.
+- **Файлы:** monorepo grep.
+
+---
+
 ## 🟡 `WEB-UZ-TRANSLATION-REVIEW-001` — вычитка узбекских переводов (Азим, 18.05.2026)
 
 - **Домен:** `apps/web-buyer`, `apps/web-seller`
@@ -1222,7 +1439,7 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
      seller `/settings`), RU-регрессия. **Заблокировано** `INFRA-API-PROD-DOWN-001`.
 - **Файлы:** `apps/web-buyer/src/lib/i18n/uz.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
 
-## 🔴 `VERIFY-CHECKOUT-CONFIRM-500-001` — проверить корзинный checkout на проде (Азим, 16.05.2026)
+## 🟡 `VERIFY-CHECKOUT-CONFIRM-500-001` — частично проверено (21.05.2026), ждёт OTP-степ
 
 > **От Полата.** Backend по `API-CHECKOUT-CONFIRM-500-001` отработан со своей
 > стороны — нужна проверка из фронта, дальше двигаться без неё нельзя.
@@ -1232,13 +1449,28 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
   fault-isolation fix (post-commit side-effects обёрнуты в try/catch — сбой
   WS/TG/clearCart больше НЕ превращает успешный заказ в 500) + ErrorReporter
   (любой следующий 500 оставит полный stack trace в Railway stderr).
-- **Что сделать:**
-  1. Пройти именно **корзинный** checkout: товар → корзина → «Оформить заказ»
-     → подтвердить. (Это `POST /checkout/confirm`, НЕ «купить сейчас» —
-     direct-order это другой эндпоинт, он на проде уже работает без ошибок.)
-  2. Прогнать оба режима: `delivery` и `pickup` — заодно проверка нового
-     `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` (pickup → deliveryFee 0,
-     суммы preview и confirm должны совпасть).
+- **Прогон 21.05.2026 (Claude через Playwright MCP) — частично:**
+  1. ✅ `/` → топ-сторов виден (Azim Tashkent), homepage Slim задеплоился.
+  2. ✅ `/azim-mnx4na25` storefront рендерится, 3 товара видны.
+  3. ✅ Product detail (`/azim-mnx4na25/products/<id>` — «Белая футболка»)
+     рендерится с вариантами размеров S/M/L, кнопка «В корзину» активна.
+  4. ✅ Add to cart срабатывает (один клик через DOM evaluate).
+  5. ✅ `/cart` показывает «Белая футболка · 250 000 сум» + CTA «Оформить заказ».
+  6. ✅ `/checkout` грузится, форма телефона рендерится, кнопка «Получить код»
+     присутствует (disabled пока пусто). Без падений.
+  7. Console clean: единственная ошибка — 401 от `/checkout/preview` (ожидаемо,
+     запрос идёт до auth — не баг).
+- **Что НЕ проверено (требует живой Telegram-телефон):**
+  - OTP-степ (`POST /auth/request-otp` + `POST /auth/verify-otp`) → токен.
+  - `POST /checkout/preview` с токеном → суммы delivery vs pickup.
+  - `POST /checkout/confirm` — это тот самый endpoint, который 14.05 500-ил.
+- **Что сделать Азиму (5–10 мин на живом телефоне):**
+  1. Зайти `https://savdo-builder-by-production.up.railway.app/azim-mnx4na25`,
+     добавить «Белая футболка» (S) → «Оформить заказ».
+  2. Ввести свой телефон, получить OTP в @savdo_builderBOT.
+  3. Подтвердить delivery (любой адрес из истории), потом отдельным заходом
+     pickup (`API-CHECKOUT-PICKUP-DELIVERY-FEE-001` проверка — pickup
+     deliveryFee должен быть 0, суммы preview и confirm совпадают).
 - **Результат:**
   - ✅ Заказ создаётся (201) → отписать Полату, он закроет
     `API-CHECKOUT-CONFIRM-500-001`.

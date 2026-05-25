@@ -19,12 +19,12 @@
 
 Команда (Полат + Азим) к moment-у запуска должна закрыть три открытых брендовых вопроса:
 
-1. **Имя продукта** — оставляем «Savdo» или меняем?
+1. **Имя продукта** — оставляем «maxsavdo» или меняем?
 2. **Палитра** — четыре варианта в работе у Азима, нужно зафиксировать одну.
 3. **Логотип** — направление визуала.
 
 Текущее состояние:
-- В коде / domain `.uz` зарезервировано имя **Savdo** (`savdo.uz/<slug>`).
+- В коде / domain `.uz` зарезервировано имя **maxsavdo** (`maxsavdo.uz/<slug>`).
 - В `docs/brand/README.md` зафиксирован v1 палитры — terracotta + cream.
 - Логотип — заглушки `logo-wordmark.svg`, `logo-monogram-s.svg`.
 
@@ -50,7 +50,7 @@
 
 ### 2.2 Кандидаты
 
-1. **Savdo** (current, ru+uz: «торговля»)
+1. **maxsavdo** (current, ru+uz: «торговля»)
 2. **Doʻkon** (uz: «магазин»)
 3. **Doʻkonim** (uz: «мой магазин»)
 4. **Sotuv** (uz: «продажа»)
@@ -60,7 +60,7 @@
 
 ### 2.3 Scoring
 
-| Critic (вес) | Savdo | Doʻkon | Doʻkonim | Sotuv | Tijorat | Bozor | Telegro |
+| Critic (вес) | maxsavdo | Doʻkon | Doʻkonim | Sotuv | Tijorat | Bozor | Telegro |
 |---|---|---|---|---|---|---|---|
 | C1 Memorability (0.20)         | 8 | 7 | 6 | 6 | 6 | 9 | 5 |
 | C2 UZ-fit (0.15)               | 9 | 9 | 9 | 8 | 7 | 9 | 4 |
@@ -74,10 +74,10 @@
 
 ### 2.4 Обоснование оценок (1 строка)
 
-**Savdo:**
+**maxsavdo:**
 - C1 (8) — короткое, 5 букв, knigobyl-ассоциация с торговлей
 - C2 (9) — литературное слово, понятно и узбекам и русским
-- C3 (8) — savdo.uz уже наш, `.com` занят но не critical (UZ-only бренд)
+- C3 (8) — maxsavdo.uz уже наш, `.com` занят но не critical (UZ-only бренд)
 - C4 (9) — «торговля» — нейтральный, чистый story-fundament, любая narrative-обёртка ложится
 - C5 (10) — нет диакритики, читается одинаково в ru/uz
 - C6 (7) — слово общее, но SEO-comp на UZ-рынке низкий
@@ -148,7 +148,7 @@
 
 | Rank | Name | Score | Δ от winner |
 |------|------|-------|-------------|
-| 1 | **Savdo** | **8.55** | — |
+| 1 | **maxsavdo** | **8.55** | — |
 | 2 | Bozor | 6.95 | −1.60 |
 | 3 | Sotuv | 6.65 | −1.90 |
 | 4 | Doʻkon | 6.45 | −2.10 |
@@ -176,7 +176,7 @@
 | P1 | UZ-cultural resonance | 0.20 | палитра должна «чувствовать» local |
 | P2 | Differentiation от Uzum/OLX | 0.15 | избегаем зелёного / оранжевого |
 | P3 | Accessibility (WCAG AA) | 0.15 | контраст текст/фон ≥ 4.5:1 |
-| P4 | Warm vs cold balance | 0.15 | savdo = warm bazaar, не cold SaaS |
+| P4 | Warm vs cold balance | 0.15 | maxsavdo = warm bazaar, не cold SaaS |
 | P5 | Web → mobile transfer | 0.10 | работает на Telegram WebApp |
 | P6 | Print / merch transfer | 0.10 | визитки, наклейки, упаковка |
 | P7 | Long-term wear (не устареет) | 0.10 | живёт 3+ года без re-brand |
@@ -251,7 +251,7 @@ D. **Terracotta + cream** — текущий v1, уже в коде buyer
 | # | Критерий | Вес | Почему |
 |---|----------|-----|--------|
 | L1 | Standalone recognizability | 0.20 | favicon 16×16, app icon без текста |
-| L2 | Wordmark integration | 0.15 | работает рядом с «Savdo» wordmark |
+| L2 | Wordmark integration | 0.15 | работает рядом с «maxsavdo» wordmark |
 | L3 | Scale resilience (16 → 512) | 0.15 | favicon ↔ billboard |
 | L4 | Cultural meaning | 0.15 | связь с UZ / торговлей |
 | L5 | Uniqueness (нет копий) | 0.10 | не похож на Uzum / OLX / Stripe |
@@ -338,24 +338,24 @@ E. **Mascot** — character / animal (Duolingo / Mailchimp)
 
 | Слот | Рекомендация по числам | Score | Статус |
 |------|------------------------|-------|--------|
-| **Name** | Оставить **Savdo** | 8.55 | статус-кво, в `.uz` зарезервировано |
+| **Name** | Оставить **maxsavdo** | 8.55 | статус-кво, в `.uz` зарезервировано |
 | **Palette** | **Terracotta + cream (D)** | 8.65 | **уже в коде** (Азим, session 52 + 55) |
 | **Logo direction** | **Monogram «S» с ornament-accent в negative space** | 7.95 (А) + опционально D 7.80 | **направление**, ждёт исполнения |
 
 ### Brand-formula
 
-> **Savdo. Тёплая bazaar-эстетика в terracotta+cream. Монограмма S с узбекским ornament-accent в негативном пространстве.**
+> **maxsavdo. Тёплая bazaar-эстетика в terracotta+cream. Монограмма S с узбекским ornament-accent в негативном пространстве.**
 
 ### Воплощение
 
-- **Wordmark** — «Savdo» в Inter cv11 ss01, weight 600, color = `colors.brand` (terracotta `#7C3F2E`).
+- **Wordmark** — «maxsavdo» в Inter cv11 ss01, weight 600, color = `colors.brand` (terracotta `#7C3F2E`).
 - **Monogram «S»** — vector, окружённый orn-pattern в negative space (звезда / рапид).
 - **Favicon / app icon** — monogram only on terracotta background.
 - **CTA-цвет** — terracotta, cream — surface.
 
 ### Что НЕ делаем
 
-- Не меняем имя на Doʻkon / Bozor / другое — формальный score Savdo +1.60 minimum от любого конкурента.
+- Не меняем имя на Doʻkon / Bozor / другое — формальный score maxsavdo +1.60 minimum от любого конкурента.
 - Не делаем mascot — provисал по L3 и L6, дорог в производстве.
 - Не делаем pure ornament без monogram — слишком специфично для favicon-scale.
 
@@ -379,8 +379,8 @@ E. **Mascot** — character / animal (Duolingo / Mailchimp)
 - [ ] ADR-008: `docs/adr/ADR-008_brand-identity-v1.md` (name + palette + logo direction)
 - [ ] Brief дизайнеру monogram «S» с ornament negative space
 - [ ] Обновить `docs/brand/logo-spec.md` с финальным направлением
-- [ ] Резерв доменов: убедиться `savdo.uz` (есть), проверить `savdo.app`, `savdo.io`
-- [ ] Obsidian: `pwsh obsidian-note.ps1 decision savdo-builder "Brand v1 finalized" "Name=Savdo (score 8.55), Palette=Terracotta+cream (8.65), Logo=Monogram S + ornament accent (7.95). Almost-tie с D Ornament разрешён комбинацией."`
+- [ ] Резерв доменов: убедиться `maxsavdo.uz` (есть), проверить `maxsavdo.app`, `maxsavdo.io`
+- [ ] Obsidian: `pwsh obsidian-note.ps1 decision savdo-builder "Brand v1 finalized" "Name=maxsavdo (score 8.55), Palette=Terracotta+cream (8.65), Logo=Monogram S + ornament accent (7.95). Almost-tie с D Ornament разрешён комбинацией."`
 - [ ] Review-точка: 2026-11-20 (через 6 месяцев) — проверить: жалуются на имя? путают палитру с конкурентами?
 
 ---

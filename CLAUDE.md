@@ -1,4 +1,4 @@
-# Savdo — Claude Rules
+# maxsavdo — Claude Rules
 
 E-commerce store builder для Telegram-продавцов Узбекистана.
 
@@ -164,7 +164,7 @@ cd apps/web-buyer && pnpm dev   # запустить buyer web
 
 | Skill | Когда полезен |
 |-------|---------------|
-| `ui-design-system` | Design tokens / component docs / dev handoff (savdo Liquid Authority) |
+| `ui-design-system` | Design tokens / component docs / dev handoff (maxsavdo Liquid Authority) |
 | `ux-researcher-designer` | Persona / journey map / usability testing |
 | `apple-hig-expert` | iOS/macOS HIG, accessibility-first, Liquid Glass aesthetics 2026 |
 | `landing-page-generator` | Landing pages (web-buyer storefront SEO) |

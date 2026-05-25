@@ -1,4 +1,4 @@
-// build: soft-color-lifestyle 2026-05-05
+// build: maxsavdo dark-luxury 2026-05-25
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -9,31 +9,32 @@ import { ThemeScript } from "../lib/theme/theme-script";
 import { I18nProvider } from "../lib/i18n";
 
 const inter = Inter({
-  subsets: ['latin', 'cyrillic'],
+  subsets: ['latin', 'latin-ext', 'cyrillic', 'cyrillic-ext'],
   variable: '--font-inter',
   display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz';
+const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Savdo — магазины в Telegram",
+    default: "maxsavdo — магазины в Telegram",
     template: "%s",
   },
   description: "Покупайте у продавцов Узбекистана через Telegram. Быстро, удобно, без регистрации.",
   openGraph: {
     type: 'website',
-    siteName: 'Savdo',
-    title: 'Savdo — магазины в Telegram',
+    siteName: 'maxsavdo',
+    title: 'maxsavdo — магазины в Telegram',
     description: 'Покупайте у продавцов Узбекистана через Telegram',
     locale: 'ru_RU',
     url: '/',
   },
   twitter: {
-    card: 'summary',
-    title: 'Savdo — магазины в Telegram',
+    card: 'summary_large_image',
+    title: 'maxsavdo — магазины в Telegram',
     description: 'Покупайте у продавцов Узбекистана через Telegram',
   },
 };
@@ -59,7 +60,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Organization',
-              name: 'Savdo',
+              name: 'maxsavdo',
               url: siteUrl,
               description: 'Платформа интернет-магазинов Узбекистана в Telegram',
               areaServed: { '@type': 'Country', name: 'Uzbekistan' },

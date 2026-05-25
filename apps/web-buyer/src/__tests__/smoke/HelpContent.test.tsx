@@ -16,7 +16,7 @@ describe('HelpContent (/help)', () => {
     expect(headings).toHaveLength(8);
   });
 
-  it('рендерит intro с контактом support@savdo.uz', () => {
+  it('рендерит intro с контактом support@maxsavdo.uz', () => {
     render(
       <I18nProvider>
         <HelpContent />

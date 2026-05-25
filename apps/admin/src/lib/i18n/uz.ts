@@ -102,8 +102,8 @@ export const uz: Translations = {
   'userDetail.impersonate': 'Impersonatsiya',
   'userDetail.impersonateTitle': 'Diagnostika uchun foydalanuvchi nomidan TMAga kirish',
   'userDetail.impersonating': 'Almashtirilmoqda...',
-  'userDetail.impersonateSuccess': 'Siz {phone} sifatida kirdingiz',
-  'userDetail.impersonateError': 'Foydalanuvchiga oʻtib boʻlmadi',
+  'userDetail.impersonateSuccess': '{phone} uchun JWT yaratildi',
+  'userDetail.impersonateError': 'Impersonation JWT olib boʻlmadi',
   'userDetail.noActivity': 'Bu foydalanuvchi bilan hali admin amallari boʻlmagan',
   'userDetail.suspendTitle': 'Foydalanuvchini bloklash',
   'userDetail.suspendWarning': 'platformaga kirish huquqini yoʻqotadi.',
@@ -112,7 +112,14 @@ export const uz: Translations = {
   'userDetail.impersonateConfirmTitle': '{phone} sifatida kirilsinmi?',
   'userDetail.impersonateConfirmText': 'TMAdagi barcha amallaringiz foydalanuvchi nomidan bajariladi va audit-logga quyidagi belgi bilan yoziladi:',
   'userDetail.impersonateConfirmWarning': '⚠ Faqat muammolarni diagnostika qilish uchun foydalaning. Foydalanuvchi roziligisiz xarid qilmang, xabar yozmang.',
-  'userDetail.impersonateConfirmBtn': 'Foydalanuvchi sifatida kirish',
+  'userDetail.impersonateConfirmBtn': 'JWT yaratish',
+  // ADMIN-IMPERSONATE-COPY-JWT-001: impersonate JWT modali
+  'userDetail.impersonateJwtTitle': 'Impersonation JWT tayyor',
+  'userDetail.impersonateJwtDesc': 'Tokenni nusxala. Admin-sessiyang oʻzgarmadi — admin paneldan davom et. JWT ~15 daqiqa amal qiladi.',
+  'userDetail.impersonateJwtHint': '💡 Diagnostika uchun: `Authorization: Bearer <jwt>` sarlavhasi bilan curl, yoki boshqa tab\'da sessionStorage ichiga qoʻyish. Foydalanuvchi roziligisiz haqiqiy buyurtma yoki xabar yaratma.',
+  'userDetail.impersonateCopyBtn': 'JWT nusxalash',
+  'userDetail.impersonateCopied': 'JWT bufferga nusxalandi',
+  'userDetail.impersonateCopyFailed': 'Nusxalanmadi — qoʻlda belgilab Ctrl+C bos',
   // Sotuvchini bozorda faollashtirish (qoʻlda, monetizatsiya muzlatilgan)
   'userDetail.activateSeller': 'Sotuvchini bozorda faollashtirish',
   'userDetail.activateSellerTitle': 'Sotuvchini bozorda faollashtirish',
@@ -135,9 +142,9 @@ export const uz: Translations = {
 
   // ── Theme ─────────────────────────────────────────────────────────────
   'theme.light': 'Yorugʻ mavzu',
-  'theme.dark': 'Qorongʻi mavzu',
+  'theme.dark': 'Qorongʻu mavzu',
   'theme.toLight': 'Yorugʻ mavzuga oʻtish',
-  'theme.toDark': 'Qorongʻi mavzuga oʻtish',
+  'theme.toDark': 'Qorongʻu mavzuga oʻtish',
 
   // ── Layout / sidebar ──────────────────────────────────────────────────
   'layout.adminPanel': 'Admin panel',

@@ -136,7 +136,7 @@ ls -lh backups/savdo-*.dump
 | **Cloudflare R2** (рекомендация) | `aws s3 cp ... --endpoint-url https://...r2.cloudflarestorage.com` | $0 egress, дёшево | требует AWS CLI |
 | **Supabase Storage** | через `supabase-js` SDK | уже используется проектом для media | bucket overhead, 50MB API limit на upload (нужен chunked) |
 | **GitHub Release (приватный)** | `gh release create v-backup-YYYYMMDD ./savdo-*.dump` | бесплатно для приватных репо, версионирование «из коробки» | 2GB file limit, GH API rate-limit |
-| **Local cold storage** | `cp savdo-*.dump /Volumes/Backup/savdo/` | zero-cost | человеческий фактор |
+| **Local cold storage** | `cp savdo-*.dump /Volumes/Backup/maxsavdo/` | zero-cost | человеческий фактор |
 
 Скрипт `backup.sh` поддерживает только R2 «из коробки» (через
 `AWS_ACCESS_KEY_ID`). Остальные target'ы — manual в первую очередь.
@@ -183,7 +183,7 @@ ls -lh backups/savdo-*.dump
 
 ```bash
 # Восстановление в свежий Postgres
-TARGET_DB='postgresql://savdo:savdo@new-host:5432/savdo' \
+TARGET_DB='postgresql://maxsavdo:maxsavdo@new-host:5432/maxsavdo' \
 DUMP=backups/savdo-20260516-180000.dump \
   pg_restore \
     --clean --if-exists \
@@ -241,8 +241,8 @@ DATABASE_URL='postgresql://postgres:***@host.railway.app:5432/railway' \
 
 # 2. Поднять локальный staging Postgres
 docker run -d --name savdo-staging-pg \
-  -e POSTGRES_USER=savdo \
-  -e POSTGRES_PASSWORD=savdo \
+  -e POSTGRES_USER=maxsavdo \
+  -e POSTGRES_PASSWORD=maxsavdo \
   -e POSTGRES_DB=savdo_staging \
   -p 55432:5432 \
   postgres:16-alpine
@@ -250,7 +250,7 @@ docker run -d --name savdo-staging-pg \
 # 3. Запустить drill
 bash scripts/db/restore-drill.sh \
   --dump backups/savdo-20260516-180000.dump \
-  --target-db 'postgresql://savdo:savdo@localhost:55432/savdo_staging' \
+  --target-db 'postgresql://maxsavdo:maxsavdo@localhost:55432/savdo_staging' \
   --source-db "$DATABASE_URL"   # опционально, для diff row counts
 
 # 4. Cleanup
