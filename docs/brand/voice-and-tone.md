@@ -1,4 +1,4 @@
-# Savdo — Voice & Tone
+# maxsavdo — Voice & Tone
 
 **Версия:** 1.0 · **Дата:** 2026-05-20
 
@@ -113,8 +113,8 @@ uz: Aziza Telegram orqali yozdi — chatni oching
 ### Success #1 — магазин создан
 
 ```
-ru: Магазин готов. Поделитесь ссылкой: savdo.uz/lola-shop
-uz: Doʻkoningiz tayyor. Havolani ulashing: savdo.uz/lola-shop
+ru: Магазин готов. Поделитесь ссылкой: maxsavdo.uz/lola-shop
+uz: Doʻkoningiz tayyor. Havolani ulashing: maxsavdo.uz/lola-shop
 ```
 
 **Почему хорошо:** констатация + следующий шаг, тёплое слово «готов» вместо «provisioned».
@@ -199,7 +199,7 @@ uz:
 
 ```
 ❌ Your store has been provisioned. Your subdomain is now live.
-✅ Магазин готов. Адрес: savdo.uz/lola-shop
+✅ Магазин готов. Адрес: maxsavdo.uz/lola-shop
 ```
 
 **Почему плохо:** «provisioned», «subdomain», «is now live» — лексика DevOps, не продавца.
@@ -279,11 +279,11 @@ uz:
 ### Не-пример #10 — «мы» как корпорация
 
 ```
-❌ Компания Savdo поздравляет вас с первым заказом!
+❌ Компания maxsavdo поздравляет вас с первым заказом!
 ✅ Поздравляем с первым заказом! Желаем тысячи следующих
 ```
 
-**Почему плохо:** «компания Savdo поздравляет» — формальный пресс-релиз. Тон должен быть как поздравление от знакомого.
+**Почему плохо:** «компания maxsavdo поздравляет» — формальный пресс-релиз. Тон должен быть как поздравление от знакомого.
 
 ---
 
@@ -307,7 +307,7 @@ uz: {имя} Telegram orqali yozdi — chatni oching
 
 ```
 ru:
-Subject: Заказ №{N} принят — savdo.uz/{shop}
+Subject: Заказ №{N} принят — maxsavdo.uz/{shop}
 Body:
 Здравствуйте, {имя}.
 Ваш заказ №{N} на {сумма} сум принят. Продавец напишет вам в Telegram в ближайшее время.
@@ -319,10 +319,10 @@ Body:
 Контакт продавца: {tg-username}
 
 Спасибо что выбрали {shop}.
-— Команда Savdo
+— Команда maxsavdo
 
 uz:
-Subject: Buyurtma №{N} qabul qilindi — savdo.uz/{shop}
+Subject: Buyurtma №{N} qabul qilindi — maxsavdo.uz/{shop}
 Body:
 Salom, {имя}.
 {сумма} soʻmlik №{N}-buyurtmangiz qabul qilindi. Sotuvchi tez orada Telegram orqali yozadi.
@@ -334,20 +334,20 @@ Yetkazib berish: {адрес}
 Sotuvchi: {tg-username}
 
 {shop}'ni tanlaganingiz uchun rahmat.
-— Savdo jamoasi
+— maxsavdo jamoasi
 ```
 
 ### 5.4 Email — OTP-код
 
 ```
 ru:
-Subject: Ваш код Savdo: {code}
+Subject: Ваш код maxsavdo: {code}
 Body:
 {code} — код для входа.
 Не делитесь им ни с кем. Код действует 5 минут.
 
 uz:
-Subject: Savdo kodingiz: {code}
+Subject: maxsavdo kodingiz: {code}
 Body:
 {code} — kirish kodi.
 Hech kim bilan ulashmang. Kod 5 daqiqa amal qiladi.
@@ -357,7 +357,7 @@ Hech kim bilan ulashmang. Kod 5 daqiqa amal qiladi.
 
 ```
 ru:
-Привет! Я бот Savdo. Через меня вы:
+Привет! Я бот maxsavdo. Через меня вы:
 • создадите магазин за 1 минуту
 • будете получать заказы прямо в Telegram
 • подтвердите свой номер (без SMS)
@@ -365,7 +365,7 @@ ru:
 Нажмите [Создать магазин] чтобы начать.
 
 uz:
-Salom! Men Savdo botiman. Men orqali siz:
+Salom! Men maxsavdo botiman. Men orqali siz:
 • 1 daqiqada doʻkon yaratasiz
 • buyurtmalarni toʻgʻri Telegram'ga olasiz
 • telefon raqamingizni tasdiqlaysiz (SMSsiz)
@@ -376,8 +376,8 @@ Boshlash uchun [Doʻkon yaratish] tugmasini bosing.
 ### 5.6 OG-card / share text
 
 ```
-ru: {shop_name} на Savdo — каталог, цены, доставка по Ташкенту
-uz: {shop_name} — Savdo'da. Katalog, narxlar, Toshkent boʻylab yetkazib berish
+ru: {shop_name} на maxsavdo — каталог, цены, доставка по Ташкенту
+uz: {shop_name} — maxsavdo'da. Katalog, narxlar, Toshkent boʻylab yetkazib berish
 ```
 
 ---

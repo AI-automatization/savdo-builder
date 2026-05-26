@@ -55,7 +55,7 @@
 ### WB-B05 — Протухший токен запирает на форме checkout
 `checkout/page.tsx:298,302-305` — `pageStep` инициализируется из наличия
 `localStorage` токена. Если токен есть, но протух — юзер заполняет всю форму,
-`confirm` падает 401. Хэндлер `savdo:auth:expired` чистит токен, но `pageStep`
+`confirm` падает 401. Хэндлер `maxsavdo:auth:expired` чистит токен, но `pageStep`
 не сбрасывает. `isAuthed` (line 298) объявлен и не используется.
 **Fix:** гейтить по верифицированному `user`; реагировать на auth-expired
 сбросом `pageStep`; убрать мёртвый `isAuthed`.
@@ -169,7 +169,7 @@ body**. Не-order уведомления = клик в никуда. Навиг
 `lib/api/client.ts:38-41` — скип token-refresh проверяет `url.includes('/auth/otp/')`,
 но реальные пути — `/auth/request-otp` и `/auth/verify-otp`. 401 от неверного
 OTP-кода → `_retry` → попытка `/auth/refresh` → на свежем логине (нет refresh
-токена) летит `savdo:auth:expired`. Каждый неверный код = странное поведение.
+токена) летит `maxsavdo:auth:expired`. Каждый неверный код = странное поведение.
 **Fix:** `url.includes('/auth/request-otp') || url.includes('/auth/verify-otp')`.
 
 ### WS-B02 — Онбординг: `Promise.all` создаёт partial-failure ловушку

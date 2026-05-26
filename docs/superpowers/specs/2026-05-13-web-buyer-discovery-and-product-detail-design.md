@@ -83,7 +83,7 @@ Backend готов:
 
 [Quick links: Заказы / Чаты]
 
-[Footer (© Savdo)]
+[Footer (© maxsavdo)]
 ```
 
 **Behaviors:**
@@ -276,13 +276,13 @@ ProductPage
 - `metadata` экспорт в `app/(shop)/page.tsx` (теперь server component):
   ```ts
   export const metadata: Metadata = {
-    title: 'Savdo — магазины Telegram Узбекистана',
+    title: 'maxsavdo — магазины Telegram Узбекистана',
     description: 'Магазины Telegram. Без посредников. Прямая связь с продавцом. Доставка по Узбекистану.',
     openGraph: {
-      title: 'Savdo — магазины Telegram Узбекистана',
+      title: 'maxsavdo — магазины Telegram Узбекистана',
       description: '...',
-      url: 'https://savdo.uz',
-      siteName: 'Savdo',
+      url: 'https://maxsavdo.uz',
+      siteName: 'maxsavdo',
       images: [{ url: '/og/home.png', width: 1200, height: 630 }],
       locale: 'ru_RU',
       type: 'website',

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { RecentStores } from "@/components/home/RecentStores";
-import { ShoppingCart, Package, MessageSquare, ChevronRight } from "lucide-react";
+import { Package, MessageSquare, ChevronRight } from "lucide-react";
 import { colors } from "@/lib/styles";
+import { MaxsavdoLogo } from "@/components/brand/MaxsavdoLogo";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -20,7 +21,8 @@ function extractSlug(raw: string): string | null {
     return SLUG_RE.test(s) ? s : null;
   }
 
-  const urlMatch = trimmed.match(/^(?:https?:\/\/)?(?:www\.)?savdo\.uz\/([^/?#]+)/i);
+  // Backwards-compat: accept both maxsavdo.uz (new) and savdo.uz (legacy bookmarks).
+  const urlMatch = trimmed.match(/^(?:https?:\/\/)?(?:www\.)?(?:max)?savdo\.uz\/([^/?#]+)/i);
   if (urlMatch) {
     const s = urlMatch[1].toLowerCase();
     return SLUG_RE.test(s) ? s : null;
@@ -46,14 +48,9 @@ export default function HomePage() {
       <div className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-32 md:pb-12 flex flex-col gap-8">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-20 h-20 rounded-lg flex items-center justify-center"
-            style={{ background: colors.brand, boxShadow: `0 4px 12px rgba(124,63,46,0.15)` }}
-          >
-            <ShoppingCart size={36} style={{ color: colors.brandTextOnBg }} />
-          </div>
+          <MaxsavdoLogo size={80} />
           <span className="text-2xl font-bold tracking-tight" style={{ color: colors.brand }}>
-            Savdo
+            maxsavdo
           </span>
         </div>
 
@@ -91,7 +88,7 @@ export default function HomePage() {
                 className="px-3 text-sm flex-shrink-0 select-none h-[44px] flex items-center"
                 style={{ color: colors.textMuted, borderRight: `1px solid ${colors.border}` }}
               >
-                savdo.uz/
+                maxsavdo.uz/
               </span>
               <input
                 type="text"
@@ -113,7 +110,7 @@ export default function HomePage() {
           </div>
           {error && (
             <p className="text-[11px]" style={{ color: colors.danger }}>
-              Проверьте ссылку — подойдёт slug, savdo.uz/&lt;slug&gt; или Telegram-ссылка магазина
+              Проверьте ссылку — подойдёт slug, maxsavdo.uz/&lt;slug&gt; или Telegram-ссылка магазина
             </p>
           )}
         </div>
@@ -160,7 +157,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <p className="text-[11px] text-center mt-auto" style={{ color: colors.textMuted }}>© 2026 Savdo</p>
+        <p className="text-[11px] text-center mt-auto" style={{ color: colors.textMuted }}>© 2026 maxsavdo</p>
       </div>
 
       <BottomNavBar active="store" />

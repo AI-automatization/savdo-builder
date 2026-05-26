@@ -13,7 +13,7 @@
 ### web-buyer (light theme, bg `#FAFAF7`)
 - ✅ `textPrimary #0F1115` — ~17:1, отлично.
 - ✅ `textMuted #5C6470` — ~5.5:1.
-- 🟡 `textDim #8A93A0` — **~3.0:1** на светлом. Для 14px+ small text **НЕ проходит AA 4.5:1**. Используется в: footer, prefix `savdo.uz/`, helper text, breadcrumbs `@slug · city`, `× quantity`, `mt-0.5 text-xs`. Допустимо только для UI-элементов 3:1 (иконки/бордеры), но регулярно встречается на body/helper text размера 11–13px.
+- 🟡 `textDim #8A93A0` — **~3.0:1** на светлом. Для 14px+ small text **НЕ проходит AA 4.5:1**. Используется в: footer, prefix `maxsavdo.uz/`, helper text, breadcrumbs `@slug · city`, `× quantity`, `mt-0.5 text-xs`. Допустимо только для UI-элементов 3:1 (иконки/бордеры), но регулярно встречается на body/helper text размера 11–13px.
 - 🟡 `success #16A34A` — **~3.4:1** на светлом. Для не-bold 14px НЕ проходит. Видно в: «Бесплатно» в checkout (`text-sm`), «Скопировано»-badges, success дотах. Заменить на `#15803D` green-700 (~4.7:1).
 - 🟡 `warning #D97706` — **~3.5:1** на светлом. Для 12px PENDING-badge не проходит. `#B45309` amber-700 (~5.5:1).
 - ✅ `accent #7C3AED` — ~7:1.
