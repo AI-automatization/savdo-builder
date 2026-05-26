@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Savdo — horizontal lockup (monogram-plate + wordmark)
-  Composition: monogram 48x48 + 16px gap + wordmark "Savdo" 32px height.
+  maxsavdo — horizontal lockup (monogram-plate + wordmark)
+  Composition: monogram 48x48 + 16px gap + wordmark "maxsavdo" 32px height.
   Total: ~192 x 48.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="48" viewBox="0 0 192 48" role="img" aria-label="Savdo">
-  <title>Savdo</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="48" viewBox="0 0 192 48" role="img" aria-label="maxsavdo">
+  <title>maxsavdo</title>
   <!-- Monogram plate -->
   <rect x="0" y="0" width="48" height="48" rx="11" ry="11" fill="#7C3F2E"/>
   <path
@@ -16,7 +16,7 @@
     stroke-linecap="round"
     stroke-linejoin="round"
     fill="none"/>
-  <!-- Wordmark "Savdo" — starts at x=64 (48 plate + 16 gap) -->
+  <!-- Wordmark "maxsavdo" — starts at x=64 (48 plate + 16 gap) -->
   <text
     x="64"
     y="35"
@@ -24,5 +24,5 @@
     font-size="32"
     font-weight="600"
     letter-spacing="-0.32"
-    fill="#7C3F2E">Savdo</text>
+    fill="#7C3F2E">maxsavdo</text>
 </svg>

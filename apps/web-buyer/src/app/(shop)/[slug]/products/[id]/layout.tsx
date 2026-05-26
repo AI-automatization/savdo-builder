@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { Product } from 'types';
 
 const BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1`;
-const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz';
+const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz';
 
 async function fetchProduct(id: string): Promise<Product | null> {
   try {
@@ -47,10 +47,10 @@ export async function generateMetadata({
   const { slug, id } = await params;
   const product = await fetchProduct(id);
 
-  if (!product) return { title: 'Товар — Savdo' };
+  if (!product) return { title: 'Товар — maxsavdo' };
 
   const price = Number(product.basePrice).toLocaleString('ru-RU');
-  const desc = product.description?.slice(0, 160) ?? `${price} сум. Купить в Telegram на Savdo.`;
+  const desc = product.description?.slice(0, 160) ?? `${price} сум. Купить в Telegram на maxsavdo.`;
   const ogImage = product.mediaUrls?.[0];
   const storeName = product.store?.name;
   const title = storeName ? `${product.title} — ${storeName}` : product.title;
@@ -61,7 +61,7 @@ export async function generateMetadata({
     alternates: { canonical: `/${slug}/products/${id}` },
     openGraph: {
       type: 'website',
-      siteName: 'Savdo',
+      siteName: 'maxsavdo',
       title,
       description: desc,
       url: `/${slug}/products/${id}`,

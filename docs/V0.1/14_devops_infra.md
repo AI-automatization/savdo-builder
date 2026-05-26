@@ -172,7 +172,7 @@ SMS_PROVIDER=eskiz
 ESKIZ_EMAIL=...
 ESKIZ_PASSWORD=...
 SMS_DRY_RUN=false
-SMS_FROM=Savdo
+SMS_FROM=maxsavdo
 ```
 
 ---

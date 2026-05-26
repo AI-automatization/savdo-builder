@@ -2,15 +2,15 @@ import type { Metadata } from 'next';
 import { LegalPage, H2, P, UL } from '@/components/legal/LegalPage';
 
 export const metadata: Metadata = {
-  title: 'Политика конфиденциальности — Savdo',
-  description: 'Как Savdo собирает, хранит и обрабатывает персональные данные пользователей.',
+  title: 'Политика конфиденциальности — maxsavdo',
+  description: 'Как maxsavdo собирает, хранит и обрабатывает персональные данные пользователей.',
 };
 
 export default function PrivacyPage() {
   return (
     <LegalPage title="Политика конфиденциальности" effectiveDate="11 мая 2026 г.">
       <H2>1. Какие данные мы собираем</H2>
-      <P>Платформа Savdo обрабатывает следующие категории данных:</P>
+      <P>Платформа maxsavdo обрабатывает следующие категории данных:</P>
       <UL>
         <li>номер телефона и Telegram-идентификатор (для входа и связи);</li>
         <li>имя получателя и адрес доставки (для оформления заказа);</li>
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
       <H2>6. Права пользователя</H2>
       <P>
         Вы вправе запросить доступ к своим данным, их исправление или удаление, направив запрос на
-        privacy@savdo.uz.
+        privacy@maxsavdo.uz.
       </P>
 
       <H2>7. Cookies</H2>
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
 
       <H2>8. Контакты</H2>
       <P>
-        По вопросам обработки персональных данных: privacy@savdo.uz.
+        По вопросам обработки персональных данных: privacy@maxsavdo.uz.
       </P>
     </LegalPage>
   );

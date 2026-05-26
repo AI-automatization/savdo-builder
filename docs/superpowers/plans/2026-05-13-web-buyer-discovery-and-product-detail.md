@@ -1141,13 +1141,13 @@ import { HomeQuickLinks } from '@/components/home/HomeQuickLinks';
 import { colors } from '@/lib/styles';
 
 export const metadata: Metadata = {
-  title: 'Savdo — магазины Telegram Узбекистана',
+  title: 'maxsavdo — магазины Telegram Узбекистана',
   description:
     'Магазины Telegram. Без посредников. Прямая связь с продавцом. Доставка по Узбекистану.',
   openGraph: {
-    title: 'Savdo — магазины Telegram Узбекистана',
+    title: 'maxsavdo — магазины Telegram Узбекистана',
     description: 'Прямая связь с продавцом. Цена как в чате. Доставка по Узбекистану.',
-    siteName: 'Savdo',
+    siteName: 'maxsavdo',
     locale: 'ru_RU',
     type: 'website',
   },
@@ -1168,7 +1168,7 @@ export default function HomePage() {
         className="text-[11px] text-center mt-10 pb-6"
         style={{ color: colors.textMuted }}
       >
-        © 2026 Savdo
+        © 2026 maxsavdo
       </p>
       <BottomNavBar active="store" />
     </div>

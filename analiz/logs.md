@@ -1,23 +1,36 @@
 # Logs — локальные тесты и баги
 
-## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡 Рассинхрон stock между storefront-list и product-detail
-- **Статус:** 🟡 Предупреждение — не блокер, заметка для оценки.
+## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡→🟢 Реклассифицировано 24.05.2026
+- **Статус:** 🟢 Root cause найден; frontend-фикс применён локально (uncommitted), backend-тикет заведён.
 - **Замечен:** через Playwright MCP в ходе `VERIFY-CHECKOUT-CONFIRM-500-001` (21.05.2026)
   на проде `savdo-builder-by-production.up.railway.app/azim-mnx4na25`.
-- **Что:** товар «Игрушка» (`ae330060-d1da-4cba-a3ca-585a8ad6abdd`) на storefront-list
-  (`/azim-mnx4na25`) показан с stock-бейджем «1», но на product-detail
-  (`/azim-mnx4na25/products/<id>`) отображается «Нет в наличии», единственный
-  вариант (`ИГРУШКА`) disabled, кнопка добавления в корзину тоже disabled.
-- **Возможные причины (не подтверждены):**
-  - Storefront-list читает `Product.stock` aggregate, а detail читает per-variant
-    stock и складывает иначе.
-  - На variant «ИГРУШКА» stock=0, но на product-level есть «остаточные» 1 шт
-    в др. варианте, который не отображается в variant-picker.
-  - Кеш или stale аггрегация.
-- **Где смотреть:** `apps/web-buyer/src/components/store/ProductCard.tsx` (stock-бейдж),
-  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` или `useProductDetail`
-  (поле `available`/`outOfStock`).
-- **Не записан в tasks.md** — Азим решит, копать или жить так.
+- **Что выглядело так:** товар «Игрушка» (`ae330060-d1da-4cba-a3ca-585a8ad6abdd`)
+  на storefront-list показан с бейджем «1» (выглядит как stock=1), на detail —
+  «Нет в наличии», вариант disabled.
+- **Что оказалось на самом деле (расследование 24.05.2026):**
+  - Бейдж «1» на storefront-list — это **`variantCount`** (icon Layers, рендерится
+    в `ProductCard.tsx:104-117`), а **не stock**. Тип `ProductListItem`
+    (`packages/types/src/api/products.ts:64-107`) вообще не содержит поля `stock`
+    или `stockQuantity` — мой первичный диагноз «рассинхрон stock» был ошибочным.
+  - **`ProductCard` НЕ учитывал OOS-состояние:** `isUnavailable` (line 49)
+    проверял только `status + isVisible`, не stock. Поэтому товар со всеми
+    вариантами `stockQuantity===0` на list выглядел доступным, а на detail
+    (`page.tsx:135-137` — `activeVariants.every(v => v.stockQuantity === 0)`)
+    корректно становился OOS.
+  - **Backend УЖЕ отдаёт `totalStock`** в storefront-листе:
+    `apps/api/src/modules/products/storefront.controller.ts` lines 190, 300, 327, 334
+    делают `totalStock = variants.reduce(...stockQuantity)`. Но это поле не
+    задекларировано в `ProductListItem` → frontend о нём не знает.
+- **Что сделано:**
+  - Frontend-патч `apps/web-buyer/src/components/store/ProductCard.tsx`:
+    `isUnavailable` теперь учитывает `totalStock === 0` через временный cast
+    `(product as { totalStock?: number }).totalStock`. OOS-overlay появляется
+    автоматически (он уже был — line 141-153 — но триггерился только по
+    status/visibility). Variants-бейдж тоже скрывается на OOS (правильно).
+  - Tasks.md: тикет Полату `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` — добавить
+    `totalStock: number` в `ProductListItem`. После этого Азим уберёт cast.
+- **Закоммичено:** правка `ProductCard.tsx` на `main` (25.05.2026). Type-расширение
+  ещё у Полата — после закрытия `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` Азим уберёт cast.
 
 ## [2026-05-21] [BUILD-VITE-OVERRIDE-2026-05-20] 🟢 vite override `>=6.4.2` не ломает web-buyer/web-seller
 - **Статус:** 🟢 OK, ничего чинить не нужно. Опасение #5 Азима — закрыто.
@@ -440,7 +453,7 @@
 - **Файл:** `apps/api/src/socket/orders.gateway.ts`.
 - **Что хорошо в Chat/Orders gateways:**
   - JWT verify в `handleConnection` через `JwtService.verify` с правильным secret из ConfigService. На invalid → `client.disconnect(true)`.
-  - CORS origin function проверяет ALLOWED_ORIGINS + regex (`*.railway.app`, telegram.org, t.me, savdo.uz).
+  - CORS origin function проверяет ALLOWED_ORIGINS + regex (`*.railway.app`, telegram.org, t.me, maxsavdo.uz).
   - `chat:typing` (FEAT-005) проверяет `client.rooms.has(room)` перед эмитом — anti-spoof.
   - `join-chat-room` — DB-проверка участия (buyerId/sellerId match), + валидация типа threadId.
   - Все emits идут на конкретные rooms (`thread:`, `seller:`, `buyer:`), не broadcast.
@@ -485,13 +498,13 @@
 - **🟢 Что хорошо:**
   - 0 `window.alert`/`window.confirm` (лучше чем TMA где 5 мест).
   - 0 silent `.catch(() => {})` (лучше чем TMA).
-  - Большинство preview URL используют `NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` (graceful fallback).
+  - Большинство preview URL используют `NEXT_PUBLIC_BUYER_URL ?? 'https://maxsavdo.uz'` (graceful fallback).
 - **🟠 P1 для Азима:**
-  - **WEB-SELLER-HARDCODED-DOMAIN-001:** 3 места с прямым хардкодом `savdo.uz` без env fallback:
-    - `app/(dashboard)/layout.tsx:127` — sidebar показывает `savdo.uz/${store.slug}`. Если домен ещё не на проде — юзер видит несуществующую ссылку.
-    - `app/(dashboard)/layout.tsx:236` — `navigator.clipboard.writeText('https://savdo.uz/${store.slug}')`. Юзер копирует мёртвую ссылку.
-    - `app/(dashboard)/profile/page.tsx:49` — `storeUrl = 'https://savdo.uz/${store.slug}'`.
-  - Решение: использовать `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://savdo.uz'` везде (как уже сделано в dashboard/products). Или вынести в общий `lib/buyer-url.ts` helper.
+  - **WEB-SELLER-HARDCODED-DOMAIN-001:** 3 места с прямым хардкодом `maxsavdo.uz` без env fallback:
+    - `app/(dashboard)/layout.tsx:127` — sidebar показывает `maxsavdo.uz/${store.slug}`. Если домен ещё не на проде — юзер видит несуществующую ссылку.
+    - `app/(dashboard)/layout.tsx:236` — `navigator.clipboard.writeText('https://maxsavdo.uz/${store.slug}')`. Юзер копирует мёртвую ссылку.
+    - `app/(dashboard)/profile/page.tsx:49` — `storeUrl = 'https://maxsavdo.uz/${store.slug}'`.
+  - Решение: использовать `process.env.NEXT_PUBLIC_BUYER_URL ?? 'https://maxsavdo.uz'` везде (как уже сделано в dashboard/products). Или вынести в общий `lib/buyer-url.ts` helper.
 
 ---
 
@@ -548,7 +561,7 @@
 - **Статус:** 🟡 Audit с 1 фиксом, остальное в `analiz/tasks.md`. 19 pages просканировано.
 - **Метод:** grep по анти-паттернам, ручной просмотр findings.
 - **🔴 Найдено критичное (исправлено сейчас):**
-  - **TMA-PROFILE-LINK-PRETTIFY-001** ✅: `seller/ProfilePage.tsx:98` хардкод `savdo.uz/{slug}` (тот же баг что был на buyer/StorePage). Заменён на webStoreUrl helper + кнопка «↗ Перейти на сайт».
+  - **TMA-PROFILE-LINK-PRETTIFY-001** ✅: `seller/ProfilePage.tsx:98` хардкод `maxsavdo.uz/{slug}` (тот же баг что был на buyer/StorePage). Заменён на webStoreUrl helper + кнопка «↗ Перейти на сайт».
 - **🟠 P1 в backlog (analiz/tasks.md):**
   - **TMA-NATIVE-CONFIRM-001:** `seller/ProductsPage.tsx` использует `window.confirm/alert` (5 мест). В Telegram WebView системный popup → выглядит чужеродно, нет haptic. Заменить на кастомный `<ConfirmModal>` (новый компонент в `components/ui/`).
     - Lines: ProductsPage:100, 113, 120, 129; StorePage seller:173.
@@ -559,7 +572,7 @@
 - **🟢 P3 (хорошо что нет):**
   - `<img>` без `alt` — 0 (хорошо).
   - `require()` или old commonjs — 0.
-  - hardcoded savdo.uz — был только 1 (исправлен).
+  - hardcoded maxsavdo.uz — был только 1 (исправлен).
 - **Z-index конфликты потенциальные:** 10 файлов с `position: fixed` (BottomNav, Sidebar, BottomSheet, CategoryModal, ImageCropper, FullscreenButton, AppShell, ChatPage). После fix `z-[9999]flex` (commit 20cfcec) — должно быть стабильно. Но есть вероятность конфликта BottomNav (z:50) с BottomSheet → overlay не должен под нав закрываться.
 
 ---
@@ -572,7 +585,7 @@
 
 **[BUG-WB-AUDIT-001] `useCart()` без `enabled: isAuthenticated` → 401-loop для гостей**
 - Файл: `apps/web-buyer/src/hooks/use-cart.ts` + использование в `components/layout/Header.tsx:20`
-- Гостевой посетитель: `useCart` стреляет на `/cart`, ловит 401 (если endpoint требует auth), refresh-interceptor пытается рефрешить с `null` токеном, диспатчит `savdo:auth:expired`, `localLogout` + `queryClient.clear` — на каждый рендер Header.
+- Гостевой посетитель: `useCart` стреляет на `/cart`, ловит 401 (если endpoint требует auth), refresh-interceptor пытается рефрешить с `null` токеном, диспатчит `maxsavdo:auth:expired`, `localLogout` + `queryClient.clear` — на каждый рендер Header.
 - Фикс: добавить `enabled: isAuthenticated` в `useCart` или передавать флаг снаружи. Либо подтвердить, что `/cart` принимает `X-Session-Token` без JWT.
 
 **[BUG-WB-AUDIT-002] `useBuyerSocket` cleanup не emit'ит `leave-buyer-room`**
@@ -634,7 +647,7 @@
 
 **[BUG-WB-AUDIT-013] Cross-tab token desync: нет `storage` event listener в AuthContext**
 - Файл: `apps/web-buyer/src/lib/auth/storage.ts` + AuthContext
-- Логаут в табе B — таб A остаётся с `isAuthenticated: true` и устаревшим `user` до первого 401. Refresh пытается с null-токеном, дергает `savdo:auth:expired` — но юзер видит сломанные API-запросы между.
+- Логаут в табе B — таб A остаётся с `isAuthenticated: true` и устаревшим `user` до первого 401. Refresh пытается с null-токеном, дергает `maxsavdo:auth:expired` — но юзер видит сломанные API-запросы между.
 - Фикс: `window.addEventListener('storage', e => { if (e.key === ACCESS_TOKEN_KEY && !e.newValue) localLogout(); })`.
 
 **[BUG-WB-AUDIT-014] `notifications/page.tsx` `readAll.mutate()` на каждый mount без guard**
@@ -756,7 +769,7 @@
   - JWT verify в handshake (commit `7cdb4c6` — добавил `OnGatewayConnection`).
   - join-seller-room проверяет `user.storeId === data.storeId` через JWT.
   - emitChatMessage отправляет только в room thread:id — а не broadcast.
-  - CORS regex для railway.app/telegram.org/savdo.uz.
+  - CORS regex для railway.app/telegram.org/maxsavdo.uz.
 
 ---
 
@@ -1477,7 +1490,7 @@ P2: остальное.
 
 - **Статус:** ✅ Исправлено (Азим, 19.04.2026, web-seller + web-buyer).
 - **Что случилось:** Азим выходил из seller-аккаунта и пытался залогиниться обратно — выкидывало на регистрацию. В консоли — сотни строк `logout:1 Failed to load resource: 401`.
-- **Корневая причина:** Axios interceptor пытался refresh-нуть токен на 401 от `/auth/logout`. Refresh тоже 401 → `clearTokens` + `savdo:auth:expired` event → AuthProvider слушал и звал `logout()` снова → бесконечный цикл.
+- **Корневая причина:** Axios interceptor пытался refresh-нуть токен на 401 от `/auth/logout`. Refresh тоже 401 → `clearTokens` + `maxsavdo:auth:expired` event → AuthProvider слушал и звал `logout()` снова → бесконечный цикл.
 - **Что сделано:**
   1. `apps/web-seller/src/lib/api/client.ts` и `apps/web-buyer/src/lib/api/client.ts` — interceptor пропускает refresh для `/auth/logout`, `/auth/refresh`, `/auth/otp/*`.
   2. `context.tsx` (оба app): добавлен `localLogout()` (только локальная очистка). `onExpired` event handler и `getMe` catch теперь зовут `localLogout()`, а не полный `logout()` который опять бил по сети.
@@ -1825,7 +1838,7 @@ P2: остальное.
 ## 2026-04-12 [WEB-013] NEXT_PUBLIC_BUYER_URL отсутствовал в .env.example web-seller
 
 - **Статус:** 🟡 Предупреждение → ✅ Исправлено
-- **Что случилось:** `dashboard/page.tsx` использует `NEXT_PUBLIC_BUYER_URL`, переменная не была в .env.example → Railway-конфиг без неё, ссылки вели на `savdo.uz`.
+- **Что случилось:** `dashboard/page.tsx` использует `NEXT_PUBLIC_BUYER_URL`, переменная не была в .env.example → Railway-конфиг без неё, ссылки вели на `maxsavdo.uz`.
 - **Что сделано:** Добавлена переменная в `apps/web-seller/.env.example`.
 
 ## 2026-04-12 [WEB-014] Локальный тип StorefrontStore в web-buyer устарел

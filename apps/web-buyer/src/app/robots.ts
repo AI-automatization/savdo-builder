@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://savdo.uz';
+const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz';
 
 export default function robots(): MetadataRoute.Robots {
   return {

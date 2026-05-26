@@ -1,4 +1,4 @@
-# Savdo — Brand Book
+# maxsavdo — Brand Book
 
 **Версия:** 1.0
 **Дата:** 2026-05-20
@@ -8,9 +8,9 @@
 
 ---
 
-## Что такое Savdo
+## Что такое maxsavdo
 
-Savdo (узб. «торговля») — Telegram-native платформа для построения интернет-магазинов в Узбекистане. Продавец за 60 секунд создаёт витрину `savdo.uz/<slug>`, делится ссылкой в Telegram, принимает заказы. Покупатель открывает витрину прямо из Telegram или браузера, добавляет в корзину, пишет в TG-чат — никаких регистраций.
+maxsavdo (узб. «торговля») — Telegram-native платформа для построения интернет-магазинов в Узбекистане. Продавец за 60 секунд создаёт витрину `maxsavdo.uz/<slug>`, делится ссылкой в Telegram, принимает заказы. Покупатель открывает витрину прямо из Telegram или браузера, добавляет в корзину, пишет в TG-чат — никаких регистраций.
 
 Brand-сердцевина — **тёплая bazaar-эстетика на тёплой кремовой подложке**. Это сознательное отличие от cold-slate UI большинства SaaS и от ярко-зелёного Uzum / оранжевого OLX.
 
@@ -49,7 +49,7 @@ docs/brand/
 ### Принципы изменений
 
 1. **Палитра — single source of truth в `palette.md`.** Любое изменение → обновить файл и `apps/web-buyer/src/app/globals.css` + `apps/web-seller/src/app/globals.css` синхронно.
-2. **Логотип — фиксированный wordmark.** Per-store branding (когда продавец загружает свой логотип) меняет CTA-цвет витрины, но wordmark `Savdo` в footer/credit остаётся в фирменном.
+2. **Логотип — фиксированный wordmark.** Per-store branding (когда продавец загружает свой логотип) меняет CTA-цвет витрины, но wordmark `maxsavdo` в footer/credit остаётся в фирменном.
 3. **Brand-цвет terracotta `#7C3F2E` (light) / `#A05A45` (dark) — не обсуждается без отдельного RFC.**
 4. **Семантические цвета (success/warning/danger) — warm-tinted, не shadcn-generic.** Список в `palette.md`.
 5. **Apostrof `ʻ` (U+02BB) — обязательный для узбекской латиницы.** Никогда `'` (U+0027) или `'` (U+2019).
@@ -66,7 +66,7 @@ docs/brand/
 | Font | Inter (latin + cyrillic, `cv11 ss01`) |
 | Border radius scale | 4 / 6 / 8 / 12 / 16 / 24 / 9999 |
 | Spacing scale | 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 |
-| Wordmark | «Savdo» — всегда capital S, всегда в `colors.brand` |
+| Wordmark | «maxsavdo» — всегда capital S, всегда в `colors.brand` |
 | Apostrof | `ʻ` U+02BB (Oʻzbekiston, foʻq) |
 
 ---
