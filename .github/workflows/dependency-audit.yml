@@ -1,0 +1,51 @@
+name: Dependency Audit
+
+# CI-PNPM-AUDIT-001 — weekly pnpm audit + baseline.
+# Ловит НОВЫЕ high/critical advisories. Известные перечислены в
+# `.github/dependency-audit-baseline.json` с явным owner-ом фикса.
+# Cron: понедельник 06:00 UTC (= 11:00 UZT) — раз в неделю достаточно;
+# на PR'ах, меняющих package.json / pnpm-lock.yaml, проверка тоже срабатывает.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/dependency-audit.yml'
+      - '.github/dependency-audit-baseline.json'
+      - 'scripts/dependency-audit-check.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/dependency-audit-baseline.json'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: pnpm audit vs baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies (no run scripts)
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run audit vs baseline
+        run: node scripts/dependency-audit-check.mjs --include-moderate

@@ -4,6 +4,7 @@ import { SellersRepository } from '../../sellers/repositories/sellers.repository
 import { SlugService } from '../services/slug.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { normalizeContactLink } from '../../../shared/normalize';
 
 @Injectable()
 export class CreateStoreUseCase {
@@ -51,6 +52,10 @@ export class CreateStoreUseCase {
       slug = await this.slugService.generateUnique(data.name);
     }
 
-    return this.storesRepo.create({ sellerId: seller.id, ...data, slug });
+    // API-TELEGRAM-LINK-EMPTY-001: trim и сохранять "" вместо null
+    // (DB schema требует non-null). Frontend увидит null после normalize в presenter.
+    const telegramContactLink = normalizeContactLink(data.telegramContactLink) ?? '';
+
+    return this.storesRepo.create({ sellerId: seller.id, ...data, slug, telegramContactLink });
   }
 }

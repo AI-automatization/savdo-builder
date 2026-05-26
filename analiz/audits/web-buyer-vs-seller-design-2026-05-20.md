@@ -50,7 +50,7 @@
 **Cons:**
 - Violet `#7C3AED` — клишированный SaaS-цвет (Linear / Vercel / Notion premium). Никакой brand-уникальности.
 - Light-режим (`#F4F5F7 + #0F172A текст`) выглядит как «дефолт shadcn» — функционально, бренда нет.
-- Двойственность: в light brand = `#7C3AED`, в dark brand = `#7C3AED` но accent = `#A78BFA`. Wordmark «Savdo» прыгает в насыщенности между темами.
+- Двойственность: в light brand = `#7C3AED`, в dark brand = `#7C3AED` но accent = `#A78BFA`. Wordmark «maxsavdo» прыгает в насыщенности между темами.
 - Нет brand-muted / brand-border (только accent-*). Когда нужен «soft button» в brand-цвете — приходится тянуть `accent-muted`, что концептуально не то же самое.
 - Dark — default через `defaultTheme="dark"`. Это спорно: продавец на телефоне днём на улице получает чёрный фон, который никак не читается под солнцем.
 
@@ -80,7 +80,7 @@
 - `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` — системный стек без Inter. На Android кириллица будет читаться хуже buyer'а.
 - Нет `font-feature-settings`. Нет `cv11/ss01`.
 - Иерархия только `textPrimary / textMuted / textDim` — 3 уровня против 5 у buyer'а. Когда нужна разница между body-text и hint-text, упирается в одно и то же `--color-text-muted`.
-- Вес «брэнд» Savdo в sidebar — `font-bold` 16px, идентично рядовому label. Логотип не выделен типографически.
+- Вес «брэнд» maxsavdo в sidebar — `font-bold` 16px, идентично рядовому label. Логотип не выделен типографически.
 
 ---
 
@@ -156,7 +156,7 @@ Blur используется **только в onboarding** — `filter: blur(6
 
 ### Inputs
 
-**web-buyer:** `background: surface, border: 1px solid border`. Поле `savdo.uz/<slug>` с разделителем — finished detail.
+**web-buyer:** `background: surface, border: 1px solid border`. Поле `maxsavdo.uz/<slug>` с разделителем — finished detail.
 
 **web-seller:** `background: surfaceSunken` (на тон ниже) — inset look. Это норм для CRM, но в светлом режиме `#E4E7EB` визуально близок к border. Контраст input vs background слабее, чем у buyer.
 
@@ -169,9 +169,9 @@ Blur используется **только в onboarding** — `filter: blur(6
 
 **Это правильное разделение** — разные аудитории, разные эмоции. **Но название и логотип должны быть единым brand-якорем.** Сейчас:
 - buyer logo: 80×80 rounded `bg: brand` (terracotta) + ShoppingCart white + shadow `rgba(124,63,46,0.15)`.
-- seller logo: 32×32 `bg: accent` (violet) + ShoppingCart white + текст «Savdo» в `colors.brand` (violet `#7C3AED`).
+- seller logo: 32×32 `bg: accent` (violet) + ShoppingCart white + текст «maxsavdo» в `colors.brand` (violet `#7C3AED`).
 
-Один и тот же wordmark «Savdo» получает разные оттенки и разные иконки-плашки. Это **враг brand recognition** — пользователь, переходящий из buyer в seller (а онбординг ровно это и делает: BUYER → SELLER), видит другой цвет логотипа и теряет якорь.
+Один и тот же wordmark «maxsavdo» получает разные оттенки и разные иконки-плашки. Это **враг brand recognition** — пользователь, переходящий из buyer в seller (а онбординг ровно это и делает: BUYER → SELLER), видит другой цвет логотипа и теряет якорь.
 
 ---
 
@@ -179,7 +179,7 @@ Blur используется **только в onboarding** — `filter: blur(6
 
 1. **Единый `--color-brand` = terracotta `#7C3F2E` (light) / `#A05A45` (dark) в обоих апах.**
    - В seller заменить `--color-brand: #7C3AED` (light и dark) на buyer-значения.
-   - Логотип/wordmark `Savdo` в обоих апах берёт `colors.brand` — будет одинаковым.
+   - Логотип/wordmark `maxsavdo` в обоих апах берёт `colors.brand` — будет одинаковым.
 
 2. **Сохранить violet как `--color-accent` в seller** (отдельно от brand). Тогда у seller получается «dashboard accent» (violet) и «brand mark» (terracotta) — разделение, которое имеет смысл: violet работает как CRM-status, terracotta как идентичность платформы.
 
@@ -215,10 +215,10 @@ Seller остаётся «строгим инструментом» — оста
 
 ## 5 быстрых wins (концретные файлы — Азим применит сам)
 
-### Win 1 — Единый brand-цвет логотипа Savdo
+### Win 1 — Единый brand-цвет логотипа maxsavdo
 **Файл:** `apps/web-seller/src/app/globals.css`
 **Строки 29, 74:** `--color-brand: #7C3AED;` → `--color-brand: #7C3F2E;` (light), `#A05A45` (dark).
-**Эффект:** wordmark «Savdo» в sidebar станет таким же, как на buyer-homepage. Brand recognition при переходе buyer↔seller — восстановлена.
+**Эффект:** wordmark «maxsavdo» в sidebar станет таким же, как на buyer-homepage. Brand recognition при переходе buyer↔seller — восстановлена.
 
 ### Win 2 — Перенести buyer-токены `brandMuted / brandBorder / brandTextOnBg` в seller
 **Файл:** `apps/web-seller/src/app/globals.css` — добавить в `:root` и `[data-theme="dark"]`:
@@ -251,6 +251,13 @@ Seller остаётся «строгим инструментом» — оста
 ```
 Также `--onboarding-bg` (строка 91) перекрасить из navy-purple в warm-brown.
 **Эффект:** signature CRM-look сохраняется (градиент остаётся), но семейство цвета совпадает с buyer dark-mode.
+
+> **Контекст / прецедент:** в session 55 (09.05.2026, commit `b894589`) Азим
+> уже сделал ровно такую миграцию для **web-buyer dark theme** — legacy violet
+> `#A78BFA` заменён на lifted terracotta `#A05A45`, bg `#0F0F12` (cool slate) →
+> `#16120D` (warm near-black). Этот Win 4 — распространение того же решения на
+> seller, а не дубль buyer-работы. Buyer-dark уже консистентен с brand-light,
+> seller-dark пока остаётся «2021-й purple→navy→green» — нужно подтянуть.
 
 ### Win 5 — Заменить inline-hex tints на хелперы
 **Файлы:**

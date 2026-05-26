@@ -11,6 +11,7 @@ import { colors } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Tooltip } from "@/components/tooltip";
 import HeaderSearch from "@/components/layout/HeaderSearch";
+import { MaxsavdoLogo } from "@/components/brand/MaxsavdoLogo";
 
 export default function Header() {
   const params = useParams();
@@ -33,10 +34,10 @@ export default function Header() {
         {/* Logo */}
         <Link
           href={slug ? `/${slug}` : "/"}
-          className="text-lg font-bold tracking-tight flex-shrink-0"
-          style={{ color: colors.brand }}
+          className="flex-shrink-0"
+          aria-label="maxsavdo"
         >
-          Savdo
+          <MaxsavdoLogo size={28} withWordmark />
         </Link>
 
         {/* Search — grows */}

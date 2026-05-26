@@ -6,15 +6,15 @@
 **Тип:** public launch web-buyer + web-seller (закрытая beta завершена)
 **Plan launch date:** 2026-06-15 (T-26 дней)
 
-> **СТАТУС ДАННЫХ:** этот документ ссылается на `docs/readiness/launch-readiness-2026-05-20.md`, который заполняется параллельным агентом и на момент создания этого файла **ЕЩЁ НЕ СУЩЕСТВУЕТ**.
->
-> Все scores ниже — **СТАБЫ (помечены как ⏳ stub)** на основе текущего знания состояния проекта из `analiz/`, `docs/V1.1/`, и memory checkpoints. После того как readiness-отчёт будет готов — этот документ нужно **пересчитать**.
+> **СТАТУС ДАННЫХ:** scores ниже взяты из `docs/readiness/launch-readiness-2026-05-20.md`
+> (aggregate **6.6 / 10**, verdict **Conditional Go**). Документ пересчитан 2026-05-21
+> после того как readiness-отчёт был доделан. Изначальные ⏳ stub-скоры сняты.
 
 ---
 
 ## 1. Контекст запуска
 
-- **Что запускается:** публичный launch storefront (`savdo.uz/<slug>`) + seller-dashboard + admin panel
+- **Что запускается:** публичный launch storefront (`maxsavdo.uz/<slug>`) + seller-dashboard + admin panel
 - **Аудитория:** sellers (Telegram-каналы UZ) + buyers (web + TG WebApp)
 - **Scope:**
   - ✅ Витрина с товарами, корзина, оформление заказа
@@ -42,41 +42,61 @@
 
 | # | Категория | Критерий | Тип | Thr | Score | Verdict |
 |---|-----------|----------|-----|-----|-------|---------|
-| 1 | Security | OWASP Top-10 чек, auth (MFA для admin), RBAC enforcement, secret rotation, no exposed `.env` | must | ≥ 7 | **6** ⏳ stub | ❌ |
-| 2 | Data | Prisma migrations reversible, `pg_dump` восстановлен на тесте, no destructive DDL в pending | must | ≥ 8 | **7** ⏳ stub | ❌ |
-| 3 | Infra | Railway env vars (api/admin/web-buyer/web-seller), watchPatterns, health endpoints | must | ≥ 7 | **8** ⏳ stub | ✅ |
-| 4 | Observability | Structured logs, error tracking (Sentry?), uptime monitor, dashboard с key metrics | must | ≥ 6 | **4** ⏳ stub | ❌ |
-| 5 | Performance | API p95 < 300ms на критичных endpoints, web LCP < 2.5s, load test 50 RPS | must | ≥ 6 | **6** ⏳ stub | ✅ |
-| 6 | Tests | Unit api ≥ 60%, e2e критичных flows (checkout, seller-onboarding) | should | ≥ 6 | **4** ⏳ stub | ⚠️ |
-| 7 | Deps | `pnpm audit --prod` — no high/critical | must | ≥ 7 | **7** ⏳ stub | ✅ |
-| 8 | A11y | Hit-area ≥ 48px, contrast WCAG AA, semantic HTML, keyboard nav | should | ≥ 6 | **6** ⏳ stub | ✅ |
-| 9 | i18n | ru + uz для launch-флоу (onboarding, checkout, error states) | should | ≥ 7 | **6** ⏳ stub | ⚠️ |
-| 10 | Legal | Публичная оферта, Privacy Policy, ToS, data-processing для UZ | must | ≥ 7 | **5** ⏳ stub | ❌ |
-| 11 | Marketing | Landing страница, post-templates, лид-каналы (см. project_lead_gen_channels) | should | ≥ 5 | **6** ⏳ stub | ✅ |
+| 1 | Security | OWASP Top-10 чек, auth (MFA для admin), RBAC enforcement, secret rotation, no exposed `.env` | must | ≥ 7 | **8** | ✅ |
+| 2 | Data | Prisma migrations reversible, `pg_dump` восстановлен на тесте, no destructive DDL в pending | must | ≥ 8 | **7** | ❌ |
+| 3 | Infra | Railway env vars (api/admin/web-buyer/web-seller), watchPatterns, health endpoints | must | ≥ 7 | **7** | ✅ |
+| 4 | Observability | Structured logs, error tracking (Sentry?), uptime monitor, dashboard с key metrics | must | ≥ 6 | **6** | ✅⚠️ |
+| 5 | Performance | API p95 < 300ms на критичных endpoints, web LCP < 2.5s, load test 50 RPS | must | ≥ 6 | **7.5** | ✅ |
+| 6 | Tests | Unit api ≥ 60%, e2e критичных flows (checkout, seller-onboarding) | should | ≥ 6 | **5** | ⚠️ |
+| 7 | Deps | `pnpm audit --prod` — no high/critical | must | ≥ 7 | **6** | ❌ |
+| 8 | A11y | Hit-area ≥ 48px, contrast WCAG AA, semantic HTML, keyboard nav | should | ≥ 6 | **6.5** | ✅ |
+| 9 | i18n | ru + uz для launch-флоу (onboarding, checkout, error states) | should | ≥ 7 | **8** | ✅ |
+| 10 | Legal | Публичная оферта, Privacy Policy, ToS, data-processing для UZ | must | ≥ 7 | **5** | ❌ |
+| 11 | Marketing | Landing страница, post-templates, лид-каналы (см. project_lead_gen_channels) | should | ≥ 5 | **7** | ✅ |
 | 12 | Payments | N/A — out-of-scope для MVP (ADR-003) | n/a | — | — | — |
-| 13 | Support | TG-канал support, FAQ, on-call для первых 14 дней | should | ≥ 6 | **5** ⏳ stub | ⚠️ |
-| 14 | Onboarding | Seller onboarding протестирован на 5 живых юзерах | should | ≥ 6 | **5** ⏳ stub | ⚠️ |
+| 13 | Support | TG-канал support, FAQ, on-call для первых 14 дней | should | ≥ 6 | **5.5** | ⚠️ |
+| 14 | Onboarding | Seller onboarding протестирован на 5 живых юзерах | should | ≥ 6 | **7** | ✅ |
 
-**Sum of must-pass below threshold:** 4 из 7 (Security, Data, Observability, Legal)
+**Sum of must-pass below threshold:** 3 из 7 (Data, Deps, Legal).
+**Aggregate weighted:** **6.6 / 10** (readiness §"Сводка скоров").
+
+> **Δ от stub:** Security 6 → 8 (sec-audit 16.05 закрыл 4 из 5 находок), Observability 4 → 6 (Sentry SDK + StructuredLogger вкатили), Tests 4 → 5 (admin/tma smoke добавлены), Performance 6 → 7.5 (pg_trgm + N+1 закрыто), i18n 6 → 8 (полный ru+uz во всех 4 апах), Onboarding 5 → 7 (homepage discovery + seller-onboarding intercept закрыты), Deps 7 → 6 (нет `pnpm audit` в CI — переоценено вниз).
 
 ---
 
-## 4. Verdict (предварительный, по стабам)
+## 4. Verdict — по реальным скорам readiness-отчёта
 
-### 🔴 **NO-GO** (предварительно, ждём подтверждения от readiness-отчёта)
+### 🟡 **Conditional Go** (соответствует verdict readiness §"Verdict")
+
+**Public launch блокирован пока 3 must-pass < threshold не закрыты.**
+**Soft-launch (closed beta до 50 продавцов)** допускается после закрытия Top-5
+критического пути из readiness (5–7 дней) — реквизиты оферты для closed-beta
+не обязательны (можно стартовать с placeholder и договориться с beta-sellers).
 
 **Блокеры (must-pass < threshold):**
 
-1. **Security (6 < 7)** — нужен audit на OWASP Top-10. MFA enforcement для admin не подтверждён (см. `memory/project_pending_tasks.md`).
-2. **Data (7 < 8)** — миграции есть, но не проверен `pg_dump → restore` end-to-end (см. `feedback_prod_data_safety`).
-3. **Observability (4 < 6)** — структурированные логи частично, alerts/dashboard отсутствуют. Без этого — слепой launch.
-4. **Legal (5 < 7)** — оферта, политика обработки персональных данных UZ — не готовы.
+1. **Data (7 < 8)** — Prisma миграции стабильны, но `pg_dump → restore` end-to-end
+   не прогонялся. Backup/restore-runbook + drill-script задеплоены 20.05
+   (`docs/runbooks/postgres-backup-restore.md`, `scripts/db/restore-drill.sh`),
+   нужен один реальный прогон на staging до запуска.
+2. **Deps (6 < 7)** — overrides в `package.json` патчат конкретные CVE
+   (path-to-regexp, multer, axios, vite, postcss, follow-redirects, lodash,
+   handlebars, picomatch, fast-xml-*), но `pnpm audit --prod` не запускается в CI.
+   Нет регулярного baseline / Dependabot. После добавления weekly cron-job
+   `dependency-audit.yml` Deps вернётся к 7+.
+3. **Legal (5 < 7)** — `apps/web-buyer/src/app/offer/page.tsx:71-75` всё ещё
+   placeholder для реквизитов юр.лица (ИНН/ОКЭД/юр.адрес/счёт). Зависит от
+   регистрации ИП/ООО — внешняя процедура 3–7 календарных дней.
 
-**Жёлтые флаги (should-pass < threshold, но не блокеры сами по себе):**
-- Tests (4 < 6) — критичные flows без e2e покрытия
-- i18n (6 < 7) — частичный uz
-- Support (5 < 6) — нет formal on-call rotation
-- Onboarding (5 < 6) — не тестировался на живых
+**На грани (must-pass = threshold):**
+- **Observability (6 = 6)** ✅⚠️ — `StructuredLogger` + `ErrorReporter` (Sentry SDK)
+  есть, но нет реального DSN + uptime-ping'а. Один сетевой провал = слепой launch.
+  Технически проходим, но **очень тонко** — рекомендуется поднять до 7 (UptimeRobot +
+  Sentry DSN, 30 минут работы) до публичного объявления.
+
+**Жёлтые флаги (should-pass < threshold, не блокеры):**
+- **Tests (5 < 6)** — admin/tma имеют smoke (4+14 тестов добавлены 20.05), web-buyer/web-seller всё ещё 0.
+- **Support (5.5 < 6)** — нет `@savdo_support` TG-чата, нет FAQ-страницы.
 
 ---
 
@@ -93,35 +113,43 @@
 
 ---
 
-## 6. План фикса блокеров (No-Go → Conditional)
+## 6. План фикса блокеров (Conditional → Go)
 
-### Блокер 1: Security (6 → ≥ 7)
+### Блокер 1: Data (7 → ≥ 8)
 
-- **Что:** OWASP Top-10 audit (skill `security-pen-testing`), MFA enforcement в admin login flow, secret rotation на Railway.
-- **Кто:** Полат + skill-driven audit.
-- **Сколько:** 5 дней.
-- **Cut-off:** 2026-05-30.
-
-### Блокер 2: Data (7 → ≥ 8)
-
-- **Что:** `pg_dump prod` → restore в staging, verify schema + rows. Зафиксировать ADR на runbook backup/restore.
-- **Кто:** Полат.
-- **Сколько:** 2 дня.
+- **Что:** один реальный restore-drill в Railway staging:
+  `bash scripts/db/restore-drill.sh --dump <prod-snapshot.dump> --target-db <staging-url> --source-db <prod-url>`.
+  Скрипт проверяет DROP+restore+integrity-check+row-count drift ≤ 5%.
+  Залогировать exit=0 в `analiz/done.md`. После — настроить Railway-cron на
+  ежемесячный прогон (`POSTGRES_BACKUP_RETENTION_DAYS` + cron в Railway dashboard).
+- **Кто:** Полат (владелец инфры) + Азим (verify-only прогон скрипта).
+- **Сколько:** 2 дня (1 — staging-прогон, 1 — Railway-cron + alert на FAIL).
 - **Cut-off:** 2026-05-28.
 
-### Блокер 3: Observability (4 → ≥ 6)
+### Блокер 2: Deps (6 → ≥ 7)
 
-- **Что:** Sentry для api + admin + web-*. UptimeRobot для всех 4 endpoints. Базовый dashboard (Railway logs aggregated + Postgres slow queries).
-- **Кто:** Полат + skill `observability-designer`.
-- **Сколько:** 5 дней.
-- **Cut-off:** 2026-06-02.
+- **Что:** `.github/workflows/dependency-audit.yml` — weekly cron, `pnpm audit
+  --prod --json`, fail если есть `high`/`critical`. Зафиксировать baseline.
+  Опционально: GitHub Dependabot для weekly PR-bump'ов.
+- **Кто:** Полат.
+- **Сколько:** 0.5 дня.
+- **Cut-off:** 2026-05-30.
 
-### Блокер 4: Legal (5 → ≥ 7)
+### Блокер 3: Legal (5 → ≥ 7)
 
-- **Что:** оферта + Privacy Policy + ToS с UZ-юристом, размещение на `savdo.uz/legal/*`, cookie banner.
-- **Кто:** Полат (координация) + внешний юрист.
-- **Сколько:** 10 дней (включая правки).
+- **Что:** заполнить `apps/web-buyer/src/app/offer/page.tsx:71-75` ИНН/ОКЭД/юр.адресом
+  после регистрации ИП/ООО. Cookie banner — добавляется только если есть
+  трекинг-cookies (сейчас нет — можно отложить).
+- **Кто:** Бизнес (регистрация) → Полат (заполнение).
+- **Сколько:** 3–7 календарных дней (внешняя процедура).
 - **Cut-off:** 2026-06-05.
+
+### Hardening (Observability 6 → 7, поднимаем с границы)
+
+- **Что:** Sentry DSN в Railway env, UptimeRobot на 5 endpoints с TG-алертами.
+- **Кто:** Полат.
+- **Сколько:** 0.5 дня.
+- **Cut-off:** 2026-05-30.
 
 ### Re-review
 
@@ -176,9 +204,9 @@
 
 ## 9. Подписи
 
-- Полат: ⏳ pending after readiness-отчёт
-- Азим: ⏳ pending after readiness-отчёт
-- Дата принятия finальная: TBD
+- Полат: ⏳ pending до закрытия Top-3 must-pass блокеров
+- Азим: ⏳ pending до закрытия Top-3 must-pass блокеров
+- Дата принятия finальная: TBD (плановое re-review 2026-06-06)
 
 ---
 
@@ -196,6 +224,10 @@
 
 ## 11. Следующее действие
 
-**Параллельный агент** заканчивает `docs/readiness/launch-readiness-2026-05-20.md` → этот документ **обязательно пересчитывается** с реальными scores → finальный verdict.
+`docs/readiness/launch-readiness-2026-05-20.md` готов — этот документ пересчитан
+по нему 2026-05-21.
 
-Текущий verdict ⏳ **NO-GO (preliminary, based on stubs)** — но это сигнал «есть 4 must-pass блокера, готовь план фикса», а не «launch отменён».
+Текущий verdict 🟡 **Conditional Go** — soft-launch (closed beta) можно
+объявлять после закрытия Top-5 critical path readiness'a (5–7 дней), public
+launch — после закрытия 3 must-pass блокеров (Data → drill, Deps → CI audit,
+Legal → реквизиты).

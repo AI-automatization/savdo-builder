@@ -218,6 +218,6 @@
   <line x1="300" y1="637" x2="320" y2="637" stroke="#3a3a5a" stroke-width="1.5" stroke-dasharray="4,2"/>
   <text x="326" y="641" fill="#666688" font-size="10">Фаза 2 / 3 (будущее)</text>
 
-  <text x="942" y="641" fill="#333355" font-size="10" text-anchor="end">Savdo Platform · V0.1 Architecture</text>
+  <text x="942" y="641" fill="#333355" font-size="10" text-anchor="end">maxsavdo Platform · V0.1 Architecture</text>
 
 </svg>

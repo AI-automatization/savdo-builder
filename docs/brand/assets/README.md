@@ -1,8 +1,8 @@
-# Savdo — Brand Assets
+# maxsavdo — Brand Assets
 
 **Версия:** 1.0 · **Дата:** 2026-05-20
 
-> Здесь живут brand-файлы Savdo. Это **non-production**, справочные ассеты — production-копии живут в `apps/*/public/` каждого приложения. Этот каталог — master-исходник.
+> Здесь живут brand-файлы maxsavdo. Это **non-production**, справочные ассеты — production-копии живут в `apps/*/public/` каждого приложения. Этот каталог — master-исходник.
 
 ---
 
@@ -62,7 +62,7 @@ assets/
 
 ### `logo-wordmark.svg`
 
-Простой текстовый SVG: «Savdo» в Inter Semibold, terracotta `#7C3F2E`, 160x48.
+Простой текстовый SVG: «maxsavdo» в Inter Semibold, terracotta `#7C3F2E`, 160x48.
 
 **Что нужно довести:**
 - Зависит от системного Inter — для production embed font или convert to paths.
@@ -85,7 +85,7 @@ assets/
 
 ### `logo-lockup-horizontal.svg`
 
-Композиция: monogram (48x48 plate) + wordmark «Savdo» (32px height). 192x48 total.
+Композиция: monogram (48x48 plate) + wordmark «maxsavdo» (32px height). 192x48 total.
 
 ---
 
@@ -196,8 +196,8 @@ const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-inter' }
 
 ## 8. Лицензии
 
-- Все ассеты в этом каталоге — **собственность проекта Savdo**.
-- Logo, wordmark, monogram — будут зарегистрированы в Узпатенте (см. `logo-spec.md` §11). Пока не зарегистрированы — © Savdo 2026.
+- Все ассеты в этом каталоге — **собственность проекта maxsavdo**.
+- Logo, wordmark, monogram — будут зарегистрированы в Узпатенте (см. `logo-spec.md` §11). Пока не зарегистрированы — © maxsavdo 2026.
 - **Inter** — Open Font License (OFL), permissive — можем использовать commercial.
 - **lucide-react icons** (используются в коде) — ISC license, permissive.
 - **Telegram logo / brand** — собственность Telegram. Используем только как identifier «Войти через Telegram», следуем Telegram brand guidelines.

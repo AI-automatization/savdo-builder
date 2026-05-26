@@ -1,4 +1,4 @@
-# Savdo — Components Guide
+# maxsavdo — Components Guide
 
 **Версия:** 1.0 · **Дата:** 2026-05-20
 **Source of truth (код):** `apps/web-buyer/src/components/**`, `apps/web-buyer/src/lib/styles.ts`
@@ -349,12 +349,12 @@
 
 ### 7.5 Special: slug input с разделителем
 
-См. `apps/web-buyer` — UI паттерн `savdo.uz/<slug>` с разделителем. Структура:
+См. `apps/web-buyer` — UI паттерн `maxsavdo.uz/<slug>` с разделителем. Структура:
 
 ```html
 <div class="flex h-[44px] rounded-lg overflow-hidden" style="border: 1px solid var(--color-border);">
   <span class="px-3 flex items-center text-sm" style="background: var(--color-surface-muted); color: var(--color-text-muted);">
-    savdo.uz/
+    maxsavdo.uz/
   </span>
   <input
     class="flex-1 px-3 outline-none text-sm"
@@ -436,7 +436,7 @@
 Структура:
 - Sticky top, z-40
 - Background `--color-surface`, border-bottom `--color-divider`
-- Logo «Savdo» left → search center → nav icons right
+- Logo «maxsavdo» left → search center → nav icons right
 - Mobile: bottom-nav вместо profile
 
 ### 11.2 Bottom navigation (mobile)
@@ -450,14 +450,14 @@
 ### 11.3 Sidebar (web-seller dashboard)
 
 Структура (240px wide, fixed left):
-- Top: logo «Savdo» (32px monogram + wordmark)
+- Top: logo «maxsavdo» (32px monogram + wordmark)
 - Nav items с icons (lucide stroke 1.75)
 - Active: `--color-brand-muted` background + `--color-brand` text
 - Inactive: `--color-text-muted`
 
 ---
 
-## 12. Patterns specific to savdo
+## 12. Patterns specific to maxsavdo
 
 ### 12.1 Telegram CTA pattern
 

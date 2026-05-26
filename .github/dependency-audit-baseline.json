@@ -1,0 +1,25 @@
+{
+  "createdAt": "2026-05-21",
+  "createdBy": "Полат (CI-PNPM-AUDIT-001)",
+  "note": "Snapshot высоких/критических advisories на момент создания baseline. CI ловит только НОВЫЕ advisories, которых нет в этом списке. Когда зависимость бампается до patched-версии — удалить соответствующий ID. НЕ добавлять сюда новые advisories ради зелёного CI: cмысл baseline'а — список ИЗВЕСТНЫХ и ОСОЗНАННО оставленных рисков с явным владельцем фикса.",
+  "acceptedAdvisoryIds": [
+    "GHSA-q4gf-8mx6-v5v3",
+    "GHSA-8h8q-6873-q5fj",
+    "GHSA-26hh-7cqf-hhc6",
+    "GHSA-mg66-mrh9-m8jx",
+    "GHSA-c4j6-fc7j-m34r",
+    "GHSA-492v-c6pp-mqqv",
+    "GHSA-267c-6grr-h53f",
+    "GHSA-36qx-fr4f-26g5"
+  ],
+  "acceptedNotes": {
+    "GHSA-q4gf-8mx6-v5v3": "next <16.2.3 DoS via Server Components. Fix: bump Next.js ≥16.2.6 в apps/web-buyer + apps/web-seller. Owner: Азим (web-*).",
+    "GHSA-8h8q-6873-q5fj": "next <16.2.5 DoS via Server Components. Fix: bump Next ≥16.2.6. Owner: Азим.",
+    "GHSA-26hh-7cqf-hhc6": "next <16.2.6 Middleware/Proxy bypass App Router. Fix: bump Next ≥16.2.6. Owner: Азим.",
+    "GHSA-mg66-mrh9-m8jx": "next <16.2.5 DoS via connection exhaustion (Cache Components). Fix: bump Next ≥16.2.6. Owner: Азим.",
+    "GHSA-c4j6-fc7j-m34r": "next SSRF в Image Optimization. Fix: bump Next ≥16.2.6. Owner: Азим.",
+    "GHSA-492v-c6pp-mqqv": "next Middleware bypass через dynamic routes. Fix: bump Next ≥16.2.6. Owner: Азим.",
+    "GHSA-267c-6grr-h53f": "next Middleware/Proxy bypass App Router. Fix: bump Next ≥16.2.6. Owner: Азим.",
+    "GHSA-36qx-fr4f-26g5": "next Middleware/Proxy bypass Pages Router. Fix: bump Next ≥16.2.6. Owner: Азим."
+  }
+}
