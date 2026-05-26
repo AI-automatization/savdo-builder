@@ -126,24 +126,6 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
-## 🟡 [API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001] Декларировать `totalStock` в `ProductListItem`
-
-- **Домен:** `packages/types` (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P2 — closing contract drift. Backend уже отдаёт поле, frontend сейчас читает его через cast.
-- **Контекст:** `apps/api/src/modules/products/storefront.controller.ts` в 4 точках map'а (lines 190, 300, 327, 334) добавляет `totalStock = variants.reduce(...stockQuantity)` в ответ storefront-листа. `packages/types/src/api/products.ts` `interface ProductListItem` это поле **не декларирует** → web-buyer (`apps/web-buyer/src/components/store/ProductCard.tsx`) читает через временный cast `(product as { totalStock?: number }).totalStock`, чтобы корректно показывать OOS-overlay для товаров со всеми вариантами `stockQuantity===0`.
-- **Что сделать:** в `packages/types/src/api/products.ts` добавить в `ProductListItem`:
-  ```ts
-  /** Сумма stockQuantity по всем активным variants. 0 = всё OOS. */
-  totalStock: number;
-  ```
-  Опционально: то же поле в `Product` (extends ProductListItem) автонаследуется.
-- **Файлы:** `packages/types/src/api/products.ts`.
-- **После закрытия:** Азим уберёт cast в `apps/web-buyer/src/components/store/ProductCard.tsx` (помечен комментарием с этим ID).
-- **Связано:** logs.md `[STOREFRONT-STOCK-LIST-VS-DETAIL-001]` 21.05.2026 (UX-замечание о том, что OOS-товары на storefront-list выглядят как доступные — это и есть root cause).
-
----
-
 ## 🟡 [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый реальный restore drill на прод-дампе
 
 - **Домен:** SRE / DBA (Полат)

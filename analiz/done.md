@@ -1,5 +1,82 @@
 # Done — Азим + Полат
 
+## 2026-05-25 (Полат, apps/api) — API-STORES-FILTER-SUSPENDED-001
+
+### ✅ [API-STORES-FILTER-SUSPENDED-001] Storefront: исключить не-APPROVED stores
+
+- **Важность:** 🟡 P2 — закрывает leakage SUSPENDED store в публичных endpoints.
+- **Дата:** 25.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/stores/repositories/stores.repository.ts`
+- **Контекст:** TMA-audit 24.05.2026 — DRIPSB store в `SUSPENDED` всё ещё
+  возвращался в `GET /storefront/stores`. Root cause: фильтр был только
+  по `isPublic: true` — admin меняет status на SUSPENDED, но `isPublic`
+  забыл сбросить → store течёт в публичный listing.
+- **Что сделано:** В `stores.repository.ts` добавлен defensive фильтр
+  `status: 'APPROVED'` (Prisma enum value) в 3 методах:
+  - `findBySlug(slug)` — `/storefront/stores/:slug`, `/stores/:slug`
+  - `findAllPublished(opts)` — `/storefront/stores`
+  - `searchPublic(query, limit)` — `/storefront/search`
+  Теперь SUSPENDED / ARCHIVED / REJECTED / DRAFT / PENDING_REVIEW магазины
+  никогда не попадают в публичный API независимо от значения `isPublic`.
+- **Связано:** `debug/orchestrator/audit-runs/2026-05-22-tma-full/bugs-found.md`
+  пункт DRIPSB. Также open follow-up: admin suspend use-case должен сбрасывать
+  `isPublic` (отдельный bug, выйдет за рамки этого фикса).
+- **Проверка:** `pnpm tsc --noEmit -p apps/api/tsconfig.json` прошёл чисто.
+
+---
+
+## 2026-05-25 (Полат, apps/api) — API-TELEGRAM-LINK-EMPTY-001
+
+### ✅ [API-TELEGRAM-LINK-EMPTY-001] `telegramContactLink: ""` → `null` в API responses
+
+- **Важность:** 🟡 P2 — закрывает frontend bug.
+- **Дата:** 25.05.2026
+- **Файлы:**
+  - `apps/api/src/shared/normalize.ts` (новый — helper `normalizeContactLink`)
+  - `apps/api/src/modules/products/services/product-presenter.service.ts` (output normalize)
+  - `apps/api/src/modules/stores/use-cases/create-store.use-case.ts` (input normalize)
+  - `apps/api/src/modules/stores/use-cases/update-store.use-case.ts` (input normalize)
+- **Контекст:** TMA-audit 24.05.2026 показал что 2/3 store отдают `telegramContactLink: ""`
+  вместо `null` (web-buyer тип декларирует `string | null`). Кнопка «Написать в TG»
+  получает href="" → клик ведёт на 404.
+- **Что сделано:**
+  - Helper `normalizeContactLink(value)` — trim + empty → null.
+  - Use-case `create-store` + `update-store`: входящее значение нормализуется,
+    в DB сохраняется trimmed string или `""` (schema требует non-null).
+  - `ProductPresenterService.mapProductStoreRef`: output нормализуется
+    (`telegramContactLink: normalizeContactLink(store.telegramContactLink)`) —
+    legacy "" rows автоматически становятся `null` для фронта.
+  - `pnpm tsc --noEmit` в apps/api прошёл чисто.
+- **Не сделано (intentional):**
+  - Миграция `ALTER COLUMN telegramContactLink DROP NOT NULL` — schema остаётся
+    non-null. Текущее решение работает БЕЗ миграции: backend хранит "", presenter
+    нормализует на выходе. Миграция — отдельный шаг, требует pg_dump.
+  - Admin endpoints (`apps/api/src/modules/admin/*.controller.ts`) — отдают raw
+    DB-значение. Для админ-фронта это OK (Полат + Азим видят raw). Storefront
+    путь (через ProductPresenterService) — починен.
+
+---
+
+## 2026-05-25 (Полат, packages/types) — API contract: totalStock в ProductListItem
+
+### ✅ [API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001] Декларировать `totalStock` в `ProductListItem`
+
+- **Важность:** 🟡 P2 — закрывает contract drift.
+- **Дата:** 25.05.2026
+- **Файлы:** `packages/types/src/api/products.ts`
+- **Что сделано:** в `interface ProductListItem` добавлено поле `totalStock: number`
+  с JSDoc-комментарием про OOS=0. Backend (`apps/api/src/modules/products/storefront.controller.ts`)
+  уже заполняет это поле в 4 точках map'а — type теперь матчит реальный shape.
+  `Product extends ProductListItem` → автоматически наследует.
+  `pnpm tsc --noEmit` в apps/api прошёл чисто.
+- **После:** Азим может убрать временный cast `(product as { totalStock?: number }).totalStock`
+  в `apps/web-buyer/src/components/store/ProductCard.tsx`.
+- **Связано:** logs.md `[STOREFRONT-STOCK-LIST-VS-DETAIL-001]` 21.05.2026 — root cause
+  устранён (тип теперь декларирует поле, frontend читает без cast).
+
+---
+
 ## 2026-05-25 (Азим, web-buyer + web-seller) — maxsavdo brand rollout (Dark Luxury palette + Inter + UI replace)
 
 ### ✅ [BRAND-PALETTE-HEX-PICK-001] Снять HEX палитры из brand-book JPG

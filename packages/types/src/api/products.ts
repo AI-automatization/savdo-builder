@@ -96,6 +96,13 @@ export interface ProductListItem {
    */
   images: ProductImageRef[];
   variantCount: number;
+  /**
+   * Сумма stockQuantity по всем активным variants. 0 = весь товар OOS.
+   * API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001: backend заполняет в storefront list
+   * (`apps/api/src/modules/products/storefront.controller.ts`), web-buyer
+   * использует для OOS-overlay (`ProductCard.tsx`).
+   */
+  totalStock: number;
   displayType: ProductDisplayType;
   /**
    * True when the current authenticated buyer has this product in their wishlist.
