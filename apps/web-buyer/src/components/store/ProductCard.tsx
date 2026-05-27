@@ -53,15 +53,10 @@ export default function ProductCard({ product, storeSlug }: Props) {
     ? product.images.map((i) => i.url)
     : product.mediaUrls ?? []
   ).filter((u) => u.length > 0);
-  // Storefront feed уже отдаёт totalStock (sum across variants), но
-  // ProductListItem ещё не декларирует это поле (см.
-  // API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001 Полату). Cast снимется после
-  // расширения типа в packages/types.
-  const totalStock = (product as { totalStock?: number }).totalStock;
   const isUnavailable =
     product.status !== ProductStatus.ACTIVE ||
     !product.isVisible ||
-    totalStock === 0;
+    product.totalStock === 0;
   const displayType = product.displayType ?? 'SINGLE';
 
   // P3-004: товар на распродаже — salePrice/oldPrice/discountPercent от API.

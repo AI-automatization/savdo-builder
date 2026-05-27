@@ -31,6 +31,10 @@ export function featuredProductToListItem(f: FeaturedProduct): ProductListItem {
     mediaUrls,
     images: mediaUrls.map((url) => ({ url })),
     variantCount: 0,
+    // FeaturedProduct API не отдаёт totalStock — featured items презентуются
+    // как in-stock (status=ACTIVE+isVisible=true). 1 = «доступно», ProductCard
+    // OOS-overlay срабатывает только при `=== 0`.
+    totalStock: 1,
     displayType: 'SINGLE',
     inWishlist: undefined,
   };
