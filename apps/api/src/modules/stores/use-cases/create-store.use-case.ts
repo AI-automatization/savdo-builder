@@ -4,7 +4,7 @@ import { SellersRepository } from '../../sellers/repositories/sellers.repository
 import { SlugService } from '../services/slug.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
-import { normalizeContactLink } from '../../../shared/normalize';
+import { normalizeContactLink, normalizeCity } from '../../../shared/normalize';
 
 @Injectable()
 export class CreateStoreUseCase {
@@ -56,6 +56,9 @@ export class CreateStoreUseCase {
     // (DB schema требует non-null). Frontend увидит null после normalize в presenter.
     const telegramContactLink = normalizeContactLink(data.telegramContactLink) ?? '';
 
-    return this.storesRepo.create({ sellerId: seller.id, ...data, slug, telegramContactLink });
+    // API-CITY-NORMALIZATION-001: канонический uz-Latin (Toshkent, Samarqand, ...).
+    const city = normalizeCity(data.city);
+
+    return this.storesRepo.create({ sellerId: seller.id, ...data, slug, telegramContactLink, city });
   }
 }

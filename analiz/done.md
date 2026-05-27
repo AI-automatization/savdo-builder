@@ -1,5 +1,41 @@
 # Done — Азим + Полат
 
+## 2026-05-26 (Полат, apps/api) — API-CITY-NORMALIZATION-001
+
+### ✅ [API-CITY-NORMALIZATION-001] Канонический uz-Latin для городов
+
+- **Важность:** 🟡 P2 — закрывает inconsistency Toshkent/Tashkent в storefront.
+- **Дата:** 26.05.2026
+- **Файлы:**
+  - `apps/api/src/shared/normalize.ts` (+ функция `normalizeCity` + mapping 13 городов UZ)
+  - `apps/api/src/modules/stores/use-cases/create-store.use-case.ts`
+  - `apps/api/src/modules/stores/use-cases/update-store.use-case.ts`
+- **Контекст:** TMA-audit 24.05.2026 — `Toshkent` и `Tashkent` сосуществовали в проде
+  у разных store. Ломалась группировка по городу и фильтрация storefront.
+- **Что сделано:**
+  - Helper `normalizeCity(value)` с canonical mapping uz-Latin:
+    - Tashkent / Ташкент / Тошкент → **Toshkent**
+    - Samarkand / Самарканд → **Samarqand**
+    - Bukhara / Бухара → **Buxoro**
+    - Andijan / Андижан → **Andijon**
+    - Fergana / Ferghana / Фергана → **Farg‘ona**
+    - Karshi / Карши → **Qarshi**
+    - Urgench / Ургенч → **Urganch**
+    - Termez / Термез → **Termiz**
+    - Jizzakh / Джизак → **Jizzax**
+    - Navoi / Навои → **Navoiy**
+    - Gulistan / Гулистан → **Guliston**
+    - Nukus / Намurнган → как есть (canonical)
+  - Unknown city → Title Case fallback (трим + первая буква большая, остальные нижние)
+  - Apply в use-cases: create-store, update-store
+  - tsc clean
+- **Не сделано (intentional):** Миграция existing rows в DB — отдельный шаг,
+  требует pg_dump first. Для public storefront новые store будут писаться
+  канонически, старые останутся как есть.
+- **Связано:** `debug/orchestrator/audit-runs/2026-05-22-tma-full/bugs-found.md`.
+
+---
+
 ## 2026-05-25 (Полат, apps/api) — API-STORES-FILTER-SUSPENDED-001
 
 ### ✅ [API-STORES-FILTER-SUSPENDED-001] Storefront: исключить не-APPROVED stores
