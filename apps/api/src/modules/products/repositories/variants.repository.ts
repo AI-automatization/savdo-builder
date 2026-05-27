@@ -70,6 +70,41 @@ export class VariantsRepository {
     await client.product.update({ where: { id: productId }, data: updateData });
   }
 
+  /**
+   * Batch backfill для всех products: пересчитать `hasVariants` + `totalStock`.
+   * Используется одноразово после деплоя API-PRODUCT-DENORMALIZED-FIELDS-001
+   * чтобы починить legacy rows которые накопились до фикса.
+   *
+   * Стратегия: один SQL UPDATE через raw для performance — иначе на 10K products
+   * было бы 20K round-trips через Prisma (aggregate + update). Raw SQL гарантирует
+   * атомарность batch операции.
+   */
+  async recalcAllProducts(): Promise<{ updated: number }> {
+    // products с variants — выставляем агрегаты
+    const withVariants = await this.prisma.$executeRaw`
+      UPDATE products p SET
+        has_variants = TRUE,
+        total_stock = COALESCE(agg.sum_stock, 0)
+      FROM (
+        SELECT product_id, SUM(stock_quantity)::int AS sum_stock
+        FROM product_variants
+        WHERE deleted_at IS NULL AND is_active = TRUE
+        GROUP BY product_id
+      ) agg
+      WHERE p.id = agg.product_id
+    `;
+    // products без active variants — выставляем hasVariants=false, totalStock не трогаем
+    const withoutVariants = await this.prisma.$executeRaw`
+      UPDATE products p SET has_variants = FALSE
+      WHERE p.has_variants = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM product_variants v
+          WHERE v.product_id = p.id AND v.deleted_at IS NULL AND v.is_active = TRUE
+        )
+    `;
+    return { updated: Number(withVariants) + Number(withoutVariants) };
+  }
+
   async findByProductId(productId: string): Promise<ProductVariant[]> {
     return this.prisma.productVariant.findMany({
       where: { productId, deletedAt: null },
