@@ -126,24 +126,6 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
-## 🟡 [API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001] Декларировать `totalStock` в `ProductListItem`
-
-- **Домен:** `packages/types` (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P2 — closing contract drift. Backend уже отдаёт поле, frontend сейчас читает его через cast.
-- **Контекст:** `apps/api/src/modules/products/storefront.controller.ts` в 4 точках map'а (lines 190, 300, 327, 334) добавляет `totalStock = variants.reduce(...stockQuantity)` в ответ storefront-листа. `packages/types/src/api/products.ts` `interface ProductListItem` это поле **не декларирует** → web-buyer (`apps/web-buyer/src/components/store/ProductCard.tsx`) читает через временный cast `(product as { totalStock?: number }).totalStock`, чтобы корректно показывать OOS-overlay для товаров со всеми вариантами `stockQuantity===0`.
-- **Что сделать:** в `packages/types/src/api/products.ts` добавить в `ProductListItem`:
-  ```ts
-  /** Сумма stockQuantity по всем активным variants. 0 = всё OOS. */
-  totalStock: number;
-  ```
-  Опционально: то же поле в `Product` (extends ProductListItem) автонаследуется.
-- **Файлы:** `packages/types/src/api/products.ts`.
-- **После закрытия:** Азим уберёт cast в `apps/web-buyer/src/components/store/ProductCard.tsx` (помечен комментарием с этим ID).
-- **Связано:** logs.md `[STOREFRONT-STOCK-LIST-VS-DETAIL-001]` 21.05.2026 (UX-замечание о том, что OOS-товары на storefront-list выглядят как доступные — это и есть root cause).
-
----
-
 ## 🟡 [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый реальный restore drill на прод-дампе
 
 - **Домен:** SRE / DBA (Полат)
@@ -536,6 +518,31 @@ root cause ещё не подтверждён.
 > (6 параллельных read-only агентов). **~20 🔴 багов + ~30 🟡 недочётов.**
 > Вердикт: к запуску в текущем виде НЕ готово.
 
+## 🟡 [BIZ-FOLDER-AZIM-001] Наполнить `docs/business/` (Азим)
+
+- **Домен:** `docs/business/` (стратегия/бизнес-документы).
+- **Кто берёт:** Азим.
+- **Приоритет:** P2 — нужно для команды (Полат не может пушить без согласования Азима по business-контенту).
+- **Контекст:** На 25.05.2026 в `docs/business/` лежит ОДИН файл —
+  `business-plan-v1-2026-05-22.html` (создан Claude 22.05). Других документов нет.
+  Полат ожидает что Азим добавит свои наработки (pitch, финмодель, GTM, brand-deck,
+  или обновлённую версию business-plan) и запушит через git.
+- **Что сделать:**
+  1. Закинуть в `docs/business/` файлы которые Азим держал локально / в Notion / Google Docs:
+     - pitch / one-pager
+     - финансовая модель (xlsx или markdown)
+     - GTM-план Phase A (20-30 sellers outreach)
+     - inflocer budget Phase B
+     - что-то ещё что Азим считает важным
+  2. Если business-plan-v1 нужно обновлять (свежая ценовая модель, доменное имя
+     уже не working, цифры свежие) — создать `business-plan-v2-YYYY-MM-DD.html` рядом.
+  3. Commit + push на main (Азим обычно работает в ветках web-buyer/web-seller —
+     для docs нужен или PR в main, или прямой push).
+- **Definition of done:** в `docs/business/` минимум 2-3 свежих документа от Азима,
+  все запушены в main, Полат видит после `git pull`.
+
+---
+
 ## 🔴 `WEB-QA-BUGFIX-2026-05-15` — блокеры запуска (Азим, web-buyer + web-seller)
 
 **Волна 1 ✅ 15.05.2026** — `123b70a` (web-buyer) + `73ff29f` (web-seller).
@@ -723,7 +730,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-SENTRY-001`** ✅ 14.05.2026 — lightweight error reporter без зависимости от Sentry SDK. `apps/api/src/shared/error-reporter.ts` — auto-capture `uncaughtException`/`unhandledRejection`, manual `captureException(err, context)` + `captureMessage(msg, level, context)`. JSON output в stderr (Railway log aggregation), PII-скраббинг для context keys (password/secret/token/authorization → `[REDACTED]`). Tags: `release` (`RAILWAY_GIT_COMMIT_SHA[:7]`) + `environment` (`NODE_ENV`). Env-flag `ERROR_REPORTER_ENABLED=false`. **Init в `main.ts` перед bootstrap** — ловит ошибки на этапе загрузки модулей. Когда нужен полный Sentry — добавить `@sentry/node` и заменить `ErrorReporter.captureException` на `Sentry.captureException` (API совместимый). 60% Sentry-функций без install.
 - [x] **`API-PINO-LOGGING-001`** ✅ 14.05.2026 — без новых зависимостей. `apps/api/src/shared/structured-logger.ts` — custom `ConsoleLogger` extension: в `NODE_ENV=production` emit single-line JSON `{ts, level, context, msg, trace}` (stdout/stderr split для Railway log aggregation), в dev — fallback на цветной ConsoleLogger. Подключено в `main.ts` через `NestFactory.create({ logger: new StructuredLogger() })`. Override `isLevelEnabled` для конфигурации через `LOG_LEVEL` env. Все существующие `Logger.log/warn/error` работают автоматически. Pino не подключаем — нужен `pnpm install` (4 пакета: nestjs-pino + pino + pino-http + pino-pretty), wrapper даёт 80% value (JSON-логи) без новых deps.
 - [x] **`API-PII-MASKING-001`** ✅ verified done 12.05.2026 — `apps/api/src/shared/pii.ts` (`maskPhone`: `+998901234567` → `+998 *** ** 67`, ghost `tg_*` → `tg_***`). Использован во ВСЕХ logger.* с phone: otp.processor, otp.service, telegram-auth.use-case, admin-auth.use-case (impersonation), telegram-demo.handler (linked/registered logs), ghost-cleanup.service. Также есть unit-тесты `pii.spec.ts`. Verified grep — 0 plain-text phone в logger calls.
-- [~] **`API-FRONTEND-TESTS-001`** — admin ✅ (10 тестов) + TMA ✅ (14 тестов, 20.05.2026 — см. `done.md` TMA-FRONTEND-TESTS-001). Осталось web-buyer + web-seller — Азиму.
+- [x] **`API-FRONTEND-TESTS-001`** ✅ 27.05.2026 — admin ✅ (10) + TMA ✅ (14) + web-buyer ✅ (27 тестов: HelpContent×3, i18n×4, MaxsavdoLogo×7, phone×10, uz-canonical×3) + web-seller ✅ (15 тестов: buyer-url×7, i18n×4, uz-canonical×4). Всего 66 vitest smoke-тестов. Web-buyer: починены 2 стухших после ребренда (intro email + удалённый i18n key), добавлен MaxsavdoLogo (защита brand mark от случайной порчи SVG). CI workflows `ci-web-buyer-tests.yml` + `ci-web-seller-tests.yml` уже на main. Деталь — `done.md` 27.05.2026.
 - [⏸️] **`API-PAGINATION-ENVELOPE-001`** — см. отложено в разделе ниже (Sprint B).
 
 ---

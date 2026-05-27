@@ -3,6 +3,7 @@ import { StoresRepository } from '../repositories/stores.repository';
 import { SellersRepository } from '../../sellers/repositories/sellers.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { normalizeContactLink, normalizeCity } from '../../../shared/normalize';
 
 @Injectable()
 export class UpdateStoreUseCase {
@@ -32,6 +33,17 @@ export class UpdateStoreUseCase {
     if (!store) throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
 
     const { deliveryFeeType, deliveryFeeAmount, ...storeData } = data;
+
+    // API-TELEGRAM-LINK-EMPTY-001: trim входящего значения; пустая строка → ''
+    // (DB non-null), фронт получит null через presenter normalize.
+    if (storeData.telegramContactLink !== undefined) {
+      storeData.telegramContactLink = normalizeContactLink(storeData.telegramContactLink) ?? '';
+    }
+
+    // API-CITY-NORMALIZATION-001: канонический uz-Latin
+    if (storeData.city !== undefined) {
+      storeData.city = normalizeCity(storeData.city);
+    }
 
     const [updatedStore] = await Promise.all([
       this.storesRepo.update(store.id, storeData),

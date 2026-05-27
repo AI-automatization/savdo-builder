@@ -21,9 +21,15 @@ export class StoresRepository {
     });
   }
 
+  /**
+   * Storefront public lookup by slug. Возвращает магазин ТОЛЬКО если он
+   * APPROVED (не SUSPENDED/ARCHIVED/REJECTED/DRAFT/PENDING_REVIEW) и не удалён.
+   * API-STORES-FILTER-SUSPENDED-001 (audit 24.05.2026): DRIPSB в SUSPENDED
+   * всё ещё показывался публично из-за фильтра только по isPublic.
+   */
   async findBySlug(slug: string) {
     return this.prisma.store.findFirst({
-      where: { slug, deletedAt: null },
+      where: { slug, deletedAt: null, status: 'APPROVED' },
       include: {
         deliverySettings: true,
         contacts: true,
@@ -50,7 +56,9 @@ export class StoresRepository {
       ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100)
       : 50;
 
-    const where = { isPublic: true, deletedAt: null };
+    // API-STORES-FILTER-SUSPENDED-001: фильтр по status: APPROVED — защита
+    // от случаев когда admin меняет статус, но isPublic остался true.
+    const where = { isPublic: true, deletedAt: null, status: 'APPROVED' as const };
     const [stores, total] = await this.prisma.$transaction([
       this.prisma.store.findMany({
         where,
@@ -82,6 +90,8 @@ export class StoresRepository {
 
   // FEAT-001: case-insensitive поиск по публичным магазинам.
   // Используется в GET /storefront/search.
+  // API-STORES-FILTER-SUSPENDED-001: status: APPROVED — SUSPENDED stores не
+  // попадают в поиск даже если isPublic забыл сбросить.
   async searchPublic(query: string, limit = 10) {
     const q = query.trim();
     if (!q) return [];
@@ -89,6 +99,7 @@ export class StoresRepository {
       where: {
         isPublic: true,
         deletedAt: null,
+        status: 'APPROVED',
         OR: [
           { name: { contains: q, mode: 'insensitive' } },
           { description: { contains: q, mode: 'insensitive' } },
