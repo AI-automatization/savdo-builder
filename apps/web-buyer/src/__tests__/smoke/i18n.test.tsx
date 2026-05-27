@@ -12,7 +12,7 @@ function Probe() {
       <span data-testid="locale">{locale}</span>
       <span data-testid="known">{t('legal.backToHome')}</span>
       <span data-testid="unknown">{t('completely.nonexistent.key')}</span>
-      <span data-testid="interp">{t('orders.filter.unread', { count: 7 })}</span>
+      <span data-testid="interp">{t('store.inStock', { count: 7 })}</span>
       <button onClick={() => setLocale('uz')}>switch-uz</button>
       <button onClick={() => setLocale('ru')}>switch-ru</button>
     </div>
@@ -63,7 +63,7 @@ describe('I18nProvider / useTranslation', () => {
         <Probe />
       </I18nProvider>,
     );
-    // 'orders.filter.unread' = 'Непрочитанные · {count}' → должно стать «… · 7»
+    // 'store.inStock' = 'В наличии · {count} шт' → должно стать «… · 7 шт»
     expect(screen.getByTestId('interp')).toHaveTextContent(/7/);
   });
 });

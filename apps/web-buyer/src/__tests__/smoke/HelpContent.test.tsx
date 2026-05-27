@@ -17,12 +17,12 @@ describe('HelpContent (/help)', () => {
   });
 
   it('рендерит intro с контактом support@maxsavdo.uz', () => {
-    render(
+    const { container } = render(
       <I18nProvider>
         <HelpContent />
       </I18nProvider>,
     );
-    expect(screen.getByText(/support@savdo\.uz/)).toBeInTheDocument();
+    expect(container.textContent).toMatch(/support@maxsavdo\.uz/);
   });
 
   it('содержит title из i18n (h1)', () => {
