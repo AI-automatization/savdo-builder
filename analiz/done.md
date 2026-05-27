@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-27 (Азим, web-buyer) — API-FRONTEND-TESTS-001 закрыт (web-buyer + web-seller smoke зелёный)
+
+### ✅ [API-FRONTEND-TESTS-001 part web] vitest smoke — web-buyer 27 + web-seller 15 = 42 теста
+
+- **Важность:** 🟢 P3 tech-debt из Полатовского `API-FRONTEND-TESTS-001` (admin ✅ 10 + TMA ✅ 14 уже закрыты). Закрывает web-фронты.
+- **Дата:** 27.05.2026
+- **Файлы (web-buyer):** `apps/web-buyer/src/__tests__/smoke/{HelpContent,i18n,MaxsavdoLogo,phone,uz-canonical}.test.tsx`, коммит `30f83da` ветка `web-buyer`.
+- **Файлы (web-seller, без правок 27.05):** `apps/web-seller/src/__tests__/smoke/{buyer-url,i18n,uz-canonical}.test.ts*` уже на ветке `web-seller`.
+- **Что сделано:**
+  - **Прогон baseline:** 18/20 на web-buyer падали — 2 теста стухли после brand rollout 25.05.
+    - `HelpContent`: ожидал `support@savdo.uz`, после ребренда там `support@maxsavdo.uz` → обновил regex. Дополнительно переехал с `screen.getByText(/.../)` на `container.textContent.match(/.../)` — `getByText` капризничает на regex-substring внутри `<p>` (false negative).
+    - `i18n`: ключ `orders.filter.unread` был удалён из dict (Wave 2 UZ refactor) → переехал на стабильный `store.inStock` (`'В наличии · {count} шт'`) как тестовый носитель `{count}`-интерполяции.
+  - **Новый файл `MaxsavdoLogo.test.tsx` (7 тестов):** role/aria-label, wordmark toggle, size прокидывание, bag-handle path (Q-curve `M 35 22 Q 50 4 65 22`), Champagne Gold `#C9A876` на правой половине M, `var(--color-text-primary)` (theme-aware) на левой. Защита от случайной порчи SVG после того как Полат vectorize'нет JPG в финальный SVG (`BRAND-LOGO-SVG-CREATE-001`).
+  - **web-seller (3 файла) прогнал без правок** — 15/15 passed на ветке `web-seller`.
+- **Финальный score:** web-buyer 27/27 (5 файлов), web-seller 15/15 (3 файла) = **42 теста smoke**.
+- **CI:** `.github/workflows/ci-web-buyer-tests.yml` + `ci-web-seller-tests.yml` уже на main с момента предыдущих волн — теперь push в `web-buyer`/`web-seller` запускает зелёный прогон.
+- **ProductCard OOS regression не покрыт unit-тестом:** ProductCard слишком завязан на `useRouter` / `useAuth` / `useWishlist` / TanStack Query — mock-heavy тест для smoke-уровня не оправдан. Фикс защищён ручным QA + e2e на будущее (если когда-то поднимем Playwright). totalStock-cast в ProductCard можно убрать — Полат закрыл `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` 25.05 (см. ниже).
+
+---
+
 ## 2026-05-26 (Полат, apps/api) — Admin recalc-denorm endpoint (backfill для API-PRODUCT-DENORMALIZED-FIELDS-001)
 
 ### ✅ Admin endpoint `POST /api/v1/admin/products/recalc-denorm`
