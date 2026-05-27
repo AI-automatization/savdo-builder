@@ -1,5 +1,197 @@
 # Done — Азим + Полат
 
+## 2026-05-27 (Азим, web-buyer) — API-FRONTEND-TESTS-001 закрыт (web-buyer + web-seller smoke зелёный)
+
+### ✅ [API-FRONTEND-TESTS-001 part web] vitest smoke — web-buyer 27 + web-seller 15 = 42 теста
+
+- **Важность:** 🟢 P3 tech-debt из Полатовского `API-FRONTEND-TESTS-001` (admin ✅ 10 + TMA ✅ 14 уже закрыты). Закрывает web-фронты.
+- **Дата:** 27.05.2026
+- **Файлы (web-buyer):** `apps/web-buyer/src/__tests__/smoke/{HelpContent,i18n,MaxsavdoLogo,phone,uz-canonical}.test.tsx`, коммит `30f83da` ветка `web-buyer`.
+- **Файлы (web-seller, без правок 27.05):** `apps/web-seller/src/__tests__/smoke/{buyer-url,i18n,uz-canonical}.test.ts*` уже на ветке `web-seller`.
+- **Что сделано:**
+  - **Прогон baseline:** 18/20 на web-buyer падали — 2 теста стухли после brand rollout 25.05.
+    - `HelpContent`: ожидал `support@savdo.uz`, после ребренда там `support@maxsavdo.uz` → обновил regex. Дополнительно переехал с `screen.getByText(/.../)` на `container.textContent.match(/.../)` — `getByText` капризничает на regex-substring внутри `<p>` (false negative).
+    - `i18n`: ключ `orders.filter.unread` был удалён из dict (Wave 2 UZ refactor) → переехал на стабильный `store.inStock` (`'В наличии · {count} шт'`) как тестовый носитель `{count}`-интерполяции.
+  - **Новый файл `MaxsavdoLogo.test.tsx` (7 тестов):** role/aria-label, wordmark toggle, size прокидывание, bag-handle path (Q-curve `M 35 22 Q 50 4 65 22`), Champagne Gold `#C9A876` на правой половине M, `var(--color-text-primary)` (theme-aware) на левой. Защита от случайной порчи SVG после того как Полат vectorize'нет JPG в финальный SVG (`BRAND-LOGO-SVG-CREATE-001`).
+  - **web-seller (3 файла) прогнал без правок** — 15/15 passed на ветке `web-seller`.
+- **Финальный score:** web-buyer 27/27 (5 файлов), web-seller 15/15 (3 файла) = **42 теста smoke**.
+- **CI:** `.github/workflows/ci-web-buyer-tests.yml` + `ci-web-seller-tests.yml` уже на main с момента предыдущих волн — теперь push в `web-buyer`/`web-seller` запускает зелёный прогон.
+- **ProductCard OOS regression не покрыт unit-тестом:** ProductCard слишком завязан на `useRouter` / `useAuth` / `useWishlist` / TanStack Query — mock-heavy тест для smoke-уровня не оправдан. Фикс защищён ручным QA + e2e на будущее (если когда-то поднимем Playwright). totalStock-cast в ProductCard можно убрать — Полат закрыл `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` 25.05 (см. ниже).
+
+---
+
+## 2026-05-26 (Полат, apps/api) — Admin recalc-denorm endpoint (backfill для API-PRODUCT-DENORMALIZED-FIELDS-001)
+
+### ✅ Admin endpoint `POST /api/v1/admin/products/recalc-denorm`
+
+- **Важность:** 🟡 P2 — закрывает remaining work от API-PRODUCT-DENORMALIZED-FIELDS-001.
+- **Дата:** 26.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts` (метод `recalcAllProducts`)
+  - `apps/api/src/modules/admin/admin-products.controller.ts` (endpoint + inject)
+- **Что сделано:**
+  - Метод `recalcAllProducts()` в VariantsRepository — 2 raw SQL UPDATE:
+    1. `UPDATE products SET has_variants=TRUE, total_stock=SUM(...)` — для products с active variants
+    2. `UPDATE products SET has_variants=FALSE` — для products где has_variants=TRUE но 0 variants
+  - Возвращает `{ updated: <rowCount> }`
+  - Endpoint `POST /admin/products/recalc-denorm` с теми же guards что и другие admin (Jwt + Roles + AdminAccess + MfaEnforced + AdminPermission `product:moderate`)
+  - Audit log: `PRODUCTS_DENORM_RECALC`
+  - Idempotent — безопасно вызывать повторно
+- **Использование (после Railway redeploy):**
+  ```bash
+  curl -X POST https://savdo-api-production.up.railway.app/api/v1/admin/products/recalc-denorm \
+    -H "Authorization: Bearer <admin JWT>"
+  # → { "updated": <N> }
+  ```
+- **TODO:** Кнопка в `apps/admin` UI — отдельный шаг (опционально, можно вызывать curl-ом).
+
+---
+
+## 2026-05-26 (Полат, apps/api) — API-PRODUCT-DENORMALIZED-FIELDS-001
+
+### ✅ [API-PRODUCT-DENORMALIZED-FIELDS-001] Sync `Product.hasVariants` и `Product.totalStock`
+
+- **Важность:** 🔴 P1 — баг проды: «Белая футболка» с 3 variants и реальным
+  stock=7 показывалась как `hasVariants:false`, `totalStock:0` → UI скрывал
+  variant-selector → buyers не могли купить.
+- **Дата:** 26.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts`
+- **Что сделано:**
+  - Helper `recalcProductFields(productId, tx?)` — aggregate по active variants
+    (`isActive=true, deletedAt=null`), пишет `hasVariants` + `totalStock` на Product.
+  - Если variants=0 → `hasVariants=false`, `totalStock` НЕ трогается (single-SKU mode).
+  - 4 точки вызова обёрнуты в `prisma.$transaction`:
+    1. `create(productId, data)` — после создания variant
+    2. `update(id, data)` — если изменился `stockQuantity` или `isActive`
+    3. `delete(id)` — soft delete + recalc
+    4. `adjustStock(variantId, delta, ...)` — после order-deduct/release
+  - Транзакция гарантирует консистентность: либо обе операции (mutation + recalc)
+    либо ни одной.
+  - `pnpm tsc --noEmit` в apps/api прошёл чисто.
+- **TODO (отдельный шаг — НЕ сделано в этом fix):**
+  - **Backfill existing inconsistent rows** в проде — нужен либо admin endpoint
+    `POST /admin/products/recalc-denorm`, либо одноразовый SQL `UPDATE products
+    SET ... FROM (SELECT productId, COUNT, SUM ...)`. Без backfill «Белая футболка»
+    (и другие старые) остаются битыми пока seller их сам не отредактирует.
+  - Если делать — pg_dump first (prod-data-safety).
+- **Связано:** `debug/orchestrator/audit-runs/2026-05-22-tma-full/bugs-found.md` Bug #4-5.
+
+---
+
+## 2026-05-26 (Полат, apps/api) — API-CITY-NORMALIZATION-001
+
+### ✅ [API-CITY-NORMALIZATION-001] Канонический uz-Latin для городов
+
+- **Важность:** 🟡 P2 — закрывает inconsistency Toshkent/Tashkent в storefront.
+- **Дата:** 26.05.2026
+- **Файлы:**
+  - `apps/api/src/shared/normalize.ts` (+ функция `normalizeCity` + mapping 13 городов UZ)
+  - `apps/api/src/modules/stores/use-cases/create-store.use-case.ts`
+  - `apps/api/src/modules/stores/use-cases/update-store.use-case.ts`
+- **Контекст:** TMA-audit 24.05.2026 — `Toshkent` и `Tashkent` сосуществовали в проде
+  у разных store. Ломалась группировка по городу и фильтрация storefront.
+- **Что сделано:**
+  - Helper `normalizeCity(value)` с canonical mapping uz-Latin:
+    - Tashkent / Ташкент / Тошкент → **Toshkent**
+    - Samarkand / Самарканд → **Samarqand**
+    - Bukhara / Бухара → **Buxoro**
+    - Andijan / Андижан → **Andijon**
+    - Fergana / Ferghana / Фергана → **Farg‘ona**
+    - Karshi / Карши → **Qarshi**
+    - Urgench / Ургенч → **Urganch**
+    - Termez / Термез → **Termiz**
+    - Jizzakh / Джизак → **Jizzax**
+    - Navoi / Навои → **Navoiy**
+    - Gulistan / Гулистан → **Guliston**
+    - Nukus / Намurнган → как есть (canonical)
+  - Unknown city → Title Case fallback (трим + первая буква большая, остальные нижние)
+  - Apply в use-cases: create-store, update-store
+  - tsc clean
+- **Не сделано (intentional):** Миграция existing rows в DB — отдельный шаг,
+  требует pg_dump first. Для public storefront новые store будут писаться
+  канонически, старые останутся как есть.
+- **Связано:** `debug/orchestrator/audit-runs/2026-05-22-tma-full/bugs-found.md`.
+
+---
+
+## 2026-05-25 (Полат, apps/api) — API-STORES-FILTER-SUSPENDED-001
+
+### ✅ [API-STORES-FILTER-SUSPENDED-001] Storefront: исключить не-APPROVED stores
+
+- **Важность:** 🟡 P2 — закрывает leakage SUSPENDED store в публичных endpoints.
+- **Дата:** 25.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/stores/repositories/stores.repository.ts`
+- **Контекст:** TMA-audit 24.05.2026 — DRIPSB store в `SUSPENDED` всё ещё
+  возвращался в `GET /storefront/stores`. Root cause: фильтр был только
+  по `isPublic: true` — admin меняет status на SUSPENDED, но `isPublic`
+  забыл сбросить → store течёт в публичный listing.
+- **Что сделано:** В `stores.repository.ts` добавлен defensive фильтр
+  `status: 'APPROVED'` (Prisma enum value) в 3 методах:
+  - `findBySlug(slug)` — `/storefront/stores/:slug`, `/stores/:slug`
+  - `findAllPublished(opts)` — `/storefront/stores`
+  - `searchPublic(query, limit)` — `/storefront/search`
+  Теперь SUSPENDED / ARCHIVED / REJECTED / DRAFT / PENDING_REVIEW магазины
+  никогда не попадают в публичный API независимо от значения `isPublic`.
+- **Связано:** `debug/orchestrator/audit-runs/2026-05-22-tma-full/bugs-found.md`
+  пункт DRIPSB. Также open follow-up: admin suspend use-case должен сбрасывать
+  `isPublic` (отдельный bug, выйдет за рамки этого фикса).
+- **Проверка:** `pnpm tsc --noEmit -p apps/api/tsconfig.json` прошёл чисто.
+
+---
+
+## 2026-05-25 (Полат, apps/api) — API-TELEGRAM-LINK-EMPTY-001
+
+### ✅ [API-TELEGRAM-LINK-EMPTY-001] `telegramContactLink: ""` → `null` в API responses
+
+- **Важность:** 🟡 P2 — закрывает frontend bug.
+- **Дата:** 25.05.2026
+- **Файлы:**
+  - `apps/api/src/shared/normalize.ts` (новый — helper `normalizeContactLink`)
+  - `apps/api/src/modules/products/services/product-presenter.service.ts` (output normalize)
+  - `apps/api/src/modules/stores/use-cases/create-store.use-case.ts` (input normalize)
+  - `apps/api/src/modules/stores/use-cases/update-store.use-case.ts` (input normalize)
+- **Контекст:** TMA-audit 24.05.2026 показал что 2/3 store отдают `telegramContactLink: ""`
+  вместо `null` (web-buyer тип декларирует `string | null`). Кнопка «Написать в TG»
+  получает href="" → клик ведёт на 404.
+- **Что сделано:**
+  - Helper `normalizeContactLink(value)` — trim + empty → null.
+  - Use-case `create-store` + `update-store`: входящее значение нормализуется,
+    в DB сохраняется trimmed string или `""` (schema требует non-null).
+  - `ProductPresenterService.mapProductStoreRef`: output нормализуется
+    (`telegramContactLink: normalizeContactLink(store.telegramContactLink)`) —
+    legacy "" rows автоматически становятся `null` для фронта.
+  - `pnpm tsc --noEmit` в apps/api прошёл чисто.
+- **Не сделано (intentional):**
+  - Миграция `ALTER COLUMN telegramContactLink DROP NOT NULL` — schema остаётся
+    non-null. Текущее решение работает БЕЗ миграции: backend хранит "", presenter
+    нормализует на выходе. Миграция — отдельный шаг, требует pg_dump.
+  - Admin endpoints (`apps/api/src/modules/admin/*.controller.ts`) — отдают raw
+    DB-значение. Для админ-фронта это OK (Полат + Азим видят raw). Storefront
+    путь (через ProductPresenterService) — починен.
+
+---
+
+## 2026-05-25 (Полат, packages/types) — API contract: totalStock в ProductListItem
+
+### ✅ [API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001] Декларировать `totalStock` в `ProductListItem`
+
+- **Важность:** 🟡 P2 — закрывает contract drift.
+- **Дата:** 25.05.2026
+- **Файлы:** `packages/types/src/api/products.ts`
+- **Что сделано:** в `interface ProductListItem` добавлено поле `totalStock: number`
+  с JSDoc-комментарием про OOS=0. Backend (`apps/api/src/modules/products/storefront.controller.ts`)
+  уже заполняет это поле в 4 точках map'а — type теперь матчит реальный shape.
+  `Product extends ProductListItem` → автоматически наследует.
+  `pnpm tsc --noEmit` в apps/api прошёл чисто.
+- **После:** Азим может убрать временный cast `(product as { totalStock?: number }).totalStock`
+  в `apps/web-buyer/src/components/store/ProductCard.tsx`.
+- **Связано:** logs.md `[STOREFRONT-STOCK-LIST-VS-DETAIL-001]` 21.05.2026 — root cause
+  устранён (тип теперь декларирует поле, frontend читает без cast).
+
+---
+
 ## 2026-05-25 (Азим, web-buyer + web-seller) — maxsavdo brand rollout (Dark Luxury palette + Inter + UI replace)
 
 ### ✅ [BRAND-PALETTE-HEX-PICK-001] Снять HEX палитры из brand-book JPG

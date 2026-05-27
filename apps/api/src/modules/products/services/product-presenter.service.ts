@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
+import { normalizeContactLink } from '../../../shared/normalize';
 
 /**
  * ProductPresenterService — pure helpers + batch lookups для DTO-маппинга.
@@ -168,7 +169,8 @@ export class ProductPresenterService {
       name: store.name,
       slug: store.slug,
       city: store.city,
-      telegramContactLink: store.telegramContactLink,
+      // API-TELEGRAM-LINK-EMPTY-001: legacy rows могут содержать "" — отдаём null фронту.
+      telegramContactLink: normalizeContactLink(store.telegramContactLink),
       logoUrl,
       isVerified: store.isVerified,
       avgRating: store.avgRating != null ? Number(store.avgRating) : null,

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Delete,
   Param,
   Query,
@@ -23,6 +24,7 @@ import { ErrorCode } from '../../shared/constants/error-codes';
 
 import { AdminRepository } from './repositories/admin.repository';
 import { ProductsRepository } from '../products/repositories/products.repository';
+import { VariantsRepository } from '../products/repositories/variants.repository';
 
 /**
  * AdminProductsController — модерация товаров.
@@ -43,6 +45,7 @@ export class AdminProductsController {
   constructor(
     private readonly adminRepo: AdminRepository,
     private readonly productsRepo: ProductsRepository,
+    private readonly variantsRepo: VariantsRepository,
   ) {}
 
   private async requireAdmin(user: JwtPayload) {
@@ -134,6 +137,25 @@ export class AdminProductsController {
     });
     await this.productsRepo.delete(id);
     return { success: true };
+  }
+
+  // POST /api/v1/admin/products/recalc-denorm — batch backfill hasVariants + totalStock.
+  // API-PRODUCT-DENORMALIZED-FIELDS-001: одноразовая операция после деплоя fix
+  // чтобы починить legacy rows у которых поля рассинхронились до автосинка.
+  // Безопасно вызывать повторно — idempotent (same input → same result).
+  @Post('recalc-denorm')
+  @AdminPermission('product:moderate')
+  async recalcDenorm(@CurrentUser() user: JwtPayload) {
+    await this.requireAdmin(user);
+    const result = await this.variantsRepo.recalcAllProducts();
+    await this.adminRepo.writeAuditLog({
+      actorUserId: user.sub,
+      action: 'PRODUCTS_DENORM_RECALC',
+      entityType: 'Product',
+      entityId: 'batch',
+      payload: { updatedRows: result.updated },
+    });
+    return result;
   }
 
   // PATCH /api/v1/admin/products/:id/archive
