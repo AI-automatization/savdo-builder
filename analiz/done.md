@@ -1,5 +1,32 @@
 # Done — Азим + Полат
 
+## 2026-05-26 (Полат, apps/api) — Admin recalc-denorm endpoint (backfill для API-PRODUCT-DENORMALIZED-FIELDS-001)
+
+### ✅ Admin endpoint `POST /api/v1/admin/products/recalc-denorm`
+
+- **Важность:** 🟡 P2 — закрывает remaining work от API-PRODUCT-DENORMALIZED-FIELDS-001.
+- **Дата:** 26.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts` (метод `recalcAllProducts`)
+  - `apps/api/src/modules/admin/admin-products.controller.ts` (endpoint + inject)
+- **Что сделано:**
+  - Метод `recalcAllProducts()` в VariantsRepository — 2 raw SQL UPDATE:
+    1. `UPDATE products SET has_variants=TRUE, total_stock=SUM(...)` — для products с active variants
+    2. `UPDATE products SET has_variants=FALSE` — для products где has_variants=TRUE но 0 variants
+  - Возвращает `{ updated: <rowCount> }`
+  - Endpoint `POST /admin/products/recalc-denorm` с теми же guards что и другие admin (Jwt + Roles + AdminAccess + MfaEnforced + AdminPermission `product:moderate`)
+  - Audit log: `PRODUCTS_DENORM_RECALC`
+  - Idempotent — безопасно вызывать повторно
+- **Использование (после Railway redeploy):**
+  ```bash
+  curl -X POST https://savdo-api-production.up.railway.app/api/v1/admin/products/recalc-denorm \
+    -H "Authorization: Bearer <admin JWT>"
+  # → { "updated": <N> }
+  ```
+- **TODO:** Кнопка в `apps/admin` UI — отдельный шаг (опционально, можно вызывать curl-ом).
+
+---
+
 ## 2026-05-26 (Полат, apps/api) — API-PRODUCT-DENORMALIZED-FIELDS-001
 
 ### ✅ [API-PRODUCT-DENORMALIZED-FIELDS-001] Sync `Product.hasVariants` и `Product.totalStock`
