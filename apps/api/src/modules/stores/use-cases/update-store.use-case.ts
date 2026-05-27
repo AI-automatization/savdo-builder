@@ -3,7 +3,7 @@ import { StoresRepository } from '../repositories/stores.repository';
 import { SellersRepository } from '../../sellers/repositories/sellers.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
-import { normalizeContactLink } from '../../../shared/normalize';
+import { normalizeContactLink, normalizeCity } from '../../../shared/normalize';
 
 @Injectable()
 export class UpdateStoreUseCase {
@@ -38,6 +38,11 @@ export class UpdateStoreUseCase {
     // (DB non-null), фронт получит null через presenter normalize.
     if (storeData.telegramContactLink !== undefined) {
       storeData.telegramContactLink = normalizeContactLink(storeData.telegramContactLink) ?? '';
+    }
+
+    // API-CITY-NORMALIZATION-001: канонический uz-Latin
+    if (storeData.city !== undefined) {
+      storeData.city = normalizeCity(storeData.city);
     }
 
     const [updatedStore] = await Promise.all([
