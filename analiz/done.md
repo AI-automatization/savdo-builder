@@ -1,5 +1,37 @@
 # Done — Азим + Полат
 
+## 2026-05-26 (Полат, apps/api) — API-PRODUCT-DENORMALIZED-FIELDS-001
+
+### ✅ [API-PRODUCT-DENORMALIZED-FIELDS-001] Sync `Product.hasVariants` и `Product.totalStock`
+
+- **Важность:** 🔴 P1 — баг проды: «Белая футболка» с 3 variants и реальным
+  stock=7 показывалась как `hasVariants:false`, `totalStock:0` → UI скрывал
+  variant-selector → buyers не могли купить.
+- **Дата:** 26.05.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts`
+- **Что сделано:**
+  - Helper `recalcProductFields(productId, tx?)` — aggregate по active variants
+    (`isActive=true, deletedAt=null`), пишет `hasVariants` + `totalStock` на Product.
+  - Если variants=0 → `hasVariants=false`, `totalStock` НЕ трогается (single-SKU mode).
+  - 4 точки вызова обёрнуты в `prisma.$transaction`:
+    1. `create(productId, data)` — после создания variant
+    2. `update(id, data)` — если изменился `stockQuantity` или `isActive`
+    3. `delete(id)` — soft delete + recalc
+    4. `adjustStock(variantId, delta, ...)` — после order-deduct/release
+  - Транзакция гарантирует консистентность: либо обе операции (mutation + recalc)
+    либо ни одной.
+  - `pnpm tsc --noEmit` в apps/api прошёл чисто.
+- **TODO (отдельный шаг — НЕ сделано в этом fix):**
+  - **Backfill existing inconsistent rows** в проде — нужен либо admin endpoint
+    `POST /admin/products/recalc-denorm`, либо одноразовый SQL `UPDATE products
+    SET ... FROM (SELECT productId, COUNT, SUM ...)`. Без backfill «Белая футболка»
+    (и другие старые) остаются битыми пока seller их сам не отредактирует.
+  - Если делать — pg_dump first (prod-data-safety).
+- **Связано:** `debug/orchestrator/audit-runs/2026-05-22-tma-full/bugs-found.md` Bug #4-5.
+
+---
+
 ## 2026-05-26 (Полат, apps/api) — API-CITY-NORMALIZATION-001
 
 ### ✅ [API-CITY-NORMALIZATION-001] Канонический uz-Latin для городов
