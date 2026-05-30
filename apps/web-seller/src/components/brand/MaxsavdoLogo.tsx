@@ -46,12 +46,13 @@ export function MaxsavdoLogo({ size = 32, className = '', withWordmark = false }
 // clipPath name-collision не критичен.
 const RIGHT_CLIP_ID = 'maxsavdo-clip-right';
 
-// Геометрическая монограмма-сумка по brand-book v2 (logo-app-icon.jpg): «M» из двух
-// штанг — левая половина theme-adaptive (var(--color-text-primary): чёрная на light,
-// белая на dark), правая Champagne Gold (clip x≥50); золотая полукруглая ручка-сумка
-// парит над впадиной M. Реконструкция растра геометрией; при точной векторизации
-// (BRAND-LOGO-SVG-CREATE-001) меняем только d-атрибуты — API компонента стабильно.
-const M_PATH = 'M 27 80 L 27 40 L 50 72 L 73 40 L 73 80';
+// Геометрическая монограмма-сумка по brand-book v2 (logo-app-icon.jpg): угловатая «M»
+// из двух штанг с глубокой V-впадиной и острыми miter-углами — левая половина
+// theme-adaptive (var(--color-text-primary): чёрная на light, белая на dark), правая
+// Champagne Gold (clip x≥50); золотая полукруглая ручка-сумка сидит в центральной
+// выемке M. Геометрия сверена визуально с brand-book (Playwright). При точной
+// 1:1-векторизации JPG (BRAND-LOGO-SVG-CREATE-001) меняем d-атрибуты — API стабилен.
+const M_PATH = 'M 28 81 L 28 32 L 50 73 L 72 32 L 72 81';
 
 function MaxsavdoMark({ size, className = '' }: { size: number; className?: string }) {
   return (
@@ -69,11 +70,11 @@ function MaxsavdoMark({ size, className = '' }: { size: number; className?: stri
           <rect x="50" y="0" width="50" height="100" />
         </clipPath>
       </defs>
-      {/* Bag handle — gold semicircle floating above the M valley */}
+      {/* Bag handle — gold semicircle nested in the M's central valley */}
       <path
-        d="M 35 38 A 14.5 14.5 0 0 1 65 38"
+        d="M 39.5 40.5 A 10.5 10.5 0 0 1 60.5 40.5"
         stroke={GOLD}
-        strokeWidth="7.5"
+        strokeWidth="6.5"
         fill="none"
         strokeLinecap="round"
       />
@@ -82,18 +83,20 @@ function MaxsavdoMark({ size, className = '' }: { size: number; className?: stri
         d={M_PATH}
         fill="none"
         stroke="var(--color-text-primary)"
-        strokeWidth="13"
+        strokeWidth="15"
         strokeLinejoin="miter"
-        strokeLinecap="square"
+        strokeLinecap="butt"
+        strokeMiterlimit={8}
       />
       {/* Right half overlaid in Champagne Gold (clip x≥50) */}
       <path
         d={M_PATH}
         fill="none"
         stroke={GOLD}
-        strokeWidth="13"
+        strokeWidth="15"
         strokeLinejoin="miter"
-        strokeLinecap="square"
+        strokeLinecap="butt"
+        strokeMiterlimit={8}
         clipPath={`url(#${RIGHT_CLIP_ID})`}
       />
     </svg>
