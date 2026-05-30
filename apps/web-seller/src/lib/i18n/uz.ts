@@ -469,7 +469,7 @@ export const uz: Translations = {
   'theme.enableDark': 'Qorongʻu mavzuni yoqish',
   'theme.light': 'Yorugʻ',
   'theme.dark': 'Qorongʻu',
-  'theme.system': 'Tizim kabi',
+  'theme.system': 'Tizim sozlamasi',
   // confirm — tasdiqlash modal oynasi
   'confirm.defaultConfirm': 'Tasdiqlash',
   'confirm.defaultCancel': 'Bekor qilish',
