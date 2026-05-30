@@ -34,31 +34,39 @@ describe('MaxsavdoLogo', () => {
     expect(svg?.getAttribute('height')).toBe('64');
   });
 
-  it('содержит bag-handle path (Q-curve над буквой M)', () => {
+  it('содержит bag-handle path (полукруг-дуга над буквой M)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const handle = container.querySelector('svg path[d^="M 35 22 Q"]');
+    const handle = container.querySelector('svg path[d^="M 35 38 A"]');
     expect(handle).not.toBeNull();
     expect(handle?.getAttribute('stroke')).toBe('#C9A876'); // Champagne Gold
   });
 
-  it('правая половина M залита Champagne Gold #C9A876', () => {
+  it('M состоит из двух path-слоёв (theme-base + золотая правая половина)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const texts = container.querySelectorAll('svg text');
-    expect(texts.length).toBe(2); // left + right half
-    const goldText = Array.from(texts).find(
-      (t) => t.getAttribute('fill') === '#C9A876',
-    );
-    expect(goldText).not.toBeUndefined();
-    expect(goldText?.textContent).toBe('M');
+    const mLayers = container.querySelectorAll('svg path[d^="M 27 80"]');
+    expect(mLayers.length).toBe(2); // base + right-half overlay
   });
 
-  it('левая половина M использует CSS-переменную text-primary (theme-aware)', () => {
+  it('правая половина M залита Champagne Gold #C9A876 (clip x≥50)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const texts = container.querySelectorAll('svg text');
-    const themedText = Array.from(texts).find(
-      (t) => t.getAttribute('fill') === 'var(--color-text-primary)',
+    const mLayers = Array.from(
+      container.querySelectorAll('svg path[d^="M 27 80"]'),
     );
-    expect(themedText).not.toBeUndefined();
-    expect(themedText?.textContent).toBe('M');
+    const goldHalf = mLayers.find(
+      (p) => p.getAttribute('stroke') === '#C9A876',
+    );
+    expect(goldHalf).not.toBeUndefined();
+    expect(goldHalf?.getAttribute('clip-path')).toBeTruthy();
+  });
+
+  it('база M использует CSS-переменную text-primary (theme-aware)', () => {
+    const { container } = render(<MaxsavdoLogo />);
+    const mLayers = Array.from(
+      container.querySelectorAll('svg path[d^="M 27 80"]'),
+    );
+    const themed = mLayers.find(
+      (p) => p.getAttribute('stroke') === 'var(--color-text-primary)',
+    );
+    expect(themed).not.toBeUndefined();
   });
 });
