@@ -77,7 +77,7 @@ function SidebarContent({ pathname, pendingCount, unreadChatCount, store, userPh
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: `1px solid ${colors.divider}` }}>
         <Link href="/dashboard" className="flex items-center transition-opacity hover:opacity-80" aria-label="maxsavdo dashboard">
-          <MaxsavdoLogo size={30} withWordmark />
+          <MaxsavdoLogo size={24} withWordmark />
         </Link>
         <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ background: colors.accentMuted, color: colors.accent }}>Beta</span>
       </div>
