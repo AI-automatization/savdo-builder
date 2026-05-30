@@ -1,19 +1,20 @@
 /**
- * maxsavdo brand mark — реальный знак из brand-book (logo-app-icon.jpg).
+ * maxsavdo brand mark — реальный знак из brand-book (logo-app-icon.jpg), без подложки.
  *
- * Знак = глянцевый 3D-знак из brand-book, вырезанный с прозрачным фоном
- * (`public/brand/maxsavdo-mark.png`), помещённый на тёмную скруглённую плашку
- * (мини app-icon badge). Плашка делает знак тема-независимым: на светлой странице
- * это премиальный тёмный badge, на тёмной — плашка сливается, виден сам знак.
- * Так знак 1:1 совпадает с brand-book в любой теме (флэт-вектор так не умеет —
- * оригинал глянцевый 3D-рендер).
+ * Две версии знака, переключаются по теме (без тёмной плашки):
+ *  - `maxsavdo-mark.png`       — бел.+золото, показывается на ТЁМНОЙ теме;
+ *  - `maxsavdo-mark-light.png` — тёмн.+золото (белая половина перекрашена в тёмный),
+ *                                показывается на СВЕТЛОЙ теме (иначе белая часть сольётся).
+ * Знак вырезан из brand-book JPG с прозрачным фоном (canvas). Переключение —
+ * CSS-классами под `[data-theme="dark"]` (display задаётся ТОЛЬКО в CSS, см. globals.css,
+ * иначе inline-style перебьёт класс).
  *
  * wordmark = знак + текст "maxsavdo" (Champagne Gold).
  * Дубль файла web-buyer/src/components/brand/MaxsavdoLogo.tsx (packages/ui пуст).
  */
 
 type Props = {
-  /** Размер плашки в пикселях (квадрат). Default 32. */
+  /** Высота знака в пикселях. Default 32. */
   size?: number;
   /** Доп. классы для wrapper'а. */
   className?: string;
@@ -22,7 +23,8 @@ type Props = {
 };
 
 const GOLD = '#C9A876';
-const MARK_SRC = '/brand/maxsavdo-mark.png';
+const MARK_DARK = '/brand/maxsavdo-mark.png'; // white+gold → dark theme
+const MARK_LIGHT = '/brand/maxsavdo-mark-light.png'; // dark+gold → light theme
 
 export function MaxsavdoLogo({ size = 32, className = '', withWordmark = false }: Props) {
   if (withWordmark) {
@@ -42,29 +44,18 @@ export function MaxsavdoLogo({ size = 32, className = '', withWordmark = false }
 }
 
 function MaxsavdoMark({ size, className = '' }: { size: number; className?: string }) {
+  const imgStyle = { height: size, width: 'auto' as const };
   return (
     <span
-      className={className}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: size,
-        height: size,
-        background: '#0A0A0A',
-        borderRadius: Math.round(size * 0.26),
-        flexShrink: 0,
-        overflow: 'hidden',
-      }}
+      className={`inline-flex items-center ${className}`}
+      style={{ height: size, flexShrink: 0 }}
       role="img"
       aria-label="maxsavdo"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={MARK_SRC}
-        alt="maxsavdo"
-        style={{ width: size * 0.78, height: 'auto', display: 'block' }}
-      />
+      <img className="maxsavdo-mark-on-light" src={MARK_LIGHT} alt="" aria-hidden="true" style={imgStyle} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="maxsavdo-mark-on-dark" src={MARK_DARK} alt="" aria-hidden="true" style={imgStyle} />
     </span>
   );
 }

@@ -136,3 +136,11 @@ body {
 .row-hoverable:hover {
   background-color: var(--color-surface-elevated);
 }
+
+/* maxsavdo brand mark — theme-adaptive swap (no background plate).
+   Light theme → dark+gold mark; dark theme → white+gold mark.
+   display задаётся ЗДЕСЬ (не inline) — иначе inline-style перебьёт класс. */
+.maxsavdo-mark-on-light { display: block; }
+.maxsavdo-mark-on-dark { display: none; }
+[data-theme="dark"] .maxsavdo-mark-on-light { display: none; }
+[data-theme="dark"] .maxsavdo-mark-on-dark { display: block; }

@@ -496,7 +496,7 @@ export default function OnboardingPage() {
     <div className="rounded-3xl p-7" style={glass}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 mb-6">
-        <MaxsavdoLogo size={24} withWordmark />
+        <MaxsavdoLogo size={30} withWordmark />
       </div>
 
       <ProgressBar step={step} />
