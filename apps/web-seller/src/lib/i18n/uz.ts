@@ -381,6 +381,10 @@ export const uz: Translations = {
   'settings.sectionDelivery': 'Yetkazib berish',
   'settings.sectionProfile': 'Sotuvchi profili',
   'settings.sectionNotif': 'Bildirishnomalar',
+  // SUPPORT-CHANNEL-001
+  'settings.sectionSupport': 'Qoʻllab-quvvatlash',
+  'settings.supportLink': 'Qoʻllab-quvvatlashga yozish',
+  'settings.supportHint': 'Doʻkon, buyurtmalar, toʻlov boʻyicha savollar — Telegramda bogʻlanamiz',
   'settings.sectionCategories': "Doʻkon kategoriyalari",
   'settings.manageCategoriesLink': 'Kategoriyalarni boshqarish',
   'settings.categoriesLoading': 'Yuklanmoqda…',

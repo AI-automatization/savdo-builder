@@ -383,6 +383,10 @@ export const ru: Translations = {
   'settings.sectionDelivery': 'Доставка',
   'settings.sectionProfile': 'Профиль продавца',
   'settings.sectionNotif': 'Уведомления',
+  // SUPPORT-CHANNEL-001
+  'settings.sectionSupport': 'Поддержка',
+  'settings.supportLink': 'Написать в поддержку',
+  'settings.supportHint': 'Вопросы по магазину, заказам, оплате — мы на связи в Telegram',
   'settings.sectionCategories': 'Категории магазина',
   'settings.manageCategoriesLink': 'Управление категориями',
   'settings.categoriesLoading': 'Загрузка…',

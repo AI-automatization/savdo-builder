@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import Link from 'next/link';
 import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories } from '@/hooks/use-seller';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ExternalLink } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
 import type { Store, StoreDeliverySettings } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
@@ -20,6 +20,13 @@ import { useTranslation } from '@/lib/i18n';
 type StoreWithDelivery = Store & {
   deliverySettings?: StoreDeliverySettings | null;
 };
+
+// SUPPORT-CHANNEL-001: ссылка на поддержку. Когда Полат создаст канал —
+// выставит NEXT_PUBLIC_SUPPORT_URL в Railway-env. До этого фолбэк на бот
+// (он реально работает), битой ссылки в проде не бывает.
+const SUPPORT_URL =
+  process.env.NEXT_PUBLIC_SUPPORT_URL ??
+  `https://t.me/${process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT'}`;
 
 const inputBase =
   'h-10 px-3.5 rounded-md text-sm focus:outline-none focus:ring-2 w-full';
@@ -104,6 +111,31 @@ function StoreCategoriesSection() {
         </div>
         <ChevronRight size={16} aria-hidden="true" style={{ color: colors.textDim }} />
       </Link>
+    </Section>
+  );
+}
+
+// ── Support Section (SUPPORT-CHANNEL-001) ──────────────────────────────────────
+
+function SupportSection() {
+  const { t } = useTranslation();
+  return (
+    <Section title={t('settings.sectionSupport')}>
+      <a
+        href={SUPPORT_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 -mx-1 px-3 py-2.5 rounded-lg transition-colors row-hoverable"
+        style={{ color: colors.textPrimary }}
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">{t('settings.supportLink')}</p>
+          <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
+            {t('settings.supportHint')}
+          </p>
+        </div>
+        <ExternalLink size={16} aria-hidden="true" style={{ color: colors.textDim }} />
+      </a>
     </Section>
   );
 }
@@ -663,6 +695,7 @@ export default function SettingsPage() {
           <DeliverySettingsSection />
           <StoreCategoriesSection />
           <NotifPreferencesSection />
+          <SupportSection />
         </div>
       </div>
     </div>
