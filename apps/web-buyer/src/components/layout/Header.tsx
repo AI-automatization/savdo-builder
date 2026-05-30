@@ -39,7 +39,7 @@ export default function Header() {
           className="flex-shrink-0"
           aria-label="maxsavdo"
         >
-          <MaxsavdoLogo size={28} withWordmark />
+          <MaxsavdoLogo size={34} withWordmark />
         </Link>
 
         {/* Catalog nav — desktop only */}
