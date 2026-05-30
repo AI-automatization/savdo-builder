@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим, docs/adr) — BRAND-DARK-VS-LIGHT-DEFAULT-001 решён (ADR-009)
+
+### ✅ [BRAND-DARK-VS-LIGHT-DEFAULT-001] Default theme web-buyer = `system`
+
+- **Важность:** 🟡 P1 (open product-decision, блокировал brand-rollout closure).
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/adr/ADR-009_web_buyer_default_theme_system.md` (новый),
+  `analiz/tasks.md` (тикет закрыт + ссылка в BRAND-LIQUID-AUTHORITY обновлена).
+- **Решение:** оставляем `system`, **кода не меняем**. web-buyer —
+  conversion-first storefront; форсировать `dark` рискованно: (1) UGC-фото
+  товаров на белом фоне дают «вырезы» на тёмном; (2) рынок UZ светлый
+  (Uzum/Olcha/Asaxiy); (3) нет аналитики конверсии для слепого A/B.
+  `system` не жертвует брендом — OS-dark юзеры видят Dark Luxury; бренд работает
+  через gold accent + лого + Inter в обеих темах, а полноценный dark — на
+  seller-dashboard (там default уже `dark`) + маркетинге + боте.
+- **Пересмотр:** когда подключим Sentry frontend + событийный трекинг —
+  тогда можно A/B `dark` vs `system` с мониторингом и откатом (отдельный тикет).
+
+---
+
 ## 2026-05-30 (Азим, docs/business) — BIZ-FOLDER-AZIM-001 закрыт (3 бизнес-документа)
 
 ### ✅ [BIZ-FOLDER-AZIM-001] Наполнить `docs/business/`

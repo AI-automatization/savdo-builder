@@ -1361,24 +1361,20 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
   ### Темы
   - **Dark theme (primary):** Rich Black bg, white text, gold accent.
   - **Light theme:** Pure White bg, Rich Black text, gold accent.
-  - **Default:** ждём решения по `BRAND-DARK-VS-LIGHT-DEFAULT-001`.
+  - **Default:** `system` — решено 30.05.2026 (ADR-009). Кода не трогаем.
 
 - **Файлы:** широкая зона — почти все компоненты `apps/web-buyer/src/components/`, `apps/web-seller/src/components/`.
 - **Definition of done:** все основные user-facing экраны визуально консистентны с brand-book v2.
 
 ---
 
-## 🟡 [BRAND-DARK-VS-LIGHT-DEFAULT-001] Решить default theme для web-buyer
+## ✅ [BRAND-DARK-VS-LIGHT-DEFAULT-001] Default theme web-buyer — решено 30.05.2026
 
-- **Домен:** `apps/web-buyer` (Азим решает + Полат для admin отдельно).
-- **Кто берёт:** Азим.
-- **Приоритет:** P1.
-- **Контекст:** старая система начинала с light (cream) и опционально была dark. Новая dark luxury эстетика тяготеет к dark, но для e-commerce storefront важна скорость восприятия товара (light часто лучше для фото).
-- **Варианты:**
-  - **A.** Dark default + light toggle — соответствует luxury aesthetic brand-book'а, но может ухудшить читаемость карточек товара.
-  - **B.** Light default + dark toggle — лучше для UX e-commerce, brand viewable через golden accent и dark header/footer.
-  - **C.** Гибрид: hero/landing — dark, каталог/product — light, чекаут/profile — pick.
-- **Решение:** Азим выбирает после визуального теста (можно сделать HTML-preview).
+Решено Азимом: **остаётся `system`** (вариант B-lite), кода не трогаем. web-buyer —
+conversion-first storefront: dark рискует читаемостью UGC-фото товаров + рынок UZ
+светлый (Uzum/Olcha/Asaxiy) + нет аналитики конверсии для слепого A/B. `system` не
+жертвует брендом (OS-dark юзеры видят Dark Luxury). Полный разбор — `docs/adr/ADR-009`.
+Пересмотр — когда появится Sentry frontend + событийный трекинг.
 
 ---
 
