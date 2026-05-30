@@ -1,7 +1,7 @@
 // FRONTEND-SMOKE-PLAYWRIGHT-001 (vitest): MaxsavdoLogo render.
-// Знак = реальное изображение из brand-book, без подложки, две версии под тему
-// (public/brand/maxsavdo-mark.png + maxsavdo-mark-light.png), переключение CSS.
-// Тест защищает контракт: role/aria на wrapper, обе картинки знака, wordmark, size.
+// Знак = реальное изображение из brand-book (public/brand/maxsavdo-mark.png)
+// на тёмной скруглённой плашке. Тест защищает контракт компонента:
+// role/aria, наличие img, wordmark-режим, size.
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { MaxsavdoLogo } from '@/components/brand/MaxsavdoLogo';
@@ -14,15 +14,12 @@ describe('MaxsavdoLogo', () => {
     expect(mark?.getAttribute('aria-label')).toBe('maxsavdo');
   });
 
-  it('содержит обе тема-версии знака из brand-book (light + dark)', () => {
+  it('содержит изображение знака из brand-book (public/brand)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const imgs = Array.from(container.querySelectorAll('img'));
-    expect(imgs.length).toBe(2);
-    const srcs = imgs.map((i) => i.getAttribute('src') ?? '');
-    expect(srcs.some((s) => s.includes('maxsavdo-mark.png'))).toBe(true); // dark theme
-    expect(srcs.some((s) => s.includes('maxsavdo-mark-light.png'))).toBe(true); // light theme
-    // обе картинки декоративны — wrapper несёт aria-label
-    imgs.forEach((i) => expect(i.getAttribute('alt')).toBe(''));
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute('alt')).toBe('maxsavdo');
+    expect(img?.getAttribute('src')).toContain('maxsavdo-mark');
   });
 
   it('по умолчанию рендерит знак без видимого текста wordmark', () => {
@@ -33,13 +30,14 @@ describe('MaxsavdoLogo', () => {
   it('withWordmark=true добавляет текст "maxsavdo" рядом со знаком', () => {
     const { container } = render(<MaxsavdoLogo withWordmark />);
     expect(container.textContent).toContain('maxsavdo');
-    expect(container.querySelectorAll('img').length).toBe(2);
+    expect(container.querySelector('img')).not.toBeNull();
   });
 
-  it('size задаёт высоту знака', () => {
+  it('size прокидывается в размер плашки', () => {
     const { container } = render(<MaxsavdoLogo size={64} />);
     const mark = container.querySelector('[role="img"]') as HTMLElement | null;
     expect(mark).not.toBeNull();
+    expect(mark?.style.width).toBe('64px');
     expect(mark?.style.height).toBe('64px');
   });
 });
