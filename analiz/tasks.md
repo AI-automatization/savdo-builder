@@ -224,11 +224,17 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
   `apps/tma` (settings) + `apps/admin` (login) — координация Полата.
 - **Кто берёт:** Полат (создаёт чат) + Азим (ссылки в web-buyer/web-seller).
 - **Приоритет:** P1 — закрывает Support 5.5 → 6.5 (should-pass для launch).
-- **Что:**
-  1. Создать Telegram-канал/чат `@savdo_support` (manned by Полат+Азим).
-  2. Добавить ссылку в `apps/web-buyer` footer, `apps/web-seller/settings`,
-     `apps/tma` settings (buyer + seller views), `apps/admin/login`.
-- **Скоуп:** 0.5 дня (создание + 4 frontend-вставки).
+- **✅ Фронт-часть Азима закрыта 30.05.2026** (web-buyer `74dcbd8`, web-seller `25f0182`):
+  пункт «Поддержка» в profile-меню web-buyer + секция «Поддержка» в settings web-seller.
+  Ссылка через `NEXT_PUBLIC_SUPPORT_URL` с **фолбэком на бот** (@savdo_builderBOT) —
+  битой ссылки в проде не бывает; tsc + smoke (27+15) зелёные. Деталь — `done.md`.
+- **Осталось (Полат):**
+  1. Создать Telegram-канал/чат (`@savdo_support` или `@maxsavdo_support` —
+     уточнить handle под новый бренд) + завести как support-точку.
+  2. **Выставить `NEXT_PUBLIC_SUPPORT_URL`** в Railway-env обоих сервисов
+     (web-buyer + web-seller) на реальный URL канала — тогда ссылка апгрейдится
+     с бота на канал без правок кода.
+  3. Ссылки в `apps/tma` settings (buyer + seller) + `apps/admin/login` — зона Полата.
 - **Источник:** readiness §13 + Risk R8.
 
 ---

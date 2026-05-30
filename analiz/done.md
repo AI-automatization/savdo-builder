@@ -1,5 +1,39 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим, web-buyer + web-seller) — SUPPORT-CHANNEL-001 фронт-часть
+
+### ✅ [SUPPORT-CHANNEL-001 part front] Ссылка «Поддержка» в web-buyer + web-seller
+
+- **Важность:** 🟠 P1 (Support 5.5 → 6.5, should-pass для launch). Тикет
+  остаётся открыт — back-часть Полата (создать канал + tma/admin + env).
+- **Дата:** 30.05.2026
+- **Файлы:**
+  - web-buyer (`74dcbd8`): `apps/web-buyer/src/app/(shop)/profile/page.tsx`,
+    `src/lib/i18n/{ru,uz}.ts`.
+  - web-seller (`25f0182`): `apps/web-seller/src/app/(dashboard)/settings/page.tsx`,
+    `src/lib/i18n/{ru,uz}.ts`.
+- **Что сделано:**
+  - **web-buyer:** пункт «Поддержка» в profile-меню (рядом с «Помощь»). `MenuRow`
+    расширен опцией `external` → рендерит `<a target=_blank rel=noopener>` + иконка
+    `ExternalLink` вместо `ChevronRight`.
+  - **web-seller:** секция «Поддержка» в settings (правая колонка, по образцу
+    `StoreCategoriesSection`), внешняя ссылка.
+  - **Ключевое решение — env-var + фолбэк на бот:**
+    `SUPPORT_URL = process.env.NEXT_PUBLIC_SUPPORT_URL ?? https://t.me/${BOT}`.
+    Канала ещё нет (создаёт Полат) → ссылка ведёт на работающий бот, **битой
+    ссылки в проде не бывает**. Когда Полат выставит `NEXT_PUBLIC_SUPPORT_URL`
+    в Railway-env — ссылка апгрейдится на канал без правок кода и без угадывания handle.
+  - i18n ru+uz в обоих апах.
+- **Верификация:** web-buyer `tsc` 0 + 27/27 smoke; web-seller `tsc` 0 + 15/15 smoke.
+- **Env-гэп по дороге:** web-seller test-devDeps (vitest/jest-dom) не были слинкованы
+  в рабочем checkout (node_modules не branch-specific, последний install шёл по
+  lockfile main, где у web-seller нет vitest — дивергенция деплой-веток). Лечится
+  `pnpm install` на ветке web-seller. На прод не влияет.
+- **Осталось (Полат):** создать канал + handle, выставить `NEXT_PUBLIC_SUPPORT_URL`
+  env в web-buyer/web-seller, ссылки в tma/admin.
+
+---
+
 ## 2026-05-30 (Азим, docs/adr) — BRAND-DARK-VS-LIGHT-DEFAULT-001 решён (ADR-009)
 
 ### ✅ [BRAND-DARK-VS-LIGHT-DEFAULT-001] Default theme web-buyer = `system`
