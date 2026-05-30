@@ -64,7 +64,45 @@
 подписчикам. Покажу как это выглядит на вашем товаре?
 ```
 
-**UZ-вариант** — Азим адаптирует нативно (не машинный перевод).
+### UZ-вариант — первое касание (черновик, Азим сверяет нативно)
+
+> Орфография: oʻ/gʻ через ʻ (U+02BB), тутук-белгиси (`taʼminlash`, `maʼlumot`) через ʼ (U+02BC).
+> Первую строку **персонализировать** — упомянуть конкретный товар/пост продавца. Не спам.
+
+```
+Assalomu alaykum, [ism]! Kanalingizni koʻrdim — [aniq mahsulot/post]. 🔥
+
+Biz maxsavdoni ishlab chiqyapmiz — bu toʻgʻridan-toʻgʻri Telegram ichidagi
+doʻkon: katalog, savat, buyurtmalar va ularning holati — lichkadagi
+yozishmalar oʻrniga. Uzumdagidek komissiyasiz — oddiy obuna, hozir esa,
+ishga tushirish chogʻida — mutlaqo bepul.
+
+Doʻkoningizni 5 daqiqada yigʻib beramiz va obunachilaringizga tashlaydigan
+havola olasiz. Aynan sizning mahsulotingizda qanday koʻrinishini koʻrsataymi?
+```
+
+### UZ — follow-up (если не ответили через 2–3 дня)
+
+```
+Assalomu alaykum, [ism]! Oldingi xabarimni eslatib oʻtaman 🙂
+maxsavdo'da doʻkon ochish hozir bepul, sozlash 5 daqiqa. Xohlasangiz,
+tayyor namunani sizning bir mahsulotingizda koʻrsatib beraman — keyin
+oʻzingiz qaror qilasiz. Qiziqmi?
+```
+
+### UZ — для TG-чатов продавцов (мягко, value-first, без прямого оффера)
+
+```
+Lichkada buyurtma qabul qilib charchaganlar bor-a? 😅 Biz Telegram ichida
+toʻliq doʻkon qilyapmiz — katalog, savat, buyurtma statuslari. Uzum
+komissiyasisiz. Beta hozir bepul — kimga qiziq boʻlsa, yozing, koʻrsataman.
+```
+
+> **Глоссарий ценностного оффера (UZ):** комиссия → *komissiya*; подписка → *obuna*;
+> витрина/storefront → *doʻkon* (или транслит *vitrina*); заказ → *buyurtma*; доставка →
+> *yetkazib berish*; самовывоз → *olib ketish*; статус заказа → *buyurtma holati*.
+> Сверить с терминологией в `apps/web-seller/src/lib/i18n/uz.ts` (ревью —
+> `analiz/audits/uz-translation-review-2026-05-30.md`).
 
 ---
 

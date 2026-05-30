@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим) — сессия «продолжаем»: 4 кандидата (сверка бэка, прод-чек, UZ-review, GTM UZ)
+
+### ✅ [FE-BACK-GAP-CHECK-001] Сверка свежего бэка Полата (denorm/city) против фронта
+- **Важность:** 🟢 P3 (verify).
+- **Дата:** 30.05.2026
+- **Файлы:** none (анализ; правка на main отменена как no-op).
+- **Что сделано:** сверил denorm `totalStock`/`hasVariants` (`fc9a112`) + city-normalization
+  (`1f9164d`) против web-buyer/web-seller.
+  - `totalStock` теперь задекларирован в `ProductListItem` (`packages/types`); временный cast
+    `(product as { totalStock?: number })` в `ProductCard.tsx` **уже снят на деплой-ветке `web-buyer`**
+    (line 59 = `product.totalStock === 0`). На `main` копия web-buyer-дерева устарела (известный
+    main↔branch drift, back-port не делается) → правку main откатил как no-op для прода.
+  - `hasVariants` — backend-only денорм; фронт выводит из `variantCount` → **гэпа нет**.
+  - city-normalization — серверная; checkout шлёт free-text `{street, city}` → фронт не меняется → **гэпа нет**.
+
+### ✅ [FE-PROD-DEPLOY-CHECK-001] Прод-чек buyer/seller после brand-rollout
+- **Важность:** 🟢 P3 (verify).
+- **Дата:** 30.05.2026
+- **Файлы:** none (Playwright MCP, прод).
+- **Что сделано:** оба прода живы — buyer `savdo-builder-by-production` (title «maxsavdo», шапка
+  wordmark + M-mark), seller `savdo-builder-sl-production` (title «maxsavdo — Seller Dashboard»).
+  Brand rollout в проде, регрессий не видно. Пункты «Поддержка» (buyer profile-меню / seller settings)
+  за OTP-гейтом — анонимно end-to-end не проверяемы, нужен реальный вход Азима.
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001 — review-материал] side-by-side ru↔uz
+- **Важность:** 🟡 P2.
+- **Дата:** 30.05.2026
+- **Файлы:** `analiz/audits/uz-translation-review-2026-05-30.md` (новый); генератор — `C:/tmp/uzrev/build.mjs` (вне репо).
+- **Что сделано:** авто-генерация ru↔uz таблиц всех ключей (web-buyer 532 + web-seller 536) с веток.
+  Парсер покрыл 532/532 + 536/536 ключей. **Орфография чистая:** 0 кириллицы, 0 пропусков ключей,
+  0 дословных ru-совпадений, 0 кудрявых кавычек/мисплейснутых U+02BB. `maʼlumot`/`isteʼmol` корректно
+  через ʼ U+02BC, `oʻ/gʻ` через ʻ U+02BB. Машинных дефектов нет — остаётся нативная вычитка Азима
+  на естественность (полный список в файле). Первая эвристика дала 20 ложных флагов (U+02BC принят за
+  дефект) — переписана под корректную узб. орфографию (две легитимные буквы-модификатора).
+
+### ✅ [GTM-PHASE-A-UZ-SCRIPT-001] Нативный UZ outreach-скрипт
+- **Важность:** 🟡 P2 (GTM-подготовка).
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/business/gtm-phase-a-2026-05-30.md`.
+- **Что сделано:** заполнен placeholder «UZ-вариант — Азим адаптирует» — добавлены 3 узб. скрипта
+  (первое касание DM, follow-up, мягкий вариант для TG-чатов продавцов) + глоссарий ценностного
+  оффера (komissiya/obuna/buyurtma/yetkazib berish/...). Орфография oʻ/gʻ→U+02BB, тутук→U+02BC.
+  Помечено как черновик под нативную финальную сверку Азима.
+
 ## 2026-05-30 (Азим) — BRAND-WEB-SOFT-COLOR-CLEANUP-001 закрыт (no-op)
 
 ### ✅ [BRAND-WEB-SOFT-COLOR-CLEANUP-001] Deprecated Soft Color tokens
