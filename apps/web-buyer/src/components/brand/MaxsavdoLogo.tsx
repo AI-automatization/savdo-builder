@@ -39,17 +39,16 @@ export function MaxsavdoLogo({ size = 32, className = '', withWordmark = false }
   return <MaxsavdoMark size={size} className={className} />;
 }
 
-// Stable ID (no Math.random / useId) — одинаковая геометрия у всех instance'ов,
-// clipPath name-collision не критичен.
-const RIGHT_CLIP_ID = 'maxsavdo-clip-right';
-
-// Геометрическая монограмма-сумка по brand-book v2 (logo-app-icon.jpg): «M» из двух
-// штанг — левая половина theme-adaptive (var(--color-text-primary): чёрная на light,
-// белая на dark), правая Champagne Gold (clip x≥50); золотая полукруглая ручка-сумка
-// сидит в центральной выемке M. Угловатая «M» с глубокой V-впадиной и острыми
-// miter-углами, сверена визуально с brand-book (Playwright). При точной 1:1-векторизации
-// JPG (BRAND-LOGO-SVG-CREATE-001) меняем d-атрибуты — API компонента стабилен.
-const M_PATH = 'M 28 81 L 28 32 L 50 73 L 72 32 L 72 81';
+// Реальная векторизация знака brand-book (logo-app-icon.jpg): силуэт обведён по
+// пикселям (canvas color-threshold → marching-squares контуры → RDP-упрощение).
+// Две заливки: WHITE_D — левая «N»-форма (нога + диагональ), theme-adaptive
+// (var(--color-text-primary): чёрная на light, белая на dark); GOLD_D — правая
+// половина M + полукруглая ручка-сумка, Champagne Gold. fill-rule=evenodd.
+// При смене знака меняем только эти d-строки — API компонента стабилен.
+const WHITE_D =
+  'M 45.8 8 L 53.9 8.3 L 58.1 10.1 L 62 13.4 L 53.9 8.9 L 48.5 8.3 L 41.3 10.1 L 34.4 15.2 L 38.9 10.7 L 45.5 8.3 Z M 11 26 L 14.3 25.7 L 18.5 28.7 L 83 91.4 L 65.3 91.1 L 21.5 49.1 L 21.2 92 L 17.3 92.3 L 11.9 89.9 L 9.2 87.2 L 8 83.6 L 8 30.8 L 9.2 27.2 L 10.7 26.3 Z M 84.2 26 L 88.1 26.9 L 91.4 31.4 L 91.1 64.7 L 90.8 34.4 L 90.2 30.8 L 88.7 31.1 L 86.9 28.7 L 83.9 28.7 L 83.9 29.9 L 81.5 29.9 L 80.9 28.7 L 79.7 29.3 L 79.1 31.1 L 74.9 33.5 L 53.6 52.4 L 79.1 28.1 L 83.9 26.3 Z';
+const GOLD_D =
+  'M 48.2 8.6 L 53.9 8.9 L 62 14 L 66.2 22.4 L 66.8 28.4 L 65.3 29.9 L 62.6 28.4 L 62 21.2 L 59.6 17 L 55.1 13.1 L 50.9 11.9 L 46.7 11.9 L 41.3 14.3 L 37.4 18.2 L 35 23 L 35 29 L 32.3 29.9 L 30.8 28.4 L 31.4 21.8 L 34.4 15.8 L 41.3 10.1 L 47.9 8.9 Z M 87.2 28.4 L 88.7 31.1 L 90.2 30.8 L 90.8 34.4 L 90.8 64.4 L 92 82.4 L 90.2 87.2 L 86.3 89.9 L 78.2 81.8 L 77.6 49.4 L 76.7 48.5 L 74.3 50.3 L 61.1 62.9 L 59.3 62.9 L 51.2 54.8 L 74.9 33.5 L 79.1 31.1 L 79.7 29.3 L 80.9 28.7 L 81.5 29.9 L 83.9 29.9 L 83.9 28.7 L 86.9 28.7 Z';
 
 function MaxsavdoMark({ size, className = '' }: { size: number; className?: string }) {
   return (
@@ -62,40 +61,10 @@ function MaxsavdoMark({ size, className = '' }: { size: number; className?: stri
       role="img"
       aria-label="maxsavdo"
     >
-      <defs>
-        <clipPath id={RIGHT_CLIP_ID}>
-          <rect x="50" y="0" width="50" height="100" />
-        </clipPath>
-      </defs>
-      {/* Bag handle — gold semicircle nested in the M's central valley */}
-      <path
-        d="M 39.5 40.5 A 10.5 10.5 0 0 1 60.5 40.5"
-        stroke={GOLD}
-        strokeWidth="6.5"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* M base — theme-adaptive (black on light, white on dark) */}
-      <path
-        d={M_PATH}
-        fill="none"
-        stroke="var(--color-text-primary)"
-        strokeWidth="15"
-        strokeLinejoin="miter"
-        strokeLinecap="butt"
-        strokeMiterlimit={8}
-      />
-      {/* Right half overlaid in Champagne Gold (clip x≥50) */}
-      <path
-        d={M_PATH}
-        fill="none"
-        stroke={GOLD}
-        strokeWidth="15"
-        strokeLinejoin="miter"
-        strokeLinecap="butt"
-        strokeMiterlimit={8}
-        clipPath={`url(#${RIGHT_CLIP_ID})`}
-      />
+      {/* Left "N" form — theme-adaptive (black on light, white on dark) */}
+      <path d={WHITE_D} fill="var(--color-text-primary)" fillRule="evenodd" />
+      {/* Right M-half + bag handle — Champagne Gold */}
+      <path d={GOLD_D} fill={GOLD} fillRule="evenodd" />
     </svg>
   );
 }

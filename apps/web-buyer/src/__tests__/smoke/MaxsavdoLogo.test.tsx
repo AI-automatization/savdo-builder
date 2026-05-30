@@ -34,38 +34,28 @@ describe('MaxsavdoLogo', () => {
     expect(svg?.getAttribute('height')).toBe('64');
   });
 
-  it('содержит bag-handle path (полукруг-дуга над буквой M)', () => {
+  it('знак состоит ровно из двух filled-path слоёв (трассировка brand-book)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const handle = container.querySelector('svg path[d^="M 39.5 40.5 A"]');
-    expect(handle).not.toBeNull();
-    expect(handle?.getAttribute('stroke')).toBe('#C9A876'); // Champagne Gold
+    const paths = container.querySelectorAll('svg path');
+    expect(paths.length).toBe(2); // WHITE_D (N-форма) + GOLD_D (правая M + ручка)
+    paths.forEach((p) => {
+      expect(p.getAttribute('fill-rule')).toBe('evenodd');
+      expect(p.getAttribute('stroke')).toBeNull(); // заливка, не обводка
+    });
   });
 
-  it('M состоит из двух path-слоёв (theme-base + золотая правая половина)', () => {
+  it('правая часть + ручка залиты Champagne Gold #C9A876', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const mLayers = container.querySelectorAll('svg path[d^="M 28 81"]');
-    expect(mLayers.length).toBe(2); // base + right-half overlay
+    const gold = Array.from(container.querySelectorAll('svg path')).find(
+      (p) => p.getAttribute('fill') === '#C9A876',
+    );
+    expect(gold).not.toBeUndefined();
   });
 
-  it('правая половина M залита Champagne Gold #C9A876 (clip x≥50)', () => {
+  it('левая «N»-форма использует CSS-переменную text-primary (theme-aware)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const mLayers = Array.from(
-      container.querySelectorAll('svg path[d^="M 28 81"]'),
-    );
-    const goldHalf = mLayers.find(
-      (p) => p.getAttribute('stroke') === '#C9A876',
-    );
-    expect(goldHalf).not.toBeUndefined();
-    expect(goldHalf?.getAttribute('clip-path')).toBeTruthy();
-  });
-
-  it('база M использует CSS-переменную text-primary (theme-aware)', () => {
-    const { container } = render(<MaxsavdoLogo />);
-    const mLayers = Array.from(
-      container.querySelectorAll('svg path[d^="M 28 81"]'),
-    );
-    const themed = mLayers.find(
-      (p) => p.getAttribute('stroke') === 'var(--color-text-primary)',
+    const themed = Array.from(container.querySelectorAll('svg path')).find(
+      (p) => p.getAttribute('fill') === 'var(--color-text-primary)',
     );
     expect(themed).not.toBeUndefined();
   });
