@@ -1,5 +1,30 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим) — UZ-терминология: cross-app унификация закрыта
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001 — терминология] cross-app унификация uz
+- **Важность:** 🟢 P3 (polish).
+- **Дата:** 30.05.2026
+- **Файлы:** `apps/web-seller/src/lib/i18n/uz.ts` (ветка web-seller `8049c2a`).
+- **Контекст:** «продолжаем» → выбрана UZ-терминология. При сверке выяснилось, что
+  аудит-файл `uz-translation-review-2026-05-30.md` и секция «Осталось» в tasks.md
+  **устарели**: описывали правки как невыполненные, хотя `8b24117` их уже закрыл.
+  (Память `feedback-git-log-content-vs-hash` в действии — сверял реальный контент
+  веток через `git show`, не аудит.)
+- **Что было по факту на ветках:**
+  - `orders.nextProcess`/`orders.detail.nextProcess` = `Jarayonga olish` ✅ (`8b24117`)
+  - `orders.status.PENDING` = `Kutilmoqda` в обоих аппах ✅ (`8b24117`)
+  - `theme.light/dark` = `Yorugʻ/Qorongʻu` в обоих ✅
+- **Что сделано сегодня:** единственное остававшееся расхождение — `theme.system`:
+  `Tizim kabi`(seller) vs `Tizim sozlamasi`(buyer). Унифицировано seller →
+  `Tizim sozlamasi` (значение buyer — публичный conversion-first апп + стандартная
+  UI-формулировка). One-line change, string-only (тип-риска нет).
+- **Верификация:** изменение строкового значения в object-литерале — `tsc` не затрагивается;
+  локальный build запрещён (ПК). uz↔ru паритет ключей не нарушен (1 значение).
+- **✅ Запушено** (web-seller `3481054..8049c2a`) — Railway деплоит.
+- **Остаток задачи:** только ручной прод-тест RU/UZ-свитчера (за auth-гейтом, нужен
+  реальный вход Азима) — остаётся 🟡 в tasks.md.
+
 ## 2026-05-30 (Азим) — логотип: шрифтовая «M»-заглушка → геометрический знак brand-book
 
 ### ✅ [BRAND-LOGO-SVG-CREATE-001 — web-часть] MaxsavdoMark по brand-book v2
