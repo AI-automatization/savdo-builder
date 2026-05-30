@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим, docs/design) — BRAND-LIQUID-AUTHORITY-MIGRATION-001 закрыт
+
+### ✅ [BRAND-LIQUID-AUTHORITY-MIGRATION-001] Design-system v2
+
+- **Важность:** 🟡 P2.
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/design/maxsavdo-design-v2.md` (новый), `docs/design/liquid-authority.md`
+  (deprecation-баннер), `docs/brand/maxsavdo-brand-v2.md` (§Связано), `CLAUDE.md` (2 ссылки).
+- **Что сделано:** выбран вариант «новый документ + deprecate старый» (liquid-authority
+  титулован старым концептом violet/slate — inplace-правка ввела бы в заблуждение).
+  - `maxsavdo-design-v2.md` — новый источник правды. Палитра/лого/типографика **не
+    дублируются** — ссылка на brand-v2 (single source). Перенесены и обновлены под Dark
+    Luxury: концепция, component-паттерны (кнопки/инпуты/карточки/таблицы/нав), 8px grid,
+    UX-принципы, запреты. Добавлено: разделение поверхностей **storefront (brand-forward)
+    vs dashboard (functional)**, фиксация дефолтов тем (ADR-009), таблица «что изменилось
+    vs Liquid Authority v1.0».
+  - `liquid-authority.md` — ⚠️ DEPRECATED баннер сверху, оставлен для истории.
+  - Ссылки синхронизированы: brand-v2 §Связано + `CLAUDE.md` (design-doc path + «перед
+    UI-задачей читать» → design-v2).
+
+---
+
 ## 2026-05-30 (Азим, web-buyer + web-seller) — SUPPORT-CHANNEL-001 фронт-часть
 
 ### ✅ [SUPPORT-CHANNEL-001 part front] Ссылка «Поддержка» в web-buyer + web-seller

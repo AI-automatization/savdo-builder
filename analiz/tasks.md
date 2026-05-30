@@ -1405,17 +1405,14 @@ conversion-first storefront: dark рискует читаемостью UGC-фо
 
 ---
 
-## 🟡 [BRAND-LIQUID-AUTHORITY-MIGRATION-001] Обновить design-system документ под maxsavdo v2
+## ✅ [BRAND-LIQUID-AUTHORITY-MIGRATION-001] Design-system под maxsavdo v2 — закрыто 30.05.2026
 
-- **Домен:** `docs/design/` (Азим).
-- **Кто берёт:** Азим.
-- **Приоритет:** P2.
-- **Контекст:** `docs/design/liquid-authority.md` — текущая дизайн-система с violet brand color. Устарела с переходом на maxsavdo v2.
-- **Что сделать:**
-  1. Перечитать `liquid-authority.md` — что остаётся (принципы UX, компоненты, паттерны), что меняется (палитра, лого, accent).
-  2. Либо обновить файл inplace, либо создать `docs/design/maxsavdo-design-v2.md` и пометить liquid-authority как deprecated.
-  3. Синхронизировать с `docs/brand/maxsavdo-brand-v2.md`.
-- **Файлы:** `docs/design/`.
+Закрыто Азимом (вариант «новый док + deprecate старый»). Создан
+`docs/design/maxsavdo-design-v2.md` — новый источник правды (Dark Luxury, ссылается
+на brand-v2 для палитры, переносит UX-паттерны/spacing/component-правила из
+liquid-authority, добавляет разделение storefront vs dashboard + фиксацию дефолтов тем
+ADR-009). `liquid-authority.md` помечен ⚠️ DEPRECATED с баннером. Ссылки обновлены:
+brand-v2 §Связано + `CLAUDE.md` (design-doc path → design-v2). Деталь — `done.md`.
 
 ---
 
