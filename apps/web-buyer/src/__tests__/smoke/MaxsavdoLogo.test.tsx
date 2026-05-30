@@ -36,21 +36,21 @@ describe('MaxsavdoLogo', () => {
 
   it('содержит bag-handle path (полукруг-дуга над буквой M)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const handle = container.querySelector('svg path[d^="M 35 38 A"]');
+    const handle = container.querySelector('svg path[d^="M 39.5 40.5 A"]');
     expect(handle).not.toBeNull();
     expect(handle?.getAttribute('stroke')).toBe('#C9A876'); // Champagne Gold
   });
 
   it('M состоит из двух path-слоёв (theme-base + золотая правая половина)', () => {
     const { container } = render(<MaxsavdoLogo />);
-    const mLayers = container.querySelectorAll('svg path[d^="M 27 80"]');
+    const mLayers = container.querySelectorAll('svg path[d^="M 28 81"]');
     expect(mLayers.length).toBe(2); // base + right-half overlay
   });
 
   it('правая половина M залита Champagne Gold #C9A876 (clip x≥50)', () => {
     const { container } = render(<MaxsavdoLogo />);
     const mLayers = Array.from(
-      container.querySelectorAll('svg path[d^="M 27 80"]'),
+      container.querySelectorAll('svg path[d^="M 28 81"]'),
     );
     const goldHalf = mLayers.find(
       (p) => p.getAttribute('stroke') === '#C9A876',
@@ -62,7 +62,7 @@ describe('MaxsavdoLogo', () => {
   it('база M использует CSS-переменную text-primary (theme-aware)', () => {
     const { container } = render(<MaxsavdoLogo />);
     const mLayers = Array.from(
-      container.querySelectorAll('svg path[d^="M 27 80"]'),
+      container.querySelectorAll('svg path[d^="M 28 81"]'),
     );
     const themed = mLayers.find(
       (p) => p.getAttribute('stroke') === 'var(--color-text-primary)',
