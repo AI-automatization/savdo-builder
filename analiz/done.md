@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим) — логотип: шрифтовая «M»-заглушка → геометрический знак brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — web-часть] MaxsavdoMark по brand-book v2
+- **Важность:** 🔴 P0 (visible brand).
+- **Дата:** 30.05.2026
+- **Файлы:** `apps/web-buyer/src/components/brand/MaxsavdoLogo.tsx` (ветка web-buyer `4e5d5b0`),
+  `apps/web-buyer/src/__tests__/smoke/MaxsavdoLogo.test.tsx` (там же),
+  `apps/web-seller/src/components/brand/MaxsavdoLogo.tsx` (ветка web-seller `3481054`).
+- **Контекст:** Азим заметил, что лого на проде не совпадает с brand-book JPG. Причина — `<MaxsavdoMark>`
+  рендерил **шрифтовую «M»** (Inter glyph, split clipPath) как осознанную stopgap-заглушку; настоящий
+  знак в вектор не переводили (задача висела открытой).
+- **Что сделано:** заменил заглушку на **геометрическую монограмму-сумку** из `logo-app-icon.jpg`:
+  «M» из двух штанг (`M 27 80 L 27 40 L 50 72 L 73 40 L 73 80`, stroke 13) — левая половина
+  theme-adaptive (`var(--color-text-primary)`), правая Champagne Gold через clip `x≥50`; золотая
+  полукруглая ручка-сумка (`A 14.5`) над впадиной. API компонента (`size`/`withWordmark`/`className`)
+  не изменён. Smoke-тест web-buyer обновлён под новую геометрию (handle-дуга + path-слои вместо `<text>`).
+- **Верификация:** визуально подтверждено Playwright-рендером SVG (обе темы, light/dark) до заливки.
+  **Локально vitest/tsc не прогнаны** — в checkout'ах веток нет devDeps (vitest/@testing-library),
+  install не делался (риск зависания ПК). Финальный прогон тестов — CI/Railway или `pnpm --filter
+  web-buyer test` в полном окружении. Знак — геометрическая реконструкция растра, НЕ пиксель-в-пиксель
+  векторизация: для 1:1 остаётся прогон JPG через Vectorizer.ai/Recraft (остаток BRAND-LOGO-SVG-CREATE-001).
+- **Не запушено** — ждёт решения Азима (push web-buyer/web-seller → Railway-деплой = лого live).
+
 ## 2026-05-30 (Азим) — сессия «продолжаем»: 4 кандидата (сверка бэка, прод-чек, UZ-review, GTM UZ)
 
 ### ✅ [FE-BACK-GAP-CHECK-001] Сверка свежего бэка Полата (denorm/city) против фронта
