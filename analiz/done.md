@@ -1,5 +1,37 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим) — лого: угловатый знак v2 + реальные иконки из brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — знак v2 + иконки] гибрид вектор/JPG
+- **Важность:** 🔴 P0 (visible brand — Азим заметил, что знак не похож на brand-book).
+- **Дата:** 30.05.2026
+- **Файлы:** web-buyer `e8f7ac1`, web-seller `790f0d7`:
+  `apps/web-*/src/components/brand/MaxsavdoLogo.tsx`,
+  `apps/web-*/src/app/{icon,apple-icon,opengraph-image}.png` (new),
+  удалены `{icon.svg,apple-icon.tsx,opengraph-image.tsx}`,
+  web-buyer `public/icon-{192,512}.png` + `manifest.ts` + smoke-тест + OG alt.txt.
+- **Проблема:** знак в шапке = тонкий симметричный зигзаг с острыми square-углами
+  (stroke 13, мелкая впадина) + широкая ручка r14.5 → читался как шрифтовая «W/M»,
+  не как премиальная сумка brand-book. favicon (`icon.svg`) — вообще старая font-«M».
+- **Решение — гибрид (обоснование: фото в шапке = тёмный квадрат на белом + дубль
+  вордмарка; вектор как favicon беднее готового 3D-знака):**
+  - **Шапка → вектор:** новая геометрия `M 28 81 L 28 32 L 50 73 L 72 32 L 72 81`,
+    stroke 15, **miter + butt** (острые углы, плоские вершины), ручка `r10.5` в
+    центральной выемке. Theme-adaptive (левая половина `var(--color-text-primary)`,
+    правая Champagne Gold) и API (`size/className/withWordmark`) сохранены.
+  - **favicon/app-icon/OG → реальный brand-book JPG** (`logo-app-icon.jpg`),
+    canvas-resize в PNG: icon 96, apple 180, OG 1200×630 (знак центрирован на #0A0A0A),
+    PWA 192/512. Там тёмная плитка к месту = 1:1 с brand-book.
+- **Верификация:** итеративный Playwright render-compare знака рядом с brand-book
+  JPG (6 вариантов A–G → FINAL), сверка на тёмной/светлой теме + размеры 16–48px +
+  мокап шапки. Скриншоты — локальный черновик (не в гите). **Локально tsc/build не
+  гонялись** (ПК; worktree без node_modules) — изменения JSX-атрибутов + статика,
+  тип-риска нет; финальный прогон — Railway-сборка.
+- **✅ Запушено** (web-buyer `4e5d5b0..e8f7ac1`, web-seller `8049c2a..790f0d7`).
+- **Остаток BRAND-LOGO-SVG-CREATE-001:** точная 1:1-векторизация JPG (Vectorizer.ai)
+  для пиксель-в-пиксель знака — опционально, текущий вектор визуально совпадает.
+  admin/email/TG-бот иконки — зона Полата.
+
 ## 2026-05-30 (Азим) — UZ-терминология: cross-app унификация закрыта
 
 ### ✅ [WEB-UZ-TRANSLATION-REVIEW-001 — терминология] cross-app унификация uz
