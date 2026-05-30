@@ -248,7 +248,12 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
 
 ---
 
-## 🟢 [FRONTEND-SMOKE-PLAYWRIGHT-001 part C] Playwright prod smoke — **рекомендую SKIP**
+## ✅ [FRONTEND-SMOKE-PLAYWRIGHT-001 part C] Playwright prod smoke — SKIP принят 30.05.2026
+
+> Решение Азима 30.05: **не делаем** (осознанный SKIP, не недоделка). Аргументы за skip
+> ниже в силе: vitest smoke (42 теста) + UptimeRobot покрывают ~80% риск-семейства без
+> flakiness реального браузера на проде. Вернуться — после первого прод-инцидента, не
+> пойманного UptimeRobot (напр. checkout 500 при зелёном /health). part A/B закрыты (done.md 21.05).
 
 - **Домен:** `apps/web-buyer` + CI (Азим).
 - **Приоритет:** P3 — нет launch-блокера.
@@ -1281,7 +1286,11 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 
 ---
 
-## 🔴 [BRAND-WEB-COLOR-TOKENS-001] Внедрить новую палитру maxsavdo (Tailwind + CSS vars)
+## ✅ [BRAND-WEB-COLOR-TOKENS-001] Палитра maxsavdo — закрыто 25.05.2026
+
+> ⚠️ Детальный спек ниже устарел (реконсилен 30.05). Реализовано: палитра Dark Luxury
+> в `globals.css` обоих апов (commit `213ad41`), см. ✅-сводку «BRAND-WEB-COLOR-TOKENS-001
+> + UI-REPLACE-001» в начале файла. Спек оставлен для истории.
 
 - **Домен:** `apps/web-buyer`, `apps/web-seller` (Азим).
 - **Кто берёт:** Азим.
@@ -1313,7 +1322,13 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 
 ---
 
-## 🔴 [BRAND-WEB-LOGO-REPLACE-001] Заменить логотип в web-buyer и web-seller
+## ✅ [BRAND-WEB-LOGO-REPLACE-001] Логотип maxsavdo в web — закрыто 25.05.2026
+
+> ⚠️ Детальный спек ниже устарел (реконсилен 30.05). Реализовано: inline SVG
+> `<MaxsavdoLogo>` в header'ах (commit `8224f02`) + favicon/apple-icon/opengraph-image
+> (commit `3b2605c`). Текущее лого — hand-built inline SVG; финальный swap на
+> vectorized-SVG ждёт `BRAND-LOGO-SVG-CREATE-001` (Полат) — API компонента не сломается,
+> smoke `MaxsavdoLogo.test.tsx` защищает структуру. Спек оставлен для истории.
 
 - **Домен:** `apps/web-buyer`, `apps/web-seller` (Азим).
 - **Кто берёт:** Азим.
@@ -1336,7 +1351,13 @@ _(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
 
 ---
 
-## 🔴 [BRAND-WEB-COMPONENTS-REWORK-001] Переработать компоненты под dark luxury палитру
+## ✅ [BRAND-WEB-COMPONENTS-REWORK-001] Компоненты под Dark Luxury — закрыто 25.05.2026
+
+> ⚠️ Детальный спек ниже устарел (реконсилен 30.05). Реализовано в рамках brand-rollout
+> 25.05 (4 коммита, см. ✅-сводку «BRAND-WEB-COLOR-TOKENS-001 + UI-REPLACE-001» вверху):
+> компоненты обоих апов переведены на семантические токены globals.css → автоматически
+> следуют Dark Luxury в dark и Pure White в light. Default темы = `system` (ADR-009).
+> Спек оставлен для истории.
 
 - **Домен:** `apps/web-buyer`, `apps/web-seller` (Азим).
 - **Кто берёт:** Азим.
