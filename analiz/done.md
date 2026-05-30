@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-05-30 (Азим) — BRAND-WEB-SOFT-COLOR-CLEANUP-001 закрыт (no-op)
+
+### ✅ [BRAND-WEB-SOFT-COLOR-CLEANUP-001] Deprecated Soft Color tokens
+
+- **Важность:** 🟢 P3.
+- **Дата:** 30.05.2026
+- **Файлы:** none (verify-only).
+- **Что сделано:** grep по обеим ветками web-buyer + web-seller (`src/`, `globals.css`,
+  `tailwind.config.ts`) на `terracotta`/`cream`/`violet`/старые hex
+  (`#818CF8`/`#7C3AED`/`#FBF7F0`/`#F4EEE0`)/`deprecated` — **0 совпадений**. Brand rollout
+  25.05 заменил `globals.css` целиком (не оставил deprecated-токены) → удалять нечего.
+  Закрыто как no-op на основании grep-доказательства.
+
+---
+
 ## 2026-05-30 (Азим, docs/design) — BRAND-LIQUID-AUTHORITY-MIGRATION-001 закрыт
 
 ### ✅ [BRAND-LIQUID-AUTHORITY-MIGRATION-001] Design-system v2
