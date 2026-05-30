@@ -591,4 +591,8 @@ export const ru: Translations = {
   // profile.menu — пункт «Помощь» (FAQ-001)
   'profile.menu.help': 'Помощь',
   'profile.menu.helpSub': 'Частые вопросы',
+
+  // profile.menu — пункт «Поддержка» (SUPPORT-CHANNEL-001)
+  'profile.menu.support': 'Поддержка',
+  'profile.menu.supportSub': 'Написать в Telegram',
 };

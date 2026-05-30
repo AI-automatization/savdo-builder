@@ -591,4 +591,8 @@ export const uz: Translations = {
   // profile.menu — «Yordam» punkti (FAQ-001)
   'profile.menu.help': 'Yordam',
   'profile.menu.helpSub': 'Tez-tez beriladigan savollar',
+
+  // profile.menu — «Qoʻllab-quvvatlash» punkti (SUPPORT-CHANNEL-001)
+  'profile.menu.support': 'Qoʻllab-quvvatlash',
+  'profile.menu.supportSub': 'Telegramda yozish',
 };

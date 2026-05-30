@@ -19,6 +19,7 @@ import {
   Heart,
   Bell,
   HelpCircle,
+  MessageCircle,
   ChevronRight,
   Store,
   ExternalLink,
@@ -30,6 +31,10 @@ import { useTranslation } from "@/lib/i18n";
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
+// SUPPORT-CHANNEL-001: ссылка на поддержку. Когда Полат создаст канал —
+// выставит NEXT_PUBLIC_SUPPORT_URL в Railway-env. До этого фолбэк на бот
+// (он реально работает), так что битой ссылки в проде не бывает.
+const SUPPORT_URL = process.env.NEXT_PUBLIC_SUPPORT_URL ?? `https://t.me/${BOT_USERNAME}`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,18 +60,17 @@ function MenuRow({
   label,
   sub,
   href,
+  external = false,
 }: {
   icon: React.ReactNode;
   label: string;
   sub?: string;
   href: string;
+  /** Внешняя ссылка (TG-канал и т.п.) — рендерим <a target=_blank> вместо next/link. */
+  external?: boolean;
 }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:opacity-80"
-      style={{ background: colors.surface }}
-    >
+  const inner = (
+    <>
       <div
         className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0"
         style={{ background: colors.brandMuted, color: colors.brand }}
@@ -77,7 +81,23 @@ function MenuRow({
         <div className="text-[13px] font-semibold truncate" style={{ color: colors.textStrong }}>{label}</div>
         {sub && <div className="text-[11px] mt-0.5 truncate" style={{ color: colors.textMuted }}>{sub}</div>}
       </div>
-      <ChevronRight size={14} className="flex-shrink-0" style={{ color: colors.textDim }} />
+      {external
+        ? <ExternalLink size={14} className="flex-shrink-0" style={{ color: colors.textDim }} />
+        : <ChevronRight size={14} className="flex-shrink-0" style={{ color: colors.textDim }} />}
+    </>
+  );
+  const className = "flex items-center gap-3 px-4 py-3.5 transition-colors hover:opacity-80";
+  const style = { background: colors.surface };
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className} style={style}>
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className} style={style}>
+      {inner}
     </Link>
   );
 }
@@ -247,6 +267,8 @@ function ProfileView() {
       <MenuRow icon={<Bell size={16} />} label={t('profile.menu.notifications')} sub={t('profile.menu.notificationsSub')} href="/notifications" />
       <div style={{ height: 1, background: colors.divider }} className="mx-4" />
       <MenuRow icon={<HelpCircle size={16} />} label={t('profile.menu.help')} sub={t('profile.menu.helpSub')} href="/help" />
+      <div style={{ height: 1, background: colors.divider }} className="mx-4" />
+      <MenuRow icon={<MessageCircle size={16} />} label={t('profile.menu.support')} sub={t('profile.menu.supportSub')} href={SUPPORT_URL} external />
 
       {/* MARKETING-LOCALIZATION-UZ-001 — переключатель языка */}
       <SectionLabel>{t('settings.title')}</SectionLabel>
