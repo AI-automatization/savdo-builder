@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -380,8 +380,14 @@ export default function CheckoutPage() {
     !confirm.isPending &&
     (mode === "pickup" || (street.trim() !== "" && city.trim() !== ""));
 
+  // Синхронный замок: disabled/isPending не успевают перерисоваться между двумя
+  // быстрыми тапами на мобиле, и mutateAsync не дедуплицирует — без замка можно
+  // создать два заказа (нарушение INV-C03).
+  const confirming = useRef(false);
+
   async function handleConfirm() {
-    if (!canSubmit) return;
+    if (!canSubmit || confirming.current) return;
+    confirming.current = true;
     setApiError(undefined);
     try {
       const trimmedName = contactName.trim();
@@ -407,6 +413,8 @@ export default function CheckoutPage() {
       if (typeof window !== "undefined") {
         window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
       }
+    } finally {
+      confirming.current = false;
     }
   }
 

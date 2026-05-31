@@ -20,7 +20,10 @@ export function useConfirmCheckout() {
   return useMutation({
     mutationFn: (data: CheckoutConfirmRequest) => confirmCheckout(data),
     onSuccess: () => {
-      queryClient.setQueryData(['cart'], null);
+      // Инвалидируем корзину (а не пишем null): при возврате на /cart в течение
+      // staleTime сервер мог не очистить корзину (частичный сбой clearCart) —
+      // refetch гарантирует правду, а не показывает «пусто» 60 секунд.
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
     },
   });

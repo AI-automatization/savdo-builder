@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { AddCartItemRequest, UpdateCartItemRequest, Cart } from 'types';
+import type { AddCartItemRequest, UpdateCartItemRequest } from 'types';
 import {
   getCart,
   addCartItem,
@@ -42,14 +42,9 @@ export function useRemoveCartItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (itemId: string) => removeCartItem(itemId),
-    onSuccess: (_, itemId) => {
-      queryClient.setQueryData<Cart | null>(CART_KEY, (prev) => {
-        if (!prev) return prev;
-        const items = prev.items.filter((i) => i.id !== itemId);
-        const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
-        return { ...prev, items, totalAmount };
-      });
-    },
+    // Рефетч вместо ручного патча: пересчёт totalAmount из устаревших i.subtotal
+    // расходился бы с сервером при смене цены/скидки. Сервер — источник истины.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CART_KEY }),
   });
 }
 
