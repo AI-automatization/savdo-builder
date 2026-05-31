@@ -1,5 +1,23 @@
 # Done — Азим + Полат
 
+## 2026-05-31 (Азим) — лого: откат к первому font-based знаку (8224f02)
+
+### ✅ [BRAND-LOGO-REVERT-FIRST] вернуть первый inline-SVG лого на deploy-ветки
+- **Важность:** 🔴 P0 (visible brand). **Дата:** 31.05.2026
+- **Файлы:** `apps/web-buyer/src/components/brand/MaxsavdoLogo.tsx` (web-buyer `510602b`),
+  `apps/web-seller/src/components/brand/MaxsavdoLogo.tsx` (web-seller `d5c1a55`).
+- **Контекст:** попытки воспроизвести знак из brand-book (автотрассировка + геом-сборка)
+  упёрлись в источник — знак в JPG ~110px, чисто 1:1 без оригинального вектора/большого
+  PNG не выходит. Решение Азима: «забить, поставить первый лого».
+- **Что сделано:** на обеих deploy-ветках восстановлен файл лого из `8224f02` (font-based
+  монограмма «M», Inter w900, две половины через clipPath: левая theme-adaptive
+  `var(--color-text-primary)`, правая Champagne Gold `#C9A876` + золотая дуга-ручка).
+  API компонента (size/className/withWordmark) не менялся — use-sites не трогали.
+  Brand-image вариант (`maxsavdo-mark.png` на тёмной плашке) удалён из компонента,
+  PNG-ассет оставлен как dead-weight (не используется).
+- **Деплой:** запушено на origin (Railway redeploy обоих апов). На `main` лого и так уже
+  было первым (эксперименты жили только на deploy-ветках web-buyer/web-seller).
+
 ## 2026-05-31 (Азим) — лого: убрана подложка + крупнее + тема-адаптив (2 версии знака)
 
 ### ✅ [BRAND-LOGO — no-bg, bigger, theme-adaptive] доводка по фидбэку Азима
