@@ -13,6 +13,8 @@
   invalidate префиксом по фильтрованным спискам. Детали — `analiz/logs.md [WEB-AUDIT-BUYER-SELLER-001]`.
 - **НЕ фикшено (5, см. logs.md):** middleware-auth (нужен httpOnly-cookie), WEB-002 env (Railway),
   hydration-flash (архитектура), socket leave-room/reconnect, seller login double-onSuccess. Требуют решений/не фронт-код.
+- **✅ Запушено на origin** (web-buyer `2efd38b`, web-seller `dcd5eb8`, main-доки `b88cdf9`) — Railway передеплоивает оба апа.
+- **⚠️ Проверка:** tsc/build/тесты локально не гонялись (нет devDeps) — правки выверены статически; финальную типопроверку даст Railway-сборка.
 
 ## 2026-05-31 (Азим) — лого: откат к первому font-based знаку (8224f02)
 
