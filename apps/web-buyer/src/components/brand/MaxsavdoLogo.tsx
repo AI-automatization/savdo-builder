@@ -1,28 +1,26 @@
 /**
- * maxsavdo brand mark — реальный знак из brand-book (logo-app-icon.jpg).
+ * maxsavdo brand mark — inline SVG монограмма "M" с bag-handle, по brand-book v2.
  *
- * Знак = глянцевый 3D-знак из brand-book, вырезанный с прозрачным фоном
- * (`public/brand/maxsavdo-mark.png`), помещённый на тёмную скруглённую плашку
- * (мини app-icon badge). Плашка делает знак тема-независимым: на светлой шапке
- * это премиальный тёмный badge, на тёмной — плашка сливается, виден сам знак.
- * Так знак 1:1 совпадает с brand-book в любой теме (флэт-вектор так не умеет —
- * оригинал глянцевый 3D-рендер).
+ * Mark = монограмма (без текста); wordmark = mark + текст "maxsavdo".
+ * Левая половина M использует `var(--color-text-primary)` → автоматически
+ * адаптируется к light/dark theme (black на light, white на dark).
+ * Правая половина + handle = Champagne Gold (#C9A876).
  *
- * wordmark = знак + текст "maxsavdo" (Champagne Gold).
- * Дубль файла web-seller/src/components/brand/MaxsavdoLogo.tsx (packages/ui пуст).
+ * Это inline-приближение для немедленного rollout. Когда Полат закроет
+ * BRAND-LOGO-SVG-CREATE-001 (vectorize JPG → точный SVG), заменим внутренности
+ * `<MaxsavdoMark/>` на финальные path-данные — API компонента не сломается.
  */
 
 type Props = {
-  /** Размер плашки в пикселях (квадрат). Default 32. */
+  /** Размер mark'а в пикселях (mark — квадрат). Default 32. */
   size?: number;
   /** Доп. классы для wrapper'а. */
   className?: string;
-  /** Показать wordmark "maxsavdo" рядом со знаком. Default false. */
+  /** Показать wordmark "maxsavdo" рядом с mark'ом. Default false. */
   withWordmark?: boolean;
 };
 
 const GOLD = '#C9A876';
-const MARK_SRC = '/brand/maxsavdo-mark.png';
 
 export function MaxsavdoLogo({ size = 32, className = '', withWordmark = false }: Props) {
   if (withWordmark) {
@@ -41,30 +39,65 @@ export function MaxsavdoLogo({ size = 32, className = '', withWordmark = false }
   return <MaxsavdoMark size={size} className={className} />;
 }
 
+// Stable IDs (no Math.random / useId) — same component used in multiple sizes на странице;
+// id-collision не критичен т.к. clipPath с одинаковым name просто переопределяется,
+// все instance'ы используют одинаковую геометрию.
+const LEFT_CLIP_ID = 'maxsavdo-clip-left';
+const RIGHT_CLIP_ID = 'maxsavdo-clip-right';
+
 function MaxsavdoMark({ size, className = '' }: { size: number; className?: string }) {
   return (
-    <span
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      xmlns="http://www.w3.org/2000/svg"
       className={className}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: size,
-        height: size,
-        background: '#0A0A0A',
-        borderRadius: Math.round(size * 0.26),
-        flexShrink: 0,
-        overflow: 'hidden',
-      }}
       role="img"
       aria-label="maxsavdo"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={MARK_SRC}
-        alt="maxsavdo"
-        style={{ width: size * 0.78, height: 'auto', display: 'block' }}
+      <defs>
+        <clipPath id={LEFT_CLIP_ID}>
+          <rect x="0" y="0" width="50" height="100" />
+        </clipPath>
+        <clipPath id={RIGHT_CLIP_ID}>
+          <rect x="50" y="0" width="50" height="100" />
+        </clipPath>
+      </defs>
+      {/* Bag handle — gold arc above the M letterform */}
+      <path
+        d="M 35 22 Q 50 4 65 22"
+        stroke={GOLD}
+        strokeWidth="5"
+        fill="none"
+        strokeLinecap="round"
       />
-    </span>
+      {/* M letterform — left half theme-adaptive (black on light, white on dark) */}
+      <text
+        x="50"
+        y="92"
+        textAnchor="middle"
+        fontFamily="var(--font-inter), Inter, system-ui, sans-serif"
+        fontWeight="900"
+        fontSize="100"
+        fill="var(--color-text-primary)"
+        clipPath={`url(#${LEFT_CLIP_ID})`}
+      >
+        M
+      </text>
+      {/* M letterform — right half Champagne Gold */}
+      <text
+        x="50"
+        y="92"
+        textAnchor="middle"
+        fontFamily="var(--font-inter), Inter, system-ui, sans-serif"
+        fontWeight="900"
+        fontSize="100"
+        fill={GOLD}
+        clipPath={`url(#${RIGHT_CLIP_ID})`}
+      >
+        M
+      </text>
+    </svg>
   );
 }
