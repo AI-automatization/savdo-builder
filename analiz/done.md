@@ -1,5 +1,19 @@
 # Done — Азим + Полат
 
+## 2026-05-31 (Азим) — баг-аудит web-buyer + web-seller (8 фиксов)
+
+### ✅ [WEB-AUDIT-BUYER-SELLER-001] Полный аудит на баги + исправления
+- **Важность:** 🔴 (checkout/корзина — деньги) + 🟡. **Дата:** 31.05.2026
+- **Метод:** 6 параллельных code-review агентов, статический анализ, каждая находка верифицирована.
+- **Файлы (web-buyer `2efd38b`):** `app/(minimal)/checkout/page.tsx`, `hooks/use-cart.ts`, `hooks/use-checkout.ts`.
+- **Файлы (web-seller `dcd5eb8`):** `components/multi-image-uploader.tsx`, `components/variants-matrix-builder.tsx`,
+  `components/product-variants-section.tsx`, `app/(dashboard)/products/create/page.tsx`, `hooks/use-products.ts`.
+- **Исправлено 8:** checkout double-submit замок (INV-C03), корзина-null→invalidate, removeCartItem→invalidate,
+  blob-URL leak в загрузчике фото, priceOverride→undefined, handleAdd try/catch, failedVariants++ при пропуске,
+  invalidate префиксом по фильтрованным спискам. Детали — `analiz/logs.md [WEB-AUDIT-BUYER-SELLER-001]`.
+- **НЕ фикшено (5, см. logs.md):** middleware-auth (нужен httpOnly-cookie), WEB-002 env (Railway),
+  hydration-flash (архитектура), socket leave-room/reconnect, seller login double-onSuccess. Требуют решений/не фронт-код.
+
 ## 2026-05-31 (Азим) — лого: откат к первому font-based знаку (8224f02)
 
 ### ✅ [BRAND-LOGO-REVERT-FIRST] вернуть первый inline-SVG лого на deploy-ветки
