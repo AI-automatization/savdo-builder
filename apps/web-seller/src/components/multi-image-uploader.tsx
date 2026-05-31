@@ -1,7 +1,7 @@
 // apps/web-seller/src/components/multi-image-uploader.tsx
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Camera, X, Star } from 'lucide-react';
 import { uploadDirect } from '../lib/api/media.api';
@@ -42,6 +42,16 @@ export function MultiImageUploader({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  // Blob-URL'ы, созданные этим компонентом (свежие фото). Освобождаем при удалении
+  // и при размонтировании, иначе блобы висят в памяти всю сессию (утечка).
+  const createdBlobs = useRef<Set<string>>(new Set());
+  useEffect(
+    () => () => {
+      createdBlobs.current.forEach((url) => URL.revokeObjectURL(url));
+      createdBlobs.current.clear();
+    },
+    [],
+  );
 
   function describeError(err: unknown): string {
     if (axios.isAxiosError(err)) {
@@ -80,6 +90,7 @@ export function MultiImageUploader({
         }
         const { mediaFileId } = await uploadDirect(file, 'product_image');
         const previewUrl = URL.createObjectURL(file);
+        createdBlobs.current.add(previewUrl);
         uploaded.push({ mediaId: mediaFileId, previewUrl });
       }
       if (uploaded.length > 0) {
@@ -94,6 +105,11 @@ export function MultiImageUploader({
   }
 
   function removeAt(idx: number) {
+    const removed = value[idx]?.previewUrl;
+    if (removed && createdBlobs.current.has(removed)) {
+      URL.revokeObjectURL(removed);
+      createdBlobs.current.delete(removed);
+    }
     onChange(value.filter((_, i) => i !== idx));
   }
 

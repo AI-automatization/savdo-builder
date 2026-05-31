@@ -65,7 +65,9 @@ export function useUpdateProduct() {
       updateProduct(id, data),
     onSuccess: (product) => {
       queryClient.setQueryData(productKeys.detail(product.id), product);
-      queryClient.invalidateQueries({ queryKey: productKeys.list() });
+      // Префикс ['products','list'] инвалидирует ВСЕ варианты списка (с фильтрами),
+      // а не только list(undefined) — иначе отфильтрованные списки оставались stale.
+      queryClient.invalidateQueries({ queryKey: ['products', 'list'] });
     },
   });
 }
@@ -77,7 +79,9 @@ export function useUpdateProductStatus() {
       updateProductStatus(id, status),
     onSuccess: (product) => {
       queryClient.setQueryData(productKeys.detail(product.id), product);
-      queryClient.invalidateQueries({ queryKey: productKeys.list() });
+      // Префикс ['products','list'] инвалидирует ВСЕ варианты списка (с фильтрами),
+      // а не только list(undefined) — иначе отфильтрованные списки оставались stale.
+      queryClient.invalidateQueries({ queryKey: ['products', 'list'] });
     },
   });
 }

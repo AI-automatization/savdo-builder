@@ -223,7 +223,9 @@ export default function CreateProductPage() {
           if (!id) { okay = false; break; }
           optionValueIds.push(id);
         }
-        if (!okay) continue;
+        // Вариант ссылается на option-value, который не создался выше — это потеря
+        // данных. Считаем его failed, иначе баннер частичного сбоя промолчит.
+        if (!okay) { failedVariants++; continue; }
 
         const sku = `${baseSku}-${parts.map((p) => toCode(p)).join('-')}`;
         try {

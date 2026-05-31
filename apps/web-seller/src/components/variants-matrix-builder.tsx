@@ -78,7 +78,11 @@ export function VariantsMatrixBuilder({
     onChangeSelection({ ...selection, [filterKey]: next });
   }
 
-  function setVariantField(label: string, field: keyof VariantCell, value: number) {
+  function setVariantField(
+    label: string,
+    field: keyof VariantCell,
+    value: number | undefined,
+  ) {
     const prev = variants[label] ?? { stockQuantity: 0 };
     onChangeVariants({ ...variants, [label]: { ...prev, [field]: value } });
   }
@@ -168,7 +172,7 @@ export function VariantsMatrixBuilder({
                         setVariantField(
                           label,
                           'priceOverride',
-                          Number(e.target.value) || 0,
+                          e.target.value === '' ? undefined : Number(e.target.value),
                         )
                       }
                       style={cellInputStyle}

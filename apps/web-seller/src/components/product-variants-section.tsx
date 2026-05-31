@@ -339,16 +339,22 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
       if (parts.length > 0) title = parts.join(' · ');
     }
 
-    await create.mutateAsync({
-      productId,
-      sku:           f.sku.trim(),
-      titleOverride: title || undefined,
-      priceOverride: f.priceOverride !== '' ? Number(f.priceOverride) : undefined,
-      stockQuantity: Number(f.stockQuantity) || 0,
-      isActive:      f.isActive,
-      optionValueIds: optionValueIds && optionValueIds.length > 0 ? optionValueIds : undefined,
-    });
-    setAdding(false);
+    try {
+      await create.mutateAsync({
+        productId,
+        sku:           f.sku.trim(),
+        titleOverride: title || undefined,
+        priceOverride: f.priceOverride !== '' ? Number(f.priceOverride) : undefined,
+        stockQuantity: Number(f.stockQuantity) || 0,
+        isActive:      f.isActive,
+        optionValueIds: optionValueIds && optionValueIds.length > 0 ? optionValueIds : undefined,
+      });
+      setAdding(false);
+    } catch {
+      // Без catch ошибка mutateAsync улетала бы в unhandled rejection, форма
+      // оставалась открытой без объяснения. Показываем сообщение.
+      setAddError(t('common.error'));
+    }
   }
 
   async function handleUpdate(variantId: string, f: VariantForm) {
