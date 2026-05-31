@@ -63,9 +63,19 @@ export function useChatSocket(threadId: string | null) {
     if (!threadId) return;
 
     const socket = getSocket();
-    if (!socket.connected) socket.connect();
 
-    socket.emit('join-chat-room', { threadId });
+    function joinRoom() {
+      socket.emit('join-chat-room', { threadId });
+    }
+
+    // Re-join on reconnect so we keep receiving chat:message after network blips
+    socket.on('connect', joinRoom);
+
+    if (!socket.connected) {
+      socket.connect();
+    } else {
+      joinRoom();
+    }
 
     function onMessage() {
       // Вкладка свёрнута — НЕ помечаем тред прочитанным: invalidate messages
@@ -87,6 +97,7 @@ export function useChatSocket(threadId: string | null) {
     socket.on('chat:message', onMessage);
 
     return () => {
+      socket.off('connect', joinRoom);
       socket.off('chat:message', onMessage);
       if (socket.connected) socket.emit('leave-chat-room', { threadId });
     };
