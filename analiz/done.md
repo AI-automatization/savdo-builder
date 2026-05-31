@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-05-31 (Азим) — chat socket re-join после reconnect
+
+### ✅ [WEB-CHAT-SOCKET-REJOIN-001] Чат не восстанавливал подписку после разрыва сети
+- **Важность:** 🟡 (real-time чат при нестабильной сети). **Дата:** 31.05.2026
+- **Из known-issue** баг-аудита 31.05 (`WEB-AUDIT-BUYER-SELLER-001`, см. logs.md).
+- **Root cause:** `useChatSocket` в обоих апах не вешал `socket.on('connect', joinRoom)` →
+  при socket.io reconnect (моргнула сеть) `join-chat-room` не переэмитился → пользователь
+  в открытом треде переставал получать `chat:message` до смены треда. web-seller вдобавок
+  не эмитил `leave-chat-room` в cleanup → подписки на старые комнаты копились при смене треда.
+- **Что сделано:** приведено к проверенному паттерну `useBuyerSocket`/`useSellerSocket`
+  (connect-listener для re-join + `socket.off('connect')` и `leave-chat-room` в cleanup).
+  `onMessage`/visibility/badge-логика не тронута. tsc чист в обоих.
+- **Файлы:** `apps/web-buyer/src/hooks/use-chat.ts` (`a1428c3`),
+  `apps/web-seller/src/hooks/use-chat.ts` (`b976c67`) — коммиты на deploy-ветках.
+
 ## 2026-05-31 (Азим) — баг-аудит web-buyer + web-seller (8 фиксов)
 
 ### ✅ [WEB-AUDIT-BUYER-SELLER-001] Полный аудит на баги + исправления

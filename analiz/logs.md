@@ -27,8 +27,14 @@
   не задан на Railway, прод бьёт в localhost. Уже задокументировано. **Фикс — env в Railway, не код.**
 - **hydration-flash auth** (оба, `lib/auth/context.tsx` + buyer checkout `useState`-init из localStorage) —
   SSR=null, client=token → mismatch. В checkout это ОСОЗНАННЫЙ tradeoff (коммент в коде). Архитектурное.
-- **socket: нет `leave-chat-room` при смене треда + нет re-join после reconnect** (оба `use-chat.ts`,
-  seller `use-seller-socket.ts` дубли connect-listener). Реально при нестабильной сети. Требует аккуратного передела сокет-хуков.
+- ✅ **socket: re-join после reconnect** (оба `use-chat.ts`) — **ИСПРАВЛЕНО 31.05.2026.**
+  В `useChatSocket` не было `socket.on('connect', joinRoom)` → после сетевого разрыва socket.io
+  переподключался, но `join-chat-room` не переэмитился → собеседник в открытом треде переставал
+  получать `chat:message` пока не сменит тред. У web-seller вдобавок не было `leave-chat-room` в
+  cleanup → подписки на старые комнаты копились. Приведено к проверенному паттерну
+  `useBuyerSocket`/`useSellerSocket` тех же файлов. web-buyer `a1428c3`, web-seller `b976c67`.
+  tsc чист, `onMessage`/badge-логика не тронута. (Замечание «`use-seller-socket.ts` дубли
+  connect-listener» — ложная тревога: там один корректный connect-listener, дублей нет.)
 - **seller login: двойной onSuccess** (hook `use-auth` + login page) — порядок не гарантирован, `router.replace`
   может опередить `login()`. Связано с WEB-011. Требует решения по auth-флоу.
 - **Статус:** 🟢 Root cause найден; frontend-фикс применён локально (uncommitted), backend-тикет заведён.
