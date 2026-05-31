@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-05-31 (Азим) — seller login: убран двойной редирект
+
+### ✅ [WEB-SELLER-LOGIN-DOUBLE-REDIRECT-001] Двойная навигация после OTP-входа
+- **Важность:** 🟡 (auth-флоу). **Дата:** 31.05.2026
+- **Из known-issue** баг-аудита 31.05 (`WEB-AUDIT-BUYER-SELLER-001`, см. logs.md).
+- **Root cause:** `handleVerify` делал `router.replace` в `onSuccess` мутации, а `useEffect([user])`
+  делал ещё один role-aware `router.replace`, когда `useVerifyOtp.onSuccess` звал `login()` → setUser.
+  Два редиректа + неоднозначность порядка хук-vs-page onSuccess.
+- **Что сделано:** редирект отдан целиком `useEffect` (источник истины — контекстный `user`,
+  он же нужен для гарда «уже залогинен → зашёл на /login»). `mutate.onSuccess` теперь только
+  `track.otpVerified`. Разделение: хук пишет auth-состояние, useEffect владеет навигацией. tsc чист.
+- **Уточнение:** WEB-011 в исходной формулировке (нет `login()` + role-check) был закрыт ранее —
+  это была остаточная двойственность редиректа, не сам WEB-011.
+- **Файлы:** `apps/web-seller/src/app/(auth)/login/page.tsx` (`bbbe92e`) — на deploy-ветке.
+
 ## 2026-05-31 (Азим) — chat socket re-join после reconnect
 
 ### ✅ [WEB-CHAT-SOCKET-REJOIN-001] Чат не восстанавливал подписку после разрыва сети

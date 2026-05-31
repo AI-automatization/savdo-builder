@@ -35,8 +35,14 @@
   `useBuyerSocket`/`useSellerSocket` тех же файлов. web-buyer `a1428c3`, web-seller `b976c67`.
   tsc чист, `onMessage`/badge-логика не тронута. (Замечание «`use-seller-socket.ts` дубли
   connect-listener» — ложная тревога: там один корректный connect-listener, дублей нет.)
-- **seller login: двойной onSuccess** (hook `use-auth` + login page) — порядок не гарантирован, `router.replace`
-  может опередить `login()`. Связано с WEB-011. Требует решения по auth-флоу.
+- ✅ **seller login: двойной редирект** (login page) — **ИСПРАВЛЕНО 31.05.2026.**
+  `handleVerify` делал `router.replace` в `onSuccess` мутации, а `useEffect([user])` делал ещё
+  один role-aware `router.replace` когда `useVerifyOtp.onSuccess` звал `login()` → setUser.
+  Двойная навигация + неоднозначность порядка. **Решение:** редирект отдан целиком `useEffect`
+  (источник истины — контекстный `user`, он же нужен для гарда «залогинен → зашёл на /login»);
+  `mutate.onSuccess` теперь только `track.otpVerified`. Хук пишет auth-состояние, useEffect владеет
+  навигацией — гонка исчезла. web-seller `bbbe92e`, tsc чист. (WEB-011 в исходной формулировке
+  — отсутствие `login()` + role-check — был закрыт ранее; это остаточная двойственность.)
 - **Статус:** 🟢 Root cause найден; frontend-фикс применён локально (uncommitted), backend-тикет заведён.
 - **Замечен:** через Playwright MCP в ходе `VERIFY-CHECKOUT-CONFIRM-500-001` (21.05.2026)
   на проде `savdo-builder-by-production.up.railway.app/azim-mnx4na25`.
