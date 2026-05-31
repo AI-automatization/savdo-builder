@@ -5,6 +5,25 @@
 
 ---
 
+## 🔴 [BILLING-MACHINE-001] Подписки + энфорсмент (блокер платного launch)
+
+- **Домен:** `apps/api` + `packages/db` + `packages/types` (Полат) · `apps/web-seller` + `apps/web-buyer` (Азим)
+- **Кто берёт:** Полат (entity+cron+admin+gate) + Азим (suspended-states во фронтах)
+- **Приоритет:** 🔴 P0 для платного public launch — без этого нельзя брать деньги на масштабе.
+- **Спека (полная, с контрактом):** `docs/business/billing-machine-spec-v1-2026-05-31.md`
+- **Реализует:** `docs/business/business-model-v2-2026-05-31.md` §7.
+- **Кратко:**
+  - `Subscription` entity (1:1 Seller, INV-S01): tier STARTER/PRO/BUSINESS, status
+    TRIAL→ACTIVE→PAST_DUE→SUSPENDED→CHURNED + `SubscriptionDto` в types (разблокирует Азима).
+  - Cron-переходы статусов + admin-endpoint ручной оплаты (Phase 1) + storefront read-gate
+    (SUSPENDED → магазин скрыт, перекрывает `isPublic`) + product-cap guard (Старт ≤50).
+  - Лимит заказов = **soft** (баннер+апсейл, покупателя НЕ блокируем); жёсткие гейты — фичевые.
+  - Фронт (Азим): баннеры trial/past_due, dashboard read-only при SUSPENDED, «магазин недоступен» в buyer.
+- **Последовательность:** Полат делает entity+DTO → Азим параллельно рисует states.
+- **Статус:** 🟡 спека написана 31.05, ждёт аудита Азим+Полат (6 открытых вопросов в §12 спеки).
+
+---
+
 ## 🟡 [BRAND-LOGO-SVG-CREATE-001] Создать SVG-исходники логотипа maxsavdo
 
 - **🆕 30.05.2026 — web-часть закрыта (Азим):** `<MaxsavdoMark>` на ветках web-buyer (`4e5d5b0`)
