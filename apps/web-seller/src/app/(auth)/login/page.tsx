@@ -45,18 +45,13 @@ export default function LoginPage() {
 
   function handleVerify() {
     if (otp.trim().length < 6) return;
+    // Редирект НЕ делаем здесь: useVerifyOtp.onSuccess зовёт login() → setUser
+    // в контексте → useEffect([user]) выше выполняет role-aware router.replace.
+    // Единый источник навигации (контекстный user) убирает гонку двойного
+    // onSuccess (хук пишет auth, useEffect владеет редиректом).
     verifyOtp.mutate(
       { phone, code: otp, purpose: "login" },
-      {
-        onSuccess: (data) => {
-          track.otpVerified(phone);
-          if (data.user.role === 'SELLER') {
-            router.replace("/dashboard");
-          } else {
-            router.replace("/become-seller");
-          }
-        },
-      },
+      { onSuccess: () => track.otpVerified(phone) },
     );
   }
 
