@@ -1316,6 +1316,10 @@ model Subscription {
   // Phase 2 (в Phase 1 всегда false — оплата ручная)
   autoRenew Boolean @default(false)
 
+  // BILLING-MACHINE-001 §2 (Азим): seller отменил, но доступ держится до конца currentPeriodEnd.
+  // В Phase 1 редкость (cancel = instant suspension), для Phase 2 авто-биллинг.
+  cancelAtPeriodEnd Boolean @default(false)
+
   // Скидки (beta/migration/referral)
   discountPercent Int       @default(0) // 0..99
   discountEndsAt  DateTime?

@@ -1,8 +1,10 @@
-# SUBSCRIPTION-MODULE-001 — Design
+# BILLING-MACHINE-001 (impl plan) — Design
 
 **Дата:** 2026-06-01
 **Автор:** Полат + Claude (по бизнес-модели v2 §7)
 **Статус:** 🟡 Draft (ждёт sign-off Полат/Азим)
+**Контракт (canonical):** `docs/business/billing-machine-spec-v1-2026-05-31.md` (Азим, 31.05) — высокоуровневая спека FSM + DTO contract.
+**Этот документ:** backend implementation plan под Азимовский контракт (Prisma модели, миграция, use-cases, cron, endpoints).
 **Реализует:** `docs/business/business-model-v2-2026-05-31.md` §7 Биллинг и энфорсмент
 **Связано:** ADR-003 (no payments in MVP) — теперь pivot, нужны подписки до launch.
 
