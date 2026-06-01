@@ -23,7 +23,9 @@ import { SellersModule } from '../sellers/sellers.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { MediaModule } from '../media/media.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
-import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+// SUBSCRIPTIONS / PLAN-LIMIT-GUARD hook — TODO добавить после refactor (вынести
+// PlanLimitGuardService в shared/, чтобы не создавать цикл
+// AdminModule → ProductsModule → SubscriptionsModule → AdminModule).
 
 @Module({
   imports: [
@@ -32,7 +34,6 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
     TelegramModule,
     MediaModule,
     WishlistModule,
-    SubscriptionsModule,
   ],
   controllers: [ProductsController, StorefrontController],
   providers: [
