@@ -219,4 +219,5 @@ colors: {
 - [ADR-008 — Brand name `maxsavdo`](../adr/ADR-008_brand_name_maxsavdo.md)
 - [Business plan v1](../decisions/business-plan-v1-2026-05-22.md)
 - [Старый brand-book (deprecated)](./brand-book.md)
-- `docs/design/liquid-authority.md` — старая дизайн-система, требует ревизии под maxsavdo v2
+- [maxsavdo Design System v2](../design/maxsavdo-design-v2.md) — дизайн-система под этот бренд (актуальная)
+- ~~`docs/design/liquid-authority.md`~~ — старая дизайн-система, deprecated 30.05.2026 (ревизия выполнена → design-v2)

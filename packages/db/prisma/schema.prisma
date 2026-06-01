@@ -96,14 +96,14 @@ enum MediaVisibility {
 }
 
 enum InAppNotificationType {
-  ORDER_STATUS_CHANGED   // legacy: 'order.status_changed'
-  STORE_APPROVED         // legacy: 'store.approved'
-  STORE_REJECTED         // legacy: 'store.rejected'
-  NEW_ORDER              // legacy: 'new_order'
-  NEW_MESSAGE            // legacy: 'new_message'
-  SELLER_VERIFIED        // legacy: 'seller.verified'
-  MODERATION_ACTION      // legacy: 'moderation.action'
-  GENERIC                // fallback
+  ORDER_STATUS_CHANGED // legacy: 'order.status_changed'
+  STORE_APPROVED // legacy: 'store.approved'
+  STORE_REJECTED // legacy: 'store.rejected'
+  NEW_ORDER // legacy: 'new_order'
+  NEW_MESSAGE // legacy: 'new_message'
+  SELLER_VERIFIED // legacy: 'seller.verified'
+  MODERATION_ACTION // legacy: 'moderation.action'
+  GENERIC // fallback
 }
 
 enum ChatMessageType {
@@ -125,15 +125,15 @@ enum SellerVerificationDocumentStatus {
 }
 
 enum ModerationCaseStatus {
-  OPEN       // только что создан, ждёт модератора
-  IN_REVIEW  // модератор взял в работу (assignedAdminId != null)
-  CLOSED     // решение принято — see ModerationAction.actionType
+  OPEN // только что создан, ждёт модератора
+  IN_REVIEW // модератор взял в работу (assignedAdminId != null)
+  CLOSED // решение принято — see ModerationAction.actionType
 }
 
 enum ModerationCaseType {
-  VERIFICATION    // верификация продавца / магазина
-  ABUSE           // жалоба пользователя
-  MANUAL_REVIEW   // ручная проверка админом
+  VERIFICATION // верификация продавца / магазина
+  ABUSE // жалоба пользователя
+  MANUAL_REVIEW // ручная проверка админом
 }
 
 enum ModerationActionType {
@@ -143,9 +143,9 @@ enum ModerationActionType {
   REQUEST_CHANGES
   ESCALATE
   // Admin-side internal
-  ASSIGN          // взять кейс себе
-  CLOSE           // закрыть кейс без действия
-  REOPEN          // переоткрыть закрытый кейс
+  ASSIGN // взять кейс себе
+  CLOSE // закрыть кейс без действия
+  REOPEN // переоткрыть закрытый кейс
   // Legacy targeted actions (lowercase в старых записях)
   HIDE
   SUSPEND
@@ -155,16 +155,16 @@ enum ModerationActionType {
 
 enum CartStatus {
   ACTIVE
-  CONVERTED  // checkout прошёл — корзина превращена в Order
-  MERGED     // anonymous-cart смержен в buyer-cart при логине
+  CONVERTED // checkout прошёл — корзина превращена в Order
+  MERGED // anonymous-cart смержен в buyer-cart при логине
   EXPIRED
 }
 
 enum RefundStatus {
-  PENDING    // создан, ждёт обработки (Click/Payme reverse-tx)
-  COMPLETED  // средства вернулись
-  FAILED     // payment provider отказал
-  REVERSED   // отменён администратором
+  PENDING // создан, ждёт обработки (Click/Payme reverse-tx)
+  COMPLETED // средства вернулись
+  FAILED // payment provider отказал
+  REVERSED // отменён администратором
 }
 
 enum InventoryMovementType {
@@ -173,22 +173,53 @@ enum InventoryMovementType {
   MANUAL_ADJUSTMENT
 }
 
+// SUBSCRIPTION-MODULE-001 (см. docs/decisions/subscription-module-design-2026-06-01.md)
+
+enum SubscriptionTier {
+  STARTER
+  PRO
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  TRIAL // 14-day free Pro trial
+  ACTIVE // оплаченная активная подписка
+  PAST_DUE // не оплатил в срок, grace 7 дней
+  SUSPENDED // grace истёк, store недоступен, dashboard read-only
+  CHURNED // 90+ дней SUSPENDED, готов к удалению
+  CANCELLED // отменена seller'ом или admin'ом
+}
+
+enum SubscriptionPaymentMethod {
+  MANUAL_TRANSFER // ручной перевод (Phase 1)
+  CLICK // Phase 2
+  PAYME // Phase 2
+  COMP // admin-grant (бесплатная компенсация)
+}
+
+enum SubscriptionPaymentStatus {
+  PENDING
+  CONFIRMED
+  REFUNDED
+  FAILED
+}
+
 // ─────────────────────────────────────────────
 // IDENTITY
 // ─────────────────────────────────────────────
 
 model User {
-  id               String     @id @default(uuid())
-  role             UserRole
-  phone            String     @unique
-  email            String?
-  telegramId       BigInt?    @unique
-  status           UserStatus @default(ACTIVE)
-  isPhoneVerified  Boolean    @default(false)
-  languageCode     String     @default("ru")
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  deletedAt        DateTime?
+  id              String     @id @default(uuid())
+  role            UserRole
+  phone           String     @unique
+  email           String?
+  telegramId      BigInt?    @unique
+  status          UserStatus @default(ACTIVE)
+  isPhoneVerified Boolean    @default(false)
+  languageCode    String     @default("ru")
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
 
   referredBy String?
 
@@ -198,19 +229,21 @@ model User {
   referrer  User?  @relation("UserReferrals", fields: [referredBy], references: [id], onDelete: SetNull)
   referrals User[] @relation("UserReferrals")
 
-  buyer    Buyer?
-  seller   Seller?
-  admin         AdminUser?
-  sessions      UserSession[]
-  auditLogs     AuditLog[]
-  broadcastLogs BroadcastLog[]
+  buyer                         Buyer?
+  seller                        Seller?
+  admin                         AdminUser?
+  sessions                      UserSession[]
+  auditLogs                     AuditLog[]
+  broadcastLogs                 BroadcastLog[]
   // DB-AUDIT-001-01: FK relations на notification/history таблицы
-  inAppNotifications     InAppNotification[]
-  notificationPreference NotificationPreference?
-  pushSubscriptions      PushSubscription[]
-  notificationLogs       NotificationLog[]
-  orderStatusHistory     OrderStatusHistory[]
-  analyticsEvents        AnalyticsEvent[]
+  inAppNotifications            InAppNotification[]
+  notificationPreference        NotificationPreference?
+  pushSubscriptions             PushSubscription[]
+  notificationLogs              NotificationLog[]
+  orderStatusHistory            OrderStatusHistory[]
+  analyticsEvents               AnalyticsEvent[]
+  // SUBSCRIPTION-MODULE-001: admin подтверждает manual payments в Phase 1
+  confirmedSubscriptionPayments SubscriptionPayment[]   @relation("subscriptionPaymentConfirmer")
 
   @@index([role])
   @@index([status])
@@ -238,13 +271,13 @@ model UserSession {
 }
 
 model OtpRequest {
-  id          String    @id @default(uuid())
-  phone       String
-  codeHash    String
-  purpose     String    // login | register | checkout
-  expiresAt   DateTime
-  consumedAt  DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  phone      String
+  codeHash   String
+  purpose    String // login | register | checkout
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([phone])
   @@index([expiresAt])
@@ -265,7 +298,7 @@ model Buyer {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  user      User            @relation(fields: [userId], references: [id])
+  user      User                @relation(fields: [userId], references: [id])
   addresses BuyerAddress[]
   carts     Cart[]
   orders    Order[]
@@ -286,8 +319,8 @@ model BuyerWishlistItem {
   // добавления в избранное — для детекции price-drop и back-in-stock.
   // `notifiedAt` — когда отправили nudge (idempotency, cap 1 per cycle).
   // `notifiedReason` — что нотифицировали в последний раз (для аналитики).
-  priceSnapshot   Decimal? @db.Decimal(12, 2)
-  inStockSnapshot Boolean? @default(true)
+  priceSnapshot   Decimal?  @db.Decimal(12, 2)
+  inStockSnapshot Boolean?  @default(true)
   notifiedAt      DateTime?
   notifiedReason  String?
 
@@ -332,7 +365,7 @@ model Seller {
   id                          String                   @id @default(uuid())
   userId                      String                   @unique
   fullName                    String
-  sellerType                  String                   // individual | business
+  sellerType                  String // individual | business
   telegramUsername            String
   telegramChatId              BigInt?
   telegramNotificationsActive Boolean                  @default(false)
@@ -343,72 +376,74 @@ model Seller {
   createdAt                   DateTime                 @default(now())
   updatedAt                   DateTime                 @updatedAt
 
-  user      User                          @relation(fields: [userId], references: [id])
-  store     Store?
-  documents SellerVerificationDocument[]
-  orders    Order[]
-  threads   ChatThread[]
+  user         User                         @relation(fields: [userId], references: [id])
+  store        Store?
+  documents    SellerVerificationDocument[]
+  orders       Order[]
+  threads      ChatThread[]
+  // SUBSCRIPTION-MODULE-001: 1:1, INV-S01 совместимо (один seller = одна подписка)
+  subscription Subscription?
 
   @@index([isBlocked])
   @@map("sellers")
 }
 
 model SellerVerificationDocument {
-  id           String   @id @default(uuid())
+  id           String                           @id @default(uuid())
   sellerId     String
   documentType SellerVerificationDocumentType
   mediaId      String
   status       SellerVerificationDocumentStatus @default(PENDING)
   adminComment String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime                         @default(now())
   reviewedAt   DateTime?
 
-  seller Seller     @relation(fields: [sellerId], references: [id])
-  media  MediaFile  @relation(fields: [mediaId], references: [id])
+  seller Seller    @relation(fields: [sellerId], references: [id])
+  media  MediaFile @relation(fields: [mediaId], references: [id])
 
   @@index([sellerId])
   @@map("seller_verification_documents")
 }
 
 model Store {
-  id                     String      @id @default(uuid())
-  sellerId               String      @unique  // INV-S01: one store per seller
-  name                   String
-  slug                   String      @unique
-  description            String?
-  logoMediaId            String?
-  coverMediaId           String?
-  status                 StoreStatus @default(DRAFT)
-  primaryGlobalCategoryId String?
-  city                   String
-  region                 String?
-  telegramContactLink    String
-  telegramChannelId      String?     // @channel_username или числовой chat_id
-  telegramChannelTitle   String?     // отображаемое название канала
+  id                        String      @id @default(uuid())
+  sellerId                  String      @unique // INV-S01: one store per seller
+  name                      String
+  slug                      String      @unique
+  description               String?
+  logoMediaId               String?
+  coverMediaId              String?
+  status                    StoreStatus @default(DRAFT)
+  primaryGlobalCategoryId   String?
+  city                      String
+  region                    String?
+  telegramContactLink       String
+  telegramChannelId         String? // @channel_username или числовой chat_id
+  telegramChannelTitle      String? // отображаемое название канала
   // FEAT-TG-AUTOPOST-001: при ACTIVE-публикации товара автоматически
   // постить в канал продавца. Opt-in — продавец явно включает в Settings.
-  autoPostProductsToChannel Boolean  @default(false)
+  autoPostProductsToChannel Boolean     @default(false)
   // FEAT-TG-CHANNEL-TEMPLATE-001: настраиваемый шаблон поста (Mustache-style
   // placeholders из ChannelTemplateService). Если NULL — используется
   // DEFAULT_TEMPLATE. Контактные данные ниже подставляются в {{contact}},
   // {{instagram}}, {{tiktok}} при рендере шаблона.
-  channelPostTemplate    String?
-  channelContactPhone    String?
-  channelInstagramLink   String?
-  channelTiktokLink      String?
+  channelPostTemplate       String?
+  channelContactPhone       String?
+  channelInstagramLink      String?
+  channelTiktokLink         String?
   // MARKETING-VERIFIED-SELLER-001: trust signals на storefront.
   // isVerified — manual флаг от admin (галочка в UI).
   // avgRating/reviewCount — денормализованный weighted aggregate из всех
   // ProductReview этого магазина. Обновляется через ReviewsRepository
   // .refreshStoreAggregate() после insert/delete review.
-  isVerified             Boolean     @default(false)
-  avgRating              Decimal?    @db.Decimal(3, 2)
-  reviewCount            Int         @default(0)
-  isPublic               Boolean     @default(false)
-  publishedAt            DateTime?
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
-  deletedAt              DateTime?
+  isVerified                Boolean     @default(false)
+  avgRating                 Decimal?    @db.Decimal(3, 2)
+  reviewCount               Int         @default(0)
+  isPublic                  Boolean     @default(false)
+  publishedAt               DateTime?
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+  deletedAt                 DateTime?
 
   seller           Seller                 @relation(fields: [sellerId], references: [id])
   primaryCategory  GlobalCategory?        @relation(fields: [primaryGlobalCategoryId], references: [id])
@@ -449,7 +484,7 @@ model StoreDirection {
 model StoreContact {
   id          String   @id @default(uuid())
   storeId     String
-  contactType String   // phone | telegram | instagram | other
+  contactType String // phone | telegram | instagram | other
   label       String?
   value       String
   isPrimary   Boolean  @default(false)
@@ -490,7 +525,7 @@ model GlobalCategory {
   slug      String   @unique
   level     Int      @default(0) // 0=Отрасль, 1=Категория, 2=Подкатегория, 3=Тип товара (leaf)
   isLeaf    Boolean  @default(false) // товары можно добавлять только в leaf
-  iconEmoji String?  // 📱 🏠 etc.
+  iconEmoji String? // 📱 🏠 etc.
   isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
@@ -510,8 +545,8 @@ model GlobalCategory {
 
 model CategoryFilter {
   id           String  @id @default(uuid())
-  categorySlug String  // ссылка на GlobalCategory.slug (обычно leaf)
-  key          String  // brand, ram_gb, color, size
+  categorySlug String // ссылка на GlobalCategory.slug (обычно leaf)
+  key          String // brand, ram_gb, color, size
   nameRu       String
   nameUz       String
   fieldType    String  @default("TEXT") // TEXT | NUMBER | SELECT | BOOLEAN | COLOR | MULTI_SELECT
@@ -537,8 +572,8 @@ model StoreCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  store    Store          @relation(fields: [storeId], references: [id])
-  parent   StoreCategory? @relation("StoreCategoryTree", fields: [parentId], references: [id])
+  store    Store           @relation(fields: [storeId], references: [id])
+  parent   StoreCategory?  @relation("StoreCategoryTree", fields: [parentId], references: [id])
   children StoreCategory[] @relation("StoreCategoryTree")
   products Product[]
 
@@ -552,44 +587,44 @@ model StoreCategory {
 // ─────────────────────────────────────────────
 
 model Product {
-  id                 String        @id @default(uuid())
-  storeId            String
-  globalCategoryId   String?
-  storeCategoryId    String?
-  title              String
-  description        String?
-  basePrice          Decimal       @db.Decimal(12, 2)
-  oldPrice           Decimal?      @db.Decimal(12, 2)
-  salePrice          Decimal?      @db.Decimal(12, 2)
-  currencyCode       String        @default("UZS")
-  status             ProductStatus      @default(DRAFT)
-  displayType        ProductDisplayType @default(SLIDER)
-  hasVariants        Boolean            @default(false)
-  totalStock         Int           @default(0)
-  isVisible          Boolean       @default(true)
-  isFeatured         Boolean       @default(false)
-  sku                String?
-  attributesJson     Json?         // {"brand":"Apple","ram_gb":32,"color":"black"} — schema-on-write по CategoryFilter
+  id               String             @id @default(uuid())
+  storeId          String
+  globalCategoryId String?
+  storeCategoryId  String?
+  title            String
+  description      String?
+  basePrice        Decimal            @db.Decimal(12, 2)
+  oldPrice         Decimal?           @db.Decimal(12, 2)
+  salePrice        Decimal?           @db.Decimal(12, 2)
+  currencyCode     String             @default("UZS")
+  status           ProductStatus      @default(DRAFT)
+  displayType      ProductDisplayType @default(SLIDER)
+  hasVariants      Boolean            @default(false)
+  totalStock       Int                @default(0)
+  isVisible        Boolean            @default(true)
+  isFeatured       Boolean            @default(false)
+  sku              String?
+  attributesJson   Json? // {"brand":"Apple","ram_gb":32,"color":"black"} — schema-on-write по CategoryFilter
   // FEAT-008: денормализованный агрегат отзывов — обновляется при insert/delete Review.
   // Хранится в таблице чтобы не делать AVG() на каждый storefront feed.
-  avgRating          Decimal?      @db.Decimal(3, 2)
-  reviewCount        Int           @default(0)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  deletedAt          DateTime?
+  avgRating        Decimal?           @db.Decimal(3, 2)
+  reviewCount      Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
 
-  store          Store               @relation(fields: [storeId], references: [id])
-  globalCategory GlobalCategory?     @relation(fields: [globalCategoryId], references: [id])
-  storeCategory  StoreCategory?      @relation(fields: [storeCategoryId], references: [id])
-  images         ProductImage[]
-  optionGroups   ProductOptionGroup[]
-  variants       ProductVariant[]
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  threads        ChatThread[]
-  attributes     ProductAttribute[]
-  wishlistItems  BuyerWishlistItem[]
-  reviews        ProductReview[]
+  store              Store                @relation(fields: [storeId], references: [id])
+  globalCategory     GlobalCategory?      @relation(fields: [globalCategoryId], references: [id])
+  storeCategory      StoreCategory?       @relation(fields: [storeCategoryId], references: [id])
+  images             ProductImage[]
+  optionGroups       ProductOptionGroup[]
+  variants           ProductVariant[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  threads            ChatThread[]
+  attributes         ProductAttribute[]
+  wishlistItems      BuyerWishlistItem[]
+  reviews            ProductReview[]
   // DB-AUDIT-002 09.05.2026: ранее InventoryMovement.productId был просто String
   // без FK — orphan-движения возможны. Restrict — нельзя удалить product
   // пока есть движения склада (используем soft-delete через deletedAt).
@@ -606,11 +641,11 @@ model Product {
 }
 
 model ProductAttribute {
-  id        String  @id @default(uuid())
+  id        String @id @default(uuid())
   productId String
   name      String
   value     String
-  sortOrder Int     @default(0)
+  sortOrder Int    @default(0)
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -659,7 +694,7 @@ model ProductOptionValue {
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
 
-  optionGroup ProductOptionGroup             @relation(fields: [optionGroupId], references: [id])
+  optionGroup ProductOptionGroup          @relation(fields: [optionGroupId], references: [id])
   variants    ProductVariantOptionValue[]
 
   @@unique([optionGroupId, code])
@@ -668,25 +703,25 @@ model ProductOptionValue {
 }
 
 model ProductVariant {
-  id               String    @id @default(uuid())
-  productId        String
-  sku              String
-  barcode          String?
-  titleOverride    String?
-  priceOverride    Decimal?  @db.Decimal(12, 2)
-  oldPriceOverride Decimal?  @db.Decimal(12, 2)
-  salePriceOverride Decimal? @db.Decimal(12, 2)
-  stockQuantity    Int       @default(0)
-  isActive         Boolean   @default(true)
-  sortOrder        Int       @default(0)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  deletedAt        DateTime?
+  id                String    @id @default(uuid())
+  productId         String
+  sku               String
+  barcode           String?
+  titleOverride     String?
+  priceOverride     Decimal?  @db.Decimal(12, 2)
+  oldPriceOverride  Decimal?  @db.Decimal(12, 2)
+  salePriceOverride Decimal?  @db.Decimal(12, 2)
+  stockQuantity     Int       @default(0)
+  isActive          Boolean   @default(true)
+  sortOrder         Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
-  product       Product                    @relation(fields: [productId], references: [id])
-  optionValues  ProductVariantOptionValue[]
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
+  product            Product                     @relation(fields: [productId], references: [id])
+  optionValues       ProductVariantOptionValue[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
 
   @@unique([productId, sku])
@@ -713,7 +748,7 @@ model InventoryMovement {
   variantId     String?
   movementType  InventoryMovementType
   quantityDelta Int
-  referenceType String?               // order | admin | seller
+  referenceType String? // order | admin | seller
   referenceId   String?
   note          String?
   createdAt     DateTime              @default(now())
@@ -732,21 +767,21 @@ model InventoryMovement {
 // ─────────────────────────────────────────────
 
 model Cart {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   buyerId      String?
   sessionKey   String?
   storeId      String
   status       CartStatus @default(ACTIVE)
-  currencyCode String   @default("UZS")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  currencyCode String     @default("UZS")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   expiresAt    DateTime?
 
   // MARKETING-CART-ABANDONMENT-001: тайминг для cron'а ремаркетинга.
   // nudgeSentAt — когда отправили последний TG-nudge (не спамим).
   // nudgeCount — сколько раз нудили (для аналитики и cap'а 1-2 раза).
-  nudgeSentAt  DateTime?
-  nudgeCount   Int      @default(0)
+  nudgeSentAt DateTime?
+  nudgeCount  Int       @default(0)
 
   buyer  Buyer?     @relation(fields: [buyerId], references: [id])
   store  Store      @relation(fields: [storeId], references: [id])
@@ -763,15 +798,15 @@ model Cart {
 }
 
 model CartItem {
-  id                  String   @id @default(uuid())
-  cartId              String
-  productId           String
-  variantId           String?
-  quantity            Int
-  unitPriceSnapshot   Decimal  @db.Decimal(12, 2)
-  salePriceSnapshot   Decimal? @db.Decimal(12, 2)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                String   @id @default(uuid())
+  cartId            String
+  productId         String
+  variantId         String?
+  quantity          Int
+  unitPriceSnapshot Decimal  @db.Decimal(12, 2)
+  salePriceSnapshot Decimal? @db.Decimal(12, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -820,10 +855,10 @@ model Order {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
-  buyer   Buyer?              @relation(fields: [buyerId], references: [id])
-  store   Store               @relation(fields: [storeId], references: [id])
-  seller  Seller              @relation(fields: [sellerId], references: [id])
-  cart    Cart?               @relation(fields: [cartId], references: [id])
+  buyer   Buyer?               @relation(fields: [buyerId], references: [id])
+  store   Store                @relation(fields: [storeId], references: [id])
+  seller  Seller               @relation(fields: [sellerId], references: [id])
+  cart    Cart?                @relation(fields: [cartId], references: [id])
   items   OrderItem[]
   history OrderStatusHistory[]
   threads ChatThread[]
@@ -842,21 +877,21 @@ model Order {
 }
 
 model OrderItem {
-  id                       String   @id @default(uuid())
-  orderId                  String
-  productId                String?
-  variantId                String?
-  productTitleSnapshot     String
+  id                         String   @id @default(uuid())
+  orderId                    String
+  productId                  String?
+  variantId                  String?
+  productTitleSnapshot       String
   productDescriptionSnapshot String?
-  skuSnapshot              String?
-  variantLabelSnapshot     String?
-  quantity                 Int
-  unitPriceSnapshot        Decimal  @db.Decimal(12, 2)
-  oldPriceSnapshot         Decimal? @db.Decimal(12, 2)
-  salePriceSnapshot        Decimal? @db.Decimal(12, 2)
-  lineTotalAmount          Decimal  @db.Decimal(12, 2)
-  primaryImageUrlSnapshot  String?
-  createdAt                DateTime @default(now())
+  skuSnapshot                String?
+  variantLabelSnapshot       String?
+  quantity                   Int
+  unitPriceSnapshot          Decimal  @db.Decimal(12, 2)
+  oldPriceSnapshot           Decimal? @db.Decimal(12, 2)
+  salePriceSnapshot          Decimal? @db.Decimal(12, 2)
+  lineTotalAmount            Decimal  @db.Decimal(12, 2)
+  primaryImageUrlSnapshot    String?
+  createdAt                  DateTime @default(now())
 
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -899,9 +934,9 @@ model OrderStatusHistory {
   comment         String?
   createdAt       DateTime @default(now())
 
-  order      Order @relation(fields: [orderId], references: [id])
+  order     Order @relation(fields: [orderId], references: [id])
   // DB-AUDIT-001-01: SetNull чтобы сохранить snapshot истории при удалении юзера
-  changedBy  User? @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+  changedBy User? @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([changedByUserId])
@@ -918,23 +953,23 @@ enum ChatThreadStatus {
 }
 
 model ChatThread {
-  id            String     @id @default(uuid())
-  threadType    ThreadType
-  productId     String?
-  orderId       String?
-  buyerId       String?
-  sellerId      String
+  id               String           @id @default(uuid())
+  threadType       ThreadType
+  productId        String?
+  orderId          String?
+  buyerId          String?
+  sellerId         String
   // DB-AUDIT-001-02: было `String @default("active")`, но код пишет/читает
   // 'OPEN'/'CLOSED'. Переведено в enum для consistency.
-  status        ChatThreadStatus @default(OPEN)
+  status           ChatThreadStatus @default(OPEN)
   lastMessageId    String?
   lastMessageAt    DateTime?
   buyerLastReadAt  DateTime?
   sellerLastReadAt DateTime?
   buyerDeletedAt   DateTime?
   sellerDeletedAt  DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   product  Product?      @relation(fields: [productId], references: [id])
   order    Order?        @relation(fields: [orderId], references: [id])
@@ -953,7 +988,7 @@ model ChatThread {
 }
 
 model ChatMessage {
-  id               String   @id @default(uuid())
+  id               String          @id @default(uuid())
   threadId         String
   senderUserId     String
   messageType      ChatMessageType @default(TEXT)
@@ -962,12 +997,12 @@ model ChatMessage {
   orderContextId   String?
   parentMessageId  String?
   mediaId          String?
-  isDeleted        Boolean   @default(false)
+  isDeleted        Boolean         @default(false)
   editedAt         DateTime?
   deletedAt        DateTime?
   reportedAt       DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   thread        ChatThread    @relation(fields: [threadId], references: [id])
   parentMessage ChatMessage?  @relation("ChatReply", fields: [parentMessageId], references: [id], onDelete: SetNull)
@@ -1006,9 +1041,9 @@ model MediaFile {
   visibility  MediaVisibility @default(PUBLIC)
   createdAt   DateTime        @default(now())
 
-  productImages              ProductImage[]
+  productImages               ProductImage[]
   sellerVerificationDocuments SellerVerificationDocument[]
-  chatMessages               ChatMessage[]                @relation("ChatMessageMedia")
+  chatMessages                ChatMessage[]                @relation("ChatMessageMedia")
 
   @@index([ownerUserId])
   // DB-AUDIT-001-05: bucket используется в migration filter (WHERE bucket='telegram')
@@ -1022,15 +1057,15 @@ model MediaFile {
 // ─────────────────────────────────────────────
 
 model InAppNotification {
-  id        String   @id @default(uuid())
+  id        String                @id @default(uuid())
   userId    String
   type      InAppNotificationType
   title     String
   body      String
-  data      Json     @default("{}")
-  isRead    Boolean  @default(false)
+  data      Json                  @default("{}")
+  isRead    Boolean               @default(false)
   readAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime              @default(now())
 
   // DB-AUDIT-001-01: Cascade — удаление юзера чистит его уведомления
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1059,8 +1094,8 @@ model NotificationPreference {
 model PushSubscription {
   id         String   @id @default(uuid())
   userId     String
-  platform   String   // ios | android | web
-  provider   String   // expo | fcm | webpush
+  platform   String // ios | android | web
+  provider   String // expo | fcm | webpush
   endpoint   String
   p256dh     String?
   auth       String?
@@ -1077,15 +1112,15 @@ model PushSubscription {
 }
 
 model NotificationLog {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   userId         String
-  channel        String   // mobile_push | telegram
+  channel        String // mobile_push | telegram
   eventType      String
   payload        Json
-  deliveryStatus String   // queued | sent | failed
+  deliveryStatus String // queued | sent | failed
   failureReason  String?
   sentAt         DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   // DB-AUDIT-001-01: Cascade — лог-таблица доставки уведомлений; orphan не нужен
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1102,24 +1137,24 @@ model NotificationLog {
 // ─────────────────────────────────────────────
 
 model AdminUser {
-  id           String   @id @default(uuid())
-  userId       String   @unique
+  id           String    @id @default(uuid())
+  userId       String    @unique
   // SEC-ADMIN-ACCESS-MODEL стадия A: default true→false. Раньше любой новый
   // AdminUser без явного указания становился суперадмином. Реальное значение
   // выставляет admin-users-management.use-case (= adminRole === 'super_admin').
-  isSuperadmin Boolean  @default(false)
+  isSuperadmin Boolean   @default(false)
   // DB-AUDIT-001: добавлено в migration 20260503020000_super_admin_rbac_mfa_refunds,
   // но schema.prisma не обновили — код использовал (prisma as any). Schema drift fix.
-  adminRole    String   @default("admin")  // super_admin | admin | moderator | support | finance | read_only
+  adminRole    String    @default("admin") // super_admin | admin | moderator | support | finance | read_only
   // SEC-ADMIN-ACCESS-MODEL стадия A: мягкая блокировка админа без удаления
   // строки. Entry-gate (стадия B) проверяет isActive при входе в admin-панель.
-  isActive     Boolean  @default(true)
+  isActive     Boolean   @default(true)
   mfaSecret    String?
-  mfaEnabled   Boolean  @default(false)
+  mfaEnabled   Boolean   @default(false)
   mfaEnabledAt DateTime?
   lastLoginAt  DateTime?
   lastLoginIp  String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   user              User               @relation(fields: [userId], references: [id])
   moderationCases   ModerationCase[]
@@ -1133,18 +1168,18 @@ model AdminUser {
 // DB-AUDIT-001: была дыра — таблица существовала в DB (migration 20260503020000)
 // но модель в schema.prisma отсутствовала. Refund use-case использовал raw SQL.
 model OrderRefund {
-  id               String   @id @default(uuid())
+  id               String       @id @default(uuid())
   orderId          String
   adminId          String
-  amount           Decimal  @db.Decimal(12, 2)
+  amount           Decimal      @db.Decimal(12, 2)
   reason           String
   notes            String?
-  returnedToWallet Boolean  @default(false)
+  returnedToWallet Boolean      @default(false)
   status           RefundStatus @default(COMPLETED)
-  createdAt        DateTime @default(now())
+  createdAt        DateTime     @default(now())
 
-  order Order      @relation(fields: [orderId], references: [id])
-  admin AdminUser  @relation(fields: [adminId], references: [id])
+  order Order     @relation(fields: [orderId], references: [id])
+  admin AdminUser @relation(fields: [adminId], references: [id])
 
   @@index([orderId])
   @@index([adminId])
@@ -1153,15 +1188,15 @@ model OrderRefund {
 }
 
 model ModerationCase {
-  id               String   @id @default(uuid())
-  entityType       String   // seller | store | product | message
-  entityId         String
-  caseType         ModerationCaseType
-  status           ModerationCaseStatus @default(OPEN)
-  reason           String?
-  assignedAdminId  String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String               @id @default(uuid())
+  entityType      String // seller | store | product | message
+  entityId        String
+  caseType        ModerationCaseType
+  status          ModerationCaseStatus @default(OPEN)
+  reason          String?
+  assignedAdminId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 
   assignedAdmin AdminUser?         @relation(fields: [assignedAdminId], references: [id])
   actions       ModerationAction[]
@@ -1172,14 +1207,14 @@ model ModerationCase {
 }
 
 model ModerationAction {
-  id          String   @id @default(uuid())
+  id          String               @id @default(uuid())
   caseId      String?
   entityType  String
   entityId    String
   actionType  ModerationActionType
   adminUserId String
   comment     String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime             @default(now())
 
   case      ModerationCase? @relation(fields: [caseId], references: [id])
   adminUser AdminUser       @relation(fields: [adminUserId], references: [id])
@@ -1193,7 +1228,7 @@ model ModerationAction {
 model AuditLog {
   id          String   @id @default(uuid())
   actorUserId String?
-  actorType   String   // buyer | seller | admin | system
+  actorType   String // buyer | seller | admin | system
   entityType  String
   entityId    String
   action      String
@@ -1214,14 +1249,14 @@ model AuditLog {
 
 // Append-only. Never UPDATE or DELETE.
 model AnalyticsEvent {
-  id          String   @id @default(uuid())
-  actorUserId String?
-  actorType   String?
-  storeId     String?
-  eventName   String
-  eventPayload Json    @default("{}")
-  sessionKey  String?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid())
+  actorUserId  String?
+  actorType    String?
+  storeId      String?
+  eventName    String
+  eventPayload Json     @default("{}")
+  sessionKey   String?
+  createdAt    DateTime @default(now())
 
   // DB-AUDIT-001-01 phase 2: SetNull чтобы analytics-история сохранялась
   // даже после удаления юзера (snapshot remains).
@@ -1250,4 +1285,79 @@ model BroadcastLog {
 
   @@index([createdAt])
   @@map("broadcast_logs")
+}
+
+// ─────────────────────────────────────────────
+// SUBSCRIPTIONS (SUBSCRIPTION-MODULE-001)
+// design: docs/decisions/subscription-module-design-2026-06-01.md
+// business: docs/business/business-model-v2-2026-05-31.md §7
+// ─────────────────────────────────────────────
+
+model Subscription {
+  id       String             @id @default(uuid())
+  sellerId String             @unique // INV-S01: один seller = одна подписка
+  tier     SubscriptionTier
+  status   SubscriptionStatus @default(TRIAL)
+
+  // Триал
+  trialStartedAt DateTime?
+  trialEndsAt    DateTime?
+
+  // Активный период
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime? // "paidUntil"
+
+  // Транзитивные временные метки
+  graceEndsAt DateTime?
+  suspendedAt DateTime?
+  churnedAt   DateTime?
+  cancelledAt DateTime?
+
+  // Phase 2 (в Phase 1 всегда false — оплата ручная)
+  autoRenew Boolean @default(false)
+
+  // Скидки (beta/migration/referral)
+  discountPercent Int       @default(0) // 0..99
+  discountEndsAt  DateTime?
+  discountReason  String? // "BETA" | "MIGRATION" | "REFERRAL_<sellerId>"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seller   Seller                @relation(fields: [sellerId], references: [id])
+  payments SubscriptionPayment[]
+
+  @@index([status])
+  @@index([currentPeriodEnd]) // cron: find expired ACTIVE
+  @@index([graceEndsAt]) // cron: find past_due → suspend
+  @@index([trialEndsAt]) // cron: find trial → past_due
+  @@map("subscriptions")
+}
+
+model SubscriptionPayment {
+  id             String                    @id @default(uuid())
+  subscriptionId String
+  amountUzs      Int // целые сумы, не float
+  method         SubscriptionPaymentMethod
+  status         SubscriptionPaymentStatus @default(PENDING)
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // Подтверждение (Phase 1 — admin вручную)
+  confirmedByUserId String?
+  confirmedAt       DateTime?
+  notes             String? // "Карта Полата 8600... перевод 25.05 14:30"
+
+  // Phase 2 gateway reference
+  externalId String?
+
+  createdAt DateTime @default(now())
+
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
+  confirmedByUser User?        @relation("subscriptionPaymentConfirmer", fields: [confirmedByUserId], references: [id])
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("subscription_payments")
 }
