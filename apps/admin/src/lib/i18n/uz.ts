@@ -185,7 +185,7 @@ export const uz: Translations = {
   'nav.queues': 'Navbatlar (Bull)',
 
   // ── Login ─────────────────────────────────────────────────────────────
-  'login.title': 'Savdo Admin',
+  'login.title': 'maxsavdo Admin',
   'login.subtitlePhone': 'Telegram OTP orqali kirish',
   'login.subtitleOtp': 'Kod {phone} raqamiga yuborildi',
   'login.subtitleMfa': 'Autentifikator ilovasidagi kodni kiriting',
@@ -211,7 +211,7 @@ export const uz: Translations = {
   'login.openQueues': 'Bull Board ochilmoqda...',
   'login.errPhoneFormat': 'Format: +998XXXXXXXXX (kоddan keyin 9 raqam)',
   'login.errSendFailed': 'Kod yuborishda xatolik',
-  'login.errNotAdmin': 'Kirish taqiqlangan. Bu kabinet faqat Savdo administratorlari uchun.',
+  'login.errNotAdmin': 'Kirish taqiqlangan. Bu kabinet faqat maxsavdo administratorlari uchun.',
   'login.errTgNotLinked': 'Telegram bogʻlanmagan. @savdo_builderBOT botiga /start buyrugʻini yozing',
   'login.errBadCode': 'Notoʻgʻri yoki muddati oʻtgan kod.',
   'login.errBadMfa': 'Notoʻgʻri TOTP kod',

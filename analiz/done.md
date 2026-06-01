@@ -1,5 +1,46 @@
 # Done — Азим + Полат
 
+## 2026-06-01 (Полат) — BRAND-API-METADATA-001: maxsavdo metadata в admin + api
+
+### ✅ [BRAND-API-METADATA-001] Обновить metadata в api/admin (OG, favicon, manifest)
+- **Важность:** 🟡 (brand v2 rollout). **Дата:** 01.06.2026
+- **Что сделано:**
+  - **Ассеты скопированы из ветки `origin/web-buyer`** (готовые PNG, изготовленные Азимом из brand-book JPG через canvas) → `apps/admin/public/`:
+    - `apple-touch-icon.png` (180×180, из `apps/web-buyer/src/app/apple-icon.png`)
+    - `icon-192.png` (192×192) и `icon-512.png` (512×512) (из `apps/web-buyer/public/`)
+    - `og-image.png` (1200×630, из `apps/web-buyer/src/app/opengraph-image.png`)
+    - `maxsavdo-mark.png` (512×308, для consistency, из `apps/web-buyer/public/brand/`)
+    - Не генерировал PNG заново — это идентичные ассеты (PNG-чексумы совпадают через `git cat-file -s`).
+  - **`apps/admin/public/manifest.json` создан:** `name`/`short_name` = "maxsavdo Admin", `theme_color`/`background_color` = `#0A0A0A`, `display: standalone`, `start_url: /`, иконки 192/512/180 PNG, lang `ru`, orientation `portrait`, description.
+  - **`apps/admin/public/robots.txt` создан:** `User-agent: * / Disallow: /` — админка не должна индексироваться (внутренний инструмент).
+  - **`apps/admin/index.html`:** добавлены `<link rel="manifest">`, `<link rel="apple-touch-icon" sizes="180x180">`, `<meta name="robots" content="noindex,nofollow">`, `<meta name="description">`, полный набор Open Graph тегов (og:type=website, og:site_name, og:title, og:description, og:image 1200×630), Twitter Card (summary_large_image). `theme-color=#0A0A0A` уже был — оставлен.
+  - **`apps/api/src/main.ts` Swagger:** `.setTitle('Savdo API')` → `.setTitle('maxsavdo API')`; `.setDescription('Backend для savdo-builder …')` → `.setDescription('Backend для maxsavdo …')`. Прочие "Savdo" в `apps/api/src/` — внутренние константы (TOTP issuer `Savdo Admin` в admin MFA, комментарии к analytics-events/error-codes) — не публичные метаданные, не трогал.
+  - **`apps/api/public/`** не существует — api не сервит статику, отдаёт только JSON + Swagger UI; manifest/OG для api не нужны.
+- **Проверки:**
+  - `pnpm --filter admin build` — ✅ clean (vite v8.0.10, 2659 modules, dist содержит все 6 PNG + manifest.json + robots.txt + index.html с обновлёнными мета).
+  - `cd apps/api && npx tsc --noEmit` — ✅ clean.
+- **Файлы:**
+  - Новые: `apps/admin/public/{manifest.json,robots.txt,apple-touch-icon.png,icon-192.png,icon-512.png,og-image.png,maxsavdo-mark.png}`
+  - Изменены: `apps/admin/index.html`, `apps/api/src/main.ts`, `analiz/tasks.md`, `analiz/done.md`
+- **Commit SHA:** см. вывод `git log -1` (BRAND-API-METADATA-001).
+
+---
+
+## 2026-06-01 (Полат) — BRAND-EMAIL-TEMPLATES-001: N/A, email-функционала нет
+
+### ✅ [BRAND-EMAIL-TEMPLATES-001] Email-templates под maxsavdo — N/A
+- **Важность:** 🟡 (brand v2 rollout). **Дата:** 01.06.2026
+- **Статус:** N/A — email-функционал не реализован в проекте.
+- **Что проверено:**
+  - Grep по `nodemailer|@nestjs/mailer|<mjml|<!DOCTYPE html|transactional|email-template` — совпадения только в docs/analiz (упоминания в задачах/решениях), кода нет.
+  - Grep по `nodemailer|mailer|smtp|sendgrid|mailgun|postmark|resend` в `apps/api` — совпадение только в `apps/api/src/shared/error-reporter.ts` (поле "email" в контексте error reporting, не mailer) и в `apps/api/CLAUDE.md` (упоминание).
+  - Каталоги `apps/api/src/mail/`, `apps/api/src/email/`, `apps/api/templates/`, `packages/email*` — не существуют.
+  - `package.json` всех workspace'ов — ни один mail/email пакет не подключён.
+  - `<!DOCTYPE html>|<html>|<body>` в `apps/api` — нет HTML-шаблонов писем.
+- **Обоснование:** по `CLAUDE.md` OTP идёт ТОЛЬКО через Telegram Bot (@savdo_builderBOT), Eskiz/Playmobile/SMS запрещены. Transactional emails (order confirmation, password reset) в MVP не реализованы — уведомления идут через Telegram Bot + in-app.
+- **Что делать когда email появится:** при добавлении email-провайдера (resend/postmark/sendgrid) — открыть новую задачу `BRAND-EMAIL-TEMPLATES-002` с актуальной структурой шаблонов и применить maxsavdo v2 (логотип PNG, Pure White #FFFFFF, Champagne Gold #C9A876, Rich Black #0A0A0A, footer с offer/privacy).
+- **Файлы:** `analiz/tasks.md` (удалена задача), `analiz/done.md` (эта запись).
+
 ## 2026-05-31 (Азим) — seller login: убран двойной редирект
 
 ### ✅ [WEB-SELLER-LOGIN-DOUBLE-REDIRECT-001] Двойная навигация после OTP-входа

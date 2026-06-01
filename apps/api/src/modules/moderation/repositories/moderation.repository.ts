@@ -7,6 +7,7 @@ import {
   ModerationCaseType,
   ModerationActionType,
 } from '@prisma/client';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 @Injectable()
 export class ModerationRepository {
@@ -52,9 +53,7 @@ export class ModerationRepository {
     page?: number;
     limit?: number;
   }): Promise<{ cases: ModerationCase[]; total: number }> {
-    const page = options?.page ?? 1;
-    const limit = options?.limit ?? 20;
-    const skip = (page - 1) * limit;
+    const { limit, skip } = toPrismaPagination(options);
 
     const [cases, total] = await this.prisma.$transaction([
       this.prisma.moderationCase.findMany({
@@ -75,9 +74,7 @@ export class ModerationRepository {
     page?: number;
     limit?: number;
   }): Promise<{ cases: ModerationCase[]; total: number }> {
-    const page = filters?.page ?? 1;
-    const limit = filters?.limit ?? 20;
-    const skip = (page - 1) * limit;
+    const { limit, skip } = toPrismaPagination(filters);
 
     const where: Record<string, unknown> = {};
     if (filters?.status) where['status'] = filters.status;
