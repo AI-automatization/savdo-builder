@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Order, OrderItem, OrderStatus, OrderStatusHistory, Buyer, User, Store, Seller, InventoryMovementType } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 export type OrderWithDetails = Order & {
   items: OrderItem[];
@@ -34,9 +35,7 @@ export class OrdersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByBuyerId(buyerId: string, filters: OrderListFilters = {}): Promise<PaginatedOrders> {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where = {
       buyerId,
@@ -61,9 +60,7 @@ export class OrdersRepository {
   }
 
   async findByStoreId(storeId: string, filters: OrderListFilters = {}): Promise<PaginatedOrders> {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where: any = {
       storeId,

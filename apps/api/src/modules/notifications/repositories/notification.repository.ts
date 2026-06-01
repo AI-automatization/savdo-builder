@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InAppNotification, InAppNotificationType, NotificationLog, NotificationPreference } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 // ─────────────────────────────────────────────
 // NotificationLog (delivery audit log) types
@@ -96,9 +97,7 @@ export class NotificationRepository {
     userId: string,
     filters: NotificationLogFilters = {},
   ): Promise<PaginatedNotificationLogs> {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where = {
       userId,
@@ -170,9 +169,7 @@ export class NotificationRepository {
     userId: string,
     options: FindInAppByUserIdOptions = {},
   ): Promise<PaginatedInAppNotifications> {
-    const page = options.page ?? 1;
-    const limit = Math.min(options.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(options);
 
     const where = {
       userId,
