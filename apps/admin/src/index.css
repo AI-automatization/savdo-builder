@@ -1,14 +1,32 @@
 @import "tailwindcss";
 
-/* ── Dark theme (default) ────────────────────────────────── */
-:root, [data-theme="dark"] {
-  --bg:          #0F172A;
-  --surface:     #1E293B;
-  --surface2:    #253347;
-  --border:      #334155;
+/*
+ * BRAND-ADMIN-REBRAND-001 — maxsavdo Dark Luxury Minimalist
+ * Source of truth: docs/brand/maxsavdo-brand-v2.md
+ * Palette: Rich Black #0A0A0A, Champagne Gold #C9A876, Pure White #FFFFFF
+ * Парные web-seller / web-buyer токены — в apps/web-seller/src/app/globals.css
+ * и apps/web-buyer/src/app/globals.css.
+ * --primary стал Champagne Gold; tailwind indigo-utility-классы на data-страницах
+ * оставлены как secondary accent (не конкурирует с золотом).
+ */
 
-  --primary:     #818CF8;
-  --primary-dim: rgba(129,140,248,0.12);
+/* Brand-constant tokens — одинаковые в обеих темах */
+:root {
+  --brand-black:      #0A0A0A;
+  --brand-gold:       #C9A876;
+  --brand-gold-light: #E8C898;
+  --brand-white:      #FFFFFF;
+}
+
+/* ── Dark theme (default) — Rich Black base + Champagne Gold accent ────── */
+:root, [data-theme="dark"] {
+  --bg:          #0A0A0A;     /* Rich Black */
+  --surface:     #141414;
+  --surface2:    #1F1F1F;
+  --border:      #2A2A2A;
+
+  --primary:     #C9A876;     /* Champagne Gold */
+  --primary-dim: rgba(201,168,118,0.14);
 
   --success: #22C55E;
   --error:   #EF4444;
@@ -35,22 +53,22 @@
   --border-success:         rgba(34,197,94,0.30);
   --border-success-soft:    rgba(34,197,94,0.20);
 
-  --text:       #F1F5F9;
-  --text-muted: #94A3B8;
-  --text-dim:   #475569;
+  --text:       #FFFFFF;        /* Pure White on Rich Black */
+  --text-muted: #A3A3A3;
+  --text-dim:   #737373;
 
-  --background: #0F172A;
+  --background: #0A0A0A;
 }
 
-/* ── Light theme ─────────────────────────────────────────── */
+/* ── Light theme — Pure White base + Champagne Gold accent ─────────────── */
 [data-theme="light"] {
-  --bg:          #F8FAFC;
+  --bg:          #FAFAFA;
   --surface:     #FFFFFF;
-  --surface2:    #F1F5F9;
-  --border:      #E2E8F0;
+  --surface2:    #F5F5F5;
+  --border:      #E5E5E5;
 
-  --primary:     #818CF8;
-  --primary-dim: rgba(129,140,248,0.10);
+  --primary:     #C9A876;     /* Champagne Gold (8.94:1 contrast vs Rich Black) */
+  --primary-dim: rgba(201,168,118,0.10);
 
   --success: #16A34A;
   --error:   #DC2626;
@@ -74,11 +92,11 @@
   --border-success:         rgba(22,163,74,0.25);
   --border-success-soft:    rgba(22,163,74,0.18);
 
-  --text:       #0F172A;
-  --text-muted: #64748B;
-  --text-dim:   #94A3B8;
+  --text:       #0A0A0A;        /* Rich Black on white */
+  --text-muted: #525252;
+  --text-dim:   #A3A3A3;
 
-  --background: #F8FAFC;
+  --background: #FAFAFA;
 }
 
 * { box-sizing: border-box; }
@@ -107,8 +125,9 @@ body {
   .btn-base { color: var(--text); }
   .btn-base:focus-visible { box-shadow: 0 0 0 1px var(--primary); }
 
-  .btn-primary   { background: var(--primary); color: #fff; }
-  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+  /* BRAND-ADMIN-REBRAND-001: text on Champagne Gold = Rich Black (8.94:1 contrast). */
+  .btn-primary   { background: var(--primary); color: var(--brand-black); }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.06); }
 
   .btn-secondary {
     background: var(--surface);
