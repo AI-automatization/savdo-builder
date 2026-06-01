@@ -123,6 +123,69 @@
 | `MEDIA_LIMIT_EXCEEDED` | 400 | Превышено количество файлов (напр. 5 фото на товар) |
 | `UPLOAD_FAILED` | 500 | Ошибка загрузки файла |
 
+### SUBSCRIPTIONS — Подписки и тарифные планы
+
+| Code | HTTP | Описание |
+|------|------|---------|
+| `SUBSCRIPTION_NOT_FOUND` | 404 | Подписка не найдена |
+| `SUBSCRIPTION_ALREADY_ACTIVE` | 409 | У seller уже есть активная подписка |
+| `PLAN_LIMIT_EXCEEDED` | 402 | Превышен лимит тарифного плана (требуется upgrade) |
+| `TRIAL_ALREADY_USED` | 409 | Trial-период уже был использован |
+| `INVALID_PLAN_TRANSITION` | 422 | Недопустимый переход между тарифами |
+| `SUBSCRIPTION_SUSPENDED` | 403 | Подписка приостановлена (просрочена/заблокирована) |
+| `PAYMENT_NOT_FOUND` | 404 | Платёж не найден |
+| `PAYMENT_ALREADY_CONFIRMED` | 409 | Платёж уже подтверждён |
+
+#### Детализация по кодам
+
+##### `SUBSCRIPTION_NOT_FOUND` (404)
+- **When thrown:** запрос подписки по `subscriptionId` или `sellerId`, которой нет в БД (включая случай "seller никогда не подписывался").
+- **Message ru:** «Подписка не найдена.»
+- **Message uz:** «Obuna topilmadi.»
+- **Client reaction:** показать экран "Выбрать тариф" / редирект на `/billing/plans`. Не ретраить.
+
+##### `SUBSCRIPTION_ALREADY_ACTIVE` (409)
+- **When thrown:** попытка активировать/создать новую подписку, когда у seller уже есть активная (status = ACTIVE или TRIALING).
+- **Message ru:** «У вас уже есть активная подписка. Для смены тарифа используйте upgrade.»
+- **Message uz:** «Sizda allaqachon faol obuna mavjud. Tarifni o'zgartirish uchun upgrade-dan foydalaning.»
+- **Client reaction:** скрыть кнопку "Активировать", показать текущую подписку и предложить `PATCH /subscriptions/:id` (change plan). Не ретраить.
+
+##### `PLAN_LIMIT_EXCEEDED` (402 Payment Required)
+- **When thrown:** seller пытается выполнить действие, превышающее квоту тарифа (например, добавить 51-й товар на Free, создать 2-ю витрину, превысить лимит чатов/заказов в месяц). `details` содержит `{ limit, current, resource }`.
+- **Message ru:** «Достигнут лимит тарифа: {resource} ({current}/{limit}). Перейдите на старший тариф.»
+- **Message uz:** «Tarif chegarasiga yetdingiz: {resource} ({current}/{limit}). Yuqori tarifga o'ting.»
+- **Client reaction:** показать paywall-модалку с CTA "Upgrade plan" → переход на `/billing/plans`. Не ретраить запрос с теми же данными. Это **не** валидация — это бизнес-ограничение монетизации, поэтому отдельный код и 402.
+
+##### `TRIAL_ALREADY_USED` (409)
+- **When thrown:** seller повторно запрашивает trial (Free → Trial), но `trial_used_at` уже выставлен.
+- **Message ru:** «Пробный период уже был использован. Выберите платный тариф.»
+- **Message uz:** «Sinov muddati allaqachon ishlatilgan. Pullik tarifni tanlang.»
+- **Client reaction:** скрыть кнопку "Активировать trial", показать только платные тарифы. Не ретраить.
+
+##### `INVALID_PLAN_TRANSITION` (422)
+- **When thrown:** недопустимый переход между тарифами по матрице (например, downgrade с Business → Free при `activeOrders > 0`, или скачок через тариф в обход бизнес-правил). `details` содержит `{ from, to, reason }`.
+- **Message ru:** «Переход на этот тариф невозможен: {reason}.»
+- **Message uz:** «Bu tarifga o'tish mumkin emas: {reason}.»
+- **Client reaction:** показать пользователю причину из `details.reason`, предложить альтернативный путь (например, "сначала закройте активные заказы"). Не ретраить с теми же параметрами.
+
+##### `SUBSCRIPTION_SUSPENDED` (403)
+- **When thrown:** seller с подпиской в статусе SUSPENDED (просрочка платежа, нарушение правил, admin block) пытается выполнить защищённое действие (publish product, accept order и т.д.).
+- **Message ru:** «Ваша подписка приостановлена. Оплатите задолженность или обратитесь в поддержку.»
+- **Message uz:** «Obunangiz to'xtatilgan. Qarzni to'lang yoki qo'llab-quvvatlash xizmatiga murojaat qiling.»
+- **Client reaction:** глобальный баннер "Подписка приостановлена" + кнопка "Оплатить" → `/billing/pay`. Заблокировать seller-actions UI до возобновления.
+
+##### `PAYMENT_NOT_FOUND` (404)
+- **When thrown:** запрос платежа по `paymentId`, которого нет (или он принадлежит другому seller — обфусцируется как 404, а не 403).
+- **Message ru:** «Платёж не найден.»
+- **Message uz:** «To'lov topilmadi.»
+- **Client reaction:** редирект на `/billing/history`. Не ретраить.
+
+##### `PAYMENT_ALREADY_CONFIRMED` (409)
+- **When thrown:** webhook от платёжной системы или ручное подтверждение приходит повторно для платежа со status = CONFIRMED (идемпотентность).
+- **Message ru:** «Платёж уже подтверждён.»
+- **Message uz:** «To'lov allaqachon tasdiqlangan.»
+- **Client reaction:** webhook handler возвращает 200 OK провайдеру (это нормальный дубликат, не ошибка). UI обновляет статус из ответа и не показывает ошибку пользователю.
+
 ### MODERATION — Модерация
 
 | Code | HTTP | Описание |
