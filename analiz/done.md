@@ -1,5 +1,80 @@
 # Done — Азим + Полат
 
+## 2026-06-01 (Полат) — BRAND-ADMIN-INDIGO-CLEANUP-001: WONTFIX, indigo сохраняем
+
+### ✅ [BRAND-ADMIN-INDIGO-CLEANUP-001] Решение: indigo accent на data-страницах admin — оставить
+- **Важность:** 🟢 (документация решения, не код). **Дата:** 01.06.2026
+- **Контекст:** агент `BRAND-ADMIN-REBRAND-001` в своём отчёте отметил что НЕ мигрировал
+  indigo Tailwind-утилиты на data-плотных страницах admin (SellersPage / OrdersPage /
+  StoresPage / AnalyticsDashboardPage / DashboardPage selection-rings, chart accent-цвета
+  в KPI-карточках, focus-rings в `ui/input`/`textarea`/`dialog`). Предлагал отдельный
+  таск на 100% gold-only consistency.
+- **Решение Полата (01.06.2026):** НЕ мигрировать. Indigo остаётся как **secondary accent**:
+  - **Champagne Gold** (`#C9A876`) — brand primary: sidebar nav active, login CTAs, brand stripe.
+  - **Indigo** (`#818CF8` / `bg-indigo-500/10` и т.д.) — secondary accent для data-плотных
+    экранов: focus-rings, chart KPI-цвета, selection rings.
+- **Почему так:**
+  1. На data-страницах с высокой плотностью таблиц/чартов золото визуально перегружает —
+     теряется иерархия.
+  2. Indigo как accent (Liquid Authority design system Азима) использовался на старом
+     admin до brand v2 — это знакомый паттерн, не «забытый цвет».
+  3. Gold-only выглядит «маркетинговым» а не «панелью оператора».
+- **Где смотреть:** `apps/admin/src/index.css` (--primary токены — gold), на data-страницах
+  `pages/{Sellers,Orders,Stores,AnalyticsDashboard,Dashboard}Page.tsx` остался indigo
+  через прямые Tailwind-классы `bg-indigo-500/10` и т.д., в `components/ui/{input,textarea,dialog}.tsx`
+  focus-rings indigo.
+- **Если в будущем кто-то решит «индиго лишний» в админке** — сначала прочитать эту запись
+  и обсудить с Полатом. Это **сознательное** решение, а не пропущенный пункт.
+
+---
+
+## 2026-06-01 (Полат) — REFACTOR-DRY-001 / DUP-002: ChannelPostBuilderService
+
+### ✅ [DUP-002] Извлечён `ChannelPostBuilderService` — устранён дрейф preview ↔ post
+- **Важность:** 🟡 (DRY refactor, P2 из `analiz/dry-audit-2026-06-01.md`). **Дата:** 01.06.2026
+- **Root cause копи-пасты:** одинаковые `formatPrice`/`extractAttribute`/`extractSizes`/
+  `buildProductUrl`/`buildContact`/`buildTemplateVariables` жили в двух местах —
+  free-functions в `preview-channel-post.use-case.ts` и приватные методы класса в
+  `post-product-to-channel.use-case.ts`. Алиас `o-lcham` (узбекский «о́лчам» — размер) был
+  только в `post`, поэтому preview врал продавцу-узбеку: в редакторе шаблона он не видел
+  размер, а в реальном канале — видел.
+- **Что сделано:**
+  - Новый `apps/api/src/modules/products/services/channel-post-builder.service.ts`:
+    `@Injectable() ChannelPostBuilderService` с `build(product, store, productUrl): TemplateVariables`
+    + публичными `buildProductUrl`, `formatPrice` и приватными `extractAttribute`,
+    `extractSizes`, `buildContact`. Поведение взято КАНОНИЧЕСКИ из `post-product-to-channel`
+    (включая `o-lcham`).
+  - `apps/api/src/modules/products/products.module.ts`: зарегистрирован в `providers`.
+  - `post-product-to-channel.use-case.ts`: удалены приватные методы (~80 строк),
+    конструктор: `ConfigService` убран (перенесён в `ChannelPostBuilderService`),
+    добавлен `ChannelPostBuilderService`. Логика `execute` сохранена 1:1.
+  - `preview-channel-post.use-case.ts`: удалены 4 free-functions внизу файла, удалён
+    `realProductVars` (заменён на прямой вызов `channelPostBuilder.build`). `sampleVars`
+    остался — но `productUrl` теперь идёт через `channelPostBuilder.buildProductUrl`
+    (теперь preview корректно даёт `t.me/?startapp=` fallback, как и `post`).
+  - `post-product-to-channel.use-case.spec.ts`: обновлён конструктор юзкейса в `beforeEach`
+    (порядок параметров: `prisma, telegramBot, templateService, mediaResolver, channelPostBuilder`,
+    `ChannelPostBuilderService(config)` собран ad-hoc).
+- **Контракт `TemplateVariables` не менялся** — template-строка Telegram-бота (см.
+  `ChannelTemplateService.DEFAULT_TEMPLATE`) продолжает работать без правок.
+- **Проверки:**
+  - `cd apps/api && npx tsc --noEmit` — ✅ ни одной ошибки в моих файлах (6 pre-existing
+    ошибок в `admin-status-transition.factory.ts` + `admin-create.use-cases.spec.ts` —
+    это работа по DUP-001 параллельной сессии, не моя зона).
+  - `npx jest --testPathPattern 'post-product-to-channel|preview-channel-post|channel-post-builder'`
+    — ✅ 13/13 passed. (`preview-channel-post.spec` ещё не создан — отдельная задача.)
+- **Файлы:**
+  - Новый: `apps/api/src/modules/products/services/channel-post-builder.service.ts`
+  - Изменены: `apps/api/src/modules/products/products.module.ts`,
+    `apps/api/src/modules/products/use-cases/post-product-to-channel.use-case.ts`,
+    `apps/api/src/modules/products/use-cases/post-product-to-channel.use-case.spec.ts`,
+    `apps/api/src/modules/products/use-cases/preview-channel-post.use-case.ts`,
+    `analiz/done.md`
+- **Net code:** -~80 строк дубля, +1 сервис (~140 строк с комментариями + типами).
+- **Commit SHA:** будет добавлен после `git commit`.
+
+---
+
 ## 2026-06-01 (Полат) — BRAND-API-METADATA-001: maxsavdo metadata в admin + api
 
 ### ✅ [BRAND-API-METADATA-001] Обновить metadata в api/admin (OG, favicon, manifest)
@@ -22,7 +97,7 @@
 - **Файлы:**
   - Новые: `apps/admin/public/{manifest.json,robots.txt,apple-touch-icon.png,icon-192.png,icon-512.png,og-image.png,maxsavdo-mark.png}`
   - Изменены: `apps/admin/index.html`, `apps/api/src/main.ts`, `analiz/tasks.md`, `analiz/done.md`
-- **Commit SHA:** см. вывод `git log -1` (BRAND-API-METADATA-001).
+- **Commit SHA:** `792b0a6` (не запушен).
 
 ---
 
