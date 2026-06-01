@@ -70,10 +70,15 @@ describe('MarkPaidUseCase', () => {
     adminRepo = {
       writeAuditLog: jest.fn().mockResolvedValue(undefined),
     };
+    const storesRepo = {
+      findBySellerId: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({}),
+    };
     useCase = new MarkPaidUseCase(
       subscriptionsRepo as unknown as SubscriptionsRepository,
       paymentsRepo as unknown as SubscriptionPaymentsRepository,
       adminRepo as unknown as AdminRepository,
+      storesRepo as any,
     );
   });
 
