@@ -5,6 +5,32 @@
 
 ---
 
+## 🔴 [SUBSCRIPTION-MODULE-001] Subscription/billing module — P0 launch blocker
+
+- **Домен:** `apps/api`, `packages/db`, `packages/types`, `apps/admin` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** 🔴 P0 — launch Phase 1 невозможен без этого (закрывает §7 business-model-v2).
+- **Контекст:** business-model-v2 §7 описывает state machine `trial → active → past_due → suspended → churned`. В коде сейчас НЕТ. Без него операционный ад на >30 платных продавцах.
+- **Дизайн готов:** [`docs/decisions/subscription-module-design-2026-06-01.md`](../docs/decisions/subscription-module-design-2026-06-01.md) — 15 секций (scope, schema, FSM, endpoints, use-cases, cron, edge cases, audit, error codes, Phase 2 readiness, files, DoD, estimate, open questions).
+- **Schema добавлен:** 4 enum'а + `Subscription` + `SubscriptionPayment` модели + 2 relations в `packages/db/prisma/schema.prisma`. Draft SQL: `packages/db/prisma/migrations/draft-20260601_subscription_module.sql`.
+- **Что осталось (~7 дней):**
+  1. Запустить `pnpm --filter db prisma migrate dev --name add_subscription_module` на dev (нужен DATABASE_URL).
+  2. `apps/api/src/modules/subscriptions/` — controller, dto, repos, 12 use-cases, plan-config.ts, BullMQ expiry processor.
+  3. `apps/api/src/modules/admin/admin-subscriptions.controller.ts` — extend-trial, mark-paid, comp, cancel, list.
+  4. Plan-limit guards в CreateProductUseCase, CreateOrderUseCase.
+  5. `packages/types/src/api/subscriptions.ts`.
+  6. Обновить `docs/V1.1/02_state_machines.md`, `05_error_taxonomy.md`, `06_feature_flags.md`.
+  7. ADR-010 на основе design doc.
+  8. Admin UI минимум (`apps/admin/src/pages/SubscriptionsPage.tsx`).
+- **Открытые вопросы для sign-off (см. §15 design doc):**
+  - Annual billing включаем сразу или только monthly Phase 1?
+  - GRACE = 7 дней ОК?
+  - Beta-cohort grandfathering — кого включаем (текущие ~50 sellers)?
+  - Reactivation после CHURNED — позволяем reset с нуля?
+- **Файлы (созданы 01.06):** `packages/db/prisma/schema.prisma` (+enum +model), `packages/db/prisma/migrations/draft-20260601_subscription_module.sql`, `docs/decisions/subscription-module-design-2026-06-01.md`.
+
+---
+
 ## 🟡 [BRAND-LOGO-SVG-CREATE-001] Создать SVG-исходники логотипа maxsavdo
 
 - **🆕 30.05.2026 — web-часть закрыта (Азим):** `<MaxsavdoMark>` на ветках web-buyer (`4e5d5b0`)
