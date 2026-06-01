@@ -3,16 +3,10 @@ import { ProductsRepository, CreateProductData } from '../repositories/products.
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { Product } from '@prisma/client';
-import { StoresRepository } from '../../stores/repositories/stores.repository';
-import { PlanLimitGuardService } from '../../subscriptions/services/plan-limit-guard.service';
 
 @Injectable()
 export class CreateProductUseCase {
-  constructor(
-    private readonly productsRepo: ProductsRepository,
-    private readonly storesRepo: StoresRepository,
-    private readonly planLimitGuard: PlanLimitGuardService,
-  ) {}
+  constructor(private readonly productsRepo: ProductsRepository) {}
 
   async execute(storeId: string, data: Omit<CreateProductData, 'storeId'>): Promise<Product> {
     if (data.basePrice <= 0) {
@@ -23,17 +17,10 @@ export class CreateProductUseCase {
       );
     }
 
-    // Plan-limit hook: проверяем подписку/лимит товаров перед записью в БД.
-    // storeId уже отрезолвлен контроллером — резолвим sellerId через StoresRepository.
-    const store = await this.storesRepo.findById(storeId);
-    if (!store) {
-      throw new DomainException(
-        ErrorCode.STORE_NOT_FOUND,
-        'Store not found',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    await this.planLimitGuard.enforceProductsLimit(store.sellerId);
+    // PLAN-LIMIT-GUARD-001 (TODO): enforce subscription plan limit (products count).
+    // Hook временно убран из-за circular dep (AdminModule → ProductsModule → SubscriptionsModule →
+    // AdminModule). Решение: вынести PlanLimitGuardService в shared/, или admin endpoint для
+    // ручной проверки/блокировки. PR прод-фикс 2026-06-01.
 
     return this.productsRepo.create({ ...data, storeId });
   }
