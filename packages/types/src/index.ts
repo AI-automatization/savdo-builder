@@ -14,3 +14,4 @@ export * from './api/notifications';
 export * from './api/wishlist';
 export * from './api/search';
 export * from './api/storefront';
+export * from './api/subscriptions';

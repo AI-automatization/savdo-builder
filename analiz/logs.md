@@ -1,6 +1,48 @@
 # Logs — локальные тесты и баги
 
-## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡→🟢 Реклассифицировано 24.05.2026
+## [2026-05-31] [WEB-AUDIT-BUYER-SELLER-001] Полный баг-аудит web-buyer + web-seller
+- **Статус:** ✅ 8 багов исправлено (запушено на deploy-ветки) / 🟡 5 найдено, НЕ фикшено (архитектура/env/Полат)
+- **Метод:** 6 параллельных code-review агентов по подсистемам, статический анализ
+  (tsc/build/тесты локально не гонялись — нет devDeps), каждая находка верифицирована чтением кода.
+
+### ✅ Исправлено (web-buyer `2efd38b`, web-seller `dcd5eb8`):
+1. **checkout double-submit** (buyer) — `handleConfirm` без синхронного замка: быстрый
+   double-tap создавал 2 заказа (mutateAsync не дедуплицирует). Добавлен `useRef`-замок. **Нарушало INV-C03.**
+2. **корзина «пусто» 60с** (buyer) — `useConfirmCheckout` писал `setQueryData(['cart'],null)`;
+   при частичном сбое clearCart возврат на /cart показывал пусто. → `invalidateQueries`.
+3. **totalAmount из устаревших subtotal** (buyer) — `useRemoveCartItem` ручной пересчёт → `invalidateQueries`.
+4. **утечка blob-URL** (seller) — `multi-image-uploader` `createObjectURL` без `revokeObjectURL`,
+   блобы висели всю сессию. Добавлен revoke при удалении + размонтировании.
+5. **priceOverride → 0** (seller) — variants-matrix при очистке поля затирал цену в 0 (`Number||0`) → `undefined`.
+6. **тихий unhandled rejection** (seller) — `product-variants` handleAdd без try/catch, форма висела молча → catch + `common.error`.
+7. **тихая потеря варианта** (seller) — create/page пропущенный вариант не считался failed,
+   баннер частичного сбоя молчал → `failedVariants++`.
+8. **stale отфильтрованные списки** (seller) — `use-products` `invalidateQueries(list())` матчил
+   только `list(undefined)` → префикс `['products','list']`.
+
+### 🟡 Найдено, НЕ исправлено (требует решения/не фронт-код):
+- **middleware не защищает dashboard** (seller `middleware.ts`) — токен в localStorage, на сервере
+  недоступен; защита только client-side. Фундаментально: нужен httpOnly-cookie (передизайн auth). **Решение за командой.**
+- **WEB-002: `NEXT_PUBLIC_API_URL` fallback на localhost** (оба, `lib/api/client.ts`/`env.ts`) — если env
+  не задан на Railway, прод бьёт в localhost. Уже задокументировано. **Фикс — env в Railway, не код.**
+- **hydration-flash auth** (оба, `lib/auth/context.tsx` + buyer checkout `useState`-init из localStorage) —
+  SSR=null, client=token → mismatch. В checkout это ОСОЗНАННЫЙ tradeoff (коммент в коде). Архитектурное.
+- ✅ **socket: re-join после reconnect** (оба `use-chat.ts`) — **ИСПРАВЛЕНО 31.05.2026.**
+  В `useChatSocket` не было `socket.on('connect', joinRoom)` → после сетевого разрыва socket.io
+  переподключался, но `join-chat-room` не переэмитился → собеседник в открытом треде переставал
+  получать `chat:message` пока не сменит тред. У web-seller вдобавок не было `leave-chat-room` в
+  cleanup → подписки на старые комнаты копились. Приведено к проверенному паттерну
+  `useBuyerSocket`/`useSellerSocket` тех же файлов. web-buyer `a1428c3`, web-seller `b976c67`.
+  tsc чист, `onMessage`/badge-логика не тронута. (Замечание «`use-seller-socket.ts` дубли
+  connect-listener» — ложная тревога: там один корректный connect-listener, дублей нет.)
+- ✅ **seller login: двойной редирект** (login page) — **ИСПРАВЛЕНО 31.05.2026.**
+  `handleVerify` делал `router.replace` в `onSuccess` мутации, а `useEffect([user])` делал ещё
+  один role-aware `router.replace` когда `useVerifyOtp.onSuccess` звал `login()` → setUser.
+  Двойная навигация + неоднозначность порядка. **Решение:** редирект отдан целиком `useEffect`
+  (источник истины — контекстный `user`, он же нужен для гарда «залогинен → зашёл на /login»);
+  `mutate.onSuccess` теперь только `track.otpVerified`. Хук пишет auth-состояние, useEffect владеет
+  навигацией — гонка исчезла. web-seller `bbbe92e`, tsc чист. (WEB-011 в исходной формулировке
+  — отсутствие `login()` + role-check — был закрыт ранее; это остаточная двойственность.)
 - **Статус:** 🟢 Root cause найден; frontend-фикс применён локально (uncommitted), backend-тикет заведён.
 - **Замечен:** через Playwright MCP в ходе `VERIFY-CHECKOUT-CONFIRM-500-001` (21.05.2026)
   на проде `savdo-builder-by-production.up.railway.app/azim-mnx4na25`.

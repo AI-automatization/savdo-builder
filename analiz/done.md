@@ -1,5 +1,415 @@
 # Done — Азим + Полат
 
+## 2026-05-31 (Азим) — seller login: убран двойной редирект
+
+### ✅ [WEB-SELLER-LOGIN-DOUBLE-REDIRECT-001] Двойная навигация после OTP-входа
+- **Важность:** 🟡 (auth-флоу). **Дата:** 31.05.2026
+- **Из known-issue** баг-аудита 31.05 (`WEB-AUDIT-BUYER-SELLER-001`, см. logs.md).
+- **Root cause:** `handleVerify` делал `router.replace` в `onSuccess` мутации, а `useEffect([user])`
+  делал ещё один role-aware `router.replace`, когда `useVerifyOtp.onSuccess` звал `login()` → setUser.
+  Два редиректа + неоднозначность порядка хук-vs-page onSuccess.
+- **Что сделано:** редирект отдан целиком `useEffect` (источник истины — контекстный `user`,
+  он же нужен для гарда «уже залогинен → зашёл на /login»). `mutate.onSuccess` теперь только
+  `track.otpVerified`. Разделение: хук пишет auth-состояние, useEffect владеет навигацией. tsc чист.
+- **Уточнение:** WEB-011 в исходной формулировке (нет `login()` + role-check) был закрыт ранее —
+  это была остаточная двойственность редиректа, не сам WEB-011.
+- **Файлы:** `apps/web-seller/src/app/(auth)/login/page.tsx` (`bbbe92e`) — на deploy-ветке.
+
+## 2026-05-31 (Азим) — chat socket re-join после reconnect
+
+### ✅ [WEB-CHAT-SOCKET-REJOIN-001] Чат не восстанавливал подписку после разрыва сети
+- **Важность:** 🟡 (real-time чат при нестабильной сети). **Дата:** 31.05.2026
+- **Из known-issue** баг-аудита 31.05 (`WEB-AUDIT-BUYER-SELLER-001`, см. logs.md).
+- **Root cause:** `useChatSocket` в обоих апах не вешал `socket.on('connect', joinRoom)` →
+  при socket.io reconnect (моргнула сеть) `join-chat-room` не переэмитился → пользователь
+  в открытом треде переставал получать `chat:message` до смены треда. web-seller вдобавок
+  не эмитил `leave-chat-room` в cleanup → подписки на старые комнаты копились при смене треда.
+- **Что сделано:** приведено к проверенному паттерну `useBuyerSocket`/`useSellerSocket`
+  (connect-listener для re-join + `socket.off('connect')` и `leave-chat-room` в cleanup).
+  `onMessage`/visibility/badge-логика не тронута. tsc чист в обоих.
+- **Файлы:** `apps/web-buyer/src/hooks/use-chat.ts` (`a1428c3`),
+  `apps/web-seller/src/hooks/use-chat.ts` (`b976c67`) — коммиты на deploy-ветках.
+
+## 2026-05-31 (Азим) — баг-аудит web-buyer + web-seller (8 фиксов)
+
+### ✅ [WEB-AUDIT-BUYER-SELLER-001] Полный аудит на баги + исправления
+- **Важность:** 🔴 (checkout/корзина — деньги) + 🟡. **Дата:** 31.05.2026
+- **Метод:** 6 параллельных code-review агентов, статический анализ, каждая находка верифицирована.
+- **Файлы (web-buyer `2efd38b`):** `app/(minimal)/checkout/page.tsx`, `hooks/use-cart.ts`, `hooks/use-checkout.ts`.
+- **Файлы (web-seller `dcd5eb8`):** `components/multi-image-uploader.tsx`, `components/variants-matrix-builder.tsx`,
+  `components/product-variants-section.tsx`, `app/(dashboard)/products/create/page.tsx`, `hooks/use-products.ts`.
+- **Исправлено 8:** checkout double-submit замок (INV-C03), корзина-null→invalidate, removeCartItem→invalidate,
+  blob-URL leak в загрузчике фото, priceOverride→undefined, handleAdd try/catch, failedVariants++ при пропуске,
+  invalidate префиксом по фильтрованным спискам. Детали — `analiz/logs.md [WEB-AUDIT-BUYER-SELLER-001]`.
+- **НЕ фикшено (5, см. logs.md):** middleware-auth (нужен httpOnly-cookie), WEB-002 env (Railway),
+  hydration-flash (архитектура), socket leave-room/reconnect, seller login double-onSuccess. Требуют решений/не фронт-код.
+- **✅ Запушено на origin** (web-buyer `2efd38b`, web-seller `dcd5eb8`, main-доки `b88cdf9`) — Railway передеплоивает оба апа.
+- **⚠️ Проверка:** tsc/build/тесты локально не гонялись (нет devDeps) — правки выверены статически; финальную типопроверку даст Railway-сборка.
+
+## 2026-05-31 (Азим) — лого: откат к первому font-based знаку (8224f02)
+
+### ✅ [BRAND-LOGO-REVERT-FIRST] вернуть первый inline-SVG лого на deploy-ветки
+- **Важность:** 🔴 P0 (visible brand). **Дата:** 31.05.2026
+- **Файлы:** `apps/web-buyer/src/components/brand/MaxsavdoLogo.tsx` (web-buyer `510602b`),
+  `apps/web-seller/src/components/brand/MaxsavdoLogo.tsx` (web-seller `d5c1a55`).
+- **Контекст:** попытки воспроизвести знак из brand-book (автотрассировка + геом-сборка)
+  упёрлись в источник — знак в JPG ~110px, чисто 1:1 без оригинального вектора/большого
+  PNG не выходит. Решение Азима: «забить, поставить первый лого».
+- **Что сделано:** на обеих deploy-ветках восстановлен файл лого из `8224f02` (font-based
+  монограмма «M», Inter w900, две половины через clipPath: левая theme-adaptive
+  `var(--color-text-primary)`, правая Champagne Gold `#C9A876` + золотая дуга-ручка).
+  API компонента (size/className/withWordmark) не менялся — use-sites не трогали.
+  Brand-image вариант (`maxsavdo-mark.png` на тёмной плашке) удалён из компонента,
+  PNG-ассет оставлен как dead-weight (не используется).
+- **Деплой:** запушено на origin (Railway redeploy обоих апов). На `main` лого и так уже
+  было первым (эксперименты жили только на deploy-ветках web-buyer/web-seller).
+
+## 2026-05-31 (Азим) — лого: убрана подложка + крупнее + тема-адаптив (2 версии знака)
+
+### ✅ [BRAND-LOGO — no-bg, bigger, theme-adaptive] доводка по фидбэку Азима
+- **Важность:** 🔴 P0 (visible brand). **Дата:** 31.05.2026
+- **Файлы:** web-buyer `af787df`, web-seller `a0380f3`:
+  `public/brand/maxsavdo-mark-light.png` (new), `MaxsavdoLogo.tsx`, `globals.css`,
+  Header/dashboard-layout/onboarding (size↑), smoke-тест (web-buyer).
+- **Фидбэк:** «зачем чёрный фон, из-за него лого кажется маленьким — убери фон, увеличь».
+- **Проблема:** просто убрать тёмную плашку нельзя — шапка тема-адаптивна (`--color-surface`
+  = `#FFFFFF` light / `#141414` dark), на светлой теме белая половина знака сливается.
+- **Решение (без подложки, работает в любой теме):**
+  - 2 версии знака: `maxsavdo-mark.png` (бел.+золото → тёмная тема) +
+    `maxsavdo-mark-light.png` (белая половина перекрашена canvas'ом в тёмный gunmetal
+    с лёгким глянцем, золото сохранено → светлая тема).
+  - `MaxsavdoLogo` рендерит обе `<img>` без подложки; переключение CSS-классами
+    `.maxsavdo-mark-on-{light,dark}` под `[data-theme="dark"]` (display ТОЛЬКО в globals.css —
+    inline-style перебил бы класс; тема всегда выставлена явно на `<html>`).
+  - Крупнее: высота знака = `size` (раньше 0.78×size внутри плашки); header 28→34,
+    seller dashboard/onboarding 24→30.
+- **Верификация:** Playwright-canvas мокап обеих версий на тёмной/светлой шапке —
+  читаются обе, фона нет. **Локально tsc/build не гонялись** (ПК).
+- **✅ Запушено** (web-buyer `7e3b2a3..af787df`, web-seller `8b5f50b..a0380f3`).
+
+## 2026-05-30 (Азим) — лого ФИНАЛ: реальный знак brand-book на тёмной плашке
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — знак = реальное изображение] финальное решение
+- **Важность:** 🔴 P0 (visible brand).
+- **Дата:** 30.05.2026 (ночь)
+- **Файлы:** web-buyer `7e3b2a3`, web-seller `8b5f50b`:
+  `apps/web-*/public/brand/maxsavdo-mark.png` (new),
+  `apps/web-*/src/components/brand/MaxsavdoLogo.tsx`, smoke-тест (web-buyer).
+- **Итог итераций:** Азим последовательно забраковал ВСЕ флэт-перерисовки знака
+  (симметричный зигзаг → угловатый v2 → pixel-trace): «не дорисовал», «вообще не
+  похоже». **Корневая причина:** оригинал (`logo-app-icon.jpg`) — глянцевый 3D-рендер
+  (фаски, объём, блики), плоский двухцветный вектор в принципе не выглядит как он.
+- **Решение (выбор Азима):** использовать САМ знак из brand-book.
+  - `maxsavdo-mark.png` — знак (M + ручка) вырезан из JPG с прозрачным фоном:
+    canvas, alpha по яркости+теплоте (white/gold → opaque, тёмная плитка → transparent),
+    crop по bbox знака без надписи MAXSAVDO. 512×308, ~44KB.
+  - `MaxsavdoLogo.tsx` рендерит знак `<img>` на тёмной (#0A0A0A) скруглённой плашке
+    (`borderRadius 26%`, мини app-icon badge). Плашка делает знак **тема-независимым**:
+    на светлой шапке — премиальный тёмный badge, на тёмной — плашка сливается, виден знак.
+    На светлой теме голый знак (бел. половина) сливался бы — поэтому плашка. API
+    (`size/className/withWordmark`) сохранён, SVG-вектор убран.
+- **Верификация:** мокап шапки (голый знак vs плашка × тёмная/светлая) через Playwright
+  canvas — плашка читается везде, голый знак на светлой теме исчезал. **Локально
+  tsc/build не гонялись** (ПК) — img+inline-style, тип-риска нет.
+- **✅ Запушено** (web-buyer `4edd427..7e3b2a3`, web-seller `68b1e1e..8b5f50b`).
+- **favicon/app-icon/OG** уже из реального JPG (ранее) — консистентно. **Остаток
+  BRAND-LOGO:** admin/email/TG-бот иконки — Полат.
+- **Урок на будущее:** для глянцевого 3D-лого не делать флэт-перерисовку — использовать
+  сам растр (вырезка с прозрачным фоном) или просить профи-вектор (Vectorizer.ai).
+
+## 2026-05-30 (Азим) — лого: ЗНАК ВЕКТОРИЗОВАН по пикселям brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — pixel-trace знака] настоящая векторизация
+- **Важность:** 🔴 P0 (visible brand).
+- **Дата:** 30.05.2026 (поздний вечер)
+- **Файлы:** web-buyer `4edd427`, web-seller `68b1e1e`:
+  `apps/web-*/src/components/brand/MaxsavdoLogo.tsx`, smoke-тест (web-buyer).
+- **Проблема:** угловатый знак v2 (утром) Азим тоже забраковал — «векторный что-то не то».
+  Причина вскрылась при векторизации: **реальный знак асимметричный** (левая «N»-форма:
+  нога + диагональ; правая половина M + ручка-сумка), а я рисовал симметричный зигзаг M.
+- **Что сделано — реальная векторизация `logo-app-icon.jpg`:** через Playwright canvas
+  прочитал пиксели, color-threshold на 3 класса (белый/золото/фон, тёплые пиксели → золото
+  приоритетно), marching-squares трассировка контуров + chaining петель + RDP-упрощение,
+  фильтр мелких петель. Результат — **2 filled-пути ~1KB**: `WHITE_D` (левая N-форма,
+  theme-adaptive `var(--color-text-primary)`) + `GOLD_D` (правая M + ручка, Champagne Gold),
+  `fill-rule=evenodd`. Силуэт **1:1 повторяет brand-book**.
+- **Верификация:** итеративный Playwright render-compare трассировки рядом с JPG (классификация
+  → маска → контуры → preview, 3 прохода), сверка на тёмной/светлой теме + 16/24/32/48px +
+  локап. Скриншоты — локальный черновик (убран). **Локально tsc/build не гонялись** (ПК) —
+  чистые data-строки в JSX, тип-риска нет.
+- **✅ Запушено** (web-buyer `e8f7ac1..4edd427`, web-seller `790f0d7..68b1e1e`).
+- **Метод повторяем:** PNG/трассировка из растра — браузерный canvas через `browser_evaluate`
+  (страница и картинка на одном origin, локальный http :8799). Детали — [[project-logo-geometric-not-vectorized]].
+- **Иконки** (favicon/app-icon/OG = реальный JPG из утреннего `e8f7ac1`/`790f0d7`) — не трогались,
+  гибрид в силе. **Остаток BRAND-LOGO:** admin/email/TG-бот иконки — Полат.
+
+## 2026-05-30 (Азим) — лого: угловатый знак v2 + реальные иконки из brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — знак v2 + иконки] гибрид вектор/JPG
+- **Важность:** 🔴 P0 (visible brand — Азим заметил, что знак не похож на brand-book).
+- **Дата:** 30.05.2026
+- **Файлы:** web-buyer `e8f7ac1`, web-seller `790f0d7`:
+  `apps/web-*/src/components/brand/MaxsavdoLogo.tsx`,
+  `apps/web-*/src/app/{icon,apple-icon,opengraph-image}.png` (new),
+  удалены `{icon.svg,apple-icon.tsx,opengraph-image.tsx}`,
+  web-buyer `public/icon-{192,512}.png` + `manifest.ts` + smoke-тест + OG alt.txt.
+- **Проблема:** знак в шапке = тонкий симметричный зигзаг с острыми square-углами
+  (stroke 13, мелкая впадина) + широкая ручка r14.5 → читался как шрифтовая «W/M»,
+  не как премиальная сумка brand-book. favicon (`icon.svg`) — вообще старая font-«M».
+- **Решение — гибрид (обоснование: фото в шапке = тёмный квадрат на белом + дубль
+  вордмарка; вектор как favicon беднее готового 3D-знака):**
+  - **Шапка → вектор:** новая геометрия `M 28 81 L 28 32 L 50 73 L 72 32 L 72 81`,
+    stroke 15, **miter + butt** (острые углы, плоские вершины), ручка `r10.5` в
+    центральной выемке. Theme-adaptive (левая половина `var(--color-text-primary)`,
+    правая Champagne Gold) и API (`size/className/withWordmark`) сохранены.
+  - **favicon/app-icon/OG → реальный brand-book JPG** (`logo-app-icon.jpg`),
+    canvas-resize в PNG: icon 96, apple 180, OG 1200×630 (знак центрирован на #0A0A0A),
+    PWA 192/512. Там тёмная плитка к месту = 1:1 с brand-book.
+- **Верификация:** итеративный Playwright render-compare знака рядом с brand-book
+  JPG (6 вариантов A–G → FINAL), сверка на тёмной/светлой теме + размеры 16–48px +
+  мокап шапки. Скриншоты — локальный черновик (не в гите). **Локально tsc/build не
+  гонялись** (ПК; worktree без node_modules) — изменения JSX-атрибутов + статика,
+  тип-риска нет; финальный прогон — Railway-сборка.
+- **✅ Запушено** (web-buyer `4e5d5b0..e8f7ac1`, web-seller `8049c2a..790f0d7`).
+- **Остаток BRAND-LOGO-SVG-CREATE-001:** точная 1:1-векторизация JPG (Vectorizer.ai)
+  для пиксель-в-пиксель знака — опционально, текущий вектор визуально совпадает.
+  admin/email/TG-бот иконки — зона Полата.
+
+## 2026-05-30 (Азим) — UZ-терминология: cross-app унификация закрыта
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001 — терминология] cross-app унификация uz
+- **Важность:** 🟢 P3 (polish).
+- **Дата:** 30.05.2026
+- **Файлы:** `apps/web-seller/src/lib/i18n/uz.ts` (ветка web-seller `8049c2a`).
+- **Контекст:** «продолжаем» → выбрана UZ-терминология. При сверке выяснилось, что
+  аудит-файл `uz-translation-review-2026-05-30.md` и секция «Осталось» в tasks.md
+  **устарели**: описывали правки как невыполненные, хотя `8b24117` их уже закрыл.
+  (Память `feedback-git-log-content-vs-hash` в действии — сверял реальный контент
+  веток через `git show`, не аудит.)
+- **Что было по факту на ветках:**
+  - `orders.nextProcess`/`orders.detail.nextProcess` = `Jarayonga olish` ✅ (`8b24117`)
+  - `orders.status.PENDING` = `Kutilmoqda` в обоих аппах ✅ (`8b24117`)
+  - `theme.light/dark` = `Yorugʻ/Qorongʻu` в обоих ✅
+- **Что сделано сегодня:** единственное остававшееся расхождение — `theme.system`:
+  `Tizim kabi`(seller) vs `Tizim sozlamasi`(buyer). Унифицировано seller →
+  `Tizim sozlamasi` (значение buyer — публичный conversion-first апп + стандартная
+  UI-формулировка). One-line change, string-only (тип-риска нет).
+- **Верификация:** изменение строкового значения в object-литерале — `tsc` не затрагивается;
+  локальный build запрещён (ПК). uz↔ru паритет ключей не нарушен (1 значение).
+- **✅ Запушено** (web-seller `3481054..8049c2a`) — Railway деплоит.
+- **Остаток задачи:** только ручной прод-тест RU/UZ-свитчера (за auth-гейтом, нужен
+  реальный вход Азима) — остаётся 🟡 в tasks.md.
+
+## 2026-05-30 (Азим) — логотип: шрифтовая «M»-заглушка → геометрический знак brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — web-часть] MaxsavdoMark по brand-book v2
+- **Важность:** 🔴 P0 (visible brand).
+- **Дата:** 30.05.2026
+- **Файлы:** `apps/web-buyer/src/components/brand/MaxsavdoLogo.tsx` (ветка web-buyer `4e5d5b0`),
+  `apps/web-buyer/src/__tests__/smoke/MaxsavdoLogo.test.tsx` (там же),
+  `apps/web-seller/src/components/brand/MaxsavdoLogo.tsx` (ветка web-seller `3481054`).
+- **Контекст:** Азим заметил, что лого на проде не совпадает с brand-book JPG. Причина — `<MaxsavdoMark>`
+  рендерил **шрифтовую «M»** (Inter glyph, split clipPath) как осознанную stopgap-заглушку; настоящий
+  знак в вектор не переводили (задача висела открытой).
+- **Что сделано:** заменил заглушку на **геометрическую монограмму-сумку** из `logo-app-icon.jpg`:
+  «M» из двух штанг (`M 27 80 L 27 40 L 50 72 L 73 40 L 73 80`, stroke 13) — левая половина
+  theme-adaptive (`var(--color-text-primary)`), правая Champagne Gold через clip `x≥50`; золотая
+  полукруглая ручка-сумка (`A 14.5`) над впадиной. API компонента (`size`/`withWordmark`/`className`)
+  не изменён. Smoke-тест web-buyer обновлён под новую геометрию (handle-дуга + path-слои вместо `<text>`).
+- **Верификация:** визуально подтверждено Playwright-рендером SVG (обе темы, light/dark) до заливки.
+  **Локально vitest/tsc не прогнаны** — в checkout'ах веток нет devDeps (vitest/@testing-library),
+  install не делался (риск зависания ПК). Финальный прогон тестов — CI/Railway или `pnpm --filter
+  web-buyer test` в полном окружении. Знак — геометрическая реконструкция растра, НЕ пиксель-в-пиксель
+  векторизация: для 1:1 остаётся прогон JPG через Vectorizer.ai/Recraft (остаток BRAND-LOGO-SVG-CREATE-001).
+- **✅ Запушено 30.05.2026** (web-buyer `4e5d5b0`, web-seller `3481054`) — Railway передеплоивает,
+  лого едет на прод. Проверить после деплоя: шапка buyer/seller показывает геом. знак, не шрифтовую «M».
+
+## 2026-05-30 (Азим) — сессия «продолжаем»: 4 кандидата (сверка бэка, прод-чек, UZ-review, GTM UZ)
+
+### ✅ [FE-BACK-GAP-CHECK-001] Сверка свежего бэка Полата (denorm/city) против фронта
+- **Важность:** 🟢 P3 (verify).
+- **Дата:** 30.05.2026
+- **Файлы:** none (анализ; правка на main отменена как no-op).
+- **Что сделано:** сверил denorm `totalStock`/`hasVariants` (`fc9a112`) + city-normalization
+  (`1f9164d`) против web-buyer/web-seller.
+  - `totalStock` теперь задекларирован в `ProductListItem` (`packages/types`); временный cast
+    `(product as { totalStock?: number })` в `ProductCard.tsx` **уже снят на деплой-ветке `web-buyer`**
+    (line 59 = `product.totalStock === 0`). На `main` копия web-buyer-дерева устарела (известный
+    main↔branch drift, back-port не делается) → правку main откатил как no-op для прода.
+  - `hasVariants` — backend-only денорм; фронт выводит из `variantCount` → **гэпа нет**.
+  - city-normalization — серверная; checkout шлёт free-text `{street, city}` → фронт не меняется → **гэпа нет**.
+
+### ✅ [FE-PROD-DEPLOY-CHECK-001] Прод-чек buyer/seller после brand-rollout
+- **Важность:** 🟢 P3 (verify).
+- **Дата:** 30.05.2026
+- **Файлы:** none (Playwright MCP, прод).
+- **Что сделано:** оба прода живы — buyer `savdo-builder-by-production` (title «maxsavdo», шапка
+  wordmark + M-mark), seller `savdo-builder-sl-production` (title «maxsavdo — Seller Dashboard»).
+  Brand rollout в проде, регрессий не видно. Пункты «Поддержка» (buyer profile-меню / seller settings)
+  за OTP-гейтом — анонимно end-to-end не проверяемы, нужен реальный вход Азима.
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001 — review-материал] side-by-side ru↔uz
+- **Важность:** 🟡 P2.
+- **Дата:** 30.05.2026
+- **Файлы:** `analiz/audits/uz-translation-review-2026-05-30.md` (новый); генератор — `C:/tmp/uzrev/build.mjs` (вне репо).
+- **Что сделано:** авто-генерация ru↔uz таблиц всех ключей (web-buyer 532 + web-seller 536) с веток.
+  Парсер покрыл 532/532 + 536/536 ключей. **Орфография чистая:** 0 кириллицы, 0 пропусков ключей,
+  0 дословных ru-совпадений, 0 кудрявых кавычек/мисплейснутых U+02BB. `maʼlumot`/`isteʼmol` корректно
+  через ʼ U+02BC, `oʻ/gʻ` через ʻ U+02BB. Машинных дефектов нет — остаётся нативная вычитка Азима
+  на естественность (полный список в файле). Первая эвристика дала 20 ложных флагов (U+02BC принят за
+  дефект) — переписана под корректную узб. орфографию (две легитимные буквы-модификатора).
+
+### ✅ [GTM-PHASE-A-UZ-SCRIPT-001] Нативный UZ outreach-скрипт
+- **Важность:** 🟡 P2 (GTM-подготовка).
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/business/gtm-phase-a-2026-05-30.md`.
+- **Что сделано:** заполнен placeholder «UZ-вариант — Азим адаптирует» — добавлены 3 узб. скрипта
+  (первое касание DM, follow-up, мягкий вариант для TG-чатов продавцов) + глоссарий ценностного
+  оффера (komissiya/obuna/buyurtma/yetkazib berish/...). Орфография oʻ/gʻ→U+02BB, тутук→U+02BC.
+  Помечено как черновик под нативную финальную сверку Азима.
+
+## 2026-05-30 (Азим) — BRAND-WEB-SOFT-COLOR-CLEANUP-001 закрыт (no-op)
+
+### ✅ [BRAND-WEB-SOFT-COLOR-CLEANUP-001] Deprecated Soft Color tokens
+
+- **Важность:** 🟢 P3.
+- **Дата:** 30.05.2026
+- **Файлы:** none (verify-only).
+- **Что сделано:** grep по обеим ветками web-buyer + web-seller (`src/`, `globals.css`,
+  `tailwind.config.ts`) на `terracotta`/`cream`/`violet`/старые hex
+  (`#818CF8`/`#7C3AED`/`#FBF7F0`/`#F4EEE0`)/`deprecated` — **0 совпадений**. Brand rollout
+  25.05 заменил `globals.css` целиком (не оставил deprecated-токены) → удалять нечего.
+  Закрыто как no-op на основании grep-доказательства.
+
+---
+
+## 2026-05-30 (Азим, docs/design) — BRAND-LIQUID-AUTHORITY-MIGRATION-001 закрыт
+
+### ✅ [BRAND-LIQUID-AUTHORITY-MIGRATION-001] Design-system v2
+
+- **Важность:** 🟡 P2.
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/design/maxsavdo-design-v2.md` (новый), `docs/design/liquid-authority.md`
+  (deprecation-баннер), `docs/brand/maxsavdo-brand-v2.md` (§Связано), `CLAUDE.md` (2 ссылки).
+- **Что сделано:** выбран вариант «новый документ + deprecate старый» (liquid-authority
+  титулован старым концептом violet/slate — inplace-правка ввела бы в заблуждение).
+  - `maxsavdo-design-v2.md` — новый источник правды. Палитра/лого/типографика **не
+    дублируются** — ссылка на brand-v2 (single source). Перенесены и обновлены под Dark
+    Luxury: концепция, component-паттерны (кнопки/инпуты/карточки/таблицы/нав), 8px grid,
+    UX-принципы, запреты. Добавлено: разделение поверхностей **storefront (brand-forward)
+    vs dashboard (functional)**, фиксация дефолтов тем (ADR-009), таблица «что изменилось
+    vs Liquid Authority v1.0».
+  - `liquid-authority.md` — ⚠️ DEPRECATED баннер сверху, оставлен для истории.
+  - Ссылки синхронизированы: brand-v2 §Связано + `CLAUDE.md` (design-doc path + «перед
+    UI-задачей читать» → design-v2).
+
+---
+
+## 2026-05-30 (Азим, web-buyer + web-seller) — SUPPORT-CHANNEL-001 фронт-часть
+
+### ✅ [SUPPORT-CHANNEL-001 part front] Ссылка «Поддержка» в web-buyer + web-seller
+
+- **Важность:** 🟠 P1 (Support 5.5 → 6.5, should-pass для launch). Тикет
+  остаётся открыт — back-часть Полата (создать канал + tma/admin + env).
+- **Дата:** 30.05.2026
+- **Файлы:**
+  - web-buyer (`74dcbd8`): `apps/web-buyer/src/app/(shop)/profile/page.tsx`,
+    `src/lib/i18n/{ru,uz}.ts`.
+  - web-seller (`25f0182`): `apps/web-seller/src/app/(dashboard)/settings/page.tsx`,
+    `src/lib/i18n/{ru,uz}.ts`.
+- **Что сделано:**
+  - **web-buyer:** пункт «Поддержка» в profile-меню (рядом с «Помощь»). `MenuRow`
+    расширен опцией `external` → рендерит `<a target=_blank rel=noopener>` + иконка
+    `ExternalLink` вместо `ChevronRight`.
+  - **web-seller:** секция «Поддержка» в settings (правая колонка, по образцу
+    `StoreCategoriesSection`), внешняя ссылка.
+  - **Ключевое решение — env-var + фолбэк на бот:**
+    `SUPPORT_URL = process.env.NEXT_PUBLIC_SUPPORT_URL ?? https://t.me/${BOT}`.
+    Канала ещё нет (создаёт Полат) → ссылка ведёт на работающий бот, **битой
+    ссылки в проде не бывает**. Когда Полат выставит `NEXT_PUBLIC_SUPPORT_URL`
+    в Railway-env — ссылка апгрейдится на канал без правок кода и без угадывания handle.
+  - i18n ru+uz в обоих апах.
+- **Верификация:** web-buyer `tsc` 0 + 27/27 smoke; web-seller `tsc` 0 + 15/15 smoke.
+- **Env-гэп по дороге:** web-seller test-devDeps (vitest/jest-dom) не были слинкованы
+  в рабочем checkout (node_modules не branch-specific, последний install шёл по
+  lockfile main, где у web-seller нет vitest — дивергенция деплой-веток). Лечится
+  `pnpm install` на ветке web-seller. На прод не влияет.
+- **Осталось (Полат):** создать канал + handle, выставить `NEXT_PUBLIC_SUPPORT_URL`
+  env в web-buyer/web-seller, ссылки в tma/admin.
+
+---
+
+## 2026-05-30 (Азим, docs/adr) — BRAND-DARK-VS-LIGHT-DEFAULT-001 решён (ADR-009)
+
+### ✅ [BRAND-DARK-VS-LIGHT-DEFAULT-001] Default theme web-buyer = `system`
+
+- **Важность:** 🟡 P1 (open product-decision, блокировал brand-rollout closure).
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/adr/ADR-009_web_buyer_default_theme_system.md` (новый),
+  `analiz/tasks.md` (тикет закрыт + ссылка в BRAND-LIQUID-AUTHORITY обновлена).
+- **Решение:** оставляем `system`, **кода не меняем**. web-buyer —
+  conversion-first storefront; форсировать `dark` рискованно: (1) UGC-фото
+  товаров на белом фоне дают «вырезы» на тёмном; (2) рынок UZ светлый
+  (Uzum/Olcha/Asaxiy); (3) нет аналитики конверсии для слепого A/B.
+  `system` не жертвует брендом — OS-dark юзеры видят Dark Luxury; бренд работает
+  через gold accent + лого + Inter в обеих темах, а полноценный dark — на
+  seller-dashboard (там default уже `dark`) + маркетинге + боте.
+- **Пересмотр:** когда подключим Sentry frontend + событийный трекинг —
+  тогда можно A/B `dark` vs `system` с мониторингом и откатом (отдельный тикет).
+
+---
+
+## 2026-05-30 (Азим, docs/business) — BIZ-FOLDER-AZIM-001 закрыт (3 бизнес-документа)
+
+### ✅ [BIZ-FOLDER-AZIM-001] Наполнить `docs/business/`
+
+- **Важность:** 🟡 P2 — нужно команде, Полат ждал business-контент от Азима.
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/business/one-pager-2026-05-30.md`,
+  `docs/business/gtm-phase-a-2026-05-30.md`,
+  `docs/business/financial-model-2026-05-30.md`.
+- **Что сделано:** созданы 3 документа, производных от существующего
+  `business-plan-v1-2026-05-22.html` (не выдуманные цифры — извлечены/реструктурированы
+  из плана, источники указаны):
+  - **one-pager** — сжатый pitch: проблема, рынок (TAM/SAM/SOM), модель, тарифы,
+    финансовая траектория, отстройка, статус продукта.
+  - **gtm-phase-a** — actionable план привлечения первых 20–30 продавцов: ICP,
+    скрипт первого касания (RU + плейсхолдер UZ), воронка с целевыми числами,
+    шаблон-трекер outreach (реальные имена заполняет Азим в приватном Sheet —
+    НЕ в репо), онбординг-чеклист, метрики успеха.
+  - **financial-model** — revenue-сторона с раскрытой и проверенной математикой
+    (ARPU = Σ доля×цена; FX 12 500 UZS/$), cost-сторона помечена `⚠️ ASSUMPTION`
+    (в плане её нет — Азиму заполнить реальными счетами Railway/R2).
+- **Найденные нестыковки плана (зафиксированы для Азима в §6 модели):**
+  1. ARPU Год 2/3: расчёт по mix даёт 310k/400k, план указывает 340k/420k (~5–9%).
+  2. Цель «$5k MRR на 50 paying sellers» — арифметически 50×Starter/Pro ≈ $1.4k MRR,
+     не $5k. Для $5k нужен Business-heavy mix или ~180 sellers. Вопрос к Азиму.
+- **Что НЕ сделано (требует ввода Азима, не блокер):** реальные инфра-косты,
+  канонический ARPU-mix, подтверждение Phase B бюджета — для financial-model v2.
+- **Push:** требует решения (docs на main; outward-facing — см. примечание сессии).
+
+---
+
+## 2026-05-27 (Азим, web-buyer) — API-FRONTEND-TESTS-001 закрыт (web-buyer + web-seller smoke зелёный)
+
+### ✅ [API-FRONTEND-TESTS-001 part web] vitest smoke — web-buyer 27 + web-seller 15 = 42 теста
+
+- **Важность:** 🟢 P3 tech-debt из Полатовского `API-FRONTEND-TESTS-001` (admin ✅ 10 + TMA ✅ 14 уже закрыты). Закрывает web-фронты.
+- **Дата:** 27.05.2026
+- **Файлы (web-buyer):** `apps/web-buyer/src/__tests__/smoke/{HelpContent,i18n,MaxsavdoLogo,phone,uz-canonical}.test.tsx`, коммит `30f83da` ветка `web-buyer`.
+- **Файлы (web-seller, без правок 27.05):** `apps/web-seller/src/__tests__/smoke/{buyer-url,i18n,uz-canonical}.test.ts*` уже на ветке `web-seller`.
+- **Что сделано:**
+  - **Прогон baseline:** 18/20 на web-buyer падали — 2 теста стухли после brand rollout 25.05.
+    - `HelpContent`: ожидал `support@savdo.uz`, после ребренда там `support@maxsavdo.uz` → обновил regex. Дополнительно переехал с `screen.getByText(/.../)` на `container.textContent.match(/.../)` — `getByText` капризничает на regex-substring внутри `<p>` (false negative).
+    - `i18n`: ключ `orders.filter.unread` был удалён из dict (Wave 2 UZ refactor) → переехал на стабильный `store.inStock` (`'В наличии · {count} шт'`) как тестовый носитель `{count}`-интерполяции.
+  - **Новый файл `MaxsavdoLogo.test.tsx` (7 тестов):** role/aria-label, wordmark toggle, size прокидывание, bag-handle path (Q-curve `M 35 22 Q 50 4 65 22`), Champagne Gold `#C9A876` на правой половине M, `var(--color-text-primary)` (theme-aware) на левой. Защита от случайной порчи SVG после того как Полат vectorize'нет JPG в финальный SVG (`BRAND-LOGO-SVG-CREATE-001`).
+  - **web-seller (3 файла) прогнал без правок** — 15/15 passed на ветке `web-seller`.
+- **Финальный score:** web-buyer 27/27 (5 файлов), web-seller 15/15 (3 файла) = **42 теста smoke**.
+- **CI:** `.github/workflows/ci-web-buyer-tests.yml` + `ci-web-seller-tests.yml` уже на main с момента предыдущих волн — теперь push в `web-buyer`/`web-seller` запускает зелёный прогон.
+- **ProductCard OOS regression не покрыт unit-тестом:** ProductCard слишком завязан на `useRouter` / `useAuth` / `useWishlist` / TanStack Query — mock-heavy тест для smoke-уровня не оправдан. Фикс защищён ручным QA + e2e на будущее (если когда-то поднимем Playwright). totalStock-cast в ProductCard можно убрать — Полат закрыл `API-PRODUCT-LIST-TOTAL-STOCK-TYPE-001` 25.05 (см. ниже).
+
+---
+
 ## 2026-05-26 (Полат, apps/api) — Admin recalc-denorm endpoint (backfill для API-PRODUCT-DENORMALIZED-FIELDS-001)
 
 ### ✅ Admin endpoint `POST /api/v1/admin/products/recalc-denorm`

@@ -3,52 +3,61 @@
 Домен: `apps/web-buyer`, `apps/web-seller`
 Нельзя трогать: `apps/api`, `packages/db`, `apps/admin`, `apps/mobile-*`
 
-Обновлено: 01.04.2026
+Обновлено: 31.05.2026
+
+> ⚠️ **ВАЖНО — где живёт фронт-код:** i18n (`uz.ts`/`ru.ts`) и многие фронт-фичи
+> существуют ТОЛЬКО на ветках `web-buyer`/`web-seller`, НЕ на `main` (main держит
+> устаревший snapshot). Railway деплоит с этих веток. Правки для прода — на ветках,
+> сверять состояние через `git show <branch>:<file>`, не по `main` и не по аудит-файлам.
 
 ---
 
-## 🔴 Критические (блокируют работу)
+## 🟢 Состояние на 31.05.2026: фронт-код-очередь пуста
 
-- [ ] **[WEB-001]** Убрать дублирование `PaginationMeta`
-  - Проблема: `PaginationMeta` объявлен в двух местах — TS2308
-  - `packages/types/src/api/orders.ts` — оставить, это источник истины
-  - `apps/web-buyer/src/common.ts` или `apps/web-seller/src/common.ts` — удалить локальный, импортировать из `packages/types`
-  - **Не трогать** `packages/types` — только удалить дубль в web-*
-
-- [ ] **[WEB-002]** Добавить `NEXT_PUBLIC_API_URL` в Railway Variables
-  - В Railway → `savdo-builder-by` (web-buyer) → Variables:
-    `NEXT_PUBLIC_API_URL=https://savdo-api-production.up.railway.app`
-  - В Railway → `web-seller` сервис → Variables: то же самое
-  - После этого передеплоить оба сервиса
+Все выполнимые фронт/brand-задачи закрыты. Активных 🔴-багов в web-домене, которые
+чинятся в коде Азима, нет — фронтовые баги в `logs.md` уже защищены адаптерами,
+корневые причины у Полата (бэк/контракты). Прод buyer+seller отдают 200, бренд раскатан.
 
 ---
 
-## 🟡 Важные (текущий спринт)
+## 🔴 Остаток за Азимом — но это НЕ код
 
-- [ ] **[WEB-003]** Смержить `feature/api-layer` → `main`
-  - Только после того как WEB-001 и WEB-002 выполнены
-  - Проверить что билд проходит локально перед мержем
+- [ ] **[LEGAL-OFFER-REQUISITES-001]** — 🔒 **заблокирован бизнесом.**
+  Нужны реквизиты ИП/ООО (регистрация юрлица). После регистрации — 30 мин правки
+  placeholder в `apps/web-buyer/src/app/offer/page.tsx:71-75` (ИНН/ОКЭД/юр.адрес/счёт)
+  + MX `support@/legal@maxsavdo.uz`. До регистрации делать нечего.
 
-- [ ] **[WEB-004]** Проверить `GET /api/v1/storefront/stores/:slug`
-  - Endpoint **уже реализован** в backend (`products.controller.ts`)
-  - Нужно проверить что `storefront-server.ts` вызывает правильный URL
-  - Убедиться что ответ совпадает с контрактом в `docs/contracts/`
-
-- [ ] **[WEB-005]** Проверить ISR на `[slug]/page.tsx`
-  - `revalidate: 30` — убедиться что работает в продакшне (Railway)
-  - Протестировать: изменить магазин → через 30с страница обновилась
+- [ ] **[WEB-UZ-TRANSLATION-REVIEW-001]** — терминология ЗАКРЫТА (`8b24117`, `8049c2a`).
+  Остался ТОЛЬКО ручной прод-тест RU/UZ-свитчера за auth-гейтом (нужен реальный вход
+  Азима — анонимно/агентом не проверить) + нативная вычитка узбекского на естественность.
+  Side-by-side аудит: `analiz/audits/uz-translation-review-2026-05-30.md` (орфография
+  чистая, 0 дефектов).
 
 ---
 
-## 🟢 Обычные
+## ✅ Закрыто (детали — в `done.md`)
 
-- [ ] **[WEB-006]** `web-seller` dashboard — проверить loading skeletons на медленном соединении
-- [ ] **[WEB-007]** `web-buyer` ProductCard — убедиться что `ProductListItem` из `packages/types` покрывает все поля
+- **[BRAND-LOGO]** — лого maxsavdo. Сага из ~8 итераций (font-based → геом → pixel-trace →
+  brand-image → 2-img CSS → revert → opencv-трассировка). **ФИНАЛ 31.05:** откат к ПЕРВОМУ
+  font-based знаку (`8224f02`): Inter «M» w900, split clipPath theme-adaptive + золотая
+  Q-дуга. web-buyer `510602b`, web-seller `d5c1a55`, запушено. Из brand-book JPG (знак
+  ~110px) чистый вектор невозможен — для «идеала» нужен оригинальный .svg/.ai от дизайнера.
+- **[BRAND-PALETTE / FONT / TOKENS / UI-REPLACE]** — палитра Dark Luxury, Inter,
+  Tailwind-токены, ребренд UI обоих апов. Закрыто 25.05.
+- **[SUPPORT-CHANNEL-001]** (фронт-часть) — пункт «Поддержка» в web-buyer profile +
+  web-seller settings, `NEXT_PUBLIC_SUPPORT_URL` с фолбэком на бот. Закрыто 30.05.
+- **[FAQ-001]** — `/help` 8 Q&A ru+uz. Закрыто 21.05.
+- **[FRONTEND-SMOKE part A/B]** — vitest smoke (helpers/i18n/uz-canonical). part C — осознанный SKIP.
+- **[WEB-001/002]** (старые, 01.04) — фактически закрыты: прод собирается и работает
+  (PaginationMeta-TS2308 не блокирует билд, `NEXT_PUBLIC_API_URL` выставлен — иначе API
+  на проде бил бы в localhost). Если всплывёт — перепроверить, но активной проблемы нет.
 
 ---
 
-## ℹ️ Контекст
+## ⏭️ Не твоё — критпуть к лончу (бизнес / Полат)
 
-- `GET /storefront/stores/:slug` — **уже есть в backend**, не нужно просить Полата добавлять
-- `PaginationMeta` дубль — исправить только в web-* коде, не в packages/types
-- Env переменные в `.env.example` уже заполнены — нужно только добавить в Railway Dashboard
+- Регистрация юрлица → разблокирует LEGAL + платежи (Click/Payme после бизнес-счёта).
+- Ops Полата: UptimeRobot, Sentry DSN, watch-patterns fix (sl/by ждут Railway-дашборда,
+  `logs.md` ~1371), выставить `NEXT_PUBLIC_SUPPORT_URL` в Railway-env когда создаст канал.
+- GTM Phase A: outreach-лист Азима на 20–30 продавцов (работа, но не код).
+  Черновик скриптов: `analiz/gtm-phase-a-2026-05-30.md` (под нативную сверку).

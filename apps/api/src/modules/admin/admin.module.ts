@@ -107,5 +107,6 @@ import { MediaModule } from '../media/media.module';
     AuditBrokenMediaUrlsUseCase,
     ActivateSellerOnMarketUseCase,
   ],
+  exports: [AdminRepository],
 })
 export class AdminModule {}
