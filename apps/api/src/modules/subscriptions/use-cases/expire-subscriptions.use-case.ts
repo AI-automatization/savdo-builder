@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SubscriptionsRepository } from '../repositories/subscriptions.repository';
 import { AdminRepository } from '../../admin/repositories/admin.repository';
+import { StoresRepository } from '../../stores/repositories/stores.repository';
 import { GRACE_DAYS } from '../plan-config';
 
 /**
@@ -23,6 +24,7 @@ export class ExpireSubscriptionsUseCase {
   constructor(
     private readonly subscriptionsRepo: SubscriptionsRepository,
     private readonly adminRepo: AdminRepository,
+    private readonly storesRepo: StoresRepository,
   ) {}
 
   async execute(now: Date = new Date()): Promise<{ trial: number; active: number; suspended: number }> {
@@ -47,12 +49,23 @@ export class ExpireSubscriptionsUseCase {
     }
 
     // 3. PAST_DUE → SUSPENDED (grace истёк)
+    // BILLING design §7: SUSPENDED subscription → store.isPublic=false (НЕ status=SUSPENDED).
+    // status=SUSPENDED зарезервирован для admin moderation; isPublic — для subscription enforcement.
+    // Это даёт чистую семантику: admin может SUSPEND store независимо от subscription, и обратно.
     const expiredGrace = await this.subscriptionsRepo.findExpiredGrace(now);
     for (const sub of expiredGrace) {
       await this.subscriptionsRepo.update(sub.id, { status: 'SUSPENDED', suspendedAt: now });
+      // Hide store from storefront (если был публичный)
+      try {
+        const store = await this.storesRepo.findBySellerId(sub.sellerId);
+        if (store && store.isPublic) {
+          await this.storesRepo.update(store.id, { isPublic: false });
+          this.logger.log(`Store ${store.id} hidden (isPublic=false) due to subscription suspension`);
+        }
+      } catch (e) {
+        this.logger.error(`Failed to hide store for seller=${sub.sellerId}: ${(e as Error).message}`);
+      }
       this.logger.log(`PAST_DUE→SUSPENDED: sub=${sub.id} sellerId=${sub.sellerId}`);
-      // TODO: hook на store.isPublic=false (через event или прямой StoresRepository.suspend).
-      // Пока полагаемся что storefront read-gate проверит subscription.status отдельно (см. design §7).
       stats.suspended += 1;
     }
 

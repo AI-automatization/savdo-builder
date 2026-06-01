@@ -29,9 +29,12 @@ import { SubscriptionsRepository } from '../subscriptions/repositories/subscript
 import { MarkPaidUseCase } from '../subscriptions/use-cases/mark-paid.use-case';
 import { ExtendTrialUseCase } from '../subscriptions/use-cases/extend-trial.use-case';
 import { CancelSubscriptionUseCase } from '../subscriptions/use-cases/cancel-subscription.use-case';
+import { CompSubscriptionUseCase } from '../subscriptions/use-cases/comp-subscription.use-case';
+import { BackfillTrialsUseCase } from '../subscriptions/use-cases/backfill-trials.use-case';
 import { MarkPaidDto } from '../subscriptions/dto/mark-paid.dto';
 import { ExtendTrialDto } from '../subscriptions/dto/extend-trial.dto';
 import { CancelSubscriptionDto } from '../subscriptions/dto/cancel-subscription.dto';
+import { CompSubscriptionDto } from '../subscriptions/dto/comp-subscription.dto';
 
 /**
  * Admin-facing subscriptions API.
@@ -49,6 +52,8 @@ export class AdminSubscriptionsController {
     private readonly markPaid: MarkPaidUseCase,
     private readonly extendTrial: ExtendTrialUseCase,
     private readonly cancel: CancelSubscriptionUseCase,
+    private readonly comp: CompSubscriptionUseCase,
+    private readonly backfill: BackfillTrialsUseCase,
   ) {}
 
   private async requireAdmin(user: JwtPayload) {
@@ -138,5 +143,33 @@ export class AdminSubscriptionsController {
   ) {
     await this.requireAdmin(user);
     return this.cancel.executeByAdmin(user.sub, id, dto.reason ?? 'admin-action');
+  }
+
+  /** Admin grant N months free (beta cohort / migration / referral). */
+  @Post(':id/comp')
+  @AdminPermission('subscription:moderate')
+  async compEndpoint(
+    @Param('id') id: string,
+    @Body() dto: CompSubscriptionDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.requireAdmin(user);
+    return this.comp.execute(user.sub, id, {
+      tier: dto.tier,
+      months: dto.months,
+      reason: dto.reason,
+    });
+  }
+
+  /**
+   * Одноразовая операция backfill: TRIAL для всех existing sellers без подписки.
+   * Idempotent (повторный вызов вернёт {created: 0}). Используется один раз после
+   * деплоя BILLING-MACHINE-001 на prod.
+   */
+  @Post('backfill')
+  @AdminPermission('subscription:moderate')
+  async backfillEndpoint(@CurrentUser() user: JwtPayload) {
+    await this.requireAdmin(user);
+    return this.backfill.execute(user.sub);
   }
 }

@@ -60,9 +60,14 @@ describe('ExpireSubscriptionsUseCase', () => {
       update: jest.fn().mockImplementation(async (id, data) => ({ id, ...data })),
     };
     adminRepo = {};
+    const storesRepo = {
+      findBySellerId: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({}),
+    };
     useCase = new ExpireSubscriptionsUseCase(
       subscriptionsRepo as unknown as SubscriptionsRepository,
       adminRepo as unknown as AdminRepository,
+      storesRepo as any,
     );
   });
 
