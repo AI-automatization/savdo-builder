@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { StoreCategory } from '@prisma/client';
+import { SlugService } from '../../stores/services/slug.service';
 
 export type StoreCategoryWithCount = StoreCategory & { productCount: number };
 
 @Injectable()
 export class StoreCategoriesRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly slugService: SlugService,
+  ) {}
 
   /**
    * Nice-to-have от Азима: возвращаем `productCount` (только ACTIVE,
@@ -40,20 +44,13 @@ export class StoreCategoriesRepository {
     });
   }
 
-  private toSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || 'category';
-  }
-
   async create(
     storeId: string,
     data: { name: string; sortOrder?: number },
   ): Promise<StoreCategory> {
-    const baseSlug = this.toSlug(data.name);
+    // DUP-003: единый SlugService. maxLength=80, fallback='category' — историческое
+    // поведение `toSlug()` (был без `.slice()`, поэтому 80 — безопасный буфер).
+    const baseSlug = this.slugService.generate(data.name, { maxLength: 80, fallback: 'category' });
     const slug = `${baseSlug}-${Date.now().toString(36)}`;
     return this.prisma.storeCategory.create({
       data: {
