@@ -28,6 +28,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
@@ -65,6 +66,7 @@ import { QueuesModule } from './queues/queues.module';
     NotificationsModule,
     ChatModule,
     AdminModule,
+    SubscriptionsModule,
     ModerationModule,
     AnalyticsModule,
     WishlistModule,

@@ -80,3 +80,33 @@ export enum InventoryMovementType {
   ORDER_RELEASED = 'ORDER_RELEASED',
   MANUAL_ADJUSTMENT = 'MANUAL_ADJUSTMENT',
 }
+
+// BILLING-MACHINE-001
+export enum SubscriptionTier {
+  STARTER = 'STARTER',
+  PRO = 'PRO',
+  BUSINESS = 'BUSINESS',
+}
+
+export enum SubscriptionStatus {
+  TRIAL = 'TRIAL',
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  SUSPENDED = 'SUSPENDED',
+  CHURNED = 'CHURNED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum SubscriptionPaymentMethod {
+  MANUAL_TRANSFER = 'MANUAL_TRANSFER',
+  CLICK = 'CLICK',
+  PAYME = 'PAYME',
+  COMP = 'COMP',
+}
+
+export enum SubscriptionPaymentStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  REFUNDED = 'REFUNDED',
+  FAILED = 'FAILED',
+}
