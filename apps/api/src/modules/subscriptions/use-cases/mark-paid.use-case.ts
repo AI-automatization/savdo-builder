@@ -3,6 +3,7 @@ import { SubscriptionTier, SubscriptionPaymentMethod } from '@prisma/client';
 import { SubscriptionsRepository } from '../repositories/subscriptions.repository';
 import { SubscriptionPaymentsRepository } from '../repositories/subscription-payments.repository';
 import { AdminRepository } from '../../admin/repositories/admin.repository';
+import { StoresRepository } from '../../stores/repositories/stores.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
@@ -19,6 +20,7 @@ export class MarkPaidUseCase {
     private readonly subscriptionsRepo: SubscriptionsRepository,
     private readonly paymentsRepo: SubscriptionPaymentsRepository,
     private readonly adminRepo: AdminRepository,
+    private readonly storesRepo: StoresRepository,
   ) {}
 
   async execute(
@@ -93,6 +95,20 @@ export class MarkPaidUseCase {
     this.logger.log(
       `Subscription ${subscriptionId} marked paid by admin=${adminUserId}, tier=${data.tier}, period=${data.periodStart.toISOString()}..${data.periodEnd.toISOString()}`,
     );
+
+    // Reactivate store (если был скрыт из-за subscription SUSPENDED).
+    // Условие: predecessor status SUSPENDED/PAST_DUE/CANCELLED + store.status === APPROVED + isPublic === false.
+    if (subscription.status === 'SUSPENDED' || subscription.status === 'PAST_DUE' || subscription.status === 'CANCELLED') {
+      try {
+        const store = await this.storesRepo.findBySellerId(subscription.sellerId);
+        if (store && store.status === 'APPROVED' && !store.isPublic) {
+          await this.storesRepo.update(store.id, { isPublic: true });
+          this.logger.log(`Store ${store.id} re-published (isPublic=true) after subscription reactivation`);
+        }
+      } catch (e) {
+        this.logger.error(`Failed to re-publish store for seller=${subscription.sellerId}: ${(e as Error).message}`);
+      }
+    }
 
     return { subscription: updated, payment };
   }
