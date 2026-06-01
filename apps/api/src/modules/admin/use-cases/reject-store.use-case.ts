@@ -1,39 +1,29 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
-import { AdminRepository } from '../repositories/admin.repository';
-import { DomainException } from '../../../common/exceptions/domain.exception';
+/**
+ * any-not-REJECTED → REJECTED.
+ *
+ * Реализовано через `createStatusTransitionUseCase` (DUP-001 refactor).
+ *   - guard: `status === 'REJECTED'` → ADMIN_STORE_ALREADY_REJECTED (409)
+ *   - update: `adminRepo.updateStoreStatus(id, 'REJECTED')`
+ *   - audit: STORE_REJECTED, payload `{ reason, adminId, previousStatus }`
+ *   - INV-A02: reason обязателен на DTO-level
+ */
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { createStatusTransitionUseCase } from '../services/admin-status-transition.factory';
 
-@Injectable()
-export class RejectStoreUseCase {
-  constructor(private readonly adminRepo: AdminRepository) {}
+type StoreStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
+type Store = { id: string; status: StoreStatus };
 
-  // INV-A01: AuditLog is mandatory for every admin action.
-  // INV-A02: Rejection requires a reason (enforced by AdminActionDto).
-  async execute(storeId: string, actorUserId: string, reason: string) {
-    const store = await this.adminRepo.findStoreById(storeId);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (store.status === 'REJECTED') {
-      throw new DomainException(
-        ErrorCode.ADMIN_STORE_ALREADY_REJECTED,
-        'Store is already rejected',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const updated = await this.adminRepo.updateStoreStatus(storeId, 'REJECTED');
-
-    // INV-A01
-    await this.adminRepo.writeAuditLog({
-      actorUserId,
-      action: 'STORE_REJECTED',
-      entityType: 'Store',
-      entityId: storeId,
-      payload: { reason, adminId: actorUserId, previousStatus: store.status },
-    });
-
-    return updated;
-  }
-}
+export class RejectStoreUseCase extends createStatusTransitionUseCase<Store, StoreStatus>({
+  find: (repo, id) => repo.findStoreById(id) as Promise<Store | null>,
+  update: (repo, id) => repo.updateStoreStatus(id, 'REJECTED') as Promise<Store>,
+  guard: {
+    kind: 'sameAsTarget',
+    target: 'REJECTED',
+    conflictErrorCode: ErrorCode.ADMIN_STORE_ALREADY_REJECTED,
+    conflictMessage: 'Store is already rejected',
+  },
+  notFound: { errorCode: ErrorCode.STORE_NOT_FOUND, message: 'Store not found' },
+  audit: { action: 'STORE_REJECTED', entityType: 'Store' },
+  withReason: true,
+  includePreviousStatus: true,
+}) {}
