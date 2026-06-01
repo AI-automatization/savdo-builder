@@ -81,10 +81,10 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 | Задачи в работе | `docs/tasks/[domain].md` |
 | Завершённые задачи | `docs/done/[domain].md` |
 | API контракты (нужные endpoints) | `docs/contracts/` |
-| **Дизайн-система (UI)** | `docs/design/liquid-authority.md` |
+| **Дизайн-система (UI)** | `docs/design/maxsavdo-design-v2.md` (liquid-authority.md — deprecated) |
 
 **Перед любой задачей** — прочитать релевантный файл из docs/V1.1/.
-**Перед любой UI-задачей** — прочитать `docs/design/liquid-authority.md`.
+**Перед любой UI-задачей** — прочитать `docs/design/maxsavdo-design-v2.md`.
 
 ## Агенты
 
