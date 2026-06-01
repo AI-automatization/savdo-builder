@@ -18,11 +18,19 @@ interface GlobalCategory {
 
 const EMPTY_FORM = { nameRu: '', nameUz: '', slug: '', parentId: '', sortOrder: '0', isActive: true }
 
+// DUP-003: preview slugify должен быть синхронен с backend `SlugService.generate()`.
+// Backend regex: latin-only, dash-separated, fallback на server-side. Если поле slug
+// пустое — backend сгенерирует. Здесь даём UI preview ТОЛЬКО для латиницы — для
+// кириллицы вернём пустую строку, чтобы пользователь видел что нужно вручную задать
+// slug (старая реализация молча возвращала пустую строку для всех кириллических имён,
+// но с `_` вместо `-` — slug не совпадал с тем, что в итоге создавал backend).
+// Контракт: lower + spaces→'-' + strip non-[a-z0-9-] + collapse + trim + slice(80).
 function slugify(s: string) {
   return s.trim().toLowerCase()
-    .replace(/[а-яёa-z0-9]+/gi, (m) => m)
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .slice(0, 80)
 }
 

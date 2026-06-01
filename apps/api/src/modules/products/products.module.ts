@@ -4,6 +4,7 @@ import { StorefrontController } from './storefront.controller';
 import { ProductPresenterService } from './services/product-presenter.service';
 import { ChannelTemplateService } from './services/channel-template.service';
 import { ChannelMediaResolverService } from './services/channel-media-resolver.service';
+import { ChannelPostBuilderService } from './services/channel-post-builder.service';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
@@ -43,6 +44,7 @@ import { WishlistModule } from '../wishlist/wishlist.module';
     ProductPresenterService,
     ChannelTemplateService,
     ChannelMediaResolverService,
+    ChannelPostBuilderService,
     CreateProductUseCase,
     UpdateProductUseCase,
     ChangeProductStatusUseCase,
