@@ -1,7 +1,7 @@
-import { IsOptional, IsString, IsIn, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsIn } from 'class-validator';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-export class ListUsersDto {
+export class ListUsersDto extends PaginationDto {
   @IsOptional()
   @IsString()
   @IsIn(['BUYER', 'SELLER', 'ADMIN'])
@@ -15,17 +15,4 @@ export class ListUsersDto {
   @IsOptional()
   @IsString()
   search?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
 }
