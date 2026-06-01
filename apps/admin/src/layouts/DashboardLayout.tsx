@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, UserCog, Store, ShoppingCart,
   Shield, ScrollText, LogOut, Package, Database, Megaphone,
   ChevronRight, Search, Sun, Moon, BarChart2, Activity, MessageSquare, Tags, Flag,
-  Heart, ToggleLeft, Lock, ListTodo,
+  Heart, ToggleLeft, Lock, ListTodo, CreditCard,
 } from 'lucide-react'
 
 // MARKETING-LOCALIZATION-UZ-001: лейблы — i18n-ключи, резолвятся через t()
@@ -25,6 +25,7 @@ const NAV_DATA = [
       { to: '/products',   icon: Package,         labelKey: 'nav.products' },
       { to: '/categories', icon: Tags,            labelKey: 'nav.categories' },
       { to: '/orders',     icon: ShoppingCart,    labelKey: 'nav.orders' },
+      { to: '/subscriptions', icon: CreditCard,   labelKey: 'nav.subscriptions' },
     ],
   },
   {
