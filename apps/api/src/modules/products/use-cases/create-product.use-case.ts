@@ -4,7 +4,7 @@ import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { Product } from '@prisma/client';
 import { StoresRepository } from '../../stores/repositories/stores.repository';
-import { PlanLimitGuardService } from '../../subscriptions/services/plan-limit-guard.service';
+import { PlanLimitGuardService } from '../../../shared/plan-limit-guard.service';
 
 @Injectable()
 export class CreateProductUseCase {
@@ -23,8 +23,8 @@ export class CreateProductUseCase {
       );
     }
 
-    // Plan-limit hook: проверяем подписку/лимит товаров перед записью в БД.
-    // storeId уже отрезолвлен контроллером — резолвим sellerId через StoresRepository.
+    // BILLING-MACHINE-001: проверяем подписку/лимит товаров перед записью в БД.
+    // PlanLimitGuardService живёт в shared/ (Global) — нет циклов с SubscriptionsModule.
     const store = await this.storesRepo.findById(storeId);
     if (!store) {
       throw new DomainException(

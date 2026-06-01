@@ -185,7 +185,7 @@ export const ru: Translations = {
   'nav.queues': 'Очереди (Bull)',
 
   // ── Login ─────────────────────────────────────────────────────────────
-  'login.title': 'Savdo Admin',
+  'login.title': 'maxsavdo Admin',
   'login.subtitlePhone': 'Вход через Telegram OTP',
   'login.subtitleOtp': 'Код отправлен на {phone}',
   'login.subtitleMfa': 'Введите код из приложения-аутентификатора',
@@ -211,7 +211,7 @@ export const ru: Translations = {
   'login.openQueues': 'Открываем Bull Board...',
   'login.errPhoneFormat': 'Формат: +998XXXXXXXXX (9 цифр после кода)',
   'login.errSendFailed': 'Ошибка отправки кода',
-  'login.errNotAdmin': 'Доступ запрещён. Этот кабинет только для администраторов Savdo.',
+  'login.errNotAdmin': 'Доступ запрещён. Этот кабинет только для администраторов maxsavdo.',
   'login.errTgNotLinked': 'Telegram не привязан. Напиши боту @savdo_builderBOT команду /start',
   'login.errBadCode': 'Неверный или просроченный код.',
   'login.errBadMfa': 'Неверный TOTP код',
