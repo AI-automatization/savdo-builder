@@ -23,9 +23,17 @@ import { SellersModule } from '../sellers/sellers.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { MediaModule } from '../media/media.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
-  imports: [forwardRef(() => StoresModule), SellersModule, TelegramModule, MediaModule, WishlistModule],
+  imports: [
+    forwardRef(() => StoresModule),
+    SellersModule,
+    TelegramModule,
+    MediaModule,
+    WishlistModule,
+    SubscriptionsModule,
+  ],
   controllers: [ProductsController, StorefrontController],
   providers: [
     ProductsRepository,

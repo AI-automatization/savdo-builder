@@ -9,6 +9,8 @@ import { MarkPaidUseCase } from './use-cases/mark-paid.use-case';
 import { ExtendTrialUseCase } from './use-cases/extend-trial.use-case';
 import { CancelSubscriptionUseCase } from './use-cases/cancel-subscription.use-case';
 import { ExpireSubscriptionsUseCase } from './use-cases/expire-subscriptions.use-case';
+import { SubscriptionExpiryProcessor } from './processors/subscription-expiry.processor';
+import { PlanLimitGuardService } from './services/plan-limit-guard.service';
 import { SellersModule } from '../sellers/sellers.module';
 import { AuthModule } from '../auth/auth.module';
 import { AdminModule } from '../admin/admin.module';
@@ -30,6 +32,8 @@ import { AdminModule } from '../admin/admin.module';
     ExtendTrialUseCase,
     CancelSubscriptionUseCase,
     ExpireSubscriptionsUseCase,
+    SubscriptionExpiryProcessor,
+    PlanLimitGuardService,
   ],
   exports: [
     SubscriptionsRepository,
@@ -39,6 +43,7 @@ import { AdminModule } from '../admin/admin.module';
     ExtendTrialUseCase,
     CancelSubscriptionUseCase,
     ExpireSubscriptionsUseCase,
+    PlanLimitGuardService,
   ],
 })
 export class SubscriptionsModule {}
