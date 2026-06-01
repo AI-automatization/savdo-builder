@@ -118,21 +118,6 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
-## 🟡 [BRAND-EMAIL-TEMPLATES-001] Обновить email-templates под maxsavdo
-
-- **Домен:** `apps/api` (если шаблоны там) / отдельный пакет (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P2 — email сейчас не критичны (OTP через Telegram), но если есть transactional emails (order confirmation, password reset) — обновить.
-- **Что сделать:**
-  1. Найти где лежат email-шаблоны (likely `apps/api/src/mail/templates/` или подобное).
-  2. Заменить логотип в header'е писем на новый maxsavdo (PNG-фолбэк для email-клиентов).
-  3. Обновить colors: основной background — Pure White, accent — Champagne Gold, текст — Rich Black.
-  4. Заменить "maxsavdo" → "maxsavdo" во всех transactional текстах.
-  5. Footer: добавить maxsavdo wordmark, контакты, ссылки на offer/privacy.
-- **Файлы:** TBD (зависит от структуры email-кода).
-
----
-
 ## 🟡 [BRAND-TG-BOT-COPY-001] Обновить тексты Telegram-бота под maxsavdo
 
 - **Домен:** `apps/api` (Telegram bot logic, Полат).

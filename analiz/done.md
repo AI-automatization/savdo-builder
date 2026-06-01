@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-06-01 (Полат) — BRAND-EMAIL-TEMPLATES-001: N/A, email-функционала нет
+
+### ✅ [BRAND-EMAIL-TEMPLATES-001] Email-templates под maxsavdo — N/A
+- **Важность:** 🟡 (brand v2 rollout). **Дата:** 01.06.2026
+- **Статус:** N/A — email-функционал не реализован в проекте.
+- **Что проверено:**
+  - Grep по `nodemailer|@nestjs/mailer|<mjml|<!DOCTYPE html|transactional|email-template` — совпадения только в docs/analiz (упоминания в задачах/решениях), кода нет.
+  - Grep по `nodemailer|mailer|smtp|sendgrid|mailgun|postmark|resend` в `apps/api` — совпадение только в `apps/api/src/shared/error-reporter.ts` (поле "email" в контексте error reporting, не mailer) и в `apps/api/CLAUDE.md` (упоминание).
+  - Каталоги `apps/api/src/mail/`, `apps/api/src/email/`, `apps/api/templates/`, `packages/email*` — не существуют.
+  - `package.json` всех workspace'ов — ни один mail/email пакет не подключён.
+  - `<!DOCTYPE html>|<html>|<body>` в `apps/api` — нет HTML-шаблонов писем.
+- **Обоснование:** по `CLAUDE.md` OTP идёт ТОЛЬКО через Telegram Bot (@savdo_builderBOT), Eskiz/Playmobile/SMS запрещены. Transactional emails (order confirmation, password reset) в MVP не реализованы — уведомления идут через Telegram Bot + in-app.
+- **Что делать когда email появится:** при добавлении email-провайдера (resend/postmark/sendgrid) — открыть новую задачу `BRAND-EMAIL-TEMPLATES-002` с актуальной структурой шаблонов и применить maxsavdo v2 (логотип PNG, Pure White #FFFFFF, Champagne Gold #C9A876, Rich Black #0A0A0A, footer с offer/privacy).
+- **Файлы:** `analiz/tasks.md` (удалена задача), `analiz/done.md` (эта запись).
+
 ## 2026-05-31 (Азим) — seller login: убран двойной редирект
 
 ### ✅ [WEB-SELLER-LOGIN-DOUBLE-REDIRECT-001] Двойная навигация после OTP-входа
