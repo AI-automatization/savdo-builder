@@ -4,6 +4,7 @@ import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { Product, ProductStatus } from '@prisma/client';
 import { PostProductToChannelUseCase } from './post-product-to-channel.use-case';
+import { assertProductOwnership } from '../guards/product-ownership.guard';
 
 // Valid transitions per docs/V1.1/02_state_machines.md
 // DRAFT → ACTIVE, ACTIVE → ARCHIVED, ACTIVE → DRAFT, ARCHIVED → ACTIVE
@@ -34,13 +35,7 @@ export class ChangeProductStatusUseCase {
       );
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(
-        ErrorCode.FORBIDDEN,
-        'Product does not belong to your store',
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    assertProductOwnership(product, storeId);
 
     if (product.status === ProductStatus.HIDDEN_BY_ADMIN) {
       throw new DomainException(
