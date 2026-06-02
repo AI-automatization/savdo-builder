@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { X, CreditCard, Calendar, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import type {
+  AdminSubscriptionListItem,
+  SubscriptionPaymentMethod,
+  SubscriptionStatus,
+  SubscriptionTier,
+} from 'types'
 import { api } from '../lib/api'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
@@ -8,27 +14,9 @@ import { DialogShell } from '../components/admin/DialogShell'
 import { confirmDialog } from '../components/admin/ConfirmDialog'
 
 // BILLING-MACHINE-001 — admin subscription detail с действиями.
-// Locally-mirrored DTO из packages/types/src/api/subscriptions.ts.
+// DTO из workspace-пакета `types` (DUP-008).
 
-type SubscriptionTier = 'STARTER' | 'PRO' | 'BUSINESS'
-type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CHURNED' | 'CANCELLED'
-type SubscriptionPaymentMethod = 'MANUAL_TRANSFER' | 'CLICK' | 'PAYME' | 'COMP'
-
-interface SubscriptionDetail {
-  id: string
-  tier: SubscriptionTier
-  status: SubscriptionStatus
-  trialEndsAt: string | null
-  currentPeriodStart: string | null
-  currentPeriodEnd: string | null
-  graceEndsAt: string | null
-  cancelAtPeriodEnd: boolean
-  daysLeft: number | null
-  seller: { id: string; fullName: string; telegramUsername: string }
-  cancelledAt: string | null
-  suspendedAt: string | null
-  updatedAt: string
-}
+type SubscriptionDetail = AdminSubscriptionListItem
 
 const STATUS_CFG: Record<SubscriptionStatus, { bg: string; text: string; labelKey: string }> = {
   ACTIVE:    { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', labelKey: 'subscriptions.statusActive' },
