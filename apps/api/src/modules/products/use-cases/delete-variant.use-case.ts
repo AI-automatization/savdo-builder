@@ -3,6 +3,7 @@ import { ProductsRepository } from '../repositories/products.repository';
 import { VariantsRepository } from '../repositories/variants.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { assertProductOwnership } from '../guards/product-ownership.guard';
 
 @Injectable()
 export class DeleteVariantUseCase {
@@ -22,13 +23,7 @@ export class DeleteVariantUseCase {
       );
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(
-        ErrorCode.FORBIDDEN,
-        'Product does not belong to your store',
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    assertProductOwnership(product, storeId);
 
     const variant = await this.variantsRepo.findById(variantId);
 
