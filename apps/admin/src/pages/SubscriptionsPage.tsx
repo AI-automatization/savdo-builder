@@ -1,40 +1,18 @@
 import { useState } from 'react'
 import { CreditCard, Search, User } from 'lucide-react'
+import type {
+  AdminSubscriptionListItem,
+  AdminSubscriptionListResponse,
+  SubscriptionStatus,
+  SubscriptionTier,
+} from 'types'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { PaginationBar } from '../components/admin/PaginationBar'
 import SubscriptionDetailModal from './SubscriptionDetailModal'
 
 // BILLING-MACHINE-001 — admin subscriptions page.
-// Локальные типы зеркалят `packages/types/src/api/subscriptions.ts` —
-// admin не подключает `@savdo/types` как npm-зависимость, поэтому копируем
-// форму DTO. Источник правды — apps/api subscription module.
-
-type SubscriptionTier = 'STARTER' | 'PRO' | 'BUSINESS'
-type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CHURNED' | 'CANCELLED'
-
-interface AdminSubscriptionListItem {
-  id: string
-  tier: SubscriptionTier
-  status: SubscriptionStatus
-  trialEndsAt: string | null
-  currentPeriodStart: string | null
-  currentPeriodEnd: string | null
-  graceEndsAt: string | null
-  cancelAtPeriodEnd: boolean
-  daysLeft: number | null
-  seller: { id: string; fullName: string; telegramUsername: string }
-  cancelledAt: string | null
-  suspendedAt: string | null
-  updatedAt: string
-}
-
-interface AdminSubscriptionListResponse {
-  items: AdminSubscriptionListItem[]
-  total: number
-  page: number
-  limit: number
-}
+// Типы импортируются из workspace-пакета `types` (см. DUP-008 в DRY-аудите).
 
 // Color-coded badges. Champagne Gold #C9A876 (Dark Luxury) — для активных тиров,
 // остальные — стандартная палитра Liquid Authority.
