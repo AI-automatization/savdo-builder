@@ -49,6 +49,7 @@ import { WishlistRepository } from '../wishlist/repositories/wishlist.repository
 import { ProductPresenterService } from './services/product-presenter.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+import { assertProductOwnership } from './guards/product-ownership.guard';
 import { ProductStatus } from '@prisma/client';
 
 @ApiTags('seller')
@@ -152,9 +153,7 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
 
     // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
     // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
@@ -237,9 +236,7 @@ export class ProductsController {
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
     return this.postToChannel.execute({ productId: id, force: true });
   }
 
@@ -257,9 +254,7 @@ export class ProductsController {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
 
     const variants = await this.variantsRepo.findByProductId(productId);
     return variants.map((v) => this.presenter.normalizeVariant(v));
@@ -648,9 +643,7 @@ export class ProductsController {
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
   }
 
   private async resolveStoreId(userId: string): Promise<string> {
