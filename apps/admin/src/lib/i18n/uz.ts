@@ -696,6 +696,18 @@ export const uz: Translations = {
   'storeDetail.modalUnapproveTitle': 'Tasdiqni olib tashlash',
   'storeDetail.modalUnapproveDesc': '«{name}» doʻkoni qidiruvdan yashiriladi va qoralama holatiga qaytariladi.',
 
+  // ── Store Telegram channel (P1-1, audit-2026-06-04) ───────────────────
+  'storeDetail.tgChannelSection': 'Telegram-kanal',
+  'storeDetail.tgChannelLabel': 'Kanal (username)',
+  'storeDetail.tgChannelPlaceholder': '@my_channel',
+  'storeDetail.tgChannelHint': 'Qabul qilinadigan formatlar: @my_channel, https://t.me/my_channel yoki -1001234567890. Tovarlarni joylashtirish uchun @savdo_builderBOT shu kanalda admin boʻlishi shart.',
+  'storeDetail.tgChannelTitleLabel': 'Kanal nomi (ixtiyoriy)',
+  'storeDetail.tgChannelTitlePlaceholder': 'Masalan: Mening doʻkonim',
+  'storeDetail.tgChannelSave': 'Kanalni saqlash',
+  'storeDetail.tgChannelSaved': 'Kanal saqlandi',
+  'storeDetail.tgChannelClear': 'Tozalash',
+  'storeDetail.tgChannelEmpty': 'Kanal biriktirilmagan — tovarlar avtomatik joylashtirilmaydi',
+
   // ── Subscriptions (BILLING-MACHINE-001) ───────────────────────────────
   'subscriptions.title': 'Obunalar',
   'subscriptions.searchPlaceholder': 'Ism yoki @username boʻyicha qidiring...',
