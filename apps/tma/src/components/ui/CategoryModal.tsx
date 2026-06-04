@@ -206,7 +206,7 @@ export function CategoryModal({ title, items, selectedId, onSelect, onClose, lea
                 background: 'var(--tg-surface-hover)',
                 border: '1px solid var(--tg-border)',
                 borderRadius: 10,
-                color: '#fff',
+                color: 'var(--tg-text-primary)',
                 fontSize: 14,
                 padding: '10px 14px 10px 34px',
                 outline: 'none',

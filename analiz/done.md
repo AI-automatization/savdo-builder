@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Полат) — TMA-COLORS-CLEANUP-002 — light theme polish
+
+### ✅ [TMA-COLORS-CLEANUP-002] Финальная зачистка hardcoded rgba(255,255,255,X)
+- **Важность:** 🟡 P2 (light theme polish). **Дата:** 04.06.2026
+- **Контекст:** TMA-DESIGN-V2-MIGRATE-001 (3a7240a) + hotfix a060dd6 уже починили
+  основу — buyer pages и большинство UI стали clean. Остались точечные occurrences
+  в UI components (CategoryModal/ConfirmModal), buyer/ChatPage и в seller pages.
+- **Что сделано:** Заменены hardcoded `rgba(255,255,255,X)` и `#fff` (где это
+  semantic primary text / button background) на CSS variables `var(--tg-*)`.
+  Photo overlay buttons (`rgba(0,0,0,0.62)` backdrop) намеренно оставлены с
+  hardcoded `#fff` + комментарием — overlay над фото theme-independent.
+  Toggle thumb (`#fff` + box-shadow) — оставлен с пояснением.
+- **Файлы (7):**
+  - `apps/tma/src/components/ui/CategoryModal.tsx` (input color)
+  - `apps/tma/src/components/ui/ConfirmModal.tsx` (var(--tg-card-bg) fallback baked → var(--tg-surface), button on accent → color: #0A0A0A)
+  - `apps/tma/src/pages/buyer/ChatPage.tsx` (input color, send button on accent, thread unread badge color)
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` (skeleton bg, name input, seller-type chips, save button)
+  - `apps/tma/src/pages/seller/ChannelSettingsPage.tsx` (toggle track, inputStyle, test/save button)
+  - `apps/tma/src/pages/seller/AddProductPage.tsx` (inputStyle, category cards, multi-select chips, photo grid border, sizes toggle)
+  - `apps/tma/src/pages/seller/EditProductPage.tsx` (inputStyle, category cards, progress bar, image border + placeholder, display-type segment, dashed divider, section divider)
+- **Verify:** `pnpm --filter tma build` clean (1.15s); `tsc --noEmit` clean.
+
 ## 2026-06-04 (Полат) — Re-audit TMA v2 follow-ups (BUG-1/3/9 + title + heart)
 
 ### ✅ [REAUDIT-TMA-V2-2026-06-04] Точечные фиксы re-audit Ahmed (audit-tma-v2)

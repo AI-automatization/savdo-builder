@@ -31,7 +31,7 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
         width: 44,
         height: 26,
         borderRadius: 13,
-        background: on ? '#A855F7' : 'rgba(255,255,255,0.15)',
+        background: on ? 'var(--tg-accent)' : 'var(--tg-border)',
         border: 'none',
         cursor: disabled ? 'wait' : 'pointer',
         position: 'relative',
@@ -47,6 +47,8 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
           width: 20,
           height: 20,
           borderRadius: '50%',
+          // Thumb остаётся белым: на accent gold контраст ок, на off-track
+          // нейтральная подсветка через box-shadow выделяет его и в light theme.
           background: '#fff',
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
           transition: 'left 0.18s',
@@ -159,12 +161,12 @@ export default function SellerSettingsPage() {
     return (
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <Skeleton style={{ height: 24, width: '40%' }} />
-        <div className="flex flex-col gap-3 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="flex flex-col gap-3 p-4 rounded-2xl" style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}>
           <Skeleton style={{ height: 14, width: '30%' }} />
           <Skeleton style={{ height: 40 }} />
           <Skeleton style={{ height: 14, width: '60%' }} />
         </div>
-        <div className="flex flex-col gap-3 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="flex flex-col gap-3 p-4 rounded-2xl" style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}>
           <Skeleton style={{ height: 14, width: '30%' }} />
           <Skeleton style={{ height: 40 }} />
           <Skeleton style={{ height: 40 }} />
@@ -204,12 +206,12 @@ export default function SellerSettingsPage() {
               placeholder="Ваше имя"
               className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
               style={{
-                background: 'rgba(255,255,255,0.07)',
-                border: '1px solid rgba(255,255,255,0.10)',
+                background: 'var(--tg-surface-hover)',
+                border: '1px solid var(--tg-border)',
                 color: 'var(--tg-text-primary)',
               }}
-              onFocus={(e) => (e.target.style.borderColor = '#A855F7')}
-              onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.10)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--tg-accent)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--tg-border)')}
             />
           </div>
 
@@ -222,9 +224,9 @@ export default function SellerSettingsPage() {
                   onClick={() => setSellerType(t)}
                   className="flex-1 py-2 rounded-xl text-xs font-semibold"
                   style={{
-                    background: sellerType === t ? 'rgba(168,85,247,0.20)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${sellerType === t ? 'rgba(168,85,247,0.40)' : 'rgba(255,255,255,0.08)'}`,
-                    color: sellerType === t ? '#A855F7' : 'var(--tg-text-muted)',
+                    background: sellerType === t ? 'var(--tg-accent-bg)' : 'var(--tg-surface)',
+                    border: `1px solid ${sellerType === t ? 'var(--tg-accent-border)' : 'var(--tg-border-soft)'}`,
+                    color: sellerType === t ? 'var(--tg-accent-text)' : 'var(--tg-text-muted)',
                     transition: 'all 0.15s',
                   }}
                 >
@@ -244,9 +246,9 @@ export default function SellerSettingsPage() {
               className="w-full py-2.5 rounded-xl text-sm font-semibold"
               style={{
                 background: saving || !fullName.trim()
-                  ? 'rgba(255,255,255,0.06)'
-                  : 'linear-gradient(135deg, #7C3AED, #A855F7)',
-                color: saving || !fullName.trim() ? 'var(--tg-text-dim)' : '#fff',
+                  ? 'var(--tg-surface)'
+                  : 'var(--tg-accent)',
+                color: saving || !fullName.trim() ? 'var(--tg-text-dim)' : '#0A0A0A',
                 transition: 'all 0.15s',
               }}
             >
@@ -336,7 +338,7 @@ export default function SellerSettingsPage() {
           <button
             onClick={() => navigate('/seller/profile')}
             className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span>👤</span> Профиль
           </button>
@@ -349,7 +351,7 @@ export default function SellerSettingsPage() {
           </button>
         </GlassCard>
 
-        <p className="text-center text-xxs" style={{ color: 'rgba(255,255,255,0.15)' }}>
+        <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · v1.0
         </p>
 
