@@ -85,6 +85,7 @@ export const uz: Translations = {
   'auth.logout': 'Akkauntdan chiqish',
   'auth.register': 'Roʻyxatdan oʻtish',
   'auth.welcomeName': 'Salom, {name}!',
+  'auth.welcomeAnon': 'Xush kelibsiz!',
   'auth.guest': 'Mehmon',
   'auth.guestSubtitle': 'Buyurtma berish uchun kiring',
   'auth.guestBanner': 'Doʻkonlarni mehmon sifatida koʻrayapsiz. Buyurtma berish uchun Telegram orqali kiring.',
