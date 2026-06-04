@@ -5,6 +5,49 @@
 
 ---
 
+## 🔴 [TYPES-ENUM-RUNTIME-001] Enum'ы в `packages/types` — `export type` ломает build web-seller
+
+- **Домен:** `packages/types` (Полат — эксклюзивная зона, Азим тронуть не может).
+- **Кто берёт:** Полат.
+- **Приоритет:** 🔴 P1 — прод-build `apps/web-seller` красный (`pnpm build` / `tsc` падают
+  десятками `TS2693` + Next `Export UserRole doesn't exist`). Лендинг рендерится 200, но
+  green-build деплой-ветки web-seller заблокирован до фикса.
+- **Корень:** в `packages/types/src/enums.ts` `UserRole` / `OrderStatus` / `StoreStatus`
+  объявлены как **`export type`** (строковые юнионы) — рантайм-экспорта нет. А dashboard-страницы
+  web-seller импортят их как значения: `OrderStatus.PENDING`, `Record<OrderStatus, …>`,
+  `import { UserRole }`. Типы значениями быть не могут → tsc и сборка падают.
+- **Где бьёт (web-seller):** `(dashboard)/chat/page.tsx`, `dashboard/page.tsx`,
+  `orders/[id]/page.tsx`, `orders/page.tsx`, `products/page.tsx`,
+  `products/[id]/edit/page.tsx`, `layout.tsx`.
+- **Решение (на твой выбор, но `packages/types` — твоя зона):**
+  - **Вариант A (рекомендую) — вернуть рантайм-enum'ы в `packages/types`:** объявить
+    `export const OrderStatus = { PENDING: 'PENDING', … } as const` + `export type OrderStatus =
+    typeof OrderStatus[keyof typeof OrderStatus]` (const-object pattern). Чинит ВСЕХ
+    потребителей разом (web-seller, web-buyer, admin), не только web-seller.
+  - **Вариант B — оставить `export type`,** но тогда подтверди Азиму — он заменит
+    value-доступ на строковые литералы / локальные const-маппинги в `apps/web-seller`.
+- **Зависит от твоего решения** «enums — типы или рантайм» (см. DB-AUDIT P2-08 в logs.md).
+- **Лог:** `analiz/logs.md` → `[2026-06-04] WEB-SELLER-ENUM-AS-VALUE-BUILD-001`.
+
+---
+
+## 🟡 [BILLING-TIER-ENUM-SYNC-001] Синхронизировать tier-enum билл-машины с pricing v2
+
+- **Домен:** `packages/db` + `packages/types` + `apps/api` (Полат) · спека `docs/business/` (Азим — обновит).
+- **Кто берёт:** Полат (когда стартует BILLING-MACHINE-001) — **heads-up, не делать сейчас**.
+- **Приоритет:** 🟡 P1-блокер-для-биллинга — но раньше Subscription-entity к нему не приступаешь.
+- **Что изменилось (04.06, решение Азима, premium-wedge):** тарифная лестница переписана:
+  - tier-enum: ~~STARTER / PRO / BUSINESS~~ → **FREE / PRO / STUDIO**
+  - цены: ~~99k / 299k / 899k~~ → **Free (20 товаров) / Pro 149k / Studio 399k**
+  - метрика лимита = **товары** (cap только на Free, ≤20), не заказы; founding-бета сейчас бесплатно; оплата периодом (год −25%); soft-lock на Free.
+- **Действие:** при реализации `Subscription` НЕ брать tier-enum из старой
+  `billing-machine-spec-v1-2026-05-31.md` — там устаревшие STARTER/PRO/BUSINESS + 99/299/899.
+  Брать из `docs/business/pricing-rationale-v2-2026-06-04.md`. Сама спека будет
+  обновлена Азимом — сверься с её актуальной версией перед entity.
+- **Связь:** разблокируется тем же `BIZ-DECISIONS-§15` Азима, что и `BILLING-MACHINE-001`.
+
+---
+
 ## 🔴 [BILLING-MACHINE-001] Подписки + энфорсмент (блокер платного launch)
 
 - **Домен:** `apps/api` + `packages/db` + `packages/types` (Полат) · `apps/web-seller` + `apps/web-buyer` (Азим)
