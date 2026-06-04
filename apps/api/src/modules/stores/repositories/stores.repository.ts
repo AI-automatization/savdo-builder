@@ -76,6 +76,15 @@ export class StoresRepository {
           isVerified: true,
           avgRating: true,
           reviewCount: true,
+          // BUG-1 re-audit 04.06.2026: счётчик активных товаров для карточки
+          // магазина в /buyer. Без него TMA показывала "0" везде.
+          _count: {
+            select: {
+              products: {
+                where: { deletedAt: null, status: 'ACTIVE' },
+              },
+            },
+          },
         },
         // Verified магазины сверху, потом по дате публикации
         orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],

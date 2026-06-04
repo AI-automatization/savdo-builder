@@ -423,9 +423,13 @@ export default function ProductPage() {
               {t('product.variantLabel')}
             </p>
             <div className="flex flex-wrap gap-2">
-              {activeVariants.map((v) => {
+              {activeVariants.map((v, idx) => {
                 const active = v.id === selectedVariantId;
                 const disabled = v.stockQuantity <= 0;
+                // BUG-3 re-audit 04.06.2026: ранее fallback был `#${id.slice(-4)}` —
+                // в UI это выглядело как hex-код (например "#799f"). titleOverride
+                // у seller'ов почти не заполнен → показываем порядковый номер.
+                const label = v.titleOverride ?? `${t('product.variantLabel')} ${idx + 1}`;
                 return (
                   <button
                     key={v.id}
@@ -438,7 +442,7 @@ export default function ProductPage() {
                       color: active ? 'var(--tg-accent)' : 'var(--tg-text-secondary)',
                     }}
                   >
-                    {v.titleOverride ?? `#${v.id.slice(-4)}`}
+                    {label}
                   </button>
                 );
               })}
