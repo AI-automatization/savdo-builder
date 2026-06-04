@@ -1,5 +1,55 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Полат) — TMA-DESIGN-V2-MIGRATE-001: TMA на maxsavdo Dark Luxury
+
+### ✅ [TMA-DESIGN-V2-MIGRATE-001] TMA переведён с Liquid Glass v1 на maxsavdo design-v2
+- **Важность:** 🔴 P1 (brand consistency — TMA отставал от web-buyer/web-seller/admin). **Дата:** 04.06.2026
+- **Контекст:** ревью Азима 02.06 показало что TMA остался на старой палитре Cyber Orchid (#A855F7) +
+  Arctic Cyan (#22D3EE) + Deep Charcoal (#0B0E14) с SF Pro Rounded шрифтом и force-dark темой.
+  Должен быть на maxsavdo Dark Luxury: Champagne Gold #C9A876 + Rich Black #0A0A0A + Pure White +
+  Inter font + system theme (ADR-009).
+- **Файлы (12):**
+  - `apps/tma/src/index.css` — переписан токеновый блок: `--tg-*` теперь Champagne Gold / Rich Black,
+    light тема валидна, body font-family → Inter, .btn-primary / .page-icon / .chip-active /
+    .text-gradient / .status-dot / scrollbar / input:focus переведены на var(--tg-accent).
+  - `apps/tma/src/lib/themes.ts` — DARK_THEME / LIGHT_THEME объекты пересели на новую палитру.
+  - `apps/tma/src/lib/styles.ts` — COLORS / glass / gradientBg константы (orchid alias на gold,
+    cyan alias на gold, glass = flat surface вместо frosted).
+  - `apps/tma/src/providers/ThemeProvider.tsx` — force-dark снят. Detection: stored → Telegram WebApp
+    colorScheme → prefers-color-scheme → fallback dark. matchMedia + Telegram themeChanged listeners
+    для авто-следования.
+  - `apps/tma/src/main.tsx` — `@fontsource/inter` 300/400/500/600/700/800 импорты.
+  - `apps/tma/tailwind.config.js` — accent #C9A876, fontFamily.sans → Inter first.
+  - `apps/tma/src/components/brand/MaxsavdoMark.tsx` — новый компонент (порт из web-buyer):
+    inline SVG монограмма M + bag-handle, theme-adaptive.
+  - `apps/tma/src/components/layout/LoadingScreen.tsx` — 🛒 + "Savdo" → MaxsavdoMark + "maxsavdo".
+  - `apps/tma/src/components/layout/Sidebar.tsx` — 🏪/🛍 в orb → MaxsavdoMark + "maxsavdo" wordmark.
+  - `apps/tma/src/App.tsx` ErrorBoundary — orchid gradient → var(--tg-accent).
+  - `apps/tma/src/components/ui/Spinner.tsx` — #A855F7 → var(--tg-accent).
+  - `apps/tma/src/components/ui/ThemeToggle.tsx` — null-stub заменён рабочим toggle (☀️/🌙).
+  - `apps/tma/src/components/ui/ImagePlaceholder.tsx` — убраны inline rgba fallback'и.
+  - `apps/tma/src/components/seller/SellerAnalyticsCard.tsx` — sparkline / KPI цвета на var(--tg-accent).
+  - `apps/tma/src/components/seller/StoreDirectionsPicker.tsx` — cyan hint → accent.
+  - `apps/tma/src/pages/seller/OrdersPage.tsx` — telephone link + chat-button cyan → accent.
+- **Что сделано:**
+  1. CSS-токены `--tg-*` переопределены под Dark Luxury — десятки компонентов автоматически
+     перекрасились без точечной правки.
+  2. Light тема реактивирована — раньше блокировалась 553 inline rgba(255,255,255), теперь основные
+     слои читают токены и адаптируются к light correctly.
+  3. Inter подключён self-hosted через `@fontsource/inter` (6 весов) — не зависит от Google Fonts CDN
+     (важно для TG WebView).
+  4. Brand: TMA теперь показывает "maxsavdo" + monogram-mark на LoadingScreen и Sidebar.
+  5. ThemeProvider слушает `(prefers-color-scheme)` + Telegram `themeChanged` event.
+- **Build:** `pnpm --filter tma build` clean (tsc + vite). 311KB main bundle (без изменений).
+- **Оставшиеся хардкоды (72 occurrences в 7 файлах):** перенесены в `TMA-COLORS-CLEANUP-002` —
+  AddProductPage (19), EditProductPage (21), SettingsPage seller (16), ChannelSettingsPage (7),
+  ChatPage buyer/seller (4+4), test/setup.ts (1). Большая часть — крупные форм-страницы где замена
+  inline rgba требует осторожности (там много полу-прозрачных подложек на конкретных surface'ах).
+  По дизайну работают корректно — токены подставляют новую палитру, hardcoded rgba(255,255,255)
+  отрисовывается как нейтральный полупрозрачный белый поверх Rich Black surface'а.
+
+---
+
 ## 2026-06-03 (Полат) — REFACTOR-DRY-001 / весь DRY-аудит закрыт
 
 ### ✅ [REFACTOR-DRY-001] Все 8 DUP-рефакторов из аудита 01.06.2026 выполнены

@@ -179,10 +179,10 @@ export function StoreDirectionsPicker() {
         >
           <div className="px-4 py-3 flex flex-col gap-3 pb-6">
             <div className="flex items-start gap-2 px-3 py-2 rounded-lg"
-              style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)' }}>
+              style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)' }}>
               <span aria-hidden>💡</span>
               <p className="text-xs flex-1" style={{ color: 'var(--tg-text-secondary)' }}>
-                Тапай чтобы добавить или убрать. <b style={{ color: '#22D3EE' }}>Сохраняется автоматически</b> — отдельная кнопка не нужна. Можно выбрать до {MAX_DIRECTIONS}.
+                Тапай чтобы добавить или убрать. <b style={{ color: 'var(--tg-accent)' }}>Сохраняется автоматически</b> — отдельная кнопка не нужна. Можно выбрать до {MAX_DIRECTIONS}.
               </p>
             </div>
             <input

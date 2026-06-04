@@ -28,7 +28,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6 gap-5"
-        style={{ background: 'linear-gradient(135deg, #0f0c1a 0%, #1a1035 100%)' }}
+        style={{ background: 'var(--tg-bg)' }}
       >
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
@@ -37,15 +37,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
           ⚠️
         </div>
         <div className="text-center">
-          <p className="text-white font-semibold text-base">Что-то пошло не так</p>
-          <p className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+          <p className="font-semibold text-base" style={{ color: 'var(--tg-text-primary)' }}>
+            Что-то пошло не так
+          </p>
+          <p className="text-xs mt-1.5" style={{ color: 'var(--tg-text-muted)' }}>
             Попробуйте вернуться на главную
           </p>
         </div>
         <button
           onClick={() => { this.setState({ hasError: false, message: '' }); window.location.replace('/'); }}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold"
+          style={{ background: 'var(--tg-accent)', color: '#0A0A0A' }}
         >
           На главную
         </button>

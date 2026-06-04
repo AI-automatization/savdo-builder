@@ -21,8 +21,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: '#A78BFA',
-        'accent-dim': 'rgba(167,139,250,0.20)',
+        // maxsavdo design-v2: Champagne Gold (TMA-DESIGN-V2-MIGRATE-001)
+        accent: '#C9A876',
+        'accent-dim': 'rgba(201,168,118,0.20)',
+      },
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         // Все размеры — через CSS-vars (см. index.css).
