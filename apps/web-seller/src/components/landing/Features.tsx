@@ -3,9 +3,11 @@
 import { LayoutGrid, ShoppingCart, ClipboardList, LineChart, MessagesSquare, Send } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
+import { useReveal } from '@/lib/landing/use-reveal';
 
 export function Features() {
   const { t } = useTranslation();
+  const ref = useReveal<HTMLDivElement>();
   const items = [
     { icon: LayoutGrid, title: t('features.1.title'), body: t('features.1.body') },
     { icon: ShoppingCart, title: t('features.2.title'), body: t('features.2.body') },
@@ -17,7 +19,7 @@ export function Features() {
   return (
     <section id="features" className="scroll-mt-20 mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10" style={{ color: colors.textPrimary }}>{t('features.title')}</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div ref={ref} className="reveal grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((it, i) => {
           const Icon = it.icon;
           return (

@@ -5,6 +5,7 @@ import { LandingHeader } from './LandingHeader';
 import { Hero } from './Hero';
 import { ProblemSection } from './ProblemSection';
 import { HowItWorks } from './HowItWorks';
+import { Showcase } from './Showcase';
 import { WhyUs } from './WhyUs';
 import { Features } from './Features';
 import { Pricing } from './Pricing';
@@ -23,6 +24,7 @@ export function LandingPage() {
         <Hero />
         <ProblemSection />
         <HowItWorks />
+        <Showcase />
         <WhyUs />
         <Features />
         <Pricing />

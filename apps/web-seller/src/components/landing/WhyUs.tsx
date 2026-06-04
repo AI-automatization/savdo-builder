@@ -3,11 +3,13 @@
 import { Check, X } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
+import { useReveal } from '@/lib/landing/use-reveal';
 
 type Cell = 'yes' | 'no' | 'commission' | 'expensive';
 
 export function WhyUs() {
   const { t } = useTranslation();
+  const ref = useReveal<HTMLDivElement>();
   const cols = [t('why.col.feature'), t('why.col.us'), t('why.col.dm'), t('why.col.mp'), t('why.col.builder')];
   // [фича, us, директ, маркетплейс, конструктор]
   const rows: { label: string; cells: Cell[] }[] = [
@@ -28,7 +30,7 @@ export function WhyUs() {
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10" style={{ color: colors.textPrimary }}>{t('why.title')}</h2>
-      <div className="overflow-x-auto rounded-xl" style={{ border: `1px solid ${colors.border}` }}>
+      <div ref={ref} className="reveal overflow-x-auto rounded-xl" style={{ border: `1px solid ${colors.border}` }}>
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr style={{ background: colors.surface }}>

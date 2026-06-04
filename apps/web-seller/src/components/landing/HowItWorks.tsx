@@ -2,9 +2,11 @@
 
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
+import { useReveal } from '@/lib/landing/use-reveal';
 
 export function HowItWorks() {
   const { t } = useTranslation();
+  const ref = useReveal<HTMLDivElement>();
   const steps = [
     { n: '1', title: t('how.1.title'), body: t('how.1.body') },
     { n: '2', title: t('how.2.title'), body: t('how.2.body') },
@@ -17,7 +19,7 @@ export function HowItWorks() {
           <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: colors.textPrimary }}>{t('how.title')}</h2>
           <p className="mt-2 text-sm sm:text-base" style={{ color: colors.textMuted }}>{t('how.subtitle')}</p>
         </div>
-        <div className="grid gap-8 sm:grid-cols-3">
+        <div ref={ref} className="reveal grid gap-8 sm:grid-cols-3">
           {steps.map((s) => (
             <div key={s.n} className="flex flex-col items-center text-center">
               <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mb-4" style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}>

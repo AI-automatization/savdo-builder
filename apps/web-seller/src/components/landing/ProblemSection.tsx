@@ -3,9 +3,11 @@
 import { PackageX, MessageCircleQuestion, BarChartBig } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
+import { useReveal } from '@/lib/landing/use-reveal';
 
 export function ProblemSection() {
   const { t } = useTranslation();
+  const ref = useReveal<HTMLDivElement>();
   const items = [
     { icon: PackageX, title: t('problem.1.title'), body: t('problem.1.body') },
     { icon: MessageCircleQuestion, title: t('problem.2.title'), body: t('problem.2.body') },
@@ -17,7 +19,7 @@ export function ProblemSection() {
         <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: colors.textPrimary }}>{t('problem.title')}</h2>
         <p className="mt-2 text-sm sm:text-base" style={{ color: colors.textMuted }}>{t('problem.subtitle')}</p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div ref={ref} className="reveal grid gap-4 sm:grid-cols-3">
         {items.map((it, i) => {
           const Icon = it.icon;
           return (

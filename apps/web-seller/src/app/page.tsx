@@ -4,8 +4,8 @@ import { getServerLocale } from '@/lib/i18n/server-locale';
 import { LandingPage } from '@/components/landing/LandingPage';
 
 export const metadata: Metadata = {
-  title: 'maxsavdo — магазин в Telegram за 5 минут',
-  description: 'Создайте свой магазин в Telegram. Каталог, корзина, заказы и аналитика — без сайтостроения и комиссии с продаж.',
+  title: 'maxsavdo — магазин в Telegram, который выглядит дорого',
+  description: 'Преврати Instagram в премиальную витрину с корзиной и заказами за 5 минут. Без комиссии с продаж. Закрытая бета.',
 };
 
 export default async function HomePage() {

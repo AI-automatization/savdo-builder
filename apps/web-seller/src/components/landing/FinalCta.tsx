@@ -5,14 +5,16 @@ import { ArrowRight } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth/context';
 import { colors } from '@/lib/styles';
+import { useReveal } from '@/lib/landing/use-reveal';
 import { landingTrack } from '@/lib/landing/analytics';
 
 export function FinalCta() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
+  const ref = useReveal<HTMLDivElement>();
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-24">
-      <div className="relative overflow-hidden rounded-2xl p-10 sm:p-16 text-center" style={{ background: colors.accent }}>
+      <div ref={ref} className="reveal relative overflow-hidden rounded-2xl p-10 sm:p-16 text-center" style={{ background: colors.accent }}>
         <h2 className="text-3xl sm:text-4xl font-bold" style={{ color: colors.accentTextOnBg }}>{t('final.title')}</h2>
         <p className="mt-3 text-sm sm:text-base opacity-90" style={{ color: colors.accentTextOnBg }}>{t('final.subtitle')}</p>
         <Link
