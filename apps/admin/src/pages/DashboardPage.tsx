@@ -160,7 +160,21 @@ export default function DashboardPage() {
             </span>
           </div>
           {analytics.loading ? (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
+            <div className="h-40 flex flex-col justify-end gap-2 px-2" aria-label={t('common.loading')}>
+              <div className="flex items-end gap-1 h-32">
+                {[40, 65, 50, 78, 55, 90, 70, 85, 60, 95].map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 animate-pulse rounded-t"
+                    style={{ height: `${h}%`, background: 'var(--surface2)' }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : analytics.error ? (
+            <div className="h-40 flex items-center justify-center text-sm text-red-500">
+              <AlertCircle size={14} className="mr-2" /> {t('common.loadingError') ?? 'Ошибка загрузки'}
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <LineChart data={analytics.data?.ordersPerDay ?? []} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
@@ -199,7 +213,18 @@ export default function DashboardPage() {
             </span>
           </div>
           {analytics.loading ? (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
+            <div className="h-40 flex flex-col justify-center gap-2 px-1" aria-label={t('common.loading')}>
+              {[80, 65, 50, 40, 30].map((w, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="animate-pulse rounded" style={{ width: 60, height: 8, background: 'var(--surface2)' }} />
+                  <div className="animate-pulse rounded-r" style={{ width: `${w}%`, height: 14, background: 'var(--surface2)' }} />
+                </div>
+              ))}
+            </div>
+          ) : analytics.error ? (
+            <div className="h-40 flex items-center justify-center text-sm text-red-500">
+              <AlertCircle size={14} className="mr-2" /> {t('common.loadingError') ?? 'Ошибка загрузки'}
+            </div>
           ) : (analytics.data?.topStores ?? []).length === 0 ? (
             <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.noData')}</div>
           ) : (
@@ -264,7 +289,19 @@ export default function DashboardPage() {
           </thead>
           <tbody>
             {recent.loading ? (
-              <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`sk-${i}`} style={{ borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <td key={j} className="px-4 py-3">
+                      <div className="animate-pulse rounded" style={{ height: 12, width: j === 0 ? 56 : j === 3 ? 72 : '80%', background: 'var(--surface2)' }} />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : recent.error ? (
+              <tr><td colSpan={6} className="py-10 text-center text-sm text-red-500">
+                <AlertCircle size={14} className="inline mr-2" /> {recent.error}
+              </td></tr>
             ) : (recent.data?.orders ?? []).length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
