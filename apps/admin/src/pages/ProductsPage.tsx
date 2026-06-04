@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react'
-import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive, Trash2 } from 'lucide-react'
+import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive, Trash2, Plus, Store } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 
 interface ProductImage { url: string }
+interface ProductStoreRef { id: string; name: string }
 interface Product {
   id: string
   storeId: string
+  // P2-6 (audit 2026-06-04): backend пока не возвращает store (см. logs.md
+  // ADMIN-PRODUCTS-NO-STORE-FIELD). Поле optional — UI работает как до фикса,
+  // а после backend-доработки сразу подхватит имя без правок здесь.
+  store?: ProductStoreRef | null
+  storeName?: string | null
   title: string
   status: string
   basePrice: number
@@ -118,9 +124,29 @@ export default function ProductsPage() {
             {loading ? 'Загрузка...' : `${data?.total ?? 0} товаров`}
           </p>
         </div>
-        <button onClick={refetch} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-          <RefreshCw size={14} /> Обновить
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* P2-8 (audit 2026-06-04): placeholder-кнопка. Endpoint POST /admin/products
+              ещё не реализован (см. analiz/logs.md → ADMIN-PRODUCTS-NO-CREATE-ENDPOINT).
+              По клику — alert с инструкцией. После появления endpoint заменить на модалку. */}
+          <button
+            onClick={() => alert('Скоро будет — пока создавайте товар через TMA seller-приложение.')}
+            title="Скоро будет — пока создавайте через TMA"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 8,
+              border: '1px solid var(--primary)',
+              background: 'var(--primary-dim)',
+              color: 'var(--primary)',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              opacity: 0.85,
+            }}
+          >
+            <Plus size={14} /> Создать товар
+          </button>
+          <button onClick={refetch} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
+            <RefreshCw size={14} /> Обновить
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -170,16 +196,16 @@ export default function ProductsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Товар', 'Статус', 'Цена', 'ID', ''].map(h => (
+              {['Товар', 'Магазин', 'Статус', 'Цена', 'ID', ''].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
             ) : products.length === 0 ? (
-              <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Нет товаров</td></tr>
+              <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Нет товаров</td></tr>
             ) : products.map(p => {
               const cfg = STATUS_CFG[p.status] ?? { bg: 'var(--surface2)', text: 'var(--text-muted)', label: p.status }
               const isHidden = p.status === 'HIDDEN_BY_ADMIN'
