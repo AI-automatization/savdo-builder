@@ -1,5 +1,85 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Азим) — Бизнес-модель v2 (premium-wedge) + премиум-редизайн лендинга
+
+### ✅ [COMPETITOR-QLAY-DEEPDIVE-001] Глубокий аудит конкурента qlay.uz (заново, по живому сайту)
+- **Важность:** 🔴
+- **Дата:** 04.06.2026
+- **Файлы:** `docs/business/competitor-deep-dive-qlay-2026-06-04.md`, `docs/business/completeness-map.md` (§3 закрыт)
+- **Что сделано:** полная матрица тарифов qlay (Free/49k/99k/199k + лимиты), AI-фичи, онбординг, FAQ.
+  Главная находка: у qlay Payme/Click на всех тарифах (включая Free), у нас оплата заморожена до Phase 2 —
+  самый серьёзный разрыв. Где мы сильнее: премиум-вид, веб-витрина, 0% комиссии, скорость на 3G.
+
+### ✅ [BIZ-PRICING-V2-001] Тарифы v2 + обоснование каждой цены (premium-wedge стратегия)
+- **Важность:** 🔴
+- **Дата:** 04.06.2026
+- **Файлы:** `docs/business/pricing-rationale-v2-2026-06-04.md`
+- **Что сделано:** через `superpowers:brainstorming` (визуальный компаньон) с Азимом выбрана стратегия
+  **премиум-клин в визуальную нишу** (мода/красота). Лестница: **Free (20 товаров) / Pro 149k / Studio 399k**,
+  оплата периодом (год −25%), founding-бета сейчас бесплатно, soft-lock на Free. Метрика лимита — товары
+  (только на Free). Расписано обоснование каждой цифры (почему 149k, −25%, 20 товаров, 399k) + юнит-экономика.
+  ⚠️ tier-enum меняется STARTER/PRO/BUSINESS → **FREE/PRO/STUDIO** (синхронизировать с `billing-machine-spec-v1`, Полат).
+
+### ✅ [WEB-SELLER-LANDING-PREMIUM-001] Премиум-редизайн лендинга (сильнее qlay)
+- **Важность:** 🔴
+- **Дата:** 04.06.2026
+- **Файлы:** спека `docs/superpowers/specs/2026-06-04-seller-landing-premium-redesign-design.md`,
+  план `docs/superpowers/plans/2026-06-04-seller-landing-premium-redesign.md`,
+  `apps/web-seller/src/components/landing/*` (Hero, Pricing, Showcase[новый], + reveal во всех секциях),
+  `lib/landing/{use-reveal,showcase}.ts`, `lib/i18n/{ru,uz}.ts`, `app/globals.css`, `app/page.tsx`, `.env.example`.
+- **Что сделано:** премиум CSS-only моушн (reveal-on-scroll + glow/floaty, уважает prefers-reduced-motion),
+  hero с парящим телефоном, новая секция «Витрины» (галерея магазинов, env-gated), тарифная лестница с цифрами +
+  founding, мягко-нишевый копирайт RU+UZ. **Проверка:** tsc по landing-файлам чист; dev `GET / 200`, в HTML
+  новый контент (149 000/399 000/Studio). Ветка `feat/seller-landing`, НЕ смержено.
+- **Найден баг:** build web-seller красный из-за enum-as-value в dashboard (см. logs WEB-SELLER-ENUM-AS-VALUE-BUILD-001) — пре-existing, не лендинг.
+
+## 2026-06-03 (Азим) — i18n-фундамент для seller landing
+
+### ✅ [I18N-SELLER-LANDING-001] i18n foundation для web-seller (RU+UZ, cookie-based)
+- **Важность:** 🔴 (Task 1 of 8 — блокирует весь лендинг)
+- **Дата:** 03.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/i18n/types.ts` — Locale, SUPPORTED_LOCALES, DEFAULT_LOCALE, LOCALE_COOKIE, Dict
+  - `apps/web-seller/src/lib/i18n/ru.ts` — 96 ключей, русский словарь, source of truth
+  - `apps/web-seller/src/lib/i18n/uz.ts` — 96 ключей, узбекский (латиница), Record<keyof typeof ru, string>
+  - `apps/web-seller/src/lib/i18n/I18nProvider.tsx` — client provider, useTranslation, interpolation
+  - `apps/web-seller/src/lib/i18n/server-locale.ts` — getServerLocale() с async cookies() (Next.js 16)
+  - `apps/web-seller/src/lib/i18n/index.ts` — barrel export
+- **Что сделано:** lightweight RU/UZ dictionary + provider без Telegram-зависимости. Locale из cookie `ms_locale`. Паритет ключей enforced TypeScript. UZ = латиница.
+- **Коммит:** ae84e8f
+
+### ✅ [SELLER-LANDING-001] Публичный продающий лендинг продавца (web-seller `/`)
+- **Важность:** 🔴 (не было точки входа для холодного продавца; отстройка от конкурента qlay.uz)
+- **Дата:** 03.06.2026
+- **Ветка:** `feat/seller-landing` (8 коммитов, ae84e8f…0d63fa5). НЕ в main, НЕ запушено.
+- **Файлы:**
+  - `apps/web-seller/src/lib/landing/{demo-store,analytics}.ts` — демо-кнопка на env + no-op трекер
+  - `apps/web-seller/src/components/landing/*` — Header, Hero, Problem, HowItWorks, WhyUs (сравнит. таблица), Features, Pricing (beta), Faq, FinalCta, Footer, LangToggle, LandingPage
+  - `apps/web-seller/src/app/page.tsx` — было `redirect('/dashboard')` → стало лендинг (server + I18nProvider)
+  - `.env.example` — `NEXT_PUBLIC_DEMO_STORE_SLUG=test-store`
+- **Что сделано:** 10 секций, Dark Luxury (token-based, dark+light), RU+UZ с мгновенным переключением, тарифы без цифр (beta), no-commission в отстройке. Визуально проверено через Playwright: dark/light × RU/UZ × desktop/mobile — всё ок.
+- **Баг по ходу:** barrel `lib/i18n/index.ts` реэкспортил `getServerLocale` (next/headers) → попадал в client-бандл → 500. Фикс: barrel client-safe, server-locale импортится напрямую в server-компонентах (коммит 0d63fa5).
+- **Спека/план:** `docs/superpowers/specs/2026-06-03-seller-landing-page-design.md`, `docs/superpowers/plans/2026-06-03-seller-landing-page.md`
+- **Остаток:** (1) build web-seller красный из-за чужого REFACTOR-DRY-001 (домен Полата, packages/types) — лендинг TS-чистый, но прод-build green будет только после фикса типов; (2) демо-кнопка скрыта, пока не задан красивый витринный slug; (3) деплой — merge `feat/seller-landing` → ветка web-seller (по правилу деплой-веток).
+
+---
+
+## 2026-06-02 (Азим) — бизнес-блок: роадмап, контент-конвейер, видео-пайплайн
+
+### ✅ [BIZ-SETUP-2026-06-02] Роадмап до прод + контент-конвейер + передача бизнеса Азиму
+- **Важность:** 🟡 (планирование/маркетинг). **Дата:** 02.06.2026
+- **Решение:** бизнес-модель + монетизация + маркетинг + GTM + контент → зона Азима; инженерия/инфра — Полат (CLAUDE.md обновлён).
+- **Создано:**
+  - Мастер-роадмап до продакшна, 4 этапа — `docs/business/roadmap-to-production-2026-06-02.md`.
+  - Карта полноты бизнес-модели (чтобы ничего не пропустить) — `docs/business/completeness-map.md`.
+  - Контент-конвейер: §9.4 (Remotion) + §9.5 (батч на месяц + автопостинг) + пилот недели 1 — `docs/business/content/`.
+  - Видео-пайплайн: Remotion → доставка в Telegram. Бренд-интро maxsavdo готово.
+  - Кастомные агенты `content-creator` + `video-producer`.
+- **Тех-аудит (по протоколу):** прогон TMA и фронт-контрактов; конфликтов логики фронт↔бэк не найдено
+  (`packages/types` = single source, инварианты соблюдены). Найденные баги — в `logs.md` (TMA-AUDIT-001).
+
+---
+
 ## 2026-06-01 (Полат) — BRAND-ADMIN-INDIGO-CLEANUP-001: WONTFIX, indigo сохраняем
 
 ### ✅ [BRAND-ADMIN-INDIGO-CLEANUP-001] Решение: indigo accent на data-страницах admin — оставить

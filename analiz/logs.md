@@ -1,5 +1,81 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-04] [WEB-SELLER-ENUM-AS-VALUE-BUILD-001] Build web-seller красный — enum-типы используются как значения
+- **Статус:** 🔴 Баг (пре-existing, обнаружен при сборке лендинга — НЕ связан с лендингом).
+- **Что случилось:** `pnpm build` / `tsc --noEmit` в `apps/web-seller` падают десятками ошибок
+  `TS2693: 'UserRole'/'OrderStatus'/'StoreStatus' only refers to a type, but is being used as a value`.
+  Next build: `Export UserRole doesn't exist in target module` / `module has no exports at all`.
+- **Корень:** в `packages/types/src/enums.ts` (зона Полата) `UserRole`/`OrderStatus`/`StoreStatus`
+  объявлены как **`export type`** (юнионы строк), а dashboard-страницы импортят их как значения
+  (`import { UserRole } from 'types'` + `OrderStatus.PENDING`, Record<OrderStatus,...> и т.п.).
+  Типы рантайм-экспорта не дают → и tsc, и сборка падают.
+- **Где бьёт:** `(dashboard)/chat/page.tsx`, `dashboard/page.tsx`, `orders/[id]/page.tsx`, `orders/page.tsx`,
+  `products/page.tsx`, `products/[id]/edit/page.tsx`, `layout.tsx`. Лендинг (`components/landing`) НЕ затронут —
+  от `types` не зависит, рендерится 200 OK.
+- **Что сделано:** залогировано. НЕ фикшено — отдельная задача (заменить enum-value доступ на строковые
+  литералы / runtime-const-маппинги). Правка — `apps/web-seller` (Азим), первопричина — решение Полата
+  сделать enums типами. Лендинг проверен независимо через dev (`GET / 200`, без ошибок).
+
+## [2026-06-02] [TMA-AUDIT-001] Баг-аудит apps/tma (Telegram Mini App, домен Полата)
+- **Статус:** 🟡 найдено ~10 реальных багов (0 критичных) + 2 ложные тревоги опровергнуты. НЕ фикшено (зона Полата).
+- **Метод:** safe-проверки (vitest 14/14 ✅, `tsc -b` ✅, `vite build` ✅ 135 модулей) + 4 параллельных
+  code-review агента по подсистемам (checkout/cart/orders, фото/товары, chat/socket, auth/theme/nav).
+  Каждая 🔴-находка верифицирована ручным чтением кода Азимом. **Живой E2E не гонялся** (риск
+  мусорных заказов на проде / нужен локальный бэк). Запущено по запросу Азима.
+
+### ❌ Ложные тревоги (опровергнуты чтением — Полату НЕ чинить):
+- **BackButton «двойная регистрация обработчика»** (`components/layout/BackButton.tsx:24`) — неверно:
+  `return () => tg.BackButton.offClick(handler)` есть, useEffect-cleanup снимает старый handler перед
+  навешиванием нового при смене pathname. Накопления нет.
+- **BuyerGuard «пропускает неавторизованного» = security breach** (`App.tsx:91-98`) — не баг: by design.
+  Витрина покупателя публичная (каталог/товар/корзина — гостевые, корзина в localStorage), приватных
+  данных гость не видит. В TMA юзер и так авто-авторизуется через Telegram initData. SellerGuard
+  (приватный dashboard) auth требует корректно (`!user → Navigate '/'`).
+
+### 🟡 Подтверждённые реальные баги (Полату):
+1. **Вариант-цикл без error-handling — частичная потеря данных** (`pages/seller/AddProductPage.tsx:365-381`).
+   POST вариантов в цикле **без** try-catch, в отличие от атрибутов (416-432, `failedAttrs`) и фото
+   (436+, try-catch). Если вариант 3 из 5 упал (сеть/timeout) → throw в общий catch, товар уже создан
+   (DRAFT), часть вариантов есть, часть нет, юзер видит generic-ошибку без указания какой вариант. Fix:
+   обернуть как атрибуты (`failedVariants[]` + showToast). Severity 🟡 (товар recoverable в редакторе).
+2. **Socket не сбрасывается при logout** (`providers/AuthProvider.tsx:68-72`). `logout` зовёт только
+   `setToken(null)`+`resetCartSync()`, НЕ зовёт `destroySocket`/`resetNotifications`/`resetChatUnread`/
+   `unbindSellerNotifications` → WS-соединение и listeners остаются. Severity 🟡 (в TMA logout редок —
+   auth авто-через-Telegram, 401→reauth а не logout; латентная утечка при logout/login циклах).
+3. **Дубли connect-listener в seller-нотификациях** (`lib/sellerNotifications.ts:51-69`). И `socket.once
+   ('connect', join)`, и `socket.on('connect', join)` — при reconnect join-room эмитится 2×; повторный
+   `bindSellerNotifications` не снимает старый `on('connect')` (нет ссылки на off). Severity 🟡.
+4. **`connect`-listener не off'ится в reset** (`lib/notifications.ts`, `lib/chatUnread.ts`).
+   `resetNotifications` снимает `notification:new`, но не `connect` → при logout/login копятся. Severity 🟡.
+5. **typing stopTimer не чистится при unmount** (`lib/useChatTyping.ts`). `stopTimer` ставится в callback
+   `emitTyping` (2.5с), cleanup useEffect его не очищает → после закрытия чата таймер эмитит на сервер. 🟡.
+6. **Утечка blob-URL в AddProductPage** (`pages/seller/AddProductPage.tsx`, `photoPreviews`).
+   `URL.createObjectURL` revoke'ится только в `removePhoto`, нет cleanup при unmount → уход со страницы
+   с N добавленными фото оставляет N blob-URL в памяти (на слабом WebView копится). 🟡. (EditProductPage
+   чист — там `FileReader`/`data:` URL, revoke не нужен.)
+7. **addToCart без проверки стока** (`components/ui/ProductCard.tsx:26-49`). Кнопка «+» добавляет товар
+   с `totalStock<=0` несмотря на бейдж «нет в наличии»; backend отобьёт при checkout (422), но UX. 🟡.
+8. **Lazy-чанки без ChunkLoadError boundary** (`App.tsx:59-79`). React.lazy без обработки сбоя загрузки
+   чанка → при деплое новой версии активный юзер на старой получает белый экран при навигации. 🟡.
+9. **Phone-поле checkout инициализируется до загрузки user** (`pages/buyer/CheckoutPage.tsx:30`).
+   `useState(() => formatUzPhone(user?.phone ?? ''))` — при прямом открытии /checkout user ещё null →
+   поле телефона пустое вместо предзаполненного. 🟡 UX.
+10. **Detail заказа не обновляется после смены статуса** (`pages/seller/OrdersPage.tsx:191-228`).
+    `changeStatus` обновляет список (`setOrders`), но не открытый detail bottom-sheet → старый статус
+    до переоткрытия. 🟡 UX.
+
+### 🟢 Мелочи / UX (не баги):
+- Нет `capture="environment"` на `<input type=file>` товара (`AddProductPage:961`, `EditProductPage:969`)
+  → на телефоне открывается галерея, а не камера. (Связано с фичей «сфоткать товар» — продавцу лишний шаг.)
+- Нет frontend-проверки размера файла фото (риск зависания WebView на 50MB+, backend-лимит есть).
+- `SocketStatusBadge` cleanup без defensive-проверки существования socket.
+
+### ✅ Безопасность проверки (для справки):
+- typecheck/build/unit — ноль риска (локально, оффлайн, код не менялся, lockfile не трогался).
+- Чистые компоненты (баги не найдены): EditProductPage, ImageCropper, ProductImage, ImagePlaceholder, api.ts.
+- **Не проверено вообще** (нужен живой E2E): реальная загрузка на R2, поведение при плохом интернете,
+  фактический checkout-флоу (на API висит P0 `API-CHECKOUT-CONFIRM-500-001` — бьёт и по TMA).
+
 ## [2026-05-31] [WEB-AUDIT-BUYER-SELLER-001] Полный баг-аудит web-buyer + web-seller
 - **Статус:** ✅ 8 багов исправлено (запушено на deploy-ветки) / 🟡 5 найдено, НЕ фикшено (архитектура/env/Полат)
 - **Метод:** 6 параллельных code-review агентов по подсистемам, статический анализ
