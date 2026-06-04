@@ -58,11 +58,11 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
         display: 'flex',
         flexDirection: 'column',
         padding: '16px 10px 12px',
-        background: 'rgba(9,7,18,0.96)',
+        background: 'var(--tg-bg)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderRight: '1px solid var(--tg-border-soft)',
-        boxShadow: '4px 0 24px rgba(0,0,0,0.35)',
+        boxShadow: 'var(--tg-sidebar-shadow, 4px 0 24px rgba(0,0,0,0.18))',
       }}
     >
       {/* ── Brand ─────────────────────────────────────────────────────────── */}
