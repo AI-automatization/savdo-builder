@@ -1,5 +1,39 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Полат) — P1-3 dashboard skeleton + P1-4 products soft-delete toggle
+
+### ✅ [P1-3] Dashboard cold-start skeleton/error states
+- **Важность:** 🟡 P1 (UX cold-start). **Дата:** 04.06.2026
+- **Файлы:** `apps/admin/src/pages/DashboardPage.tsx`
+- **Что сделано:**
+  - StatCard уже имел skeleton (`animate-pulse` rounded placeholder вместо `0`)
+    — оставлен как есть.
+  - Orders-per-day LineChart: вместо текста «Загрузка...» — bar-shimmer skeleton
+    (10 анимированных колонок). Добавлен error-state с `AlertCircle` + текстом.
+  - Top-stores BarChart: вместо текста — 5 анимированных горизонтальных строк
+    (label + bar). Добавлен error-state.
+  - Recent orders table: вместо `colSpan=6` «Загрузка...» — 5 skeleton-строк
+    с pulse-блоками для каждой колонки. Добавлен error-state красным.
+
+### ✅ [P1-4] Products UI=7 vs DB=26 — soft-delete toggle
+- **Важность:** 🟡 P1 (admin observability). **Дата:** 04.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/products.repository.ts` —
+    `findAll()` принимает `includeDeleted?: boolean`. Default false (legacy).
+    При true — `deletedAt: null` не добавляется в where.
+  - `apps/api/src/modules/admin/admin-products.controller.ts` — добавлен
+    `@Query('includeDeleted')` (true|1), прокинут в repo. Контракт не нарушен.
+  - `apps/admin/src/pages/ProductsPage.tsx` — toggle-кнопка «Показать
+    удалённые» / «✓ С удалёнными» (margin-left:auto, красный border когда
+    активна). При клике запрос идёт с `&includeDeleted=true`, useFetch
+    перезагружается через deps `[statusFilter, includeDeleted]`.
+- **Root cause** (полностью в `analiz/logs.md`): `ProductsRepository.findAll`
+  всегда фильтрует `deletedAt: null`; раздел «База данных» показывает raw view
+  без фильтра → 19 строк soft-deleted скрывались от UI. Фильтр оправдан
+  (admin-safety), убирать нельзя; добавлен явный opt-in.
+
+---
+
 ## 2026-06-04 (Полат) — TMA-DESIGN-V2-MIGRATE-001: TMA на maxsavdo Dark Luxury
 
 ### ✅ [TMA-DESIGN-V2-MIGRATE-001] TMA переведён с Liquid Glass v1 на maxsavdo design-v2

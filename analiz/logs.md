@@ -1,5 +1,23 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-04] [P1-4] Products UI=7 vs DB=26 root cause: soft-delete filter
+- **Статус:** ✅ Исправлено. **Кто:** Полат.
+- **Root cause:** `ProductsRepository.findAll()` (apps/api/src/modules/products/repositories/products.repository.ts:133)
+  жёстко применял `where: { deletedAt: null }`. Раздел «База данных» админки
+  (AdminDbController, raw Prisma view) показывает ВСЕ строки таблицы products,
+  включая soft-deleted → 26. ProductsPage через `/api/v1/admin/products` видел
+  только живые → 7. Разница = 19 soft-deleted записей.
+- **Pagination не виновен:** в UI стоит `limit=50`, в БД 26 < 50. Status filter
+  по умолчанию пуст, в where не добавляется.
+- **Решение (filter оправдан — не убираем):**
+  - apps/api: добавлен опциональный `includeDeleted?: boolean` в `findAll` и
+    `@Query('includeDeleted')` в `AdminProductsController.list`. Default = false
+    (legacy поведение). При `true` — `deletedAt: null` фильтр снимается.
+  - apps/admin/ProductsPage: toggle «Показать удалённые» рядом с фильтрами
+    статуса. По клику запрос с `&includeDeleted=true` → UI и «База данных»
+    синхронизированы.
+- **Контракт не сломан:** старые клиенты без параметра видят то же что и раньше.
+
 ## [2026-06-04] [TMA-COLORS-CLEANUP-002] Остаток хардкод-цветов в TMA seller-формах
 - **Статус:** 🟡 Открыто. **Кто:** Полат. **Приоритет:** P2 (visual debt — функция работает).
 - **Контекст:** TMA-DESIGN-V2-MIGRATE-001 (04.06) закрыл tokens + brand + 5 UI/seller компонентов,
