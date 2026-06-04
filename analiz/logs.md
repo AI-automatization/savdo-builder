@@ -1,5 +1,56 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-04] [REAUDIT-V2-VARIANT-HASH-AS-HEX] ✅ Variant fallback label выглядел как hex-цвет
+- **Статус:** ✅ Исправлено (Полат)
+- **Что случилось:** `ProductPage.tsx` показывал `#${v.id.slice(-4)}` как label
+  для flat-variant (без option groups). UUID-хвост типа "799f" в `#`-префиксе
+  напоминал hex-цвет (`#799f` = валидный CSS short-hex), что вводило в
+  заблуждение и был воспринят аудитором как баг отображения цвета вариации.
+- **Что сделано:** label = `titleOverride ?? \`${t('product.variantLabel')} ${idx + 1}\``.
+- **Root cause:** изначальный fallback придумывался "чтобы что-то показать"
+  без учёта что seller'ы titleOverride не заполняют + UUID-хвост случайно
+  валидный hex. Урок: fallback должен быть semantic (порядковый номер),
+  а не technical (id slice).
+
+## [2026-06-04] [REAUDIT-V2-EMOJI-RENDER] 🟡 Эмодзи ❤️ в Telegram WebApp фиолетовое
+- **Статус:** ✅ Mitigated (Полат) — заменено на SVG.
+- **Что случилось:** WishlistButton использовал emoji `❤️`/`🤍`. На Android
+  Telegram (Noto Color Emoji) и iOS (Apple Color Emoji) красное сердце часто
+  имеет розовый/фиолетовый оттенок из-за разных font fallback chain. Аудит
+  принял это за hardcoded purple.
+- **Что сделано:** заменено на inline-SVG с `fill="#C9A876"` (Champagne Gold
+  brand color). Контролируется CSS, рендерится одинаково везде.
+
+## [2026-06-04] [REAUDIT-V2-STOREFRONT-NO-COUNT] ✅ Storefront stores не возвращал _count
+- **Статус:** ✅ Исправлено (Полат) — `findAllPublished` теперь возвращает
+  `_count.products` по фильтру `deletedAt: null, status: 'ACTIVE'`.
+- **Где:** `apps/api/src/modules/stores/repositories/stores.repository.ts`.
+- **Импакт:** TMA `/buyer` карточки магазинов всегда показывали 0. У Azim в
+  БД 3 активных товара — теперь видно `📦 3`.
+
+## [2026-06-04] [ADMIN-PRODUCTS-NO-STORE-FIELD] 🟡 Backend не возвращает store в admin/products
+- **Статус:** 🟡 Открыто. **Кто:** Полат (или параллельная P2-3/4 сессия api).
+- **Где:** `apps/api/src/modules/products/repositories/products.repository.ts:142` —
+  метод `findAll()` имеет `include: { images: ... }` БЕЗ `store: { select: { name: true } }`.
+- **Импакт UI:** P2-6 (audit-2026-06-04) — в `apps/admin/src/pages/ProductsPage.tsx`
+  невозможно показать колонку «Магазин» без backend-доработки. Колонка добавлена в UI,
+  но рендерит storeId fallback (первые 8 символов). Полноценное имя магазина — после fix.
+- **Фикс:** добавить `store: { select: { id: true, name: true } }` в include `findAll()`
+  + расширить тип Product/Response в admin (storeName?: string). Зона: apps/api (не наш scope).
+
+## [2026-06-04] [ADMIN-PRODUCTS-NO-CREATE-ENDPOINT] 🟡 Нет POST /admin/products
+- **Статус:** 🟡 Открыто. **Кто:** Полат (backend следующая сессия).
+- **Где:** `apps/api/src/modules/admin/admin-products.controller.ts` — есть только
+  GET (list), PATCH (hide/restore/archive), DELETE, POST `/recalc-denorm`.
+  Endpoint `POST /admin/products` для создания товара админом отсутствует.
+- **Импакт UI:** P2-8 (audit-2026-06-04) — в `apps/admin/src/pages/ProductsPage.tsx`
+  добавлена placeholder-кнопка «+ Создать товар» с tooltip «Скоро будет — пока
+  создавайте через TMA». При клике — `alert()` (без модалки), чтобы не плодить
+  мёртвый код до появления endpoint.
+- **Фикс:** в admin-products.controller.ts добавить `POST /` с DTO (title, basePrice,
+  currencyCode, storeId, status=DRAFT) + reuse `productsRepo.create()` (если есть) или
+  создать use case. Audit_log action=PRODUCT_CREATED_BY_ADMIN. Зона: apps/api.
+
 ## [2026-06-04] [TYPES-ENUM-RUNTIME-001] ✅ ИСПРАВЛЕНО — const-object pattern
 - **Статус:** ✅ Исправлено (Полат)
 - **Что случилось:** DUP-008 (01.06.2026) перевёл `packages/types/src/enums.ts` из
