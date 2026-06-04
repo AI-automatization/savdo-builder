@@ -1,5 +1,27 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-04] [TMA-COLORS-CLEANUP-002] Остаток хардкод-цветов в TMA seller-формах
+- **Статус:** 🟡 Открыто. **Кто:** Полат. **Приоритет:** P2 (visual debt — функция работает).
+- **Контекст:** TMA-DESIGN-V2-MIGRATE-001 (04.06) закрыл tokens + brand + 5 UI/seller компонентов,
+  но 72 inline `rgba(255,255,255,X)` / `#A855F7` / `#22D3EE` остались в 7 файлах:
+  - `apps/tma/src/pages/seller/AddProductPage.tsx` (19)
+  - `apps/tma/src/pages/seller/EditProductPage.tsx` (21)
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` (16)
+  - `apps/tma/src/pages/seller/ChannelSettingsPage.tsx` (7)
+  - `apps/tma/src/pages/seller/ChatPage.tsx` (4)
+  - `apps/tma/src/pages/buyer/ChatPage.tsx` (4)
+  - `apps/tma/src/test/setup.ts` (1)
+- **Что сделать:** заменить inline `rgba(255,255,255,X)` → `var(--tg-text-*)` / `var(--tg-surface*)`,
+  inline `#A855F7` / `#22D3EE` / `rgba(168,85,247,...)` / `rgba(34,211,238,...)` → `var(--tg-accent*)`.
+  Особое внимание AddProduct/EditProduct (multi-photo uploader, variants matrix — много слоёв подложек,
+  легко сломать визуальную иерархию). Делать малыми коммитами по файлу + Playwright snapshot.
+- **Почему не блокер:** токеновый слой уже переопределён под Champagne Gold — старые hardcoded
+  rgba(255,255,255,X) на Rich Black surface отрисовываются как нейтральные полупрозрачные блики,
+  а старые orchid `#A855F7` точечно вкраплены (в основном для outline'ов кнопок) и не создают
+  агрессивного фиолетового брендинга. На production будет «правильно, но не идеально».
+
+---
+
 ## [2026-05-31] [WEB-AUDIT-BUYER-SELLER-001] Полный баг-аудит web-buyer + web-seller
 - **Статус:** ✅ 8 багов исправлено (запушено на deploy-ветки) / 🟡 5 найдено, НЕ фикшено (архитектура/env/Полат)
 - **Метод:** 6 параллельных code-review агентов по подсистемам, статический анализ

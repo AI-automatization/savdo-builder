@@ -135,7 +135,9 @@ export function SellerAnalyticsCard() {
 }
 
 function Kpi({ label, value, unit, tone }: { label: string; value: string; unit?: string; tone: 'purple' | 'cyan' | 'amber' }) {
-  const color = tone === 'purple' ? '#A855F7' : tone === 'cyan' ? '#22D3EE' : '#FBBF24';
+  // design-v2: 3 тона мапятся на Champagne Gold (primary) и предупреждение —
+  // hue-разницу убрали (orchid/cyan → один gold), amber оставлен как warning.
+  const color = tone === 'amber' ? 'var(--tg-warning)' : 'var(--tg-accent)';
   return (
     <div className="flex flex-col items-start gap-0.5 px-2.5 py-2 rounded-lg"
       style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border-soft)' }}
@@ -171,8 +173,8 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(168,85,247,0.40)" />
-            <stop offset="100%" stopColor="rgba(168,85,247,0)" />
+            <stop offset="0%" stopColor="rgba(201,168,118,0.40)" />
+            <stop offset="100%" stopColor="rgba(201,168,118,0)" />
           </linearGradient>
         </defs>
         <polygon
@@ -182,13 +184,13 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
         <polyline
           points={points}
           fill="none"
-          stroke="#A855F7"
+          stroke="#C9A876"
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         {Number.isFinite(lx) && Number.isFinite(ly) && (
-          <circle cx={lx} cy={ly} r={2.5} fill="#A855F7" />
+          <circle cx={lx} cy={ly} r={2.5} fill="#C9A876" />
         )}
       </svg>
     </div>

@@ -1,5 +1,8 @@
 // Цветовые палитры для светлой и тёмной темы.
 // Используются через CSS-переменные, см. apps/tma/src/index.css.
+//
+// maxsavdo design-v2 (Dark Luxury): Rich Black + Champagne Gold + Pure White.
+// TMA-DESIGN-V2-MIGRATE-001, 04.06.2026.
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -29,68 +32,69 @@ interface ThemeColors {
 }
 
 export const DARK_THEME: ThemeColors = {
-  // Фоновые слои
-  bg:           '#0B0E14',
-  bgGradient:   'linear-gradient(160deg, #0B0E14 0%, #0D1120 45%, #0B0F1C 100%)',
-  surface:      'rgba(255,255,255,0.055)',
-  surfaceHover: 'rgba(255,255,255,0.08)',
+  // Фоновые слои — Rich Black
+  bg:           '#0A0A0A',
+  bgGradient:   'linear-gradient(160deg, #0A0A0A 0%, #101010 50%, #0A0A0A 100%)',
+  surface:      '#141414',
+  surfaceHover: '#1F1F1F',
 
   // Текст
-  textPrimary:   'rgba(255,255,255,0.90)',
-  textSecondary: 'rgba(255,255,255,0.55)',
-  textMuted:     'rgba(255,255,255,0.40)',
-  textDim:       'rgba(255,255,255,0.30)',
+  textPrimary:   '#FFFFFF',
+  textSecondary: '#E5E5E5',
+  textMuted:     '#A3A3A3',
+  textDim:       '#737373',
 
   // Бордеры
-  border:       'rgba(255,255,255,0.11)',
-  borderSoft:   'rgba(255,255,255,0.06)',
+  border:       'rgba(255,255,255,0.12)',
+  borderSoft:   'rgba(255,255,255,0.08)',
 
-  // Акценты (orchid + cyan)
-  accent:        '#A855F7',
-  accentDim:     'rgba(168,85,247,0.18)',
-  accentGlow:    'rgba(168,85,247,0.35)',
-  accentText:    '#F3E8FF',
+  // Акценты — Champagne Gold (единственный chromatic accent в design-v2)
+  accent:        '#C9A876',
+  accentDim:     'rgba(201,168,118,0.18)',
+  accentGlow:    'rgba(201,168,118,0.35)',
+  accentText:    '#E8C898',
 
-  cyan:          '#22D3EE',
-  cyanDim:       'rgba(34,211,238,0.15)',
+  // Cyan убран из палитры — alias на accent чтобы старый код не сломался
+  cyan:          '#C9A876',
+  cyanDim:       'rgba(201,168,118,0.15)',
 
-  // Статусы
+  // Статусы — мягкие, чтобы не конкурировали с золотом
   success:    '#34D399',
   successDim: 'rgba(52,211,153,0.15)',
   warning:    '#FBBF24',
   warningDim: 'rgba(251,191,36,0.15)',
-  danger:     '#EF4444',
-  dangerDim:  'rgba(239,68,68,0.15)',
+  danger:     '#F87171',
+  dangerDim:  'rgba(248,113,113,0.15)',
 };
 
 export const LIGHT_THEME: ThemeColors = {
-  bg:           '#F7F8FB',
-  bgGradient:   'linear-gradient(160deg, #FFFFFF 0%, #F7F8FB 45%, #EEF1F8 100%)',
-  surface:      'rgba(0,0,0,0.04)',
-  surfaceHover: 'rgba(0,0,0,0.06)',
+  bg:           '#FFFFFF',
+  bgGradient:   'linear-gradient(160deg, #FFFFFF 0%, #FAFAFA 50%, #F5F5F5 100%)',
+  surface:      '#FAFAFA',
+  surfaceHover: '#F5F5F5',
 
-  textPrimary:   'rgba(0,0,0,0.88)',
-  textSecondary: 'rgba(0,0,0,0.62)',
-  textMuted:     'rgba(0,0,0,0.45)',
-  textDim:       'rgba(0,0,0,0.28)',
+  textPrimary:   '#0A0A0A',
+  textSecondary: '#262626',
+  textMuted:     '#737373',
+  textDim:       '#A3A3A3',
 
-  border:       'rgba(0,0,0,0.10)',
-  borderSoft:   'rgba(0,0,0,0.06)',
+  border:       '#E5E5E5',
+  borderSoft:   '#F0F0F0',
 
-  accent:        '#7C3AED',
-  accentDim:     'rgba(124,58,237,0.10)',
-  accentGlow:    'rgba(124,58,237,0.25)',
-  accentText:    '#5B21B6',
+  accent:        '#C9A876',
+  accentDim:     'rgba(201,168,118,0.12)',
+  accentGlow:    'rgba(201,168,118,0.25)',
+  accentText:    '#B89868',
 
-  cyan:          '#0891B2',
-  cyanDim:       'rgba(8,145,178,0.10)',
+  cyan:          '#C9A876',
+  cyanDim:       'rgba(201,168,118,0.10)',
 
-  success:    '#059669',
-  successDim: 'rgba(5,150,105,0.10)',
-  warning:    '#D97706',
-  warningDim: 'rgba(217,119,6,0.10)',
-  danger:     '#DC2626',
-  dangerDim:  'rgba(220,38,38,0.10)',
+  success:    '#10B981',
+  successDim: 'rgba(16,185,129,0.10)',
+  warning:    '#F59E0B',
+  warningDim: 'rgba(245,158,11,0.10)',
+  danger:     '#EF4444',
+  dangerDim:  'rgba(239,68,68,0.10)',
 };
 
 const STORAGE_KEY = 'savdo:theme';
