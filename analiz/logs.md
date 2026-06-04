@@ -1,5 +1,24 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-04] [TYPES-ENUM-RUNTIME-001] ✅ ИСПРАВЛЕНО — const-object pattern
+- **Статус:** ✅ Исправлено (Полат)
+- **Что случилось:** DUP-008 (01.06.2026) перевёл `packages/types/src/enums.ts` из
+  `export enum X` в `export type X = 'A' | 'B'`. Это сломало `apps/web-seller` build
+  (TS2693 — type used as value): web-seller импортирует `OrderStatus`/`UserRole` как
+  значения (`OrderStatus.PENDING`, `Record<OrderStatus, ...>`).
+- **Что сделано:** возврат к **const-object + derived type union** паттерну:
+  `export const OrderStatus = { PENDING: 'PENDING', ... } as const;`
+  `export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];`
+  Даёт и runtime-value (как enum), и string-literal compatibility (как union).
+- **Verify:** `npx tsc --noEmit` чистые в apps/api, apps/web-seller. admin build clean.
+
+## [2026-06-04] [WEB-BUYER-ORDERSTATUS-TYPE-NARROW] 🟡 Pre-existing TS2345 в web-buyer
+- **Статус:** 🟡 К Азиму (его зона apps/web-buyer).
+- **Где:** `apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:243`
+- **Что:** функция принимает `'PENDING' | 'CONFIRMED'`, а ей передают весь
+  `OrderStatus` (включая PROCESSING/SHIPPED/...). TS2345.
+- **Фикс (Азим):** либо widen тип параметра, либо type-narrow через `if (status === ...)`.
+
 ## [2026-06-04] [P1-4] Products UI=7 vs DB=26 root cause: soft-delete filter
 - **Статус:** ✅ Исправлено. **Кто:** Полат.
 - **Root cause:** `ProductsRepository.findAll()` (apps/api/src/modules/products/repositories/products.repository.ts:133)

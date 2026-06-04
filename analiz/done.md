@@ -1,5 +1,30 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Полат) — TYPES-ENUM-RUNTIME-001 — fix регрессии из DUP-008
+
+### ✅ [TYPES-ENUM-RUNTIME-001] Const-object pattern в `packages/types/src/enums.ts`
+- **Важность:** 🔴 P1 (build регрессия web-seller). **Дата:** 04.06.2026
+- **Что было сломано:** DUP-008 (01.06.2026) перевёл все enums в `export type X = 'A' | 'B'`.
+  Это убрало runtime-экспорт, и apps/web-seller который импортирует `OrderStatus`/
+  `UserRole` как **значения** (`OrderStatus.PENDING`, `Record<OrderStatus, ...>`,
+  `import { UserRole }`) перестал собираться — 30+ TS2693 + Next "Export UserRole
+  doesn't exist". Деплой-ветка web-seller заблокирована.
+- **Решение (вариант A по предложению Азима):** const-object pattern:
+  ```ts
+  export const OrderStatus = { PENDING: 'PENDING', ... } as const;
+  export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+  ```
+  Даёт runtime-value + string-literal compatibility одновременно. Применил ко всем
+  14 enum'ам (UserRole, UserStatus, StoreStatus, SellerVerificationStatus, OrderStatus,
+  ProductStatus, PaymentMethod, PaymentStatus, DeliveryType, ThreadType, MediaVisibility,
+  InventoryMovementType, SubscriptionTier, SubscriptionStatus, SubscriptionPaymentMethod,
+  SubscriptionPaymentStatus).
+- **Verify:** `apps/api` tsc clean, `apps/admin` build clean, `apps/web-seller` tsc clean.
+  `apps/web-buyer` имеет 1 локальную TS2345 в `orders/[id]/page.tsx:243` — это
+  pre-existing, не моя регрессия, отдельно записано в `logs.md` для Азима.
+- **Файлы:** `packages/types/src/enums.ts` (полная замена), `analiz/logs.md`,
+  `analiz/tasks.md` (taск удалён), `analiz/done.md`.
+
 ## 2026-06-04 (Полат) — P1-1 Telegram-канал магазина в Admin Panel
 
 ### ✅ [P1-1] Telegram-канал магазина — UI в Admin Panel (postProductToChannel fix)
