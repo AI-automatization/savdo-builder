@@ -5,6 +5,23 @@
 
 ---
 
+## 🟡 [BILLING-TIER-ENUM-SYNC-001] Синхронизировать tier-enum билл-машины с pricing v2
+
+- **Домен:** `packages/db` + `packages/types` + `apps/api` (Полат) · спека `docs/business/` (Азим — обновит).
+- **Кто берёт:** Полат (когда стартует BILLING-MACHINE-001) — **heads-up, не делать сейчас**.
+- **Приоритет:** 🟡 P1-блокер-для-биллинга — но раньше Subscription-entity к нему не приступаешь.
+- **Что изменилось (04.06, решение Азима, premium-wedge):** тарифная лестница переписана:
+  - tier-enum: ~~STARTER / PRO / BUSINESS~~ → **FREE / PRO / STUDIO**
+  - цены: ~~99k / 299k / 899k~~ → **Free (20 товаров) / Pro 149k / Studio 399k**
+  - метрика лимита = **товары** (cap только на Free, ≤20), не заказы; founding-бета сейчас бесплатно; оплата периодом (год −25%); soft-lock на Free.
+- **Действие:** при реализации `Subscription` НЕ брать tier-enum из старой
+  `billing-machine-spec-v1-2026-05-31.md` — там устаревшие STARTER/PRO/BUSINESS + 99/299/899.
+  Брать из `docs/business/pricing-rationale-v2-2026-06-04.md`. Сама спека будет
+  обновлена Азимом — сверься с её актуальной версией перед entity.
+- **Связь:** разблокируется тем же `BIZ-DECISIONS-§15` Азима, что и `BILLING-MACHINE-001`.
+
+---
+
 ## 🔴 [BILLING-MACHINE-001] Подписки + энфорсмент (блокер платного launch)
 
 - **Домен:** `apps/api` + `packages/db` + `packages/types` (Полат) · `apps/web-seller` + `apps/web-buyer` (Азим)
