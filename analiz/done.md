@@ -1,5 +1,16 @@
 # Done — Азим + Полат
 
+## 2026-06-03 (Полат) — REFACTOR-DRY-001 / весь DRY-аудит закрыт
+
+### ✅ [REFACTOR-DRY-001] Все 8 DUP-рефакторов из аудита 01.06.2026 выполнены
+- **Важность:** 🟡 P2 (tech debt). **Дата:** 03.06.2026
+- **Закрыто:** DUP-001..008 (см. соответствующие commits в session 01-02.06)
+- **Net effect:** ~700+ строк дубля убрано, 6 новых helper/service файлов
+- **Bonus:** скрытый DoS-fix в moderation.repository (DUP-006, limit cap missing)
+- **Только DUP-009** (passthrough use-cases) оставлен как осознанное архитектурное решение
+
+---
+
 ## 2026-06-01 (Полат) — BRAND-ADMIN-INDIGO-CLEANUP-001: WONTFIX, indigo сохраняем
 
 ### ✅ [BRAND-ADMIN-INDIGO-CLEANUP-001] Решение: indigo accent на data-страницах admin — оставить
