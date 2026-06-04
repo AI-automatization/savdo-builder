@@ -20,6 +20,8 @@ interface Store {
   isVerified?: boolean;
   avgRating?: number | string | null;
   reviewCount?: number;
+  // BUG-1 re-audit 04.06.2026: счётчик активных товаров в карточке магазина
+  _count?: { products: number };
 }
 
 interface GlobalCategory {
@@ -184,7 +186,7 @@ export default function StoresPage() {
             <Sticker emoji="🛒" size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-gradient">Savdo</h1>
+            <h1 className="text-base font-bold text-gradient">maxsavdo</h1>
             {user && (
               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
                 {t('auth.welcomeName', { name: user.first_name })} 👋
@@ -194,10 +196,12 @@ export default function StoresPage() {
           <button
             onClick={() => navigate('/buyer/wishlist')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', fontSize: 15 }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: '#C9A876' }}
             aria-label={t('nav.wishlist')}
           >
-            ❤️
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="#C9A876" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+            </svg>
           </button>
           <button
             onClick={() => navigate('/buyer/settings')}
@@ -415,6 +419,13 @@ export default function StoresPage() {
                     {store.city && (
                       <p className="text-xxs" style={{ color: 'var(--tg-accent)' }}>
                         📍 {store.city}
+                      </p>
+                    )}
+                    {/* BUG-1 re-audit 04.06.2026: счётчик активных товаров.
+                       Раньше всегда 0, потому что бэк не возвращал _count.products. */}
+                    {typeof store._count?.products === 'number' && (
+                      <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
+                        📦 {store._count.products}
                       </p>
                     )}
                     {/* MARKETING-VERIFIED-SELLER-001: rating + review count */}
