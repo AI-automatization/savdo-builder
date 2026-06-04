@@ -1,5 +1,41 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Полат) — Re-audit TMA v2 follow-ups (BUG-1/3/9 + title + heart)
+
+### ✅ [REAUDIT-TMA-V2-2026-06-04] Точечные фиксы re-audit Ahmed (audit-tma-v2)
+- **Важность:** 🟡 P2 (косметика + 1 backend). **Дата:** 04.06.2026
+- **Источник:** `analiz/audit-tma-v2-2026-06-04.md`
+- **Что сделано:**
+  - **BUG-9 + browser tab title:** `apps/tma/index.html` `<title>Savdo</title>` → `maxsavdo`;
+    `StoresPage.tsx` h1 hardcoded "Savdo" → "maxsavdo". Sidebar уже был правильный,
+    проблема была только в header buyer-главной + browser tab.
+  - **BUG-3 (variant отображает hex "#799f"):** `apps/tma/src/pages/buyer/ProductPage.tsx`
+    fallback label был `#${v.id.slice(-4)}` — это последние 4 символа UUID,
+    выглядит как hex-цвет (`#799f`). У seller'ов `titleOverride` пустой и flat
+    variants без option-groups показывали "#799f". Заменено на
+    `${t('product.variantLabel')} ${idx + 1}` — порядковый номер с локалью.
+  - **Heart icon (фиолетовый/красный → Champagne Gold #C9A876):**
+    `apps/tma/src/components/ui/WishlistButton.tsx` — эмодзи ❤️/🤍 заменены на
+    SVG-сердце. В Telegram WebApp эмодзи рендерятся системным шрифтом
+    (Apple Color Emoji vs Noto), оттуда фиолетовый/синий оттенок. SVG с
+    `fill="#C9A876"` гарантирует одинаковый brand-цвет на всех платформах.
+    Также в `StoresPage.tsx` header-кнопка wishlist (`❤️`) заменена на SVG.
+  - **BUG-1 (счётчик товаров = 0):** `apps/api/src/modules/stores/repositories/stores.repository.ts`
+    `findAllPublished()` — добавлен select `_count: { products: { where: { deletedAt: null, status: 'ACTIVE' } } }`.
+    На фронте `apps/tma/src/pages/buyer/StoresPage.tsx` карточка магазина теперь
+    рендерит `📦 {store._count.products}`. У Azim теперь покажет 3 (или сколько
+    активных), у пустых — 0.
+- **Файлы:**
+  - `apps/tma/index.html`
+  - `apps/tma/src/pages/buyer/StoresPage.tsx`
+  - `apps/tma/src/pages/buyer/ProductPage.tsx`
+  - `apps/tma/src/components/ui/WishlistButton.tsx`
+  - `apps/api/src/modules/stores/repositories/stores.repository.ts`
+- **Verify:** `pnpm --filter tma build` clean (built in 1.97s);
+  `apps/api` `tsc --noEmit` clean.
+- **Скип:** BUG-2 (variant detail OOS рассинхрон) — это другой mapper-flow,
+  требует отдельной сессии. Не блокирующий — кнопка "+" в списке работает.
+
 ## 2026-06-04 (Полат) — TYPES-ENUM-RUNTIME-001 — fix регрессии из DUP-008
 
 ### ✅ [TYPES-ENUM-RUNTIME-001] Const-object pattern в `packages/types/src/enums.ts`
