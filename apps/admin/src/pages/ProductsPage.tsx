@@ -37,9 +37,14 @@ export default function ProductsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  // P1-4 (audit 2026-06-04): toggle soft-deleted, иначе UI=7 vs DB=26 (19 удалённых).
+  const [includeDeleted, setIncludeDeleted] = useState(false)
 
-  const query = statusFilter ? `status=${statusFilter}&limit=50` : 'limit=50'
-  const { data, loading, error, refetch } = useFetch<ProductsResponse>(`/api/v1/admin/products?${query}`, [statusFilter])
+  const params: string[] = ['limit=50']
+  if (statusFilter) params.push(`status=${statusFilter}`)
+  if (includeDeleted) params.push('includeDeleted=true')
+  const query = params.join('&')
+  const { data, loading, error, refetch } = useFetch<ProductsResponse>(`/api/v1/admin/products?${query}`, [statusFilter, includeDeleted])
 
   // Локальный список — обновляется при загрузке и при оптимистичных изменениях
   const [localProducts, setLocalProducts] = useState<Product[]>([])
@@ -139,6 +144,19 @@ export default function ProductsPage() {
             {s === '' ? 'Все' : STATUS_CFG[s]?.label ?? s}
           </button>
         ))}
+        {/* P1-4 (audit 2026-06-04): toggle soft-deleted — синхронизация с разделом «База данных». */}
+        <button
+          onClick={() => setIncludeDeleted(v => !v)}
+          title="Показать товары с deletedAt != null"
+          style={{
+            padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            border: `1px solid ${includeDeleted ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`,
+            background: includeDeleted ? 'rgba(239,68,68,0.1)' : 'var(--surface)',
+            color: includeDeleted ? '#EF4444' : 'var(--text-muted)',
+            marginLeft: 'auto',
+          }}>
+          {includeDeleted ? '✓ С удалёнными' : 'Показать удалённые'}
+        </button>
       </div>
 
       {(error || actionError) && (

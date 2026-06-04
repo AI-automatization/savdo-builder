@@ -125,12 +125,16 @@ export class ProductsRepository {
     status?: ProductStatus;
     page?: number;
     limit?: number;
+    // P1-4 (audit 2026-06-04): admin может явно запросить soft-deleted записи,
+    // чтобы UI совпадал с «База данных» (raw view). По умолчанию — скрываем.
+    includeDeleted?: boolean;
   }): Promise<{ products: Product[]; total: number }> {
     const page  = filters?.page  ?? 1;
     const limit = filters?.limit ?? 20;
     const skip  = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { deletedAt: null };
+    const where: Record<string, unknown> = {};
+    if (!filters?.includeDeleted) where['deletedAt'] = null;
     if (filters?.storeId) where['storeId'] = filters.storeId;
     if (filters?.status)  where['status']  = filters.status;
 

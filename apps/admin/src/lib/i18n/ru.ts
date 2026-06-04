@@ -696,6 +696,18 @@ export const ru: Translations = {
   'storeDetail.modalUnapproveTitle': 'Снять одобрение',
   'storeDetail.modalUnapproveDesc': 'Магазин «{name}» будет скрыт из поиска и переведён обратно в черновик.',
 
+  // ── Store Telegram channel (P1-1, audit-2026-06-04) ───────────────────
+  'storeDetail.tgChannelSection': 'Telegram-канал',
+  'storeDetail.tgChannelLabel': 'Канал (username)',
+  'storeDetail.tgChannelPlaceholder': '@my_channel',
+  'storeDetail.tgChannelHint': 'Принимаются форматы: @my_channel, https://t.me/my_channel или -1001234567890. Бот @savdo_builderBOT должен быть админом этого канала, чтобы публиковать товары.',
+  'storeDetail.tgChannelTitleLabel': 'Название канала (необязательно)',
+  'storeDetail.tgChannelTitlePlaceholder': 'Например: Мой магазин',
+  'storeDetail.tgChannelSave': 'Сохранить канал',
+  'storeDetail.tgChannelSaved': 'Канал сохранён',
+  'storeDetail.tgChannelClear': 'Очистить',
+  'storeDetail.tgChannelEmpty': 'Канал не привязан — автопостинг товаров отключён',
+
   // ── Subscriptions (BILLING-MACHINE-001) ───────────────────────────────
   'subscriptions.title': 'Подписки',
   'subscriptions.searchPlaceholder': 'Поиск по имени или @username...',

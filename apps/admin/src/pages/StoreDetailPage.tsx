@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2, Send } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
@@ -45,6 +45,9 @@ interface StoreDetail {
   description: string | null
   createdAt: string
   updatedAt: string
+  // P1-1: TG-канал магазина (см. apps/admin/src/pages/StoreDetailPage TgChannelCard).
+  telegramChannelId: string | null
+  telegramChannelTitle: string | null
   seller: {
     id: string
     fullName: string
@@ -104,6 +107,133 @@ function ConfirmModal({
           </button>
         </div>
     </DialogShell>
+  )
+}
+
+/**
+ * P1-1 (audit-2026-06-04): admin привязывает TG-канал магазину.
+ * Раньше задать `telegramChannelId` можно было только через seller TMA,
+ * из-за этого `postProductToChannel` отдавал «Channel not configured» в проде.
+ */
+function TgChannelCard({
+  storeId,
+  initialChannelId,
+  initialChannelTitle,
+  onSaved,
+}: {
+  storeId: string
+  initialChannelId: string | null
+  initialChannelTitle: string | null
+  onSaved: () => void
+}) {
+  const { t } = useTranslation()
+  const [channelId, setChannelId] = useState(initialChannelId ?? '')
+  const [channelTitle, setChannelTitle] = useState(initialChannelTitle ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+
+  const dirty =
+    channelId.trim() !== (initialChannelId ?? '') ||
+    channelTitle.trim() !== (initialChannelTitle ?? '')
+
+  async function save() {
+    setSaving(true)
+    setError(null)
+    try {
+      await api.patch(`/api/v1/admin/stores/${storeId}/channel`, {
+        telegramChannelId: channelId.trim(),
+        telegramChannelTitle: channelTitle.trim(),
+      })
+      setSavedAt(Date.now())
+      onSaved()
+    } catch (e: any) {
+      setError(e?.message ?? t('common.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function clearField() {
+    setChannelId('')
+    setChannelTitle('')
+  }
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Send size={14} color="#A855F7" />
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {t('storeDetail.tgChannelSection')}
+        </div>
+      </div>
+
+      {!initialChannelId && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, marginBottom: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B', fontSize: 12 }}>
+          <AlertTriangle size={13} /> {t('storeDetail.tgChannelEmpty')}
+        </div>
+      )}
+
+      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+        {t('storeDetail.tgChannelLabel')}
+      </label>
+      <input
+        type="text"
+        value={channelId}
+        onChange={(e) => setChannelId(e.target.value)}
+        placeholder={t('storeDetail.tgChannelPlaceholder')}
+        disabled={saving}
+        aria-label={t('storeDetail.tgChannelLabel')}
+        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 10, fontFamily: 'monospace' }}
+      />
+
+      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+        {t('storeDetail.tgChannelTitleLabel')}
+      </label>
+      <input
+        type="text"
+        value={channelTitle}
+        onChange={(e) => setChannelTitle(e.target.value)}
+        placeholder={t('storeDetail.tgChannelTitlePlaceholder')}
+        disabled={saving}
+        aria-label={t('storeDetail.tgChannelTitleLabel')}
+        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 10 }}
+      />
+
+      <p style={{ margin: '0 0 14px', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.5 }}>
+        {t('storeDetail.tgChannelHint')}
+      </p>
+
+      {error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, marginBottom: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+          <AlertTriangle size={13} /> {error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button
+          onClick={save}
+          disabled={saving || !dirty}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: 'none', background: dirty ? '#A855F7' : 'var(--surface2)', color: dirty ? 'white' : 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : (dirty ? 'pointer' : 'not-allowed'), opacity: saving ? 0.7 : 1 }}
+        >
+          <Send size={13} /> {saving ? t('common.loading') : t('storeDetail.tgChannelSave')}
+        </button>
+        {(channelId || channelTitle) && (
+          <button
+            onClick={clearField}
+            disabled={saving}
+            style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
+          >
+            {t('storeDetail.tgChannelClear')}
+          </button>
+        )}
+        {savedAt && !dirty && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10B981', fontSize: 12 }}>
+            <CheckCircle size={13} /> {t('storeDetail.tgChannelSaved')}
+          </span>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -347,6 +477,14 @@ export default function StoreDetailPage() {
           <p style={{ margin: 0, color: 'var(--text)', fontSize: 14, lineHeight: 1.6 }}>{store.description}</p>
         </div>
       )}
+
+      {/* P1-1 (audit-2026-06-04): Telegram channel input — фиксит мёртвый postProductToChannel */}
+      <TgChannelCard
+        storeId={store.id}
+        initialChannelId={store.telegramChannelId}
+        initialChannelTitle={store.telegramChannelTitle}
+        onSaved={refetch}
+      />
 
       {/* Contacts */}
       {store.contacts?.length > 0 && (

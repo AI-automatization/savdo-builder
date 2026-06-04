@@ -1,5 +1,107 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Полат) — TYPES-ENUM-RUNTIME-001 — fix регрессии из DUP-008
+
+### ✅ [TYPES-ENUM-RUNTIME-001] Const-object pattern в `packages/types/src/enums.ts`
+- **Важность:** 🔴 P1 (build регрессия web-seller). **Дата:** 04.06.2026
+- **Что было сломано:** DUP-008 (01.06.2026) перевёл все enums в `export type X = 'A' | 'B'`.
+  Это убрало runtime-экспорт, и apps/web-seller который импортирует `OrderStatus`/
+  `UserRole` как **значения** (`OrderStatus.PENDING`, `Record<OrderStatus, ...>`,
+  `import { UserRole }`) перестал собираться — 30+ TS2693 + Next "Export UserRole
+  doesn't exist". Деплой-ветка web-seller заблокирована.
+- **Решение (вариант A по предложению Азима):** const-object pattern:
+  ```ts
+  export const OrderStatus = { PENDING: 'PENDING', ... } as const;
+  export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+  ```
+  Даёт runtime-value + string-literal compatibility одновременно. Применил ко всем
+  14 enum'ам (UserRole, UserStatus, StoreStatus, SellerVerificationStatus, OrderStatus,
+  ProductStatus, PaymentMethod, PaymentStatus, DeliveryType, ThreadType, MediaVisibility,
+  InventoryMovementType, SubscriptionTier, SubscriptionStatus, SubscriptionPaymentMethod,
+  SubscriptionPaymentStatus).
+- **Verify:** `apps/api` tsc clean, `apps/admin` build clean, `apps/web-seller` tsc clean.
+  `apps/web-buyer` имеет 1 локальную TS2345 в `orders/[id]/page.tsx:243` — это
+  pre-existing, не моя регрессия, отдельно записано в `logs.md` для Азима.
+- **Файлы:** `packages/types/src/enums.ts` (полная замена), `analiz/logs.md`,
+  `analiz/tasks.md` (taск удалён), `analiz/done.md`.
+
+## 2026-06-04 (Полат) — P1-1 Telegram-канал магазина в Admin Panel
+
+### ✅ [P1-1] Telegram-канал магазина — UI в Admin Panel (postProductToChannel fix)
+- **Важность:** 🔴 P1 (мёртвая marketplace-promotion фича). **Дата:** 04.06.2026
+- **Источник:** `analiz/audit-2026-06-04.md` § P1-1.
+- **Корень бага:** `Store.telegramChannelId` уже есть в schema (миграция
+  `20260406000000_add_telegram_channel_to_store`), но задать его можно было
+  ТОЛЬКО через seller TMA (`/seller/settings/channel`). В Admin Panel input
+  отсутствовал. Если продавец не зашёл в TMA — `postProductToChannel` отдавал
+  `"Channel not configured"`, и товары при публикации не попадали в TG-канал.
+- **Файлы (backend):**
+  - `apps/api/src/modules/admin/dto/admin-update-store-channel.dto.ts` — новый DTO
+    (`telegramChannelId?`, `telegramChannelTitle?`, optional, MaxLength 255).
+  - `apps/api/src/modules/admin/use-cases/admin-update-store-channel.use-case.ts`
+    — нормализация `@user` / `user` / `https://t.me/user` / `t.me/user` →
+    `@user`; числовой `-100…` оставлен как есть; `""` → NULL; невалидный
+    формат → `VALIDATION_ERROR`. Пишет audit `STORE_CHANNEL_UPDATED` с
+    `previousChannelId/newChannelId/previousChannelTitle/newChannelTitle`.
+    Noop (нет ни одного поля) → no DB write, no audit.
+  - `apps/api/src/modules/admin/use-cases/admin-update-store-channel.use-case.spec.ts`
+    — 21 теста (нормализация форматов + use-case path: 404, "" → NULL,
+    invalid → 400, audit body, noop, partial update только title).
+  - `apps/api/src/modules/admin/admin-stores.controller.ts` — `PATCH /admin/stores/:id/channel`
+    (guard `AdminPermission('store:moderate')`).
+  - `apps/api/src/modules/admin/admin.module.ts` — providers wiring.
+- **Файлы (frontend):**
+  - `apps/admin/src/pages/StoreDetailPage.tsx` — новый `TgChannelCard` компонент:
+    два input-а (`@my_channel` + опциональное название), хинт про
+    @savdo_builderBOT-админа, warning-badge если канал не привязан, кнопка
+    «Сохранить канал» (disabled пока не dirty), «Очистить», success-чек
+    после save. `refetch()` после save. `StoreDetail` interface дополнен
+    `telegramChannelId`/`telegramChannelTitle`.
+  - `apps/admin/src/lib/i18n/ru.ts` + `uz.ts` — 10 ключей `storeDetail.tgChannel*`.
+- **Что НЕ делали:** Prisma schema не трогали (поля уже есть с 06.04.2026,
+  миграция отдельная сессия). `apps/web-*` и `apps/tma` не трогали
+  (Азим/seller-зона).
+- **Проверки:**
+  - `cd apps/api && npx tsc --noEmit` — clean (0 errors).
+  - `pnpm --filter admin build` — clean (Vite ✓ built in 1.34s).
+  - `cd apps/api && npx jest stores --testPathPattern=spec` — **65 suites,
+    856 tests, all pass** (50.1s).
+- **Не запушено** (по протоколу — только commit).
+
+## 2026-06-04 (Полат) — P1-3 dashboard skeleton + P1-4 products soft-delete toggle
+
+### ✅ [P1-3] Dashboard cold-start skeleton/error states
+- **Важность:** 🟡 P1 (UX cold-start). **Дата:** 04.06.2026
+- **Файлы:** `apps/admin/src/pages/DashboardPage.tsx`
+- **Что сделано:**
+  - StatCard уже имел skeleton (`animate-pulse` rounded placeholder вместо `0`)
+    — оставлен как есть.
+  - Orders-per-day LineChart: вместо текста «Загрузка...» — bar-shimmer skeleton
+    (10 анимированных колонок). Добавлен error-state с `AlertCircle` + текстом.
+  - Top-stores BarChart: вместо текста — 5 анимированных горизонтальных строк
+    (label + bar). Добавлен error-state.
+  - Recent orders table: вместо `colSpan=6` «Загрузка...» — 5 skeleton-строк
+    с pulse-блоками для каждой колонки. Добавлен error-state красным.
+
+### ✅ [P1-4] Products UI=7 vs DB=26 — soft-delete toggle
+- **Важность:** 🟡 P1 (admin observability). **Дата:** 04.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/products.repository.ts` —
+    `findAll()` принимает `includeDeleted?: boolean`. Default false (legacy).
+    При true — `deletedAt: null` не добавляется в where.
+  - `apps/api/src/modules/admin/admin-products.controller.ts` — добавлен
+    `@Query('includeDeleted')` (true|1), прокинут в repo. Контракт не нарушен.
+  - `apps/admin/src/pages/ProductsPage.tsx` — toggle-кнопка «Показать
+    удалённые» / «✓ С удалёнными» (margin-left:auto, красный border когда
+    активна). При клике запрос идёт с `&includeDeleted=true`, useFetch
+    перезагружается через deps `[statusFilter, includeDeleted]`.
+- **Root cause** (полностью в `analiz/logs.md`): `ProductsRepository.findAll`
+  всегда фильтрует `deletedAt: null`; раздел «База данных» показывает raw view
+  без фильтра → 19 строк soft-deleted скрывались от UI. Фильтр оправдан
+  (admin-safety), убирать нельзя; добавлен явный opt-in.
+
+---
+
 ## 2026-06-04 (Полат) — TMA-DESIGN-V2-MIGRATE-001: TMA на maxsavdo Dark Luxury
 
 ### ✅ [TMA-DESIGN-V2-MIGRATE-001] TMA переведён с Liquid Glass v1 на maxsavdo design-v2
