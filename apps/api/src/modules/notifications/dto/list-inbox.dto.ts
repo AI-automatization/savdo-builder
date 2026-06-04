@@ -1,7 +1,8 @@
-import { IsOptional, IsBoolean, IsInt, Min, Max } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { IsBoolean, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-export class ListInboxDto {
+export class ListInboxDto extends PaginationDto {
   @IsOptional()
   @Transform(({ value }) => {
     if (value === 'true') return true;
@@ -10,17 +11,4 @@ export class ListInboxDto {
   })
   @IsBoolean()
   unreadOnly?: boolean;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
 }

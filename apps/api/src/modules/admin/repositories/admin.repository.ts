@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 @Injectable()
 export class AdminRepository {
@@ -41,9 +42,7 @@ export class AdminRepository {
     page?: number;
     limit?: number;
   }) {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where = {
       ...(filters.actorUserId ? { actorUserId: filters.actorUserId } : {}),
@@ -73,9 +72,7 @@ export class AdminRepository {
     page?: number;
     limit?: number;
   }) {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where = {
       ...(filters.role ? { role: filters.role as any } : {}),
@@ -135,9 +132,7 @@ export class AdminRepository {
     page?: number;
     limit?: number;
   }) {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where: Record<string, unknown> = {
       ...(filters.verificationStatus
@@ -219,9 +214,7 @@ export class AdminRepository {
     page?: number;
     limit?: number;
   }) {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where = {
       ...(filters.status ? { status: filters.status as any } : {}),

@@ -54,14 +54,14 @@ export function ImagePlaceholder({
         width: '100%',
         height: '100%',
         background:
-          'linear-gradient(135deg, var(--tg-surface, rgba(255,255,255,0.04)) 0%, var(--tg-surface-hover, rgba(255,255,255,0.07)) 100%)',
-        border: '1px dashed var(--tg-border-soft, rgba(255,255,255,0.10))',
+          'linear-gradient(135deg, var(--tg-surface) 0%, var(--tg-surface-hover) 100%)',
+        border: '1px dashed var(--tg-border-soft)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         gap: showLabel ? 6 : 0,
-        color: 'var(--tg-text-muted, rgba(255,255,255,0.40))',
+        color: 'var(--tg-text-muted)',
         userSelect: 'none',
         ...style,
       }}

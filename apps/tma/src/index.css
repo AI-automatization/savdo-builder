@@ -2,7 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Theme variables ──────────────────────────────────────────────────────── */
+/* ── Theme variables (maxsavdo Dark Luxury — design-v2) ────────────────────
+   Source of truth: docs/design/maxsavdo-design-v2.md и
+   apps/web-buyer/src/app/globals.css (тот же подход — Champagne Gold + Rich
+   Black + Pure White). TMA исторически использовала переменные с префиксом
+   `--tg-*`; мы переопределяем их значения, чтобы существующие 553 inline
+   хардкода через CSS-переменные пересели на новую палитру автоматически.
+   TMA-DESIGN-V2-MIGRATE-001, 04.06.2026.
+   ─────────────────────────────────────────────────────────────────────── */
 :root,
 :root[data-theme="dark"] {
   /* TMA-TYPOGRAPHY-SCALE-001: типографический масштаб (используется через
@@ -23,27 +30,36 @@
   --t-xl-lh:   1.35;
   --t-2xl-lh:  1.3;
 
-  --tg-bg:             #0B0E14;
-  --tg-bg-gradient:    linear-gradient(160deg, #0B0E14 0%, #0D1120 45%, #0B0F1C 100%);
-  --tg-surface:        rgba(255,255,255,0.055);
-  --tg-surface-hover:  rgba(255,255,255,0.08);
-  --tg-text-primary:   rgba(255,255,255,0.90);
-  --tg-text-secondary: rgba(255,255,255,0.55);
-  --tg-text-muted:     rgba(255,255,255,0.40);
-  --tg-text-dim:       rgba(255,255,255,0.30);
-  --tg-border:         rgba(255,255,255,0.11);
-  --tg-border-soft:    rgba(255,255,255,0.06);
-  --tg-accent:         #A855F7;
-  --tg-accent-dim:     rgba(168,85,247,0.18);
-  --tg-accent-glow:    rgba(168,85,247,0.35);
-  --tg-accent-text:    #F3E8FF;
-  --tg-accent-bg:      rgba(168,85,247,0.15);
-  --tg-accent-border:  rgba(168,85,247,0.25);
-  --tg-cyan:           #22D3EE;
-  --tg-cyan-dim:       rgba(34,211,238,0.15);
+  /* ── Dark Luxury (Rich Black + Champagne Gold + Pure White) ─────────── */
+  --tg-bg:             #0A0A0A;                              /* Rich Black */
+  --tg-bg-gradient:    linear-gradient(160deg, #0A0A0A 0%, #101010 50%, #0A0A0A 100%);
+  --tg-surface:        #141414;
+  --tg-surface-hover:  #1F1F1F;
+  --tg-text-primary:   #FFFFFF;                              /* Pure White */
+  --tg-text-secondary: #E5E5E5;
+  --tg-text-muted:     #A3A3A3;
+  --tg-text-dim:       #737373;
+  --tg-border:         rgba(255,255,255,0.12);
+  --tg-border-soft:    rgba(255,255,255,0.08);
+
+  /* Brand accent — Champagne Gold (единственный chromatic accent в проекте) */
+  --tg-accent:         #C9A876;                              /* Champagne Gold */
+  --tg-accent-dim:     rgba(201,168,118,0.18);
+  --tg-accent-glow:    rgba(201,168,118,0.35);
+  --tg-accent-text:    #E8C898;                              /* Champagne Light */
+  --tg-accent-bg:      rgba(201,168,118,0.12);
+  --tg-accent-border:  rgba(201,168,118,0.34);
+
+  /* Cyan/secondary — приглушено: design-v2 = monochrome + gold, без cyan.
+     Оставляем алиасом на gold чтобы старый код (status-dot, role=SELLER)
+     не сломался визуально, но потерял насыщенность. */
+  --tg-cyan:           #C9A876;
+  --tg-cyan-dim:       rgba(201,168,118,0.15);
+
+  /* Semantic — мягкие, чтобы не конкурировали с золотом */
   --tg-success:        #34D399;
   --tg-warning:        #FBBF24;
-  --tg-danger:         #EF4444;
+  --tg-danger:         #F87171;
   color-scheme: dark;
 }
 
@@ -62,48 +78,52 @@
 }
 
 :root[data-theme="light"] {
-  --tg-bg:             #F7F8FB;
-  --tg-bg-gradient:    linear-gradient(160deg, #FFFFFF 0%, #F7F8FB 45%, #EEF1F8 100%);
-  --tg-surface:        rgba(0,0,0,0.04);
-  --tg-surface-hover:  rgba(0,0,0,0.06);
-  --tg-text-primary:   rgba(0,0,0,0.88);
-  --tg-text-secondary: rgba(0,0,0,0.62);
-  --tg-text-muted:     rgba(0,0,0,0.45);
-  --tg-text-dim:       rgba(0,0,0,0.28);
-  --tg-border:         rgba(0,0,0,0.10);
-  --tg-border-soft:    rgba(0,0,0,0.06);
-  --tg-accent:         #7C3AED;
-  --tg-accent-dim:     rgba(124,58,237,0.10);
-  --tg-accent-glow:    rgba(124,58,237,0.25);
-  --tg-accent-text:    #5B21B6;
-  --tg-accent-bg:      rgba(124,58,237,0.08);
-  --tg-accent-border:  rgba(124,58,237,0.18);
-  --tg-cyan:           #0891B2;
-  --tg-cyan-dim:       rgba(8,145,178,0.10);
-  --tg-success:        #059669;
-  --tg-warning:        #D97706;
-  --tg-danger:         #DC2626;
+  /* ── Light — Pure White + Champagne Gold ─────────────────────────────── */
+  --tg-bg:             #FFFFFF;
+  --tg-bg-gradient:    linear-gradient(160deg, #FFFFFF 0%, #FAFAFA 50%, #F5F5F5 100%);
+  --tg-surface:        #FAFAFA;
+  --tg-surface-hover:  #F5F5F5;
+  --tg-text-primary:   #0A0A0A;                              /* Rich Black */
+  --tg-text-secondary: #262626;
+  --tg-text-muted:     #737373;
+  --tg-text-dim:       #A3A3A3;
+  --tg-border:         #E5E5E5;
+  --tg-border-soft:    #F0F0F0;
+
+  --tg-accent:         #C9A876;
+  --tg-accent-dim:     rgba(201,168,118,0.12);
+  --tg-accent-glow:    rgba(201,168,118,0.25);
+  --tg-accent-text:    #B89868;
+  --tg-accent-bg:      rgba(201,168,118,0.10);
+  --tg-accent-border:  rgba(201,168,118,0.30);
+
+  --tg-cyan:           #C9A876;
+  --tg-cyan-dim:       rgba(201,168,118,0.10);
+
+  --tg-success:        #10B981;
+  --tg-warning:        #F59E0B;
+  --tg-danger:         #EF4444;
   color-scheme: light;
 }
 
-/* ── Role-scoped accent (TMA-DESIGN-ROLE-DIFF-001) ────────────────────────── */
-/* Контейнер с `data-role="SELLER"` (BottomNav, и любые seller-only компоненты)
-   получает cyan-accent. Без атрибута — наследует root orchid (buyer default). */
+/* ── Role-scoped accent (TMA-DESIGN-ROLE-DIFF-001) ──────────────────────────
+   В design-v2 = единая Champagne Gold палитра. Role-diff приглушаем до
+   разной интенсивности (SELLER чуть ярче, BUYER muted), а не разные hue. */
 [data-role="SELLER"] {
-  --tg-accent:        #22D3EE;
-  --tg-accent-dim:    rgba(34,211,238,0.18);
-  --tg-accent-glow:   rgba(34,211,238,0.35);
-  --tg-accent-text:   #CFFAFE;
-  --tg-accent-bg:     rgba(34,211,238,0.15);
-  --tg-accent-border: rgba(34,211,238,0.25);
+  --tg-accent:        #E8C898;                                /* Champagne Light */
+  --tg-accent-dim:    rgba(232,200,152,0.18);
+  --tg-accent-glow:   rgba(232,200,152,0.35);
+  --tg-accent-text:   #FFFFFF;
+  --tg-accent-bg:     rgba(232,200,152,0.14);
+  --tg-accent-border: rgba(232,200,152,0.40);
 }
 :root[data-theme="light"] [data-role="SELLER"] {
-  --tg-accent:        #0891B2;
-  --tg-accent-dim:    rgba(8,145,178,0.10);
-  --tg-accent-glow:   rgba(8,145,178,0.25);
-  --tg-accent-text:   #0C4A6E;
-  --tg-accent-bg:     rgba(8,145,178,0.08);
-  --tg-accent-border: rgba(8,145,178,0.18);
+  --tg-accent:        #B89868;
+  --tg-accent-dim:    rgba(184,152,104,0.12);
+  --tg-accent-glow:   rgba(184,152,104,0.25);
+  --tg-accent-text:   #0A0A0A;
+  --tg-accent-bg:     rgba(184,152,104,0.10);
+  --tg-accent-border: rgba(184,152,104,0.32);
 }
 
 /* ── Global reset ─────────────────────────────────────────────────────────── */
@@ -113,11 +133,13 @@ body {
   margin: 0;
   background: var(--tg-bg);
   color: var(--tg-text-primary);
-  /* SF Pro Rounded on Apple devices, system-ui everywhere else */
-  font-family: 'SF Pro Rounded', -apple-system, BlinkMacSystemFont,
-               ui-rounded, 'Helvetica Neue', system-ui, sans-serif;
+  /* maxsavdo design-v2: Inter, system fallback */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+               'Helvetica Neue', system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* ── Skeleton shimmer ────────────────────────────────────────────────────── */
@@ -126,10 +148,10 @@ body {
   100% { background-position: -200% 0; }
 }
 
-/* ── Cyber Orchid glow pulse (AI node / active states) ────────────────────── */
+/* ── Champagne Gold glow pulse (active states; was orchid-pulse) ─────────── */
 @keyframes orchid-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(168,85,247,0); }
-  50%       { box-shadow: 0 0 18px 4px rgba(168,85,247,0.35); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,118,0); }
+  50%       { box-shadow: 0 0 18px 4px rgba(201,168,118,0.35); }
 }
 .orchid-pulse { animation: orchid-pulse 2.4s ease-in-out infinite; }
 
@@ -151,7 +173,7 @@ body {
   background: linear-gradient(
     105deg,
     transparent 40%,
-    rgba(255,255,255,0.06) 50%,
+    rgba(201,168,118,0.08) 50%,
     transparent 60%
   );
   background-size: 200% 100%;
@@ -159,7 +181,7 @@ body {
   pointer-events: none;
 }
 
-/* ── Arctic Cyan status dot ───────────────────────────────────────────────── */
+/* ── Champagne status dot ────────────────────────────────────────────────── */
 @keyframes cyan-ping {
   0%   { transform: scale(1);   opacity: 0.8; }
   80%  { transform: scale(2.2); opacity: 0; }
@@ -168,8 +190,8 @@ body {
 .status-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: #22D3EE;
-  box-shadow: 0 0 6px rgba(34,211,238,0.70);
+  background: var(--tg-accent);
+  box-shadow: 0 0 6px var(--tg-accent-glow);
   display: inline-block;
   animation: cyan-ping 1.8s ease-out infinite;
 }
@@ -185,7 +207,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 3px;
-  background: rgba(168,85,247,0.85);
+  background: var(--tg-accent);
   display: inline-block;
   animation: typing-bounce 1.2s ease-in-out infinite;
 }
@@ -201,8 +223,8 @@ body {
   }
   .glass-card-interactive:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.16) !important;
-    border-color: rgba(255,255,255,0.17) !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+    border-color: var(--tg-border) !important;
   }
   .glass-card-interactive:active {
     transform: translateY(0) scale(0.985) !important;
@@ -223,9 +245,9 @@ body {
   gap: 5px;
   padding: 5px 12px;
   border-radius: 10px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.09);
-  color: rgba(255,255,255,0.55);
+  background: var(--tg-surface);
+  border: 1px solid var(--tg-border-soft);
+  color: var(--tg-text-secondary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -234,8 +256,8 @@ body {
 }
 @media (hover: hover) {
   .in-app-back:hover {
-    background: rgba(255,255,255,0.11);
-    color: rgba(255,255,255,0.88);
+    background: var(--tg-surface-hover);
+    color: var(--tg-text-primary);
   }
 }
 
@@ -266,21 +288,20 @@ body {
 /* ── Scrollbar (minimal, themed) ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.25); border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--tg-accent-dim); border-radius: 8px; }
 
-/* ── Gradient text utility ─────────────────────────────────────────────────── */
+/* ── Gradient text utility ─────────────────────────────────────────────────
+   design-v2 = flat Champagne Gold (без cyan gradient). Оставляем класс,
+   но делаем flat-color чтобы legacy-разметка не светилась orchid→cyan. */
 .text-gradient {
-  background: linear-gradient(135deg, #A855F7 0%, #22D3EE 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--tg-accent);
 }
 
 /* ── Input focus glow ─────────────────────────────────────────────────────── */
 input:focus {
   outline: none !important;
-  border-color: rgba(168,85,247,0.55) !important;
-  box-shadow: 0 0 0 3px rgba(168,85,247,0.12) !important;
+  border-color: var(--tg-accent-border) !important;
+  box-shadow: 0 0 0 3px var(--tg-accent-dim) !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -293,47 +314,49 @@ input:focus {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.28);
+  color: var(--tg-text-dim);
 }
 .section-label::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(255,255,255,0.07);
+  background: var(--tg-border-soft);
   border-radius: 1px;
 }
 
-/* ── Primary gradient CTA button ─────────────────────────────────────────── */
+/* ── Primary CTA button (was orchid→violet gradient, now flat Champagne) ─── */
 .btn-primary {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
-  color: #fff;
+  background: var(--tg-accent);
+  color: #0A0A0A;
   font-weight: 700;
   border-radius: 16px;
   font-size: 15px;
   letter-spacing: 0.01em;
-  box-shadow: 0 4px 20px rgba(168,85,247,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: 0 4px 20px var(--tg-accent-glow), inset 0 1px 0 rgba(255,255,255,0.18);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
   cursor: pointer;
   border: none;
 }
 .btn-primary:active {
   transform: scale(0.97);
-  box-shadow: 0 2px 10px rgba(168,85,247,0.20);
+  background: var(--tg-accent-text);
+  box-shadow: 0 2px 10px var(--tg-accent-dim);
 }
 @media (hover: hover) {
   .btn-primary:hover {
-    box-shadow: 0 6px 28px rgba(168,85,247,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+    background: var(--tg-accent-text);
+    box-shadow: 0 6px 28px var(--tg-accent-glow), inset 0 1px 0 rgba(255,255,255,0.18);
   }
 }
 
 /* ── Logo breathing animation (LoadingScreen orb) ────────────────────────── */
 @keyframes logo-pulse {
-  0%, 100% { transform: scale(1);     box-shadow: 0 0 40px rgba(168,85,247,0.38); }
-  50%       { transform: scale(1.045); box-shadow: 0 0 68px rgba(168,85,247,0.65); }
+  0%, 100% { transform: scale(1);     box-shadow: 0 0 40px rgba(201,168,118,0.38); }
+  50%       { transform: scale(1.045); box-shadow: 0 0 68px rgba(201,168,118,0.65); }
 }
 .logo-pulse { animation: logo-pulse 2.2s ease-in-out infinite; will-change: transform; }
 
@@ -345,7 +368,7 @@ input:focus {
 /* ── Page section divider ────────────────────────────────────────────────── */
 .divider {
   height: 1px;
-  background: rgba(255,255,255,0.07);
+  background: var(--tg-border-soft);
   border-radius: 1px;
   margin: 4px 0;
 }
@@ -362,45 +385,47 @@ input:focus {
 .empty-state-icon {
   font-size: 64px;
   line-height: 1;
-  filter: drop-shadow(0 0 24px rgba(168,85,247,0.25));
+  filter: drop-shadow(0 0 24px var(--tg-accent-dim));
 }
 .empty-state-title {
   font-size: 15px;
   font-weight: 600;
-  color: rgba(255,255,255,0.72);
+  color: var(--tg-text-primary);
 }
 .empty-state-sub {
   font-size: 13px;
-  color: rgba(255,255,255,0.35);
+  color: var(--tg-text-muted);
   margin-top: -6px;
 }
 
-/* ── Page header icon orb ────────────────────────────────────────────────── */
+/* ── Page header icon orb (was orchid gradient) ──────────────────────────── */
 .page-icon {
   width: 40px;
   height: 40px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
-  box-shadow: 0 4px 14px rgba(168,85,247,0.40);
+  background: var(--tg-accent);
+  box-shadow: 0 4px 14px var(--tg-accent-glow);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
   flex-shrink: 0;
+  color: #0A0A0A;
 }
 
 /* ── Filter chips: active state with strong glow ─────────────────────────── */
 .chip-active {
-  background: linear-gradient(135deg, rgba(168,85,247,0.32) 0%, rgba(124,58,237,0.42) 100%) !important;
-  border: 1px solid rgba(168,85,247,0.60) !important;
-  color: #D8B4FE !important;
-  box-shadow: 0 0 16px rgba(168,85,247,0.35), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  background: var(--tg-accent-bg) !important;
+  border: 1px solid var(--tg-accent-border) !important;
+  color: var(--tg-accent-text) !important;
+  box-shadow: 0 0 16px var(--tg-accent-glow), inset 0 1px 0 rgba(255,255,255,0.10) !important;
 }
 .chip-active-cyan {
-  background: linear-gradient(135deg, rgba(34,211,238,0.22) 0%, rgba(14,165,233,0.30) 100%) !important;
-  border: 1px solid rgba(34,211,238,0.50) !important;
-  color: #67E8F9 !important;
-  box-shadow: 0 0 14px rgba(34,211,238,0.30), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  /* design-v2 не использует cyan — alias на accent */
+  background: var(--tg-accent-bg) !important;
+  border: 1px solid var(--tg-accent-border) !important;
+  color: var(--tg-accent-text) !important;
+  box-shadow: 0 0 14px var(--tg-accent-glow), inset 0 1px 0 rgba(255,255,255,0.10) !important;
 }
 
 /* ── Horizontal scroll fade hint ──────────────────────────────────────────
@@ -416,7 +441,7 @@ input:focus {
   top: 0;
   bottom: 0;
   width: 32px;
-  background: linear-gradient(to left, rgba(11,14,20,0.92) 0%, rgba(11,14,20,0) 100%);
+  background: linear-gradient(to left, var(--tg-bg) 0%, rgba(10,10,10,0) 100%);
   pointer-events: none;
   z-index: 5;
   border-radius: 0 12px 12px 0;

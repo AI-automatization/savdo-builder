@@ -71,7 +71,7 @@ export class OtpProcessor extends WorkerHost {
 
     await this.telegramBot.sendMessage(
       chatId,
-      `🔐 <b>${code}</b> — ваш код для входа в Savdo.\n\nДействителен 5 минут. Никому не сообщайте.`,
+      `🔐 <b>${code}</b> — ваш код для входа в maxsavdo.\n\nДействителен 5 минут. Никому не сообщайте.`,
       { parseMode: 'HTML' },
     );
 

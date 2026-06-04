@@ -1,39 +1,29 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
-import { AdminRepository } from '../repositories/admin.repository';
-import { DomainException } from '../../../common/exceptions/domain.exception';
+/**
+ * any-not-ARCHIVED → ARCHIVED.
+ *
+ * Реализовано через `createStatusTransitionUseCase` (DUP-001 refactor).
+ *   - guard: `status === 'ARCHIVED'` → ADMIN_STORE_ALREADY_ARCHIVED (409)
+ *   - update: `adminRepo.updateStoreStatus(id, 'ARCHIVED')`
+ *   - audit: STORE_ARCHIVED, payload `{ reason, adminId, previousStatus }`
+ *   - INV-A02: reason обязателен на DTO-level
+ */
+import { Store } from '@prisma/client';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { createStatusTransitionUseCase } from '../services/admin-status-transition.factory';
 
-@Injectable()
-export class ArchiveStoreUseCase {
-  constructor(private readonly adminRepo: AdminRepository) {}
+type StoreStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
 
-  // INV-A01: AuditLog is mandatory for every admin action.
-  // INV-A02: Archive requires a reason (enforced by AdminActionDto).
-  async execute(storeId: string, actorUserId: string, reason: string) {
-    const store = await this.adminRepo.findStoreById(storeId);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (store.status === 'ARCHIVED') {
-      throw new DomainException(
-        ErrorCode.ADMIN_STORE_ALREADY_ARCHIVED,
-        'Store is already archived',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const updated = await this.adminRepo.updateStoreStatus(storeId, 'ARCHIVED');
-
-    // INV-A01
-    await this.adminRepo.writeAuditLog({
-      actorUserId,
-      action: 'STORE_ARCHIVED',
-      entityType: 'Store',
-      entityId: storeId,
-      payload: { reason, adminId: actorUserId, previousStatus: store.status },
-    });
-
-    return updated;
-  }
-}
+export class ArchiveStoreUseCase extends createStatusTransitionUseCase<Store, StoreStatus>({
+  find: (repo, id) => repo.findStoreById(id) as Promise<Store | null>,
+  update: (repo, id) => repo.updateStoreStatus(id, 'ARCHIVED') as Promise<Store>,
+  guard: {
+    kind: 'sameAsTarget',
+    target: 'ARCHIVED',
+    conflictErrorCode: ErrorCode.ADMIN_STORE_ALREADY_ARCHIVED,
+    conflictMessage: 'Store is already archived',
+  },
+  notFound: { errorCode: ErrorCode.STORE_NOT_FOUND, message: 'Store not found' },
+  audit: { action: 'STORE_ARCHIVED', entityType: 'Store' },
+  withReason: true,
+  includePreviousStatus: true,
+}) {}

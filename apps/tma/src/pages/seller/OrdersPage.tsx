@@ -457,12 +457,12 @@ export default function SellerOrdersPage() {
                   <p className="text-sm" style={{ color: 'var(--tg-text-primary)' }}>{detail.customerFullName}</p>
                 )}
                 {detail.customerPhone && (
-                  <a href={`tel:${detail.customerPhone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#22D3EE' }}>
+                  <a href={`tel:${detail.customerPhone}`} className="text-sm flex items-center gap-1.5" style={{ color: 'var(--tg-accent)' }}>
                     📞 {detail.customerPhone} <span style={{ fontSize: 10, opacity: 0.6 }}>{t('seller.orders.customerPhoneNote')}</span>
                   </a>
                 )}
                 {detail.buyer?.phone && detail.buyer.phone !== detail.customerPhone && (
-                  <a href={`tel:${detail.buyer.phone}`} className="text-sm flex items-center gap-1.5" style={{ color: '#A78BFA' }}>
+                  <a href={`tel:${detail.buyer.phone}`} className="text-sm flex items-center gap-1.5" style={{ color: 'var(--tg-accent-text)' }}>
                     📱 {detail.buyer.phone} <span style={{ fontSize: 10, opacity: 0.6 }}>{t('seller.orders.accountPhoneNote')}</span>
                   </a>
                 )}
@@ -518,7 +518,7 @@ export default function SellerOrdersPage() {
                 <button
                   onClick={() => { setChatOrderId(detail.id); setChatMessage(''); }}
                   className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-                  style={{ background: 'rgba(34,211,238,0.14)', border: '1px solid rgba(34,211,238,0.35)', color: '#22D3EE' }}
+                  style={{ background: 'var(--tg-accent-bg)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   ✉ Написать покупателю
                 </button>

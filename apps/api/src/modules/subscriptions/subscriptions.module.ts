@@ -12,7 +12,7 @@ import { CompSubscriptionUseCase } from './use-cases/comp-subscription.use-case'
 import { BackfillTrialsUseCase } from './use-cases/backfill-trials.use-case';
 import { ExpireSubscriptionsUseCase } from './use-cases/expire-subscriptions.use-case';
 import { SubscriptionExpiryProcessor } from './processors/subscription-expiry.processor';
-import { PlanLimitGuardService } from './services/plan-limit-guard.service';
+// PlanLimitGuardService moved to shared/ (Global) to avoid circular deps.
 import { SellersModule } from '../sellers/sellers.module';
 import { StoresModule } from '../stores/stores.module';
 import { AuthModule } from '../auth/auth.module';
@@ -38,7 +38,6 @@ import { AdminModule } from '../admin/admin.module';
     BackfillTrialsUseCase,
     ExpireSubscriptionsUseCase,
     SubscriptionExpiryProcessor,
-    PlanLimitGuardService,
   ],
   exports: [
     SubscriptionsRepository,
@@ -50,7 +49,6 @@ import { AdminModule } from '../admin/admin.module';
     CompSubscriptionUseCase,
     BackfillTrialsUseCase,
     ExpireSubscriptionsUseCase,
-    PlanLimitGuardService,
   ],
 })
 export class SubscriptionsModule {}

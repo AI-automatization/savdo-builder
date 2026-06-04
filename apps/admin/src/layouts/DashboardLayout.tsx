@@ -1,9 +1,9 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { auth } from '../lib/api'
-import { cn } from '@/lib/utils'
 import { ImpersonationBanner } from '../components/admin/ImpersonationBanner'
 import { CommandPalette } from '../components/admin/CommandPalette'
+import { MaxsavdoMark } from '../components/brand/MaxsavdoLogo'
 import { useTranslation, SUPPORTED_LOCALES } from '../lib/i18n'
 import {
   LayoutDashboard, Users, UserCog, Store, ShoppingCart,
@@ -113,14 +113,12 @@ export default function DashboardLayout() {
         style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)' }}
         aria-label={t('layout.navMain')}
       >
-        {/* Logo */}
+        {/* Logo — BRAND-ADMIN-REBRAND-001: maxsavdo Dark Luxury */}
         <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500 flex items-center justify-center shrink-0">
-              <Store size={14} color="white" />
-            </div>
+            <MaxsavdoMark size={28} />
             <div>
-              <div className="text-sm font-semibold leading-none" style={{ color: 'var(--text)' }}>Savdo</div>
+              <div className="text-sm font-semibold leading-none tracking-tight" style={{ color: 'var(--text)' }}>maxsavdo</div>
               <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('layout.adminPanel')}</div>
             </div>
           </div>
@@ -160,12 +158,10 @@ export default function DashboardLayout() {
                   <NavLink
                     key={to}
                     to={to}
-                    className={({ isActive }) => cn(
-                      'group relative flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors',
-                      isActive ? 'bg-indigo-500/10 text-indigo-400' : '',
-                    )}
+                    className="group relative flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors"
                     style={({ isActive }) => ({
-                      color: isActive ? undefined : 'var(--text-muted)',
+                      color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                      background: isActive ? 'var(--primary-dim)' : undefined,
                     })}
                     onMouseEnter={e => {
                       const el = e.currentTarget
@@ -184,19 +180,20 @@ export default function DashboardLayout() {
                   >
                     {({ isActive }) => (
                       <>
-                        {/* Active indicator strip */}
+                        {/* Active indicator strip — Champagne Gold */}
                         {isActive && (
                           <span
-                            className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-indigo-400"
+                            className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
+                            style={{ background: 'var(--primary)' }}
                           />
                         )}
                         <Icon
                           size={15}
-                          className={cn('shrink-0', isActive ? 'text-indigo-400' : '')}
-                          style={{ color: isActive ? undefined : 'var(--text-dim)' }}
+                          className="shrink-0"
+                          style={{ color: isActive ? 'var(--primary)' : 'var(--text-dim)' }}
                         />
                         <span className="flex-1">{t(labelKey)}</span>
-                        {isActive && <ChevronRight size={12} className="text-indigo-400/50" />}
+                        {isActive && <ChevronRight size={12} style={{ color: 'var(--primary)', opacity: 0.5 }} />}
                       </>
                     )}
                   </NavLink>

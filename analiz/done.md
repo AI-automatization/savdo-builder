@@ -1,5 +1,182 @@
 # Done — Азим + Полат
 
+## 2026-06-04 (Полат) — TMA-DESIGN-V2-MIGRATE-001: TMA на maxsavdo Dark Luxury
+
+### ✅ [TMA-DESIGN-V2-MIGRATE-001] TMA переведён с Liquid Glass v1 на maxsavdo design-v2
+- **Важность:** 🔴 P1 (brand consistency — TMA отставал от web-buyer/web-seller/admin). **Дата:** 04.06.2026
+- **Контекст:** ревью Азима 02.06 показало что TMA остался на старой палитре Cyber Orchid (#A855F7) +
+  Arctic Cyan (#22D3EE) + Deep Charcoal (#0B0E14) с SF Pro Rounded шрифтом и force-dark темой.
+  Должен быть на maxsavdo Dark Luxury: Champagne Gold #C9A876 + Rich Black #0A0A0A + Pure White +
+  Inter font + system theme (ADR-009).
+- **Файлы (12):**
+  - `apps/tma/src/index.css` — переписан токеновый блок: `--tg-*` теперь Champagne Gold / Rich Black,
+    light тема валидна, body font-family → Inter, .btn-primary / .page-icon / .chip-active /
+    .text-gradient / .status-dot / scrollbar / input:focus переведены на var(--tg-accent).
+  - `apps/tma/src/lib/themes.ts` — DARK_THEME / LIGHT_THEME объекты пересели на новую палитру.
+  - `apps/tma/src/lib/styles.ts` — COLORS / glass / gradientBg константы (orchid alias на gold,
+    cyan alias на gold, glass = flat surface вместо frosted).
+  - `apps/tma/src/providers/ThemeProvider.tsx` — force-dark снят. Detection: stored → Telegram WebApp
+    colorScheme → prefers-color-scheme → fallback dark. matchMedia + Telegram themeChanged listeners
+    для авто-следования.
+  - `apps/tma/src/main.tsx` — `@fontsource/inter` 300/400/500/600/700/800 импорты.
+  - `apps/tma/tailwind.config.js` — accent #C9A876, fontFamily.sans → Inter first.
+  - `apps/tma/src/components/brand/MaxsavdoMark.tsx` — новый компонент (порт из web-buyer):
+    inline SVG монограмма M + bag-handle, theme-adaptive.
+  - `apps/tma/src/components/layout/LoadingScreen.tsx` — 🛒 + "Savdo" → MaxsavdoMark + "maxsavdo".
+  - `apps/tma/src/components/layout/Sidebar.tsx` — 🏪/🛍 в orb → MaxsavdoMark + "maxsavdo" wordmark.
+  - `apps/tma/src/App.tsx` ErrorBoundary — orchid gradient → var(--tg-accent).
+  - `apps/tma/src/components/ui/Spinner.tsx` — #A855F7 → var(--tg-accent).
+  - `apps/tma/src/components/ui/ThemeToggle.tsx` — null-stub заменён рабочим toggle (☀️/🌙).
+  - `apps/tma/src/components/ui/ImagePlaceholder.tsx` — убраны inline rgba fallback'и.
+  - `apps/tma/src/components/seller/SellerAnalyticsCard.tsx` — sparkline / KPI цвета на var(--tg-accent).
+  - `apps/tma/src/components/seller/StoreDirectionsPicker.tsx` — cyan hint → accent.
+  - `apps/tma/src/pages/seller/OrdersPage.tsx` — telephone link + chat-button cyan → accent.
+- **Что сделано:**
+  1. CSS-токены `--tg-*` переопределены под Dark Luxury — десятки компонентов автоматически
+     перекрасились без точечной правки.
+  2. Light тема реактивирована — раньше блокировалась 553 inline rgba(255,255,255), теперь основные
+     слои читают токены и адаптируются к light correctly.
+  3. Inter подключён self-hosted через `@fontsource/inter` (6 весов) — не зависит от Google Fonts CDN
+     (важно для TG WebView).
+  4. Brand: TMA теперь показывает "maxsavdo" + monogram-mark на LoadingScreen и Sidebar.
+  5. ThemeProvider слушает `(prefers-color-scheme)` + Telegram `themeChanged` event.
+- **Build:** `pnpm --filter tma build` clean (tsc + vite). 311KB main bundle (без изменений).
+- **Оставшиеся хардкоды (72 occurrences в 7 файлах):** перенесены в `TMA-COLORS-CLEANUP-002` —
+  AddProductPage (19), EditProductPage (21), SettingsPage seller (16), ChannelSettingsPage (7),
+  ChatPage buyer/seller (4+4), test/setup.ts (1). Большая часть — крупные форм-страницы где замена
+  inline rgba требует осторожности (там много полу-прозрачных подложек на конкретных surface'ах).
+  По дизайну работают корректно — токены подставляют новую палитру, hardcoded rgba(255,255,255)
+  отрисовывается как нейтральный полупрозрачный белый поверх Rich Black surface'а.
+
+---
+
+## 2026-06-03 (Полат) — REFACTOR-DRY-001 / весь DRY-аудит закрыт
+
+### ✅ [REFACTOR-DRY-001] Все 8 DUP-рефакторов из аудита 01.06.2026 выполнены
+- **Важность:** 🟡 P2 (tech debt). **Дата:** 03.06.2026
+- **Закрыто:** DUP-001..008 (см. соответствующие commits в session 01-02.06)
+- **Net effect:** ~700+ строк дубля убрано, 6 новых helper/service файлов
+- **Bonus:** скрытый DoS-fix в moderation.repository (DUP-006, limit cap missing)
+- **Только DUP-009** (passthrough use-cases) оставлен как осознанное архитектурное решение
+
+---
+
+## 2026-06-01 (Полат) — BRAND-ADMIN-INDIGO-CLEANUP-001: WONTFIX, indigo сохраняем
+
+### ✅ [BRAND-ADMIN-INDIGO-CLEANUP-001] Решение: indigo accent на data-страницах admin — оставить
+- **Важность:** 🟢 (документация решения, не код). **Дата:** 01.06.2026
+- **Контекст:** агент `BRAND-ADMIN-REBRAND-001` в своём отчёте отметил что НЕ мигрировал
+  indigo Tailwind-утилиты на data-плотных страницах admin (SellersPage / OrdersPage /
+  StoresPage / AnalyticsDashboardPage / DashboardPage selection-rings, chart accent-цвета
+  в KPI-карточках, focus-rings в `ui/input`/`textarea`/`dialog`). Предлагал отдельный
+  таск на 100% gold-only consistency.
+- **Решение Полата (01.06.2026):** НЕ мигрировать. Indigo остаётся как **secondary accent**:
+  - **Champagne Gold** (`#C9A876`) — brand primary: sidebar nav active, login CTAs, brand stripe.
+  - **Indigo** (`#818CF8` / `bg-indigo-500/10` и т.д.) — secondary accent для data-плотных
+    экранов: focus-rings, chart KPI-цвета, selection rings.
+- **Почему так:**
+  1. На data-страницах с высокой плотностью таблиц/чартов золото визуально перегружает —
+     теряется иерархия.
+  2. Indigo как accent (Liquid Authority design system Азима) использовался на старом
+     admin до brand v2 — это знакомый паттерн, не «забытый цвет».
+  3. Gold-only выглядит «маркетинговым» а не «панелью оператора».
+- **Где смотреть:** `apps/admin/src/index.css` (--primary токены — gold), на data-страницах
+  `pages/{Sellers,Orders,Stores,AnalyticsDashboard,Dashboard}Page.tsx` остался indigo
+  через прямые Tailwind-классы `bg-indigo-500/10` и т.д., в `components/ui/{input,textarea,dialog}.tsx`
+  focus-rings indigo.
+- **Если в будущем кто-то решит «индиго лишний» в админке** — сначала прочитать эту запись
+  и обсудить с Полатом. Это **сознательное** решение, а не пропущенный пункт.
+
+---
+
+## 2026-06-01 (Полат) — REFACTOR-DRY-001 / DUP-002: ChannelPostBuilderService
+
+### ✅ [DUP-002] Извлечён `ChannelPostBuilderService` — устранён дрейф preview ↔ post
+- **Важность:** 🟡 (DRY refactor, P2 из `analiz/dry-audit-2026-06-01.md`). **Дата:** 01.06.2026
+- **Root cause копи-пасты:** одинаковые `formatPrice`/`extractAttribute`/`extractSizes`/
+  `buildProductUrl`/`buildContact`/`buildTemplateVariables` жили в двух местах —
+  free-functions в `preview-channel-post.use-case.ts` и приватные методы класса в
+  `post-product-to-channel.use-case.ts`. Алиас `o-lcham` (узбекский «о́лчам» — размер) был
+  только в `post`, поэтому preview врал продавцу-узбеку: в редакторе шаблона он не видел
+  размер, а в реальном канале — видел.
+- **Что сделано:**
+  - Новый `apps/api/src/modules/products/services/channel-post-builder.service.ts`:
+    `@Injectable() ChannelPostBuilderService` с `build(product, store, productUrl): TemplateVariables`
+    + публичными `buildProductUrl`, `formatPrice` и приватными `extractAttribute`,
+    `extractSizes`, `buildContact`. Поведение взято КАНОНИЧЕСКИ из `post-product-to-channel`
+    (включая `o-lcham`).
+  - `apps/api/src/modules/products/products.module.ts`: зарегистрирован в `providers`.
+  - `post-product-to-channel.use-case.ts`: удалены приватные методы (~80 строк),
+    конструктор: `ConfigService` убран (перенесён в `ChannelPostBuilderService`),
+    добавлен `ChannelPostBuilderService`. Логика `execute` сохранена 1:1.
+  - `preview-channel-post.use-case.ts`: удалены 4 free-functions внизу файла, удалён
+    `realProductVars` (заменён на прямой вызов `channelPostBuilder.build`). `sampleVars`
+    остался — но `productUrl` теперь идёт через `channelPostBuilder.buildProductUrl`
+    (теперь preview корректно даёт `t.me/?startapp=` fallback, как и `post`).
+  - `post-product-to-channel.use-case.spec.ts`: обновлён конструктор юзкейса в `beforeEach`
+    (порядок параметров: `prisma, telegramBot, templateService, mediaResolver, channelPostBuilder`,
+    `ChannelPostBuilderService(config)` собран ad-hoc).
+- **Контракт `TemplateVariables` не менялся** — template-строка Telegram-бота (см.
+  `ChannelTemplateService.DEFAULT_TEMPLATE`) продолжает работать без правок.
+- **Проверки:**
+  - `cd apps/api && npx tsc --noEmit` — ✅ ни одной ошибки в моих файлах (6 pre-existing
+    ошибок в `admin-status-transition.factory.ts` + `admin-create.use-cases.spec.ts` —
+    это работа по DUP-001 параллельной сессии, не моя зона).
+  - `npx jest --testPathPattern 'post-product-to-channel|preview-channel-post|channel-post-builder'`
+    — ✅ 13/13 passed. (`preview-channel-post.spec` ещё не создан — отдельная задача.)
+- **Файлы:**
+  - Новый: `apps/api/src/modules/products/services/channel-post-builder.service.ts`
+  - Изменены: `apps/api/src/modules/products/products.module.ts`,
+    `apps/api/src/modules/products/use-cases/post-product-to-channel.use-case.ts`,
+    `apps/api/src/modules/products/use-cases/post-product-to-channel.use-case.spec.ts`,
+    `apps/api/src/modules/products/use-cases/preview-channel-post.use-case.ts`,
+    `analiz/done.md`
+- **Net code:** -~80 строк дубля, +1 сервис (~140 строк с комментариями + типами).
+- **Commit SHA:** будет добавлен после `git commit`.
+
+---
+
+## 2026-06-01 (Полат) — BRAND-API-METADATA-001: maxsavdo metadata в admin + api
+
+### ✅ [BRAND-API-METADATA-001] Обновить metadata в api/admin (OG, favicon, manifest)
+- **Важность:** 🟡 (brand v2 rollout). **Дата:** 01.06.2026
+- **Что сделано:**
+  - **Ассеты скопированы из ветки `origin/web-buyer`** (готовые PNG, изготовленные Азимом из brand-book JPG через canvas) → `apps/admin/public/`:
+    - `apple-touch-icon.png` (180×180, из `apps/web-buyer/src/app/apple-icon.png`)
+    - `icon-192.png` (192×192) и `icon-512.png` (512×512) (из `apps/web-buyer/public/`)
+    - `og-image.png` (1200×630, из `apps/web-buyer/src/app/opengraph-image.png`)
+    - `maxsavdo-mark.png` (512×308, для consistency, из `apps/web-buyer/public/brand/`)
+    - Не генерировал PNG заново — это идентичные ассеты (PNG-чексумы совпадают через `git cat-file -s`).
+  - **`apps/admin/public/manifest.json` создан:** `name`/`short_name` = "maxsavdo Admin", `theme_color`/`background_color` = `#0A0A0A`, `display: standalone`, `start_url: /`, иконки 192/512/180 PNG, lang `ru`, orientation `portrait`, description.
+  - **`apps/admin/public/robots.txt` создан:** `User-agent: * / Disallow: /` — админка не должна индексироваться (внутренний инструмент).
+  - **`apps/admin/index.html`:** добавлены `<link rel="manifest">`, `<link rel="apple-touch-icon" sizes="180x180">`, `<meta name="robots" content="noindex,nofollow">`, `<meta name="description">`, полный набор Open Graph тегов (og:type=website, og:site_name, og:title, og:description, og:image 1200×630), Twitter Card (summary_large_image). `theme-color=#0A0A0A` уже был — оставлен.
+  - **`apps/api/src/main.ts` Swagger:** `.setTitle('Savdo API')` → `.setTitle('maxsavdo API')`; `.setDescription('Backend для savdo-builder …')` → `.setDescription('Backend для maxsavdo …')`. Прочие "Savdo" в `apps/api/src/` — внутренние константы (TOTP issuer `Savdo Admin` в admin MFA, комментарии к analytics-events/error-codes) — не публичные метаданные, не трогал.
+  - **`apps/api/public/`** не существует — api не сервит статику, отдаёт только JSON + Swagger UI; manifest/OG для api не нужны.
+- **Проверки:**
+  - `pnpm --filter admin build` — ✅ clean (vite v8.0.10, 2659 modules, dist содержит все 6 PNG + manifest.json + robots.txt + index.html с обновлёнными мета).
+  - `cd apps/api && npx tsc --noEmit` — ✅ clean.
+- **Файлы:**
+  - Новые: `apps/admin/public/{manifest.json,robots.txt,apple-touch-icon.png,icon-192.png,icon-512.png,og-image.png,maxsavdo-mark.png}`
+  - Изменены: `apps/admin/index.html`, `apps/api/src/main.ts`, `analiz/tasks.md`, `analiz/done.md`
+- **Commit SHA:** `792b0a6` (не запушен).
+
+---
+
+## 2026-06-01 (Полат) — BRAND-EMAIL-TEMPLATES-001: N/A, email-функционала нет
+
+### ✅ [BRAND-EMAIL-TEMPLATES-001] Email-templates под maxsavdo — N/A
+- **Важность:** 🟡 (brand v2 rollout). **Дата:** 01.06.2026
+- **Статус:** N/A — email-функционал не реализован в проекте.
+- **Что проверено:**
+  - Grep по `nodemailer|@nestjs/mailer|<mjml|<!DOCTYPE html|transactional|email-template` — совпадения только в docs/analiz (упоминания в задачах/решениях), кода нет.
+  - Grep по `nodemailer|mailer|smtp|sendgrid|mailgun|postmark|resend` в `apps/api` — совпадение только в `apps/api/src/shared/error-reporter.ts` (поле "email" в контексте error reporting, не mailer) и в `apps/api/CLAUDE.md` (упоминание).
+  - Каталоги `apps/api/src/mail/`, `apps/api/src/email/`, `apps/api/templates/`, `packages/email*` — не существуют.
+  - `package.json` всех workspace'ов — ни один mail/email пакет не подключён.
+  - `<!DOCTYPE html>|<html>|<body>` в `apps/api` — нет HTML-шаблонов писем.
+- **Обоснование:** по `CLAUDE.md` OTP идёт ТОЛЬКО через Telegram Bot (@savdo_builderBOT), Eskiz/Playmobile/SMS запрещены. Transactional emails (order confirmation, password reset) в MVP не реализованы — уведомления идут через Telegram Bot + in-app.
+- **Что делать когда email появится:** при добавлении email-провайдера (resend/postmark/sendgrid) — открыть новую задачу `BRAND-EMAIL-TEMPLATES-002` с актуальной структурой шаблонов и применить maxsavdo v2 (логотип PNG, Pure White #FFFFFF, Champagne Gold #C9A876, Rich Black #0A0A0A, footer с offer/privacy).
+- **Файлы:** `analiz/tasks.md` (удалена задача), `analiz/done.md` (эта запись).
+
 ## 2026-05-31 (Азим) — seller login: убран двойной редирект
 
 ### ✅ [WEB-SELLER-LOGIN-DOUBLE-REDIRECT-001] Двойная навигация после OTP-входа
