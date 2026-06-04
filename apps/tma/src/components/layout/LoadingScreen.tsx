@@ -1,4 +1,5 @@
 import { gradientBg } from '@/lib/styles';
+import { MaxsavdoMark } from '@/components/brand/MaxsavdoMark';
 
 export function LoadingScreen() {
   return (
@@ -6,7 +7,7 @@ export function LoadingScreen() {
       className="min-h-screen flex flex-col items-center justify-center gap-5"
       style={{ background: gradientBg, position: 'relative', overflow: 'hidden' }}
     >
-      {/* Ambient background glow */}
+      {/* Ambient background glow — Champagne Gold */}
       <div
         aria-hidden
         style={{
@@ -15,23 +16,26 @@ export function LoadingScreen() {
         }}
       />
 
-      {/* Logo orb */}
+      {/* Brand mark orb */}
       <div
         className="logo-pulse"
         style={{
           width: 76, height: 76, borderRadius: 26,
-          background: 'var(--tg-accent)',
+          background: 'var(--tg-surface)',
+          border: '1px solid var(--tg-accent-border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 38,
         }}
       >
-        🛒
+        <MaxsavdoMark size={44} />
       </div>
 
       {/* Brand text */}
       <div style={{ textAlign: 'center' }}>
-        <p className="text-gradient" style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em' }}>
-          Savdo
+        <p style={{
+          fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em',
+          color: 'var(--tg-accent)', margin: 0,
+        }}>
+          maxsavdo
         </p>
         <p style={{ fontSize: 11, color: 'var(--tg-text-dim)', letterSpacing: '0.12em', marginTop: 3 }}>
           ЗАГРУЖАЕМ...

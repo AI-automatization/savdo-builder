@@ -5,21 +5,6 @@
 
 ---
 
-## 🟡 [REFACTOR-DRY-001] Устранить дубли из audit 2026-06-01
-
-- **Домен:** `apps/api`, `apps/admin`, `packages/types` (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** 🟡 P2 — не блокер, но дрейф уже виден (preview vs post channel-post).
-- **Отчёт:** [`analiz/dry-audit-2026-06-01.md`](./dry-audit-2026-06-01.md) — 9 групп дублей (~400-500 строк).
-- **Топ-3 фикса (бери в этом порядке):**
-  - DUP-002: shared `ChannelPostBuilderService` для preview/post-product (S).
-  - DUP-001: generic `AdminStatusTransitionUseCase` вместо 8 копий suspend/archive/approve/… (M).
-  - DUP-003: один `SlugService` вместо 4 реализаций; перенести в `packages/db` (S).
-- **Системные (отдельная мини-сессия):** DUP-004 pagination DTO, DUP-006 page/limit/skip math, DUP-008 включить `@savdo/types` в admin+api.
-- **Подход:** не делать одной большой PR — каждое DUP-NNN отдельным коммитом, тесты на месте, обновить `done.md` по мере закрытия.
-
----
-
 ## 🔴 [BILLING-MACHINE-001] Подписки + энфорсмент (блокер платного launch)
 
 - **Домен:** `apps/api` + `packages/db` + `packages/types` (Полат) · `apps/web-seller` + `apps/web-buyer` (Азим)

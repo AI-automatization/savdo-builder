@@ -17,14 +17,36 @@ const Ctx = createContext<ThemeCtx>({
 
 export const useTheme = () => useContext(Ctx);
 
+// ADR-009 + TMA-DESIGN-V2-MIGRATE-001 (04.06.2026):
+// После миграции styles на CSS-переменные (Champagne Gold + Rich Black +
+// Pure White) light тема снова валидна. Detection приоритет:
+//   1. user choice (localStorage)
+//   2. Telegram WebApp themeParams.color_scheme
+//   3. prefers-color-scheme system media query
+//   4. fallback = dark (luxury aesthetic)
 function detectInitialMode(): { mode: ThemeMode; source: ThemeCtx['source'] } {
-  // Polat 07.05: TMA пока **force-dark**. 553 inline `rgba(255,255,255,X)`
-  // hardcoded цветов в 40 файлах — на светлой теме всё белое на белом.
-  // Светлая тема будет включена когда переведём styles на CSS-переменные
-  // (отдельная миграция, ~3-4 часа). Пока юзер с light Telegram theme
-  // получает читаемый dark UI вместо «ебени».
   const stored = loadStoredTheme();
-  if (stored === 'dark') return { mode: 'dark', source: 'user' };
+  if (stored) return { mode: stored, source: 'user' };
+
+  // Telegram WebApp colorScheme (если запущен внутри TG)
+  try {
+    const tgScheme = (window as unknown as {
+      Telegram?: { WebApp?: { colorScheme?: 'light' | 'dark' } };
+    }).Telegram?.WebApp?.colorScheme;
+    if (tgScheme === 'light' || tgScheme === 'dark') {
+      return { mode: tgScheme, source: 'telegram' };
+    }
+  } catch { /* SSR / no TG */ }
+
+  // System preference
+  try {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      if (prefersLight) return { mode: 'light', source: 'system' };
+      return { mode: 'dark', source: 'system' };
+    }
+  } catch { /* noop */ }
+
   return { mode: 'dark', source: 'default' };
 }
 
@@ -36,18 +58,67 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyThemeToDocument(mode);
   }, [mode]);
 
-  // Force-dark: themeChanged listener убран чтобы Telegram не переключал
-  // обратно в light. Когда мигрируем styles на CSS-переменные — вернём.
+  // Если юзер не задал тему сам — слушаем системные изменения и Telegram
+  // themeChanged event для синхронизации.
+  useEffect(() => {
+    if (source === 'user') return;
+
+    const cleanup: Array<() => void> = [];
+
+    // System media query
+    try {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        const onChange = (e: MediaQueryListEvent) => {
+          setState((prev) => prev.source === 'user'
+            ? prev
+            : { mode: e.matches ? 'dark' : 'light', source: 'system' });
+        };
+        mq.addEventListener?.('change', onChange);
+        cleanup.push(() => mq.removeEventListener?.('change', onChange));
+      }
+    } catch { /* noop */ }
+
+    // Telegram themeChanged
+    try {
+      const tg = (window as unknown as {
+        Telegram?: {
+          WebApp?: {
+            colorScheme?: 'light' | 'dark';
+            onEvent?: (event: string, cb: () => void) => void;
+            offEvent?: (event: string, cb: () => void) => void;
+          };
+        };
+      }).Telegram?.WebApp;
+
+      if (tg?.onEvent && tg?.offEvent) {
+        const onTgChange = () => {
+          const next = tg.colorScheme;
+          if (next === 'light' || next === 'dark') {
+            setState((prev) => prev.source === 'user'
+              ? prev
+              : { mode: next, source: 'telegram' });
+          }
+        };
+        tg.onEvent('themeChanged', onTgChange);
+        cleanup.push(() => tg.offEvent?.('themeChanged', onTgChange));
+      }
+    } catch { /* noop */ }
+
+    return () => cleanup.forEach((fn) => { try { fn(); } catch { /* noop */ } });
+  }, [source]);
 
   const setMode = useCallback((next: ThemeMode) => {
-    // Только dark разрешён пока styles не мигрировали на CSS-переменные.
-    if (next !== 'dark') return;
     saveTheme(next);
     setState({ mode: next, source: 'user' });
   }, []);
 
   const toggle = useCallback(() => {
-    /* no-op пока force-dark */
+    setState((prev) => {
+      const next: ThemeMode = prev.mode === 'dark' ? 'light' : 'dark';
+      saveTheme(next);
+      return { mode: next, source: 'user' };
+    });
   }, []);
 
   return <Ctx.Provider value={{ mode, setMode, toggle, source }}>{children}</Ctx.Provider>;
