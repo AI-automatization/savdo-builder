@@ -194,6 +194,33 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
+## 🔴 [AUDIT-SUPERADMIN-FULL-E2E-001] Full Super-Admin E2E аудит (Ахмед)
+
+- **Домен:** `apps/admin` + `apps/api` super-admin зона — Полат (issue tracker), Ахмед (исполнение).
+- **Кто берёт:** Ахмед (browser-AI). Полат разблокирует доступ (см. §1 brief'а).
+- **Приоритет:** 🔴 P0 — owner сообщил о «проблемах с супер-админом», нужен полный обход всех destructive actions от и до.
+- **Что тестировать:** каждое admin-действие end-to-end (UI → API → DB → audit log → side-effects):
+  - super-admin.controller.ts (MFA setup/verify/disable, impersonate, admin CRUD, refund, seller verify-extended)
+  - admin-users.controller.ts (suspend/unsuspend/make-seller + попытки suspend self/other admin)
+  - admin-stores.controller.ts (suspend/unsuspend/reject/archive/approve/verify/channel)
+  - admin-products.controller.ts (hide/restore/delete/recalc-denorm/archive)
+  - admin-sellers.controller.ts (verify/create-store)
+  - admin-subscriptions.controller.ts (mark-paid/extend-trial/cancel/comp — может быть N/A до BILLING-MACHINE-001)
+  - admin-db.controller.ts ⚠️ ОЧЕНЬ ОПАСНО — SQL-инъекции, FK violations, hard delete admin'а
+  - admin-broadcast.controller.ts (TG broadcast)
+  - admin-analytics.controller.ts + admin-ops.controller.ts (media-migrate, audit-broken-urls)
+- **Cross-cutting:**
+  - audit_log (INV-A01) — каждое destructive пишет запись
+  - RBAC через @AdminPermission — создать ограниченный admin, проверить 403 на запрещённое
+  - MFA enforcement — mfaPending JWT нельзя использовать на других endpoints
+  - Rate limiting — spam admin/auth/mfa/login
+  - CORS + CSP headers
+- **Brief:** `analiz/audit-superadmin-2026-06-05.md` (полный 100+ checkpoint).
+- **Отчёт:** `analiz/audit-superadmin-2026-06-05-results.md` по структуре в §4 brief'а.
+- **Definition of done:** все endpoints помечены ✅/❌, каждый bug → P0/P1/P2 + entry в `analiz/logs.md`.
+
+---
+
 ## 🟠 [LANDING-CORP-PAGE-001] Корпоративная landing-страница с контактами + входами
 
 - **Домен:** `apps/web-buyer` (новый route `/about` или отдельный sub-app) — Азим.
