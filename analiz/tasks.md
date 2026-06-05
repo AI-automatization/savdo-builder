@@ -194,19 +194,59 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
-## 🟠 [SENTRY-DSN-001] Подключить real Sentry DSN к ErrorReporter
+## 🟠 [LANDING-CORP-PAGE-001] Корпоративная landing-страница с контактами + входами
 
-- **Домен:** `apps/api` + Railway env (Полат).
-- **Кто берёт:** Полат.
-- **Приоритет:** P1 hardening — поднимает Observability 6 → 7. Sentry SDK
-  уже задеплоен 20.05 (`8024cbd`), нужен только DSN + замена в коде.
-- **Что:**
-  1. Создать Sentry проект (free-tier, 5k events/месяц).
-  2. `SENTRY_DSN` env в Railway Variables для api / admin / web-buyer / web-seller / tma.
-  3. В `apps/api/src/shared/error-reporter.ts` — добавить опциональный
-     `@sentry/node` под `if (process.env.SENTRY_DSN)`. Reporter уже API-совместим.
-- **Скоуп:** 30 минут.
-- **Источник:** readiness §4 «Observability» + Risk R9.
+- **Домен:** `apps/web-buyer` (новый route `/about` или отдельный sub-app) — Азим.
+- **Кто берёт:** Азим (UI/контент) · Полат (consult, если потребуется новый
+  storefront-эндпоинт под featured stores на landing).
+- **Приоритет:** P1 marketing-блокер для public launch — внешний посетитель
+  должен видеть «что это за платформа, где покупать, где регистрироваться продавцу,
+  как связаться» в одном месте; сейчас разрозненно по `/`, `/[slug]`, web-seller.
+- **Что должно быть на странице:**
+  1. **Hero**: что такое maxsavdo (платформа Telegram-магазинов для UZ) + кнопки:
+     - «Открыть в Telegram» → `https://t.me/savdo_builderBOT` (TMA buyer/seller flow)
+     - «Стать продавцом» → web-seller `/become-seller`
+     - «Перейти к магазинам» → web-buyer `/` (storefront)
+  2. **Контактные связи** (видны без скролла):
+     - Telegram support: `@maxsavdo_support` (после `SUPPORT-CHANNEL-001`)
+     - Email: `support@maxsavdo.uz`, `legal@maxsavdo.uz` (после регистрации
+       юр.лица и `LEGAL-OFFER-REQUISITES-001`)
+     - Телефон (опционально, после регистрации)
+  3. **Каналы входа** (по аудиториям):
+     - **Покупателям:** TMA buyer (`?startapp=`) + web-buyer storefront URL
+     - **Продавцам:** TMA seller (`?start=become_seller`) + web-seller dashboard
+     - **Админам:** admin URL (не promotion, но техническая ссылка в footer)
+  4. **Цены/тарифы** (после `BILLING-MACHINE-001`): FREE/PRO/STUDIO с краткой
+     таблицей (карточки тарифов уже есть в `docs/business/pricing-rationale-v2-2026-06-04.md`).
+  5. **Юр.секция** в footer: ссылки на `/offer`, `/privacy`, `/terms`, `/refund`
+     (уже существуют от `MARKETING-PUBLIC-OFFER-PAGES-001`).
+- **Контракт к Полату (если потребуется):**
+  - `GET /api/v1/storefront/landing/stats` (опц.) — `{ storesCount, productsCount,
+    ordersCount? }` для hero-цифр. Без этого endpoint'а можно сделать статичный
+    hero без счётчиков — не блокер MVP.
+- **Файлы (predict):**
+  - `apps/web-buyer/src/app/about/page.tsx` (или `apps/web-buyer/src/app/page.tsx`
+    переработка — решение Азима).
+  - `apps/web-buyer/src/lib/i18n/{ru,uz}.ts` — секция `landing.*` строк.
+  - SEO: JSON-LD `Organization` + `WebSite` schema, OG-image.
+- **Definition of done:**
+  - Страница открывается анонимно (без auth), отдаёт корректный SEO meta,
+    все CTA-кнопки кликаются и ведут в правильные точки входа.
+  - Адаптив mobile/desktop.
+  - RU + UZ переводы.
+- **Источник:** запрос владельца 05.06.2026 после закрытия checkout-500 +
+  BUG-2 (готовимся к закрытой бете).
+
+---
+
+## ~~🟠 [SENTRY-DSN-001]~~ ❌ ОТМЕНЕНО 05.06.2026
+
+Закрыто как **WONTFIX** по решению владельца. Причины:
+- `ErrorReporter` уже работает через stderr → Railway log aggregation (commit `1b1b258`
+  добавил полный context: buyerId/storeId/sellerId/amounts/itemSummaries в JSON-event).
+- Для closed beta хватает Railway logs + `UptimeRobot` (`INFRA-UPTIME-ALERTS-001`).
+- Вернуться к Sentry — после первого реального prod-инцидента, не покрытого
+  Railway logs (если такой будет).
 
 ---
 
