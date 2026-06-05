@@ -189,7 +189,9 @@ export default function StoresPage() {
             <h1 className="text-base font-bold text-gradient">maxsavdo</h1>
             {user && (
               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
-                {t('auth.welcomeName', { name: user.first_name })} 👋
+                {user.first_name?.trim()
+                  ? `${t('auth.welcomeName', { name: user.first_name })} 👋`
+                  : `${t('auth.welcomeAnon')} 👋`}
               </p>
             )}
           </div>
