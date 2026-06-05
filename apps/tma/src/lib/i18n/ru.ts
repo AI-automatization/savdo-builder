@@ -83,6 +83,7 @@ export const ru: Translations = {
   'auth.logout': 'Выйти из аккаунта',
   'auth.register': 'Зарегистрироваться',
   'auth.welcomeName': 'Привет, {name}!',
+  'auth.welcomeAnon': 'Добро пожаловать!',
   'auth.guest': 'Гость',
   'auth.guestSubtitle': 'Войдите чтобы делать заказы',
   'auth.guestBanner': 'Вы просматриваете магазины как гость. Для заказов нужно войти через Telegram.',

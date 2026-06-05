@@ -1,5 +1,16 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-04] [INFRA-BACKUP-DRILL-FIRST-RUN-001] ⚠️ ЧАСТИЧНО — local dev PASS, prod ждёт
+- **Статус:** ⚠️ Частично. PROD drill ждёт когда Полат вставит DATABASE_PUBLIC_URL.
+- **Что сделано:**
+  1. **Backup local dev** через `docker exec savdo-builder-postgres-1 pg_dump -U savdo -d savdo -F c > backups/savdo-local-*.dump` (104 KB).
+  2. **Staging Postgres** контейнер через `docker run postgres:16-alpine` на port 55432.
+  3. **Restore** через `docker run --rm -v ./backups:/backups postgres:16-alpine pg_restore --clean --if-exists --no-owner --no-acl -d "postgresql://maxsavdo:maxsavdo@host.docker.internal:55432/savdo_staging" /backups/savdo-local-*.dump`.
+  4. **Integrity**: row counts source vs target — **0% drift** (users 2/2, stores 1/1, products 1/1, orders 0/0).
+- **Результат:** PASS на local dev. Script-цепочка валидна.
+- **PROD drill TODO:** Полату прогнать те же команды с `DATABASE_URL='postgresql://postgres:***@crossover.proxy.rlwy.net:37242/railway'`.
+- **Известная проблема Windows:** `scripts/db/backup.sh` + `restore-drill.sh` требуют локально установленный `pg_dump`/`pg_restore`. На Windows проще через `docker exec` / `docker run --rm postgres:16-alpine`. Скрипты надо адаптировать (см. SCRIPTS-DOCKER-FALLBACK-001 на потом).
+
 ## [2026-06-04] [REAUDIT-V2-VARIANT-HASH-AS-HEX] ✅ Variant fallback label выглядел как hex-цвет
 - **Статус:** ✅ Исправлено (Полат)
 - **Что случилось:** `ProductPage.tsx` показывал `#${v.id.slice(-4)}` как label

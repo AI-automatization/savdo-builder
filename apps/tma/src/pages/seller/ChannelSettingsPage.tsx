@@ -65,7 +65,7 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
       disabled={disabled}
       style={{
         width: 44, height: 26, borderRadius: 13,
-        background: on ? ACCENT : 'rgba(255,255,255,0.15)',
+        background: on ? ACCENT : 'var(--tg-border)',
         border: 'none', cursor: disabled ? 'wait' : 'pointer',
         position: 'relative', transition: 'background 0.2s', flexShrink: 0,
       }}
@@ -74,6 +74,7 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
         style={{
           position: 'absolute', top: 3, left: on ? 21 : 3,
           width: 20, height: 20, borderRadius: '50%',
+          // Thumb остаётся белым — box-shadow обеспечивает читабельность в обеих темах.
           background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
           transition: 'left 0.18s',
         }}
@@ -83,8 +84,8 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
 }
 
 const inputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.07)',
-  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'var(--tg-surface-hover)',
+  border: '1px solid var(--tg-border)',
   color: 'var(--tg-text-primary)',
 };
 
@@ -316,7 +317,7 @@ export default function ChannelSettingsPage() {
         <button
           onClick={() => navigate(-1)}
           className="text-xs px-2 py-1 rounded-lg"
-          style={{ color: 'var(--tg-text-secondary)', background: 'rgba(255,255,255,0.05)' }}
+          style={{ color: 'var(--tg-text-secondary)', background: 'var(--tg-surface)' }}
         >
           ← Назад
         </button>
@@ -526,7 +527,7 @@ export default function ChannelSettingsPage() {
           className="w-full py-2.5 rounded-xl text-sm font-semibold mt-1"
           style={{
             background: testing || !channelAttached || dirty
-              ? 'rgba(255,255,255,0.06)'
+              ? 'var(--tg-surface)'
               : `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`,
             color: testing || !channelAttached || dirty ? 'var(--tg-text-dim)' : '#fff',
             transition: 'all 0.15s',
@@ -548,7 +549,7 @@ export default function ChannelSettingsPage() {
           disabled={saving || !dirty}
           className="w-full py-2.5 rounded-xl text-sm font-semibold"
           style={{
-            background: saving || !dirty ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`,
+            background: saving || !dirty ? 'var(--tg-surface)' : `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`,
             color: saving || !dirty ? 'var(--tg-text-dim)' : '#fff',
           }}
         >

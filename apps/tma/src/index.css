@@ -60,6 +60,13 @@
   --tg-success:        #34D399;
   --tg-warning:        #FBBF24;
   --tg-danger:         #F87171;
+
+  /* Shadow tokens (LIGHT THEME HOTFIX 04.06.2026):
+     Раньше components hardcoded box-shadow с rgba(0,0,0,0.35-0.40) — в light
+     theme это выглядело слишком резко. Теперь через переменные. */
+  --tg-card-shadow:     0 8px 32px rgba(0,0,0,0.40);
+  --tg-sidebar-shadow:  4px 0 24px rgba(0,0,0,0.35);
+
   color-scheme: dark;
 }
 
@@ -103,6 +110,11 @@
   --tg-success:        #10B981;
   --tg-warning:        #F59E0B;
   --tg-danger:         #EF4444;
+
+  /* Shadow tokens для light — мягче чем в dark (#0,0,0,0.06 вместо 0.40) */
+  --tg-card-shadow:     0 4px 16px rgba(0,0,0,0.06);
+  --tg-sidebar-shadow:  4px 0 24px rgba(0,0,0,0.06);
+
   color-scheme: light;
 }
 

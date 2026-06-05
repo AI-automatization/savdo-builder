@@ -53,11 +53,11 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
       data-role={role}
       className="fixed bottom-0 left-0 right-0 flex z-50"
       style={{
-        background: 'rgba(11,14,20,0.94)',
+        background: 'var(--tg-bg)',
         backdropFilter: 'blur(30px)',
         WebkitBackdropFilter: 'blur(30px)',
         borderTop: '1px solid var(--tg-border-soft)',
-        boxShadow: '0 -4px 24px rgba(0,0,0,0.40)',
+        boxShadow: 'var(--tg-bottomnav-shadow, 0 -4px 24px rgba(0,0,0,0.40))',
         paddingBottom: 'env(safe-area-inset-bottom, 10px)',
         paddingTop: 6,
       }}

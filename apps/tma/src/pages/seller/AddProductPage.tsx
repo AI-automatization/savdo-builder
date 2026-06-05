@@ -154,8 +154,8 @@ export default function AddProductPage() {
 
   const inputStyle = {
     ...glass,
-    background: 'rgba(255,255,255,0.05)',
-    color: '#fff',
+    background: 'var(--tg-surface)',
+    color: 'var(--tg-text-primary)',
     fontSize: 14,
     outline: 'none',
     width: '100%',
@@ -587,8 +587,8 @@ export default function AddProductPage() {
               onClick={() => setShowStoreCatModal(true)}
               className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
               style={{
-                background: storeCategoryId ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${storeCategoryId ? 'rgba(124,58,237,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                background: storeCategoryId ? 'rgba(124,58,237,0.18)' : 'var(--tg-surface)',
+                border: `1px solid ${storeCategoryId ? 'rgba(124,58,237,0.45)' : 'var(--tg-border)'}`,
                 color: storeCategoryId ? '#A855F7' : 'var(--tg-text-muted)',
               }}
             >
@@ -607,7 +607,7 @@ export default function AddProductPage() {
             onClick={() => setShowGlobalCatModal(true)}
             className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
             style={{
-              background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.05)',
+              background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'var(--tg-surface)',
               border: `1px solid ${globalCategoryId ? 'rgba(6,182,212,0.40)' : 'rgba(239,68,68,0.35)'}`,
               color: globalCategoryId ? '#22D3EE' : 'var(--tg-text-muted)',
             }}
@@ -713,8 +713,8 @@ export default function AddProductPage() {
                               minHeight: 36,
                               padding: '6px 12px',
                               borderRadius: 10,
-                              border: `1px solid ${active ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.12)'}`,
-                              background: active ? 'rgba(167,139,250,0.20)' : 'rgba(255,255,255,0.05)',
+                              border: `1px solid ${active ? 'rgba(167,139,250,0.50)' : 'var(--tg-border)'}`,
+                              background: active ? 'rgba(167,139,250,0.20)' : 'var(--tg-surface)',
                               color: active ? '#A855F7' : 'var(--tg-text-secondary)',
                               fontSize: 13,
                               fontWeight: active ? 600 : 500,
@@ -727,7 +727,7 @@ export default function AddProductPage() {
                       })}
                     </div>
                     {(variantOptions[f.key]?.selected.length ?? 0) > 0 && (
-                      <div className="flex flex-col gap-1.5 mt-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="flex flex-col gap-1.5 mt-1 pt-2" style={{ borderTop: '1px solid var(--tg-border-soft)' }}>
                         <p className="text-xxs font-semibold uppercase tracking-wider" style={{ color: 'var(--tg-text-dim)' }}>
                           Остаток по {f.nameRu.toLowerCase()}
                         </p>
@@ -849,7 +849,7 @@ export default function AddProductPage() {
                     aspectRatio: '1/1',
                     borderRadius: 10,
                     overflow: 'hidden',
-                    border: idx === 0 ? '2px solid rgba(168,85,247,0.55)' : '1px solid rgba(255,255,255,0.08)',
+                    border: idx === 0 ? '2px solid rgba(168,85,247,0.55)' : '1px solid var(--tg-border-soft)',
                   }}
                 >
                   <img
@@ -883,10 +883,12 @@ export default function AddProductPage() {
                     onClick={() => removePhoto(idx)}
                     aria-label="Удалить"
                     style={{
+                      // Overlay над фото: всегда тёмный фон с белой иконкой/рамкой
+                      // независимо от темы — поэтому hardcoded rgba/#fff намеренно.
                       position: 'absolute', top: 4, right: 4,
                       width: 24, height: 24, borderRadius: 12,
                       background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.18)',
-                      color: 'var(--tg-text-primary)', fontSize: 13, lineHeight: 1,
+                      color: '#fff', fontSize: 13, lineHeight: 1,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer',
                     }}
@@ -901,9 +903,10 @@ export default function AddProductPage() {
                         disabled={idx === 0}
                         aria-label="Влево"
                         style={{
+                          // Overlay над фото — hardcoded цвета намеренны.
                           width: 22, height: 22, borderRadius: 11,
                           background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
-                          color: 'var(--tg-text-primary)', fontSize: 11, padding: 0,
+                          color: '#fff', fontSize: 11, padding: 0,
                           opacity: idx === 0 ? 0.4 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer',
                         }}
                       >
@@ -915,9 +918,10 @@ export default function AddProductPage() {
                         disabled={idx === photoPreviews.length - 1}
                         aria-label="Вправо"
                         style={{
+                          // Overlay над фото — hardcoded цвета намеренны.
                           width: 22, height: 22, borderRadius: 11,
                           background: 'rgba(0,0,0,0.62)', border: '1px solid rgba(255,255,255,0.15)',
-                          color: 'var(--tg-text-primary)', fontSize: 11, padding: 0,
+                          color: '#fff', fontSize: 11, padding: 0,
                           opacity: idx === photoPreviews.length - 1 ? 0.4 : 1,
                           cursor: idx === photoPreviews.length - 1 ? 'not-allowed' : 'pointer',
                         }}
@@ -986,7 +990,7 @@ export default function AddProductPage() {
                 width: 42,
                 height: 24,
                 borderRadius: 12,
-                background: hasSizes ? '#7C3AED' : 'rgba(255,255,255,0.12)',
+                background: hasSizes ? '#7C3AED' : 'var(--tg-border)',
                 position: 'relative',
                 transition: 'background 0.2s',
                 flexShrink: 0,
@@ -1000,7 +1004,9 @@ export default function AddProductPage() {
                   width: 18,
                   height: 18,
                   borderRadius: 9,
+                  // Thumb остаётся белым; box-shadow для читаемости на off-track в light theme.
                   background: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
                   transition: 'left 0.2s',
                 }}
               />
