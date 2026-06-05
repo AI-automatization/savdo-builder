@@ -5,6 +5,15 @@ import { Order, OrderStatus, InventoryMovementType, DeliveryType, PaymentMethod,
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
+// API-CHECKOUT-CONFIRM-500-001 (defensive): tx.$executeRaw с UUID::cast при
+// невалидном variantId бросает PostgresError "invalid input syntax for type uuid"
+// — это превращается в Prisma exception → HTTP 500. Валидируем формат заранее.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUuid(s: string | null | undefined): s is string {
+  return typeof s === 'string' && UUID_RE.test(s);
+}
+
 export interface CheckoutOrderItemInput {
   productId: string;
   variantId?: string;
@@ -169,6 +178,30 @@ export class CheckoutRepository {
 
       for (const item of data.items) {
         if (!item.variantId) continue;
+
+        // API-CHECKOUT-CONFIRM-500-001 (defensive): валидируем UUID формат до
+        // raw SQL чтобы не получить PostgresError "invalid input syntax for
+        // type uuid" → HTTP 500. Невалидный variantId = битый cart data,
+        // бросаем понятный CHECKOUT_STOCK_INSUFFICIENT (item будет re-validate
+        // в next request).
+        if (!isValidUuid(item.variantId)) {
+          throw new DomainException(
+            ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+            `Invalid variant reference for ${item.productTitleSnapshot}`,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            { productId: item.productId, variantId: item.variantId },
+          );
+        }
+
+        // API-CHECKOUT-CONFIRM-500-001 (defensive): аналогично для productId.
+        if (!isValidUuid(item.productId)) {
+          throw new DomainException(
+            ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+            `Invalid product reference for ${item.productTitleSnapshot}`,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            { productId: item.productId, variantId: item.variantId },
+          );
+        }
 
         // API-STOCK-RACE-OVERSELL-001 (QA-AUDIT P0):
         // Старый decrement без guard позволял двум параллельным транзакциям
