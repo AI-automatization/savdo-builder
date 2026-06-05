@@ -1,5 +1,39 @@
 # Done — Азим + Полат
 
+## 2026-06-05 (Полат) — BUG-2 unify inStock между list/detail mappers
+
+### ✅ [BUG-2] Унифицировать inStock между storefront list и detail mappers
+- **Важность:** 🔴 P0 (блокирует покупки реальных buyer'ов). **Дата:** 05.06.2026
+- **Источник:** `analiz/audit-tma-v2-2026-06-04.md` (Ahmed v2)
+- **Симптом:** "Игрушка" в магазине Azim — список магазина показывает товар как
+  доступный (+ кнопка), а детальная страница TMA buyer показывает «Нет в наличии».
+- **Root cause:** list-mapper'ы считали `totalStock = sum(variants.stockQuantity)`,
+  а detail возвращал raw `product.totalStock` (denorm-колонка). Для single-SKU
+  товара (без active variants) sum пустого массива = 0 → витрина OOS, даже если
+  реальный остаток лежал в `Product.totalStock`. Для товара с variants — denorm
+  мог отставать. Две разные формулы в двух местах → расхождение между list/detail
+  и между admin (raw `product.totalStock`) и витриной.
+- **Что сделано:**
+  - `apps/api/src/modules/products/services/product-presenter.service.ts` — добавлен
+    `computeStockFields(product, variants)`: если есть варианты → `sum(variant.stockQuantity)`,
+    иначе → `product.totalStock`. Возвращает `{ totalStock, inStock }`.
+  - `apps/api/src/modules/products/storefront.controller.ts` — обновлены ВСЕ
+    маппинги: `stores/:slug/products` (list), `storefront/products` (platform feed
+    + store feed), `stores/:slug/products/:id` (detail), `storefront/products/:id`
+    (detail). Везде через `presenter.computeStockFields(...)`. Detail впервые
+    возвращает `totalStock` + `inStock` для фронта.
+  - `apps/api/src/modules/products/products.controller.ts` (seller list) — та же
+    унификация для seller `GET /seller/products`.
+  - `apps/api/src/modules/products/services/product-presenter.service.spec.ts` —
+    добавлен `describe('computeStockFields (BUG-2)')`: 6 тестов
+    (variants with stock, all zero, single-SKU positive, single-SKU zero,
+    null/undefined totalStock, null stockQuantity treatment).
+- **Тесты:** `npx jest products` — 68/68 ✅, `npx jest storefront` — 7/7 ✅,
+  `tsc --noEmit` clean.
+- **Контракт DTO:** field `totalStock` остался `number`, добавлен `inStock: boolean`.
+  Семантика totalStock для single-SKU поменялась (раньше 0, теперь = `product.totalStock`)
+  — это и есть исправление багa, list/detail теперь консистентны.
+
 ## 2026-06-04 (Полат) — TMA-COLORS-CLEANUP-002 — light theme polish
 
 ### ✅ [TMA-COLORS-CLEANUP-002] Финальная зачистка hardcoded rgba(255,255,255,X)
