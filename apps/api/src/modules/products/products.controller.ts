@@ -103,12 +103,15 @@ export class ProductsController {
     ]);
     const mapped = products.map((p) => {
       const { _count, images, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-      const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+      // Раньше sum(variants.stockQuantity) → single-SKU товары всегда показывались как OOS.
+      const stock = this.presenter.computeStockFields(p, variants);
       return {
         ...rest,
         ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         variantCount: _count.variants,
-        totalStock,
+        totalStock: stock.totalStock,
+        inStock: stock.inStock,
         mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
       };
     });
