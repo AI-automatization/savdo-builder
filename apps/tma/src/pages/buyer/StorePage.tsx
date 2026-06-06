@@ -10,7 +10,7 @@ import { showToast } from '@/components/ui/Toast';
 import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
 import { clickableA11y } from '@/lib/a11y';
-import { webStoreUrl } from '@/lib/webUrl';
+import { webStoreUrl, storeDeepLink, tgShareUrl } from '@/lib/webUrl';
 import { useTranslation } from '@/lib/i18n';
 
 interface Product {
@@ -211,6 +211,25 @@ export default function StorePage() {
                   aria-label={t('stores.openSiteAria')}
                 >
                   ↗ {t('stores.openSiteShort')}
+                </button>
+                {/* TMA-SHARE-003: Telegram native share — нативный sheet «куда переслать». */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    tg?.HapticFeedback.impactOccurred('light');
+                    const text = t('stores.shareText', { name: store.name });
+                    tg?.openTelegramLink?.(tgShareUrl(storeDeepLink(store.slug), text));
+                  }}
+                  className="text-xxs inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                  style={{
+                    color: 'var(--tg-accent)',
+                    background: 'var(--tg-accent-bg)',
+                    border: '1px solid var(--tg-accent-border)',
+                    cursor: 'pointer',
+                  }}
+                  aria-label={t('stores.shareAria')}
+                >
+                  📤 {t('stores.shareShort')}
                 </button>
                 {/* MARKETING-VERIFIED-SELLER-001 */}
                 {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (

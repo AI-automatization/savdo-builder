@@ -268,7 +268,11 @@ model UserSession {
   // access) ронял admin в MFA loop при любом destructive action.
   mfaVerifiedAt    DateTime?
 
-  user User @relation(fields: [userId], references: [id])
+  // API-USER-DELETE-FK-CASCADE-001: при удалении user (через admin/db DELETE
+  // или admin endpoint) — все его sessions удаляются автоматически. Без этого
+  // delete user падал на FK RESTRICT (PostgresError 23001). Session без живого
+  // user всё равно невалидна — каскадное удаление безопасно.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])

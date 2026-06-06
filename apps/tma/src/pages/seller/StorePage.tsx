@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
 import { useTranslation } from '@/lib/i18n';
 import { glass } from '@/lib/styles';
-import { webStoreUrl } from '@/lib/webUrl';
+import { webStoreUrl, storeDeepLink, tgShareUrl } from '@/lib/webUrl';
 
 interface Store {
   id: string;
@@ -51,16 +51,11 @@ export default function SellerStorePage() {
   const [newStoreTg, setNewStoreTg] = useState('');
   const [createError, setCreateError] = useState('');
 
-  const botUsername = (import.meta.env.VITE_BOT_USERNAME as string) ?? '';
-  // Mini App deep-link если бот настроен, иначе публичная веб-витрина.
-  const storeLink = (s: Store) =>
-    botUsername
-      ? `https://t.me/${botUsername}?startapp=store_${s.slug}`
-      : webStoreUrl(s.slug);
-
+  // TMA-SHARE-001: deep-link строится централизованно в lib/webUrl.ts
+  // (storeDeepLink). Раньше каждый компонент дублировал логику.
   const copyLink = async (s: Store) => {
     try {
-      await navigator.clipboard.writeText(storeLink(s));
+      await navigator.clipboard.writeText(storeDeepLink(s.slug));
       tg?.HapticFeedback.notificationOccurred('success');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -68,6 +63,16 @@ export default function SellerStorePage() {
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
     }
+  };
+
+  // TMA-SHARE-002: Telegram native share-sheet. Открывает диалог «куда
+  // переслать» с предзаполненным deep-link и текстом — удобнее чем copy-link
+  // для продавца (один тап вместо copy → switch chat → paste).
+  const shareStore = (s: Store) => {
+    const text = t('seller.store.shareText', { name: s.name });
+    tg?.HapticFeedback.impactOccurred('light');
+    tg?.openTelegramLink?.(tgShareUrl(storeDeepLink(s.slug), text));
+    track.storeLinkCopied(s.id);
   };
 
   const togglePublish = async (s: Store) => {
@@ -324,7 +329,10 @@ export default function SellerStorePage() {
             <Button variant="ghost" className="w-full" onClick={() => setEditing(true)}>
               ✏️ {t('common.edit')}
             </Button>
-            <Button className="w-full" onClick={() => copyLink(store)}>
+            <Button className="w-full" onClick={() => shareStore(store)}>
+              📤 {t('seller.store.share')}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => copyLink(store)}>
               {copied ? t('seller.store.linkCopied') : t('seller.store.copyLink')}
             </Button>
             {(store.status === 'APPROVED' || store.isPublic) && (
