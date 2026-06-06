@@ -119,6 +119,21 @@ export class TelegramAuthUseCase {
       }
     }
 
+    // API-USER-LOGIN-BLOCK-001: блокируем login для soft-deleted / BLOCKED users.
+    // Без этого admin "удалил" user (deletedAt set, status=BLOCKED), но user
+    // всё равно мог войти через TMA — backend находил его по telegramId и
+    // выдавал JWT. Дыра в безопасности.
+    if (resolvedUser.deletedAt || resolvedUser.status === 'BLOCKED') {
+      this.logger.warn(
+        `Login blocked: user=${resolvedUser.id} deletedAt=${resolvedUser.deletedAt} status=${resolvedUser.status}`,
+      );
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Account is suspended or deleted',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     // Create session
     const sessionId = randomUUID();
     const rawToken = this.tokenService.generateRefreshToken();
