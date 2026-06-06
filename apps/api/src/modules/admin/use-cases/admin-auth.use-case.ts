@@ -113,6 +113,16 @@ export class AdminAuthUseCase {
       ...(admin.adminRole && { adminRole: admin.adminRole }),
     });
 
+    // API-ADMIN-MFA-PERSIST-001: помечаем сессию как mfa-verified.
+    // refresh-session.use-case использует это: если session.mfaVerifiedAt не
+    // старее MFA_GRACE_HOURS (default 8h) — выдаёт чистый JWT без mfaPending.
+    // Без этого refresh ронял admin в MFA loop при каждом access TTL expire
+    // (15 мин) — UX невозможный для длинной admin сессии.
+    await this.prisma.userSession.updateMany({
+      where: { id: sessionId, userId },
+      data: { mfaVerifiedAt: new Date() },
+    });
+
     // Update lastLoginAt — это эффективно «момент входа» для admin'а.
     await this.prisma.adminUser.update({
       where: { id: admin.id },

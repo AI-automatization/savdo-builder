@@ -252,16 +252,21 @@ model User {
 }
 
 model UserSession {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   userId           String
   refreshTokenHash String
   deviceType       String?
   deviceName       String?
   ipAddress        String?
   userAgent        String?
-  lastSeenAt       DateTime @default(now())
+  lastSeenAt       DateTime  @default(now())
   expiresAt        DateTime
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
+  // API-ADMIN-MFA-PERSIST-001: timestamp последнего успешного MFA challenge для
+  // этой сессии. Используется refresh-session чтобы НЕ требовать новый MFA в
+  // течение MFA_GRACE_HOURS после challenge — иначе каждый refresh (короткий TTL
+  // access) ронял admin в MFA loop при любом destructive action.
+  mfaVerifiedAt    DateTime?
 
   user User @relation(fields: [userId], references: [id])
 
