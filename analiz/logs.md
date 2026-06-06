@@ -1,5 +1,61 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-06] [API-ADMIN-MFA-NOT-PERSISTED-001] ✅ ЗАКРЫТО — MFA grace period в refresh-session
+- **Статус:** ✅ Исправлено (06.06.2026)
+- **Root cause:** `refresh-session.use-case.ts:78` для каждого admin **всегда** выставлял `mfaPending: true` — это by design для защиты от украденного refresh token. Но access TTL короткий (15 мин), и каждый refresh → новый JWT с mfaPending → guard блокирует ВСЕ destructive actions → admin в MFA loop.
+- **Fix:** 3 файла + migration + 5 новых тестов:
+  1. `packages/db/prisma/schema.prisma` — добавлено поле `UserSession.mfaVerifiedAt: DateTime?`
+  2. Migration `20260606150000_session_mfa_verified_at/migration.sql`
+  3. `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts::mfaChallenge` — при успехе ставит `session.mfaVerifiedAt = now()`
+  4. `apps/api/src/modules/auth/use-cases/refresh-session.use-case.ts` — если `session.mfaVerifiedAt < MFA_GRACE_HOURS назад` (default 8h, env override `MFA_GRACE_HOURS`) → выдаёт JWT БЕЗ mfaPending
+  5. Tests: 5 новых кейсов в `refresh-session.use-case.spec.ts` + 1 в `admin-auth.use-case.spec.ts`
+- **Результат:** Admin делает MFA один раз → работает весь рабочий день. После 8 часов простоя или ручного logout — MFA challenge снова. Security сохранён.
+- **Tests:** 40/40 pass (mfa/refresh-session/admin-auth tests).
+
+---
+
+## [2026-06-06] [API-WISHLIST-DEEPLINK-FORMAT-001] ✅ ЗАКРЫТО — wishlist deep-link ломал TMA parser
+- **Статус:** ✅ Исправлено (06.06.2026)
+- **Root cause:** `wishlist-notify.service.ts:160` слал `startapp=product_<slug>_<id>`, TMA `parseStartParam` берёт всё после `product_` как productId → fetch `/storefront/products/<slug>_<id>` → 404 → fallback на `/buyer` (юзер теряет контекст товара который подешевел).
+- **Fix:** Формат сменён на `startapp=product_<id>`. TMA сама резолвит slug через `/storefront/products/<id>` (HomePage.tsx уже это поддерживает в ветке type=product).
+- **Файлы:** `apps/api/src/modules/wishlist/services/wishlist-notify.service.ts:160`
+
+---
+
+## [2026-06-06] [TMA-DEEPLINK-EXPAND-001] ✅ ЗАКРЫТО — TMA parseStartParam не знал префиксы seller_/cart_
+- **Статус:** ✅ Исправлено (06.06.2026)
+- **Root cause:** `apps/tma/src/pages/HomePage.tsx::parseStartParam` поддерживал только `store_`, `product_`, `chat_`. Backend генераторы (`telegram-demo.handler.ts::handleSellerProductsInTma`, `cart-abandonment.service.ts`) шлют `seller_products`/`cart_<slug>` — TMA не парсит, fallback на `/buyer`.
+- **Fix:** Расширен парсер + добавлен whitelist для seller_<page> страниц (dashboard/products/orders/profile/store/chats):
+  - `startapp=cart_<slug>` → `/buyer/store/<slug>/cart`
+  - `startapp=seller_<page>` → `/seller/<page>` (whitelist)
+- **Файл:** `apps/tma/src/pages/HomePage.tsx`
+- **Эффект:** seller-кнопки «Мои товары» в TG-боте и cart-abandonment nudge теперь работают корректно.
+
+---
+
+## [2026-06-06] [API-ADMIN-MFA-NOT-PERSISTED-001] 🔴 P0 БАГ: MFA конфликтует с destructive actions после login
+- **Статус:** 🔴 Баг (репорт от Polat 2026-06-06)
+- **Что случилось:** Polat зашёл в admin через login + MFA TOTP. Доступ есть, сессия активна. Попытался **удалить пользователя** — получил ошибку «двух факторка не авторизована».
+- **Почему критично:** delete user — стандартный admin action. Если **каждое** destructive action требует **повторного** MFA — UX невозможный + personas Ahmed-тестов застрянут на каждом шаге.
+- **Гипотезы root cause:**
+  1. `MfaEnforcedGuard` не проверяет что mfaPending уже **обменян** на полный JWT после `/admin/auth/mfa/login` — guard видит "no MFA verification on this request" и блокирует независимо от sessionState.
+  2. JWT с post-MFA состоянием **не сохраняется** между requests — каждое action ждёт свежий MFA challenge.
+  3. Frontend не передаёт MFA-token в header destructive endpoints (только в bearer access JWT).
+- **Где смотреть:**
+  - `apps/api/src/modules/admin/guards/mfa-enforced.guard.ts` — логика guard'а
+  - `apps/api/src/modules/admin/super-admin.controller.ts:74` — `@SkipMfaCheck` декоратор должен покрывать MFA endpoints
+  - `apps/admin/src/lib/api/client.ts` — как frontend хранит/передаёт MFA-аутентифицированный JWT
+- **Воспроизведение:**
+  1. Login в admin как SUPER_ADMIN с включённым MFA
+  2. Ввести TOTP → обменять mfaPending на полный JWT
+  3. Перейти Users → выбрать любого user → нажать Delete
+  4. Ожидается: 200 OK + user удалён
+  5. Получено: ошибка "двух факторка не авторизована" / 403
+- **Что сделано:** не исправлено — заведено в logs.md, ждёт сессии Полата с зоной apps/api + apps/admin.
+- **Связано:** API-MFA-NOT-ENFORCED-001 (закрыт 06.05.2026) — возможно регрессия.
+
+---
+
 ## [2026-06-04] [INFRA-BACKUP-DRILL-FIRST-RUN-001] ⚠️ ЧАСТИЧНО — local dev PASS, prod ждёт
 - **Статус:** ⚠️ Частично. PROD drill ждёт когда Полат вставит DATABASE_PUBLIC_URL.
 - **Что сделано:**

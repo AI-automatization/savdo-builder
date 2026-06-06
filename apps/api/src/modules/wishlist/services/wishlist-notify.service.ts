@@ -157,7 +157,13 @@ export class WishlistNotifyService {
       });
       if (updated.count === 0) continue;
 
-      const productDeepLink = `https://t.me/${botUsername}?startapp=product_${p.store.slug}_${p.id}`;
+      // API-WISHLIST-DEEPLINK-FORMAT-001 (TMA-DEEPLINK-EXPAND-001):
+      // Старый формат `product_<slug>_<id>` ломал TMA parseStartParam — он берёт
+      // всё после `product_` как productId → fetch /storefront/products/<slug>_<id>
+      // → 404 → fallback на /buyer (юзер теряет контекст товара).
+      // Новый формат — только productId. TMA сама резолвит slug через API
+      // (apps/tma/src/pages/HomePage.tsx, ветка type=product).
+      const productDeepLink = `https://t.me/${botUsername}?startapp=product_${p.id}`;
       const data: NotifyWishlistData = {
         wishlistItemId: item.id,
         recipientChatId: chatId,
