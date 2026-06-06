@@ -71,6 +71,34 @@ export class ProductPresenterService {
   }
 
   /**
+   * BUG-2 (audit-tma-v2-2026-06-04): унифицированный stock-агрегат для DTO.
+   *
+   * До фикса list-mapper считал `totalStock = sum(variants.stockQuantity)` —
+   * для single-SKU товара (без active variants) sum=0 → витрина показывала
+   * красный бэйдж «НЕТ В НАЛИЧИИ», хотя реальный остаток лежал в
+   * денормализованном `Product.totalStock`. Detail же спредил raw `product`
+   * (с denorm-полем) → semantics расходились между list/detail.
+   *
+   * Правило:
+   *   - есть активные варианты → totalStock = сумма их stockQuantity
+   *     (variant-режим, denorm на Product может отставать, см. variants.repo)
+   *   - вариантов нет → берём `product.totalStock` (single-SKU режим;
+   *     именно так его пишет stockAdjust use-case)
+   *
+   * `inStock` — derived flag для фронта (TMA buyer ProductPage / web-buyer
+   * ProductCard): не дублировать ту же формулу в каждом клиенте.
+   */
+  computeStockFields(
+    product: { totalStock?: number | null },
+    variants: Array<{ stockQuantity?: number | null }>,
+  ): { totalStock: number; inStock: boolean } {
+    const totalStock = variants.length > 0
+      ? variants.reduce((sum, v) => sum + (Number(v.stockQuantity) || 0), 0)
+      : Number(product.totalStock ?? 0) || 0;
+    return { totalStock, inStock: totalStock > 0 };
+  }
+
+  /**
    * Нормализация variant для DTO: Decimal → number, optionValues junctions → optionValueIds[].
    */
   normalizeVariant(variant: unknown): unknown {

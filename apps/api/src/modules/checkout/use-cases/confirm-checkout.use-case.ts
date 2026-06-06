@@ -124,7 +124,14 @@ export class ConfirmCheckoutUseCase {
       })),
     );
 
-    const subtotalAmount = validatedItems.reduce((sum, item) => sum + item.lineTotalAmount, 0);
+    // API-CHECKOUT-CONFIRM-500-001 (defensive): JS floating-point reduce даёт
+    // значения типа 1234.5600000000001 — Prisma Decimal(12,2) принимает их, но
+    // может бросить ValidationError если переполнение по precision. Округляем
+    // на уровне application до cents.
+    const round2 = (n: number): number => Math.round(n * 100) / 100;
+    const subtotalAmount = round2(
+      validatedItems.reduce((sum, item) => sum + Number(item.lineTotalAmount), 0),
+    );
 
     // API-DELIVERY-FEE-CLIENT-CONTROLLED-001 + API-CHECKOUT-PREVIEW-DELIVERY-FEE-001:
     // backend сам считает deliveryFee из store.deliverySettings (input.deliveryFee
@@ -132,9 +139,34 @@ export class ConfirmCheckoutUseCase {
     // preview — суммы preview и confirm всегда согласованы.
     // API-CHECKOUT-PICKUP-DELIVERY-FEE-001: при самовывозе (pickup) доставка не
     // оказывается → fee принудительно 0, store.deliverySettings не учитывается.
-    const deliveryFeeAmount =
-      input.deliveryMode === 'pickup' ? 0 : computeDeliveryFee(store.deliverySettings);
-    const totalAmount = subtotalAmount + deliveryFeeAmount;
+    const deliveryFeeAmount = round2(
+      input.deliveryMode === 'pickup' ? 0 : computeDeliveryFee(store.deliverySettings),
+    );
+    const totalAmount = round2(subtotalAmount + deliveryFeeAmount);
+
+    // API-CHECKOUT-CONFIRM-500-001 (defensive): Decimal(12,2) max 9 999 999 999.99 UZS.
+    // Если total превысит — Prisma бросит RangeError. Защитная проверка ДО transaction.
+    const DECIMAL_12_2_MAX = 9_999_999_999.99;
+    if (totalAmount > DECIMAL_12_2_MAX || subtotalAmount > DECIMAL_12_2_MAX) {
+      ErrorReporter.captureMessage(
+        'Checkout amount exceeds Decimal(12,2) limit',
+        'error',
+        {
+          source: 'confirm-checkout:amount-overflow',
+          buyerId: input.buyerId,
+          storeId: cart.storeId,
+          subtotalAmount,
+          deliveryFeeAmount,
+          totalAmount,
+          itemsCount: validatedItems.length,
+        },
+      );
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Order total exceeds maximum amount',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
 
     const firstName = buyerWithUser.firstName ?? '';
     const lastName = buyerWithUser.lastName ?? '';
@@ -144,28 +176,64 @@ export class ConfirmCheckoutUseCase {
     const customerFullName = input.customerFullName?.trim() || profileFullName;
     const customerPhone = input.customerPhone?.trim() || buyerWithUser.user.phone;
 
-    const order = await this.checkoutRepo.createOrder({
-      buyerId: input.buyerId,
-      storeId: cart.storeId,
-      sellerId: store.sellerId,
-      cartId: cart.id,
-      orderNumber: generateOrderNumber(),
-      subtotalAmount,
-      deliveryFeeAmount,
-      totalAmount,
-      currencyCode: cart.currencyCode,
-      customerFullName,
-      customerPhone,
-      customerComment: input.buyerNote,
-      city: input.deliveryAddress.city,
-      region: input.deliveryAddress.region,
-      addressLine1: input.deliveryAddress.street,
-      items: validatedItems,
-      paymentMethod: resolvePaymentMethod(
-        input.paymentMethod,
-        this.config.get<boolean>('features.paymentOnlineEnabled', false),
-      ),
-    });
+    // API-CHECKOUT-CONFIRM-500-001 (defensive): любая ошибка ВНУТРИ transaction
+    // — это потенциальный root cause production 500. Захватываем полный
+    // context для Sentry прежде чем re-throw, чтобы следующий 500 сразу
+    // дал точку падения (Prisma error code, item with issue, etc).
+    let order;
+    try {
+      order = await this.checkoutRepo.createOrder({
+        buyerId: input.buyerId,
+        storeId: cart.storeId,
+        sellerId: store.sellerId,
+        cartId: cart.id,
+        orderNumber: generateOrderNumber(),
+        subtotalAmount,
+        deliveryFeeAmount,
+        totalAmount,
+        currencyCode: cart.currencyCode,
+        customerFullName,
+        customerPhone,
+        customerComment: input.buyerNote,
+        city: input.deliveryAddress.city,
+        region: input.deliveryAddress.region,
+        addressLine1: input.deliveryAddress.street,
+        items: validatedItems,
+        paymentMethod: resolvePaymentMethod(
+          input.paymentMethod,
+          this.config.get<boolean>('features.paymentOnlineEnabled', false),
+        ),
+      });
+    } catch (err) {
+      // DomainException — это уже наша ошибка с понятным кодом (CHECKOUT_STOCK_INSUFFICIENT
+      // etc), не нужно репортить как exception. Только не-DomainException = реальный 500.
+      if (!(err instanceof DomainException)) {
+        ErrorReporter.captureException(err, {
+          source: 'confirm-checkout:createOrder',
+          buyerId: input.buyerId,
+          storeId: cart.storeId,
+          sellerId: store.sellerId,
+          subtotalAmount,
+          deliveryFeeAmount,
+          totalAmount,
+          currencyCode: cart.currencyCode,
+          itemsCount: validatedItems.length,
+          itemSummaries: validatedItems.map((i) => ({
+            productId: i.productId,
+            variantId: i.variantId ?? null,
+            quantity: i.quantity,
+            unitPriceSnapshot: i.unitPriceSnapshot,
+            lineTotalAmount: i.lineTotalAmount,
+          })),
+          deliveryMode: input.deliveryMode ?? null,
+        });
+        this.logger.error(
+          `confirm-checkout createOrder failed buyerId=${input.buyerId} storeId=${cart.storeId}: ${err instanceof Error ? err.message : String(err)}`,
+          err instanceof Error ? err.stack : undefined,
+        );
+      }
+      throw err;
+    }
 
     // API-CHECKOUT-CONFIRM-500-001: заказ уже закоммичен транзакцией выше.
     // Всё что ниже — побочные эффекты (очистка корзины, WS-эмит, TG-нотификация).

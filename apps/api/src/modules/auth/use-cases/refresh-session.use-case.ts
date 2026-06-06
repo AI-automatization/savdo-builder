@@ -7,6 +7,13 @@ import { PrismaService } from '../../../database/prisma.service';
 
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
+// API-ADMIN-MFA-PERSIST-001: после успешного MFA challenge admin может работать
+// без повторного challenge в течение этого окна. Без этого refresh-session (см.
+// ниже) ронял admin в MFA loop при каждом access TTL expire (15 мин).
+// 8 часов — стандартный admin рабочий день; настраивается через env при
+// необходимости (override через MFA_GRACE_HOURS).
+const MFA_GRACE_HOURS = Number(process.env.MFA_GRACE_HOURS ?? '8');
+
 @Injectable()
 export class RefreshSessionUseCase {
   constructor(
@@ -59,23 +66,33 @@ export class RefreshSessionUseCase {
       : undefined;
 
     // API-MFA-NOT-ENFORCED-001 + API-RBAC-MICRO-PERMISSIONS-001:
-    // На refresh ВСЕГДА перепроверяем MFA + adminRole. Это защищает от
-    // сценария когда украден refresh token (MFA challenge снова обязателен)
-    // и от случая когда у admin'а изменили роль/отозвали admin (старый
-    // adminRole в JWT не унаследуется).
+    // На refresh перепроверяем MFA + adminRole. Защищает от украденного
+    // refresh token (если session не mfa-verified — MFA challenge обязателен)
+    // и от случая когда у admin'а изменили роль/отозвали admin.
     const adminClaims = user.role === 'ADMIN'
       ? await this.authRepo.findAdminClaims(user.id)
       : null;
+
+    // API-ADMIN-MFA-PERSIST-001: если admin **уже прошёл** MFA challenge в
+    // рамках этой сессии и mfaVerifiedAt не старее MFA_GRACE_HOURS — выдаём
+    // чистый токен без mfaPending. Иначе refresh ронял admin в MFA loop
+    // при каждом access TTL expire — каждое destructive action ломалось.
+    const mfaGraceMs = MFA_GRACE_HOURS * 60 * 60 * 1000;
+    const mfaStillValid =
+      session.mfaVerifiedAt !== null &&
+      session.mfaVerifiedAt !== undefined &&
+      Date.now() - session.mfaVerifiedAt.getTime() < mfaGraceMs;
+    const needsMfa = adminClaims && !mfaStillValid;
 
     const accessToken = this.tokenService.generateAccessToken({
       sub: user.id,
       role: user.role,
       sessionId: session.id,
       ...(storeId && { storeId }),
-      // SEC-ADMIN-ACCESS-MODEL стадия C: mfaPending у ЛЮБОГО админа (не только
-      // mfaEnabled). Иначе refresh выдавал чистый токен админу без MFA —
-      // обход обязательного MFA через refresh.
-      ...(adminClaims && { mfaPending: true }),
+      // SEC-ADMIN-ACCESS-MODEL стадия C: mfaPending только если сессия НЕ была
+      // mfa-verified или истёк grace period. После повторного MFA challenge
+      // mfaVerifiedAt обновится (см. admin-auth.use-case.mfaChallenge).
+      ...(needsMfa && { mfaPending: true }),
       ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 
