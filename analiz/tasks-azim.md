@@ -55,6 +55,21 @@
 
 ---
 
+## 🆕 07.06.2026 (вечер) — лендинг продавца: доработка + отстройка от qlay
+
+> Все на ветке `feat/seller-landing`, локально, **не задеплоено** (решение Азима). Детали — `done.md`.
+
+- [x] **[ENUM-BUILD-FIX]** ✅ Разблокирован build web-seller (enum-as-value шим `lib/enums.ts`) — `91a4cbb`.
+- [x] **[LANDING-HERO-FIX]** ✅ Hero (reveal-observer) + мок-телефон в стиле TMA + реальные фото — `281f6d3`,`2b291b5`,`f88f653`.
+- [x] **[LANDING-QLAY-GAPS]** ✅ Витрины (3 примера), соцпруф «8 из 10», ниши, живое демо, UZ-локализация мока — `ae45d60`.
+- [ ] **[LANDING-DEPLOY]** 🟠 Выкат лендинга — ПО КОМАНДЕ Азима. ⚠️ НЕ merge feat→web-seller (ветки
+  разошлись, см. `INFRA-BRANCH-RECONCILE-001` в tasks.md). Способ: свежая ветка от `origin/web-seller`
+  → перенести ТОЛЬКО landing-файлы (`components/landing/*`, `lib/landing/*`, `public/landing/*`,
+  `lib/i18n/server-locale.ts`, change `app/page.tsx`) + СЛИТЬ landing-i18n-ключи в dashboard-словари
+  (536+ключей) → enum-шим НЕ нужен (на web-seller real enums) → build → push. Делать только когда скажет.
+
+---
+
 ## 🔴 Остаток за Азимом — но это НЕ код
 
 - [ ] **[LEGAL-OFFER-REQUISITES-001]** — 🔒 **заблокирован бизнесом.**
