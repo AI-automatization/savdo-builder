@@ -1,5 +1,21 @@
 # Done — Азим + Полат
 
+## 2026-06-07 (Азим) — Разблокирован деплой лендинга (enum-as-value build break)
+
+### ✅ [WEB-SELLER-ENUM-AS-VALUE-BUILD-001] Build web-seller зелёный — runtime-const-шим для enum'ов
+- **Важность:** 🔴 (блокировал деплой готового лендинга 3+ дня)
+- **Дата:** 07.06.2026
+- **Файлы:** `apps/web-seller/src/lib/enums.ts` (новый) + 7 dashboard-импортов:
+  `layout.tsx`, `chat/page.tsx`, `dashboard/page.tsx`, `orders/page.tsx`, `orders/[id]/page.tsx`,
+  `products/page.tsx`, `products/[id]/edit/page.tsx`.
+- **Что сделано:** `packages/types` отдаёт `UserRole`/`OrderStatus`/`StoreStatus`/`ProductStatus` как
+  `export type` (string-union, зона Полата) — рантайм-значений нет, а dashboard юзал `OrderStatus.PENDING`,
+  `Record<OrderStatus,…>` и т.п. → `TS2693`, билд красный. Создан локальный шим `lib/enums.ts`:
+  `const … as const satisfies Record<string, …T>` (значения) + реэкспорт типа из `types` (single source).
+  7 импортов перенаправлены с `'types'` на `'@/lib/enums'`. `packages/types` НЕ тронут.
+  **Проверка:** `tsc --noEmit` 0 ошибок; `pnpm --filter web-seller build` зелёный, `/` (лендинг)
+  server-rendered. Forward-совместимо; когда Полат дочистит типы — шим удаляется, импорты назад на `types`.
+
 ## 2026-06-07 (Азим) — Платёжная бизнес-модель + фикс checkout
 
 ### ✅ [CHECKOUT-PAYMENTMETHOD-NOT-SENT-001] Checkout теперь шлёт способ оплаты + режим получения

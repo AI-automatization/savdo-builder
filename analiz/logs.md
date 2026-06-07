@@ -41,7 +41,12 @@
 - **Что сделано:** залогировано, НЕ фикшено (не зона Азима). Хэндофф Полату.
 
 ## [2026-06-04] [WEB-SELLER-ENUM-AS-VALUE-BUILD-001] Build web-seller красный — enum-типы используются как значения
-- **Статус:** 🔴 Баг (пре-existing, обнаружен при сборке лендинга — НЕ связан с лендингом).
+- **Статус:** ✅ Исправлено 07.06.2026 (Азим, обход в своей зоне) — `pnpm --filter web-seller build` зелёный (`/` лендинг server-rendered, 0 TS-ошибок).
+- **Фикс (07.06):** создан `apps/web-seller/src/lib/enums.ts` — runtime-const-шим (`UserRole`/`OrderStatus`/
+  `StoreStatus`/`ProductStatus` как `as const satisfies Record<string, …T>`, тип реэкспортится из `types`).
+  7 dashboard-импортов перенаправлены с `'types'` на `'@/lib/enums'` (по 1 строке на файл). `packages/types`
+  НЕ тронут (зона Полата). Forward-совместимо: если Полат вернёт реальные enum'ы — литералы продолжат
+  присваиваться. Когда Полат дочистит типы — шим можно удалить, вернув импорты на `types`.
 - **Что случилось:** `pnpm build` / `tsc --noEmit` в `apps/web-seller` падают десятками ошибок
   `TS2693: 'UserRole'/'OrderStatus'/'StoreStatus' only refers to a type, but is being used as a value`.
   Next build: `Export UserRole doesn't exist in target module` / `module has no exports at all`.
@@ -52,9 +57,9 @@
 - **Где бьёт:** `(dashboard)/chat/page.tsx`, `dashboard/page.tsx`, `orders/[id]/page.tsx`, `orders/page.tsx`,
   `products/page.tsx`, `products/[id]/edit/page.tsx`, `layout.tsx`. Лендинг (`components/landing`) НЕ затронут —
   от `types` не зависит, рендерится 200 OK.
-- **Что сделано:** залогировано. НЕ фикшено — отдельная задача (заменить enum-value доступ на строковые
-  литералы / runtime-const-маппинги). Правка — `apps/web-seller` (Азим), первопричина — решение Полата
-  сделать enums типами. Лендинг проверен независимо через dev (`GET / 200`, без ошибок).
+- **Корень (для истории):** в `packages/types/src/enums.ts` (зона Полата) `UserRole`/`OrderStatus`/`StoreStatus`/
+  `ProductStatus` объявлены как `export type` (DUP-008, 01.06) — рантайм-значений не дают, а dashboard
+  использовал их как значения. Это блокировало деплой готового лендинга на ветке `feat/seller-landing`.
 
 ## [2026-06-02] [TMA-AUDIT-001] Баг-аудит apps/tma (Telegram Mini App, домен Полата)
 - **Статус:** 🟡 найдено ~10 реальных багов (0 критичных) + 2 ложные тревоги опровергнуты. НЕ фикшено (зона Полата).
