@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Heart, ShoppingBag, Star } from 'lucide-react';
+import { ArrowRight, Heart, Star } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth/context';
 import { colors } from '@/lib/styles';
@@ -23,6 +23,13 @@ export function Hero() {
     { v: t('hero.metric1.value'), l: t('hero.metric1.label') },
     { v: t('hero.metric2.value'), l: t('hero.metric2.label') },
     { v: t('hero.metric3.value'), l: t('hero.metric3.label') },
+  ];
+  // Демо-витрина внутри мок-телефона (royalty-free фото, Unsplash License).
+  const mockProducts = [
+    { name: 'Сумка Nur', price: '1 290 000', img: '/landing/p-bag.jpg' },
+    { name: 'Часы Aura', price: '2 400 000', img: '/landing/p-watch.jpg' },
+    { name: 'Туфли Bloom', price: '890 000', img: '/landing/p-heels.jpg' },
+    { name: 'Парфюм Coco', price: '1 150 000', img: '/landing/p-perfume.jpg' },
   ];
 
   return (
@@ -98,46 +105,85 @@ export function Hero() {
             style={{ border: `2px solid ${colors.accentBorder}`, background: colors.surface, boxShadow: `0 30px 80px ${colors.accentMuted}` }}
           >
             <div className="w-full h-full rounded-[2rem] overflow-hidden flex flex-col" style={{ background: colors.bg }}>
-              {/* обложка магазина + айдентика */}
-              <div className="relative h-20" style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accentBorder})` }}>
-                <div
-                  className="absolute -bottom-4 left-3 w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black"
-                  style={{ background: colors.bg, color: colors.accent, border: `2px solid ${colors.bg}` }}
-                >
-                  N
-                </div>
-              </div>
-              <div className="px-3 pt-5 pb-2">
-                <div className="text-sm font-bold leading-none" style={{ color: colors.textPrimary }}>Atelier Nur</div>
-                <div className="mt-1 flex items-center gap-1 text-[10px]" style={{ color: colors.textMuted }}>
-                  <Star size={9} style={{ color: colors.accent }} fill={colors.accent} /> 4.9 · Аксессуары
-                </div>
-              </div>
-              {/* витрина товаров */}
-              <div className="px-3 grid grid-cols-2 gap-2">
-                {[
-                  { price: '290 000', g: 'linear-gradient(135deg,#4a4036,#1a1a1a)' },
-                  { price: '540 000', g: 'linear-gradient(135deg,#3a3a42,#18181c)' },
-                  { price: '180 000', g: 'linear-gradient(135deg,#4a3a3a,#1a1414)' },
-                  { price: '760 000', g: 'linear-gradient(135deg,#3a4240,#161a18)' },
-                ].map((it, i) => (
-                  <div key={i} className="rounded-lg overflow-hidden" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
-                    <div className="relative" style={{ aspectRatio: '1/1', background: it.g }}>
-                      <Heart size={11} className="absolute top-1 right-1" style={{ color: colors.accent }} />
+              {/* карточка-шапка магазина — как в TMA StorePage */}
+              <div className="m-2.5 mb-2 p-2.5 rounded-2xl" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+                    style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}`, color: colors.accent }}
+                  >
+                    A
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[13px] font-bold truncate" style={{ color: colors.textPrimary }}>Atelier Nur</span>
+                      <span
+                        className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[8px] font-bold shrink-0"
+                        style={{ background: 'rgba(37,99,235,0.20)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.45)' }}
+                      >
+                        ✓
+                      </span>
                     </div>
-                    <div className="px-1.5 py-1">
-                      <div className="text-[10px] font-bold leading-none" style={{ color: colors.textPrimary }}>{it.price}</div>
-                      <div className="text-[8px] mt-0.5" style={{ color: colors.textMuted }}>сум</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span
+                        className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md"
+                        style={{ color: colors.accent, background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }}
+                      >
+                        ↗ Сайт
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 text-[8px]" style={{ color: colors.textMuted }}>
+                        <Star size={7} fill={colors.accent} style={{ color: colors.accent }} /> 4.9
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* чипы категорий */}
+              <div className="px-2.5 flex gap-1.5 overflow-hidden">
+                {['Все', 'Сумки', 'Часы', 'Обувь'].map((c, i) => (
+                  <span
+                    key={c}
+                    className="text-[8px] font-semibold px-2 py-1 rounded-full whitespace-nowrap"
+                    style={
+                      i === 0
+                        ? { background: colors.accent, color: colors.accentTextOnBg }
+                        : { background: colors.surface, border: `1px solid ${colors.border}`, color: colors.textMuted }
+                    }
+                  >
+                    {c}
+                  </span>
+                ))}
+              </div>
+
+              {/* лейбл секции */}
+              <div className="px-2.5 mt-2.5 mb-1.5 text-[8px] font-semibold uppercase tracking-wider" style={{ color: colors.textMuted }}>
+                Товары · 4
+              </div>
+
+              {/* сетка товаров — как TMA ProductCard */}
+              <div className="px-2.5 pb-3 grid grid-cols-2 gap-2 overflow-hidden">
+                {mockProducts.map((p) => (
+                  <div key={p.name} className="rounded-xl overflow-hidden flex flex-col" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
+                    <div className="relative" style={{ aspectRatio: '1/1' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
+                      <Heart size={11} className="absolute top-1 right-1 drop-shadow" style={{ color: '#fff' }} />
+                    </div>
+                    <div className="px-1.5 py-1.5 flex flex-col gap-1">
+                      <span className="text-[9px] font-semibold leading-tight truncate" style={{ color: colors.textPrimary }}>{p.name}</span>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[9px] font-bold truncate" style={{ color: colors.accent }}>{p.price}</span>
+                        <span
+                          className="w-5 h-5 rounded-md flex items-center justify-center text-[12px] font-bold leading-none shrink-0"
+                          style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}`, color: colors.accent }}
+                        >
+                          +
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
-              </div>
-              {/* корзина */}
-              <div
-                className="mt-auto m-3 h-9 rounded-md flex items-center justify-center gap-2 text-xs font-bold"
-                style={{ background: colors.accent, color: colors.accentTextOnBg }}
-              >
-                <ShoppingBag size={14} /> Корзина · 2
               </div>
             </div>
           </div>
