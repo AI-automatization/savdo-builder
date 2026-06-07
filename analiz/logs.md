@@ -1,5 +1,45 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-07] [CHECKOUT-PAYMENTMETHOD-NOT-SENT-001] Выбор способа оплаты на checkout не отправлялся
+- **Статус:** ✅ Исправлено (Азим, web-buyer).
+- **Что случилось:** на checkout покупатель выбирал «Наличные/Картой/Online», но `handleConfirm`
+  (`apps/web-buyer/src/app/(minimal)/checkout/page.tsx`) слал payload БЕЗ `paymentMethod` и БЕЗ
+  `deliveryMode` → бэкенд всегда писал дефолт (`cash`/COD, `delivery`). Аналитика `order_created`
+  хардкодила `"COD"`. То есть выбор оплаты и режим pickup были декоративными.
+- **Корень:** поля `paymentMethod`/`deliveryMode` существуют в `CheckoutConfirmRequest`
+  (`packages/types/src/api/cart.ts:150,155`), но фронт их не передавал.
+- **Что сделано:** добавил `paymentMethod` + `deliveryMode: mode` в `confirm.mutateAsync`,
+  аналитику перевёл на реальный `paymentMethod`. Заодно честный копирайт под реалии УЗ (такси/встреча,
+  не курьер/POS): «Наличные курьеру»→«Наличные», «Картой курьеру — UzCard/Humo POS-терминал»→
+  «Картой при получении / UzCard·Humo», «Комментарий курьеру»→«Комментарий к заказу».
+- **Проверка:** `tsc -p apps/web-buyer` — в `checkout/page.tsx` ошибок нет (остальные ошибки tsc —
+  пре-existing `WEB-SELLER-ENUM-AS-VALUE-BUILD-001`, зона Полата). НЕ закоммичено.
+- **Примечание:** полноценный «перевод на карту продавца» (MANUAL_TRANSFER + показ карты) — отдельно,
+  нужен Полат (поле реквизитов в `Seller`/`Store` + семантика `card`). Сейчас `card`=«при получении».
+
+## [2026-06-07] [MEDIA-TG-NOT-MIGRATED-001] Фото старого магазина грузятся из Telegram, не из Supabase
+- **Статус:** 🔴 Баг данных (НЕ код-баг, НЕ зона Азима). Первопричина и фикс — зона Полата (apps/api / media / данные).
+- **Что случилось:** на витрине `savdo-builder-by-production…/azim-mnx4na25` фото товаров грузятся через
+  TG-прокси, а не напрямую из Supabase «как в ТМА». Жалоба Азима.
+- **Диагностика (доказательства, прод-API):**
+  - `GET /api/v1/stores/azim-mnx4na25/products` → у товаров `images[].url =
+    https://…/api/v1/media/proxy/<id>` (прокси, не direct CDN).
+  - `curl -D - …/media/proxy/2fda9aec-…` → `HTTP 200`, `Content-Type: image/jpeg`,
+    **`x-storage-backend: telegram`** (стрим из Telegram, НЕ 302-redirect на Supabase).
+  - Значит у этих `MediaFile` `bucket='telegram'` — они залиты 17–18.04.2026, когда upload падал в
+    TG-fallback (Supabase ещё не был сконфигурирован). Их **никто не мигрировал**.
+- **Почему НЕ веб-баг:** и web-buyer, и TMA рендерят URL-строку как есть из одного и того же storefront-API
+  (`ProductPresenterService.resolveImageUrl`). Фронт ничего не резолвит. В вебе чинить нечего.
+- **Почему «в ТМА работает»:** новые/уже-мигрированные фото лежат в Supabase → отдаются direct CDN. Для
+  ЭТОГО старого магазина и в ТМА фото стримились бы из Telegram (тот же API-URL).
+- **Новые загрузки — ОК:** `UploadDirectUseCase` сначала пишет в Supabase (`r2Storage.isConfigured()`),
+  Telegram только fallback. Это чисто backlog старых данных, не текущий баг.
+- **Фикс (готов, зона Полата):** прогнать существующий admin-эндпоинт
+  `POST /api/v1/admin/media/migrate-tg-to-r2?limit=200` (permission `media:migrate`,
+  `MigrateTgMediaToR2UseCase`) — он качает TG-файлы, заливает в Supabase, обновляет `bucket`+`objectKey`.
+  Истёкшие TG file_id → `bucket='telegram-expired'` (фронт покажет «Без фото»). Прогонять батчами до 0.
+- **Что сделано:** залогировано, НЕ фикшено (не зона Азима). Хэндофф Полату.
+
 ## [2026-06-04] [WEB-SELLER-ENUM-AS-VALUE-BUILD-001] Build web-seller красный — enum-типы используются как значения
 - **Статус:** 🔴 Баг (пре-existing, обнаружен при сборке лендинга — НЕ связан с лендингом).
 - **Что случилось:** `pnpm build` / `tsc --noEmit` в `apps/web-seller` падают десятками ошибок

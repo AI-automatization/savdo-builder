@@ -5,6 +5,34 @@
 
 ---
 
+## 🔴 [MEDIA-TG-MIGRATE-PROD-001] Прогнать миграцию TG→Supabase на проде (старые фото)
+
+- **Домен:** `apps/api` (admin-ops) + данные `MediaFile` (Полат).
+- **Кто берёт:** Полат (нужен admin-доступ с правом `media:migrate`).
+- **Приоритет:** 🔴 P1 — на проде у старых магазинов фото грузятся из Telegram, не из Supabase.
+- **Нашёл:** Азим, 07.06.2026 (жалоба на витрине `/azim-mnx4na25`).
+- **Симптом:** фото товаров отдаются через `…/api/v1/media/proxy/<id>` (стрим из Telegram,
+  `x-storage-backend: telegram`), а не direct Supabase-CDN «как в ТМА».
+- **Корень (НЕ код-баг, НЕ зона веба):** у этих `MediaFile` `bucket='telegram'` — залиты
+  17–18.04.2026, когда upload падал в TG-fallback (Supabase ещё не был сконфигурирован).
+  Их никто не мигрировал. Фронт (web-buyer/TMA) рендерит URL из storefront-API как есть —
+  чинить в вебе нечего. Новые загрузки уже идут в Supabase (`UploadDirectUseCase` primary).
+- **Фикс (код уже есть, `MigrateTgMediaToR2UseCase`):**
+  ```
+  POST /api/v1/admin/media/migrate-tg-to-r2?limit=200
+  ```
+  (admin-only, permission `media:migrate`). Качает TG-файлы → заливает в Supabase →
+  обновляет `bucket`+`objectKey`. Истёкшие TG file_id → `bucket='telegram-expired'`
+  (фронт покажет «Без фото»). **Прогонять батчами, пока в ответе `migrated`+`skipped`
+  не станет 0** (не осталось записей с `bucket='telegram'`).
+- **Проверка результата:** `curl -D - …/api/v1/media/proxy/<id>` на товар из мигрированного
+  магазина → должен быть `302` на Supabase-URL (а не `200` + `x-storage-backend: telegram`).
+- **Файлы:** `apps/api/src/modules/admin/use-cases/migrate-tg-media-to-r2.use-case.ts`,
+  `apps/api/src/modules/admin/admin-ops.controller.ts:90`.
+- **Лог:** `analiz/logs.md` → `MEDIA-TG-NOT-MIGRATED-001`.
+
+---
+
 ## 🟡 [REFACTOR-DRY-001] Устранить дубли из audit 2026-06-01
 
 - **Домен:** `apps/api`, `apps/admin`, `packages/types` (Полат).
