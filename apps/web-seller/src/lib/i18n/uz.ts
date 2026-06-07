@@ -109,4 +109,34 @@ export const uz: Record<keyof typeof ru, string> = {
   'footer.terms': 'Foydalanish shartlari',
   'footer.contact': 'Bog’lanish',
   'footer.rights': '© 2026 maxsavdo',
+
+  // nishalar (hero) + ijtimoiy isbot
+  'hero.niches': 'Moda · Goʻzallik · Aksessuarlar · Handmade · Lifestyle',
+  'proof.statValue': '10 dan 8',
+  'proof.statLabel': 'mijozlaringiz allaqachon Telegram’da',
+  'proof.betaTitle': 'Yopiq beta',
+  'proof.betaBody': 'erta narx birinchi sotuvchilar uchun mustahkamlanadi',
+
+  // vitrina-namunalar (nishalar; do‘kon nomlari — brend-literallar)
+  'showcase.niche1': 'Sumka va aksessuar',
+  'showcase.niche2': 'Kosmetika va parvarish',
+  'showcase.niche3': 'Taqinchoqlar',
+
+  // mok-telefon (Hero ichidagi demo-vitrina)
+  'mock.search': 'Mahsulot qidirish…',
+  'mock.products': '128 mahsulot',
+  'mock.section': 'Mahsulotlar',
+  'mock.sort': 'Avval yangilari',
+  'mock.cat.all': 'Hammasi',
+  'mock.cat.bags': 'Sumkalar',
+  'mock.cat.watches': 'Soatlar',
+  'mock.cat.shoes': 'Poyabzal',
+  'mock.nav.catalog': 'Katalog',
+  'mock.nav.search': 'Qidiruv',
+  'mock.nav.cart': 'Savatcha',
+  'mock.nav.profile': 'Profil',
+  'mock.p1': 'Sumka Nur',
+  'mock.p2': 'Soat Aura',
+  'mock.p3': 'Tufli Bloom',
+  'mock.p4': 'Parfyum Coco',
 };

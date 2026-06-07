@@ -107,6 +107,36 @@ export const ru = {
   'footer.terms': 'Условия использования',
   'footer.contact': 'Связаться',
   'footer.rights': '© 2026 maxsavdo',
+
+  // ниши (hero) + соцпруф
+  'hero.niches': 'Мода · Красота · Аксессуары · Handmade · Lifestyle',
+  'proof.statValue': '8 из 10',
+  'proof.statLabel': 'ваших клиентов уже в Telegram',
+  'proof.betaTitle': 'Закрытая бета',
+  'proof.betaBody': 'ранняя цена закрепляется за первыми продавцами',
+
+  // витрины-примеры (ниши; названия магазинов — бренд-литералы)
+  'showcase.niche1': 'Сумки и аксессуары',
+  'showcase.niche2': 'Косметика и уход',
+  'showcase.niche3': 'Украшения',
+
+  // мок-телефон (демо-витрина внутри Hero)
+  'mock.search': 'Поиск товаров…',
+  'mock.products': '128 товаров',
+  'mock.section': 'Товары',
+  'mock.sort': 'Сначала новые',
+  'mock.cat.all': 'Все',
+  'mock.cat.bags': 'Сумки',
+  'mock.cat.watches': 'Часы',
+  'mock.cat.shoes': 'Обувь',
+  'mock.nav.catalog': 'Каталог',
+  'mock.nav.search': 'Поиск',
+  'mock.nav.cart': 'Корзина',
+  'mock.nav.profile': 'Профиль',
+  'mock.p1': 'Сумка Nur',
+  'mock.p2': 'Часы Aura',
+  'mock.p3': 'Туфли Bloom',
+  'mock.p4': 'Парфюм Coco',
 } as const;
 
 export type RuKey = keyof typeof ru;

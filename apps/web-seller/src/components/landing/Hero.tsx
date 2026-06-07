@@ -17,6 +17,7 @@ export function Hero() {
   const badgeRef = useReveal<HTMLSpanElement>();
   const titleRef = useReveal<HTMLHeadingElement>();
   const subtitleRef = useReveal<HTMLParagraphElement>();
+  const nicheRef = useReveal<HTMLParagraphElement>();
   const ctaRef = useReveal<HTMLDivElement>();
   const metricsRef = useReveal<HTMLDivElement>();
   const metrics = [
@@ -26,16 +27,17 @@ export function Hero() {
   ];
   // Демо-витрина внутри мок-телефона (royalty-free фото, Unsplash License).
   const mockProducts = [
-    { name: 'Сумка Nur', price: '1 290 000', old: '1 690 000', off: '-23%', rating: '4.9', img: '/landing/p-bag.jpg' },
-    { name: 'Часы Aura', price: '2 400 000', old: null, off: null, rating: '4.8', img: '/landing/p-watch.jpg' },
-    { name: 'Туфли Bloom', price: '890 000', old: null, off: null, rating: '5.0', img: '/landing/p-heels.jpg' },
-    { name: 'Парфюм Coco', price: '1 150 000', old: null, off: null, rating: '4.7', img: '/landing/p-perfume.jpg' },
+    { name: t('mock.p1'), price: '1 290 000', old: '1 690 000', off: '-23%', rating: '4.9', img: '/landing/p-bag.jpg' },
+    { name: t('mock.p2'), price: '2 400 000', old: null, off: null, rating: '4.8', img: '/landing/p-watch.jpg' },
+    { name: t('mock.p3'), price: '890 000', old: null, off: null, rating: '5.0', img: '/landing/p-heels.jpg' },
+    { name: t('mock.p4'), price: '1 150 000', old: null, off: null, rating: '4.7', img: '/landing/p-perfume.jpg' },
   ];
+  const mockCats = [t('mock.cat.all'), t('mock.cat.bags'), t('mock.cat.watches'), t('mock.cat.shoes')];
   const navItems = [
-    { icon: LayoutGrid, label: 'Каталог', active: true, badge: 0 },
-    { icon: Search, label: 'Поиск', active: false, badge: 0 },
-    { icon: ShoppingBag, label: 'Корзина', active: false, badge: 2 },
-    { icon: User, label: 'Профиль', active: false, badge: 0 },
+    { icon: LayoutGrid, label: t('mock.nav.catalog'), active: true, badge: 0 },
+    { icon: Search, label: t('mock.nav.search'), active: false, badge: 0 },
+    { icon: ShoppingBag, label: t('mock.nav.cart'), active: false, badge: 2 },
+    { icon: User, label: t('mock.nav.profile'), active: false, badge: 0 },
   ];
 
   return (
@@ -69,6 +71,13 @@ export function Hero() {
             style={{ color: colors.textMuted }}
           >
             {t('hero.subtitle')}
+          </p>
+          <p
+            ref={nicheRef}
+            className="reveal reveal-delay-2 text-xs sm:text-sm font-medium tracking-wide"
+            style={{ color: colors.accent }}
+          >
+            {t('hero.niches')}
           </p>
 
           <div ref={ctaRef} className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center gap-3 mt-2">
@@ -136,7 +145,7 @@ export function Hero() {
                         <span className="font-normal" style={{ color: colors.textMuted }}>(214)</span>
                       </span>
                       <span style={{ color: colors.border }}>·</span>
-                      <span className="text-[8px]" style={{ color: colors.textMuted }}>128 товаров</span>
+                      <span className="text-[8px]" style={{ color: colors.textMuted }}>{t('mock.products')}</span>
                     </div>
                   </div>
                 </div>
@@ -148,12 +157,12 @@ export function Hero() {
                 style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
               >
                 <Search size={11} style={{ color: colors.textMuted }} />
-                <span className="text-[8px]" style={{ color: colors.textMuted }}>Поиск товаров…</span>
+                <span className="text-[8px]" style={{ color: colors.textMuted }}>{t('mock.search')}</span>
               </div>
 
               {/* чипы категорий */}
               <div className="px-2.5 flex gap-1.5 overflow-hidden">
-                {['Все', 'Сумки', 'Часы', 'Обувь'].map((c, i) => (
+                {mockCats.map((c, i) => (
                   <span
                     key={c}
                     className="text-[8px] font-semibold px-2 py-1 rounded-full whitespace-nowrap"
@@ -170,14 +179,14 @@ export function Hero() {
 
               {/* лейбл секции */}
               <div className="px-2.5 mt-2.5 mb-1.5 flex items-center justify-between">
-                <span className="text-[8px] font-semibold uppercase tracking-wider" style={{ color: colors.textMuted }}>Товары · 128</span>
-                <span className="text-[8px]" style={{ color: colors.accent }}>Сначала новые</span>
+                <span className="text-[8px] font-semibold uppercase tracking-wider" style={{ color: colors.textMuted }}>{t('mock.section')} · 128</span>
+                <span className="text-[8px]" style={{ color: colors.accent }}>{t('mock.sort')}</span>
               </div>
 
               {/* сетка товаров — как TMA ProductCard */}
               <div className="flex-1 px-2.5 grid grid-cols-2 gap-2 overflow-hidden content-start">
                 {mockProducts.map((p) => (
-                  <div key={p.name} className="rounded-xl overflow-hidden flex flex-col" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
+                  <div key={p.img} className="rounded-xl overflow-hidden flex flex-col" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
                     <div className="relative" style={{ aspectRatio: '1/1' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={p.img} alt={p.name} className="w-full h-full object-cover" />

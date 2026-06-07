@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { LandingHeader } from './LandingHeader';
 import { Hero } from './Hero';
+import { SocialProof } from './SocialProof';
 import { ProblemSection } from './ProblemSection';
 import { HowItWorks } from './HowItWorks';
 import { Showcase } from './Showcase';
@@ -22,6 +23,7 @@ export function LandingPage() {
       <LandingHeader />
       <main>
         <Hero />
+        <SocialProof />
         <ProblemSection />
         <HowItWorks />
         <Showcase />
