@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { OrderStatus } from 'types';
+import { OrderStatus } from '@/lib/enums';
 import { X, Package } from 'lucide-react';
 import type { OrderListItem } from 'types';
 import { useSellerOrders, useUpdateOrderStatus } from '@/hooks/use-orders';

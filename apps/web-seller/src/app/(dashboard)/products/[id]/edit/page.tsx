@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useSellerProduct, useUpdateProduct, useUpdateProductStatus, useDeleteProduct } from '../../../../../hooks/use-products';
 import { useStoreCategories, useGlobalCategories } from '../../../../../hooks/use-seller';
 import { ImageUploader } from '../../../../../components/image-uploader';
-import { ProductStatus } from 'types';
+import { ProductStatus } from '@/lib/enums';
 import type { ProductDisplayType } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
 import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';
