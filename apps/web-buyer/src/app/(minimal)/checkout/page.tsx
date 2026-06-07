@@ -329,10 +329,11 @@ export default function CheckoutPage() {
       disabled: false,
     },
     {
-      // SEV-1 от WEB-AUDIT-SYNC-IDEOLOGY-001: card option был selectable, но
-      // `paymentMethod` НИКОГДА не отправлялся в API (CheckoutConfirmRequest в
-      // packages/types не имеет поля). Misleading UI. Disabled до тех пор пока
-      // Полат не закроет API-CHECKOUT-PAYMENT-METHOD-001.
+      // CHECKOUT-PAYMENTMETHOD-NOT-SENT-001 (07.06.2026): paymentMethod теперь
+      // ОТПРАВЛЯЕТСЯ в confirm (поле есть в CheckoutConfirmRequest). Но `card`
+      // здесь = «картой при получении» и не покрывает нашу модель «перевод на
+      // карту продавца» — для неё нужно поле реквизитов в Seller/Store (handoff
+      // Полату — docs/handoff-polat-2026-06-07.md §2). Держим disabled до него.
       id: "card",
       label: t('checkout.payment.cardLabel'),
       sub: t('checkout.payment.cardSub'),
@@ -401,9 +402,11 @@ export default function CheckoutPage() {
         deliveryFee,
         customerFullName: trimmedName || undefined,
         customerPhone: trimmedPhone || undefined,
+        paymentMethod,
+        deliveryMode: mode,
       });
       const storeId = previewData?.storeId ?? cart?.storeId ?? "";
-      if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, "COD");
+      if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, paymentMethod);
       router.replace(`/orders/${order.id}`);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
