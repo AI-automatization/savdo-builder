@@ -265,14 +265,14 @@ const paymentMethods: {
 }[] = [
   {
     id: "cash",
-    label: "Наличные курьеру",
+    label: "Наличные",
     sub: "оплата при получении",
     disabled: false,
   },
   {
     id: "card",
-    label: "Картой курьеру",
-    sub: "UzCard / Humo POS-терминал",
+    label: "Картой при получении",
+    sub: "UzCard / Humo",
     disabled: false,
   },
   {
@@ -389,9 +389,11 @@ export default function CheckoutPage() {
         deliveryFee,
         customerFullName: trimmedName || undefined,
         customerPhone: trimmedPhone || undefined,
+        paymentMethod,
+        deliveryMode: mode,
       });
       const storeId = previewData?.storeId ?? cart?.storeId ?? "";
-      if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, "COD");
+      if (storeId) track.orderCreated(storeId, order.id, order.totalAmount, paymentMethod);
       router.replace(`/orders/${order.id}`);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
@@ -654,7 +656,7 @@ export default function CheckoutPage() {
                   className="text-[11px] mb-1.5"
                   style={{ color: colors.textMuted }}
                 >
-                  Комментарий курьеру (необязательно)
+                  Комментарий к заказу (необязательно)
                 </div>
                 <textarea
                   value={comment}
