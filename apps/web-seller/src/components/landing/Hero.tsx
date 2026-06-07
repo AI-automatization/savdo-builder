@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Heart, Star } from 'lucide-react';
+import { ArrowRight, Heart, Star, Search, LayoutGrid, ShoppingBag, User } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth/context';
 import { colors } from '@/lib/styles';
@@ -26,10 +26,16 @@ export function Hero() {
   ];
   // Демо-витрина внутри мок-телефона (royalty-free фото, Unsplash License).
   const mockProducts = [
-    { name: 'Сумка Nur', price: '1 290 000', img: '/landing/p-bag.jpg' },
-    { name: 'Часы Aura', price: '2 400 000', img: '/landing/p-watch.jpg' },
-    { name: 'Туфли Bloom', price: '890 000', img: '/landing/p-heels.jpg' },
-    { name: 'Парфюм Coco', price: '1 150 000', img: '/landing/p-perfume.jpg' },
+    { name: 'Сумка Nur', price: '1 290 000', old: '1 690 000', off: '-23%', rating: '4.9', img: '/landing/p-bag.jpg' },
+    { name: 'Часы Aura', price: '2 400 000', old: null, off: null, rating: '4.8', img: '/landing/p-watch.jpg' },
+    { name: 'Туфли Bloom', price: '890 000', old: null, off: null, rating: '5.0', img: '/landing/p-heels.jpg' },
+    { name: 'Парфюм Coco', price: '1 150 000', old: null, off: null, rating: '4.7', img: '/landing/p-perfume.jpg' },
+  ];
+  const navItems = [
+    { icon: LayoutGrid, label: 'Каталог', active: true, badge: 0 },
+    { icon: Search, label: 'Поиск', active: false, badge: 0 },
+    { icon: ShoppingBag, label: 'Корзина', active: false, badge: 2 },
+    { icon: User, label: 'Профиль', active: false, badge: 0 },
   ];
 
   return (
@@ -106,7 +112,7 @@ export function Hero() {
           >
             <div className="w-full h-full rounded-[2rem] overflow-hidden flex flex-col" style={{ background: colors.bg }}>
               {/* карточка-шапка магазина — как в TMA StorePage */}
-              <div className="m-2.5 mb-2 p-2.5 rounded-2xl" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
+              <div className="mx-2.5 mt-2.5 mb-2 p-2.5 rounded-2xl" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
                 <div className="flex items-center gap-2">
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
@@ -114,7 +120,7 @@ export function Hero() {
                   >
                     A
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1">
                       <span className="text-[13px] font-bold truncate" style={{ color: colors.textPrimary }}>Atelier Nur</span>
                       <span
@@ -124,19 +130,25 @@ export function Hero() {
                         ✓
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span
-                        className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md"
-                        style={{ color: colors.accent, background: colors.accentMuted, border: `1px solid ${colors.accentBorder}` }}
-                      >
-                        ↗ Сайт
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold" style={{ color: colors.textPrimary }}>
+                        <Star size={8} fill={colors.accent} style={{ color: colors.accent }} /> 4.9
+                        <span className="font-normal" style={{ color: colors.textMuted }}>(214)</span>
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-[8px]" style={{ color: colors.textMuted }}>
-                        <Star size={7} fill={colors.accent} style={{ color: colors.accent }} /> 4.9
-                      </span>
+                      <span style={{ color: colors.border }}>·</span>
+                      <span className="text-[8px]" style={{ color: colors.textMuted }}>128 товаров</span>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* поиск */}
+              <div
+                className="mx-2.5 mb-2 h-7 rounded-lg flex items-center gap-1.5 px-2"
+                style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+              >
+                <Search size={11} style={{ color: colors.textMuted }} />
+                <span className="text-[8px]" style={{ color: colors.textMuted }}>Поиск товаров…</span>
               </div>
 
               {/* чипы категорий */}
@@ -157,23 +169,43 @@ export function Hero() {
               </div>
 
               {/* лейбл секции */}
-              <div className="px-2.5 mt-2.5 mb-1.5 text-[8px] font-semibold uppercase tracking-wider" style={{ color: colors.textMuted }}>
-                Товары · 4
+              <div className="px-2.5 mt-2.5 mb-1.5 flex items-center justify-between">
+                <span className="text-[8px] font-semibold uppercase tracking-wider" style={{ color: colors.textMuted }}>Товары · 128</span>
+                <span className="text-[8px]" style={{ color: colors.accent }}>Сначала новые</span>
               </div>
 
               {/* сетка товаров — как TMA ProductCard */}
-              <div className="px-2.5 pb-3 grid grid-cols-2 gap-2 overflow-hidden">
+              <div className="flex-1 px-2.5 grid grid-cols-2 gap-2 overflow-hidden content-start">
                 {mockProducts.map((p) => (
                   <div key={p.name} className="rounded-xl overflow-hidden flex flex-col" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
                     <div className="relative" style={{ aspectRatio: '1/1' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
-                      <Heart size={11} className="absolute top-1 right-1 drop-shadow" style={{ color: '#fff' }} />
+                      {p.off && (
+                        <span
+                          className="absolute top-1 left-1 text-[7px] font-bold px-1 py-0.5 rounded"
+                          style={{ background: colors.accent, color: colors.accentTextOnBg }}
+                        >
+                          {p.off}
+                        </span>
+                      )}
+                      <span
+                        className="absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center"
+                        style={{ background: 'rgba(0,0,0,0.35)' }}
+                      >
+                        <Heart size={9} style={{ color: '#fff' }} />
+                      </span>
                     </div>
                     <div className="px-1.5 py-1.5 flex flex-col gap-1">
                       <span className="text-[9px] font-semibold leading-tight truncate" style={{ color: colors.textPrimary }}>{p.name}</span>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[9px] font-bold truncate" style={{ color: colors.accent }}>{p.price}</span>
+                      <span className="inline-flex items-center gap-0.5 text-[7px]" style={{ color: colors.textMuted }}>
+                        <Star size={7} fill={colors.accent} style={{ color: colors.accent }} /> {p.rating}
+                      </span>
+                      <div className="flex items-end justify-between gap-1">
+                        <div className="flex flex-col leading-none min-w-0">
+                          {p.old && <span className="text-[7px] line-through truncate" style={{ color: colors.textMuted }}>{p.old}</span>}
+                          <span className="text-[9px] font-bold truncate" style={{ color: colors.accent }}>{p.price}</span>
+                        </div>
                         <span
                           className="w-5 h-5 rounded-md flex items-center justify-center text-[12px] font-bold leading-none shrink-0"
                           style={{ background: colors.accentMuted, border: `1px solid ${colors.accentBorder}`, color: colors.accent }}
@@ -182,6 +214,27 @@ export function Hero() {
                         </span>
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* нижняя навигация — как в TMA */}
+              <div
+                className="mt-auto flex items-stretch justify-around px-1 pt-1.5 pb-2"
+                style={{ background: colors.surface, borderTop: `1px solid ${colors.border}` }}
+              >
+                {navItems.map(({ icon: Icon, label, active, badge }) => (
+                  <div key={label} className="relative flex flex-col items-center gap-0.5" style={{ color: active ? colors.accent : colors.textMuted }}>
+                    <Icon size={14} />
+                    <span className="text-[7px] font-medium">{label}</span>
+                    {badge > 0 && (
+                      <span
+                        className="absolute -top-1 right-1 min-w-3 h-3 px-0.5 rounded-full text-[7px] font-bold flex items-center justify-center"
+                        style={{ background: colors.accent, color: colors.accentTextOnBg }}
+                      >
+                        {badge}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
