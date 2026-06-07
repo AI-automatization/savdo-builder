@@ -41,8 +41,8 @@
 > Источник: сессия 07.06 (брейншторм оплаты). Контекст: `docs/business/payments-legal-tax-2026-06-07.md`.
 > Задачи Полата по этой теме — `docs/handoff-polat-2026-06-07.md` (запушено).
 
-- [ ] **[BIZ-MODEL-UPDATE]** Внести в `business-model-v2` правку: демоут Phase 2 hybrid →
-  **комиссии с GMV нет, subscription-only** (решено 07.06; мастер-док ещё содержит старую модель с комиссией).
+- [x] **[BIZ-MODEL-UPDATE]** ✅ Внесена правка в `business-model-v2`: Phase 2 hybrid отменён,
+  **subscription-only** (баннер + §0 + §5.2 superseded). Запушено веткой `docs/business-model-v2-no-commission` (07.06).
 - [ ] **[LEGAL-TAX-SETUP]** 🔴 Юр-оформление — критпуть к онлайн-оплате подписки. Чек-лист:
   выбрать форму (рекоменд. **ООО**) → **ЭЦП** → регистрация юрлица → расчётный счёт → резидентство
   **IT Park** → договор **Payme/Click** (мерчант) → аутсорс-бухгалтер. Связано с `LEGAL-OFFER-REQUISITES-001`.

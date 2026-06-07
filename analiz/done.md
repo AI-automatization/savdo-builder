@@ -7,9 +7,17 @@
 - **Дата:** 07.06.2026
 - **Файлы:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
 - **Что сделано:** `handleConfirm` теперь передаёт `paymentMethod` и `deliveryMode: mode` (раньше выбор
-  игнорировался, всё уходило как COD/delivery); аналитика `order_created` — на реальный метод. Копирайт
-  способов оплаты переписан под реалии УЗ (убрана фикция «курьер»/«POS-терминал»). tsc по файлу чист.
-  Детали — `logs.md` CHECKOUT-PAYMENTMETHOD-NOT-SENT-001. (НЕ закоммичено — ждёт решения Азима.)
+  игнорировался, всё уходило как COD/delivery); аналитика `order_created` — на реальный метод.
+  **Задеплоено в прод-ветку `web-buyer`** (`a1428c3..3edbacd`, Railway редеплоит) — на deploy-ветке
+  файл новее (i18n, card/online уже disabled), фикс применён под её структуру + обновлён устаревший
+  коммент про `card`. Локальная версия на feat/seller-landing (`04ac34f`) — старее, не пушилась.
+
+### ✅ [BIZ-MODEL-UPDATE-001] business-model-v2 → subscription-only (комиссия отменена)
+- **Важность:** 🔴
+- **Дата:** 07.06.2026
+- **Файлы:** `docs/business/business-model-v2-2026-05-31.md` (ветка `docs/business-model-v2-no-commission`)
+- **Что сделано:** баннер-решение в шапке + §0 TL;DR + §5.2 помечены superseded. Phase 2 hybrid
+  (подписка + 1–3% комиссии с GMV) отменён — остаёмся чистым SaaS, доход только подписка. Запушено для Полата.
 
 ### ✅ [BIZ-PAYMENTS-MODEL-001] Зафиксирована платёжная модель + юр/налоговый план (УЗ)
 - **Важность:** 🔴
