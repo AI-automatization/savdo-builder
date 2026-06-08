@@ -71,7 +71,7 @@ export class AdminCreateStoreUseCase {
         city: input.city,
         region: input.region,
         telegramContactLink: input.telegramContactLink,
-        status: 'ACTIVE' as any, // admin bypass — skip DRAFT→review flow
+        status: 'APPROVED' as any, // admin bypass — skip PENDING_REVIEW→moderation flow
         isPublic: true,
         publishedAt: new Date(),
         deliverySettings: {

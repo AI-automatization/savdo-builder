@@ -1,17 +1,21 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { StoresRepository } from '../repositories/stores.repository';
 import { SellersRepository } from '../../sellers/repositories/sellers.repository';
 import { SlugService } from '../services/slug.service';
+import { ModerationTriggerService } from '../../moderation/services/moderation-trigger.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { normalizeContactLink, normalizeCity } from '../../../shared/normalize';
 
 @Injectable()
 export class CreateStoreUseCase {
+  private readonly logger = new Logger(CreateStoreUseCase.name);
+
   constructor(
     private readonly storesRepo: StoresRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly slugService: SlugService,
+    private readonly moderationTrigger: ModerationTriggerService,
   ) {}
 
   async execute(userId: string, data: {
@@ -59,6 +63,19 @@ export class CreateStoreUseCase {
     // API-CITY-NORMALIZATION-001: канонический uz-Latin (Toshkent, Samarqand, ...).
     const city = normalizeCity(data.city);
 
-    return this.storesRepo.create({ sellerId: seller.id, ...data, slug, telegramContactLink, city });
+    const store = await this.storesRepo.create({
+      sellerId: seller.id, ...data, slug, telegramContactLink, city,
+    });
+
+    // API-STORE-MODERATION-NOT-TRIGGERED-001: seller только что создал магазин,
+    // schema default = PENDING_REVIEW (см. миграцию 20260608100000). Сразу
+    // открываем moderation case — иначе магазин будет PENDING_REVIEW, но
+    // не появится в очереди модерации, и админ его не увидит.
+    const moderationCase = await this.moderationTrigger.openCaseForStore(store.id);
+    this.logger.log(
+      `Store ${store.id} created by user=${userId} → moderation case ${moderationCase.id}`,
+    );
+
+    return store;
   }
 }
