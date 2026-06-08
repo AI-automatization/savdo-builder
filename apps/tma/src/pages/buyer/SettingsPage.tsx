@@ -193,6 +193,15 @@ export default function BuyerSettingsPage() {
           )}
         </GlassCard>
 
+        {/* TODO (ACCOUNT-DELETION-OTP-001): account deletion flow — next turn
+            Add DangerZoneCard with "Удалить аккаунт" button → modal:
+              1. POST /me/account-deletion/request   (отправляет 6-значный OTP в TG)
+              2. user enters code in 6-digit input
+              3. POST /me/account-deletion/confirm { code }  (soft-delete + logout)
+              4. show "Восстановление возможно 90 дней — войдите снова через @savdo_builderBOT"
+            i18n keys: settings.dangerZone, settings.deleteAccount, settings.deleteAccountWarn90d,
+                       settings.deleteAccountConfirmCode, settings.deleteAccountCta */}
+
         <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · v1.0
         </p>

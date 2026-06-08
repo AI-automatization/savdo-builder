@@ -9,25 +9,49 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 
 /**
- * FEAT-TG-CHANNEL-TEMPLATE-001 — UI v2 (06.2026):
+ * FEAT-TG-CHANNEL-TEMPLATE-001 — UI v3 (06.2026):
  *
- * Полностью переработанный UX. Вместо raw HTML/Mustache textarea — простой
- * режим с чекбоксами «что показывать в посте» и текстом подписи (без HTML).
+ * WYSIWYG card editor. Сам preview-блок ЕСТЬ редактор. Никаких HTML/Mustache
+ * наружу. Прозрачные блоки в TG-mock card: tap → popover на каждый блок
+ * (видимость / drag-reorder / inline-prefix-text).
  *
- * Backend контракт НЕ ПОМЕНЯЛСЯ — store.channelPostTemplate остаётся
- * Mustache-строкой. UI компилирует выбор чекбоксов + префикс в Mustache
- * шаблон при сохранении (см. `composeTemplate`). При загрузке пытаемся
- * распарсить обратно (см. `parseTemplate`); если шаблон не распознан как
- * сгенерированный нашим UI — переключаемся в «Расширенный режим» с raw
- * textarea (обратная совместимость для тех кто уже редактировал HTML).
+ * Backend контракт сохранён: composeTemplate() и parseTemplate() те же
+ * функции, что и в v2 — на сервер уходит та же Mustache-строка.
  *
- * Live preview визуализирует пост как mock TG-карточка с фото-плейсхолдером
- * и кнопкой «Открыть товар», а не как голый HTML.
+ * Legacy detection (v1 ручной HTML):
+ *   parseTemplate(tpl) === null  ⇒  показываем banner НАД preview,
+ *   НЕ переключаем в advanced автоматически. Пользователь выбирает:
+ *   «Перенести в простой режим» (confirm → DEFAULT_SECTIONS) или
+ *   «Открыть в Для разработчиков» (advanced mode внизу страницы).
+ *
+ * Advanced/HTML escape hatch:
+ *   GlassCard disclosure в самом низу, collapsed by default, с confirm
+ *   при раскрытии. Скрыт за VITE_TMA_DEV_HTML_ENABLED флагом (если false
+ *   — disclosure не рендерится вовсе).
  */
 
-// ─── Sections (чекбоксы) ──────────────────────────────────────────────────
+// ─── Blocks ───────────────────────────────────────────────────────────────
+type BlockKey = 'prefix' | 'title' | 'photo' | 'price' | 'description' | 'contacts' | 'buyButton';
+
+interface BlockState {
+  key: BlockKey;
+  visible: boolean;
+}
+
+const DEFAULT_BLOCKS: BlockState[] = [
+  { key: 'prefix', visible: false },     // hidden by default (empty text)
+  { key: 'photo', visible: true },
+  { key: 'title', visible: true },
+  { key: 'price', visible: true },
+  { key: 'description', visible: true },
+  { key: 'contacts', visible: true },
+  { key: 'buyButton', visible: true },
+];
+
+// Какие из блоков влияют на caption-секции в composeTemplate.
+// (photo / contacts — отдельная семантика, см. composeTemplate.)
 type SectionKey = 'title' | 'price' | 'description' | 'photo' | 'buyButton';
-const ALL_SECTIONS: SectionKey[] = ['title', 'price', 'description', 'photo', 'buyButton'];
+const SECTION_KEYS: SectionKey[] = ['title', 'price', 'description', 'photo', 'buyButton'];
 
 interface ChannelTemplate {
   id: string;
@@ -60,29 +84,24 @@ const DEFAULT_SECTIONS: Record<SectionKey, boolean> = {
   title: true,
   price: true,
   description: true,
-  photo: true,         // photo — не контролирует caption, только media (backend сам прикрепит)
+  photo: true,
   buyButton: true,
 };
 
 /**
- * Маркер «этот шаблон сгенерирован нашим UI v2». Используется чтобы безопасно
- * распарсить обратно — иначе обращаемся в Advanced-режим.
+ * Маркер «этот шаблон сгенерирован нашим UI v2/v3». Контракт с backend.
  */
 const TEMPLATE_MARKER = '<!--SAVDO_UI_V2-->';
 
 /**
  * Скомпилировать SimpleConfig → Mustache-строку для backend.
- * Сохраняем порядок секций как в ALL_SECTIONS (title → price → description → buy).
- * Контакты подставляются ВСЕГДА (если заполнены) — это базовая информация,
- * вообще не часть чекбоксов.
+ * Backend-контракт идентичен v2 — функция не меняется.
  */
 function composeTemplate(cfg: SimpleConfig): string {
   const lines: string[] = [TEMPLATE_MARKER];
 
   const prefix = cfg.prefix.trim();
   if (prefix) {
-    // Префикс — это статичный текст без HTML, экранируем угловые скобки руками
-    // (на бэке всё равно sanitize, но лучше отдать чистый текст).
     const safe = prefix.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     lines.push(safe, '');
   }
@@ -97,8 +116,7 @@ function composeTemplate(cfg: SimpleConfig): string {
     lines.push('{{#description}}{{description}}{{/description}}');
   }
 
-  // Контакты — всегда (независимо от чекбоксов). Пустые поля схлопнутся
-  // через {{#var}}…{{/var}} (renderSections отрендерит пусто).
+  // Контакты — всегда (независимо от чекбоксов).
   lines.push('');
   lines.push('{{#contact}}📞 {{contact}}{{/contact}}');
   lines.push('{{#instagram}}📷 {{instagram}}{{/instagram}}');
@@ -114,25 +132,18 @@ function composeTemplate(cfg: SimpleConfig): string {
 
 /**
  * Распарсить Mustache-шаблон обратно в SimpleConfig.
- * Возвращает null если это НЕ наш сгенерированный шаблон (нет маркера) —
- * тогда UI откроет Advanced-режим с raw textarea.
- *
- * Эвристика: распознаём шаблон по маркеру в первой строке. Префикс — это
- * первая непустая строка после маркера, до первой Mustache-конструкции.
+ * Возвращает null если это НЕ наш шаблон → legacy / ручной HTML.
  */
 function parseTemplate(tpl: string | null | undefined): SimpleConfig | null {
   if (!tpl) {
-    // null = ещё не сохраняли — стартуем с дефолтных секций без префикса
     return { prefix: '', sections: { ...DEFAULT_SECTIONS } };
   }
   const trimmed = tpl.trimStart();
   if (!trimmed.startsWith(TEMPLATE_MARKER)) {
-    return null;  // чужой / legacy / ручной HTML — advanced mode
+    return null;
   }
 
   const body = trimmed.slice(TEMPLATE_MARKER.length).replace(/^\n+/, '');
-
-  // Префикс — всё до первой Mustache переменной или HTML-тега <b>
   const sectionStart = body.search(/\{\{|<b>/);
   const prefixRaw = sectionStart > 0 ? body.slice(0, sectionStart).trim() : '';
   const prefix = prefixRaw
@@ -144,8 +155,6 @@ function parseTemplate(tpl: string | null | undefined): SimpleConfig | null {
     title: /\{\{title\}\}/.test(body),
     price: /\{\{price\}\}/.test(body),
     description: /\{\{description\}\}/.test(body),
-    // photo всегда true — мы не выключаем фото через шаблон, но для UI
-    // сохраним последний выбор пользователя в localStorage чуть ниже.
     photo: true,
     buyButton: /\{\{productUrl\}\}/.test(body),
   };
@@ -181,49 +190,17 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void;
   );
 }
 
-function Checkbox({
-  checked, onChange, label, disabled,
-}: { checked: boolean; onChange: () => void; label: string; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      disabled={disabled}
-      className="flex items-center gap-3 w-full text-left py-2 px-1 rounded-lg"
-      style={{
-        background: 'transparent',
-        border: 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        minHeight: 44, // hit-area 48px-ish
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          width: 22, height: 22, borderRadius: 6,
-          background: checked ? ACCENT : 'transparent',
-          border: `2px solid ${checked ? ACCENT : 'var(--tg-border)'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.15s', flexShrink: 0,
-        }}
-      >
-        {checked && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12l5 5L20 7" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </span>
-      <span className="text-sm" style={{ color: 'var(--tg-text-primary)' }}>{label}</span>
-    </button>
-  );
-}
-
 const inputStyle: React.CSSProperties = {
   background: 'var(--tg-surface-hover)',
   border: '1px solid var(--tg-border)',
   color: 'var(--tg-text-primary)',
 };
+
+// ─── Dev-HTML escape hatch feature flag ───────────────────────────────────
+// Если env-флаг === 'false' — disclosure вообще не рендерится. По умолчанию
+// показываем (legacy users без флага должны видеть escape hatch).
+const DEV_HTML_ENABLED =
+  (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_TMA_DEV_HTML_ENABLED !== 'false';
 
 // ─── Main page ────────────────────────────────────────────────────────────
 export default function ChannelSettingsPage() {
@@ -234,12 +211,19 @@ export default function ChannelSettingsPage() {
   const [data, setData] = useState<ChannelTemplate | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Simple-mode state
+  // Simple-mode state (WYSIWYG card editor)
   const [prefix, setPrefix] = useState('');
-  const [sections, setSections] = useState<Record<SectionKey, boolean>>({ ...DEFAULT_SECTIONS });
+  const [blocks, setBlocks] = useState<BlockState[]>(DEFAULT_BLOCKS);
+  const [editingBlock, setEditingBlock] = useState<BlockKey | null>(null);
+  const [dragKey, setDragKey] = useState<BlockKey | null>(null);
 
-  // Advanced-mode state (raw template, fallback для legacy)
+  // Legacy banner (показывается, если parseTemplate вернул null)
+  const [legacyBannerActive, setLegacyBannerActive] = useState(false);
+  const legacyOriginalHtmlRef = useRef<string | null>(null);
+
+  // Advanced-mode (collapsed disclosure внизу)
   const [advancedMode, setAdvancedMode] = useState(false);
+  const [advancedDisclosureOpen, setAdvancedDisclosureOpen] = useState(false);
   const [advancedTemplate, setAdvancedTemplate] = useState('');
 
   // Contacts
@@ -271,6 +255,23 @@ export default function ChannelSettingsPage() {
     tiktok: string | null;
   }>({ template: null, contactPhone: null, instagram: null, tiktok: null });
 
+  // ─── Derived sections from blocks ────────────────────────────────────────
+  // composeTemplate использует sections-объект, мы держим его в sync с blocks.
+  const sections: Record<SectionKey, boolean> = useMemo(() => {
+    const out: Record<SectionKey, boolean> = { ...DEFAULT_SECTIONS };
+    for (const k of SECTION_KEYS) {
+      const block = blocks.find((b) => b.key === k);
+      out[k] = block?.visible ?? DEFAULT_SECTIONS[k];
+    }
+    // Если prefix-блок невидим — обнуляем prefix в шаблоне.
+    return out;
+  }, [blocks]);
+
+  const prefixVisible = useMemo(
+    () => blocks.find((b) => b.key === 'prefix')?.visible ?? false,
+    [blocks],
+  );
+
   // ─── Load on mount ──────────────────────────────────────────────────────
   useEffect(() => {
     loadAbortRef.current?.abort();
@@ -292,16 +293,21 @@ export default function ChannelSettingsPage() {
           tiktok: d.channelTiktokLink,
         };
 
-        // Распарсить шаблон → simple / advanced
         const parsed = parseTemplate(d.channelPostTemplate);
         if (parsed) {
-          setPrefix(parsed.prefix);
-          setSections(parsed.sections);
+          // Свежий v2/v3-шаблон — заполняем simple-state.
+          applyParsedToBlocks(parsed);
           setAdvancedMode(false);
+          setLegacyBannerActive(false);
           setAdvancedTemplate(d.channelPostTemplate ?? d.defaultTemplate);
         } else {
-          // Legacy / ручной — открываем advanced
-          setAdvancedMode(true);
+          // Legacy / ручной HTML.
+          // НЕ переключаем в advanced автоматически. Banner + defaults.
+          legacyOriginalHtmlRef.current = d.channelPostTemplate ?? null;
+          setLegacyBannerActive(true);
+          setBlocks(DEFAULT_BLOCKS);
+          setPrefix('');
+          setAdvancedMode(false);
           setAdvancedTemplate(d.channelPostTemplate ?? d.defaultTemplate);
         }
       })
@@ -315,11 +321,37 @@ export default function ChannelSettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Compose current template (для save и preview) ──────────────────────
+  function applyParsedToBlocks(parsed: SimpleConfig) {
+    setPrefix(parsed.prefix);
+    setBlocks((prev) => {
+      // Сохраняем порядок прежний (или DEFAULT) — просто меняем visible.
+      const base = prev.length === DEFAULT_BLOCKS.length ? prev : DEFAULT_BLOCKS;
+      return base.map((b) => {
+        if (b.key === 'prefix') return { ...b, visible: parsed.prefix.length > 0 };
+        if (b.key === 'photo') return { ...b, visible: parsed.sections.photo };
+        if (b.key === 'contacts') return { ...b, visible: true };
+        if (b.key === 'title') return { ...b, visible: parsed.sections.title };
+        if (b.key === 'price') return { ...b, visible: parsed.sections.price };
+        if (b.key === 'description') return { ...b, visible: parsed.sections.description };
+        if (b.key === 'buyButton') return { ...b, visible: parsed.sections.buyButton };
+        return b;
+      });
+    });
+  }
+
+  // ─── Compose current template ────────────────────────────────────────────
   const currentTemplate = useMemo(() => {
     if (advancedMode) return advancedTemplate;
-    return composeTemplate({ prefix, sections });
-  }, [advancedMode, advancedTemplate, prefix, sections]);
+    // Если legacy banner всё ещё активен — пользователь его не разрулил —
+    // НЕ перезаписываем originalHtml на сервере. Возвращаем то, что было.
+    if (legacyBannerActive && legacyOriginalHtmlRef.current !== null) {
+      return legacyOriginalHtmlRef.current;
+    }
+    return composeTemplate({
+      prefix: prefixVisible ? prefix : '',
+      sections,
+    });
+  }, [advancedMode, advancedTemplate, prefix, prefixVisible, sections, legacyBannerActive]);
 
   // ─── Live preview (debounced) ───────────────────────────────────────────
   useEffect(() => {
@@ -340,7 +372,6 @@ export default function ChannelSettingsPage() {
         .catch((err: unknown) => {
           if (ac.signal.aborted) return;
           if (err instanceof Error && err.name === 'AbortError') return;
-          // tichaya — preview не критичен
         })
         .finally(() => { if (!ac.signal.aborted) setPreviewLoading(false); });
     }, 400);
@@ -362,6 +393,16 @@ export default function ChannelSettingsPage() {
   // ─── Save ────────────────────────────────────────────────────────────────
   const save = useCallback(async () => {
     if (!data || saving) return;
+
+    // Sanity-check: если simple-mode — убедимся, что compose выдаёт parseable.
+    if (!advancedMode && !legacyBannerActive) {
+      const sanityParsed = parseTemplate(currentTemplate);
+      if (!sanityParsed) {
+        showToast(t('seller.channel.dev.parseFailed'), 'error');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       await api('/seller/store/channel-template', {
@@ -396,7 +437,7 @@ export default function ChannelSettingsPage() {
     } finally {
       setSaving(false);
     }
-  }, [data, saving, currentTemplate, contactPhone, instagram, tiktok, tg, t]);
+  }, [data, saving, advancedMode, legacyBannerActive, currentTemplate, contactPhone, instagram, tiktok, tg, t]);
 
   useMainButton({
     text: saving ? t('seller.channel.saving') : t('seller.channel.save'),
@@ -457,43 +498,86 @@ export default function ChannelSettingsPage() {
     }
   }, [testing, dirty, tg, t]);
 
-  // ─── Section toggle ──────────────────────────────────────────────────────
-  const toggleSection = (key: SectionKey) => {
-    setSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  // ─── Block visibility / reorder / edit ───────────────────────────────────
+  const setBlockVisible = useCallback((key: BlockKey, visible: boolean) => {
+    setBlocks((prev) => prev.map((b) => (b.key === key ? { ...b, visible } : b)));
     tg?.HapticFeedback.selectionChanged();
-  };
+  }, [tg]);
 
-  // ─── Switch advanced/simple ──────────────────────────────────────────────
-  const switchToSimple = () => {
-    // Попытаемся распарсить advanced → simple. Если не получится — алёрт.
+  const moveBlock = useCallback((from: BlockKey, to: BlockKey) => {
+    if (from === to) return;
+    setBlocks((prev) => {
+      const fromIdx = prev.findIndex((b) => b.key === from);
+      const toIdx = prev.findIndex((b) => b.key === to);
+      if (fromIdx < 0 || toIdx < 0) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+    tg?.HapticFeedback.impactOccurred?.('light');
+  }, [tg]);
+
+  // ─── Legacy banner actions ──────────────────────────────────────────────
+  const acceptLegacyReset = useCallback(() => {
+    if (!confirm(t('seller.channel.legacy.banner.confirm'))) return;
+    // Сбрасываем к DEFAULT, помечаем dirty — теперь currentTemplate
+    // композится из blocks, а не из legacyOriginalHtmlRef.
+    legacyOriginalHtmlRef.current = null;
+    setLegacyBannerActive(false);
+    setBlocks(DEFAULT_BLOCKS);
+    setPrefix('');
+    tg?.HapticFeedback.notificationOccurred('warning');
+  }, [t, tg]);
+
+  const legacyKeepHtml = useCallback(() => {
+    // Открываем advanced disclosure и перенаправляем фокус.
+    setAdvancedDisclosureOpen(true);
+    setAdvancedMode(true);
+    setLegacyBannerActive(false);
+    // advancedTemplate уже содержит legacy HTML (выставлен при load).
+    tg?.HapticFeedback.selectionChanged();
+    // scroll to bottom — disclosure уже виден.
+    setTimeout(() => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 50);
+  }, [tg]);
+
+  // ─── Switch advanced/simple from dev disclosure ─────────────────────────
+  const switchToSimple = useCallback(() => {
     const parsed = parseTemplate(advancedTemplate);
     if (!parsed) {
-      if (!confirm('Текущий HTML-шаблон будет заменён на простой режим. Продолжить?')) return;
+      if (!confirm(t('seller.channel.dev.parseFailed'))) return;
+      setBlocks(DEFAULT_BLOCKS);
       setPrefix('');
-      setSections({ ...DEFAULT_SECTIONS });
     } else {
-      setPrefix(parsed.prefix);
-      setSections(parsed.sections);
+      applyParsedToBlocks(parsed);
     }
     setAdvancedMode(false);
     tg?.HapticFeedback.selectionChanged();
-  };
+  }, [advancedTemplate, t, tg]);
 
-  const switchToAdvanced = () => {
+  const openAdvancedFromDisclosure = useCallback(() => {
+    if (!confirm(t('seller.channel.dev.warning'))) return;
     // Скомпилируем текущий simple → advanced как стартовая точка
-    setAdvancedTemplate(composeTemplate({ prefix, sections }));
+    if (!advancedMode) {
+      setAdvancedTemplate(
+        composeTemplate({ prefix: prefixVisible ? prefix : '', sections }),
+      );
+    }
     setAdvancedMode(true);
+    setAdvancedDisclosureOpen(true);
     tg?.HapticFeedback.selectionChanged();
-  };
+  }, [advancedMode, prefix, prefixVisible, sections, t, tg]);
 
   // ─── Render ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
+      <div className="flex flex-col gap-4 max-w-md md:max-w-3xl mx-auto w-full">
         <Skeleton style={{ height: 24, width: '50%' }} />
         <Skeleton style={{ height: 80 }} />
+        <Skeleton style={{ height: 320 }} />
         <Skeleton style={{ height: 140 }} />
-        <Skeleton style={{ height: 260 }} />
       </div>
     );
   }
@@ -504,7 +588,7 @@ export default function ChannelSettingsPage() {
     : '';
 
   return (
-    <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full pb-24">
+    <div className="flex flex-col gap-4 max-w-md md:max-w-3xl mx-auto w-full pb-24">
       {/* ── Header ── */}
       <div className="flex items-center gap-2">
         <button
@@ -546,7 +630,7 @@ export default function ChannelSettingsPage() {
         )}
       </GlassCard>
 
-      {/* ── 2. Канал (показываем если auto-post ON или канал привязан) ── */}
+      {/* ── 2. Канал ── */}
       {(autoPost || channelAttached) && (
         <GlassCard className="p-4 flex flex-col gap-2">
           <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
@@ -582,87 +666,59 @@ export default function ChannelSettingsPage() {
         </GlassCard>
       )}
 
-      {/* ── 3. Что показывать (чекбоксы) — только в simple-режиме ── */}
-      {!advancedMode && (
-        <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-            {t('seller.channel.content.header')}
-          </p>
-          <p className="text-xs mb-1" style={{ color: 'var(--tg-text-muted)' }}>
-            {t('seller.channel.content.desc')}
-          </p>
-
-          <div className="flex flex-col gap-0">
-            {ALL_SECTIONS.map((key) => (
-              <Checkbox
-                key={key}
-                checked={sections[key]}
-                onChange={() => toggleSection(key)}
-                label={t(`seller.channel.content.${key}`)}
-              />
-            ))}
-          </div>
-        </GlassCard>
+      {/* ── 3. Legacy banner (если parseTemplate → null) ── */}
+      {legacyBannerActive && (
+        <LegacyTemplateBanner
+          onReset={acceptLegacyReset}
+          onKeep={legacyKeepHtml}
+          t={t}
+        />
       )}
 
-      {/* ── 4. Префикс (текст подписи) — только simple ── */}
+      {/* ── 4. WYSIWYG card editor — основной UI ── */}
       {!advancedMode && (
-        <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-            {t('seller.channel.prefix.header')}
-          </p>
-          <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
-            {t('seller.channel.prefix.desc')}
-          </p>
-          <textarea
-            value={prefix}
-            onChange={(e) => setPrefix(e.target.value)}
-            rows={3}
-            spellCheck={true}
-            maxLength={300}
-            className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-            style={{ ...inputStyle, resize: 'vertical', minHeight: 70 }}
-            placeholder={t('seller.channel.prefix.ph')}
-          />
-        </GlassCard>
-      )}
-
-      {/* ── 5. Advanced (raw HTML) — collapsed by default ── */}
-      <GlassCard className="p-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-            {t('seller.channel.advanced.toggle')}
-          </p>
-          <button
-            onClick={advancedMode ? switchToSimple : switchToAdvanced}
-            className="text-xxs px-2 py-1 rounded-lg"
-            style={{ color: ACCENT, background: 'rgba(168,85,247,0.10)' }}
-          >
-            {advancedMode ? t('seller.channel.advanced.simple') : 'HTML →'}
-          </button>
-        </div>
-        <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
-          {t('seller.channel.advanced.desc')}
-        </p>
-        {advancedMode && (
-          <>
-            <p className="text-xs" style={{ color: '#FBBF24' }}>
-              {t('seller.channel.advanced.warn')}
+        <GlassCard className="p-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+              {t('seller.channel.editor.header')}
             </p>
-            <textarea
-              value={advancedTemplate}
-              onChange={(e) => setAdvancedTemplate(e.target.value)}
-              rows={10}
-              spellCheck={false}
-              className="w-full px-3 py-2.5 rounded-xl text-sm outline-none font-mono"
-              style={{ ...inputStyle, resize: 'vertical', minHeight: 220 }}
-              placeholder={data?.defaultTemplate}
-            />
-          </>
-        )}
-      </GlassCard>
+            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
+              {t('seller.channel.editor.hint')}
+            </p>
+            {previewLoading && (
+              <span className="text-xxs mt-1" style={{ color: 'var(--tg-text-muted)' }}>
+                {t('seller.channel.preview.loading')}
+              </span>
+            )}
+          </div>
 
-      {/* ── 6. Контакты ── */}
+          <WysiwygPostEditor
+            blocks={blocks}
+            prefixText={prefix}
+            sample={preview}
+            contactPhone={contactPhone}
+            instagram={instagram}
+            tiktok={tiktok}
+            dragKey={dragKey}
+            onDragStart={(k) => setDragKey(k)}
+            onDragEnd={() => setDragKey(null)}
+            onDropOn={(target) => {
+              if (dragKey && dragKey !== target) moveBlock(dragKey, target);
+              setDragKey(null);
+            }}
+            onTapBlock={(k) => setEditingBlock(k)}
+            t={t}
+          />
+
+          {preview?.sampleProductTitle && (
+            <p className="text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
+              {t('seller.channel.preview.sampleNote', { title: preview.sampleProductTitle })}
+            </p>
+          )}
+        </GlassCard>
+      )}
+
+      {/* ── 5. Контакты ── */}
       <GlassCard className="p-4 flex flex-col gap-3">
         <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
           {t('seller.channel.contacts.header')}
@@ -714,41 +770,7 @@ export default function ChannelSettingsPage() {
         </div>
       </GlassCard>
 
-      {/* ── 7. Preview (TG mock card) ── */}
-      <GlassCard className="p-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-            {t('seller.channel.preview.header')}
-          </p>
-          {previewLoading && (
-            <span className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
-              {t('seller.channel.preview.loading')}
-            </span>
-          )}
-        </div>
-
-        {preview ? (
-          <TgMockCard
-            caption={preview.caption}
-            showPhoto={advancedMode ? true : sections.photo}
-            showBuyButton={advancedMode ? /productUrl/.test(currentTemplate) : sections.buyButton}
-            photoLabel={t('seller.channel.preview.photoLabel')}
-            buyLabel={t('seller.channel.preview.buyBtn')}
-          />
-        ) : (
-          <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
-            {t('seller.channel.preview.empty')}
-          </p>
-        )}
-
-        {preview?.sampleProductTitle && (
-          <p className="text-xxs mt-1" style={{ color: 'var(--tg-text-dim)' }}>
-            {t('seller.channel.preview.sampleNote', { title: preview.sampleProductTitle })}
-          </p>
-        )}
-      </GlassCard>
-
-      {/* ── 8. Тестовый пост ── */}
+      {/* ── 6. Тестовый пост ── */}
       <GlassCard className="p-4 flex flex-col gap-2">
         <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
           {t('seller.channel.test.header')}
@@ -777,6 +799,28 @@ export default function ChannelSettingsPage() {
         )}
       </GlassCard>
 
+      {/* ── 7. Dev disclosure (advanced HTML) — collapsed внизу ── */}
+      {DEV_HTML_ENABLED && (
+        <DevDisclosure
+          open={advancedDisclosureOpen}
+          onToggle={() => {
+            if (!advancedDisclosureOpen) {
+              // первое раскрытие — без confirm, просто показываем callout
+              setAdvancedDisclosureOpen(true);
+            } else {
+              setAdvancedDisclosureOpen(false);
+            }
+          }}
+          advancedMode={advancedMode}
+          advancedTemplate={advancedTemplate}
+          onAdvancedTemplateChange={setAdvancedTemplate}
+          onOpenAdvanced={openAdvancedFromDisclosure}
+          onBackToSimple={switchToSimple}
+          defaultTemplate={data?.defaultTemplate}
+          t={t}
+        />
+      )}
+
       {/* In-form fallback CTA для dev без TG */}
       {!tg && (
         <button
@@ -791,17 +835,87 @@ export default function ChannelSettingsPage() {
           {saving ? t('seller.channel.saving') : t('seller.channel.save')}
         </button>
       )}
+
+      {/* ── Popover для редактирования блока ── */}
+      {editingBlock && (
+        <InlineEditPopover
+          blockKey={editingBlock}
+          visible={blocks.find((b) => b.key === editingBlock)?.visible ?? true}
+          prefix={prefix}
+          onPrefixChange={setPrefix}
+          onSetVisible={(v) => setBlockVisible(editingBlock, v)}
+          onClose={() => setEditingBlock(null)}
+          t={t}
+        />
+      )}
     </div>
   );
 }
 
-// ─── TG Mock Card (Preview визуализация в TMA-стиле) ──────────────────────
-function TgMockCard({
-  caption, showPhoto, showBuyButton, photoLabel, buyLabel,
-}: { caption: string; showPhoto: boolean; showBuyButton: boolean; photoLabel: string; buyLabel: string }) {
-  // Visual mock «как пост выглядит в Telegram». Не реальный TG-стиль, но
-  // даёт продавцу понимание структуры: фото сверху, ниже caption, ниже
-  // inline-кнопка. Тема (light/dark) подтягивается из CSS-переменных TMA.
+// ─── Legacy banner ─────────────────────────────────────────────────────────
+function LegacyTemplateBanner({
+  onReset, onKeep, t,
+}: {
+  onReset: () => void;
+  onKeep: () => void;
+  t: (k: string, p?: Record<string, string | number>) => string;
+}) {
+  return (
+    <GlassCard
+      className="p-4 flex flex-col gap-2"
+      style={{ border: '1px solid #FBBF24', background: 'rgba(251,191,36,0.08)' }}
+    >
+      <p className="text-sm font-semibold" style={{ color: '#FBBF24' }}>
+        ⚠️ {t('seller.channel.legacy.banner.title')}
+      </p>
+      <p className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>
+        {t('seller.channel.legacy.banner.desc')}
+      </p>
+      <div className="flex flex-col sm:flex-row gap-2 mt-1">
+        <button
+          onClick={onReset}
+          className="flex-1 py-2 rounded-xl text-xs font-semibold"
+          style={{ background: `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`, color: '#fff' }}
+        >
+          {t('seller.channel.legacy.banner.reset')}
+        </button>
+        <button
+          onClick={onKeep}
+          className="flex-1 py-2 rounded-xl text-xs font-semibold"
+          style={{ background: 'var(--tg-surface)', color: 'var(--tg-text-primary)', border: '1px solid var(--tg-border)' }}
+        >
+          {t('seller.channel.legacy.banner.keep')}
+        </button>
+      </div>
+    </GlassCard>
+  );
+}
+
+// ─── Wysiwyg post editor (TG mock card as the editor) ─────────────────────
+function WysiwygPostEditor({
+  blocks, prefixText, sample, contactPhone, instagram, tiktok,
+  dragKey, onDragStart, onDragEnd, onDropOn, onTapBlock, t,
+}: {
+  blocks: BlockState[];
+  prefixText: string;
+  sample: PreviewResult | null;
+  contactPhone: string;
+  instagram: string;
+  tiktok: string;
+  dragKey: BlockKey | null;
+  onDragStart: (k: BlockKey) => void;
+  onDragEnd: () => void;
+  onDropOn: (target: BlockKey) => void;
+  onTapBlock: (k: BlockKey) => void;
+  t: (k: string, p?: Record<string, string | number>) => string;
+}) {
+  // Распакуем sample.caption HTML в куски для отдельных блоков —
+  // sample caption уже отрендерен бэком на основе текущего currentTemplate,
+  // но для визуальной чистоты редактора (каждый блок — отдельная карточка)
+  // мы показываем sampleProductTitle отдельно, а описание/цену берём из
+  // caption как fallback. Это OK — sample отражает реальный продукт.
+  const sampleTitle = sample?.sampleProductTitle ?? 'Mahsulot nomi';
+
   return (
     <div
       className="rounded-2xl overflow-hidden flex flex-col"
@@ -811,47 +925,443 @@ function TgMockCard({
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
       }}
     >
-      {/* Photo placeholder */}
-      {showPhoto && (
+      {blocks.map((b) => (
+        <BlockSlot
+          key={b.key}
+          block={b}
+          isDragging={dragKey === b.key}
+          isDropTarget={dragKey !== null && dragKey !== b.key}
+          onDragStart={() => onDragStart(b.key)}
+          onDragEnd={onDragEnd}
+          onDropOn={() => onDropOn(b.key)}
+          onTap={() => onTapBlock(b.key)}
+          t={t}
+        >
+          {renderBlockContent(b.key, {
+            prefixText,
+            sampleTitle,
+            contactPhone,
+            instagram,
+            tiktok,
+            t,
+          })}
+        </BlockSlot>
+      ))}
+    </div>
+  );
+}
+
+function renderBlockContent(
+  key: BlockKey,
+  ctx: {
+    prefixText: string;
+    sampleTitle: string;
+    contactPhone: string;
+    instagram: string;
+    tiktok: string;
+    t: (k: string, p?: Record<string, string | number>) => string;
+  },
+): React.ReactNode {
+  switch (key) {
+    case 'prefix':
+      return ctx.prefixText.trim() ? (
+        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--tg-text-primary)', lineHeight: 1.45 }}>
+          {ctx.prefixText}
+        </p>
+      ) : (
+        <p className="text-sm italic" style={{ color: 'var(--tg-text-muted)' }}>
+          {ctx.t('seller.channel.block.prefix.empty')}
+        </p>
+      );
+    case 'photo':
+      return (
         <div
-          className="w-full flex items-center justify-center"
+          className="w-full flex items-center justify-center rounded-lg"
           style={{
             aspectRatio: '4 / 3',
             background: 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(124,58,237,0.25))',
             color: 'var(--tg-text-muted)',
             fontSize: 14,
-            position: 'relative',
           }}
         >
-          <span style={{ opacity: 0.7 }}>📷 {photoLabel}</span>
+          <span style={{ opacity: 0.7 }}>📷 {ctx.t('seller.channel.block.photo.label')}</span>
         </div>
-      )}
-
-      {/* Caption */}
-      <div
-        className="text-sm px-3 py-3 whitespace-pre-wrap"
-        style={{ color: 'var(--tg-text-primary)', lineHeight: 1.5, wordBreak: 'break-word' }}
-        dangerouslySetInnerHTML={{ __html: caption }}
-      />
-
-      {/* Inline button (если включена) */}
-      {showBuyButton && (
+      );
+    case 'title':
+      return (
+        <p className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>
+          {ctx.sampleTitle}
+        </p>
+      );
+    case 'price':
+      return (
+        <p className="text-sm" style={{ color: 'var(--tg-text-primary)' }}>
+          💰 <span className="font-semibold">599 000 UZS</span>{' '}
+          <s style={{ color: 'var(--tg-text-muted)' }}>750 000 UZS</s>
+        </p>
+      );
+    case 'description':
+      return (
+        <p className="text-xs whitespace-pre-wrap" style={{ color: 'var(--tg-text-secondary)', lineHeight: 1.5 }}>
+          {ctx.t('seller.channel.block.description.fromProduct')}
+        </p>
+      );
+    case 'contacts': {
+      const rows: string[] = [];
+      if (ctx.contactPhone) rows.push(`📞 ${ctx.contactPhone}`);
+      if (ctx.instagram) rows.push(`📷 ${ctx.instagram}`);
+      if (ctx.tiktok) rows.push(`🎵 ${ctx.tiktok}`);
+      return rows.length ? (
+        <div className="flex flex-col gap-1">
+          {rows.map((r, i) => (
+            <p key={i} className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>{r}</p>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs italic" style={{ color: 'var(--tg-text-muted)' }}>
+          {ctx.t('seller.channel.block.contacts.hint')}
+        </p>
+      );
+    }
+    case 'buyButton':
+      return (
         <div
-          className="px-3 pb-3"
-          style={{ borderTop: '1px solid var(--tg-border)', paddingTop: 10 }}
+          className="w-full text-center py-2 rounded-lg text-sm font-semibold"
+          style={{
+            background: 'rgba(168,85,247,0.10)',
+            color: ACCENT,
+            border: '1px solid rgba(168,85,247,0.25)',
+          }}
         >
-          <div
-            className="w-full text-center py-2 rounded-lg text-sm font-semibold"
-            style={{
-              background: 'rgba(168,85,247,0.10)',
-              color: ACCENT,
-              border: '1px solid rgba(168,85,247,0.25)',
-            }}
-          >
-            {buyLabel}
-          </div>
+          {ctx.t('seller.channel.preview.buyBtn')}
         </div>
-      )}
+      );
+    default:
+      return null;
+  }
+}
+
+// ─── Block slot (one row in the card) ──────────────────────────────────────
+function BlockSlot({
+  block, children, isDragging, isDropTarget,
+  onDragStart, onDragEnd, onDropOn, onTap, t,
+}: {
+  block: BlockState;
+  children: React.ReactNode;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDropOn: () => void;
+  onTap: () => void;
+  t: (k: string, p?: Record<string, string | number>) => string;
+}) {
+  if (!block.visible) {
+    // Hidden block placeholder — компактная строка «нажмите чтобы добавить»
+    return (
+      <button
+        type="button"
+        onClick={onTap}
+        className="w-full text-left px-3 py-2 text-xs flex items-center gap-2"
+        style={{
+          color: 'var(--tg-text-muted)',
+          background: 'transparent',
+          borderTop: '1px dashed var(--tg-border)',
+          borderBottom: '1px dashed var(--tg-border)',
+          opacity: 0.6,
+          minHeight: 44,
+        }}
+        aria-label={t('seller.channel.block.show')}
+      >
+        <span aria-hidden>＋</span>
+        <span>{labelFor(block.key, t)}</span>
+        <span className="ml-auto" aria-hidden>👁</span>
+      </button>
+    );
+  }
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', block.key);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+      onDrop={(e) => { e.preventDefault(); onDropOn(); }}
+      onClick={onTap}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap(); }
+      }}
+      aria-label={`${labelFor(block.key, t)} — ${t('seller.channel.empty.tapToEdit')}`}
+      className="w-full px-3 py-3 flex items-start gap-2 cursor-pointer transition-colors"
+      style={{
+        background: isDragging
+          ? 'rgba(168,85,247,0.12)'
+          : isDropTarget
+            ? 'rgba(168,85,247,0.04)'
+            : 'transparent',
+        borderTop: '1px solid var(--tg-border)',
+        opacity: isDragging ? 0.6 : 1,
+        minHeight: 48,
+      }}
+    >
+      {/* drag handle */}
+      <span
+        aria-hidden
+        className="select-none flex items-center justify-center"
+        style={{
+          width: 18, height: 18, marginTop: 2,
+          color: 'var(--tg-text-dim)', fontSize: 16, lineHeight: 1, cursor: 'grab', flexShrink: 0,
+        }}
+        title={t('seller.channel.block.dragHint')}
+      >
+        ⋮⋮
+      </span>
+
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xxs uppercase tracking-wider font-semibold" style={{ color: 'var(--tg-text-dim)' }}>
+            {labelFor(block.key, t)}
+          </span>
+          <span
+            aria-hidden
+            style={{ color: 'var(--tg-text-muted)', fontSize: 14 }}
+          >
+            👁
+          </span>
+        </div>
+        <div>{children}</div>
+      </div>
     </div>
+  );
+}
+
+function labelFor(key: BlockKey, t: (k: string) => string): string {
+  switch (key) {
+    case 'prefix': return t('seller.channel.block.prefix.label');
+    case 'title': return t('seller.channel.block.title.label');
+    case 'photo': return t('seller.channel.block.photo.label');
+    case 'price': return t('seller.channel.block.price.label');
+    case 'description': return t('seller.channel.block.description.label');
+    case 'contacts': return t('seller.channel.block.contacts.label');
+    case 'buyButton': return t('seller.channel.block.buyButton.label');
+  }
+}
+
+// ─── Inline edit popover (modal-ish bottom-sheet) ─────────────────────────
+function InlineEditPopover({
+  blockKey, visible, prefix, onPrefixChange, onSetVisible, onClose, t,
+}: {
+  blockKey: BlockKey;
+  visible: boolean;
+  prefix: string;
+  onPrefixChange: (v: string) => void;
+  onSetVisible: (v: boolean) => void;
+  onClose: () => void;
+  t: (k: string, p?: Record<string, string | number>) => string;
+}) {
+  const [localPrefix, setLocalPrefix] = useState(prefix);
+  const [localVisible, setLocalVisible] = useState(visible);
+
+  useEffect(() => { setLocalPrefix(prefix); }, [prefix]);
+  useEffect(() => { setLocalVisible(visible); }, [visible]);
+
+  const isPrefix = blockKey === 'prefix';
+  const hintKey = ({
+    title: 'seller.channel.block.title.fromProduct',
+    price: 'seller.channel.block.price.fromProduct',
+    description: 'seller.channel.block.description.fromProduct',
+    photo: 'seller.channel.block.photo.hint',
+    contacts: 'seller.channel.block.contacts.hint',
+    buyButton: 'seller.channel.block.buyButton.hint',
+    prefix: 'seller.channel.block.prefix.hint',
+  } as Record<BlockKey, string>)[blockKey];
+
+  const save = () => {
+    onSetVisible(isPrefix ? localPrefix.trim().length > 0 : localVisible);
+    if (isPrefix) onPrefixChange(localPrefix);
+    onClose();
+  };
+
+  const cancel = () => onClose();
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={cancel}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md flex flex-col gap-3 p-4"
+        style={{
+          background: 'var(--tg-bg)',
+          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          borderTop: '1px solid var(--tg-border)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+        }}
+      >
+        {/* Drag handle */}
+        <div
+          aria-hidden
+          style={{
+            width: 40, height: 4, borderRadius: 2,
+            background: 'var(--tg-border)', alignSelf: 'center',
+          }}
+        />
+
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>
+            {labelFor(blockKey, t)}
+          </h3>
+          <button
+            onClick={cancel}
+            aria-label={t('seller.channel.popover.cancel')}
+            className="text-sm w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ color: 'var(--tg-text-muted)', background: 'var(--tg-surface)' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
+          {t(hintKey)}
+        </p>
+
+        {isPrefix && (
+          <>
+            <textarea
+              value={localPrefix}
+              onChange={(e) => setLocalPrefix(e.target.value)}
+              rows={3}
+              spellCheck={true}
+              maxLength={300}
+              className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 80 }}
+              placeholder={t('seller.channel.block.prefix.placeholder')}
+            />
+            <p className="text-xxs text-right" style={{ color: 'var(--tg-text-muted)' }}>
+              {t('seller.channel.popover.charCount', { n: localPrefix.length, max: 300 })}
+            </p>
+          </>
+        )}
+
+        {!isPrefix && (
+          <button
+            onClick={() => setLocalVisible((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-3 rounded-xl"
+            style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border)', minHeight: 48 }}
+          >
+            <span className="text-sm" style={{ color: 'var(--tg-text-primary)' }}>
+              {t('seller.channel.popover.showInPost')}
+            </span>
+            <Toggle on={localVisible} onChange={() => setLocalVisible((v) => !v)} />
+          </button>
+        )}
+
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={cancel}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: 'var(--tg-surface)', color: 'var(--tg-text-primary)', border: '1px solid var(--tg-border)' }}
+          >
+            {t('seller.channel.popover.cancel')}
+          </button>
+          <button
+            onClick={save}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`, color: '#fff' }}
+          >
+            {isPrefix ? t('seller.channel.popover.save') : t('seller.channel.popover.done')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dev disclosure (advanced HTML escape hatch) ───────────────────────────
+function DevDisclosure({
+  open, onToggle, advancedMode, advancedTemplate, onAdvancedTemplateChange,
+  onOpenAdvanced, onBackToSimple, defaultTemplate, t,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  advancedMode: boolean;
+  advancedTemplate: string;
+  onAdvancedTemplateChange: (v: string) => void;
+  onOpenAdvanced: () => void;
+  onBackToSimple: () => void;
+  defaultTemplate?: string;
+  t: (k: string, p?: Record<string, string | number>) => string;
+}) {
+  return (
+    <GlassCard className="p-4 flex flex-col gap-2">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-2 text-left"
+        aria-expanded={open}
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 32 }}
+      >
+        <span className="text-xxs font-semibold uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--tg-text-dim)' }}>
+          <span aria-hidden>&lt;/&gt;</span>
+          {t('seller.channel.dev.toggle')}
+        </span>
+        <span aria-hidden style={{ color: 'var(--tg-text-dim)', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>⌄</span>
+      </button>
+
+      {open && (
+        <>
+          {!advancedMode ? (
+            <>
+              <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
+                {t('seller.channel.dev.warning')}
+              </p>
+              <button
+                onClick={onOpenAdvanced}
+                className="text-xs px-3 py-2 rounded-lg font-semibold"
+                style={{ color: ACCENT, background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.25)' }}
+              >
+                {t('seller.channel.dev.openConfirm')}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs" style={{ color: '#FBBF24' }}>
+                  {t('seller.channel.advanced.warn')}
+                </p>
+                <button
+                  onClick={onBackToSimple}
+                  className="text-xxs px-2 py-1 rounded-lg"
+                  style={{ color: ACCENT, background: 'rgba(168,85,247,0.10)' }}
+                >
+                  {t('seller.channel.dev.backToSimple')}
+                </button>
+              </div>
+              <textarea
+                value={advancedTemplate}
+                onChange={(e) => onAdvancedTemplateChange(e.target.value)}
+                rows={10}
+                spellCheck={false}
+                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none font-mono"
+                style={{ ...inputStyle, resize: 'vertical', minHeight: 220 }}
+                placeholder={defaultTemplate}
+              />
+            </>
+          )}
+        </>
+      )}
+    </GlassCard>
   );
 }

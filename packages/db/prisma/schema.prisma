@@ -245,6 +245,11 @@ model User {
   // SUBSCRIPTION-MODULE-001: admin подтверждает manual payments в Phase 1
   confirmedSubscriptionPayments SubscriptionPayment[]   @relation("subscriptionPaymentConfirmer")
 
+  // ACCOUNT-DELETION-OTP-001: self-service удаление аккаунта через TG OTP.
+  // Запись в этой таблице создаётся при POST /me/account-deletion/request,
+  // потребляется при /confirm. Каскадно удаляется при hard-delete user.
+  accountDeletionOtps AccountDeletionOtp[]
+
   @@index([role])
   @@index([status])
   @@index([referredBy])
@@ -291,6 +296,27 @@ model OtpRequest {
   @@index([phone])
   @@index([expiresAt])
   @@map("otp_requests")
+}
+
+// ACCOUNT-DELETION-OTP-001: OTP-таблица для self-service удаления аккаунта.
+// Отделена от otp_requests т.к. (а) скоупится по userId (не phone), (б) другой
+// TTL и rate-limit, (в) шум этих OTP не должен ломать существующие индексы по
+// otp_requests.phone. attemptCount хранится в строке (а не в Redis), потому что
+// запись и так короткоживущая и нам нужно атомарно инкрементить через Prisma.
+model AccountDeletionOtp {
+  id           String    @id @default(uuid())
+  userId       String
+  codeHash     String
+  expiresAt    DateTime  @db.Timestamptz
+  attemptCount Int       @default(0)
+  consumedAt   DateTime? @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consumedAt])
+  @@index([expiresAt])
+  @@map("account_deletion_otps")
 }
 
 // ─────────────────────────────────────────────

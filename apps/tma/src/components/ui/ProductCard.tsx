@@ -20,8 +20,16 @@ export interface FeedProduct {
 export function ProductCard({ product }: { product: FeedProduct }) {
   const navigate = useNavigate();
   const { tg } = useTelegram();
-  const imageUrl = product.images[0]?.url ?? null;
-  const price = `${Number(product.basePrice).toLocaleString('ru')} ${product.currencyCode === 'UZS' ? 'сум' : product.currencyCode}`;
+  const imageUrl = product.images?.[0]?.url ?? null;
+  // TMA-PRODUCT-EMPTY-001 (08.06.2026): hardening против stripped product DTO.
+  // Если бэкенд вернул товар без title/basePrice/images — карточка раньше выглядела пустой
+  // (только badge + heart). Теперь fallback: '—' для названия, скелетон для цены.
+  const safeTitle = product.title?.trim() || '—';
+  const basePriceNum = Number(product.basePrice);
+  const hasPrice = Number.isFinite(basePriceNum);
+  const price = hasPrice
+    ? `${basePriceNum.toLocaleString('ru')} ${product.currencyCode === 'UZS' ? 'сум' : (product.currencyCode || '')}`.trim()
+    : '— сум';
 
   const addToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -52,7 +60,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
   return (
     <div
       {...clickableA11y(openProduct)}
-      aria-label={`Открыть товар ${product.title}`}
+      aria-label={`Открыть товар ${safeTitle}`}
       onPointerEnter={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       onTouchStart={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       style={{
@@ -71,8 +79,15 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         maxWidth: '100%',
       }}
     >
-      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'var(--tg-surface-hover)', position: 'relative' }}>
-        <ProductImage src={imageUrl} alt={product.title} emptyVariant="product-empty" />
+      <div style={{
+        aspectRatio: '1/1',
+        overflow: 'hidden',
+        // TMA-PRODUCT-EMPTY-001: явный neutral-фон для empty-state, чтобы карточка
+        // без изображения не сливалась с фоном страницы.
+        background: imageUrl ? 'var(--tg-surface-hover)' : 'var(--tg-surface-elevated, var(--tg-surface-hover))',
+        position: 'relative',
+      }}>
+        <ProductImage src={imageUrl} alt={safeTitle} emptyVariant="product-empty" />
         <div style={{ position: 'absolute', top: 6, right: 6 }}>
           <WishlistButton productId={product.id} variant="card" />
         </div>
@@ -110,13 +125,13 @@ export function ProductCard({ product }: { product: FeedProduct }) {
           overflow: 'hidden',
           wordBreak: 'break-word',
         }}>
-          {product.title}
+          {safeTitle}
         </p>
 
         <p style={{
           fontSize: 13,
           fontWeight: 700,
-          color: 'var(--tg-accent)',
+          color: hasPrice ? 'var(--tg-accent)' : 'var(--tg-text-muted)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
