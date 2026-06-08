@@ -180,6 +180,14 @@ export default function DashboardPage() {
             )}
           </div>
           <button
+            onClick={() => navigate('/seller/subscription')}
+            className="px-2.5 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-semibold gap-1"
+            style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.30)', color: '#A855F7' }}
+            aria-label="Тариф"
+          >
+            💎 Тариф
+          </button>
+          <button
             onClick={() => navigate('/seller/settings')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)' }}
