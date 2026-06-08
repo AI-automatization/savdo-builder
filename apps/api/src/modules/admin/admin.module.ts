@@ -7,6 +7,7 @@ import { OrdersModule } from '../orders/orders.module';
 import { AuthModule } from '../auth/auth.module';
 
 import { AdminRepository } from './repositories/admin.repository';
+import { AdminNotificationsRepository } from './repositories/admin-notifications.repository';
 import { AdminController } from './admin.controller';
 import { AdminDbController } from './admin-db.controller';
 import { AdminBroadcastController } from './admin-broadcast.controller';
@@ -16,6 +17,7 @@ import { AdminProductsController } from './admin-products.controller';
 import { AdminStoresController } from './admin-stores.controller';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminSellersController } from './admin-sellers.controller';
+import { AdminNotificationsController } from './admin-notifications.controller';
 import { AdminContextService } from './services/admin-context.service';
 import { SuperAdminController } from './super-admin.controller';
 
@@ -50,6 +52,7 @@ import { VerifySellerExtendedUseCase } from './use-cases/verify-seller-extended.
 import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
 import { AuditBrokenMediaUrlsUseCase } from './use-cases/audit-broken-media-urls.use-case';
 import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-market.use-case';
+import { GetAdminNotificationsUseCase } from './use-cases/get-admin-notifications.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -72,10 +75,12 @@ import { MediaModule } from '../media/media.module';
     AdminStoresController,
     AdminUsersController,
     AdminSellersController,
+    AdminNotificationsController,
     SuperAdminController,
   ],
   providers: [
     AdminRepository,
+    AdminNotificationsRepository,
     AdminContextService,
     ListUsersUseCase,
     GetUserDetailUseCase,
@@ -108,6 +113,7 @@ import { MediaModule } from '../media/media.module';
     MigrateTgMediaToR2UseCase,
     AuditBrokenMediaUrlsUseCase,
     ActivateSellerOnMarketUseCase,
+    GetAdminNotificationsUseCase,
   ],
   exports: [AdminRepository],
 })

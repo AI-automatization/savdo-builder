@@ -63,6 +63,12 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
+        // TMA-MOBILE-OVERFLOW-001 (08.06.2026): min-width:0 нужен, чтобы grid-cell
+        // могла сжаться меньше intrinsic content width на узких экранах (320px).
+        // Без этого длинные слова в title или price могли раздвинуть карточку и
+        // увести соседнюю карточку за viewport.
+        minWidth: 0,
+        maxWidth: '100%',
       }}
     >
       <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'var(--tg-surface-hover)', position: 'relative' }}>
@@ -92,7 +98,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         )}
       </div>
 
-      <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+      <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
         <p style={{
           fontSize: 12,
           fontWeight: 600,
@@ -102,20 +108,29 @@ export function ProductCard({ product }: { product: FeedProduct }) {
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
+          wordBreak: 'break-word',
         }}>
           {product.title}
         </p>
 
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--tg-accent)' }}>{price}</p>
+        <p style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: 'var(--tg-accent)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>{price}</p>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, gap: 6, minWidth: 0 }}>
           <p style={{
             fontSize: 12,
             color: 'var(--tg-text-secondary)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            maxWidth: 'calc(100% - 52px)',
+            minWidth: 0,
+            flex: 1,
           }}>
             <span aria-hidden="true">🏪</span> {product.store.name}
           </p>
