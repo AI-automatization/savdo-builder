@@ -22,6 +22,10 @@ interface Store {
   isPublic: boolean;
   telegramChannelId: string | null;
   telegramChannelTitle: string | null;
+  // STORE-STATUS-BADGE-001: backend пока НЕ возвращает причину отклонения
+  // (поле rejectionReason в Store schema отсутствует). Оставляем optional —
+  // когда модерация начнёт писать причину, UI её сразу покажет без правок.
+  rejectionReason?: string | null;
 }
 
 export default function SellerStorePage() {
@@ -38,6 +42,11 @@ export default function SellerStorePage() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  // STORE-STATUS-BADGE-001: resubmit flow для REJECTED. После успеха backend
+  // возвращает store со статусом PENDING_REVIEW — кладём в state и UI
+  // автоматически переключает badge/подсказку.
+  const [resubmitting, setResubmitting] = useState(false);
+  const [resubmitMsg, setResubmitMsg] = useState<string>('');
 
   // StoreCategory state удалён вместе с UI блоком (Polat 07.05 — дубликат
   // с StoreDirectionsPicker). API /seller/categories продолжает работать,
@@ -73,6 +82,25 @@ export default function SellerStorePage() {
     tg?.HapticFeedback.impactOccurred('light');
     tg?.openTelegramLink?.(tgShareUrl(storeDeepLink(s.slug), text));
     track.storeLinkCopied(s.id);
+  };
+
+  const resubmitForReview = async () => {
+    if (!store) return;
+    setResubmitting(true);
+    setResubmitMsg('');
+    try {
+      // Backend endpoint: POST /api/v1/seller/store/submit (stores.controller.ts).
+      // Возвращает обновлённый Store со status=PENDING_REVIEW.
+      const updated = await api<Store>('/seller/store/submit', { method: 'POST' });
+      setStore(updated);
+      setResubmitMsg(t('seller.store.resubmitSuccess'));
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch {
+      setResubmitMsg(t('seller.store.resubmitError'));
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setResubmitting(false);
+    }
   };
 
   const togglePublish = async (s: Store) => {
@@ -281,6 +309,59 @@ export default function SellerStorePage() {
             </div>
             <Badge status={store.status} />
           </div>
+
+          {/* STORE-STATUS-BADGE-001: подсказка под бейджем статуса.
+              PENDING_REVIEW / DRAFT (legacy) → tg-text-muted нейтрально.
+              REJECTED → красноватый, плюс причина (если backend прислал)
+              и кнопка «Отправить заново». SUSPENDED → text-muted с CTA
+              «свяжитесь с поддержкой». APPROVED → короткий ok-текст. */}
+          {(store.status === 'PENDING_REVIEW' || store.status === 'DRAFT') && (
+            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
+              ⏳ {t('seller.store.status.pendingHint')}
+            </p>
+          )}
+          {store.status === 'APPROVED' && (
+            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
+              ✅ {t('seller.store.status.approvedHint')}
+            </p>
+          )}
+          {store.status === 'REJECTED' && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs" style={{ color: 'rgba(248,113,113,0.9)' }}>
+                {t('seller.store.status.rejectedHint')}
+              </p>
+              {store.rejectionReason && (
+                <p className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>
+                  <span style={{ color: 'var(--tg-text-muted)' }}>
+                    {t('seller.store.status.rejectedReasonLabel')}
+                  </span>{' '}
+                  {store.rejectionReason}
+                </p>
+              )}
+              <button
+                onClick={resubmitForReview}
+                disabled={resubmitting}
+                className="self-start px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{
+                  background: 'var(--tg-accent)',
+                  color: '#fff',
+                  cursor: resubmitting ? 'wait' : 'pointer',
+                  opacity: resubmitting ? 0.7 : 1,
+                  border: 'none',
+                }}
+              >
+                {resubmitting ? t('seller.store.resubmitting') : t('seller.store.resubmit')}
+              </button>
+              {resubmitMsg && (
+                <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>{resubmitMsg}</p>
+              )}
+            </div>
+          )}
+          {store.status === 'SUSPENDED' && (
+            <p className="text-xs" style={{ color: 'rgba(248,113,113,0.9)' }}>
+              🚫 {t('seller.store.status.suspendedHint')}
+            </p>
+          )}
 
           {store.description && !editing && (
             <p className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>{store.description}</p>
