@@ -782,4 +782,20 @@ export const uz: Translations = {
   'subscriptions.method.CLICK': 'Click',
   'subscriptions.method.PAYME': 'Payme',
   'subscriptions.method.COMP': 'Bepul',
+
+  // ── Admin Notifications (ADMIN-NOTIFICATIONS-001) ─────────────────────
+  'notifications.title': 'Bildirishnomalar',
+  'notifications.empty': 'Yangi voqealar yoʻq',
+  'notifications.markAllRead': 'Hammasini oʻqildi deb belgilash',
+  'notifications.openAria': 'Bildirishnomalarni ochish',
+  'notifications.dropdownAria': 'Bildirishnomalar paneli',
+  'notifications.unreadDot': 'Oʻqilmagan',
+  'notifications.unreadCountAria': 'Oʻqilmagan: {n}',
+  'notifications.justNow': 'hozirgina',
+  'notifications.minutesAgo': '{n} daq oldin',
+  'notifications.hoursAgo': '{n} soat oldin',
+  'notifications.daysAgo': '{n} kun oldin',
+  'notifications.type.MODERATION_OPEN': 'Moderatsiya',
+  'notifications.type.ORDER_PENDING': 'Yangi buyurtma',
+  'notifications.type.STORE_PENDING_REVIEW': 'Doʻkon tekshiruvda',
 };

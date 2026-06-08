@@ -65,14 +65,14 @@ export function AppShell({ children, role }: Props) {
         /* ── Mobile: content + bottom nav ── */
         <>
           <div
-            className="relative z-10 flex-1 px-4 pb-20"
+            className="relative z-10 flex-1 px-4 pb-20 min-w-0 overflow-x-hidden"
             style={{
               paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
               paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
             }}
           >
             <FullscreenButton />
-            <div className="w-full max-w-3xl mx-auto">
+            <div className="w-full max-w-3xl mx-auto min-w-0">
               <InAppBackBar />
               {children}
             </div>
