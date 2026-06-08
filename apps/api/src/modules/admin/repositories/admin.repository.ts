@@ -266,10 +266,13 @@ export class AdminRepository {
   }
 
   async unapproveStore(id: string) {
+    // API-STORE-DRAFT-REMOVAL-001: unapprove возвращает магазин в модерацию,
+    // не в DRAFT. DRAFT в новой модели не используется — после отзыва одобрения
+    // магазин должен попасть в очередь "На проверке" к админу повторно.
     return this.prisma.store.update({
       where: { id },
       data: {
-        status: 'DRAFT' as any,
+        status: 'PENDING_REVIEW' as any,
         isPublic: false,
       },
     });

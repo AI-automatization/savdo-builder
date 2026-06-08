@@ -422,7 +422,7 @@ model Store {
   description               String?
   logoMediaId               String?
   coverMediaId              String?
-  status                    StoreStatus @default(DRAFT)
+  status                    StoreStatus @default(PENDING_REVIEW)
   primaryGlobalCategoryId   String?
   city                      String
   region                    String?
