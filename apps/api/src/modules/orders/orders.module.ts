@@ -5,6 +5,7 @@ import { GetBuyerOrdersUseCase } from './use-cases/get-buyer-orders.use-case';
 import { GetSellerOrdersUseCase } from './use-cases/get-seller-orders.use-case';
 import { GetOrderDetailUseCase } from './use-cases/get-order-detail.use-case';
 import { UpdateOrderStatusUseCase } from './use-cases/update-order-status.use-case';
+import { MarkOrderPaidUseCase } from './use-cases/mark-order-paid.use-case';
 import { UsersModule } from '../users/users.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { StoresModule } from '../stores/stores.module';
@@ -20,6 +21,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     GetSellerOrdersUseCase,
     GetOrderDetailUseCase,
     UpdateOrderStatusUseCase,
+    MarkOrderPaidUseCase,
   ],
   exports: [OrdersRepository],
 })
