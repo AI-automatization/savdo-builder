@@ -1,6 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 
+/**
+ * API-AUTO-RESTORE-001: окно «soft-delete grace period».
+ * deletedAt в пределах этого окна → auto-restore при логине;
+ * deletedAt старше → ACCOUNT_PERMANENTLY_DELETED.
+ * Единый источник правды — переиспользуется обоими use-cases (telegram + otp).
+ */
+export const ACCOUNT_RESTORE_WINDOW_DAYS = 90;
+const ACCOUNT_RESTORE_WINDOW_MS = ACCOUNT_RESTORE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+export type RestoreOutcome =
+  | { state: 'not_deleted' }
+  | { state: 'restored'; previousDeletedAt: Date }
+  | { state: 'expired'; deletedAt: Date };
+
 @Injectable()
 export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -189,5 +203,61 @@ export class AuthRepository {
   // Backward-compat — оставляем для кода, который ещё не мигрирован.
   async isAdminMfaEnabled(userId: string): Promise<boolean> {
     return (await this.findAdminClaims(userId)).mfaEnabled;
+  }
+
+  /**
+   * API-AUTO-RESTORE-001: восстановление self-deleted аккаунта при логине,
+   * если с момента soft-delete прошло меньше {@link ACCOUNT_RESTORE_WINDOW_DAYS} дней.
+   *
+   * Контракт:
+   *  - deletedAt === null         → { state: 'not_deleted' }  (no-op, обычный login)
+   *  - deletedAt в окне 90 дней  → атомарно очищаем deletedAt + status='ACTIVE'
+   *                                и возвращаем { state: 'restored', previousDeletedAt }
+   *  - deletedAt старше 90 дней  → { state: 'expired', deletedAt }  (caller должен
+   *                                бросить ACCOUNT_PERMANENTLY_DELETED)
+   *
+   * ВАЖНО: метод НЕ снимает status=BLOCKED, выставленный admin-ом без deletedAt
+   * (admin-ban). Это сознательно — иначе self-login обходил бы admin suspension.
+   * Случай «deletedAt=null && status=BLOCKED» обрабатывается caller-ом отдельно.
+   *
+   * Зеркалит pattern softDeleteUserTx (account-deletion.repository.ts) — атомарная
+   * $transaction, чтобы исключить промежуточное состояние (deletedAt=null, status=BLOCKED).
+   * Sessions создаются дальше в use-case — здесь их не трогаем.
+   */
+  async restoreUserIfWithinGrace(userId: string): Promise<RestoreOutcome> {
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, deletedAt: true },
+    });
+    if (!current) {
+      // Защитный путь: id, который дёргает caller, всегда существует —
+      // он только что получен из findUserBy*. Но обработаем как not_deleted,
+      // чтобы caller продолжил и упал на findStoreIdByUserId/createSession
+      // с понятным контекстом, а не загадочным null.
+      return { state: 'not_deleted' };
+    }
+    if (current.deletedAt === null) {
+      return { state: 'not_deleted' };
+    }
+
+    const restoreDeadline = new Date(Date.now() - ACCOUNT_RESTORE_WINDOW_MS);
+    if (current.deletedAt <= restoreDeadline) {
+      // > 90 дней — окно восстановления истекло.
+      return { state: 'expired', deletedAt: current.deletedAt };
+    }
+
+    // Внутри окна — атомарно снимаем soft-delete.
+    const previousDeletedAt = current.deletedAt;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          deletedAt: null,
+          status: 'ACTIVE',
+        },
+        select: { id: true },
+      });
+    });
+    return { state: 'restored', previousDeletedAt };
   }
 }

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { DeleteAccountModal } from '@/components/ui/DeleteAccountModal';
 import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/lib/i18n';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
@@ -17,6 +19,7 @@ export default function BuyerSettingsPage() {
   const { tg, user: tgUser } = useTelegram();
   const { t, locale, setLocale } = useTranslation();
   const navigate = useNavigate();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const handleLogout = () => {
     tg?.HapticFeedback.notificationOccurred('warning');
@@ -193,18 +196,46 @@ export default function BuyerSettingsPage() {
           )}
         </GlassCard>
 
-        {/* TODO (ACCOUNT-DELETION-OTP-001): account deletion flow — next turn
-            Add DangerZoneCard with "Удалить аккаунт" button → modal:
-              1. POST /me/account-deletion/request   (отправляет 6-значный OTP в TG)
-              2. user enters code in 6-digit input
-              3. POST /me/account-deletion/confirm { code }  (soft-delete + logout)
-              4. show "Восстановление возможно 90 дней — войдите снова через @savdo_builderBOT"
-            i18n keys: settings.dangerZone, settings.deleteAccount, settings.deleteAccountWarn90d,
-                       settings.deleteAccountConfirmCode, settings.deleteAccountCta */}
+        {/* ── Опасная зона (ACCOUNT-DELETION-OTP-001) ── */}
+        {authenticated && (
+          <GlassCard
+            className="p-4 flex flex-col gap-3"
+            style={{ borderColor: 'rgba(239,68,68,0.25)' }}
+          >
+            <p
+              className="text-xxs font-semibold uppercase tracking-widest"
+              style={{ color: '#F87171' }}
+            >
+              {t('settings.dangerZone')}
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--tg-text-secondary)' }}>
+              {t('settings.dangerZoneHint')}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                tg?.HapticFeedback.impactOccurred('medium');
+                setDeleteModalOpen(true);
+              }}
+              aria-label={t('settings.deleteAccount.cta')}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
+              style={{
+                background: 'rgba(239,68,68,0.12)',
+                color: '#F87171',
+                border: '1px solid rgba(239,68,68,0.35)',
+                minHeight: 44,
+              }}
+            >
+              🗑 {t('settings.deleteAccount.cta')}
+            </button>
+          </GlassCard>
+        )}
 
         <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · v1.0
         </p>
+
+        <DeleteAccountModal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} />
 
       </div>
 
