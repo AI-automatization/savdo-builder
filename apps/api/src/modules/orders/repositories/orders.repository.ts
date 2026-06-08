@@ -143,6 +143,29 @@ export class OrdersRepository {
     });
   }
 
+  async markPaid(id: string, actorUserId: string): Promise<Order> {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.update({
+        where: { id },
+        data: { paymentStatus: 'PAID' },
+      });
+
+      // OrderStatusHistory используется как универсальный аудит-лог по заказу.
+      // Сохраняем переход same-status, но с пометкой о payment в comment.
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          oldStatus: order.status,
+          newStatus: order.status,
+          changedByUserId: actorUserId,
+          comment: 'Payment confirmed by seller (UNPAID → PAID)',
+        },
+      });
+
+      return order;
+    });
+  }
+
   async updateStatus(
     id: string,
     data: { newStatus: OrderStatus; oldStatus: OrderStatus; reason?: string; changedByUserId?: string },

@@ -782,4 +782,20 @@ export const ru: Translations = {
   'subscriptions.method.CLICK': 'Click',
   'subscriptions.method.PAYME': 'Payme',
   'subscriptions.method.COMP': 'Бесплатно',
+
+  // ── Admin Notifications (ADMIN-NOTIFICATIONS-001) ─────────────────────
+  'notifications.title': 'Уведомления',
+  'notifications.empty': 'Нет новых событий',
+  'notifications.markAllRead': 'Прочитать все',
+  'notifications.openAria': 'Открыть уведомления',
+  'notifications.dropdownAria': 'Панель уведомлений',
+  'notifications.unreadDot': 'Не прочитано',
+  'notifications.unreadCountAria': 'Непрочитанных: {n}',
+  'notifications.justNow': 'только что',
+  'notifications.minutesAgo': '{n} мин назад',
+  'notifications.hoursAgo': '{n} ч назад',
+  'notifications.daysAgo': '{n} д назад',
+  'notifications.type.MODERATION_OPEN': 'Модерация',
+  'notifications.type.ORDER_PENDING': 'Новый заказ',
+  'notifications.type.STORE_PENDING_REVIEW': 'Магазин на проверке',
 };

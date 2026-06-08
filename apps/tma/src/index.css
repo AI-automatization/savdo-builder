@@ -442,9 +442,14 @@ input:focus {
 
 /* ── Horizontal scroll fade hint ──────────────────────────────────────────
    Wrap any horizontal scroller in <div class="scroll-fade-x"> to add a
-   subtle gradient on the right edge that signals "there's more, swipe me". */
+   subtle gradient on the right edge that signals "there's more, swipe me".
+   TMA-MOBILE-OVERFLOW-001 (08.06.2026): добавлено overflow: hidden, чтобы
+   ::after pseudo-element (32px gradient справа) и внутренний horizontal
+   scroller не создавали viewport overflow при использовании с -mx-4. */
 .scroll-fade-x {
   position: relative;
+  overflow: hidden;
+  max-width: 100%;
 }
 .scroll-fade-x::after {
   content: '';
@@ -462,8 +467,23 @@ input:focus {
 /* Smooth scroll-snap for filter rows on touch devices */
 .scroll-snap-x {
   scroll-snap-type: x proximity;
-  scroll-padding-left: 4px;
+  scroll-padding-left: 16px;
+  scroll-padding-right: 32px;
 }
 .scroll-snap-x > * {
   scroll-snap-align: start;
+}
+
+/* ── Grid overflow guard (TMA-MOBILE-OVERFLOW-001, 08.06.2026) ─────────────
+   Grid items по умолчанию имеют min-width: auto, что позволяет содержимому
+   (длинные слова, фикс-ширины кнопок) раздувать ячейку за пределы трека и
+   уводить весь grid за viewport. На mobile (320–480px) при grid-cols-2/3
+   это вызывало horizontal scroll и обрезание текста в ProductCard слева.
+   .grid-safe гарантирует что children не выпирают. */
+.grid-safe {
+  min-width: 0;
+  max-width: 100%;
+}
+.grid-safe > * {
+  min-width: 0;
 }

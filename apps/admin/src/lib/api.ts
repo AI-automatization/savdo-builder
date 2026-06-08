@@ -15,6 +15,29 @@ export const auth = {
   },
 }
 
+// API-ADMIN-MFA-UI-DEADLOCK-001: декод JWT нужен здесь, чтобы после refresh
+// проверять mfaPending. Если refresh выдал mfaPending=true (admin сессия с
+// истёкшим/null mfaVerifiedAt), повторный retry будет 403 MfaEnforcedGuard —
+// тогда UI должен редиректить на MFA challenge, а не падать с Session expired.
+export function decodeJwtPayload<T = Record<string, unknown>>(token: string): T | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4)
+    const json = decodeURIComponent(
+      atob(padded).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''),
+    )
+    return JSON.parse(json) as T
+  } catch {
+    return null
+  }
+}
+
+function dispatchMfaRequired() {
+  window.dispatchEvent(new CustomEvent('auth:mfa-required'))
+}
+
 // ── Refresh (singleton promise — предотвращает race condition) ────────────────
 
 let refreshing: Promise<string> | null = null
@@ -58,11 +81,24 @@ async function request<T>(path: string, options?: RequestInit, retry = true): Pr
   if (res.status === 401 && retry) {
     try {
       const newToken = await tryRefresh()
+      // API-ADMIN-MFA-UI-DEADLOCK-001: если refresh вернул mfaPending=true —
+      // ретраить нельзя (MfaEnforcedGuard кинет 403 на любом admin endpoint).
+      // Просим UI отправить пользователя на MFA challenge через LoginPage.
+      const payload = decodeJwtPayload<{ mfaPending?: boolean }>(newToken)
+      if (payload?.mfaPending) {
+        dispatchMfaRequired()
+        throw new Error('MFA required')
+      }
       return request<T>(path, {
         ...options,
         headers: { ...options?.headers, Authorization: `Bearer ${newToken}` },
       }, false)
-    } catch {
+    } catch (e) {
+      // MFA required — не очищаем токены: access (с mfaPending) нужен для
+      // /admin/auth/mfa/login. LoginPage прочитает access и пойдёт на step 3.
+      if (e instanceof Error && e.message === 'MFA required') {
+        throw e
+      }
       auth.clear()
       window.dispatchEvent(new CustomEvent('auth:logout'))
       throw new Error('Session expired')
@@ -82,8 +118,17 @@ async function request<T>(path: string, options?: RequestInit, retry = true): Pr
     return undefined as unknown as T
   }
 
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.message ?? 'Request failed')
+  const data = await res.json().catch(() => ({}))
+
+  // API-ADMIN-MFA-UI-DEADLOCK-001: 403 с code=MFA_REQUIRED означает что текущий
+  // access уже mfaPending (например при первом запросе после refresh без retry).
+  // Сигналим UI чтобы LoginPage показал TOTP challenge.
+  if (res.status === 403 && data?.code === 'MFA_REQUIRED') {
+    dispatchMfaRequired()
+    throw new Error('MFA required')
+  }
+
+  if (!res.ok) throw new Error(data?.message ?? 'Request failed')
   return data
 }
 

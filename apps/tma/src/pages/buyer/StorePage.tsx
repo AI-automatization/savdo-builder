@@ -148,11 +148,11 @@ export default function StorePage() {
   };
 
   if (loading) return (
-    
-      <div className={`grid ${gridCols} gap-3 pt-2`}>
+
+      <div className={`grid-safe grid ${gridCols} gap-3 pt-2`}>
         {[1,2,3,4,5,6].map((i) => <ProductCardSkeleton key={i} />)}
       </div>
-    
+
   );
 
   if (error || !store) {
@@ -290,30 +290,30 @@ export default function StorePage() {
           </div>
         )}
 
-        <div className={`grid ${gridCols} gap-3`}>
+        <div className={`grid-safe grid ${gridCols} gap-3`}>
           {filtered.map((p) => (
             <div
               key={p.id}
               {...clickableA11y(() => navigate(`/buyer/store/${slug}/product/${p.id}`))}
               aria-label={`Открыть товар ${p.title}`}
-              className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
+              className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70 min-w-0 overflow-hidden"
               style={glass}
             >
               <div className="w-full aspect-square rounded-xl overflow-hidden"
                 style={{ background: 'var(--tg-surface)' }}>
                 <ProductImage src={p.images?.[0]?.url} alt={p.title} emptyVariant="product-empty" />
               </div>
-              <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'var(--tg-text-primary)' }}>
+              <p className="text-xs font-semibold leading-tight line-clamp-2 break-words" style={{ color: 'var(--tg-text-primary)' }}>
                 {p.title}
               </p>
-              <div className="flex items-center justify-between mt-auto">
-                <p className="text-xs font-bold" style={{ color: 'var(--tg-accent)' }}>
+              <div className="flex items-center justify-between gap-2 mt-auto min-w-0">
+                <p className="text-xs font-bold truncate min-w-0" style={{ color: 'var(--tg-accent)' }}>
                   {Number(p.basePrice).toLocaleString(locale === 'uz' ? 'uz' : 'ru')} {t('common.currency')}
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
                   aria-label={t('cart.addToCart')}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold shrink-0"
                   style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   +

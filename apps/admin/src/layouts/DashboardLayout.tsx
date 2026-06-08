@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { auth } from '../lib/api'
 import { ImpersonationBanner } from '../components/admin/ImpersonationBanner'
 import { CommandPalette } from '../components/admin/CommandPalette'
+import { NotificationBell } from '../components/admin/NotificationBell'
 import { MaxsavdoMark } from '../components/brand/MaxsavdoLogo'
 import { useTranslation, SUPPORTED_LOCALES } from '../lib/i18n'
 import {
@@ -281,6 +282,17 @@ export default function DashboardLayout() {
 
       {/* Main */}
       <main className="ml-[216px] flex-1 min-h-screen" id="main" aria-label={t('layout.content')}>
+        {/* ADMIN-NOTIFICATIONS-001 — header bar с bell-icon.
+            sticky чтобы при скролле длинных таблиц колокольчик оставался виден. */}
+        <div
+          className="sticky top-0 z-40 flex items-center justify-end gap-2 px-6 h-12"
+          style={{
+            background: 'var(--bg)',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <NotificationBell />
+        </div>
         <ImpersonationBanner />
         <Outlet />
       </main>
