@@ -16,6 +16,10 @@ export const ErrorCode = {
   REFRESH_TOKEN_INVALID: 'REFRESH_TOKEN_INVALID',
   SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
   UNAUTHORIZED: 'UNAUTHORIZED',
+  // API-AUTO-RESTORE-001: дифференциация фронтом "удалён навсегда" vs "временно
+  // заблокирован". deletedAt > 90 дней → ACCOUNT_PERMANENTLY_DELETED (нужна
+  // регистрация заново); status=BLOCKED без deletedAt → UNAUTHORIZED (admin-ban).
+  ACCOUNT_PERMANENTLY_DELETED: 'ACCOUNT_PERMANENTLY_DELETED',
 
   // AUTHZ
   FORBIDDEN: 'FORBIDDEN',

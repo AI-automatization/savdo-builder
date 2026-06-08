@@ -9,6 +9,11 @@ import { ConfirmAccountDeletionUseCase } from './use-cases/confirm-account-delet
 import { OtpService } from '../auth/services/otp.service';
 import { QUEUE_OTP } from '../../queues/queues.module';
 import { RedisModule } from '../../shared/redis.module';
+// API-ACCOUNT-PURGE-001: 90d hard-delete cron живёт в queues/processors/, но
+// регистрируется в этом модуле, потому что (a) семантически часть account-deletion
+// flow (T+90d финал soft-delete), (b) AccountDeletionModule уже импортируется
+// в app.module → cron автоматически подхватывается ScheduleModule.
+import { PurgeDeletedUsersProcessor } from '../../queues/processors/purge-deleted-users.processor';
 
 /**
  * ACCOUNT-DELETION-OTP-001
@@ -39,6 +44,9 @@ import { RedisModule } from '../../shared/redis.module';
     RequestAccountDeletionUseCase,
     ConfirmAccountDeletionUseCase,
     OtpService,
+    // API-ACCOUNT-PURGE-001: cron-processor, dispatch через @nestjs/schedule.
+    // Глобальный ScheduleModule.forRoot() уже подключён в app.module.ts.
+    PurgeDeletedUsersProcessor,
   ],
 })
 export class AccountDeletionModule {}

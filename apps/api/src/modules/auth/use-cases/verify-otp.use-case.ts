@@ -1,4 +1,4 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuthRepository } from '../repositories/auth.repository';
 import { OtpService } from '../services/otp.service';
@@ -10,6 +10,8 @@ const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
 @Injectable()
 export class VerifyOtpUseCase {
+  private readonly logger = new Logger(VerifyOtpUseCase.name);
+
   constructor(
     private readonly authRepo: AuthRepository,
     private readonly otpService: OtpService,
@@ -53,6 +55,41 @@ export class VerifyOtpUseCase {
     }
     // user is guaranteed non-null at this point (created above if missing)
     const resolvedUser = user!;
+
+    // API-USER-LOGIN-BLOCK-001 + API-AUTO-RESTORE-001: гард soft-deleted / BLOCKED.
+    // Ранее этот use-case вообще НЕ проверял deletedAt/status — soft-deleted юзер
+    // мог переслать OTP по своему телефону и обойти блок. Добавляем тот же flow,
+    // что и в TelegramAuthUseCase. Порядок проверок: deletedAt FIRST, потом status.
+    if (resolvedUser.deletedAt) {
+      const outcome = await this.authRepo.restoreUserIfWithinGrace(resolvedUser.id);
+      if (outcome.state === 'restored') {
+        resolvedUser.deletedAt = null;
+        resolvedUser.status = 'ACTIVE';
+        this.logger.warn(
+          `Account restored within grace period: user=${resolvedUser.id} previousDeletedAt=${outcome.previousDeletedAt.toISOString()}`,
+        );
+      } else if (outcome.state === 'expired') {
+        this.logger.warn(
+          `Login blocked (permanently deleted): user=${resolvedUser.id} deletedAt=${outcome.deletedAt.toISOString()}`,
+        );
+        throw new DomainException(
+          ErrorCode.ACCOUNT_PERMANENTLY_DELETED,
+          'Аккаунт удалён безвозвратно. Зарегистрируйтесь заново.',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      // state === 'not_deleted' — гонка, продолжаем.
+    } else if (resolvedUser.status === 'BLOCKED') {
+      // Admin-suspended (без deletedAt) — auto-restore НЕ применяется.
+      this.logger.warn(
+        `Login blocked (admin-suspended): user=${resolvedUser.id} status=${resolvedUser.status}`,
+      );
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Account is suspended',
+        HttpStatus.FORBIDDEN,
+      );
+    }
 
     // Generate sessionId upfront so we can build the token before the DB insert — one write
     const sessionId = randomUUID();
