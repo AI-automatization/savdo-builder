@@ -206,8 +206,8 @@ export default function EditProductPage() {
 
   const inputStyle = {
     ...glass,
-    background: 'rgba(255,255,255,0.05)',
-    color: '#fff',
+    background: 'var(--tg-surface)',
+    color: 'var(--tg-text-primary)',
     fontSize: 14,
     outline: 'none',
     width: '100%',
@@ -726,8 +726,8 @@ export default function EditProductPage() {
                   onClick={() => setShowStoreCatModal(true)}
                   className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
                   style={{
-                    background: storeCategoryId ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${storeCategoryId ? 'rgba(124,58,237,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                    background: storeCategoryId ? 'rgba(124,58,237,0.18)' : 'var(--tg-surface)',
+                    border: `1px solid ${storeCategoryId ? 'rgba(124,58,237,0.45)' : 'var(--tg-border)'}`,
                     color: storeCategoryId ? '#A855F7' : 'var(--tg-text-muted)',
                   }}
                 >
@@ -746,7 +746,7 @@ export default function EditProductPage() {
                 onClick={() => setShowGlobalCatModal(true)}
                 className="flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all active:opacity-70"
                 style={{
-                  background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.05)',
+                  background: globalCategoryId ? 'rgba(6,182,212,0.15)' : 'var(--tg-surface)',
                   border: `1px solid ${globalCategoryId ? 'rgba(6,182,212,0.40)' : 'rgba(239,68,68,0.35)'}`,
                   color: globalCategoryId ? '#22D3EE' : 'var(--tg-text-muted)',
                 }}
@@ -851,7 +851,7 @@ export default function EditProductPage() {
 
               {/* Прогресс бар при загрузке */}
               {photoUploading && (
-                <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.10)', overflow: 'hidden' }}>
+                <div style={{ height: 4, borderRadius: 4, background: 'var(--tg-border)', overflow: 'hidden' }}>
                   <div
                     style={{
                       height: '100%',
@@ -884,7 +884,7 @@ export default function EditProductPage() {
                               borderRadius: 10,
                               border: img.isPrimary
                                 ? '2px solid #A855F7'
-                                : '2px solid rgba(255,255,255,0.10)',
+                                : '2px solid var(--tg-border)',
                             }}
                           />
                         ) : (
@@ -893,7 +893,7 @@ export default function EditProductPage() {
                               width: 72,
                               height: 72,
                               borderRadius: 10,
-                              background: 'rgba(255,255,255,0.08)',
+                              background: 'var(--tg-surface-hover)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1005,10 +1005,10 @@ export default function EditProductPage() {
                         borderRadius: 12,
                         border: displayType === opt.value
                           ? '1.5px solid #A855F7'
-                          : '1.5px solid rgba(255,255,255,0.10)',
+                          : '1.5px solid var(--tg-border)',
                         background: displayType === opt.value
                           ? 'rgba(168,85,247,0.15)'
-                          : 'rgba(255,255,255,0.04)',
+                          : 'var(--tg-surface)',
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                       }}
@@ -1104,7 +1104,7 @@ export default function EditProductPage() {
 
                 {/* Добавить новый вариант (только если у товара ровно 1 optionGroup) */}
                 {(product.optionGroups?.length ?? 0) === 1 && (
-                  <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                  <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px dashed var(--tg-border-soft)' }}>
                     <input
                       value={newVariantValue}
                       onChange={(e) => setNewVariantValue(e.target.value)}
@@ -1139,7 +1139,7 @@ export default function EditProductPage() {
               {saving ? 'Сохранение...' : 'Сохранить изменения'}
             </Button>
 
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
+            <div style={{ borderTop: '1px solid var(--tg-border-soft)', margin: '4px 0' }} />
 
             {product.status !== 'HIDDEN_BY_ADMIN' && (
               <div className="flex flex-col gap-2">

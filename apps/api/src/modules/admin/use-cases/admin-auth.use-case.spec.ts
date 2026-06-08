@@ -23,7 +23,11 @@ jest.mock('qrcode', () => ({
 
 describe('AdminAuthUseCase', () => {
   let useCase: AdminAuthUseCase;
-  let prisma: { adminUser: { findUnique: jest.Mock; update: jest.Mock }; user: { findUnique: jest.Mock } };
+  let prisma: {
+    adminUser: { findUnique: jest.Mock; update: jest.Mock };
+    user: { findUnique: jest.Mock };
+    userSession: { updateMany: jest.Mock };
+  };
   let tokenService: jest.Mocked<TokenService>;
   let authRepo: jest.Mocked<AuthRepository>;
 
@@ -44,6 +48,8 @@ describe('AdminAuthUseCase', () => {
         update: jest.fn().mockResolvedValue(ADMIN),
       },
       user: { findUnique: jest.fn() },
+      // API-ADMIN-MFA-PERSIST-001: mfaChallenge помечает сессию как mfa-verified.
+      userSession: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     };
     tokenService = {
       generateAccessToken: jest.fn().mockReturnValue('NEW_JWT'),
@@ -166,6 +172,16 @@ describe('AdminAuthUseCase', () => {
       expect(prisma.adminUser.update).toHaveBeenCalledWith({
         where: { id: 'admin-1' },
         data: expect.objectContaining({ lastLoginAt: expect.any(Date) }),
+      });
+    });
+
+    it('API-ADMIN-MFA-PERSIST-001: помечает session.mfaVerifiedAt — refresh потом выдаст чистый JWT', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ ...ADMIN, mfaEnabled: true, mfaSecret: 'X' });
+      (verifySync as jest.Mock).mockReturnValue({ valid: true, delta: 0 });
+      await useCase.mfaChallenge('u-1', '123456', 'session-xyz', 'ADMIN');
+      expect(prisma.userSession.updateMany).toHaveBeenCalledWith({
+        where: { id: 'session-xyz', userId: 'u-1' },
+        data: expect.objectContaining({ mfaVerifiedAt: expect.any(Date) }),
       });
     });
 

@@ -654,7 +654,7 @@ export default function BuyerChatPage() {
                     background: 'var(--tg-surface-hover)',
                     border: '1px solid var(--tg-border)',
                     borderRadius: 12,
-                    color: '#fff',
+                    color: 'var(--tg-text-primary)',
                     fontSize: 14,
                     padding: '10px 14px',
                     outline: 'none',
@@ -669,7 +669,7 @@ export default function BuyerChatPage() {
                     borderRadius: 12,
                     background: 'var(--tg-accent)',
                     border: '1px solid var(--tg-accent-border)',
-                    color: '#fff',
+                    color: '#0A0A0A',
                     fontSize: 18,
                     cursor: 'pointer',
                     opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4,
@@ -805,7 +805,7 @@ export default function BuyerChatPage() {
               {unread > 0 && (
                 <span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-xxs font-bold"
-                  style={{ background: 'var(--tg-accent)', color: '#fff' }}
+                  style={{ background: 'var(--tg-accent)', color: '#0A0A0A' }}
                 >
                   {unread > 9 ? '9+' : unread}
                 </span>
@@ -813,7 +813,7 @@ export default function BuyerChatPage() {
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold truncate" style={{ color: unread > 0 ? '#fff' : 'var(--tg-text-primary)' }}>
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--tg-text-primary)', fontWeight: unread > 0 ? 700 : 600 }}>
                   {threadLabel(thread)}
                 </p>
                 {thread.lastMessageAt && (

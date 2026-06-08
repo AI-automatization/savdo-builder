@@ -79,10 +79,10 @@ export function ConfirmContainer() {
       <div
         className="w-full max-w-sm rounded-2xl p-5"
         style={{
-          background: 'var(--tg-card-bg, #1f2937)',
-          color: 'var(--tg-text, #fff)',
+          background: 'var(--tg-surface)',
+          color: 'var(--tg-text-primary)',
           border: '1px solid var(--tg-border-soft)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+          boxShadow: 'var(--tg-card-shadow)',
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -113,7 +113,7 @@ export function ConfirmContainer() {
             style={
               danger
                 ? { background: 'rgba(239,68,68,0.9)', color: '#fff' }
-                : { background: 'var(--tg-accent, #2AABEE)', color: '#fff' }
+                : { background: 'var(--tg-accent)', color: '#0A0A0A' }
             }
           >
             {confirmText}

@@ -17,14 +17,20 @@ export const COLORS = {
 // Plain surface card (design-v2 не использует frosted glass — flat surface).
 // Старое имя `glass` сохранено для совместимости с компонентами, которые
 // импортят { glass } и spread'ят в style.
+//
+// ВАЖНО (04.06.2026, hotfix light theme):
+// Раньше тут было `background: '#141414'` хардкодом → ломало light-theme
+// (Sidebar/StoreCard оставались тёмными на белом фоне body). Теперь через
+// CSS-переменные — в dark theme это #141414 (--tg-surface), в light — #FAFAFA.
 export const glass = {
-  background:          '#141414',
+  background:          'var(--tg-surface)',
   backdropFilter:      'none',
   WebkitBackdropFilter:'none',
-  border:              '1px solid rgba(255,255,255,0.12)',
+  border:              '1px solid var(--tg-border-soft)',
   borderRadius:        18,
-  boxShadow:           '0 8px 32px rgba(0,0,0,0.40)',
+  boxShadow:           'var(--tg-card-shadow, 0 8px 32px rgba(0,0,0,0.40))',
 } as const;
 
-// Rich Black gradient (subtle, чтобы поверхность не казалась плоско-серой)
+// Rich Black gradient (subtle, чтобы поверхность не казалась плоско-серой).
+// Используется в dark mode; в light mode body берёт сплошной #FFFFFF из CSS vars.
 export const gradientBg = 'linear-gradient(160deg, #0A0A0A 0%, #101010 50%, #0A0A0A 100%)';

@@ -252,18 +252,27 @@ model User {
 }
 
 model UserSession {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   userId           String
   refreshTokenHash String
   deviceType       String?
   deviceName       String?
   ipAddress        String?
   userAgent        String?
-  lastSeenAt       DateTime @default(now())
+  lastSeenAt       DateTime  @default(now())
   expiresAt        DateTime
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
+  // API-ADMIN-MFA-PERSIST-001: timestamp последнего успешного MFA challenge для
+  // этой сессии. Используется refresh-session чтобы НЕ требовать новый MFA в
+  // течение MFA_GRACE_HOURS после challenge — иначе каждый refresh (короткий TTL
+  // access) ронял admin в MFA loop при любом destructive action.
+  mfaVerifiedAt    DateTime?
 
-  user User @relation(fields: [userId], references: [id])
+  // API-USER-DELETE-FK-CASCADE-001: при удалении user (через admin/db DELETE
+  // или admin endpoint) — все его sessions удаляются автоматически. Без этого
+  // delete user падал на FK RESTRICT (PostgresError 23001). Session без живого
+  // user всё равно невалидна — каскадное удаление безопасно.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])

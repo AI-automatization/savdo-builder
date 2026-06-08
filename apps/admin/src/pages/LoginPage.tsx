@@ -69,6 +69,20 @@ export default function LoginPage() {
     }
   }, [timer])
 
+  // API-ADMIN-MFA-UI-DEADLOCK-001: если LoginPage открылся при уже залогиненном
+  // admin с mfaPending=true (после redirect от api.ts через 'auth:mfa-required'),
+  // сразу переходим на step 3 — без повторного ввода phone/OTP.
+  useEffect(() => {
+    const access = auth.getAccess()
+    if (!access) return
+    const payload = decodeJwtPayload<{ mfaPending?: boolean }>(access)
+    if (payload?.mfaPending) {
+      setLoading(true)
+      routeToMfa()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const sendOtp = async () => {
     setError('')
     if (!/^\+998\d{9}$/.test(phone)) {

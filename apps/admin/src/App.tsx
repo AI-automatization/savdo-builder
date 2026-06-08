@@ -54,8 +54,16 @@ function AuthLogoutListener() {
   const navigate = useNavigate()
   useEffect(() => {
     const handler = () => navigate('/login', { replace: true })
+    // API-ADMIN-MFA-UI-DEADLOCK-001: 'auth:mfa-required' летит из api.ts когда
+    // refresh выдал mfaPending=true или endpoint вернул 403 MFA_REQUIRED.
+    // LoginPage сам прочитает access и перейдёт на step 3 (challenge/setup).
+    const mfaHandler = () => navigate('/login', { replace: true })
     window.addEventListener('auth:logout', handler)
-    return () => window.removeEventListener('auth:logout', handler)
+    window.addEventListener('auth:mfa-required', mfaHandler)
+    return () => {
+      window.removeEventListener('auth:logout', handler)
+      window.removeEventListener('auth:mfa-required', mfaHandler)
+    }
   }, [navigate])
   return null
 }

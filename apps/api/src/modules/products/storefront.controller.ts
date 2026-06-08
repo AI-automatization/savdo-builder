@@ -187,13 +187,16 @@ export class StorefrontController {
 
     const mapProduct = (p: PublicProductListItem) => {
       const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
-      const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+      // Раньше всегда sum(variants) → single-SKU товары (без variants) показывались как OOS.
+      const stock = this.presenter.computeStockFields(p, variants);
       return {
         ...rest,
         ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
         variantCount: _count.variants,
-        totalStock,
+        totalStock: stock.totalStock,
+        inStock: stock.inStock,
       };
     };
 
@@ -242,6 +245,10 @@ export class StorefrontController {
     }));
     // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
     const storeRef = await this.presenter.mapProductStoreRef(product.store);
+    // BUG-2: единый stock-агрегат, та же формула что в list mapper'ах.
+    // Без этого detail отдавал raw denorm `product.totalStock` (мог отставать
+    // от variants) и не предоставлял `inStock` boolean для фронта.
+    const stock = this.presenter.computeStockFields(product, product.variants);
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
@@ -249,6 +256,8 @@ export class StorefrontController {
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
       store: storeRef,
+      totalStock: stock.totalStock,
+      inStock: stock.inStock,
     };
   }
 
@@ -297,7 +306,8 @@ export class StorefrontController {
       });
       data = result.products.map((p) => {
         const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
-        const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+        // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+        const stock = this.presenter.computeStockFields(p, variants);
         return {
           ...rest,
           ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
@@ -305,7 +315,8 @@ export class StorefrontController {
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
           variantCount: _count.variants,
-          totalStock,
+          totalStock: stock.totalStock,
+          inStock: stock.inStock,
         };
       });
       total = result.total;
@@ -324,14 +335,16 @@ export class StorefrontController {
       });
       data = result.products.map((p) => {
         const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
-        const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+        // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+        const stock = this.presenter.computeStockFields(p, variants);
         return {
           ...rest,
           ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
           variantCount: _count.variants,
-          totalStock,
+          totalStock: stock.totalStock,
+          inStock: stock.inStock,
         };
       });
       total = result.total;
@@ -381,6 +394,8 @@ export class StorefrontController {
       }
     }
 
+    // BUG-2: единый stock-агрегат, та же формула что в list mapper'ах.
+    const stock = this.presenter.computeStockFields(product, product.variants);
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
@@ -388,6 +403,8 @@ export class StorefrontController {
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
       store: storeRef,
+      totalStock: stock.totalStock,
+      inStock: stock.inStock,
       ...(inWishlist !== undefined ? { inWishlist } : {}),
     };
   }

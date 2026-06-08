@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Param,
   Body,
   Query,
@@ -25,6 +26,7 @@ import { GetBuyerOrdersUseCase } from './use-cases/get-buyer-orders.use-case';
 import { GetSellerOrdersUseCase } from './use-cases/get-seller-orders.use-case';
 import { GetOrderDetailUseCase } from './use-cases/get-order-detail.use-case';
 import { UpdateOrderStatusUseCase } from './use-cases/update-order-status.use-case';
+import { MarkOrderPaidUseCase } from './use-cases/mark-order-paid.use-case';
 import { mapOrderDetail } from './orders.mapper';
 
 @Controller()
@@ -40,6 +42,7 @@ export class OrdersController {
     private readonly getSellerOrdersUseCase: GetSellerOrdersUseCase,
     private readonly getOrderDetailUseCase: GetOrderDetailUseCase,
     private readonly updateOrderStatusUseCase: UpdateOrderStatusUseCase,
+    private readonly markOrderPaidUseCase: MarkOrderPaidUseCase,
   ) {}
 
   // ─── BUYER ROUTES ────────────────────────────────────────────────────────────
@@ -178,6 +181,22 @@ export class OrdersController {
       actorUserId: user.sub,
       storeId,
     });
+  }
+
+  // POST /api/v1/seller/orders/:id/mark-paid
+  @Post('seller/orders/:id/mark-paid')
+  @Roles('SELLER')
+  async markSellerOrderPaid(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') orderId: string,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    const updated = await this.markOrderPaidUseCase.execute({
+      orderId,
+      storeId,
+      actorUserId: user.sub,
+    });
+    return { id: updated.id, paymentStatus: updated.paymentStatus };
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
