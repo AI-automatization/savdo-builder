@@ -34,14 +34,16 @@ const STATUS_CFG: Record<string, { variant: 'success' | 'warning' | 'danger' | '
   DRAFT:          { variant: 'muted',   labelKey: 'stores.sDraft' },
 }
 
-const FILTERS = ['ALL', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'SUSPENDED', 'DRAFT'] as const
+// API-STORE-DRAFT-REMOVAL-001: таб "Черновики" убран — новые магазины сразу
+// идут в PENDING_REVIEW. STATUS_CFG.DRAFT оставлен на случай legacy-записей
+// до миграции (отрендерит серый бейдж), но фильтра больше нет.
+const FILTERS = ['ALL', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'SUSPENDED'] as const
 const FILTER_LABEL_KEY: Record<string, string> = {
   ALL: 'common.all',
   PENDING_REVIEW: 'stores.sPendingReview',
   APPROVED: 'stores.filterApproved',
   PUBLISHED: 'stores.filterPublished',
   SUSPENDED: 'stores.filterSuspended',
-  DRAFT: 'stores.filterDraft',
 }
 
 export default function StoresPage() {
