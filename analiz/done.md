@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-06-08 (Полат) — ADMIN-NOTIFICATIONS-001 MVP
+
+### ✅ [ADMIN-NOTIFICATIONS-001] Bell + dropdown + polling в админ-панели
+- **Важность:** 🟡 P1 · **Дата:** 08.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/repositories/admin-notifications.repository.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/get-admin-notifications.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin-notifications.controller.ts` (новый)
+  - `apps/api/src/modules/admin/admin.module.ts` (регистрация)
+  - `apps/admin/src/lib/useAdminNotifications.ts` (новый hook)
+  - `apps/admin/src/components/admin/NotificationBell.tsx` (новый компонент)
+  - `apps/admin/src/layouts/DashboardLayout.tsx` (header c bell)
+  - `apps/admin/src/lib/i18n/ru.ts`, `uz.ts` (15 ключей)
+- **Что сделано:** `GET /api/v1/admin/notifications?limit=20` — агрегирует
+  открытые ModerationCase + PENDING Order + PENDING_REVIEW Store, мерджит по
+  createdAt DESC. Без отдельной таблицы и write-path (один superadmin, "прочитано"
+  хранится в localStorage по стабильному id `sourceType:entityId`). UI: bell
+  в sticky header справа от Outlet, badge с unread count, dropdown с
+  group/icon-цветами по типу, click → navigate. Polling 30s + pause на скрытой
+  вкладке + refetch при visibility=visible. Защищён JwtAuthGuard + RolesGuard
+  + AdminAccessGuard + MfaEnforcedGuard.
+- **Решение записано:** Obsidian `decisions/2026-06-08-admin-notifications-mvp-aggregator-vs-table.md`
+
 ## 2026-06-05 (Полат) — BUG-2 unify inStock между list/detail mappers
 
 ### ✅ [BUG-2] Унифицировать inStock между storefront list и detail mappers
