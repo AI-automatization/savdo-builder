@@ -380,6 +380,11 @@ export const ru: Translations = {
   'seller.store.errNoTg': 'Введите ссылку Telegram для связи',
   // STORE-STATUS-BADGE-001: статус магазина + подсказки/действия.
   'seller.store.status.pendingHint': 'Заявка проверяется. Обычно занимает 1-2 дня.',
+  'seller.store.status.pendingTitle': 'Магазин на проверке',
+  'seller.store.status.pendingTime': 'Обычно 1–2 дня',
+  'seller.store.status.pendingStep1': 'Мы получили вашу заявку',
+  'seller.store.status.pendingStep2': 'Модератор проверяет данные магазина',
+  'seller.store.status.pendingStep3': 'После одобрения ваш магазин появится на платформе',
   'seller.store.status.approvedHint': 'Магазин активен',
   'seller.store.status.rejectedHint': 'Заявка отклонена. Исправьте замечания и отправьте заново.',
   'seller.store.status.rejectedReasonLabel': 'Причина:',

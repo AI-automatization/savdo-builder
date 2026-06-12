@@ -1,5 +1,39 @@
 # Done — Азим + Полат
 
+## 2026-06-12 (Полат) — Stock check bug + Admin subscription widget + TMA onboarding + Delete account
+
+### ✅ [BUG-STOCK-SIMPLE-001] Stock не проверялся для простых товаров (без вариантов)
+- **Важность:** 🔴 P0 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/checkout/services/validate-cart-items.service.ts`
+- **Что сделано:** добавлена проверка `product.totalStock < cartItem.quantity` для товаров без
+  `variantId`. Раньше `totalStock` не проверялся — покупатель мог заказать больше чем есть в наличии.
+
+### ✅ [ADMIN-SUB-WIDGET-001] Виджет подписки на странице магазина в админке
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/subscriptions/repositories/subscriptions.repository.ts` (sellerId filter)
+  - `apps/api/src/modules/admin/admin-subscriptions.controller.ts` (sellerId query param)
+  - `apps/admin/src/pages/StoreDetailPage.tsx` (SubscriptionCard компонент)
+- **Что сделано:** карточка подписки на StoreDetailPage — показывает tier/status/даты/daysLeft.
+  Кнопка «Управление» открывает SubscriptionDetailModal с полными действиями
+  (mark-paid/extend-trial/cancel/comp). Добавлен `sellerId` filter в GET /admin/subscriptions.
+
+### ✅ [TMA-PENDING-ONBOARDING-001] Расширенный PENDING_REVIEW экран в TMA
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/seller/StorePage.tsx`
+  - `apps/tma/src/lib/i18n/ru.ts`, `apps/tma/src/lib/i18n/uz.ts` (6 новых ключей)
+- **Что сделано:** вместо одной строки «Заявка проверяется» — блок с заголовком, временем
+  проверки и 3 шагами (получено → проверяется → появится на платформе).
+
+### ✅ [TMA-DELETE-ACCOUNT-SELLER-001] Кнопка удаления аккаунта в Seller Settings TMA
+- **Важность:** 🟢 P2 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/seller/SettingsPage.tsx`
+- **Что сделано:** добавлена «Опасная зона» с кнопкой «Удалить аккаунт» → открывает
+  существующий `DeleteAccountModal`. Buyer SettingsPage уже имела этот блок; теперь паритет.
+
 ## 2026-06-08 (Полат) — ADMIN-NOTIFICATIONS-001 MVP
 
 ### ✅ [ADMIN-NOTIFICATIONS-001] Bell + dropdown + polling в админ-панели

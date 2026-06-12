@@ -316,9 +316,36 @@ export default function SellerStorePage() {
               и кнопка «Отправить заново». SUSPENDED → text-muted с CTA
               «свяжитесь с поддержкой». APPROVED → короткий ok-текст. */}
           {(store.status === 'PENDING_REVIEW' || store.status === 'DRAFT') && (
-            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
-              ⏳ {t('seller.store.status.pendingHint')}
-            </p>
+            <div
+              className="flex flex-col gap-3 rounded-xl p-4"
+              style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border)' }}
+            >
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: 18 }}>⏳</span>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--tg-text)', margin: 0 }}>
+                    {t('seller.store.status.pendingTitle')}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--tg-text-muted)', margin: 0 }}>
+                    {t('seller.store.status.pendingTime')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {[
+                  { emoji: '✅', key: 'seller.store.status.pendingStep1' },
+                  { emoji: '🔍', key: 'seller.store.status.pendingStep2' },
+                  { emoji: '🚀', key: 'seller.store.status.pendingStep3' },
+                ].map(({ emoji, key }) => (
+                  <div key={key} className="flex items-start gap-2">
+                    <span style={{ fontSize: 13, flexShrink: 0 }}>{emoji}</span>
+                    <p className="text-xs" style={{ color: 'var(--tg-text-secondary)', margin: 0 }}>
+                      {t(key)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
           {store.status === 'APPROVED' && (
             <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>

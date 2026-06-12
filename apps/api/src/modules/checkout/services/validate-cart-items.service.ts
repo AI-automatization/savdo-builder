@@ -72,6 +72,15 @@ export class ValidateCartItemsService {
         continue;
       }
 
+      if (!cartItem.variantId && product.totalStock < cartItem.quantity) {
+        invalid.push({
+          productId: cartItem.productId,
+          variantId: null,
+          reason: `Insufficient stock: available ${product.totalStock}, requested ${cartItem.quantity}`,
+        });
+        continue;
+      }
+
       let unitPrice = toNum(cartItem.unitPriceSnapshot);
       let variantLabelSnapshot: string | undefined;
       let skuSnapshot: string | undefined;
