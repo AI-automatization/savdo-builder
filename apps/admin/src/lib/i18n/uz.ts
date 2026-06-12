@@ -202,6 +202,7 @@ export const uz: Translations = {
   'login.mfaSecretLabel': 'Yoki kalitni qoʻlda kiriting',
   'login.mfaSetupConfirm': 'Tasdiqlash va kirish',
   'login.loginAgain': 'Qaytadan kirish',
+  'login.support': 'Yordam kerakmi? Bizga yozing',
   'login.otpLegend': 'Telegramdan kelgan 6 xonali kodni kiriting',
   'login.otpGroupAria': 'Tasdiqlash kodi',
   'login.otpDigitAria': '6 dan {n}-raqam',

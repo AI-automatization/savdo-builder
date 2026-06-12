@@ -202,6 +202,7 @@ export const ru: Translations = {
   'login.mfaSecretLabel': 'Или введите ключ вручную',
   'login.mfaSetupConfirm': 'Подтвердить и войти',
   'login.loginAgain': 'Войти заново',
+  'login.support': 'Нужна помощь? Напишите нам',
   'login.otpLegend': 'Введите 6-значный код из Telegram',
   'login.otpGroupAria': 'Код подтверждения',
   'login.otpDigitAria': 'Цифра {n} из 6',

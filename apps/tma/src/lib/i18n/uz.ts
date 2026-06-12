@@ -255,6 +255,7 @@ export const uz: Translations = {
   'settings.becomeSellerCta': '🏪 Sotuvchi boʻlish',
   'settings.app': 'Ilova',
   'settings.tgBot': 'Telegram-bot',
+  'settings.support': 'Qoʻllab-quvvatlash',
   'settings.role.buyer': 'Xaridor',
   'settings.role.seller': 'Sotuvchi',
 

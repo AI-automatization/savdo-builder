@@ -10,6 +10,8 @@ import { showToast } from '@/components/ui/Toast';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DeleteAccountModal } from '@/components/ui/DeleteAccountModal';
 
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT'}`;
+
 interface SellerProfile {
   id: string;
   fullName: string;
@@ -343,6 +345,16 @@ export default function SellerSettingsPage() {
             style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
           >
             <span>👤</span> Профиль
+          </button>
+          <button
+            onClick={() => tg?.openTelegramLink(SUPPORT_URL)}
+            className="flex items-center justify-between py-2.5 text-sm"
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
+          >
+            <span className="flex items-center gap-3">
+              <span>💬</span> Поддержка
+            </span>
+            <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>→</span>
           </button>
           <button
             onClick={handleLogout}

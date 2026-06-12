@@ -252,6 +252,7 @@ export const ru: Translations = {
   'settings.becomeSellerCta': '🏪 Стать продавцом',
   'settings.app': 'Приложение',
   'settings.tgBot': 'Telegram-бот',
+  'settings.support': 'Поддержка',
   'settings.role.buyer': 'Покупатель',
   'settings.role.seller': 'Продавец',
 
