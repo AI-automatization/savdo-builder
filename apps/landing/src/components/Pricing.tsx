@@ -3,20 +3,20 @@ import { Check } from 'lucide-react';
 export type Locale = 'uz' | 'ru';
 
 export type PricingPlan = {
-  id: 'trial' | 'basic' | 'pro';
+  id: 'free' | 'pro' | 'studio';
   name: string;
   price: string;
   period: string;
-  description: string;
+  tagline: string;
   features: string[];
   cta: string;
-  badge?: string;
+  highlight?: boolean;
 };
 
 export type PricingDict = {
   title: string;
   subtitle?: string;
-  plans: PricingPlan[]; // expect 3, order: trial, basic, pro
+  plans: PricingPlan[];
 };
 
 type PricingProps = {
@@ -44,7 +44,7 @@ export default function Pricing({ dict }: PricingProps) {
 
         <ul className="mt-14 grid gap-6 md:grid-cols-3">
           {dict.plans.map((plan) => {
-            const highlight = plan.id === 'basic';
+            const highlight = plan.highlight === true;
             return (
               <li
                 key={plan.id}
@@ -55,23 +55,10 @@ export default function Pricing({ dict }: PricingProps) {
                     : 'border-brand-border bg-brand-surface')
                 }
               >
-                {plan.badge ? (
-                  <span
-                    className={
-                      'absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ' +
-                      (highlight
-                        ? 'bg-brand-accent text-brand-bg'
-                        : 'bg-brand-bg text-brand-muted border border-brand-border')
-                    }
-                  >
-                    {plan.badge}
-                  </span>
-                ) : null}
-
                 <h3 className="text-lg font-semibold text-brand-text">
                   {plan.name}
                 </h3>
-                <p className="mt-1 text-sm text-brand-muted">{plan.description}</p>
+                <p className="mt-1 text-sm text-brand-muted">{plan.tagline}</p>
 
                 <div className="mt-6 flex items-baseline gap-2">
                   <span className="text-4xl font-bold tracking-tight text-brand-text">

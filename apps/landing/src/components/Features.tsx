@@ -17,8 +17,9 @@ export type FeatureItem = {
 
 export type FeaturesDict = {
   title: string;
+  body?: string;
   subtitle?: string;
-  items: FeatureItem[]; // expect 6
+  items: FeatureItem[];
 };
 
 type FeaturesProps = {

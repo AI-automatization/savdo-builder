@@ -4,13 +4,15 @@ import type { LucideIcon } from 'lucide-react';
 export type Locale = 'uz' | 'ru';
 
 export type HowStep = {
+  n?: string;
   title: string;
   body: string;
 };
 
 export type HowDict = {
   title: string;
-  steps: [HowStep, HowStep, HowStep];
+  body?: string;
+  steps: HowStep[];
 };
 
 type HowProps = {

@@ -20,14 +20,14 @@ export default async function HomePageRu() {
     <>
       <Header locale={locale} dict={dict} />
       <main>
-        <Hero locale={locale} dict={dict} />
-        <How locale={locale} dict={dict} />
-        <Features locale={locale} dict={dict} />
-        <FeaturedStores locale={locale} dict={dict} stores={stores} />
-        <Pricing locale={locale} dict={dict} />
-        <FAQ locale={locale} dict={dict} />
+        <Hero locale={locale} dict={dict.hero} />
+        <How locale={locale} dict={dict.how} />
+        <Features locale={locale} dict={dict.features} />
+        <FeaturedStores locale={locale} dict={dict.stores} stores={stores} />
+        <Pricing locale={locale} dict={dict.pricing} />
+        <FAQ locale={locale} dict={dict.faq} />
       </main>
-      <Footer locale={locale} dict={dict} />
+      <Footer locale={locale} dict={dict.footer} />
     </>
   );
 }

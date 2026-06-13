@@ -5,12 +5,10 @@ export type Locale = 'uz' | 'ru';
 
 export type FooterDict = {
   tagline: string;
-  productHeading: string;
-  productLinks: { label: string; href: string }[];
-  contactHeading: string;
-  channelLabel: string;
-  emailLabel: string;
   rights: string;
+  contact: string;
+  bot: string;
+  channel: string;
 };
 
 type FooterProps = {
@@ -18,6 +16,7 @@ type FooterProps = {
   dict: FooterDict;
 };
 
+const BOT_URL = 'https://t.me/savdo_builderBOT';
 const TG_CHANNEL = 'https://t.me/savdobuilder';
 const EMAIL = 'hello@maxsavdo.uz';
 
@@ -28,7 +27,6 @@ export default function Footer({ locale, dict }: FooterProps) {
   return (
     <footer className="border-t border-brand-border bg-brand-bg">
       <div className="mx-auto grid w-full max-w-content gap-10 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:gap-12 lg:px-8">
-        {/* Brand */}
         <div>
           <Link href={home} className="flex items-center gap-2" aria-label="MaxSavdo">
             <span className="inline-block h-7 w-7 rounded-md bg-brand-accent" aria-hidden />
@@ -39,31 +37,21 @@ export default function Footer({ locale, dict }: FooterProps) {
           </p>
         </div>
 
-        {/* Product links */}
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
-            {dict.productHeading}
+            {dict.contact}
           </h4>
           <ul className="mt-4 flex flex-col gap-3 text-sm">
-            {dict.productLinks.map((l) => (
-              <li key={l.href}>
-                <a
-                  href={l.href}
-                  className="text-brand-text transition-colors hover:text-brand-accent"
-                >
-                  {l.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Contacts */}
-        <div>
-          <h4 className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
-            {dict.contactHeading}
-          </h4>
-          <ul className="mt-4 flex flex-col gap-3 text-sm">
+            <li>
+              <a
+                href={BOT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
+              >
+                <Send size={16} aria-hidden /> {dict.bot}
+              </a>
+            </li>
             <li>
               <a
                 href={TG_CHANNEL}
@@ -71,7 +59,7 @@ export default function Footer({ locale, dict }: FooterProps) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
               >
-                <Send size={16} aria-hidden /> {dict.channelLabel}
+                <Send size={16} aria-hidden /> {dict.channel}
               </a>
             </li>
             <li>
@@ -79,7 +67,7 @@ export default function Footer({ locale, dict }: FooterProps) {
                 href={`mailto:${EMAIL}`}
                 className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
               >
-                <Mail size={16} aria-hidden /> {dict.emailLabel}
+                <Mail size={16} aria-hidden /> {EMAIL}
               </a>
             </li>
           </ul>
