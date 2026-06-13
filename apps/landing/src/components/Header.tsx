@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export type Locale = 'uz' | 'ru';
 
@@ -38,15 +39,13 @@ export default function Header({ locale, dict }: HeaderProps) {
           className="flex items-center gap-2.5"
           aria-label="MaxSavdo"
         >
-          <div
-            className="h-8 w-8 rounded-xl flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)',
-              boxShadow: '0 4px 14px rgba(232,165,82,0.35)',
-            }}
-          >
-            <span className="text-sm select-none">🛒</span>
-          </div>
+          <Image
+            src="/logo-maxsavdo.svg"
+            alt="MaxSavdo"
+            width={36}
+            height={36}
+            priority
+          />
           <span className="text-lg font-bold tracking-tight text-brand-text">
             MaxSavdo
           </span>
