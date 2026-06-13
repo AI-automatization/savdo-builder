@@ -9,12 +9,13 @@ export type FeaturedStoresDict = {
   subtitle?: string;
   empty: string;
   productsLabel: (count: number) => string;
-  openLabel: string;
+  open: string;
 };
 
 type FeaturedStoresProps = {
   locale: Locale;
   dict: FeaturedStoresDict;
+  stores: FeaturedStore[];
 };
 
 /**
@@ -22,8 +23,7 @@ type FeaturedStoresProps = {
  * Shows up to 6 stores. If list is empty, the whole section renders nothing
  * to avoid an awkward "empty state" for first-time visitors.
  */
-export default async function FeaturedStores({ dict }: FeaturedStoresProps) {
-  const stores = await getFeaturedStores();
+export default function FeaturedStores({ dict, stores }: FeaturedStoresProps) {
   if (stores.length === 0) return null;
 
   const top = stores.slice(0, 6);
@@ -97,7 +97,7 @@ function StoreCard({
         </div>
 
         <span className="hidden text-xs font-medium text-brand-accent group-hover:inline">
-          {dict.openLabel} →
+          {dict.open} →
         </span>
       </a>
     </li>
