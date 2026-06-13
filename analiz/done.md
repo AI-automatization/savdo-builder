@@ -27,6 +27,23 @@
 - **Что сделано:** вместо одной строки «Заявка проверяется» — блок с заголовком, временем
   проверки и 3 шагами (получено → проверяется → появится на платформе).
 
+### ✅ [SUPPORT-CHANNEL-001-CODE] Ссылки поддержки в TMA settings + admin login
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/SettingsPage.tsx`, `apps/tma/src/pages/seller/SettingsPage.tsx`
+  - `apps/admin/src/pages/LoginPage.tsx`
+  - `apps/tma/.env.example` (новая переменная `VITE_SUPPORT_URL`)
+  - `apps/tma/src/lib/i18n/ru.ts`, `uz.ts`, `apps/admin/src/lib/i18n/ru.ts`, `uz.ts`
+- **Что сделано:** кнопка «Поддержка 💬» в обоих TMA Settings (buyer + seller) + footer
+  ссылка на admin LoginPage. Использует `VITE_SUPPORT_URL` с fallback на бот.
+  **Осталось Полату:** создать канал + выставить `VITE_SUPPORT_URL` в Railway Variables.
+
+### ✅ [DEVOPS-RAILWAY-WATCHPATTERNS-001] Убраны лишние watchPatterns из TMA railway.toml
+- **Важность:** 🟢 P2 · **Дата:** 12.06.2026
+- **Файлы:** `apps/tma/railway.toml`
+- **Что сделано:** удалены `packages/types/**` и `packages/ui/**` — TMA не зависит
+  от них (Dockerfile подтверждает), лишние паттерны вызывали ненужные редеплои.
+
 ### ✅ [TMA-DELETE-ACCOUNT-SELLER-001] Кнопка удаления аккаунта в Seller Settings TMA
 - **Важность:** 🟢 P2 · **Дата:** 12.06.2026
 - **Файлы:**
