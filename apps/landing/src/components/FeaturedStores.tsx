@@ -1,4 +1,3 @@
-import { getFeaturedStores } from '@/lib/api';
 import type { FeaturedStore } from '@/types/store';
 import { Store } from 'lucide-react';
 
@@ -18,21 +17,13 @@ type FeaturedStoresProps = {
   stores: FeaturedStore[];
 };
 
-/**
- * Server Component — fetches at build/ISR time via `revalidate: 3600`.
- * Shows up to 6 stores. If list is empty, the whole section renders nothing
- * to avoid an awkward "empty state" for first-time visitors.
- */
 export default function FeaturedStores({ dict, stores }: FeaturedStoresProps) {
   if (stores.length === 0) return null;
 
   const top = stores.slice(0, 6);
 
   return (
-    <section
-      id="stores"
-      className="border-t border-brand-border bg-brand-bg py-20 lg:py-28"
-    >
+    <section id="stores" className="py-20 lg:py-28">
       <div className="mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-brand-text sm:text-4xl">
@@ -43,7 +34,7 @@ export default function FeaturedStores({ dict, stores }: FeaturedStoresProps) {
           ) : null}
         </div>
 
-        <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {top.map((store) => (
             <StoreCard key={store.id} store={store} dict={dict} />
           ))}
@@ -68,35 +59,26 @@ function StoreCard({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex h-full items-center gap-4 rounded-2xl border border-brand-border bg-brand-surface p-5 transition-colors hover:border-brand-accent/60"
+        className="card-glass group flex h-full items-center gap-4 p-5 transition-all"
       >
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-border bg-brand-bg">
+        <div
+          className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+          style={{ background: 'rgba(232,165,82,0.08)', border: '1px solid rgba(232,165,82,0.18)' }}
+        >
           {store.logoUrl ? (
-            // Using <img> intentionally: external CDN, no Next/Image optimizer wiring here.
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={store.logoUrl}
-              alt=""
-              width={56}
-              height={56}
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
+            <img src={store.logoUrl} alt="" width={56} height={56} loading="lazy" className="h-full w-full object-cover" />
           ) : (
-            <Store size={22} className="text-brand-muted" aria-hidden />
+            <Store size={22} style={{ color: '#E8A552' }} aria-hidden />
           )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-semibold text-brand-text">
-            {store.name}
-          </div>
-          <div className="mt-1 text-xs text-brand-muted">
-            {dict.productsLabel(store.productsCount)}
-          </div>
+          <div className="truncate text-base font-semibold text-brand-text">{store.name}</div>
+          <div className="mt-1 text-xs text-brand-muted">{dict.productsLabel(store.productsCount)}</div>
         </div>
 
-        <span className="hidden text-xs font-medium text-brand-accent group-hover:inline">
+        <span className="hidden text-xs font-medium group-hover:inline" style={{ color: '#E8A552', flexShrink: 0 }}>
           {dict.open} →
         </span>
       </a>

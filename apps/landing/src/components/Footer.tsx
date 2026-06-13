@@ -25,12 +25,25 @@ export default function Footer({ locale, dict }: FooterProps) {
   const home = locale === 'uz' ? '/' : '/ru';
 
   return (
-    <footer className="border-t border-brand-border bg-brand-bg">
+    <footer
+      className="mt-4"
+      style={{
+        borderTop: '1px solid rgba(232,165,82,0.12)',
+        background: 'rgba(15,15,15,0.60)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
+    >
       <div className="mx-auto grid w-full max-w-content gap-10 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:gap-12 lg:px-8">
         <div>
-          <Link href={home} className="flex items-center gap-2" aria-label="MaxSavdo">
-            <span className="inline-block h-7 w-7 rounded-md bg-brand-accent" aria-hidden />
-            <span className="text-lg font-semibold text-brand-text">MaxSavdo</span>
+          <Link href={home} className="flex items-center gap-2.5" aria-label="MaxSavdo">
+            <div
+              className="h-8 w-8 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)', boxShadow: '0 4px 12px rgba(232,165,82,0.30)' }}
+            >
+              <span className="text-sm select-none">🛒</span>
+            </div>
+            <span className="text-lg font-bold tracking-tight text-brand-text">MaxSavdo</span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-brand-muted">
             {dict.tagline}
@@ -47,9 +60,9 @@ export default function Footer({ locale, dict }: FooterProps) {
                 href={BOT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
+                className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
               >
-                <Send size={16} aria-hidden /> {dict.bot}
+                <Send size={15} aria-hidden /> {dict.bot}
               </a>
             </li>
             <li>
@@ -57,27 +70,27 @@ export default function Footer({ locale, dict }: FooterProps) {
                 href={TG_CHANNEL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
+                className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
               >
-                <Send size={16} aria-hidden /> {dict.channel}
+                <Send size={15} aria-hidden /> {dict.channel}
               </a>
             </li>
             <li>
               <a
                 href={`mailto:${EMAIL}`}
-                className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
+                className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
               >
-                <Mail size={16} aria-hidden /> {EMAIL}
+                <Mail size={15} aria-hidden /> {EMAIL}
               </a>
             </li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-brand-border">
-        <div className="mx-auto flex w-full max-w-content flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-brand-muted sm:flex-row sm:px-6 lg:px-8">
+      <div style={{ borderTop: '1px solid rgba(232,165,82,0.08)' }}>
+        <div className="mx-auto flex w-full max-w-content flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-brand-muted sm:flex-row sm:px-6 lg:px-8">
           <span>© {year} MaxSavdo. {dict.rights}</span>
-          <span>Made in Uzbekistan</span>
+          <span style={{ color: 'rgba(232,165,82,0.40)' }}>Made in Uzbekistan 🇺🇿</span>
         </div>
       </div>
     </footer>
