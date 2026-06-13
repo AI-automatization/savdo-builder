@@ -60,7 +60,7 @@ function StoreCard({
   store: FeaturedStore;
   dict: FeaturedStoresDict;
 }) {
-  const href = `https://maxsavdo.uz/${store.slug}`;
+  const href = `https://savdo-builder-by-production.up.railway.app/${store.slug}`;
 
   return (
     <li>
