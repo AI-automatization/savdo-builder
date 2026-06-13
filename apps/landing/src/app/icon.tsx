@@ -1,8 +1,5 @@
 import { ImageResponse } from 'next/og'
 
-// Next.js 15: динамический favicon через ImageResponse — заменяет статический
-// favicon.ico. Sizes 32x32 — стандарт browser tab. На retina рендерится резко.
-export const runtime = 'edge'
 export const size = { width: 32, height: 32 }
 export const contentType = 'image/png'
 
@@ -17,13 +14,28 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#C9A876',
-          fontSize: 24,
-          fontWeight: 900,
-          fontFamily: 'system-ui, -apple-system, sans-serif',
+          borderRadius: '7px',
         }}
       >
-        M
+        {/* M split: left half white, right half gold */}
+        <div style={{ display: 'flex', position: 'relative', overflow: 'hidden' }}>
+          {/* Left half — white */}
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '100%', overflow: 'hidden', display: 'flex' }}>
+            <span style={{ fontSize: 22, fontWeight: 900, color: '#F5F5F5', fontFamily: 'system-ui, -apple-system, sans-serif', lineHeight: 1 }}>
+              M
+            </span>
+          </div>
+          {/* Right half — gold */}
+          <div style={{ position: 'absolute', top: 0, left: '50%', width: '50%', height: '100%', overflow: 'hidden', display: 'flex' }}>
+            <span style={{ fontSize: 22, fontWeight: 900, color: '#C9A876', fontFamily: 'system-ui, -apple-system, sans-serif', lineHeight: 1, marginLeft: '-50%' }}>
+              M
+            </span>
+          </div>
+          {/* Spacer to set container width */}
+          <span style={{ fontSize: 22, fontWeight: 900, color: 'transparent', fontFamily: 'system-ui, -apple-system, sans-serif', lineHeight: 1 }}>
+            M
+          </span>
+        </div>
       </div>
     ),
     { ...size },

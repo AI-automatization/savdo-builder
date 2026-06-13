@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Send, Mail } from 'lucide-react';
 
 export type Locale = 'uz' | 'ru';
@@ -37,12 +38,7 @@ export default function Footer({ locale, dict }: FooterProps) {
       <div className="mx-auto grid w-full max-w-content gap-10 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:gap-12 lg:px-8">
         <div>
           <Link href={home} className="flex items-center gap-2.5" aria-label="MaxSavdo">
-            <div
-              className="h-8 w-8 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)', boxShadow: '0 4px 12px rgba(232,165,82,0.30)' }}
-            >
-              <span className="text-sm select-none">🛒</span>
-            </div>
+            <Image src="/logo-maxsavdo.svg" alt="MaxSavdo" width={34} height={34} />
             <span className="text-lg font-bold tracking-tight text-brand-text">MaxSavdo</span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-brand-muted">
