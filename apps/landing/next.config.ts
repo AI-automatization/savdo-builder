@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'savdo-builder-by-production.up.railway.app',
+      },
+      {
+        protocol: 'https',
         hostname: '*.supabase.co',
       },
     ],
