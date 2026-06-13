@@ -9,7 +9,7 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://maxsavdo.uz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://maxsavdo.uz";
 
 const uz = t("uz");
 
