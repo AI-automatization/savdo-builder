@@ -16,7 +16,7 @@ type HeaderProps = {
   dict: HeaderDict;
 };
 
-const BOT_URL = 'https://t.me/savdobuilderBOT';
+const BOT_URL = 'https://t.me/savdo_builderBOT';
 
 export default function Header({ locale, dict }: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
