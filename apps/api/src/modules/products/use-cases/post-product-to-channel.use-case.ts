@@ -94,11 +94,20 @@ export class PostProductToChannelUseCase {
     try {
       if (photos.length === 0) {
         await this.telegramBot.sendToChannel(store.telegramChannelId, caption, buttons, 'HTML');
+        this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (text-only)`);
       } else if (photos.length === 1) {
         const fileId = await this.telegramBot.sendPhotoToChannel(
           store.telegramChannelId, photos[0].src, caption, buttons, 'HTML',
         );
-        if (fileId) await this.mediaResolver.cachePhotoFileId(photos[0].mediaId, fileId);
+        if (fileId) {
+          await this.mediaResolver.cachePhotoFileId(photos[0].mediaId, fileId);
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (1 photo)`);
+        } else {
+          // Photo failed (sendPhotoToChannel returned null) — fall back to text-only
+          this.logger.warn(`Photo failed for product ${product.id}, falling back to text-only post`);
+          await this.telegramBot.sendToChannel(store.telegramChannelId, caption, buttons, 'HTML');
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (text-only fallback)`);
+        }
       } else {
         const fileIds = await this.telegramBot.sendMediaGroupToChannel(
           store.telegramChannelId, photos.map((p) => p.src), caption, 'HTML',
@@ -109,9 +118,14 @@ export class PostProductToChannelUseCase {
               photos[i] ? this.mediaResolver.cachePhotoFileId(photos[i].mediaId, fid) : null,
             ),
           );
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (${photos.length} photos)`);
+        } else {
+          // Media group failed — fall back to text-only
+          this.logger.warn(`Media group failed for product ${product.id}, falling back to text-only post`);
+          await this.telegramBot.sendToChannel(store.telegramChannelId, caption, buttons, 'HTML');
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (text-only fallback)`);
         }
       }
-      this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (${photos.length} photos)`);
       return { posted: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
