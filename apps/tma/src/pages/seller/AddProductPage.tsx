@@ -6,7 +6,6 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImageCropper } from '@/components/ui/ImageCropper';
-import { Select } from '@/components/ui/Select';
 import { CreatableSelect } from '@/components/ui/CreatableSelect';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
