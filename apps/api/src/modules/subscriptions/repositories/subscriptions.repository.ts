@@ -15,8 +15,11 @@ export class SubscriptionsRepository {
     return this.prisma.subscription.findUnique({ where: { sellerId } });
   }
 
-  async findById(id: string): Promise<Subscription | null> {
-    return this.prisma.subscription.findUnique({ where: { id } });
+  async findById(id: string) {
+    return this.prisma.subscription.findUnique({
+      where: { id },
+      include: { seller: { select: { id: true, fullName: true, telegramUsername: true } } },
+    });
   }
 
   async create(data: {
