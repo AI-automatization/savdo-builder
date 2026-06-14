@@ -72,6 +72,7 @@ export class AdminSubscriptionsController {
   async list(
     @Query('status') status: string | undefined,
     @Query('tier') tier: string | undefined,
+    @Query('sellerId') sellerId: string | undefined,
     @Query('page') page: string | undefined,
     @Query('limit') limit: string | undefined,
     @CurrentUser() user: JwtPayload,
@@ -86,6 +87,7 @@ export class AdminSubscriptionsController {
     return this.subscriptionsRepo.findAllAdmin({
       status: validStatus,
       tier: validTier,
+      sellerId: sellerId || undefined,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 50,
     });

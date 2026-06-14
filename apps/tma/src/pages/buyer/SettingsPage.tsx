@@ -8,6 +8,7 @@ import { DeleteAccountModal } from '@/components/ui/DeleteAccountModal';
 import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/lib/i18n';
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? `https://t.me/${BOT_USERNAME}`;
 
 const LOCALE_LABEL: Record<Locale, string> = {
   ru: 'Русский',
@@ -167,6 +168,17 @@ export default function BuyerSettingsPage() {
               <span>🤖</span> {t('settings.tgBot')}
             </span>
             <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>@{BOT_USERNAME} →</span>
+          </button>
+
+          <button
+            onClick={() => tg?.openTelegramLink(SUPPORT_URL)}
+            className="flex items-center justify-between py-2.5 text-sm"
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
+          >
+            <span className="flex items-center gap-3">
+              <span>💬</span> {t('settings.support')}
+            </span>
+            <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>→</span>
           </button>
 
           <button

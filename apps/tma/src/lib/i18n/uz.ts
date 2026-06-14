@@ -255,6 +255,7 @@ export const uz: Translations = {
   'settings.becomeSellerCta': '🏪 Sotuvchi boʻlish',
   'settings.app': 'Ilova',
   'settings.tgBot': 'Telegram-bot',
+  'settings.support': 'Qoʻllab-quvvatlash',
   'settings.role.buyer': 'Xaridor',
   'settings.role.seller': 'Sotuvchi',
 
@@ -381,6 +382,11 @@ export const uz: Translations = {
   'seller.store.errNoTg': 'Aloqa uchun Telegram havolasini kiriting',
   // STORE-STATUS-BADGE-001: doʻkon statusi + maslahatlar/amallar.
   'seller.store.status.pendingHint': 'Arizangiz tekshirilmoqda. Odatda 1-2 kun oladi.',
+  'seller.store.status.pendingTitle': "Do'kon tekshiruvda",
+  'seller.store.status.pendingTime': 'Odatda 1–2 kun',
+  'seller.store.status.pendingStep1': 'Arizangiz qabul qilindi',
+  'seller.store.status.pendingStep2': "Moderator do'kon ma'lumotlarini tekshiradi",
+  'seller.store.status.pendingStep3': "Tasdiqlangandan so'ng do'koningiz platformada paydo bo'ladi",
   'seller.store.status.approvedHint': 'Doʻkon faol',
   'seller.store.status.rejectedHint': 'Ariza rad etildi. Kamchiliklarni tuzating va qayta yuboring.',
   'seller.store.status.rejectedReasonLabel': 'Sabab:',

@@ -49,6 +49,11 @@ OneDrive/
 .gemini/
 *.bak
 
+# DB backups / dumps
+backups/
+*.dump
+*.sql.gz
+
 # IDE
 .vscode
 .idea

@@ -1,18 +1,17 @@
 # syntax=docker/dockerfile:1.6
+# Build context = repo root (Railway reads from monorepo root, same as api/tma)
 
 # ── Stage 1: deps ─────────────────────────────────────────────────────────────
 FROM node:20-alpine AS deps
-WORKDIR /app
-
-# Нужен libc6-compat для некоторых нативных зависимостей Next.js на alpine
 RUN apk add --no-cache libc6-compat
+WORKDIR /app/apps/landing
 
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY apps/landing/package.json apps/landing/package-lock.json* ./
+RUN npm install --legacy-peer-deps
 
 # ── Stage 2: builder ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
-WORKDIR /app
+WORKDIR /app/apps/landing
 
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_BOT_USERNAME
@@ -22,8 +21,8 @@ ENV NEXT_PUBLIC_BOT_USERNAME=$NEXT_PUBLIC_BOT_USERNAME
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/apps/landing/node_modules ./node_modules
+COPY apps/landing/ .
 
 RUN npm run build
 
@@ -36,13 +35,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# curl нужен для healthcheck
 RUN apk add --no-cache curl
 
-# Next.js 15 standalone output: server.js + минимальные node_modules
-COPY --from=builder --chown=node:node /app/.next/standalone ./
-COPY --from=builder --chown=node:node /app/.next/static ./.next/static
-COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/apps/landing/.next/standalone ./
+COPY --from=builder --chown=node:node /app/apps/landing/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/apps/landing/public ./public
 
 USER node
 
