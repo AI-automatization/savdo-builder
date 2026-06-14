@@ -1,13 +1,10 @@
-// MARKETING-LOCALIZATION-UZ-001 (web-seller) — i18n базовые типы.
-// Зеркалит apps/admin/src/lib/i18n/types.ts. `uz` — латиница.
-
+// i18n базовые типы для web-seller landing.
+// UZ = латиница (соглашение проекта, как в apps/tma).
 export type Locale = 'ru' | 'uz';
 
 export const SUPPORTED_LOCALES: Locale[] = ['ru', 'uz'];
 export const DEFAULT_LOCALE: Locale = 'ru';
+export const LOCALE_COOKIE = 'ms_locale';
 
-/**
- * Translation dictionary — плоский key-value, ключи в dot.notation.
- * Значения могут содержать плейсхолдеры {name}. ru.ts — source of truth.
- */
-export type Translations = Record<string, string>;
+export type Dict = Record<string, string>;
+export type Translations = Dict;
