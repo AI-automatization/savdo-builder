@@ -7,8 +7,8 @@ export type HeaderDict = {
     features: string;
     pricing: string;
     faq: string;
+    start: string;
   };
-  cta: string;
 };
 
 type HeaderProps = {
@@ -16,7 +16,7 @@ type HeaderProps = {
   dict: HeaderDict;
 };
 
-const BOT_URL = 'https://t.me/savdobuilderBOT';
+const BOT_URL = 'https://t.me/savdo_builderBOT';
 
 export default function Header({ locale, dict }: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
@@ -66,7 +66,7 @@ export default function Header({ locale, dict }: HeaderProps) {
             rel="noopener noreferrer"
             className="hidden rounded-lg bg-brand-accent px-4 py-2 text-sm font-semibold text-brand-bg transition-colors hover:bg-brand-accentHover sm:inline-flex"
           >
-            {dict.cta}
+            {dict.nav.start}
           </a>
         </div>
       </div>

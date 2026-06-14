@@ -66,6 +66,7 @@ export class SubscriptionsRepository {
   async findAllAdmin(opts: {
     status?: SubscriptionStatus;
     tier?: SubscriptionTier;
+    sellerId?: string;
     page?: number;
     limit?: number;
   }) {
@@ -74,6 +75,7 @@ export class SubscriptionsRepository {
     const where: Prisma.SubscriptionWhereInput = {
       ...(opts.status && { status: opts.status }),
       ...(opts.tier && { tier: opts.tier }),
+      ...(opts.sellerId && { sellerId: opts.sellerId }),
     };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.subscription.findMany({

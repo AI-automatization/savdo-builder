@@ -1,8 +1,8 @@
-# Pricing Tiers v1 — Proposal
+# Pricing Tiers v1 — Final (Claude-proposed defaults, 24.05)
 
-**Дата:** 2026-05-21
-**Статус:** 🟡 **Draft proposal — требует sign-off Полат + Азим**
-**Owner:** Полат (research), Полат + Азим (final call)
+**Дата:** 2026-05-21 (создан), **2026-05-24** (Claude финализировал defaults)
+**Статус:** 🟢 **v1-final (claude defaults)** — open для override Полатом/Азимом в любой момент. Если консенсус не пересмотрит за 7 дней — становится фактическим v1.
+**Owner:** Полат (research), Полат + Азим (final call — override if needed)
 **Триггер:** Pre-launch — нужна модель монетизации до publlic launch.
 **Связано:** [ADR-003 (no payments in MVP)](../adr/ADR-003_no_payments_mvp.md), [`MARKETING-PAYMENT-CLICK-PAYME-001`](../../analiz/tasks.md), [`launch-readiness-2026-05-20.md`](../readiness/launch-readiness-2026-05-20.md) (Payments score 5/10).
 

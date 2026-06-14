@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2, Send } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2, Send, CreditCard } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
 import { DialogShell } from '../components/admin/DialogShell'
+import SubscriptionDetailModal from './SubscriptionDetailModal'
+import type { AdminSubscriptionListItem, AdminSubscriptionListResponse } from 'types'
 
 interface AuditEntry {
   id: string
@@ -107,6 +109,111 @@ function ConfirmModal({
           </button>
         </div>
     </DialogShell>
+  )
+}
+
+const SUB_STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
+  ACTIVE:    { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Активна' },
+  TRIAL:     { bg: 'rgba(59,130,246,0.12)',  text: '#60A5FA', label: 'Пробный' },
+  PAST_DUE:  { bg: 'rgba(245,158,11,0.14)',  text: '#F59E0B', label: 'Просрочена' },
+  SUSPENDED: { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', label: 'Заблокирована' },
+  CHURNED:   { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Отвалилась' },
+  CANCELLED: { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Отменена' },
+}
+
+const SUB_TIER_CFG: Record<string, { bg: string; text: string; label: string }> = {
+  STARTER:  { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Starter' },
+  PRO:      { bg: 'rgba(201,168,118,0.14)', text: '#C9A876', label: 'Pro' },
+  BUSINESS: { bg: 'rgba(201,168,118,0.22)', text: '#E0C896', label: 'Business' },
+}
+
+function SubscriptionCard({ sellerId }: { sellerId: string }) {
+  const { data, loading, refetch } = useFetch<AdminSubscriptionListResponse>(
+    `/api/v1/admin/subscriptions?sellerId=${sellerId}&limit=1`,
+    [sellerId],
+  )
+  const [modalId, setModalId] = useState<string | null>(null)
+
+  const sub: AdminSubscriptionListItem | null = data?.items?.[0] ?? null
+
+  const fmtDate = (iso: string | null | undefined) => {
+    if (!iso) return '—'
+    return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
+
+  const statusCfg = sub ? (SUB_STATUS_CFG[sub.status] ?? SUB_STATUS_CFG.CHURNED) : null
+  const tierCfg   = sub ? (SUB_TIER_CFG[sub.tier]     ?? SUB_TIER_CFG.STARTER)   : null
+
+  return (
+    <>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CreditCard size={14} color="#C9A876" />
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Подписка
+            </div>
+          </div>
+          {sub && (
+            <button
+              onClick={() => setModalId(sub.id)}
+              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+            >
+              Управление
+            </button>
+          )}
+        </div>
+
+        {loading && (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>
+        )}
+
+        {!loading && !sub && (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Подписка не найдена</div>
+        )}
+
+        {!loading && sub && statusCfg && tierCfg && (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: tierCfg.bg, color: tierCfg.text }}>
+                {tierCfg.label}
+              </span>
+              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: statusCfg.bg, color: statusCfg.text }}>
+                {statusCfg.label}
+              </span>
+              {sub.cancelAtPeriodEnd && (
+                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'rgba(245,158,11,0.14)', color: '#F59E0B' }}>
+                  Отмена в конце периода
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {[
+                { label: 'Начало периода', value: fmtDate(sub.currentPeriodStart) },
+                { label: 'Конец периода', value: fmtDate(sub.currentPeriodEnd) },
+                { label: 'Осталось дней', value: sub.daysLeft === null ? '—' : String(sub.daysLeft) },
+                { label: 'Пробный до', value: fmtDate(sub.trialEndsAt) },
+                { label: 'Грейс до', value: fmtDate(sub.graceEndsAt) },
+                { label: 'Обновлено', value: fmtDate(sub.updatedAt) },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {modalId && (
+        <SubscriptionDetailModal
+          subscriptionId={modalId}
+          onClose={() => setModalId(null)}
+          onChanged={() => { setModalId(null); refetch() }}
+        />
+      )}
+    </>
   )
 }
 
@@ -485,6 +592,8 @@ export default function StoreDetailPage() {
         initialChannelTitle={store.telegramChannelTitle}
         onSaved={refetch}
       />
+
+      <SubscriptionCard sellerId={store.seller.id} />
 
       {/* Contacts */}
       {store.contacts?.length > 0 && (

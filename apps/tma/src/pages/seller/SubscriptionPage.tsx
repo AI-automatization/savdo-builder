@@ -24,7 +24,7 @@ import { confirmDialog } from '@/components/ui/ConfirmModal';
 
 const ACCENT = '#A855F7';
 const ACCENT_DARK = '#7C3AED';
-const OWNER_TG_HANDLE = 'ismoilbekbakhodirov'; // [[reference_contacts]]
+const OWNER_TG_HANDLE = 'ismailov_0011'; // Polat (owner)
 
 type Tier = 'STARTER' | 'PRO' | 'BUSINESS';
 type Status = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CHURNED' | 'CANCELLED';

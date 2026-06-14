@@ -63,9 +63,6 @@ export const metadata: Metadata = {
     description: uz.meta.ogDescription,
     images: ["/og-image.png"],
   },
-  icons: {
-    icon: "/favicon.ico",
-  },
   robots: {
     index: true,
     follow: true,
