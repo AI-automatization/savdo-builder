@@ -25,9 +25,7 @@
 > Зафиксировано 02.06: бизнес-модель, монетизация, маркетинг, GTM — целиком Азим.
 > Мастер-роадмап: `docs/business/roadmap-to-production-2026-06-02.md`. Порядок ниже = приоритет.
 
-- [ ] **[BIZ-DECISIONS-§15]** Закрыть 10 открытых решений §15 `business-model-v2` + 6 §12 билл-спеки.
-  Это шаг 0.1 роадмапа — **разблокирует биллинг-машину**. Минимум: цены 99/299/899, триал+grandfather,
-  метрика=заказы/мес, дата launch Q3/Q4, multi-store=roadmap. Зафиксировать решения прямо в доке.
+- [x] **[BIZ-DECISIONS-§15]** ✅ Закрыто 14.06.2026 — все 16 решений зафиксированы в §15 business-model-v2 и §12 billing-spec.
 - [ ] **[BILLING-FRONT]** После Subscription-DTO Полата: suspended-states (баннеры trial/past_due,
   dashboard read-only, «магазин недоступен» в buyer) + pricing-страница + выбор тарифа в onboarding.
 - [ ] **[MARKETING-CHANNELS]** Завести Instagram @maxsavdo + Telegram-канал @maxsavdo (контент-план §9.2).
