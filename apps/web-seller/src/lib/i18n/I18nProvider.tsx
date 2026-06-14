@@ -1,17 +1,11 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useMemo, useState, useEffect, type ReactNode } from 'react';
 import { ru } from './ru';
 import { uz } from './uz';
-import type { Locale, Translations } from './types';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './types';
+import { DEFAULT_LOCALE, LOCALE_COOKIE, SUPPORTED_LOCALES, type Locale } from './types';
 
-// MARKETING-LOCALIZATION-UZ-001 (web-seller). Зеркалит admin I18nProvider.
-// Локаль: localStorage → navigator.language → дефолт 'ru'.
-
-const STORAGE_KEY = 'savdo_seller_locale';
-
-const DICTS: Record<Locale, Translations> = { ru, uz };
+const DICTS: Record<Locale, Record<string, string>> = { ru, uz };
 
 interface I18nCtx {
   locale: Locale;
@@ -27,64 +21,32 @@ const Ctx = createContext<I18nCtx>({
 
 export const useTranslation = () => useContext(Ctx);
 
-function detectInitialLocale(): Locale {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && SUPPORTED_LOCALES.includes(stored as Locale)) {
-      return stored as Locale;
-    }
-  } catch {
-    // localStorage может быть недоступен
-  }
-  try {
-    if (navigator.language?.toLowerCase().startsWith('uz')) return 'uz';
-  } catch {
-    // ignore
-  }
-  return DEFAULT_LOCALE;
-}
-
-/** Шаблонная подстановка {name} → vars.name. */
 function interpolate(template: string, vars?: Record<string, string | number>): string {
   if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (match, key) => {
-    const v = vars[key];
-    return v != null ? String(v) : match;
-  });
+  return template.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
-
-  // Детект на клиенте после mount — избегаем hydration mismatch
-  // (сервер всегда рендерит DEFAULT_LOCALE).
-  useEffect(() => {
-    setLocaleState(detectInitialLocale());
-  }, []);
+export function I18nProvider({ initialLocale = DEFAULT_LOCALE, children }: { initialLocale?: Locale; children: ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
-    document.documentElement.lang = locale;
+    if (typeof document !== 'undefined') document.documentElement.lang = locale;
   }, [locale]);
 
   const setLocale = useCallback((l: Locale) => {
+    if (!SUPPORTED_LOCALES.includes(l)) return;
     setLocaleState(l);
-    try {
-      localStorage.setItem(STORAGE_KEY, l);
-    } catch {
-      // ignore
-    }
+    document.cookie = `${LOCALE_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
   }, []);
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>) => {
       const dict = DICTS[locale];
-      const raw = dict[key] ?? ru[key] ?? key;
-      return interpolate(raw, vars);
+      return interpolate(dict[key] ?? ru[key as keyof typeof ru] ?? key, vars);
     },
     [locale],
   );
 
   const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
-
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
