@@ -1,5 +1,18 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-14] [WEB-010] OtpGate default purpose 'login' создавала SELLER у покупателей
+- **Статус:** ✅ Исправлено (Азим, web-buyer, 14.06.2026).
+- **Что случилось:** `apps/web-buyer/src/components/auth/OtpGate.tsx` (shared компонент) имел
+  `purpose = 'login'` как дефолт. Backend при verify-otp создаёт BUYER для `purpose='checkout'`
+  и SELLER для `purpose='login'`. Покупатели, аутентифицировавшиеся через /orders, /profile,
+  /wishlist (не через checkout), регистрировались как SELLER — не могли пользоваться buyer-фичами.
+- **Не затронуто:** checkout flow (`(minimal)/checkout/page.tsx`) имеет свою локальную OtpGate
+  с захардкоженным `purpose: 'checkout'` — там баг отсутствовал.
+- **Фикс:** изменён дефолт `purpose = 'login'` → `purpose = 'checkout'` в shared OtpGate.
+  Ветка `fix/web-010-otpgate-purpose` от `origin/web-buyer` → запушена, PR создать
+  и смержить в `web-buyer` (Railway задеплоит автоматически).
+- **Файл:** `apps/web-buyer/src/components/auth/OtpGate.tsx:25`
+
 ## [2026-06-07] [CHECKOUT-PAYMENTMETHOD-NOT-SENT-001] Выбор способа оплаты на checkout не отправлялся
 - **Статус:** ✅ Исправлено (Азим, web-buyer).
 - **Что случилось:** на checkout покупатель выбирал «Наличные/Картой/Online», но `handleConfirm`
