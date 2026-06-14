@@ -23,6 +23,29 @@
 
 ---
 
+## 2026-06-14 (Азим) — LANDING-DEPLOY: лендинг задеплоен на web-seller
+
+### ✅ [LANDING-DEPLOY] Публичный лендинг задеплоен в продакшн-ветку web-seller
+- **Важность:** 🔴 (лендинг теперь на продакшн-деплой Railway)
+- **Дата:** 14.06.2026
+- **Ветки:** `deploy/seller-landing` (изоляция) → merged → `web-seller` (Railway)
+- **Файлы добавлены:**
+  - `apps/web-seller/src/app/page.tsx` — заменён redirect на LandingPage
+  - `apps/web-seller/src/components/landing/` — 14 компонентов (Hero, Pricing, FAQ, etc.)
+  - `apps/web-seller/src/lib/landing/` — analytics, demo-store, showcase, use-reveal
+  - `apps/web-seller/public/landing/` — 7 product images (Unsplash)
+  - `apps/web-seller/src/lib/i18n/` — server-locale.ts, I18nProvider обновлён, types.ts+index.ts расширены
+  - `apps/web-seller/src/app/globals.css` — reveal/glow/floaty анимации
+- **i18n:** 106 landing ключей (RU+UZ) appended к существующим 536 dashboard ключам (коллизий нет)
+- **Фиксы в процессе деплоя:**
+  - `I18nProvider.initialLocale` сделан optional (dashboard layout без проблем)
+  - `Translations` тип добавлен в types.ts (ru.ts/uz.ts его импортируют)
+  - `nav.dashboard` переименован в `nav.toCabinet` (коллизия с sidebar ключом)
+- **Build:** ✓ TypeScript clean, 19 страниц, без ошибок
+- **Статус Railway:** задеплоится автоматически из web-seller ветки
+
+---
+
 ## 2026-06-07 (Азим) — Лендинг: фикс Hero, TMA-телефон, отстройка от qlay
 
 ### ✅ [LANDING-HERO-FIX-001] Hero не показывал текст + пустой телефон
