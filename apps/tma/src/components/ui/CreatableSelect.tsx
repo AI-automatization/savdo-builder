@@ -62,6 +62,30 @@ export function CreatableSelect({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // iOS / TMA: body position:fixed while sheet is open prevents the
+  // "position:fixed child doesn't cover viewport" bug in scrollable WebViews
+  useEffect(() => {
+    if (!open) return;
+    const scrollY = window.scrollY;
+    const prev = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    };
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    return () => {
+      document.body.style.overflow = prev.overflow;
+      document.body.style.position = prev.position;
+      document.body.style.top = prev.top;
+      document.body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
   function openSheet() {
     if (disabled || creating) return;
     setOpen(true);
