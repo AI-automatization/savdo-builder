@@ -51,9 +51,17 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // Отслеживание изменений viewport (fullscreen, expand, resize)
+  // Отслеживание изменений viewport (fullscreen, expand, resize).
+  // 08.06.2026: пропускаем no-op обновления, чтобы не плодить новый
+  // context value на каждый viewport_changed/fullscreen_changed (Telegram
+  // стреляет ими пачками во время expand/keyboard, и width зачастую тот же).
+  // Без этого ВСЕ потребители useTelegram() ре-рендерились на каждый чих —
+  // что приводило к спаму web_app_setup_main_button (см. useMainButton).
   useEffect(() => {
-    const update = () => setValue((v) => ({ ...v, viewportWidth: window.innerWidth }));
+    const update = () =>
+      setValue((v) =>
+        v.viewportWidth === window.innerWidth ? v : { ...v, viewportWidth: window.innerWidth },
+      );
 
     const tg = getTgWebApp();
     if (tg?.onEvent) {

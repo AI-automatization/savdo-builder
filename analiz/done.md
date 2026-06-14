@@ -1,5 +1,79 @@
 # Done — Азим + Полат
 
+## 2026-06-12 (Полат) — Stock check bug + Admin subscription widget + TMA onboarding + Delete account
+
+### ✅ [BUG-STOCK-SIMPLE-001] Stock не проверялся для простых товаров (без вариантов)
+- **Важность:** 🔴 P0 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/checkout/services/validate-cart-items.service.ts`
+- **Что сделано:** добавлена проверка `product.totalStock < cartItem.quantity` для товаров без
+  `variantId`. Раньше `totalStock` не проверялся — покупатель мог заказать больше чем есть в наличии.
+
+### ✅ [ADMIN-SUB-WIDGET-001] Виджет подписки на странице магазина в админке
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/subscriptions/repositories/subscriptions.repository.ts` (sellerId filter)
+  - `apps/api/src/modules/admin/admin-subscriptions.controller.ts` (sellerId query param)
+  - `apps/admin/src/pages/StoreDetailPage.tsx` (SubscriptionCard компонент)
+- **Что сделано:** карточка подписки на StoreDetailPage — показывает tier/status/даты/daysLeft.
+  Кнопка «Управление» открывает SubscriptionDetailModal с полными действиями
+  (mark-paid/extend-trial/cancel/comp). Добавлен `sellerId` filter в GET /admin/subscriptions.
+
+### ✅ [TMA-PENDING-ONBOARDING-001] Расширенный PENDING_REVIEW экран в TMA
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/seller/StorePage.tsx`
+  - `apps/tma/src/lib/i18n/ru.ts`, `apps/tma/src/lib/i18n/uz.ts` (6 новых ключей)
+- **Что сделано:** вместо одной строки «Заявка проверяется» — блок с заголовком, временем
+  проверки и 3 шагами (получено → проверяется → появится на платформе).
+
+### ✅ [SUPPORT-CHANNEL-001-CODE] Ссылки поддержки в TMA settings + admin login
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/SettingsPage.tsx`, `apps/tma/src/pages/seller/SettingsPage.tsx`
+  - `apps/admin/src/pages/LoginPage.tsx`
+  - `apps/tma/.env.example` (новая переменная `VITE_SUPPORT_URL`)
+  - `apps/tma/src/lib/i18n/ru.ts`, `uz.ts`, `apps/admin/src/lib/i18n/ru.ts`, `uz.ts`
+- **Что сделано:** кнопка «Поддержка 💬» в обоих TMA Settings (buyer + seller) + footer
+  ссылка на admin LoginPage. Использует `VITE_SUPPORT_URL` с fallback на бот.
+  **Осталось Полату:** создать канал + выставить `VITE_SUPPORT_URL` в Railway Variables.
+
+### ✅ [DEVOPS-RAILWAY-WATCHPATTERNS-001] Убраны лишние watchPatterns из TMA railway.toml
+- **Важность:** 🟢 P2 · **Дата:** 12.06.2026
+- **Файлы:** `apps/tma/railway.toml`
+- **Что сделано:** удалены `packages/types/**` и `packages/ui/**` — TMA не зависит
+  от них (Dockerfile подтверждает), лишние паттерны вызывали ненужные редеплои.
+
+### ✅ [TMA-DELETE-ACCOUNT-SELLER-001] Кнопка удаления аккаунта в Seller Settings TMA
+- **Важность:** 🟢 P2 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/seller/SettingsPage.tsx`
+- **Что сделано:** добавлена «Опасная зона» с кнопкой «Удалить аккаунт» → открывает
+  существующий `DeleteAccountModal`. Buyer SettingsPage уже имела этот блок; теперь паритет.
+
+## 2026-06-08 (Полат) — ADMIN-NOTIFICATIONS-001 MVP
+
+### ✅ [ADMIN-NOTIFICATIONS-001] Bell + dropdown + polling в админ-панели
+- **Важность:** 🟡 P1 · **Дата:** 08.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/repositories/admin-notifications.repository.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/get-admin-notifications.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin-notifications.controller.ts` (новый)
+  - `apps/api/src/modules/admin/admin.module.ts` (регистрация)
+  - `apps/admin/src/lib/useAdminNotifications.ts` (новый hook)
+  - `apps/admin/src/components/admin/NotificationBell.tsx` (новый компонент)
+  - `apps/admin/src/layouts/DashboardLayout.tsx` (header c bell)
+  - `apps/admin/src/lib/i18n/ru.ts`, `uz.ts` (15 ключей)
+- **Что сделано:** `GET /api/v1/admin/notifications?limit=20` — агрегирует
+  открытые ModerationCase + PENDING Order + PENDING_REVIEW Store, мерджит по
+  createdAt DESC. Без отдельной таблицы и write-path (один superadmin, "прочитано"
+  хранится в localStorage по стабильному id `sourceType:entityId`). UI: bell
+  в sticky header справа от Outlet, badge с unread count, dropdown с
+  group/icon-цветами по типу, click → navigate. Polling 30s + pause на скрытой
+  вкладке + refetch при visibility=visible. Защищён JwtAuthGuard + RolesGuard
+  + AdminAccessGuard + MfaEnforcedGuard.
+- **Решение записано:** Obsidian `decisions/2026-06-08-admin-notifications-mvp-aggregator-vs-table.md`
+
 ## 2026-06-05 (Полат) — BUG-2 unify inStock между list/detail mappers
 
 ### ✅ [BUG-2] Унифицировать inStock между storefront list и detail mappers

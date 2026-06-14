@@ -11,6 +11,7 @@ import {
   HttpStatus,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { IsString, IsNotEmpty, MaxLength, IsOptional, IsBoolean, IsInt, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -54,6 +55,17 @@ class CreateGlobalCategoryDto {
 
   @IsOptional() @IsBoolean()
   isActive?: boolean;
+}
+
+class AddFilterOptionDto {
+  @IsString() @IsNotEmpty() @MaxLength(80)
+  categorySlug!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(80)
+  key!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(120)
+  value!: string;
 }
 
 class UpdateGlobalCategoryDto {
@@ -154,6 +166,36 @@ export class CategoriesController {
       isRequired: (f as any).isRequired ?? false,
       isFilterable: (f as any).isFilterable ?? true,
     }));
+  }
+
+  // Продавец предлагает новое значение для SELECT/MULTI_SELECT фильтра.
+  // Значение сразу сохраняется в options[], доступно всем продавцам этой категории.
+  @Post('seller/categories/filters/option')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async addFilterOption(@Body() dto: AddFilterOptionDto) {
+    const filter = await this.prisma.categoryFilter.findUnique({
+      where: { categorySlug_key: { categorySlug: dto.categorySlug, key: dto.key } },
+    });
+    if (!filter) throw new NotFoundException('Filter not found');
+    if (!['SELECT', 'MULTI_SELECT'].includes(filter.fieldType)) {
+      throw new BadRequestException('Only SELECT and MULTI_SELECT filters support option creation');
+    }
+
+    const trimmed = dto.value.trim();
+    if (!trimmed) throw new BadRequestException('Value cannot be empty');
+
+    const current: string[] = filter.options ? (JSON.parse(filter.options) as string[]) : [];
+    const alreadyExists = current.some((o) => o.toLowerCase() === trimmed.toLowerCase());
+    if (!alreadyExists) {
+      current.push(trimmed);
+      await this.prisma.categoryFilter.update({
+        where: { categorySlug_key: { categorySlug: dto.categorySlug, key: dto.key } },
+        data: { options: JSON.stringify(current) },
+      });
+    }
+
+    return { options: current };
   }
 
   // ─── Seller ───────────────────────────────────────────────────────────────────

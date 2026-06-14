@@ -1,5 +1,22 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-08] [TMA-MOBILE-OVERFLOW-001] ✅ ЗАКРЫТО — карточки товаров уезжают за viewport на mobile
+- **Статус:** ✅ Исправлено (08.06.2026)
+- **Симптом:** На mobile (320–480px) в TMA buyer на StoresPage (tab "Товары") и StorePage карточки обрезались слева ('...личии' вместо 'В наличии'), скрытый horizontal scroll.
+- **Root cause (две причины):**
+  1. `grid` items имеют дефолтный `min-width: auto` → длинные слова в title / fixed-width кнопка "+" (44px) раздвигали grid-cell за пределы трека, выпирая весь grid вправо. Внешний `<div max-w-3xl mx-auto>` в AppShell не имел `overflow-x-hidden` → горизонтальный скролл уходил в viewport.
+  2. `.scroll-fade-x` с `-mx-4` (используется для категорий) не имел `overflow: hidden`. ::after gradient 32px + горизонтальный скроллер внутри могли раздуть родителя.
+- **Fix:**
+  1. `index.css`: `.scroll-fade-x { overflow:hidden; max-width:100% }` + новый утилитный класс `.grid-safe { min-width:0; max-width:100% } .grid-safe > * { min-width:0 }`
+  2. `AppShell.tsx`: на mobile-обёртке `min-w-0 overflow-x-hidden`, внутренний `<div max-w-3xl>` тоже `min-w-0`
+  3. `StoresPage.tsx`: все 3 grid (stores / products loading / products) получили класс `grid-safe`
+  4. `StorePage.tsx`: оба grid (loading skeleton + products) + min-w-0/truncate/shrink-0 на flex children внутри карточки
+  5. `ProductCard.tsx`: `minWidth:0; maxWidth:100%` на корневом div, `minWidth:0` на контентном flex-column, цена получила overflow-ellipsis, store-name стал `flex:1; minWidth:0`, title — `wordBreak:break-word`
+- **Файлы:** `apps/tma/src/index.css`, `apps/tma/src/components/layout/AppShell.tsx`, `apps/tma/src/pages/buyer/StoresPage.tsx`, `apps/tma/src/pages/buyer/StorePage.tsx`, `apps/tma/src/components/ui/ProductCard.tsx`
+- **Зачем `min-width: 0`:** CSS grid/flex по умолчанию даёт children `min-width: auto`, что = max(content-size). Длинная строка или фикс-ширина кнопки могут раздуть ячейку за пределы трека. `min-width: 0` разрешает ячейке сжаться, и тогда text-overflow:ellipsis/line-clamp могут реально обрезать текст вместо overflow наружу.
+
+---
+
 ## [2026-06-06] [API-ADMIN-MFA-NOT-PERSISTED-001] ✅ ЗАКРЫТО — MFA grace period в refresh-session
 - **Статус:** ✅ Исправлено (06.06.2026)
 - **Root cause:** `refresh-session.use-case.ts:78` для каждого admin **всегда** выставлял `mfaPending: true` — это by design для защиты от украденного refresh token. Но access TTL короткий (15 мин), и каждый refresh → новый JWT с mfaPending → guard блокирует ВСЕ destructive actions → admin в MFA loop.

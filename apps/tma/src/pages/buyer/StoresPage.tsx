@@ -321,27 +321,33 @@ export default function StoresPage() {
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            {/* TMA-MOBILE-OVERFLOW-002 (08.06.2026): price-range row на 320–360px viewport
+                выпирал за экран из-за двух flex-1 input + em-dash + trailing 'сум' span.
+                Дефолтная intrinsic width input ≈ 150px не даёт flex-1 ужаться без min-w-0.
+                Решение: min-w-0 на контейнере и на каждом input + 'сум' вынесен в caption под рядом. */}
+            <div className="flex items-center gap-2 min-w-0">
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={priceMin}
                 onChange={(e) => setPriceMin(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder={t('stores.priceFrom')}
-                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                className="flex-1 min-w-0 w-full px-3 py-2 rounded-lg text-xs outline-none"
                 style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>—</span>
+              <span style={{ color: 'var(--tg-text-dim)', fontSize: 12, flexShrink: 0 }}>—</span>
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={priceMax}
                 onChange={(e) => setPriceMax(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder={t('stores.priceTo')}
-                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                className="flex-1 min-w-0 w-full px-3 py-2 rounded-lg text-xs outline-none"
                 style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'var(--tg-text-muted)', fontSize: 11 }}>{t('common.currency')}</span>
+            </div>
+            <div style={{ color: 'var(--tg-text-muted)', fontSize: 10, marginTop: 4, paddingLeft: 2 }}>
+              {`В ${t('common.currency')} (UZS)`}
             </div>
           </div>
         )}

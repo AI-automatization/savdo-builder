@@ -5,6 +5,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 export const QUEUE_TELEGRAM_NOTIFICATIONS = 'telegram-notifications';
 export const QUEUE_IN_APP_NOTIFICATIONS = 'in-app-notifications';
 export const QUEUE_OTP = 'otp';
+// API-ACCOUNT-PURGE-001: имя очереди зарезервировано на будущее (миграция на
+// BullMQ repeatable job при горизонтальном масштабировании API). v1 крутится
+// через @nestjs/schedule @Cron в одиночном Railway-инстансе — см.
+// queues/processors/purge-deleted-users.processor.ts.
+export const QUEUE_ACCOUNT_DELETION_PURGE = 'account-deletion-purge';
 
 @Global()
 @Module({

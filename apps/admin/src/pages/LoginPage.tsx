@@ -512,6 +512,20 @@ export default function LoginPage() {
           </div>
         )}
       </div>
+
+      {/* Support footer */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-10">
+        <a
+          href="https://t.me/savdo_builderBOT"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1.5 text-xs transition-colors hover:opacity-80"
+          style={{ color: 'var(--text-dim)' }}
+        >
+          <MessageCircle size={12} />
+          {t('login.support')}
+        </a>
+      </div>
     </div>
   )
 }

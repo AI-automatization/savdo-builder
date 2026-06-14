@@ -1,13 +1,13 @@
 import { t } from "@/lib/i18n";
 import { getFeaturedStores } from "@/lib/api";
-import { Header } from "@/components/Header";
-import { Hero } from "@/components/Hero";
-import { How } from "@/components/How";
-import { Features } from "@/components/Features";
-import { FeaturedStores } from "@/components/FeaturedStores";
-import { Pricing } from "@/components/Pricing";
-import { FAQ } from "@/components/FAQ";
-import { Footer } from "@/components/Footer";
+import Header from "@/components/Header";
+import Hero from "@/components/Hero";
+import How from "@/components/How";
+import Features from "@/components/Features";
+import FeaturedStores from "@/components/FeaturedStores";
+import Pricing from "@/components/Pricing";
+import FAQ from "@/components/FAQ";
+import Footer from "@/components/Footer";
 
 export const revalidate = 3600;
 

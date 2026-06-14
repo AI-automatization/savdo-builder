@@ -1,12 +1,15 @@
--- DRAFT migration for SUBSCRIPTION-MODULE-001
--- Это reference SQL — НЕ запускать руками.
--- Полат: запусти `pnpm --filter db prisma migrate dev --name add_subscription_module`
--- (из packages/db с DATABASE_URL в env) — Prisma сгенерирует канонический файл
--- migrations/<timestamp>_add_subscription_module/migration.sql и применит на dev.
--- На prod: pg_dump → migrate deploy → smoke test.
+-- API-SUBSCRIPTION-MIGRATION-MISSING-001: восстанавливаем потерянную миграцию.
 --
--- Безопасность: 4 новых enum'а + 2 новые таблицы + 2 nullable relations.
--- ADD-only — данных в existing таблицах не трогает. Соответствует prod-data-safety.
+-- Контекст: SUBSCRIPTION-MODULE-001 был задеплоен в Prisma schema + код в апреле,
+-- но миграция осталась в виде draft-файла в корне migrations/ — Prisma такие
+-- файлы игнорирует (нужен subfolder с migration.sql). На prod таблицы
+-- subscriptions / subscription_payments никогда не создавались.
+--
+-- Симптом: prisma.subscription.findUnique() из PlanLimitGuardService падает
+-- с "The table `public.subscriptions` does not exist" → 500 на /seller/products.
+--
+-- ADD-only — соответствует prod-data-safety: 4 enum'а + 2 таблицы + FKs.
+-- Existing данные не трогаем.
 
 -- ─── Enums ──────────────────────────────────────────────────────────
 
@@ -40,6 +43,7 @@ CREATE TABLE "subscriptions" (
   "churnedAt" TIMESTAMP(3),
   "cancelledAt" TIMESTAMP(3),
   "autoRenew" BOOLEAN NOT NULL DEFAULT false,
+  "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
   "discountPercent" INTEGER NOT NULL DEFAULT 0,
   "discountEndsAt" TIMESTAMP(3),
   "discountReason" TEXT,
@@ -89,22 +93,3 @@ ALTER TABLE "subscription_payments"
   ADD CONSTRAINT "subscription_payments_confirmedByUserId_fkey"
   FOREIGN KEY ("confirmedByUserId") REFERENCES "users"("id")
   ON DELETE SET NULL ON UPDATE CASCADE;
-
--- ─── Backfill: для existing sellers создать TRIAL subscription ──────
--- Это идеально делается через app-level seed script, но для прода можно SQL.
--- ОПАСНО: запустить ОДИН раз, проверить что нет duplicates.
--- Альтернатива: API endpoint POST /admin/subscriptions/backfill-trials.
---
--- INSERT INTO "subscriptions" (id, "sellerId", tier, status, "trialStartedAt", "trialEndsAt", "createdAt", "updatedAt")
--- SELECT
---   gen_random_uuid()::text,
---   s.id,
---   'PRO'::"SubscriptionTier",
---   'TRIAL'::"SubscriptionStatus",
---   NOW(),
---   NOW() + INTERVAL '14 days',
---   NOW(),
---   NOW()
--- FROM sellers s
--- WHERE s."isBlocked" = false
---   AND NOT EXISTS (SELECT 1 FROM subscriptions sub WHERE sub."sellerId" = s.id);
