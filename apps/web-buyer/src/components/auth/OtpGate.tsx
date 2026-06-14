@@ -14,15 +14,14 @@ interface OtpGateProps {
   title: string;
   subtitle?: string;
   /**
-   * Backend rate-limits OTP per purpose. До этого все callsites хардкодили
-   * 'checkout' даже для /orders, /wishlist, /profile, /chats — что путало
-   * лимиты. Default 'login' для общих auth-gate сценариев; checkout flow
-   * имеет свою local OtpGate в (minimal)/checkout/page.tsx.
+   * Backend assigns user role based on purpose: 'checkout' → BUYER, 'login' → SELLER.
+   * web-buyer всегда должен создавать BUYER, поэтому дефолт 'checkout'.
+   * checkout flow имеет свою local OtpGate в (minimal)/checkout/page.tsx.
    */
   purpose?: OtpPurpose;
 }
 
-export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGateProps) {
+export function OtpGate({ icon, title, subtitle, purpose = 'checkout' }: OtpGateProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<OtpStep>('phone');
   const [phone, setPhone] = useState('');
