@@ -17,7 +17,7 @@ export function CreatableSelect({
   onChange,
   options,
   onCreateOption,
-  placeholder = '— выберите или введите —',
+  placeholder = '— выберите —',
   clearable = false,
   disabled = false,
   ariaLabel,
@@ -94,14 +94,10 @@ export function CreatableSelect({
       }
       return;
     }
-    const totalItems = filtered.length + (showCreate ? 1 : 0);
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlight((h) => Math.min(totalItems - 1, h + 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlight((h) => Math.max(0, h - 1));
-    } else if (e.key === 'Enter') {
+    const total = filtered.length + (showCreate ? 1 : 0);
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(total - 1, h + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(0, h - 1)); }
+    else if (e.key === 'Enter') {
       e.preventDefault();
       if (highlight < filtered.length) {
         const opt = filtered[highlight];
@@ -112,10 +108,9 @@ export function CreatableSelect({
     }
   }
 
-  const displayValue = selected?.label ?? (value || null);
-
   return (
     <div ref={rootRef} style={{ position: 'relative' }} onKeyDown={onKeyDown}>
+      {/* Trigger */}
       <button
         type="button"
         disabled={disabled || creating}
@@ -134,19 +129,20 @@ export function CreatableSelect({
           borderRadius: 12,
           background: 'var(--tg-surface-hover)',
           border: `1px solid ${open ? 'var(--tg-accent)' : 'var(--tg-border)'}`,
-          color: displayValue ? 'var(--tg-text-primary)' : 'var(--tg-text-muted)',
+          color: selected ? 'var(--tg-text-primary)' : 'var(--tg-text-muted)',
           fontSize: 14,
           textAlign: 'left',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.5 : 1,
           transition: 'border-color 0.15s',
+          boxShadow: open ? '0 0 0 3px var(--tg-accent-dim)' : 'none',
         }}
       >
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {displayValue ?? placeholder}
+          {selected?.label ?? placeholder}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          {clearable && displayValue && !disabled && (
+          {clearable && selected && !disabled && (
             <span
               role="button"
               tabIndex={0}
@@ -159,57 +155,64 @@ export function CreatableSelect({
             </span>
           )}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-            style={{ color: 'var(--tg-text-secondary)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+            style={{
+              color: open ? 'var(--tg-accent)' : 'var(--tg-text-secondary)',
+              transform: open ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.15s, color 0.15s',
+            }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </span>
       </button>
 
+      {/* Dropdown */}
       {open && (
         <div style={{
           position: 'absolute',
           left: 0, right: 0,
           top: 'calc(100% + 6px)',
-          zIndex: 60,
+          zIndex: 999,
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: 12,
+          borderRadius: 14,
           overflow: 'hidden',
-          background: '#1a1035',
-          border: '1px solid var(--tg-border)',
-          boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
-          maxHeight: 320,
+          background: 'var(--tg-surface)',
+          border: '1px solid var(--tg-accent-border)',
+          boxShadow: '0 20px 48px rgba(0,0,0,0.60), 0 0 0 1px rgba(201,168,118,0.08)',
+          maxHeight: 300,
         }}>
-          {/* Search / type input */}
+          {/* Search */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 12px', flexShrink: 0,
             borderBottom: '1px solid var(--tg-border-soft)',
-            background: 'var(--tg-surface)',
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ color: 'var(--tg-text-muted)', flexShrink: 0 }}>
-              <circle cx="11" cy="11" r="7" />
-              <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              style={{ color: 'var(--tg-text-dim)', flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" />
             </svg>
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => { setQuery(e.target.value); setHighlight(0); }}
-              placeholder="Введите или выберите..."
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--tg-text-primary)', fontSize: 14 }}
+              placeholder="Поиск..."
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                color: 'var(--tg-text-primary)', fontSize: 13,
+              }}
             />
             {query && (
-              <button type="button" onClick={() => setQuery('')} aria-label="Очистить"
-                style={{ background: 'none', border: 'none', color: 'var(--tg-text-muted)', cursor: 'pointer', fontSize: 14, padding: 0, flexShrink: 0 }}>
+              <button type="button" onClick={() => setQuery('')}
+                style={{ background: 'none', border: 'none', color: 'var(--tg-text-dim)', cursor: 'pointer', fontSize: 13, padding: 0, flexShrink: 0 }}>
                 ✕
               </button>
             )}
           </div>
 
-          <div ref={listRef} role="listbox" style={{ overflowY: 'auto', padding: '4px 0', maxHeight: 260 }}>
+          {/* Options */}
+          <div ref={listRef} role="listbox" style={{ overflowY: 'auto', padding: '4px 0' }}>
             {filtered.length === 0 && !showCreate && (
-              <p style={{ padding: '12px 16px', fontSize: 12, textAlign: 'center', color: 'var(--tg-text-muted)', margin: 0 }}>
+              <p style={{ padding: '12px 16px', fontSize: 12, textAlign: 'center', color: 'var(--tg-text-dim)', margin: 0 }}>
                 Ничего не найдено
               </p>
             )}
@@ -233,7 +236,8 @@ export function CreatableSelect({
                     background: isHighlight ? 'var(--tg-accent-bg)' : 'transparent',
                     border: 'none',
                     color: isSelected ? 'var(--tg-accent)' : 'var(--tg-text-primary)',
-                    fontSize: 14, textAlign: 'left', cursor: 'pointer', transition: 'background 0.1s',
+                    fontSize: 14, fontWeight: isSelected ? 600 : 400,
+                    textAlign: 'left', cursor: 'pointer', transition: 'background 0.1s',
                   }}
                 >
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -258,28 +262,31 @@ export function CreatableSelect({
                 onClick={() => void handleCreate()}
                 disabled={creating}
                 style={{
-                  width: '100%', minHeight: 44,
+                  width: '100%', minHeight: 42,
                   display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 14px',
-                  background: highlight === filtered.length ? 'rgba(167,139,250,0.12)' : 'transparent',
+                  padding: '8px 12px',
+                  background: highlight === filtered.length ? 'var(--tg-accent-bg)' : 'transparent',
                   border: 'none',
                   borderTop: filtered.length > 0 ? '1px solid var(--tg-border-soft)' : 'none',
-                  color: creating ? 'var(--tg-text-muted)' : '#A855F7',
-                  fontSize: 13, fontWeight: 600,
-                  textAlign: 'left', cursor: creating ? 'wait' : 'pointer',
+                  cursor: creating ? 'wait' : 'pointer',
+                  textAlign: 'left',
                 }}
               >
                 <span style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  background: 'rgba(167,139,250,0.20)',
-                  color: '#A855F7', fontSize: 16, lineHeight: 1,
+                  width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                  background: creating ? 'var(--tg-border-soft)' : 'var(--tg-accent-dim)',
+                  border: `1px solid ${creating ? 'transparent' : 'var(--tg-accent-border)'}`,
+                  color: creating ? 'var(--tg-text-dim)' : 'var(--tg-accent)',
+                  fontSize: 15, fontWeight: 700, lineHeight: 1,
                 }}>
                   {creating ? '…' : '+'}
                 </span>
-                <span>
+                <span style={{ fontSize: 13, color: creating ? 'var(--tg-text-muted)' : 'var(--tg-text-secondary)' }}>
                   {creating ? 'Добавляем...' : (
-                    <>Добавить <strong style={{ color: '#C4B5FD' }}>«{trimmedQuery}»</strong></>
+                    <>Добавить{' '}
+                      <span style={{ color: 'var(--tg-accent)', fontWeight: 600 }}>«{trimmedQuery}»</span>
+                    </>
                   )}
                 </span>
               </button>
