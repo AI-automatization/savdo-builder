@@ -104,7 +104,14 @@ export class AdminSubscriptionsController {
         HttpStatus.NOT_FOUND,
       );
     }
-    return subscription;
+    const now = Date.now();
+    const target =
+      subscription.status === 'TRIAL' ? subscription.trialEndsAt
+      : subscription.status === 'ACTIVE' ? subscription.currentPeriodEnd
+      : subscription.status === 'PAST_DUE' ? subscription.graceEndsAt
+      : null;
+    const daysLeft = target ? Math.max(0, Math.ceil((target.getTime() - now) / 86_400_000)) : null;
+    return { ...subscription, daysLeft };
   }
 
   @Post(':id/mark-paid')
