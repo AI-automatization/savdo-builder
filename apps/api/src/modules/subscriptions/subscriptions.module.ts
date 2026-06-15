@@ -10,6 +10,7 @@ import { ExtendTrialUseCase } from './use-cases/extend-trial.use-case';
 import { CancelSubscriptionUseCase } from './use-cases/cancel-subscription.use-case';
 import { CompSubscriptionUseCase } from './use-cases/comp-subscription.use-case';
 import { BackfillTrialsUseCase } from './use-cases/backfill-trials.use-case';
+import { BetaGrandfatherUseCase } from './use-cases/beta-grandfather.use-case';
 import { ExpireSubscriptionsUseCase } from './use-cases/expire-subscriptions.use-case';
 import { SubscriptionExpiryProcessor } from './processors/subscription-expiry.processor';
 // PlanLimitGuardService moved to shared/ (Global) to avoid circular deps.
@@ -36,6 +37,7 @@ import { AdminModule } from '../admin/admin.module';
     CancelSubscriptionUseCase,
     CompSubscriptionUseCase,
     BackfillTrialsUseCase,
+    BetaGrandfatherUseCase,
     ExpireSubscriptionsUseCase,
     SubscriptionExpiryProcessor,
   ],
@@ -48,6 +50,7 @@ import { AdminModule } from '../admin/admin.module';
     CancelSubscriptionUseCase,
     CompSubscriptionUseCase,
     BackfillTrialsUseCase,
+    BetaGrandfatherUseCase,
     ExpireSubscriptionsUseCase,
   ],
 })

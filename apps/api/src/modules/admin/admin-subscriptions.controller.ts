@@ -31,6 +31,7 @@ import { ExtendTrialUseCase } from '../subscriptions/use-cases/extend-trial.use-
 import { CancelSubscriptionUseCase } from '../subscriptions/use-cases/cancel-subscription.use-case';
 import { CompSubscriptionUseCase } from '../subscriptions/use-cases/comp-subscription.use-case';
 import { BackfillTrialsUseCase } from '../subscriptions/use-cases/backfill-trials.use-case';
+import { BetaGrandfatherUseCase } from '../subscriptions/use-cases/beta-grandfather.use-case';
 import { MarkPaidDto } from '../subscriptions/dto/mark-paid.dto';
 import { ExtendTrialDto } from '../subscriptions/dto/extend-trial.dto';
 import { CancelSubscriptionDto } from '../subscriptions/dto/cancel-subscription.dto';
@@ -54,6 +55,7 @@ export class AdminSubscriptionsController {
     private readonly cancel: CancelSubscriptionUseCase,
     private readonly comp: CompSubscriptionUseCase,
     private readonly backfill: BackfillTrialsUseCase,
+    private readonly betaGrandfather: BetaGrandfatherUseCase,
   ) {}
 
   private async requireAdmin(user: JwtPayload) {
@@ -81,7 +83,7 @@ export class AdminSubscriptionsController {
     const validStatus = status && (['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CHURNED', 'CANCELLED'] as const).includes(status as SubscriptionStatus)
       ? (status as SubscriptionStatus)
       : undefined;
-    const validTier = tier && (['STARTER', 'PRO', 'BUSINESS'] as const).includes(tier as SubscriptionTier)
+    const validTier = tier && (['FREE', 'PRO', 'STUDIO'] as const).includes(tier as SubscriptionTier)
       ? (tier as SubscriptionTier)
       : undefined;
     return this.subscriptionsRepo.findAllAdmin({
@@ -180,5 +182,18 @@ export class AdminSubscriptionsController {
   async backfillEndpoint(@CurrentUser() user: JwtPayload) {
     await this.requireAdmin(user);
     return this.backfill.execute(user.sub);
+  }
+
+  /**
+   * BIZ-DECISIONS-§15 (2026-06-14): Beta grandfather — все продавцы получают
+   * tier=PRO ACTIVE бесплатно до 01.09.2026.
+   * Idempotent UPSERT — безопасно вызывать повторно.
+   * CHURNED-продавцы не затрагиваются.
+   */
+  @Post('beta-grandfather')
+  @AdminPermission('subscription:moderate')
+  async betaGrandfatherEndpoint(@CurrentUser() user: JwtPayload) {
+    await this.requireAdmin(user);
+    return this.betaGrandfather.execute(user.sub);
   }
 }
