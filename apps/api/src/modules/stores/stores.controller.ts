@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Put, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -14,6 +15,7 @@ import { PublishStoreUseCase } from './use-cases/publish-store.use-case';
 import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
 import { UpdateChannelTemplateUseCase } from './use-cases/update-channel-template.use-case';
 import { TriggerChannelTestPostUseCase } from './use-cases/trigger-channel-test-post.use-case';
+import { UpdateChannelBindingUseCase } from './use-cases/update-channel-binding.use-case';
 import { PreviewChannelPostUseCase } from '../products/use-cases/preview-channel-post.use-case';
 import { ChannelTemplateService } from '../products/services/channel-template.service';
 import { StoresRepository } from './repositories/stores.repository';
@@ -21,6 +23,14 @@ import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { PrismaService } from '../../database/prisma.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+
+class UpdateChannelBindingDto {
+  /** @username канала для привязки. null = отвязать. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  channelId?: string | null;
+}
 
 @Controller('seller/store')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,6 +44,7 @@ export class StoresController {
     private readonly unpublishStore: UnpublishStoreUseCase,
     private readonly updateChannelTemplate: UpdateChannelTemplateUseCase,
     private readonly triggerTestPost: TriggerChannelTestPostUseCase,
+    private readonly updateChannelBinding: UpdateChannelBindingUseCase,
     private readonly previewChannelPost: PreviewChannelPostUseCase,
     private readonly storesRepo: StoresRepository,
     private readonly sellersRepo: SellersRepository,
@@ -133,6 +144,17 @@ export class StoresController {
   @HttpCode(HttpStatus.OK)
   async sendTestChannelPost(@CurrentUser() user: JwtPayload) {
     return this.triggerTestPost.execute(user.sub);
+  }
+
+  /** Привязать (@username) или отвязать (channelId: null) TG-канал из TMA. */
+  @Patch('channel')
+  @HttpCode(HttpStatus.OK)
+  async updateChannelBindingFromTma(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateChannelBindingDto,
+  ) {
+    const channelId = dto.channelId === undefined ? null : dto.channelId;
+    return this.updateChannelBinding.execute(user.sub, channelId);
   }
 
   // ─── Store directions (many-to-many GlobalCategory) ─────────────────────────

@@ -238,6 +238,10 @@ export default function ChannelSettingsPage() {
   const [testing, setTesting] = useState(false);
   const [togglingAutoPost, setTogglingAutoPost] = useState(false);
 
+  // Channel bind/unbind
+  const [channelInput, setChannelInput] = useState('');
+  const [bindingChannel, setBindingChannel] = useState(false);
+
   // Preview
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -469,6 +473,50 @@ export default function ChannelSettingsPage() {
     }
   }, [data, autoPost, togglingAutoPost, tg, t]);
 
+  // ─── Channel bind / unbind ───────────────────────────────────────────────
+  const bindChannel = useCallback(async () => {
+    const id = channelInput.trim();
+    if (!id || bindingChannel) return;
+    setBindingChannel(true);
+    try {
+      const res = await api<{ telegramChannelId: string; telegramChannelTitle: string; autoPostProductsToChannel: boolean }>(
+        '/seller/store/channel',
+        { method: 'PATCH', body: { channelId: id.startsWith('@') ? id : `@${id}` }, noCache: true },
+      );
+      bustCache('/seller/store/channel-template');
+      setData((prev) => prev ? { ...prev, telegramChannelId: res.telegramChannelId, telegramChannelTitle: res.telegramChannelTitle, autoPostProductsToChannel: res.autoPostProductsToChannel } : prev);
+      setAutoPost(res.autoPostProductsToChannel);
+      setChannelInput('');
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast(`✅ Канал ${res.telegramChannelTitle ?? res.telegramChannelId} привязан!`);
+    } catch (err) {
+      tg?.HapticFeedback.notificationOccurred('error');
+      const msg = err instanceof Error ? err.message : 'Ошибка привязки';
+      showToast(`❌ ${msg}`, 'error');
+    } finally {
+      setBindingChannel(false);
+    }
+  }, [channelInput, bindingChannel, tg]);
+
+  const unbindChannel = useCallback(async () => {
+    if (bindingChannel) return;
+    setBindingChannel(true);
+    try {
+      await api('/seller/store/channel', { method: 'PATCH', body: { channelId: null }, noCache: true });
+      bustCache('/seller/store/channel-template');
+      setData((prev) => prev ? { ...prev, telegramChannelId: null, telegramChannelTitle: null, autoPostProductsToChannel: false } : prev);
+      setAutoPost(false);
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('Канал отвязан');
+    } catch (err) {
+      tg?.HapticFeedback.notificationOccurred('error');
+      const msg = err instanceof Error ? err.message : 'Ошибка';
+      showToast(`❌ ${msg}`, 'error');
+    } finally {
+      setBindingChannel(false);
+    }
+  }, [bindingChannel, tg]);
+
   // ─── Test post ──────────────────────────────────────────────────────────
   const sendTestPost = useCallback(async () => {
     if (testing) return;
@@ -631,40 +679,74 @@ export default function ChannelSettingsPage() {
       </GlassCard>
 
       {/* ── 2. Канал ── */}
-      {(autoPost || channelAttached) && (
-        <GlassCard className="p-4 flex flex-col gap-2">
-          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
-            {t('seller.channel.binding.header')}
-          </p>
-          {channelAttached ? (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
-                  {t('seller.channel.binding.channelLabel')}
-                </label>
+      <GlassCard className="p-4 flex flex-col gap-3">
+        <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+          {t('seller.channel.binding.header')}
+        </p>
+        {channelAttached ? (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
+                {t('seller.channel.binding.channelLabel')}
+              </label>
+              <div className="flex items-center gap-2">
                 <input
                   value={data?.telegramChannelTitle ?? channelUsername}
                   readOnly
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none min-w-0"
                   style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed' }}
                 />
+                <span style={{ color: 'var(--tg-success)', fontSize: 18 }}>✓</span>
               </div>
-              <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
-                {t('seller.channel.binding.changeViaBot')}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm" style={{ color: 'var(--tg-text-secondary)' }}>
-                {t('seller.channel.binding.notAttached')}
-              </p>
-              <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
-                {t('seller.channel.binding.hint')}
-              </p>
-            </>
-          )}
-        </GlassCard>
-      )}
+            </div>
+            <button
+              onClick={unbindChannel}
+              disabled={bindingChannel}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold"
+              style={{
+                background: 'rgba(248,113,113,0.10)',
+                color: 'var(--tg-danger)',
+                border: '1px solid rgba(248,113,113,0.25)',
+                opacity: bindingChannel ? 0.5 : 1,
+              }}
+            >
+              {bindingChannel ? 'Отвязываем...' : 'Отвязать канал'}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
+              Добавьте <b style={{ color: 'var(--tg-text-secondary)' }}>@savdo_builderBOT</b> как администратора в ваш канал, затем введите @username канала:
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex gap-2">
+                <input
+                  value={channelInput}
+                  onChange={(e) => setChannelInput(e.target.value)}
+                  placeholder="@mychannel"
+                  className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none min-w-0"
+                  style={inputStyle}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void bindChannel(); }}
+                  disabled={bindingChannel}
+                />
+                <button
+                  onClick={bindChannel}
+                  disabled={bindingChannel || !channelInput.trim()}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
+                  style={{
+                    background: bindingChannel || !channelInput.trim()
+                      ? 'var(--tg-surface)'
+                      : `linear-gradient(135deg, ${ACCENT_DARK}, ${ACCENT})`,
+                    color: bindingChannel || !channelInput.trim() ? 'var(--tg-text-dim)' : '#fff',
+                  }}
+                >
+                  {bindingChannel ? '...' : 'Привязать'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </GlassCard>
 
       {/* ── 3. Legacy banner (если parseTemplate → null) ── */}
       {legacyBannerActive && (
