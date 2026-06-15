@@ -98,6 +98,7 @@ export default function EditProductPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+  const [removingBgFor, setRemovingBgFor] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string>('');
 
   // Категории
@@ -539,6 +540,31 @@ export default function EditProductPage() {
     }
   };
 
+  const handleRemoveBg = async (mediaId: string) => {
+    if (!id) return;
+    setRemovingBgFor(mediaId);
+    try {
+      const result = await api<{ mediaFileId: string; url: string }>(
+        `/media/seller/${mediaId}/remove-bg`,
+        { method: 'POST' },
+      );
+      const newImage = await api<ProductImage>(`/seller/products/${id}/images`, {
+        method: 'POST',
+        body: { mediaId: result.mediaFileId },
+      });
+      setProduct((prev) =>
+        prev ? { ...prev, images: [...(prev.images ?? []), newImage] } : prev,
+      );
+      tg?.HapticFeedback.notificationOccurred('success');
+      showToast('✅ Фон убран');
+    } catch {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast('❌ Не удалось убрать фон');
+    } finally {
+      setRemovingBgFor(null);
+    }
+  };
+
   return (
     <>
       {cropSrc && (
@@ -942,6 +968,31 @@ export default function EditProductPage() {
                           }}
                         >
                           {deletingImageId === img.id ? '…' : '✕'}
+                        </button>
+                        <button
+                          onClick={() => handleRemoveBg(img.media.id)}
+                          disabled={removingBgFor === img.media.id}
+                          title="Убрать фон"
+                          style={{
+                            position: 'absolute',
+                            bottom: -4,
+                            right: -4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            background: 'rgba(100,100,120,0.88)',
+                            border: 'none',
+                            cursor: removingBgFor === img.media.id ? 'wait' : 'pointer',
+                            fontSize: 9,
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            lineHeight: 1,
+                            opacity: removingBgFor === img.media.id ? 0.6 : 1,
+                          }}
+                        >
+                          {removingBgFor === img.media.id ? '…' : '🪄'}
                         </button>
                       </div>
                     );
