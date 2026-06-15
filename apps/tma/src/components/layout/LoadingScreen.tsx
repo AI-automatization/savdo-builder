@@ -4,8 +4,11 @@ import { MaxsavdoMark } from '@/components/brand/MaxsavdoMark';
 export function LoadingScreen() {
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center gap-5"
-      style={{ background: gradientBg, position: 'relative', overflow: 'hidden' }}
+      className="flex flex-col items-center justify-center gap-5"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        background: gradientBg, overflow: 'hidden',
+      }}
     >
       {/* Ambient background glow — Champagne Gold */}
       <div
