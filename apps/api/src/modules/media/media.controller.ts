@@ -31,6 +31,7 @@ import { RequestUploadUseCase } from './use-cases/request-upload.use-case';
 import { ConfirmUploadUseCase } from './use-cases/confirm-upload.use-case';
 import { DeleteMediaUseCase } from './use-cases/delete-media.use-case';
 import { UploadDirectUseCase, UploadedFile as UploadedFileType } from './use-cases/upload-direct.use-case';
+import { RemoveBackgroundUseCase } from './use-cases/remove-background.use-case';
 import { MediaRepository } from './repositories/media.repository';
 import { TelegramStorageService } from './services/telegram-storage.service';
 import { R2StorageService } from './services/r2-storage.service';
@@ -43,6 +44,7 @@ export class MediaController {
     private readonly confirmUpload: ConfirmUploadUseCase,
     private readonly deleteMedia: DeleteMediaUseCase,
     private readonly uploadDirect: UploadDirectUseCase,
+    private readonly removeBg: RemoveBackgroundUseCase,
     private readonly mediaRepo: MediaRepository,
     private readonly tgStorage: TelegramStorageService,
     private readonly r2Storage: R2StorageService,
@@ -121,6 +123,18 @@ export class MediaController {
     });
 
     return { success: true, data: { avatarUrl: seller.avatarUrl } };
+  }
+
+  /** Remove background from an existing product image via remove.bg API. */
+  @Post('seller/:mediaId/remove-bg')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  @HttpCode(HttpStatus.OK)
+  async removeBackground(
+    @CurrentUser() user: JwtPayload,
+    @Param('mediaId') mediaId: string,
+  ) {
+    return this.removeBg.execute({ mediaId, ownerUserId: user.sub });
   }
 
   @Post(':id/confirm')
