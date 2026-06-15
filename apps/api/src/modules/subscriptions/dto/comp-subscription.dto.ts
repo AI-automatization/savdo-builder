@@ -10,7 +10,7 @@ import {
 import { SubscriptionTier } from '@prisma/client';
 
 export class CompSubscriptionDto {
-  @IsEnum(['STARTER', 'PRO', 'BUSINESS'] as const)
+  @IsEnum(['FREE', 'PRO', 'STUDIO'] as const)
   tier!: SubscriptionTier;
 
   @IsInt()

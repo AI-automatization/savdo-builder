@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { MediaVisibility } from '@prisma/client';
+import sharp from 'sharp';
 import { TelegramStorageService } from '../services/telegram-storage.service';
 import { R2StorageService } from '../services/r2-storage.service';
 import { MediaRepository } from '../repositories/media.repository';
@@ -67,17 +68,36 @@ export class UploadDirectUseCase {
     if (this.r2Storage.isConfigured()) {
       try {
         const bucket = this.r2Storage.getDefaultBucket();
-        const ext = pickExtension(file.mimetype);
-        const objectKey = `${purpose}/${new Date().getFullYear()}/${randomUUID()}.${ext}`;
-        await this.r2Storage.uploadObject(bucket, objectKey, file.buffer, file.mimetype);
+
+        // Обрабатываем изображения через sharp перед загрузкой в R2.
+        // Без этого Telegram скачивает оригинал и перекодирует сам → двойное сжатие → JPEG q~50.
+        let uploadBuffer = file.buffer;
+        let uploadMime = file.mimetype;
+        let uploadExt = pickExtension(file.mimetype);
+
+        if (IMAGE_MIME_TYPES.has(file.mimetype) && purpose !== 'seller_doc') {
+          try {
+            uploadBuffer = await sharp(file.buffer)
+              .resize({ width: 1280, height: 1280, fit: 'inside', withoutEnlargement: true })
+              .jpeg({ quality: 92 })
+              .toBuffer();
+            uploadMime = 'image/jpeg';
+            uploadExt = 'jpg';
+          } catch (sharpErr) {
+            this.logger.warn(`Sharp processing failed, uploading original: ${sharpErr instanceof Error ? sharpErr.message : String(sharpErr)}`);
+          }
+        }
+
+        const objectKey = `${purpose}/${new Date().getFullYear()}/${randomUUID()}.${uploadExt}`;
+        await this.r2Storage.uploadObject(bucket, objectKey, uploadBuffer, uploadMime);
 
         const isPrivate = purpose === 'seller_doc';
         const mediaFile = await this.mediaRepo.create({
           ownerUserId: userId,
           bucket,
           objectKey,
-          mimeType: file.mimetype,
-          fileSize: BigInt(file.size),
+          mimeType: uploadMime,
+          fileSize: BigInt(uploadBuffer.length),
           // SEC-005: документы продавцов приватны, не отдаются через public proxy.
           visibility: isPrivate ? MediaVisibility.PROTECTED : MediaVisibility.PUBLIC,
         });
