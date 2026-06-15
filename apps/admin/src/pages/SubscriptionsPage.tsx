@@ -7,6 +7,7 @@ import type {
   SubscriptionTier,
 } from 'types'
 import { useFetch } from '../lib/hooks'
+import { api } from '../lib/api'
 import { useTranslation } from '../lib/i18n'
 import { PaginationBar } from '../components/admin/PaginationBar'
 import SubscriptionDetailModal from './SubscriptionDetailModal'
@@ -42,6 +43,29 @@ export default function SubscriptionsPage() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [batchLoading, setBatchLoading] = useState<'backfill' | 'grandfather' | null>(null)
+
+  const runBatch = async (action: 'backfill' | 'grandfather') => {
+    const labels = {
+      backfill: 'Создать TRIAL для продавцов без подписки?',
+      grandfather: 'Перевести ВСЕХ продавцов на PRO бесплатно до 01.09.2026? Это необратимо.',
+    }
+    if (!window.confirm(labels[action])) return
+    setBatchLoading(action)
+    try {
+      const endpoint = action === 'backfill'
+        ? '/api/v1/admin/subscriptions/backfill'
+        : '/api/v1/admin/subscriptions/beta-grandfather'
+      const res = await api.post<{ created?: number; upserted?: number }>(endpoint, {})
+      const count = res.created ?? res.upserted ?? 0
+      window.alert(`Готово: ${count} продавцов обновлено`)
+      refetch()
+    } catch {
+      window.alert('Ошибка при выполнении операции')
+    } finally {
+      setBatchLoading(null)
+    }
+  }
 
   const LIMIT = 20
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
@@ -86,6 +110,33 @@ export default function SubscriptionsPage() {
               {total}
             </span>
           )}
+        </div>
+        {/* Batch actions */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => runBatch('backfill')}
+            disabled={batchLoading !== null}
+            style={{
+              padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)',
+              fontSize: 12, fontWeight: 600, cursor: batchLoading ? 'not-allowed' : 'pointer',
+              opacity: batchLoading === 'backfill' ? 0.5 : 1,
+            }}
+          >
+            {batchLoading === 'backfill' ? '...' : 'Backfill TRIAL'}
+          </button>
+          <button
+            onClick={() => runBatch('grandfather')}
+            disabled={batchLoading !== null}
+            style={{
+              padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(201,168,118,0.35)',
+              background: 'rgba(201,168,118,0.12)', color: '#C9A876',
+              fontSize: 12, fontWeight: 600, cursor: batchLoading ? 'not-allowed' : 'pointer',
+              opacity: batchLoading === 'grandfather' ? 0.5 : 1,
+            }}
+          >
+            {batchLoading === 'grandfather' ? '...' : '👑 Beta Grandfather'}
+          </button>
         </div>
       </div>
 
