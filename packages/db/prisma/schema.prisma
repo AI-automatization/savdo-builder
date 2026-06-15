@@ -176,9 +176,9 @@ enum InventoryMovementType {
 // SUBSCRIPTION-MODULE-001 (см. docs/decisions/subscription-module-design-2026-06-01.md)
 
 enum SubscriptionTier {
-  STARTER
+  FREE
   PRO
-  BUSINESS
+  STUDIO
 }
 
 enum SubscriptionStatus {
