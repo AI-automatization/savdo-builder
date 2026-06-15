@@ -10,7 +10,7 @@ import {
 import { SubscriptionTier, SubscriptionPaymentMethod } from '@prisma/client';
 
 export class MarkPaidDto {
-  @IsEnum(['STARTER', 'PRO', 'BUSINESS'] as const)
+  @IsEnum(['FREE', 'PRO', 'STUDIO'] as const)
   tier!: SubscriptionTier;
 
   @IsInt()

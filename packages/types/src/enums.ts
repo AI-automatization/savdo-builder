@@ -116,14 +116,13 @@ export const InventoryMovementType = {
 export type InventoryMovementType =
   typeof InventoryMovementType[keyof typeof InventoryMovementType];
 
-// BILLING-MACHINE-001 — Phase 1 (STARTER/PRO/BUSINESS, 99k/299k/899k UZS).
-// ⚠️ BILLING-TIER-ENUM-SYNC-001 (heads-up от Азима 04.06.2026): pricing v2 меняет
-// tier-enum на FREE/PRO/STUDIO (149k/399k). Сделать миграцию здесь и в Prisma
-// в момент работы над BILLING-MACHINE-001, не отдельно.
+// BILLING-TIER-ENUM-SYNC-001 (2026-06-15): FREE/PRO/STUDIO — решение Азима BIZ-DECISIONS-§15.
+// FREE = бесплатно навсегда (≤50 товаров, ≤50 заказов/мес)
+// PRO = 149 000 UZS/мес, STUDIO = 399 000 UZS/мес + до 3 магазинов.
 export const SubscriptionTier = {
-  STARTER: 'STARTER',
+  FREE: 'FREE',
   PRO: 'PRO',
-  BUSINESS: 'BUSINESS',
+  STUDIO: 'STUDIO',
 } as const;
 export type SubscriptionTier = typeof SubscriptionTier[keyof typeof SubscriptionTier];
 
