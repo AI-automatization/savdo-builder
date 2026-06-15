@@ -26,7 +26,7 @@ const ACCENT = '#A855F7';
 const ACCENT_DARK = '#7C3AED';
 const OWNER_TG_HANDLE = 'ismailov_0011'; // Polat (owner)
 
-type Tier = 'STARTER' | 'PRO' | 'BUSINESS';
+type Tier = 'FREE' | 'PRO' | 'STUDIO';
 type Status = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CHURNED' | 'CANCELLED';
 
 interface PlanInfo {
@@ -51,9 +51,9 @@ interface Subscription {
 }
 
 const TIER_LABEL: Record<Tier, string> = {
-  STARTER: 'Старт',
-  PRO: 'Профи',
-  BUSINESS: 'Бизнес',
+  FREE: 'Free',
+  PRO: 'Pro',
+  STUDIO: 'Studio',
 };
 
 const STATUS_LABEL: Record<Status, { text: string; color: string; bg: string }> = {
