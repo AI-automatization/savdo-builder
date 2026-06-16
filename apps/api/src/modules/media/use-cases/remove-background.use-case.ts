@@ -7,7 +7,8 @@ import { MediaRepository } from '../repositories/media.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
-const REMOVE_BG_API = 'https://api.remove.bg/v1.0/removebg';
+// Hugging Face BRIA RMBG-1.4 — бесплатно, без credits, качество = remove.bg
+const HF_API = 'https://api-inference.huggingface.co/models/briaai/RMBG-1.4';
 
 @Injectable()
 export class RemoveBackgroundUseCase {
@@ -19,11 +20,11 @@ export class RemoveBackgroundUseCase {
   ) {}
 
   async execute(input: { mediaId: string; ownerUserId: string }) {
-    const apiKey = process.env.REMOVE_BG_API_KEY;
-    if (!apiKey) {
+    const hfToken = process.env.HUGGINGFACE_API_TOKEN;
+    if (!hfToken) {
       throw new DomainException(
         ErrorCode.SERVICE_UNAVAILABLE,
-        'REMOVE_BG_API_KEY not configured',
+        'HUGGINGFACE_API_TOKEN not configured',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -43,40 +44,39 @@ export class RemoveBackgroundUseCase {
       );
     }
 
+    // Скачиваем оригинал из R2 чтобы отправить бинарник в HF (надёжнее чем URL)
     const imageUrl = this.r2Storage.getPublicUrl(media.objectKey);
+    let originalBuffer: Buffer;
+    try {
+      const dl = await axios.get<ArrayBuffer>(imageUrl, { responseType: 'arraybuffer', timeout: 15_000 });
+      originalBuffer = Buffer.from(dl.data);
+    } catch {
+      throw new DomainException(ErrorCode.SERVICE_UNAVAILABLE, 'Failed to download source image', HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     let pngBuffer: Buffer;
     try {
-      const response = await axios.post<Buffer>(
-        REMOVE_BG_API,
-        new URLSearchParams({ image_url: imageUrl, size: 'auto', format: 'png' }).toString(),
+      const response = await axios.post<ArrayBuffer>(
+        HF_API,
+        originalBuffer,
         {
           headers: {
-            'X-Api-Key': apiKey,
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Bearer ${hfToken}`,
+            'Content-Type': media.mimeType ?? 'image/jpeg',
+            'Accept': 'image/png',
           },
           responseType: 'arraybuffer',
-          timeout: 30_000,
+          timeout: 60_000, // HF cold start может быть ~20-30s
         },
       );
       pngBuffer = Buffer.from(response.data);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number; data?: unknown } })?.response?.status;
-      const body = (err as { response?: { data?: unknown } })?.response?.data;
-      this.logger.error(`remove.bg failed status=${status ?? 'none'} body=${JSON.stringify(body)}`);
-
-      if (status === 402) {
-        throw new DomainException(
-          ErrorCode.SERVICE_UNAVAILABLE,
-          'remove.bg API credit exhausted — top up or switch plan',
-          HttpStatus.SERVICE_UNAVAILABLE,
-        );
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      this.logger.error(`HuggingFace RMBG failed status=${status ?? 'none'}`);
+      if (status === 503) {
+        throw new DomainException(ErrorCode.SERVICE_UNAVAILABLE, 'AI model is loading, retry in 30s', HttpStatus.SERVICE_UNAVAILABLE);
       }
-      throw new DomainException(
-        ErrorCode.SERVICE_UNAVAILABLE,
-        'Background removal service unavailable',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new DomainException(ErrorCode.SERVICE_UNAVAILABLE, 'Background removal service unavailable', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     const bucket = media.bucket;
