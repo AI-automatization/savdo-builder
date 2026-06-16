@@ -1,10 +1,17 @@
 # §7 Billing & Enforcement Machine — Spec v1
 
-> **Дата:** 2026-05-31 · **Автор:** Claude (по заданию Азима) · **Статус:** 🟡 Draft для аудита (Азим + Полат)
-> **Реализует:** `business-model-v2-2026-05-31.md` §7 (механизм «отключить неплательщика»).
+> **Дата:** 2026-05-31 · **Обновлено:** 2026-06-17 (синхронизация тарифов с финальным решением) ·
+> **Автор:** Claude (по заданию Азима) · **Статус:** 🟢 Решения закрыты, готово к реализации (§12)
+> **Реализует:** `business-model-v2-2026-05-31.md` §7 + §15 (финальные решения 14.06.2026).
+> **Тарифы/цены:** см. `pricing-rationale-v2-2026-06-04.md` — это источник правды по
+> названиям тарифов и ценам (Free/Pro 149k/Studio 399k), эта спека больше не дублирует цифры
+> отдельно, только механику энфорсмента.
 > **Почему сейчас:** это **блокер платного public launch** — без него нельзя брать деньги на масштабе.
 > **Зоны:** backend (entity + cron + admin) — **Полат**; suspended-states во фронтах — **Азим**.
 > Спека = контракт между ними, чтобы пилить параллельно после approve.
+> ⚠️ **BILLING-TIER-ENUM-SYNC-001:** tier-enum переименован в этой спеке (см. §2) со
+> STARTER/PRO/BUSINESS на **FREE/PRO/STUDIO** — при реализации `packages/types`/`packages/db`
+> брать имена отсюда, не из старой версии этого файла.
 
 ---
 
@@ -30,7 +37,7 @@
 model Subscription {
   id               String             @id @default(uuid())
   sellerId         String             @unique            // INV-S01: одна подписка на продавца
-  tier             SubscriptionTier   @default(STARTER)  // STARTER | PRO | BUSINESS
+  tier             SubscriptionTier   @default(FREE)      // FREE | PRO | STUDIO
   status           SubscriptionStatus @default(TRIAL)    // см. §3
   trialEndsAt      DateTime?                             // конец 14-дн триала
   currentPeriodEnd DateTime?                             // «оплачено до» (paidUntil)
@@ -52,7 +59,7 @@ model Subscription {
   @@map("subscriptions")
 }
 
-enum SubscriptionTier   { STARTER  PRO  BUSINESS }
+enum SubscriptionTier   { FREE  PRO  STUDIO }
 enum SubscriptionStatus { TRIAL  ACTIVE  PAST_DUE  SUSPENDED  CHURNED }
 ```
 
@@ -110,10 +117,10 @@ enum SubscriptionStatus { TRIAL  ACTIVE  PAST_DUE  SUSPENDED  CHURNED }
 
 | Лимит | Тип | Поведение при превышении |
 |-------|-----|--------------------------|
-| **Заказов/мес** (100/1000/∞) | 🟡 **SOFT** | продавцу баннер «вы на пике тарифа, апгрейд» + событие на апсейл. **Покупатель НЕ блокируется.** |
-| **Товаров** (50/∞/∞) | 🔴 **HARD** | на Старте создание 51-го товара → ошибка `SUBSCRIPTION_PRODUCT_LIMIT`, кнопка «апгрейд». |
-| **Кастом-брендинг** | 🔴 **HARD** | фича доступна только PRO/BUSINESS (gate в UI + бэке). |
-| **API / white-label** | 🔴 **HARD** | только BUSINESS. |
+| **Заказов/мес** (Free ≤50 / Pro,Studio ∞) | 🟡 **SOFT → блок через 3 дня** | при превышении — баннер-предупреждение продавцу; если за 3 дня не оплатил/не апгрейднул — **новые заказы блокируются** (`SUBSCRIPTION_ORDER_LIMIT`). Уже принятые заказы не трогаем. **Покупатель не теряет уже оформленный заказ.** Решение §12.4. |
+| **Магазинов** (Free=1 / Pro=1 / Studio≤3) | 🔴 **HARD** | попытка создать 2-й магазин на Free/Pro → ошибка `SUBSCRIPTION_STORE_LIMIT`, кнопка «апгрейд до Studio». Multi-store — roadmap-фича, см. INV-S01. |
+| **Свой домен / без бейджа maxsavdo / AI-фото+описания / полная аналитика / промокоды** | 🔴 **HARD** | доступно от **PRO** и выше (gate в UI + бэке). На Free — поддомен + бейдж. |
+| **Команда / приоритетная поддержка / экспорт** | 🔴 **HARD** | только **STUDIO**. |
 | **Неоплата** (`SUSPENDED`) | 🔴 **HARD** | storefront скрыт, dashboard read-only (см. §6). |
 
 > Это снимает дыру «как энфорсить заказы не наказывая покупателя»: enforcement на стороне
@@ -138,8 +145,12 @@ enum SubscriptionStatus { TRIAL  ACTIVE  PAST_DUE  SUSPENDED  CHURNED }
    - переход в ACTIVE из любого статуса при оплате.
 6. **Storefront read-gate** — везде, где отдаётся публичный storefront, добавить условие из §3
    (скрыть при SUSPENDED/CHURNED). Отдавать 404/«недоступен», а не пустую витрину.
-7. **Product-create guard** — на Старте проверять cap товаров → `SUBSCRIPTION_PRODUCT_LIMIT`.
-8. **Order-counter** — `ordersThisPeriod` per store (для soft-лимита; считается из Order по периоду).
+7. **Store-create guard** — при создании 2-го магазина проверять `tier` (Free/Pro → `SUBSCRIPTION_STORE_LIMIT`,
+   Studio ≤3). Roadmap-зависимость: пока действует INV-S01 (1 seller = 1 store), guard всегда блокирует
+   2-й магазин независимо от tier — multi-store включается отдельной фичей при снятии INV-S01 для Studio.
+8. **Order-counter + soft-limit enforcement** — `ordersThisPeriod` per store. При превышении (Free >50):
+   баннер сразу, **блокировка создания новых заказов через 3 дня** если не оплатил (§12.4) → новый
+   error-код `SUBSCRIPTION_ORDER_LIMIT`.
 
 ---
 
@@ -152,8 +163,9 @@ enum SubscriptionStatus { TRIAL  ACTIVE  PAST_DUE  SUSPENDED  CHURNED }
 | `ACTIVE` | ничего (или тихий бейдж тарифа в настройках). |
 | `PAST_DUE` | жёлтый баннер «Оплатите до DD.MM — иначе магазин скроется» (grace-countdown). Всё работает. |
 | `SUSPENDED` | dashboard **read-only**: красный баннер «Магазин скрыт за неоплату. Оплатите для восстановления». Кнопки создания/редактирования disabled. Данные видны. |
-| лимит заказов (soft) | баннер «Вы на пике тарифа — апгрейд, чтобы расти» (не блокирует). |
-| лимит товаров (hard) | при попытке 51-го: модалка «Лимит тарифа Старт — апгрейд до Pro». |
+| лимит заказов (Free >50/мес) | баннер «Вы на пике тарифа — апгрейд, чтобы расти», с 3-дневным countdown до блокировки новых заказов. |
+| лимит заказов, блокировка (день 4+) | модалка при попытке создать заказ: «Лимит Free достигнут — апгрейд до Pro для безлимита». |
+| 2-й магазин (Free/Pro) | модалка «Несколько магазинов — только на Studio». |
 
 ### web-buyer (storefront)
 | Статус | Что видит покупатель |
@@ -201,19 +213,19 @@ enum SubscriptionStatus { TRIAL  ACTIVE  PAST_DUE  SUSPENDED  CHURNED }
 
 ```ts
 interface SubscriptionDto {
-  tier: 'STARTER' | 'PRO' | 'BUSINESS';
+  tier: 'FREE' | 'PRO' | 'STUDIO';
   status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CHURNED';
   trialEndsAt: string | null;       // ISO
   currentPeriodEnd: string | null;  // ISO
   graceEndsAt: string | null;       // ISO — для countdown в PAST_DUE
+  orderLimitWarningAt: string | null; // ISO — старт 3-дневного countdown до блокировки заказов (Free, §12.4)
   limits: {
-    maxProducts: number | null;     // null = ∞
-    maxOrdersPerMonth: number | null;
-    customBranding: boolean;
-    apiAccess: boolean;
+    maxStores: number;              // Free=1, Pro=1, Studio=3
+    maxOrdersPerMonth: number | null; // 50 для Free, null = ∞ для Pro/Studio
+    customBranding: boolean;        // false на Free, true от Pro
   };
   usage: {
-    products: number;
+    stores: number;
     ordersThisPeriod: number;
   };
 }
@@ -237,14 +249,14 @@ interface SubscriptionDto {
 
 ---
 
-## 12. Открытые вопросы для аудита
+## 12. ✅ Решения закрыты — 14.06.2026 (Азим)
 
-1. **Триал — 14 дней?** (бизнес-план §6). Или 7/30?
-2. **Grace — 7 дней** в `PAST_DUE` — норм?
-3. **Хранение churned-данных — 90 дней** до удаления — ок по политике/legal?
-4. **Soft order-limit** — только баннер, или ещё throttle advanced-фич (аналитика)? (моё: только баннер на старте).
-5. **Cron-нотификации продавцу** (TG-бот «осталось 3 дня») — в v1 или v2? (моё: v1, дёшево и сильно снижает churn).
-6. **Beta-когорта:** как технически grandfather — `tier=PRO, currentPeriodEnd=далеко` или отдельный флаг `isBeta`? (моё: спец-значение `lastPaymentNote='beta_grandfather'` + дальний `currentPeriodEnd`).
+1. ✅ **Триал: 30 дней** для новых пользователей.
+2. ✅ **Grace: 7 дней** в `PAST_DUE` → потом SUSPENDED.
+3. ✅ **Хранение churned-данных: 90 дней** → потом удаление. Продавец может восстановить в течение 3 месяцев.
+4. ✅ **Soft order-limit:** 3 дня показываем баннер-предупреждение → потом блокируем новые заказы. Покупателей не блокируем сразу.
+5. ✅ **Cron-нотификации TG-бот:** в **v1** («осталось 3 дня триала», «просрочена оплата»).
+6. ✅ **Beta-когорта:** `tier=PRO, currentPeriodEnd=2026-09-01, lastPaymentNote='beta_grandfather'`.
 
 ---
 
