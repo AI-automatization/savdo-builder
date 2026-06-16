@@ -1,5 +1,28 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-16] [CROSS-AGENT-STATUS-SYNC-001] Сверка статусов перед стартом suspended-states (BILLING-MACHINE-001)
+- **Статус:** 🟡 Предупреждение (расхождение статусов между сессиями, не баг кода).
+- **Что случилось:** перед стартом suspended-states (фронтовая часть BILLING-MACHINE-001) сверил три
+  пункта текущего статуса с кодом — включая `origin/api`/`origin/main`, не только локальные файлы.
+- **Сверка:**
+  1. Suspended/churned-гейтинг в `apps/web-buyer` и `apps/web-seller` — действительно ещё не реализован
+     (нет проверок `SUSPENDED`/`CHURNED`/`subscriptionStatus` в storefront-роуте, `middleware.ts`,
+     dashboard layout web-seller). Backend DTO (`SubscriptionDto`, `SubscriptionStatus`) уже есть в
+     `packages/types`. Storefront read-gate на бэке (`apps/api/.../stores.repository.ts` `findBySlug()`)
+     сейчас фильтрует только по `store.status==='APPROVED'`, без проверки `subscription.status` —
+     нужен на входе для фронтового 404.
+  2. `WEB-QA-BUGFIX-2026-05-15` — по `analiz/tasks.md:598-620` закрыт целиком 19.05.2026 (волны
+     `123b70a`/`73ff29f`, `fb5febf`/`47ea98d`, `3e2cee2`). На текущий момент блокеров запуска оттуда нет.
+  3. Билинг-спека (`billing-machine-spec-v1-2026-05-31.md`) ещё на старых названиях/ценах (STARTER/PRO/
+     BUSINESS, 99k/299k/899k) — требует обновления под FREE/PRO/STUDIO. В `origin/api`
+     `packages/types/src/enums.ts` `SubscriptionTier` на момент проверки (после `a9489fb`) тоже ещё
+     `STARTER/PRO/BUSINESS` — тикет `BILLING-TIER-ENUM-SYNC-001` (ветка `api`) на эту синхронизацию
+     остаётся открытым 🟡.
+- **Что сделано:** код не менялся, только сверка. Статус передан Полату. Лог — чтобы при следующей
+  сверке не повторять то же расследование.
+- **Файлы для справки:** `packages/types/src/enums.ts` (origin/api, origin/main); `analiz/tasks.md:598-620`
+  (WEB-QA-BUGFIX); `analiz/tasks.md` на ветке `origin/api` — `BILLING-TIER-ENUM-SYNC-001`.
+
 ## [2026-06-14] [WEB-010] OtpGate default purpose 'login' создавала SELLER у покупателей
 - **Статус:** ✅ Исправлено (Азим, web-buyer, 14.06.2026).
 - **Что случилось:** `apps/web-buyer/src/components/auth/OtpGate.tsx` (shared компонент) имел
