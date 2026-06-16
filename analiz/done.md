@@ -7324,3 +7324,9 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - 130 → **330 cases (+154%)**
   - 8 → **26 spec files (+225%)**
   - Покрыты все P0/P1 critical use-cases из аудита: финансы (cart/checkout/order/refund), auth (OTP/JWT), state machines (order/product), moderation (suspend/approve/reject/archive/unapprove), admin management (privileges), broadcasts (rate-limit/dedup), seller verification.
+
+### ✅ [BILLING-TIER-ENUM-SYNC-001] Синхронизировать tier-enum билл-машины с pricing v2
+- **Важность:** 🔴 P1
+- **Дата:** 15.06.2026
+- **Файлы:** `packages/db/prisma/schema.prisma`, `packages/db/prisma/migrations/20260615120000_subscription_tier_rename/migration.sql`, `packages/types/src/enums.ts`, `apps/api/src/modules/subscriptions/plan-config.ts`, `apps/api/src/modules/subscriptions/dto/mark-paid.dto.ts`, `apps/api/src/modules/subscriptions/dto/comp-subscription.dto.ts`, `apps/api/src/modules/subscriptions/use-cases/mark-paid.use-case.spec.ts`, `apps/api/src/modules/admin/admin-subscriptions.controller.ts`, `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/pages/SubscriptionDetailModal.tsx`, `apps/admin/src/pages/StoreDetailPage.tsx`, `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`, `apps/tma/src/pages/seller/SubscriptionPage.tsx`
+- **Что сделано:** Переименованы enum-значения STARTER→FREE, BUSINESS→STUDIO через `ALTER TYPE RENAME VALUE` (Postgres 10+, без data migration). Обновлены plan-config (Free 0₽/50 товаров, Pro 149k, Studio 399k), все DTO, frontend страницы, i18n ключи, TMA. Добавлен BetaGrandfatherUseCase (UPSERT всех продавцов на PRO до 01.09.2026). Кнопки в AdminPanel. Prisma client регенерирован.

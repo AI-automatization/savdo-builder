@@ -4,6 +4,33 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 
 ---
 
+## ⚡ АВТО-АКТИВАЦИЯ СКИЛЛОВ (читать ПЕРВЫМ)
+
+> Base44-style activation rules. ПЕРЕД каждой задачей — найди совпадение и вызови скилл через Skill tool. Не жди когда пользователь попросит.
+
+| Сигнал в задаче | Авто-активировать |
+|---|---|
+| Новый NestJS endpoint / controller / UseCase | `new-api-endpoint` → `api-design-reviewer` |
+| Prisma schema / migration / новая модель | `database-schema-designer` → `migration-architect` |
+| Баг / "не работает" / "сломано" | `focused-fix` |
+| PR review / ревью кода / перед пушем | `pr-review-expert` → `adversarial-reviewer` |
+| TMA / Telegram WebApp / apps/tma | `twa-miniapp` |
+| UI компонент / дизайн / стили | `ui-ux-savdo` → `ui-design-system` |
+| Новая команда бота / Telegram handler | `new-bot-command` |
+| Auth / JWT / RBAC / permissions | `senior-security` |
+| Производительность / N+1 / медленно | `performance-profiler` |
+| Railway / деплой / env vars / secrets | `env-secrets-manager` |
+| Тесты / Jest / coverage | `api-test-suite-builder` |
+| Release / changelog / версия | `release-manager` |
+| Большая фича (>3 файлов) | `spec-driven-workflow` сначала — план до кода |
+| Безопасность / pentest / OWASP | `security-pen-testing` → `cloud-security` |
+| SQL запрос / индекс / оптимизация | `sql-database-assistant` |
+| Монорепо навигация / Turborepo | `monorepo-navigator` |
+
+**Правило:** если задача попадает в таблицу — вызвать скилл молча, без уточнения у пользователя. Если не попадает — работать без скилла.
+
+---
+
 ## 🚨 АГЕНТАМ: ЧИТАТЬ ДО НАЧАЛА ЛЮБОЙ РАБОТЫ
 
 ### Три файла — обязательны всегда

@@ -28,7 +28,7 @@ const PERIOD_END = new Date('2026-07-01T00:00:00.000Z');
 const SUBSCRIPTION_PAST_DUE = {
   id: SUBSCRIPTION_ID,
   status: 'PAST_DUE',
-  tier: SubscriptionTier.STARTER,
+  tier: SubscriptionTier.FREE,
   storeId: 'store-1',
   graceEndsAt: new Date('2026-05-15T00:00:00.000Z'),
   suspendedAt: null,
@@ -42,7 +42,7 @@ const CREATED_PAYMENT = {
 };
 
 const DEFAULT_DATA = {
-  tier: SubscriptionTier.STARTER,
+  tier: SubscriptionTier.FREE,
   amountUzs: 199_000,
   periodStart: PERIOD_START,
   periodEnd: PERIOD_END,
