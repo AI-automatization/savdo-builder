@@ -149,7 +149,7 @@ export default function ProductPage() {
     const variantId = selectedVariant?.id;
     const stockMax = selectedVariant
       ? selectedVariant.stockQuantity
-      : ((product as Record<string, unknown>).totalStock as number | undefined);
+      : ((product as unknown as { totalStock?: number }).totalStock);
     const existing = cart.find(
       (i) => i.productId === product.id && i.variantId === variantId,
     );
