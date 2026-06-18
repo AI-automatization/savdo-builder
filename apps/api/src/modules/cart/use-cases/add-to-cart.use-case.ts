@@ -92,7 +92,7 @@ export class AddToCartUseCase {
     const productStoreId = (product as any).storeId as string;
 
     // Get or create cart
-    let cart = await this.getOrCreateCart(input, productStoreId);
+    const cart = await this.getOrCreateCart(input, productStoreId);
 
     // INV-C01: one store per cart
     if (cart.storeId !== productStoreId) {
