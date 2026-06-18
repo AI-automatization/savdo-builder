@@ -77,7 +77,7 @@ export class AddToCartUseCase {
       if (stockLimit < input.quantity) {
         throw new DomainException(
           ErrorCode.INSUFFICIENT_STOCK,
-          `Only ${stockLimit} items available`,
+          stockLimit === 0 ? 'Variant is out of stock' : `Only ${stockLimit} items available`,
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
