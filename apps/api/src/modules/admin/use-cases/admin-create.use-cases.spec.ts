@@ -134,7 +134,7 @@ describe('AdminCreateStoreUseCase', () => {
         sellerId: 'seller-1',
         name: 'My Store',
         slug: 'my-store',
-        status: 'ACTIVE',
+        status: 'APPROVED',
         isPublic: true,
         publishedAt: expect.any(Date),
         deliverySettings: expect.objectContaining({

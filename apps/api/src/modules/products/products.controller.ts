@@ -610,9 +610,22 @@ export class ProductsController {
   ) {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
+    // IDOR-001: verify the attribute belongs to this product (not just any product).
+    const attr = await this.prisma.productAttribute.findFirst({
+      where: { id: attrId, productId },
+      select: { id: true },
+    });
+    if (!attr) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Attribute not found', HttpStatus.NOT_FOUND);
+    }
+    // MASS-ASSIGN-001: explicit fields instead of spread to prevent accidental field injection.
     return this.prisma.productAttribute.update({
       where: { id: attrId },
-      data: { ...body },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.value !== undefined && { value: body.value }),
+        ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),
+      },
     });
   }
 
@@ -653,6 +666,11 @@ export class ProductsController {
     const seller = await this.sellersRepo.findByUserId(userId);
     if (!seller) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Seller not found', HttpStatus.NOT_FOUND);
+    }
+
+    // ACCESS-001: blocked sellers must not manage products.
+    if (seller.isBlocked) {
+      throw new DomainException(ErrorCode.SELLER_BLOCKED, 'Seller account is blocked', HttpStatus.FORBIDDEN);
     }
 
     const store = await this.storesRepo.findBySellerId(seller.id);

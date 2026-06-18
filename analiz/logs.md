@@ -1,5 +1,27 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-18] [SECURITY-AUDIT-001] ✅ Исправлено — 5 уязвимостей безопасности
+- **Статус:** ✅ Исправлено (18.06.2026)
+- **BOLA-001 🔴**: Любой buyer мог отменить чужой заказ через `PATCH /buyer/orders/:id/status`. Fix: добавлен `buyerId` в `UpdateOrderStatusInput`, проверка в use-case.
+- **IDOR-001 🔴**: Seller мог обновить атрибут товара другого продавца (`PATCH /seller/products/:id/attributes/:attrId` — attrId не проверялся на принадлежность productId). Fix: добавлен `findFirst({ id: attrId, productId })`.
+- **MASS-ASSIGN-001 🔴**: `...body` spread в `updateProductAttribute` позволял передать `productId` чужого товара в data. Fix: явные поля.
+- **ACCESS-001 🟡**: Заблокированный продавец мог создавать/редактировать/удалять товары (нет `isBlocked` в `products.controller:resolveStoreId`). Fix: добавлена проверка.
+- **STOCK-001 🟡**: `create-direct-order` не проверял `totalStock` для товаров без вариантов. Fix: добавлена pre-check валидация.
+
+## [2026-06-18] [STOCK-OVERSELL-001] ✅ Исправлено — покупатель мог заказать товар сверх остатка
+- **Статус:** ✅ Исправлено (18.06.2026)
+- **Симптом:** При наличии 5 штук товара можно было добавить в корзину и оформить заказ на больше 5 штук.
+- **Root cause (4 точки):**
+  1. `add-to-cart.use-case.ts`: проверялось только `stockQuantity <= 0` (есть ли хоть что-то), а не `stockQuantity < requestedQty`. Плюс increment существующего item не проверял против stock.
+  2. `update-cart-item.use-case.ts`: полностью отсутствовала проверка stock — можно было выставить любое количество.
+  3. `bulk-merge-cart.use-case.ts`: при импорте items из TMA не проверялся `stockQuantity` варианта.
+  4. `checkout.repository.ts`: продукты без вариантов (`!variantId`) не получали атомарного списания `totalStock` — race condition и oversell при конкурентных заказах.
+- **Fix:**
+  1. `add-to-cart`: разделён чек isActive/stockQuantity, добавлен `stockLimit`, проверка при increment
+  2. `update-cart-item`: инжектированы ProductsRepository + VariantsRepository, добавлена проверка перед update
+  3. `bulk-merge-cart`: `stockQuantity < item.quantity` → skip с `skipped++`
+  4. `checkout.repository`: для non-variant products — `tx.product.updateMany WHERE totalStock >= qty` + InventoryMovement
+
 ## [2026-06-08] [TMA-MOBILE-OVERFLOW-001] ✅ ЗАКРЫТО — карточки товаров уезжают за viewport на mobile
 - **Статус:** ✅ Исправлено (08.06.2026)
 - **Симптом:** На mobile (320–480px) в TMA buyer на StoresPage (tab "Товары") и StorePage карточки обрезались слева ('...личии' вместо 'В наличии'), скрытый horizontal scroll.

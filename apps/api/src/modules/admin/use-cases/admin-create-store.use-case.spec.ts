@@ -110,7 +110,7 @@ describe('AdminCreateStoreUseCase', () => {
       expect(prisma.store.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            status: 'ACTIVE',
+            status: 'APPROVED',
             isPublic: true,
             publishedAt: expect.any(Date),
           }),

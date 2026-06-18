@@ -118,6 +118,13 @@ export class CreateDirectOrderUseCase {
           unitPrice = toNum(variant.priceOverride);
         }
         variantLabel = variant.titleOverride ?? undefined;
+      } else if (product.totalStock < item.quantity) {
+        // STOCK-001: non-variant products must also be validated before the atomic deduction.
+        throw new DomainException(
+          ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+          `Insufficient stock for "${product.title}"`,
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
       }
 
       itemsMeta.push({ unitPrice, variantLabel });
