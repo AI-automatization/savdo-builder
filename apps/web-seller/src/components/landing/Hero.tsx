@@ -183,10 +183,11 @@ export function Hero() {
                 <span className="text-[8px]" style={{ color: colors.accent }}>{t('mock.sort')}</span>
               </div>
 
-              {/* сетка товаров — как TMA ProductCard */}
-              <div className="flex-1 px-2.5 grid grid-cols-2 gap-2 overflow-hidden content-start">
-                {mockProducts.map((p) => (
-                  <div key={p.img} className="rounded-xl overflow-hidden flex flex-col" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
+              {/* сетка товаров — бесконечный авто-скролл */}
+              <div className="flex-1 overflow-hidden px-2.5">
+                <div className="ms-phone-scroll grid grid-cols-2 gap-2 content-start">
+                {[...mockProducts, ...mockProducts].map((p, i) => (
+                  <div key={i} className="rounded-xl overflow-hidden flex flex-col" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
                     <div className="relative" style={{ aspectRatio: '1/1' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
@@ -225,6 +226,7 @@ export function Hero() {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
 
               {/* нижняя навигация — как в TMA */}

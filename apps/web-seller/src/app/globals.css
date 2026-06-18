@@ -149,6 +149,15 @@ body {
 .ms-glow   { animation: ms-glow 5s ease-in-out infinite; }
 .ms-floaty { animation: ms-floaty 4s ease-in-out infinite; }
 
+@keyframes ms-phone-scroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+.ms-phone-scroll {
+  animation: ms-phone-scroll 18s linear infinite;
+}
+.ms-floaty:hover .ms-phone-scroll { animation-play-state: paused; }
+
 /* Reveal-on-scroll — JS adds .is-visible when element enters viewport */
 .reveal { opacity: 0; transform: translateY(20px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.is-visible { opacity: 1; transform: none; }
@@ -158,6 +167,6 @@ body {
 
 /* Respect reduced motion + слабые устройства */
 @media (prefers-reduced-motion: reduce) {
-  .ms-glow, .ms-floaty { animation: none; }
+  .ms-glow, .ms-floaty, .ms-phone-scroll { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }

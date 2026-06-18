@@ -5,6 +5,29 @@
 
 ---
 
+## 🔴 [OTP-BOT-MISMATCH-001] OTP-коды не приходят — несовпадение имени бота
+
+- **Домен:** `apps/api` (конфиг Telegram Bot) + `apps/web-seller` (UI текст)
+- **Кто берёт:** Полат
+- **Приоритет:** 🔴 P0 — регистрация новых продавцов не работает
+- **Нашёл:** Азим, 18.06.2026 (через Playwright + curl прод-бэкенда)
+- **Симптом:** пользователь вводит телефон на `/login`, UI переходит на шаг «введите код», но код в Telegram не приходит.
+- **Root cause (два момента):**
+  1. **Несовпадение бота.** Фронт (`login/page.tsx:132`, `LandingFooter.tsx:34`, `products/page.tsx:47`) везде указывает `@savdo_builderBOT`. Продакшн-бэкенд в ошибке `TELEGRAM_NOT_LINKED` отвечает `@maxsavdo_bot`. Один из двух — неправильный. Нужно сверить с реальным `TELEGRAM_BOT_TOKEN` в Railway.
+  2. **Пользователь не запустил бота.** Telegram-бот не может первым написать пользователю — тот обязан нажать Start самостоятельно. Если бот ни разу не открывался, OTP физически не доставится даже при корректном запросе (backend вернёт 200, TG API молча отклонит).
+- **Что сделать:**
+  1. Проверить Railway env `TELEGRAM_BOT_TOKEN` — какой реальный username бота?
+  2. Если правильный `@savdo_builderBOT` — исправить строку ошибки `TELEGRAM_NOT_LINKED` в бэкенде (сейчас хардкодит `@maxsavdo_bot`).
+     Если правильный `@maxsavdo_bot` — сказать Азиму, он поправит 3 места во фронте.
+  3. Убедиться что в description бота есть инструкция «нажми Start перед первым входом».
+- **Временный workaround:** открыть нужного бота в Telegram → нажать Start → поделиться номером → повторить запрос OTP.
+- **Файлы (фронт):**
+  - `apps/web-seller/src/app/(auth)/login/page.tsx:132`
+  - `apps/web-seller/src/components/landing/LandingFooter.tsx:34`
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx:47`
+
+---
+
 ## 🟠 [INFRA-BRANCH-RECONCILE-001] Свести деплой-ветки к `main` (предложение, нужно согласие Полат+Азим)
 
 - **Домен:** инфра / git-workflow / DevOps (Полат — owns) · консультация Азима (его web-ветки).
