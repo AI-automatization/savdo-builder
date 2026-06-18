@@ -19,16 +19,22 @@ export default function CartPage() {
 
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
 
-  const updateQty = (productId: string, delta: number) => {
+  const updateQty = (productId: string, variantId: string | undefined, delta: number) => {
+    const item = items.find((i) => i.productId === productId && i.variantId === variantId);
+    if (!item) return;
+    if (delta > 0 && item.stockMax !== undefined && item.qty >= item.stockMax) {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast(t('cart.stockMaxReached', { count: item.stockMax }), 'error');
+      return;
+    }
     tg?.HapticFeedback.selectionChanged();
     const updated = items
-      .map((i) => i.productId === productId ? { ...i, qty: i.qty + delta } : i)
+      .map((i) => i.productId === productId && i.variantId === variantId ? { ...i, qty: i.qty + delta } : i)
       .filter((i) => i.qty > 0);
     setItems(updated);
     saveCart(updated);
     if (delta > 0) {
-      const item = items.find((i) => i.productId === productId);
-      if (item) track.addToCart(item.storeId, productId, null, delta);
+      track.addToCart(item.storeId, productId, variantId ?? null, delta);
     }
   };
 
@@ -90,8 +96,10 @@ export default function CartPage() {
           </div>
         )}
 
-        {items.map((item) => (
-          <GlassCard key={item.productId} className="flex items-center gap-3 px-4 py-3">
+        {items.map((item) => {
+          const atStockMax = item.stockMax !== undefined && item.qty >= item.stockMax;
+          return (
+          <GlassCard key={`${item.productId}-${item.variantId ?? ''}`} className="flex items-center gap-3 px-4 py-3">
             <div className="w-10 h-10 rounded-xl shrink-0 overflow-hidden">
               <ImagePlaceholder variant="thumbnail" hideLabel iconSize={18} />
             </div>
@@ -101,10 +109,15 @@ export default function CartPage() {
               <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--tg-accent)' }}>
                 {formatTotal(item.price * item.qty)} {t('common.currency')}
               </p>
+              {atStockMax && (
+                <p className="text-xs mt-0.5" style={{ color: '#fbbf24' }}>
+                  {t('cart.stockMaxReached', { count: item.stockMax! })}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => updateQty(item.productId, -1)}
+                onClick={() => updateQty(item.productId, item.variantId, -1)}
                 aria-label={t('cart.decreaseQty')}
                 className="w-10 h-10 rounded-lg flex items-center justify-center text-base"
                 style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)' }}
@@ -115,9 +128,10 @@ export default function CartPage() {
                 {item.qty}
               </span>
               <button
-                onClick={() => updateQty(item.productId, 1)}
+                onClick={() => updateQty(item.productId, item.variantId, 1)}
+                disabled={atStockMax}
                 aria-label={t('cart.increaseQty')}
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-base"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-base disabled:opacity-30"
                 style={{ background: 'var(--tg-accent-dim)', color: 'var(--tg-accent)' }}
               >
                 +
@@ -132,7 +146,8 @@ export default function CartPage() {
               </button>
             </div>
           </GlassCard>
-        ))}
+          );
+        })}
 
         {items.length > 0 && (
           <div className="flex items-center justify-between px-2 py-3">
