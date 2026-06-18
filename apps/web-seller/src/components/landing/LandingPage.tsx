@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { LandingHeader } from './LandingHeader';
 import { Hero } from './Hero';
 import { SocialProof } from './SocialProof';
@@ -15,9 +16,17 @@ import { FinalCta } from './FinalCta';
 import { LandingFooter } from './LandingFooter';
 import { colors } from '@/lib/styles';
 import { landingTrack } from '@/lib/landing/analytics';
+import { useAuth } from '@/lib/auth/context';
 
 export function LandingPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+
   useEffect(() => { landingTrack('landing_viewed'); }, []);
+
+  useEffect(() => {
+    if (user?.role === 'SELLER') router.replace('/dashboard');
+  }, [user, router]);
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.textPrimary }}>
       <LandingHeader />
