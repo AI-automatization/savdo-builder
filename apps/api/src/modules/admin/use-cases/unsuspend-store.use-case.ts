@@ -1,38 +1,28 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
-import { AdminRepository } from '../repositories/admin.repository';
-import { DomainException } from '../../../common/exceptions/domain.exception';
+/**
+ * SUSPENDED → APPROVED.
+ *
+ * Реализовано через `createStatusTransitionUseCase` (DUP-001 refactor).
+ *   - guard: только из `SUSPENDED`, иначе STORE_INVALID_TRANSITION (409)
+ *   - update: `adminRepo.updateStoreStatus(id, 'APPROVED')`
+ *   - audit: STORE_UNSUSPENDED, payload `{ reason, adminId }` (без previousStatus)
+ */
+import { Store } from '@prisma/client';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { createStatusTransitionUseCase } from '../services/admin-status-transition.factory';
 
-@Injectable()
-export class UnsuspendStoreUseCase {
-  constructor(private readonly adminRepo: AdminRepository) {}
+type StoreStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
 
-  // INV-A01: AuditLog is mandatory for every admin action.
-  async execute(storeId: string, actorUserId: string, reason: string) {
-    const store = await this.adminRepo.findStoreById(storeId);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (store.status !== 'SUSPENDED') {
-      throw new DomainException(
-        ErrorCode.STORE_INVALID_TRANSITION,
-        'Store is not suspended',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const updated = await this.adminRepo.updateStoreStatus(storeId, 'APPROVED');
-
-    // INV-A01
-    await this.adminRepo.writeAuditLog({
-      actorUserId,
-      action: 'STORE_UNSUSPENDED',
-      entityType: 'Store',
-      entityId: storeId,
-      payload: { reason, adminId: actorUserId },
-    });
-
-    return updated;
-  }
-}
+export class UnsuspendStoreUseCase extends createStatusTransitionUseCase<Store, StoreStatus>({
+  find: (repo, id) => repo.findStoreById(id) as Promise<Store | null>,
+  update: (repo, id) => repo.updateStoreStatus(id, 'APPROVED') as Promise<Store>,
+  guard: {
+    kind: 'notInFromList',
+    fromStatuses: ['SUSPENDED'],
+    conflictErrorCode: ErrorCode.STORE_INVALID_TRANSITION,
+    conflictMessage: 'Store is not suspended',
+  },
+  notFound: { errorCode: ErrorCode.STORE_NOT_FOUND, message: 'Store not found' },
+  audit: { action: 'STORE_UNSUSPENDED', entityType: 'Store' },
+  withReason: true,
+  includePreviousStatus: false,
+}) {}

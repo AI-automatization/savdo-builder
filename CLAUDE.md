@@ -71,6 +71,11 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 **packages/ui** — все могут добавлять компоненты.
 **apps/mobile-*** — заморожены до Phase 3.
 
+**Бизнес-модель, монетизация, ценообразование, маркетинг, GTM, контент, продажи — Азим** (с 02.06.2026).
+Полат — только инженерия/инфра (api/admin/db/types/tma + DevOps/биллинг-cron); бизнес-решения он больше
+не owns, только consult по техвыполнимости (напр. multi-store/INV-S01). Гибкость: правки в `apps/web-buyer`/
+`apps/web-seller` под бизнес-нужды делаем по ходу. Мастер-план: `docs/business/roadmap-to-production-2026-06-02.md`.
+
 ## Документация
 
 | Что | Где |
@@ -81,10 +86,11 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 | Задачи в работе | `docs/tasks/[domain].md` |
 | Завершённые задачи | `docs/done/[domain].md` |
 | API контракты (нужные endpoints) | `docs/contracts/` |
-| **Дизайн-система (UI)** | `docs/design/liquid-authority.md` |
+| **Дизайн-система (UI)** | `docs/design/maxsavdo-design-v2.md` (liquid-authority.md — deprecated) |
+| **Бизнес-модель / монетизация / GTM / контент** (владелец Азим) | `docs/business/` — мастер `business-model-v2`, роадмап `roadmap-to-production`, контент-карта `completeness-map`, пилот `content/` |
 
 **Перед любой задачей** — прочитать релевантный файл из docs/V1.1/.
-**Перед любой UI-задачей** — прочитать `docs/design/liquid-authority.md`.
+**Перед любой UI-задачей** — прочитать `docs/design/maxsavdo-design-v2.md`.
 
 ## Агенты
 

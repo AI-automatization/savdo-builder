@@ -1,37 +1,29 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
-import { AdminRepository } from '../repositories/admin.repository';
-import { DomainException } from '../../../common/exceptions/domain.exception';
+/**
+ * PENDING_REVIEW | DRAFT → APPROVED (с публикацией).
+ *
+ * Реализовано через `createStatusTransitionUseCase` (DUP-001 refactor).
+ * Отличается тем что update делает не `updateStoreStatus`, а
+ * `approveAndPublishStore` (status=APPROVED + isPublic=true + publishedAt).
+ *   - guard: fromStatuses = PENDING_REVIEW | DRAFT, иначе STORE_INVALID_TRANSITION (409)
+ *   - audit: STORE_APPROVED, payload `{ adminId }` (без reason, без previousStatus)
+ */
+import { Store } from '@prisma/client';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { createStatusTransitionUseCase } from '../services/admin-status-transition.factory';
 
-@Injectable()
-export class ApproveStoreUseCase {
-  constructor(private readonly adminRepo: AdminRepository) {}
+type StoreStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
 
-  async execute(storeId: string, actorUserId: string) {
-    const store = await this.adminRepo.findStoreById(storeId);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (store.status !== 'PENDING_REVIEW' && store.status !== 'DRAFT') {
-      throw new DomainException(
-        ErrorCode.STORE_INVALID_TRANSITION,
-        'Store cannot be approved from current status',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const updated = await this.adminRepo.approveAndPublishStore(storeId);
-
-    // INV-A01
-    await this.adminRepo.writeAuditLog({
-      actorUserId,
-      action: 'STORE_APPROVED',
-      entityType: 'Store',
-      entityId: storeId,
-      payload: { adminId: actorUserId },
-    });
-
-    return updated;
-  }
-}
+export class ApproveStoreUseCase extends createStatusTransitionUseCase<Store, StoreStatus>({
+  find: (repo, id) => repo.findStoreById(id) as Promise<Store | null>,
+  update: (repo, id) => repo.approveAndPublishStore(id) as Promise<Store>,
+  guard: {
+    kind: 'notInFromList',
+    fromStatuses: ['PENDING_REVIEW', 'DRAFT'],
+    conflictErrorCode: ErrorCode.STORE_INVALID_TRANSITION,
+    conflictMessage: 'Store cannot be approved from current status',
+  },
+  notFound: { errorCode: ErrorCode.STORE_NOT_FOUND, message: 'Store not found' },
+  audit: { action: 'STORE_APPROVED', entityType: 'Store' },
+  withReason: false,
+  includePreviousStatus: false,
+}) {}

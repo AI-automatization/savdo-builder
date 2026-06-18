@@ -169,6 +169,7 @@ export const uz: Translations = {
   'nav.products': 'Mahsulotlar',
   'nav.categories': 'Turkumlar',
   'nav.orders': 'Buyurtmalar',
+  'nav.subscriptions': 'Obunalar',
   'nav.moderation': 'Moderatsiya',
   'nav.analytics': 'Analitika',
   'nav.events': 'Hodisalar',
@@ -184,7 +185,7 @@ export const uz: Translations = {
   'nav.queues': 'Navbatlar (Bull)',
 
   // ── Login ─────────────────────────────────────────────────────────────
-  'login.title': 'Savdo Admin',
+  'login.title': 'maxsavdo Admin',
   'login.subtitlePhone': 'Telegram OTP orqali kirish',
   'login.subtitleOtp': 'Kod {phone} raqamiga yuborildi',
   'login.subtitleMfa': 'Autentifikator ilovasidagi kodni kiriting',
@@ -210,7 +211,7 @@ export const uz: Translations = {
   'login.openQueues': 'Bull Board ochilmoqda...',
   'login.errPhoneFormat': 'Format: +998XXXXXXXXX (kоddan keyin 9 raqam)',
   'login.errSendFailed': 'Kod yuborishda xatolik',
-  'login.errNotAdmin': 'Kirish taqiqlangan. Bu kabinet faqat Savdo administratorlari uchun.',
+  'login.errNotAdmin': 'Kirish taqiqlangan. Bu kabinet faqat maxsavdo administratorlari uchun.',
   'login.errTgNotLinked': 'Telegram bogʻlanmagan. @savdo_builderBOT botiga /start buyrugʻini yozing',
   'login.errBadCode': 'Notoʻgʻri yoki muddati oʻtgan kod.',
   'login.errBadMfa': 'Notoʻgʻri TOTP kod',
@@ -694,4 +695,79 @@ export const uz: Translations = {
   'storeDetail.modalApproveDesc': '«{name}» doʻkoni tekshiriladi, eʼlon qilinadi va xaridorlar qidiruvida paydo boʻladi.',
   'storeDetail.modalUnapproveTitle': 'Tasdiqni olib tashlash',
   'storeDetail.modalUnapproveDesc': '«{name}» doʻkoni qidiruvdan yashiriladi va qoralama holatiga qaytariladi.',
+
+  // ── Subscriptions (BILLING-MACHINE-001) ───────────────────────────────
+  'subscriptions.title': 'Obunalar',
+  'subscriptions.searchPlaceholder': 'Ism yoki @username boʻyicha qidiring...',
+  'subscriptions.notFound': 'Obunalar topilmadi',
+  'subscriptions.allStatuses': 'Barcha holatlar',
+  'subscriptions.allTiers': 'Barcha tariflar',
+  'subscriptions.daysShort': 'kun',
+
+  // Tier labels
+  'subscriptions.tierStarter': 'Starter',
+  'subscriptions.tierPro': 'Pro',
+  'subscriptions.tierBusiness': 'Business',
+
+  // Status labels
+  'subscriptions.statusActive': 'Faol',
+  'subscriptions.statusTrial': 'Sinov',
+  'subscriptions.statusPastDue': 'Muddati oʻtgan',
+  'subscriptions.statusSuspended': 'Toʻxtatilgan',
+  'subscriptions.statusChurned': 'Yoʻqotilgan',
+  'subscriptions.statusCancelled': 'Bekor qilingan',
+  'subscriptions.cancelAtPeriodEnd': 'Davr oxirida bekor qilinadi',
+
+  // Table columns
+  'subscriptions.colSeller': 'Sotuvchi',
+  'subscriptions.colTier': 'Tarif',
+  'subscriptions.colStatus': 'Holat',
+  'subscriptions.colPeriodEnd': 'Davr oxiri',
+  'subscriptions.colDaysLeft': 'Qoldi',
+
+  // Detail fields
+  'subscriptions.fieldPeriodStart': 'Davr boshi',
+  'subscriptions.fieldPeriodEnd': 'Davr oxiri',
+  'subscriptions.fieldTrialEndsAt': 'Sinov tugaydi',
+  'subscriptions.fieldGraceEndsAt': 'Imtiyozli muddat',
+  'subscriptions.fieldDaysLeft': 'Qolgan kun',
+  'subscriptions.fieldUpdatedAt': 'Yangilangan',
+  'subscriptions.fieldTier': 'Tarif',
+  'subscriptions.fieldAmountUzs': 'Summa (UZS)',
+  'subscriptions.fieldMethod': 'Toʻlov usuli',
+  'subscriptions.fieldNotes': 'Izohlar',
+  'subscriptions.fieldDays': 'Kun',
+  'subscriptions.fieldReason': 'Sabab',
+
+  // Actions
+  'subscriptions.actionMarkPaid': 'Toʻlovni belgilash',
+  'subscriptions.actionExtendTrial': 'Sinovni uzaytirish',
+  'subscriptions.actionCancel': 'Obunani bekor qilish',
+  'subscriptions.cancelAction': 'Bekor qilish',
+  'subscriptions.terminalNote': 'Obuna terminal holatda — amallar mavjud emas.',
+
+  // Form placeholders
+  'subscriptions.notesPlaceholder': 'Ichki izohlar (faqat adminlarga koʻrinadi)',
+  'subscriptions.reasonPlaceholder': 'Nima uchun sinov uzaytiriladi (audit log-ga yoziladi)',
+
+  // Confirm dialogs
+  'subscriptions.confirmCancelTitle': 'Obunani bekor qilasizmi?',
+  'subscriptions.confirmCancelBody': '«{name}» sotuvchining obunasi CANCELLED holatiga oʻtkaziladi. Toʻlangan davr oxirigacha kirish saqlanadi.',
+
+  // Toasts
+  'subscriptions.toastMarkedPaid': 'Toʻlov roʻyxatga olindi',
+  'subscriptions.toastTrialExtended': 'Sinov {days} kunga uzaytirildi',
+  'subscriptions.toastCancelled': 'Obuna bekor qilindi',
+
+  // Errors
+  'subscriptions.errAmountRequired': '0 dan katta summani kiriting',
+  'subscriptions.errDatesRequired': 'Davr boshi va oxirini kiriting',
+  'subscriptions.errEndAfterStart': 'Davr oxiri boshidan keyin boʻlishi kerak',
+  'subscriptions.errDaysRange': '1 dan 365 gacha kunni kiriting',
+
+  // Payment methods
+  'subscriptions.method.MANUAL_TRANSFER': 'Pul oʻtkazma',
+  'subscriptions.method.CLICK': 'Click',
+  'subscriptions.method.PAYME': 'Payme',
+  'subscriptions.method.COMP': 'Bepul',
 };

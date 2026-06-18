@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
+import { formatAdminDate } from '../lib/format'
 import { confirmDialog } from '../components/admin/ConfirmDialog'
 import { useNavigate } from 'react-router-dom'
 
@@ -18,12 +19,6 @@ interface ReportRow {
   storeName: string | null
 }
 
-function formatDate(iso: string, dateLocale: string) {
-  return new Date(iso).toLocaleString(dateLocale, {
-    day: '2-digit', month: '2-digit', year: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
 
 export default function ReportsPage() {
   const navigate = useNavigate()
@@ -127,7 +122,7 @@ export default function ReportsPage() {
                     {r.body}
                   </div>
                   <span style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3, display: 'block' }}>
-                    {t('reports.sentAt')}: {formatDate(r.createdAt, dateLocale)}
+                    {t('reports.sentAt')}: {formatAdminDate(r.createdAt, dateLocale, { year: '2-digit' })}
                   </span>
                 </td>
 
@@ -143,7 +138,7 @@ export default function ReportsPage() {
 
                 {/* Reported at */}
                 <td style={{ padding: '13px 16px', color: '#f87171', fontSize: 12, whiteSpace: 'nowrap' }}>
-                  {formatDate(r.reportedAt, dateLocale)}
+                  {formatAdminDate(r.reportedAt, dateLocale, { year: '2-digit' })}
                 </td>
 
                 {/* Thread status */}

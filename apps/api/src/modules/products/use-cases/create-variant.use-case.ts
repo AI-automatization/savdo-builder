@@ -4,6 +4,7 @@ import { VariantsRepository, CreateVariantData } from '../repositories/variants.
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ProductVariant } from '@prisma/client';
+import { assertProductOwnership } from '../guards/product-ownership.guard';
 
 @Injectable()
 export class CreateVariantUseCase {
@@ -27,13 +28,7 @@ export class CreateVariantUseCase {
       );
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(
-        ErrorCode.FORBIDDEN,
-        'Product does not belong to your store',
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    assertProductOwnership(product, storeId);
 
     return this.variantsRepo.create(productId, data);
   }

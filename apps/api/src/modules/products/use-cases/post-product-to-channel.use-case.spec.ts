@@ -20,6 +20,7 @@ import { PrismaService } from '../../../database/prisma.service';
 import { TelegramBotService } from '../../telegram/services/telegram-bot.service';
 import { ChannelTemplateService } from '../services/channel-template.service';
 import { ChannelMediaResolverService } from '../services/channel-media-resolver.service';
+import { ChannelPostBuilderService } from '../services/channel-post-builder.service';
 
 const STORE_BASE = {
   id: 'store-1',
@@ -83,12 +84,13 @@ describe('PostProductToChannelUseCase', () => {
       resolveForChannelSend: jest.fn().mockImplementation(async (m: { objectKey: string }) => m.objectKey),
       cachePhotoFileId: jest.fn().mockResolvedValue(undefined),
     };
+    const channelPostBuilder = new ChannelPostBuilderService(config as unknown as ConfigService);
     useCase = new PostProductToChannelUseCase(
       prisma as unknown as PrismaService,
       telegramBot as unknown as TelegramBotService,
-      config as unknown as ConfigService,
       templateService,
       mediaResolver as unknown as ChannelMediaResolverService,
+      channelPostBuilder,
     );
   });
 

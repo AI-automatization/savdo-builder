@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products';
 import { Check, Link2, Send, Layers, Package } from 'lucide-react';
 import { useStore } from '@/hooks/use-seller';
-import { ProductStatus } from 'types';
+import { ProductStatus } from '@/lib/enums';
 import { buyerProductUrl } from '@/lib/buyer-url';
 import { card, colors, dangerTint, inputStyle } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
