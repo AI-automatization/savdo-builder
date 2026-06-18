@@ -5,7 +5,7 @@ import { ArrowRight, Heart, Star, Search, LayoutGrid, ShoppingBag, User } from '
 import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth/context';
 import { colors } from '@/lib/styles';
-import { demoStoreUrl } from '@/lib/landing/demo-store';
+import { demoStoreUrl, demoTmaUrl } from '@/lib/landing/demo-store';
 import { landingTrack } from '@/lib/landing/analytics';
 import { useReveal } from '@/lib/landing/use-reveal';
 
@@ -13,6 +13,7 @@ export function Hero() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const demo = demoStoreUrl();
+  const tmaUrl = demoTmaUrl();
   // reveal-on-scroll: каждый блок проявляется со своим delay (стаггер).
   const badgeRef = useReveal<HTMLSpanElement>();
   const titleRef = useReveal<HTMLHeadingElement>();
@@ -89,19 +90,34 @@ export function Hero() {
             >
               {t('cta.createFree')} <ArrowRight size={16} />
             </Link>
-            {demo && (
+            <a
+              href={tmaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => landingTrack('demo_tma_opened')}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-md text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ border: `1px solid ${colors.border}`, color: colors.textPrimary }}
+            >
+              {/* Telegram icon (paper-plane) */}
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.94z"/>
+              </svg>
+              {t('cta.tma')}
+            </a>
+          </div>
+          {demo && (
+            <p className="text-xs mt-1" style={{ color: colors.textDim }}>
               <a
                 href={demo}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => landingTrack('demo_store_opened')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-md text-sm font-semibold transition-colors hover:opacity-80"
-                style={{ border: `1px solid ${colors.border}`, color: colors.textPrimary }}
+                className="underline underline-offset-2 hover:opacity-80"
               >
-                {t('cta.demo')} <ArrowRight size={16} />
+                {t('cta.demo')}
               </a>
-            )}
-          </div>
+            </p>
+          )}
 
           <div ref={metricsRef} className="reveal reveal-delay-3 mt-6 grid grid-cols-3 gap-4 sm:gap-8 w-full max-w-md">
             {metrics.map((m, i) => (
