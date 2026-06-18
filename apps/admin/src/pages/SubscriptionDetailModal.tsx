@@ -28,12 +28,12 @@ const STATUS_CFG: Record<SubscriptionStatus, { bg: string; text: string; labelKe
 }
 
 const TIER_CFG: Record<SubscriptionTier, { bg: string; text: string; labelKey: string }> = {
-  STARTER:  { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', labelKey: 'subscriptions.tierStarter' },
-  PRO:      { bg: 'rgba(201,168,118,0.14)', text: '#C9A876', labelKey: 'subscriptions.tierPro' },
-  BUSINESS: { bg: 'rgba(201,168,118,0.22)', text: '#E0C896', labelKey: 'subscriptions.tierBusiness' },
+  FREE:   { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', labelKey: 'subscriptions.tierFree' },
+  PRO:    { bg: 'rgba(201,168,118,0.14)', text: '#C9A876', labelKey: 'subscriptions.tierPro' },
+  STUDIO: { bg: 'rgba(201,168,118,0.22)', text: '#E0C896', labelKey: 'subscriptions.tierStudio' },
 }
 
-const TIER_OPTIONS: SubscriptionTier[] = ['STARTER', 'PRO', 'BUSINESS']
+const TIER_OPTIONS: SubscriptionTier[] = ['FREE', 'PRO', 'STUDIO']
 const METHOD_OPTIONS: SubscriptionPaymentMethod[] = ['MANUAL_TRANSFER', 'CLICK', 'PAYME', 'COMP']
 
 type ActiveForm = 'none' | 'mark-paid' | 'extend-trial'

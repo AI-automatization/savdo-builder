@@ -7,6 +7,7 @@ export interface CartItem {
   storeId: string;
   storeSlug: string;
   storeName: string;
+  stockMax?: number;
 }
 
 const CART_KEY = 'savdo_cart';

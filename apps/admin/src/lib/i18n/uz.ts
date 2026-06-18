@@ -718,9 +718,9 @@ export const uz: Translations = {
   'subscriptions.daysShort': 'kun',
 
   // Tier labels
-  'subscriptions.tierStarter': 'Starter',
+  'subscriptions.tierFree': 'Free',
   'subscriptions.tierPro': 'Pro',
-  'subscriptions.tierBusiness': 'Business',
+  'subscriptions.tierStudio': 'Studio',
 
   // Status labels
   'subscriptions.statusActive': 'Faol',

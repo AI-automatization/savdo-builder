@@ -141,7 +141,7 @@ export class ChannelTemplateService {
       if (lt <= gt) break; // не внутри незакрытого `<…`
       cut = lt - 1;
     }
-    let truncated = text.slice(0, cut);
+    const truncated = text.slice(0, cut);
 
     // Подсчитаем открытые теги (только из whitelist) и закроем в конце.
     const openStack: string[] = [];

@@ -718,9 +718,9 @@ export const ru: Translations = {
   'subscriptions.daysShort': 'дн.',
 
   // Tier labels
-  'subscriptions.tierStarter': 'Starter',
+  'subscriptions.tierFree': 'Free',
   'subscriptions.tierPro': 'Pro',
-  'subscriptions.tierBusiness': 'Business',
+  'subscriptions.tierStudio': 'Studio',
 
   // Status labels
   'subscriptions.statusActive': 'Активна',
