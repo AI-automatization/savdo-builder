@@ -19,6 +19,7 @@ interface Product {
   description: string | null;
   basePrice: number;
   status: string;
+  totalStock?: number;
   globalCategoryId?: string | null;
   images?: { url: string }[];
 }
@@ -128,8 +129,14 @@ export default function StorePage() {
       return;
     }
 
+    const stockMax = product.totalStock;
     const existing = cart.find((i) => i.productId === product.id);
     if (existing) {
+      if (stockMax !== undefined && existing.qty >= stockMax) {
+        tg?.HapticFeedback.notificationOccurred('error');
+        showToast(t('cart.stockMaxReached', { count: stockMax }), 'error');
+        return;
+      }
       saveCart(cart.map((i) => i.productId === product.id ? { ...i, qty: i.qty + 1 } : i));
     } else {
       saveCart([...cart, {
@@ -140,6 +147,7 @@ export default function StorePage() {
         storeId: store.id,
         storeSlug: slug!,
         storeName: store.name,
+        stockMax,
       }]);
     }
     tg?.HapticFeedback.notificationOccurred('success');
