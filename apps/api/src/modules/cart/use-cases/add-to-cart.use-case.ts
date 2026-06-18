@@ -44,8 +44,19 @@ export class AddToCartUseCase {
 
     let unitPriceSnapshot = toNum((product as any).basePrice);
     let salePriceSnapshot: number | undefined;
+    // stockLimit is used later to validate the final cart quantity.
+    let stockLimit: number = (product as any).totalStock as number;
 
-    // INV-C03: variant must be active and in stock
+    // INV-C03: for non-variant products check totalStock upfront.
+    if (!input.variantId && stockLimit < input.quantity) {
+      throw new DomainException(
+        ErrorCode.INSUFFICIENT_STOCK,
+        `Only ${stockLimit} items available`,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    // INV-C03: variant must be active and have sufficient stock
     if (input.variantId) {
       const variant = await this.variantsRepo.findById(input.variantId);
       if (!variant) {
@@ -55,10 +66,18 @@ export class AddToCartUseCase {
           HttpStatus.NOT_FOUND,
         );
       }
-      if (!(variant as any).isActive || (variant as any).stockQuantity <= 0) {
+      if (!(variant as any).isActive) {
         throw new DomainException(
           ErrorCode.PRODUCT_NOT_ACTIVE,
-          'Variant is not available or out of stock',
+          'Variant is not available',
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+      stockLimit = (variant as any).stockQuantity as number;
+      if (stockLimit < input.quantity) {
+        throw new DomainException(
+          ErrorCode.INSUFFICIENT_STOCK,
+          `Only ${stockLimit} items available`,
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
@@ -93,8 +112,15 @@ export class AddToCartUseCase {
     );
 
     if (existingItem) {
-      const newQty = Math.min(existingItem.quantity + input.quantity, 100);
-      await this.cartRepo.updateItemQuantity(existingItem.id, newQty);
+      const newQty = existingItem.quantity + input.quantity;
+      if (newQty > stockLimit) {
+        throw new DomainException(
+          ErrorCode.INSUFFICIENT_STOCK,
+          `Cannot add ${input.quantity} more: only ${stockLimit} in stock, ${existingItem.quantity} already in cart`,
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+      await this.cartRepo.updateItemQuantity(existingItem.id, Math.min(newQty, 100));
     } else {
       await this.cartRepo.addItem(cart.id, {
         productId: input.productId,

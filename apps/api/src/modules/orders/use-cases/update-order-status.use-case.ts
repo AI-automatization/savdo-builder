@@ -32,6 +32,7 @@ export interface UpdateOrderStatusInput {
   actorRole: ActorRole;
   actorUserId: string;
   storeId?: string;
+  buyerId?: string;
 }
 
 @Injectable()
@@ -82,6 +83,15 @@ export class UpdateOrderStatusUseCase {
 
     // Sellers may only update orders belonging to their own store
     if (input.actorRole === 'SELLER' && input.storeId && order.storeId !== input.storeId) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not have access to this order',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // BOLA-001: buyers may only update their own orders
+    if (input.actorRole === 'BUYER' && input.buyerId && order.buyerId !== input.buyerId) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         'You do not have access to this order',

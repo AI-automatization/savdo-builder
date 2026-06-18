@@ -102,6 +102,14 @@ export class BulkMergeCartUseCase {
         if (variant.priceOverride != null) {
           unitPrice = toNum(variant.priceOverride);
         }
+        // Skip items that exceed available stock.
+        if (variant.stockQuantity < item.quantity) {
+          skipped++;
+          continue;
+        }
+      } else if ((product as any).totalStock < item.quantity) {
+        skipped++;
+        continue;
       }
 
       valid.push({
