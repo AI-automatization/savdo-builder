@@ -14,7 +14,7 @@ import {
   createProductAttribute,
   deleteProductAttribute,
 } from '../../../../../lib/api/products.api';
-import { ProductStatus } from 'types';
+import { ProductStatus } from '@/lib/enums';
 import type { ProductDisplayType } from 'types';
 import { ProductVariantsSection } from '../../../../../components/product-variants-section';
 import { ProductOptionGroupsSection } from '../../../../../components/product-option-groups-section';

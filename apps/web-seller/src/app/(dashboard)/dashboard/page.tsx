@@ -6,7 +6,7 @@ import { useStore } from '../../../hooks/use-seller';
 import { useSellerOrders } from '../../../hooks/use-orders';
 import { useSellerSummary } from '../../../hooks/use-analytics';
 import { useSellerProducts } from '../../../hooks/use-products';
-import { OrderStatus, StoreStatus } from 'types';
+import { OrderStatus, StoreStatus } from '@/lib/enums';
 import { track } from '../../../lib/analytics';
 import { buyerStoreUrl } from '@/lib/buyer-url';
 import { Package, Eye, Link2, Clock, Plus, ClipboardList, BarChart3 } from 'lucide-react';
