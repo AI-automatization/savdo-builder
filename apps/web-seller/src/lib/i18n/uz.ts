@@ -1,4 +1,4 @@
-// MARKETING-LOCALIZATION-UZ-001 (web-seller) — узбекский словарь (латиница).
+﻿// MARKETING-LOCALIZATION-UZ-001 (web-seller) — узбекский словарь (латиница).
 // Пропущенный ключ → fallback на ru.ts. Волны 6-8 дополняют файл.
 import type { Translations } from './types';
 
@@ -578,6 +578,7 @@ export const uz: Translations = {
   'cta.create': "Do'kon yaratish",
   'cta.createFree': 'Bepul yaratish',
   'cta.demo': "Demo do'konni ko'rish",
+  'cta.tma': 'Telegramda ochish',
   'cta.start': 'Bepul boshlash',
   'hero.title': "Qimmatbaho ko'rinadigan do'kon",
   'hero.subtitle': "Instagramni savat va buyurtmalar bilan vitrinaga aylantiring — 5 daqiqada. Komissiyasiz: barcha pul sizniki.",
