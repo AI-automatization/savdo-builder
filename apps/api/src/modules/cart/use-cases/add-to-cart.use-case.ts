@@ -103,14 +103,15 @@ export class AddToCartUseCase {
       );
     }
 
-    // Check for duplicate item — increment if exists
-    const variantId = input.variantId ?? null;
+    // CART-001: upsertItem атомарно суммирует quantity через ON CONFLICT,
+    // устраняя TOCTOU между findItem и addItem при параллельных запросах.
+    // Проверка stockLimit до upsert остаётся как UX-guard (не security guard —
+    // реальная защита от oversell на уровне checkout.repository.$executeRaw).
     const existingItem = await this.cartRepo.findItemByProductAndVariant(
       cart.id,
       input.productId,
-      variantId,
+      input.variantId ?? null,
     );
-
     if (existingItem) {
       const newQty = existingItem.quantity + input.quantity;
       if (newQty > stockLimit) {
@@ -120,16 +121,14 @@ export class AddToCartUseCase {
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
-      await this.cartRepo.updateItemQuantity(existingItem.id, Math.min(newQty, 100));
-    } else {
-      await this.cartRepo.addItem(cart.id, {
-        productId: input.productId,
-        variantId: input.variantId,
-        quantity: input.quantity,
-        unitPriceSnapshot,
-        salePriceSnapshot,
-      });
     }
+    await this.cartRepo.upsertItem(cart.id, {
+      productId: input.productId,
+      variantId: input.variantId,
+      quantity: input.quantity,
+      unitPriceSnapshot,
+      salePriceSnapshot,
+    }, 100);
 
     // Reload and return full mapped cart
     const updated = await this.cartRepo.findById(cart.id) as CartWithItems;
@@ -141,21 +140,12 @@ export class AddToCartUseCase {
     productStoreId: string,
   ): Promise<CartWithItems> {
     if (input.buyerId) {
-      let cart = await this.cartRepo.findByBuyerId(input.buyerId);
-      if (!cart) {
-        const created = await this.cartRepo.createForBuyer(input.buyerId, productStoreId);
-        cart = await this.cartRepo.findById(created.id) as CartWithItems;
-      }
-      return cart!;
+      // CART-002: getOrCreateForBuyer атомарен через INSERT ON CONFLICT
+      return this.cartRepo.getOrCreateForBuyer(input.buyerId, productStoreId);
     }
 
     if (input.sessionKey) {
-      let cart = await this.cartRepo.findBySessionKey(input.sessionKey);
-      if (!cart) {
-        const created = await this.cartRepo.createForGuest(input.sessionKey, productStoreId);
-        cart = await this.cartRepo.findById(created.id) as CartWithItems;
-      }
-      return cart!;
+      return this.cartRepo.getOrCreateForGuest(input.sessionKey, productStoreId);
     }
 
     throw new DomainException(

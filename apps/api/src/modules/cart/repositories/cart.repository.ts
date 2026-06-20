@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { Cart, CartItem, CartStatus } from '@prisma/client';
+import { Cart, CartItem, CartStatus, Prisma } from '@prisma/client';
 
 export type CartWithItems = Cart & { items: CartItem[] };
 
@@ -99,6 +99,86 @@ export class CartRepository {
         status: CartStatus.ACTIVE,
       },
     });
+  }
+
+  // CART-002: атомарный get-or-create через INSERT ... ON CONFLICT DO NOTHING.
+  // Частичный уникальный индекс "carts_buyer_active_unique" гарантирует что
+  // при параллельных запросах только один INSERT пройдёт, второй получит P2002
+  // → мы fallback'аем на findFirst. Итог: всегда одна ACTIVE корзина на buyer.
+  async getOrCreateForBuyer(buyerId: string, storeId: string): Promise<CartWithItems> {
+    try {
+      await this.prisma.cart.create({
+        data: { buyerId, storeId, status: CartStatus.ACTIVE },
+      });
+    } catch (e) {
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError) || e.code !== 'P2002') {
+        throw e;
+      }
+      // P2002 = конкурентный запрос уже создал корзину — просто читаем её
+    }
+    const cart = await this.prisma.cart.findFirst({
+      where: { buyerId, status: CartStatus.ACTIVE },
+      include: CART_ITEMS_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+    return cart as CartWithItems;
+  }
+
+  // CART-002: аналогично для гостевых корзин (sessionKey).
+  // Для гостей уникальный индекс не добавляли (sessionKey редко дублируется
+  // и корзина не несёт финансовых последствий), но обёртка унифицирует вызов.
+  async getOrCreateForGuest(sessionKey: string, storeId: string): Promise<CartWithItems> {
+    let cart = await this.prisma.cart.findFirst({
+      where: { sessionKey, status: CartStatus.ACTIVE },
+      include: CART_ITEMS_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!cart) {
+      await this.prisma.cart.create({
+        data: { sessionKey, storeId, status: CartStatus.ACTIVE },
+      });
+      cart = await this.prisma.cart.findFirst({
+        where: { sessionKey, status: CartStatus.ACTIVE },
+        include: CART_ITEMS_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+    return cart as CartWithItems;
+  }
+
+  // CART-001: upsertItem вместо отдельных find+insert/update.
+  // Частичные уникальные индексы на cart_items позволяют ON CONFLICT:
+  //   variantId не NULL → конфликт по (cartId, variantId) — @@unique уже есть в схеме
+  //   variantId NULL    → конфликт по (cartId, productId) — новый индекс cart_items_no_variant_unique
+  // Оба случая: quantity суммируется атомарно, нет TOCTOU между find и insert.
+  async upsertItem(cartId: string, data: AddItemData, maxQty = 100): Promise<CartItem> {
+    if (data.variantId) {
+      await this.prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "cart_items" ("cartId", "productId", "variantId", "quantity", "unitPriceSnapshot", "salePriceSnapshot")
+        VALUES (${cartId}::uuid, ${data.productId}::uuid, ${data.variantId}::uuid,
+                ${data.quantity}, ${data.unitPriceSnapshot}, ${data.salePriceSnapshot ?? null})
+        ON CONFLICT ("cartId", "variantId") WHERE "variantId" IS NOT NULL
+        DO UPDATE SET
+          "quantity" = LEAST("cart_items"."quantity" + EXCLUDED."quantity", ${maxQty}),
+          "updatedAt" = now()
+      `);
+      return this.prisma.cartItem.findFirst({
+        where: { cartId, variantId: data.variantId },
+      }) as Promise<CartItem>;
+    } else {
+      await this.prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "cart_items" ("cartId", "productId", "variantId", "quantity", "unitPriceSnapshot", "salePriceSnapshot")
+        VALUES (${cartId}::uuid, ${data.productId}::uuid, NULL,
+                ${data.quantity}, ${data.unitPriceSnapshot}, ${data.salePriceSnapshot ?? null})
+        ON CONFLICT ("cartId", "productId") WHERE "variantId" IS NULL
+        DO UPDATE SET
+          "quantity" = LEAST("cart_items"."quantity" + EXCLUDED."quantity", ${maxQty}),
+          "updatedAt" = now()
+      `);
+      return this.prisma.cartItem.findFirst({
+        where: { cartId, productId: data.productId, variantId: null },
+      }) as Promise<CartItem>;
+    }
   }
 
   async addItem(cartId: string, data: AddItemData): Promise<CartItem> {

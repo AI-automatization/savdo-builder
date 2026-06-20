@@ -52,9 +52,11 @@ function resolvePaymentMethod(
 }
 
 function generateOrderNumber(): string {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `ORD-${ts}-${rand}`;
+  // ORDER-NUM-001: crypto.randomBytes → collision-free при любом burst трафике.
+  // Раньше Date.now()+Math.random() давал коллизии при конкурентных запросах
+  // → Postgres UniqueConstraintViolation → HTTP 500 для покупателя.
+  const { randomBytes } = require('crypto') as typeof import('crypto');
+  return `ORD-${randomBytes(6).toString('hex').toUpperCase()}`;
 }
 
 @Injectable()
