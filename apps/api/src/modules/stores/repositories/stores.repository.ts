@@ -56,9 +56,9 @@ export class StoresRepository {
       ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100)
       : 50;
 
-    // API-STORES-FILTER-SUSPENDED-001: фильтр по status: APPROVED — защита
-    // от случаев когда admin меняет статус, но isPublic остался true.
-    const where = { isPublic: true, deletedAt: null, status: 'APPROVED' as const };
+    // ISVISIBLE-SEMANTICS-001: isSuspendedByBilling=false гарантирует что
+    // billing-suspended магазины не видны даже если isPublic=true.
+    const where = { isPublic: true, isSuspendedByBilling: false, deletedAt: null, status: 'APPROVED' as const };
     const [stores, total] = await this.prisma.$transaction([
       this.prisma.store.findMany({
         where,
@@ -107,6 +107,7 @@ export class StoresRepository {
     return this.prisma.store.findMany({
       where: {
         isPublic: true,
+        isSuspendedByBilling: false,
         deletedAt: null,
         status: 'APPROVED',
         OR: [
@@ -183,6 +184,7 @@ export class StoresRepository {
     coverMediaId: string;
     primaryGlobalCategoryId: string;
     isPublic: boolean;
+    isSuspendedByBilling: boolean;
     publishedAt: Date;
     status: string;
     slug: string;

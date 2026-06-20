@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { TelegramBotService } from './services/telegram-bot.service';
 import { TelegramDemoHandler } from './telegram-demo.handler';
 import { RedisService } from '../../shared/redis.service';
+import { PrismaService } from '../../database/prisma.service';
 
 const TTL_LONG = 365 * 24 * 60 * 60;
 export const TELEGRAM_CHAT_ID_KEY = (phone: string)  => `tg:chatid:${phone}`;
@@ -34,6 +35,7 @@ export class TelegramWebhookController {
     private readonly demo: TelegramDemoHandler,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post('webhook')
@@ -138,10 +140,17 @@ export class TelegramWebhookController {
       const raw   = msg.contact.phone_number.replace(/\s/g, '');
       const phone = raw.startsWith('+') ? raw : `+${raw}`;
 
-      // Двустороннее хранение для OTP совместимости
+      // REDIS-CHATID-001: хранить chatId в Redis + DB для OTP fallback при Redis miss.
+      // BigInt: Telegram chatId до 52 бит, BigInt(chatId) безопасен.
       await Promise.all([
         this.redis.set(TELEGRAM_CHAT_ID_KEY(phone), chatId, TTL_LONG),
         this.redis.set(TELEGRAM_PHONE_KEY(chatId), phone, TTL_LONG),
+        this.prisma.user.updateMany({
+          where: { phone },
+          data: { telegramId: BigInt(chatId) },
+        }).catch((err: unknown) => {
+          this.logger.warn(`REDIS-CHATID-001: DB sync failed for phone=${phone}: ${err instanceof Error ? err.message : String(err)}`);
+        }),
       ]);
 
       await this.demo.handleContact(chatId, phone, firstName, username);

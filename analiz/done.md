@@ -1,5 +1,53 @@
 # Done — Азим + Полат
 
+## 2026-06-20 (Полат) — Concurrency fixes + REDIS-CHATID-001
+
+### ✅ [STOCK-RACE-001 / CART-001-004 / ORDER-NUM-001] Конкурентность корзины и стока
+- **Важность:** 🔴 P0 · **Дата:** 20.06.2026 · **Коммит:** `3115fb4`
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts`
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts`
+  - `apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts`
+  - `apps/api/src/modules/cart/use-cases/bulk-merge-cart.use-case.ts`
+  - `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`
+  - `apps/api/src/modules/checkout/use-cases/create-direct-order.use-case.ts`
+  - `packages/db/prisma/migrations/20260620000001_cart_concurrency_indexes/`
+- **Что сделано:** 5 race-condition фиксов: `adjustStock` → атомарный `$executeRaw WHERE stock+delta>=0`,
+  `upsertItem` → ON CONFLICT DO UPDATE (partial unique index на cart_items), `getOrCreateForBuyer` →
+  INSERT ON CONFLICT (partial unique index на carts), bulk-merge sequential loop → Promise.all,
+  `generateOrderNumber` → `crypto.randomBytes(6)` вместо Date.now()+Math.random().
+
+### ✅ [CART-003] Optimistic lock в updateItemQuantity
+- **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `6165599`
+- **Файлы:**
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts`
+  - `apps/api/src/modules/cart/use-cases/update-cart-item.use-case.ts`
+  - `apps/api/src/modules/cart/use-cases/cart-mutations.use-cases.spec.ts`
+- **Что сделано:** `updateItemQuantity` принимает `expectedQuantity` — атомарный `WHERE quantity = expected`.
+  Если 0 строк затронуто (конкурентное изменение) → use-case бросает 409 CONFLICT. Тест добавлен.
+
+### ✅ [ISVISIBLE-SEMANTICS-001] isSuspendedByBilling отдельно от isPublic
+- **Важность:** 🔴 P0 · **Дата:** 20.06.2026 · **Коммит:** `45aa01f`
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` + migration `20260620000002`
+  - `expire-subscriptions.use-case.ts`, `mark-paid.use-case.ts`, `comp-subscription.use-case.ts`
+  - `stores.repository.ts`, `products.repository.ts`, `get-featured-storefront.use-case.ts`
+  - `wishlist.repository.ts`, `get-wishlist.use-case.ts`
+- **Что сделано:** добавлено поле `isSuspendedByBilling Boolean @default(false)` на Store.
+  Billing-логика теперь трогает только этот флаг, isPublic не меняет.
+  Storefront-фильтры: `isPublic=true AND isSuspendedByBilling=false`.
+  Устраняет два бага: случайное un-hiding при реактивации + bypass suspension через toggle.
+
+### ✅ [REDIS-CHATID-001] DB-fallback для chatId при Redis miss в OTP
+- **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `fd9e3a9`
+- **Файлы:**
+  - `apps/api/src/modules/telegram/telegram-webhook.controller.ts`
+  - `apps/api/src/modules/auth/services/otp.service.ts`
+  - `apps/api/src/modules/auth/services/otp.service.spec.ts`
+- **Что сделано:** при получении контакта в боте chatId пишется в Redis и в `User.telegramId` (PostgreSQL).
+  В `sendOtp`: Redis miss → fallback на `User.telegramId` из DB + восстановление Redis.
+  Устраняет `TELEGRAM_NOT_LINKED` после Redis flush или смены инстанса.
+
 ## 2026-06-12 (Полат) — Stock check bug + Admin subscription widget + TMA onboarding + Delete account
 
 ### ✅ [BUG-STOCK-SIMPLE-001] Stock не проверялся для простых товаров (без вариантов)

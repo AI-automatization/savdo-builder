@@ -31,7 +31,7 @@ describe('UpdateCartItemUseCase', () => {
   beforeEach(() => {
     cartRepo = {
       findItemById: jest.fn().mockResolvedValue(ITEM),
-      updateItemQuantity: jest.fn().mockResolvedValue(undefined),
+      updateItemQuantity: jest.fn().mockResolvedValue({ ...ITEM, quantity: 5 }),
       findById: jest.fn().mockResolvedValue(CART_FULL),
     };
     // Non-variant product with plenty of stock
@@ -64,10 +64,17 @@ describe('UpdateCartItemUseCase', () => {
       .rejects.toThrow(/at least 1/);
   });
 
-  it('happy path → updateItemQuantity + reload mapped cart', async () => {
+  it('happy path → updateItemQuantity с expectedQuantity + reload mapped cart', async () => {
     const result = await useCase.execute({ itemId: 'item-1', cartId: 'cart-1', quantity: 5 });
-    expect(cartRepo.updateItemQuantity).toHaveBeenCalledWith('item-1', 5);
+    // CART-003: теперь передаём expectedQuantity=2 (текущий qty из ITEM) для optimistic lock
+    expect(cartRepo.updateItemQuantity).toHaveBeenCalledWith('item-1', 5, 2);
     expect(result.id).toBe('cart-1');
+  });
+
+  it('CART-003: concurrent update → null → CONFLICT 409', async () => {
+    cartRepo.updateItemQuantity.mockResolvedValue(null);
+    await expect(useCase.execute({ itemId: 'item-1', cartId: 'cart-1', quantity: 5 }))
+      .rejects.toThrow(/modified concurrently/);
   });
 });
 

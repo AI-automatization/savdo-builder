@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl vips-dev fftw-dev
 RUN npm install -g pnpm@9.0.0
 
 WORKDIR /app
@@ -30,7 +30,7 @@ RUN pnpm --filter api build
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache openssl wget
+RUN apk add --no-cache openssl wget vips fftw
 RUN npm install -g pnpm@9.0.0
 
 WORKDIR /app
@@ -42,6 +42,7 @@ COPY apps/api/package.json ./apps/api/
 
 # prisma в dependencies — устанавливается здесь для generate и migrate:deploy
 RUN pnpm install --no-frozen-lockfile --prod
+RUN pnpm rebuild sharp
 
 # Prisma schema + миграции
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma

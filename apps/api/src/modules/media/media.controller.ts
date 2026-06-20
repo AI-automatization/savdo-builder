@@ -176,8 +176,14 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
-      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      try {
+        // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+        await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      } catch {
+        // Telegram вернул 400/404 (file_id протух или невалиден) — не пробрасываем
+        // Axios ошибку в GlobalExceptionFilter, отдаём 404.
+        if (!res.headersSent) throw new NotFoundException('Media file not available');
+      }
       return;
     }
 
@@ -228,8 +234,12 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
-      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      try {
+        // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+        await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      } catch {
+        if (!res.headersSent) throw new NotFoundException('Media file not available');
+      }
       return;
     }
 

@@ -49,21 +49,21 @@ export class ExpireSubscriptionsUseCase {
     }
 
     // 3. PAST_DUE → SUSPENDED (grace истёк)
-    // BILLING design §7: SUSPENDED subscription → store.isPublic=false (НЕ status=SUSPENDED).
-    // status=SUSPENDED зарезервирован для admin moderation; isPublic — для subscription enforcement.
-    // Это даёт чистую семантику: admin может SUSPEND store независимо от subscription, и обратно.
+    // ISVISIBLE-SEMANTICS-001: вместо isPublic=false ставим isSuspendedByBilling=true.
+    // isPublic остаётся нетронутым — он отражает намерение продавца, а не billing.
+    // Storefront фильтр: isPublic=true AND isSuspendedByBilling=false.
+    // При реактивации подписки isSuspendedByBilling → false; isPublic не трогаем.
     const expiredGrace = await this.subscriptionsRepo.findExpiredGrace(now);
     for (const sub of expiredGrace) {
       await this.subscriptionsRepo.update(sub.id, { status: 'SUSPENDED', suspendedAt: now });
-      // Hide store from storefront (если был публичный)
       try {
         const store = await this.storesRepo.findBySellerId(sub.sellerId);
-        if (store && store.isPublic) {
-          await this.storesRepo.update(store.id, { isPublic: false });
-          this.logger.log(`Store ${store.id} hidden (isPublic=false) due to subscription suspension`);
+        if (store && !store.isSuspendedByBilling) {
+          await this.storesRepo.update(store.id, { isSuspendedByBilling: true });
+          this.logger.log(`Store ${store.id} billing-suspended due to subscription suspension`);
         }
       } catch (e) {
-        this.logger.error(`Failed to hide store for seller=${sub.sellerId}: ${(e as Error).message}`);
+        this.logger.error(`Failed to billing-suspend store for seller=${sub.sellerId}: ${(e as Error).message}`);
       }
       this.logger.log(`PAST_DUE→SUSPENDED: sub=${sub.id} sellerId=${sub.sellerId}`);
       stats.suspended += 1;
