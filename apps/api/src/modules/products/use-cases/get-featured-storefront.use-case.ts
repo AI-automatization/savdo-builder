@@ -60,6 +60,7 @@ export class GetFeaturedStorefrontUseCase {
       where: {
         status: 'APPROVED',
         isPublic: true,
+        isSuspendedByBilling: false,
         deletedAt: null,
         // INV-S03: store должен иметь хотя бы 1 ACTIVE product чтобы попадать в feed
         products: { some: { status: 'ACTIVE', deletedAt: null } },
@@ -113,7 +114,7 @@ export class GetFeaturedStorefrontUseCase {
         status: 'ACTIVE',
         deletedAt: null,
         isVisible: true,
-        store: { status: 'APPROVED', isPublic: true, deletedAt: null },
+        store: { status: 'APPROVED', isPublic: true, isSuspendedByBilling: false, deletedAt: null },
       },
       select: {
         id: true,
