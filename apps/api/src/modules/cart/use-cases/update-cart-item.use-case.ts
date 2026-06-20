@@ -70,7 +70,20 @@ export class UpdateCartItemUseCase {
       }
     }
 
-    await this.cartRepo.updateItemQuantity(input.itemId, input.quantity);
+    // CART-003: передаём item.quantity как expectedQuantity для оптимистичного lock.
+    // Если параллельный запрос изменил item между нашим findItemById и этим update — null.
+    const updated_ = await this.cartRepo.updateItemQuantity(
+      input.itemId,
+      input.quantity,
+      item.quantity,
+    );
+    if (updated_ === null) {
+      throw new DomainException(
+        ErrorCode.CONFLICT,
+        'Cart item was modified concurrently. Please retry.',
+        HttpStatus.CONFLICT,
+      );
+    }
 
     const updated = await this.cartRepo.findById(item.cartId) as CartWithItems;
     return mapCart(updated);

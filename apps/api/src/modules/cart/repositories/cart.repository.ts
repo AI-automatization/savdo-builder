@@ -194,7 +194,24 @@ export class CartRepository {
     });
   }
 
-  async updateItemQuantity(itemId: string, quantity: number): Promise<CartItem> {
+  // CART-003: оптимистичный lock через WHERE quantity = expectedQuantity.
+  // Если между findItemById и этим вызовом другой запрос уже изменил quantity —
+  // UPDATE затронет 0 строк → вернём null как сигнал конкурентного конфликта.
+  async updateItemQuantity(
+    itemId: string,
+    quantity: number,
+    expectedQuantity?: number,
+  ): Promise<CartItem | null> {
+    if (expectedQuantity !== undefined) {
+      const affected = await this.prisma.$executeRaw(Prisma.sql`
+        UPDATE "cart_items"
+        SET "quantity" = ${quantity}, "updatedAt" = now()
+        WHERE "id" = ${itemId}::uuid
+          AND "quantity" = ${expectedQuantity}
+      `);
+      if (affected === 0) return null;
+      return this.prisma.cartItem.findFirst({ where: { id: itemId } });
+    }
     return this.prisma.cartItem.update({
       where: { id: itemId },
       data: { quantity },
