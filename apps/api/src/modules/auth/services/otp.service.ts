@@ -5,6 +5,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as bcrypt from 'bcryptjs';
 import { RedisService } from '../../../shared/redis.service';
+import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { TELEGRAM_CHAT_ID_KEY } from '../../telegram/telegram-webhook.controller';
@@ -28,6 +29,7 @@ export class OtpService {
   constructor(
     private readonly config: ConfigService,
     private readonly redis: RedisService,
+    private readonly prisma: PrismaService,
     @InjectQueue(QUEUE_OTP) private readonly otpQueue: Queue,
   ) {}
 
@@ -98,9 +100,26 @@ export class OtpService {
       return;
     }
 
-    const chatId = await this.redis.get(TELEGRAM_CHAT_ID_KEY(phone));
+    let chatId = await this.redis.get(TELEGRAM_CHAT_ID_KEY(phone));
+
+    // REDIS-CHATID-001: Redis miss → fallback на User.telegramId в PostgreSQL.
+    // Актуально после Redis flush, смены инстанса, или если пользователь привязался
+    // до деплоя этого фикса (только DB запись есть, Redis пустой).
     if (!chatId) {
-      const botUsername = this.config.get<string>('telegram.botUsername') ?? 'savdo_builderBOT';
+      const user = await this.prisma.user.findFirst({
+        where: { phone },
+        select: { telegramId: true },
+      });
+      if (user?.telegramId) {
+        chatId = String(user.telegramId);
+        // Восстанавливаем Redis чтобы следующие запросы не ходили в DB
+        await this.redis.set(TELEGRAM_CHAT_ID_KEY(phone), chatId, 365 * 24 * 60 * 60).catch(() => null);
+        this.logger.log(`REDIS-CHATID-001: restored chatId from DB for phone=${maskPhone(phone)}`);
+      }
+    }
+
+    if (!chatId) {
+      const botUsername = this.config.get<string>('telegram.botUsername') ?? 'maxsavdo_bot';
       throw new DomainException(
         ErrorCode.TELEGRAM_NOT_LINKED,
         `Telegram не привязан. Откройте @${botUsername} и поделитесь номером телефона, чтобы получать OTP коды.`,
