@@ -17,6 +17,27 @@
   INSERT ON CONFLICT (partial unique index на carts), bulk-merge sequential loop → Promise.all,
   `generateOrderNumber` → `crypto.randomBytes(6)` вместо Date.now()+Math.random().
 
+### ✅ [CART-003] Optimistic lock в updateItemQuantity
+- **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `6165599`
+- **Файлы:**
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts`
+  - `apps/api/src/modules/cart/use-cases/update-cart-item.use-case.ts`
+  - `apps/api/src/modules/cart/use-cases/cart-mutations.use-cases.spec.ts`
+- **Что сделано:** `updateItemQuantity` принимает `expectedQuantity` — атомарный `WHERE quantity = expected`.
+  Если 0 строк затронуто (конкурентное изменение) → use-case бросает 409 CONFLICT. Тест добавлен.
+
+### ✅ [ISVISIBLE-SEMANTICS-001] isSuspendedByBilling отдельно от isPublic
+- **Важность:** 🔴 P0 · **Дата:** 20.06.2026 · **Коммит:** `45aa01f`
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` + migration `20260620000002`
+  - `expire-subscriptions.use-case.ts`, `mark-paid.use-case.ts`, `comp-subscription.use-case.ts`
+  - `stores.repository.ts`, `products.repository.ts`, `get-featured-storefront.use-case.ts`
+  - `wishlist.repository.ts`, `get-wishlist.use-case.ts`
+- **Что сделано:** добавлено поле `isSuspendedByBilling Boolean @default(false)` на Store.
+  Billing-логика теперь трогает только этот флаг, isPublic не меняет.
+  Storefront-фильтры: `isPublic=true AND isSuspendedByBilling=false`.
+  Устраняет два бага: случайное un-hiding при реактивации + bypass suspension через toggle.
+
 ### ✅ [REDIS-CHATID-001] DB-fallback для chatId при Redis miss в OTP
 - **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `fd9e3a9`
 - **Файлы:**
