@@ -7,7 +7,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImagePlaceholder } from '@/components/ui/ImagePlaceholder';
-import { type CartItem, getCart, saveCart } from '@/lib/cart';
+import { type CartItem, getCart, saveCart, removeCartItem } from '@/lib/cart';
 import { useTranslation } from '@/lib/i18n';
 
 export default function CartPage() {
@@ -38,9 +38,9 @@ export default function CartPage() {
     }
   };
 
-  const removeItem = (productId: string) => {
+  const removeItem = (productId: string, variantId: string | undefined) => {
     tg?.HapticFeedback.impactOccurred('medium');
-    const updated = items.filter((i) => i.productId !== productId);
+    const updated = removeCartItem(items, productId, variantId);
     setItems(updated);
     saveCart(updated);
   };
@@ -137,7 +137,7 @@ export default function CartPage() {
                 +
               </button>
               <button
-                onClick={() => removeItem(item.productId)}
+                onClick={() => removeItem(item.productId, item.variantId)}
                 aria-label={t('cart.removeItem')}
                 className="w-10 h-10 rounded-lg flex items-center justify-center text-base ml-1"
                 style={{ color: 'rgba(239,68,68,0.70)' }}
