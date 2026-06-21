@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Headers, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Public } from '../../common/decorators/public.decorator';
 import { TelegramBotService } from './services/telegram-bot.service';
 import { TelegramDemoHandler } from './telegram-demo.handler';
 import { RedisService } from '../../shared/redis.service';
@@ -39,6 +40,7 @@ export class TelegramWebhookController {
   ) {}
 
   @Post('webhook')
+  @Public()
   @HttpCode(HttpStatus.OK)
   async handleUpdate(
     @Body() update: TelegramUpdate,

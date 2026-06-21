@@ -10,6 +10,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { HttpStatus } from '@nestjs/common';
@@ -71,6 +72,7 @@ export class StorefrontController {
    * Throttle 60/min — защита от scraping (вышу глобального 120/min baseline).
    */
   @Get('storefront/featured')
+  @Public()
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   async getFeaturedStorefront() {
     return this.getFeatured.execute();
@@ -82,6 +84,7 @@ export class StorefrontController {
   // Без параметров — первая страница, limit 50 (прежнее поведение).
   // Ответ всегда `{ data, meta }` — meta добавлен, старые клиенты читают data.
   @Get('storefront/stores')
+  @Public()
   async listStorefrontStores(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -105,6 +108,7 @@ export class StorefrontController {
   }
 
   @Get('storefront/stores/:slug')
+  @Public()
   async getStorefrontStoreBySlug(@Param('slug') slug: string) {
     const store = await this.storesRepo.findBySlug(slug);
     if (!store) {
@@ -116,6 +120,7 @@ export class StorefrontController {
   }
 
   @Get('stores/:slug')
+  @Public()
   async getStoreBySlug(@Param('slug') slug: string) {
     const store = await this.storesRepo.findBySlug(slug);
     if (!store) {
@@ -133,6 +138,7 @@ export class StorefrontController {
    * Case-insensitive ILIKE, минимум 2 символа.
    */
   @Get('storefront/search')
+  @Public()
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async searchStorefront(
     @Query('q') q?: string,
@@ -167,6 +173,7 @@ export class StorefrontController {
   // ─── Products by store slug ──────────────────────────────────────────────
 
   @Get('stores/:slug/products')
+  @Public()
   async listStoreProductsBySlug(
     @Param('slug') slug: string,
     @Query('globalCategoryId') globalCategoryId?: string,
@@ -223,6 +230,7 @@ export class StorefrontController {
   }
 
   @Get('stores/:slug/products/:id')
+  @Public()
   async getStoreProductBySlug(
     @Param('slug') slug: string,
     @Param('id') id: string,
@@ -264,6 +272,7 @@ export class StorefrontController {
   // ─── Storefront products feed ────────────────────────────────────────────
 
   @Get('storefront/products')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   async listStorefrontProducts(
@@ -367,6 +376,7 @@ export class StorefrontController {
   }
 
   @Get('storefront/products/:id')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   async getStorefrontProduct(
     @CurrentUser() user: JwtPayload | undefined,

@@ -16,6 +16,7 @@ import {
 import { IsString, IsNotEmpty, MaxLength, IsOptional, IsBoolean, IsInt, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
@@ -106,6 +107,7 @@ export class CategoriesController {
   // ─── Public ──────────────────────────────────────────────────────────────────
 
   @Get('storefront/categories')
+  @Public()
   async listGlobalCategories() {
     return this.getGlobalCategories.execute();
   }
@@ -116,6 +118,7 @@ export class CategoriesController {
    * Включает level/isLeaf/iconEmoji для navigation UI.
    */
   @Get('storefront/categories/tree')
+  @Public()
   async getCategoriesTree() {
     const all = await this.prisma.globalCategory.findMany({
       where: { isActive: true },
@@ -140,6 +143,7 @@ export class CategoriesController {
    * Если parentId не задан — возвращает root (level=0).
    */
   @Get('storefront/categories/:parentId/children')
+  @Public()
   async getCategoryChildren(@Param('parentId') parentId: string) {
     const items = await this.prisma.globalCategory.findMany({
       where: parentId === 'root' ? { parentId: null, isActive: true } : { parentId, isActive: true },
@@ -150,6 +154,7 @@ export class CategoriesController {
   }
 
   @Get('storefront/categories/:slug/filters')
+  @Public()
   async getCategoryFilters(@Param('slug') slug: string) {
     const filters = await this.prisma.categoryFilter.findMany({
       where: { categorySlug: slug },

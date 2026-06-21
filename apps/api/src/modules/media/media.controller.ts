@@ -24,6 +24,7 @@ import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { MediaVisibility } from '@prisma/client';
 import { RequestUploadDto } from './dto/request-upload.dto';
@@ -162,6 +163,7 @@ export class MediaController {
   // SEC-TG-001: Telegram файлы стримятся через сервер, чтобы Bot Token не попал
   // в Location-заголовок. R2 публичный CDN — там redirect остаётся.
   @Get('proxy/:id')
+  @Public()
   async proxyFile(@Param('id') id: string, @Res() res: Response): Promise<void> {
     const mediaFile = await this.mediaRepo.findById(id);
 

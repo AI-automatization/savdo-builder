@@ -13,6 +13,7 @@ import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
 import { GetMeUseCase } from './use-cases/get-me.use-case';
 import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('auth')
@@ -29,6 +30,7 @@ export class AuthController {
   ) {}
 
   @Post('telegram')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 10 } }) // TMA initData verify: до 10/мин
   async telegramAuthHandler(@Body() dto: TelegramAuthDto) {
@@ -36,6 +38,7 @@ export class AuthController {
   }
 
   @Post('request-otp')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 5 } }) // защита от OTP-bomb: 5/мин на IP
   async requestOtpHandler(@Body() dto: RequestOtpDto) {
@@ -44,6 +47,7 @@ export class AuthController {
   }
 
   @Post('verify-otp')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 10 } }) // brute-force OTP: 10/мин
   async verifyOtpHandler(@Body() dto: VerifyOtpDto, @Req() req: Request) {
@@ -54,6 +58,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async refreshHandler(@Body() dto: RefreshTokenDto) {
