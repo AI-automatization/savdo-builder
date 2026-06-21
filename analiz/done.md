@@ -1,5 +1,47 @@
 # Done — Азим + Полат
 
+## 2026-06-21 (Полат) — Security audit TMA + Admin (8 фиксов)
+
+### ✅ [A2-TG-REPLAY-001] Telegram initData replay-атака
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.ts`
+- **Что сделано:** добавлена проверка `auth_date < 24h`. Без неё перехваченный `initData` был валиден вечно.
+
+### ✅ [ADMIN-SELF-SUSPEND-001] Админ мог suspend свой аккаунт
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-users.controller.ts`
+- **Что сделано:** `POST /admin/users/:id/suspend` теперь возвращает 400 если `id === user.sub`.
+
+### ✅ [ADMIN-SELF-LOCKOUT-001] Самоблокировка через DB Manager
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-db.controller.ts`
+- **Что сделано:** PATCH `status/role/deletedAt` и DELETE своей строки в `users` через DB Manager заблокированы.
+
+### ✅ [A7-TMA-LOGOUT-SESSION] Logout не инвалидировал серверную сессию
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/auth.ts`, `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** `serverLogout()` вызывает `POST /auth/logout` перед очисткой токена. Сессия удаляется из БД немедленно, не ждёт `exp`.
+
+### ✅ [F16-TMA-CACHE-LEAK] API-кеш не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `clearApiCache()` при logout чистит `_cache` и `_inflight`. Данные одного пользователя не утекают следующему на том же устройстве.
+
+### ✅ [E5-TMA-WISHLIST-LEAK] Wishlist cache не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/wishlist.ts`
+- **Что сделано:** `clearWishlistCache()` при logout чистит in-memory Set и sessionStorage.
+
+### ✅ [B13-TMA-REMOVE-ITEM] removeItem удалял все варианты одного товара
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/cart.ts`, `apps/tma/src/pages/buyer/CartPage.tsx`
+- **Что сделано:** `removeCartItem(productId, variantId)` фильтрует по обоим полям. Старый `removeItem(productId)` удалял ВСЕ позиции с таким productId.
+
+### ✅ [F5-TMA-UPLOAD-TIMEOUT] apiUpload без timeout — UI зависал навсегда
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `xhr.timeout = 60_000` + `xhr.ontimeout` → `ApiError(408)`.
+
 ## 2026-06-20 (Полат) — Concurrency fixes + REDIS-CHATID-001
 
 ### ✅ [STOCK-RACE-001 / CART-001-004 / ORDER-NUM-001] Конкурентность корзины и стока
