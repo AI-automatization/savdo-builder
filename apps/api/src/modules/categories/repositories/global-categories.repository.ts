@@ -77,6 +77,25 @@ export class GlobalCategoriesRepository {
     });
   }
 
+  async findTreeActive() {
+    return this.prisma.globalCategory.findMany({
+      where: { isActive: true },
+      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { nameRu: 'asc' }],
+      select: { id: true, slug: true, nameRu: true, nameUz: true, parentId: true, level: true, isLeaf: true, iconEmoji: true, sortOrder: true },
+    });
+  }
+
+  async findChildren(parentId: string) {
+    const where = parentId === 'root'
+      ? { parentId: null as null, isActive: true }
+      : { parentId, isActive: true };
+    return this.prisma.globalCategory.findMany({
+      where,
+      orderBy: [{ sortOrder: 'asc' }, { nameRu: 'asc' }],
+      select: { id: true, slug: true, nameRu: true, nameUz: true, level: true, isLeaf: true, iconEmoji: true },
+    });
+  }
+
   async delete(id: string): Promise<void> {
     await this.prisma.$transaction([
       // Отвязать дочерние категории (parentId → null)

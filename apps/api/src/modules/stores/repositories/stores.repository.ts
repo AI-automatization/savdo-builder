@@ -222,6 +222,41 @@ export class StoresRepository {
     });
   }
 
+  async getDirections(storeId: string) {
+    const rows = await this.prisma.storeDirection.findMany({
+      where: { storeId },
+      include: {
+        globalCategory: {
+          select: { id: true, slug: true, nameRu: true, nameUz: true, iconEmoji: true, level: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((r) => r.globalCategory);
+  }
+
+  async replaceDirections(storeId: string, categoryIds: string[]): Promise<void> {
+    if (categoryIds.length > 0) {
+      const existing = await this.prisma.globalCategory.findMany({
+        where: { id: { in: categoryIds }, isActive: true },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((c) => c.id));
+      const validIds = categoryIds.filter((id) => existingIds.has(id));
+      await this.prisma.$transaction([
+        this.prisma.storeDirection.deleteMany({ where: { storeId } }),
+        ...(validIds.length > 0
+          ? [this.prisma.storeDirection.createMany({
+              data: validIds.map((globalCategoryId) => ({ storeId, globalCategoryId })),
+              skipDuplicates: true,
+            })]
+          : []),
+      ]);
+    } else {
+      await this.prisma.storeDirection.deleteMany({ where: { storeId } });
+    }
+  }
+
   async findChannelTemplate(storeId: string) {
     return this.prisma.store.findUnique({
       where: { id: storeId },

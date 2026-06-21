@@ -31,12 +31,12 @@ import { CreateStoreCategoryUseCase } from './use-cases/create-store-category.us
 import { UpdateStoreCategoryUseCase } from './use-cases/update-store-category.use-case';
 import { DeleteStoreCategoryUseCase } from './use-cases/delete-store-category.use-case';
 import { GlobalCategoriesRepository } from './repositories/global-categories.repository';
+import { CategoryFiltersRepository } from './repositories/category-filters.repository';
 import { GlobalCategoriesSeedService } from './global-categories-seed.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
-import { PrismaService } from '../../database/prisma.service';
 
 class CreateGlobalCategoryDto {
   @IsString() @IsNotEmpty() @MaxLength(120)
@@ -98,8 +98,8 @@ export class CategoriesController {
     private readonly updateStoreCategory: UpdateStoreCategoryUseCase,
     private readonly deleteStoreCategory: DeleteStoreCategoryUseCase,
     private readonly globalCategoriesRepo: GlobalCategoriesRepository,
+    private readonly filtersRepo: CategoryFiltersRepository,
     private readonly seedService: GlobalCategoriesSeedService,
-    private readonly prisma: PrismaService,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
   ) {}
@@ -120,22 +120,7 @@ export class CategoriesController {
   @Get('storefront/categories/tree')
   @Public()
   async getCategoriesTree() {
-    const all = await this.prisma.globalCategory.findMany({
-      where: { isActive: true },
-      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { nameRu: 'asc' }],
-      select: {
-        id: true,
-        slug: true,
-        nameRu: true,
-        nameUz: true,
-        parentId: true,
-        level: true,
-        isLeaf: true,
-        iconEmoji: true,
-        sortOrder: true,
-      },
-    });
-    return all;
+    return this.globalCategoriesRepo.findTreeActive();
   }
 
   /**
@@ -145,21 +130,13 @@ export class CategoriesController {
   @Get('storefront/categories/:parentId/children')
   @Public()
   async getCategoryChildren(@Param('parentId') parentId: string) {
-    const items = await this.prisma.globalCategory.findMany({
-      where: parentId === 'root' ? { parentId: null, isActive: true } : { parentId, isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { nameRu: 'asc' }],
-      select: { id: true, slug: true, nameRu: true, nameUz: true, level: true, isLeaf: true, iconEmoji: true },
-    });
-    return items;
+    return this.globalCategoriesRepo.findChildren(parentId);
   }
 
   @Get('storefront/categories/:slug/filters')
   @Public()
   async getCategoryFilters(@Param('slug') slug: string) {
-    const filters = await this.prisma.categoryFilter.findMany({
-      where: { categorySlug: slug },
-      orderBy: { sortOrder: 'asc' },
-    });
+    const filters = await this.filtersRepo.findBySlug(slug);
     return filters.map((f) => ({
       key: f.key,
       nameRu: f.nameRu,
@@ -168,8 +145,8 @@ export class CategoriesController {
       options: f.options ? (() => { try { return JSON.parse(f.options!) as string[]; } catch { return null; } })() : null,
       unit: f.unit,
       sortOrder: f.sortOrder,
-      isRequired: (f as any).isRequired ?? false,
-      isFilterable: (f as any).isFilterable ?? true,
+      isRequired: (f as Record<string, unknown>)['isRequired'] ?? false,
+      isFilterable: (f as Record<string, unknown>)['isFilterable'] ?? true,
     }));
   }
 
@@ -179,9 +156,7 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   async addFilterOption(@Body() dto: AddFilterOptionDto) {
-    const filter = await this.prisma.categoryFilter.findUnique({
-      where: { categorySlug_key: { categorySlug: dto.categorySlug, key: dto.key } },
-    });
+    const filter = await this.filtersRepo.findUnique(dto.categorySlug, dto.key);
     if (!filter) throw new NotFoundException('Filter not found');
     if (!['SELECT', 'MULTI_SELECT'].includes(filter.fieldType)) {
       throw new BadRequestException('Only SELECT and MULTI_SELECT filters support option creation');
@@ -194,10 +169,7 @@ export class CategoriesController {
     const alreadyExists = current.some((o) => o.toLowerCase() === trimmed.toLowerCase());
     if (!alreadyExists) {
       current.push(trimmed);
-      await this.prisma.categoryFilter.update({
-        where: { categorySlug_key: { categorySlug: dto.categorySlug, key: dto.key } },
-        data: { options: JSON.stringify(current) },
-      });
+      await this.filtersRepo.updateOptions(dto.categorySlug, dto.key, current);
     }
 
     return { options: current };
