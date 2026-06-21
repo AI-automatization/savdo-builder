@@ -8,6 +8,8 @@ import { ChannelPostBuilderService } from './services/channel-post-builder.servi
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
+import { ProductImagesRepository } from './repositories/product-images.repository';
+import { ProductAttributesRepository } from './repositories/product-attributes.repository';
 import { CreateProductUseCase } from './use-cases/create-product.use-case';
 import { UpdateProductUseCase } from './use-cases/update-product.use-case';
 import { ChangeProductStatusUseCase } from './use-cases/change-product-status.use-case';
@@ -41,6 +43,8 @@ import { WishlistModule } from '../wishlist/wishlist.module';
     ProductsRepository,
     VariantsRepository,
     OptionGroupsRepository,
+    ProductImagesRepository,
+    ProductAttributesRepository,
     ProductPresenterService,
     ChannelTemplateService,
     ChannelMediaResolverService,
