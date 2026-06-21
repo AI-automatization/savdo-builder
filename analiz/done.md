@@ -1,5 +1,27 @@
 # Done — Азим + Полат
 
+## 2026-06-21 (Полат) — SEC-AUDIT-04 + API-CONTROLLERS-ARCH-DEBT-001
+
+### ✅ [SEC-AUDIT-04] Глобальный APP_GUARD JwtAuthGuard + @Public()
+- **Коммит:** `9f91997`
+- `common/decorators/public.decorator.ts` — IS_PUBLIC_KEY + @Public()
+- `JwtAuthGuard` + `Reflector` — canActivate проверяет IS_PUBLIC, пропускает
+- `app.module.ts` — `APP_GUARD: JwtAuthGuard` (перед ThrottlerGuard)
+- 27 публичных эндпоинтов помечены: auth (telegram/otp/refresh), все storefront routes,
+  categories storefront, cart (OptionalJwt ×5), analytics/track, media/proxy,
+  reviews public GET, telegram webhook, health×2
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] products + stores + categories — убрать прямой prisma
+- **Коммиты:** `7c00d23` (products), `753a6c0` (stores+categories)
+- `ProductImagesRepository` — 6 методов (create/clearPrimary/update/delete/count/findByProductAndId)
+- `ProductAttributesRepository` — 5 методов (list/create/findByProductAndId/update/delete)
+- `StoresRepository` — +`getDirections`/`replaceDirections` (с transaction + validation)
+- `MediaRepository` — +`findManyByIds` (для resolveStoreImageUrls в stores)
+- `GlobalCategoriesRepository` — +`findTreeActive`/`findChildren`
+- `CategoryFiltersRepository` — `findBySlug`/`findUnique`/`updateOptions`
+- Убран `PrismaService` из: ProductsController, StoresController, CategoriesController
+- Осталось (minor): super-admin/media/storefront/telegram-webhook (по 1-2 вызова)
+
 ## 2026-06-21 (Полат) — Security audit TMA + Admin (8 фиксов)
 
 ### ✅ [A2-TG-REPLAY-001] Telegram initData replay-атака

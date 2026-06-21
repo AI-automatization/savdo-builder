@@ -456,17 +456,15 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
 - `main.ts`: `app.set('trust proxy', 1)` → `req.ip` = реальный клиент,
   `@Throttle` лимиты работают per-IP. Коммит `6751b12`.
 
-## 🟡 `SEC-AUDIT-04` — нет глобального default-deny auth (A01/A05) — проверено, активной дыры нет
-- `JwtAuthGuard` не глобальный — вешается вручную. Забыли `@UseGuards` →
-  эндпоинт публичный, без fail-safe.
-- **Проверка 16.05.2026:** прошёл все 28 контроллеров — все защищённые
-  эндпоинты реально под guard'ами (per-method, осознанно). Незащищённые —
-  только публичные by design: storefront-каталог (reads), media-proxy,
-  reviews read, health-probe, telegram-webhook (защищён своим
-  `x-telegram-bot-api-secret-token`, fail-closed). **Активной дыры нет.**
-- **Остаётся (🟡 hardening):** глобальный `APP_GUARD: JwtAuthGuard` + `@Public()`
-  — defense-in-depth, чтобы БУДУЩИЙ забытый guard не открыл эндпоинт. Не срочно,
-  рефактор рискованный (28 контроллеров) — делать отдельным focused-проходом.
+## ✅ `SEC-AUDIT-04` — глобальный APP_GUARD JwtAuthGuard + @Public() — закрыто 21.06.2026
+- `common/decorators/public.decorator.ts` — `@Public()` + `IS_PUBLIC_KEY`
+- `jwt-auth.guard.ts` — `Reflector.getAllAndOverride` проверяет IS_PUBLIC → skip
+- `app.module.ts` — `APP_GUARD: JwtAuthGuard` (перед ThrottlerGuard)
+- 27 публичных эндпоинтов помечены `@Public()`: auth (telegram/otp/refresh),
+  все storefront routes, categories storefront, cart (OptionalJwt ×5),
+  analytics/track, media/proxy, reviews public GET, telegram webhook, health×2.
+  OptionalJwt-эндпоинты: `@Public()` + `@UseGuards(OptionalJwtAuthGuard)` —
+  глобальный guard пропускает, опциональный обогащает user. Коммит `9f91997`.
 
 ## ✅ `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` (A01) — закрыто 16.05.2026
 - `AdminAccessGuard` на всех 10 admin-контроллерах: вход только `super_admin`/
