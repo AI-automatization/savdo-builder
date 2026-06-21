@@ -11,9 +11,9 @@ import { CreateDirectOrderDto } from '../dto/create-direct-order.dto';
 import { toNum } from '../../cart/cart.mapper';
 
 function generateOrderNumber(): string {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `ORD-${ts}-${rand}`;
+  // ORDER-NUM-001: crypto.randomBytes вместо Date.now()+Math.random()
+  const { randomBytes } = require('crypto') as typeof import('crypto');
+  return `ORD-${randomBytes(6).toString('hex').toUpperCase()}`;
 }
 
 export interface CreateDirectOrderInput {

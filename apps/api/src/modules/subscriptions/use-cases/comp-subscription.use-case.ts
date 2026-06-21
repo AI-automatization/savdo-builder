@@ -98,16 +98,16 @@ export class CompSubscriptionUseCase {
       `Subscription ${subscriptionId} comped by admin=${adminUserId}, tier=${data.tier}, months=${data.months}, reason="${data.reason}"`,
     );
 
-    // Reactivate store если был скрыт
+    // ISVISIBLE-SEMANTICS-001: сбрасываем billing-флаг, не трогаем isPublic.
     if (subscription.status === 'SUSPENDED' || subscription.status === 'PAST_DUE' || subscription.status === 'CANCELLED') {
       try {
         const store = await this.storesRepo.findBySellerId(subscription.sellerId);
-        if (store && store.status === 'APPROVED' && !store.isPublic) {
-          await this.storesRepo.update(store.id, { isPublic: true });
-          this.logger.log(`Store ${store.id} re-published after COMP grant`);
+        if (store && store.isSuspendedByBilling) {
+          await this.storesRepo.update(store.id, { isSuspendedByBilling: false });
+          this.logger.log(`Store ${store.id} billing-unsuspended after COMP grant`);
         }
       } catch (e) {
-        this.logger.error(`Failed to re-publish store: ${(e as Error).message}`);
+        this.logger.error(`Failed to billing-unsuspend store: ${(e as Error).message}`);
       }
     }
 

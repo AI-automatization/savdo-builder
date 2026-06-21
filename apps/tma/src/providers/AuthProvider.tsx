@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useTelegram } from './TelegramProvider';
-import { authenticateWithTelegram } from '@/lib/auth';
-import { setUnauthorizedHandler, setToken } from '@/lib/api';
+import { authenticateWithTelegram, serverLogout } from '@/lib/auth';
+import { setUnauthorizedHandler } from '@/lib/api';
 import { hydrateWishlist } from '@/lib/wishlist';
 import { syncCartToBackend, resetCartSync } from '@/lib/cartSync';
 
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isTelegram]);
 
   const logout = useCallback(() => {
-    setToken(null);
+    void serverLogout(); // A7: invalidates DB session + clears api/wishlist cache
     resetCartSync();
     setState(prev => ({ ...prev, user: null, loading: false, authenticated: false }));
   }, []);

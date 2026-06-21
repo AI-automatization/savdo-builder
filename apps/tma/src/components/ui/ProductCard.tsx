@@ -6,6 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { clickableA11y } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n';
 
 export interface FeedProduct {
   id: string;
@@ -20,6 +21,7 @@ export interface FeedProduct {
 export function ProductCard({ product }: { product: FeedProduct }) {
   const navigate = useNavigate();
   const { tg } = useTelegram();
+  const { t } = useTranslation();
   const imageUrl = product.images?.[0]?.url ?? null;
   // TMA-PRODUCT-EMPTY-001 (08.06.2026): hardening против stripped product DTO.
   // Если бэкенд вернул товар без title/basePrice/images — карточка раньше выглядела пустой
@@ -39,8 +41,10 @@ export function ProductCard({ product }: { product: FeedProduct }) {
     const { id: storeId, slug: storeSlug, name: storeName } = product.store;
     const hasOtherStore = cart.length > 0 && cart[0].storeId !== storeId;
 
+    const stockMax = product.totalStock;
+
     if (hasOtherStore) {
-      saveCart([{ productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName }]);
+      saveCart([{ productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName, stockMax }]);
       tg?.HapticFeedback.notificationOccurred('warning');
       showToast('🛒 Корзина очищена');
       return;
@@ -48,9 +52,14 @@ export function ProductCard({ product }: { product: FeedProduct }) {
 
     const existing = cart.find((i) => i.productId === product.id);
     if (existing) {
+      if (stockMax !== undefined && existing.qty >= stockMax) {
+        tg?.HapticFeedback.notificationOccurred('error');
+        showToast(t('cart.stockMaxReached', { count: stockMax }), 'error');
+        return;
+      }
       saveCart(cart.map((i) => i.productId === product.id ? { ...i, qty: i.qty + 1 } : i));
     } else {
-      saveCart([...cart, { productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName }]);
+      saveCart([...cart, { productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName, stockMax }]);
     }
     tg?.HapticFeedback.notificationOccurred('success');
     showToast('✅ Добавлено в корзину');
