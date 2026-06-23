@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-06-23 (Полат) — BILLING-MACHINE-001 закрыто + API-CONTROLLERS-ARCH-DEBT-001 minor remainder
+
+### ✅ [BILLING-MACHINE-001] Подписки + энфорсмент
+- Реализовано в сессии ~10.06.2026, tasks.md не был обновлён — закрыто сейчас.
+- **Schema:** `Subscription` (1:1 Seller), `SubscriptionTier {FREE PRO STUDIO}`, `SubscriptionStatus {TRIAL ACTIVE PAST_DUE SUSPENDED CHURNED CANCELLED}`, `SubscriptionPaymentMethod {MANUAL_TRANSFER CLICK PAYME COMP}`
+- **Cron:** `@Cron('0 3 * * *')` в `SubscriptionExpiryProcessor` — переходы статусов ежедневно 03:00 UTC
+- **Storefront gate:** `isSuspendedByBilling` на Store (независимо от `isPublic`) — скрывает магазин при SUSPENDED
+- **Product cap:** `PlanLimitGuardService` в `shared/` — 402 PAYMENT_REQUIRED при превышении FREE лимита (50 товаров)
+- **Admin:** `AdminSubscriptionsController` — mark-paid/extend-trial/cancel/comp
+- **Types:** `SubscriptionDto` в `packages/types/src/api/subscriptions.ts`
+- **Wired:** `SubscriptionsModule` зарегистрирован в `app.module.ts` с `ScheduleModule`
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] minor remainder — super-admin/media/storefront
+- **Коммит:** следующий commit этой сессии
+- `UsersRepository` +4 метода: `findPhoneById`, `findBuyerIdByUserId`, `upsertBuyerAvatar`, `syncTelegramId`
+- `SellersRepository` +1 метод: `updateAvatarByUserId`
+- `super-admin.controller.ts`: убран PrismaService → `UsersRepository` (findPhoneById) + `AdminRepository` (findAdminByUserId)
+- `media.controller.ts`: убран PrismaService → `UsersRepository` (upsertBuyerAvatar) + `SellersRepository` (updateAvatarByUserId)
+- `storefront.controller.ts`: убран PrismaService → `UsersRepository` (findBuyerIdByUserId)
+- `MediaModule`: добавлены импорты `UsersModule` + `SellersModule`
+- `ProductsModule`: добавлен импорт `UsersModule`
+- `telegram-webhook.controller.ts`: оставлен как intentional exception (цикл через AuthModule, см. комментарий в TelegramModule)
+- tsc --noEmit чист после изменений
+
 ## 2026-06-21 (Полат) — SEC-AUDIT-04 + API-CONTROLLERS-ARCH-DEBT-001
 
 ### ✅ [SEC-AUDIT-04] Глобальный APP_GUARD JwtAuthGuard + @Public()

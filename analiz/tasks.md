@@ -6,22 +6,9 @@
 ---
 
 
-## 🔴 [BILLING-MACHINE-001] Подписки + энфорсмент (блокер платного launch)
+## ✅ [BILLING-MACHINE-001] Подписки + энфорсмент — ЗАКРЫТО (Полат, ~10.06.2026)
 
-- **Домен:** `apps/api` + `packages/db` + `packages/types` (Полат) · `apps/web-seller` + `apps/web-buyer` (Азим)
-- **Кто берёт:** Полат (entity+cron+admin+gate) + Азим (suspended-states во фронтах)
-- **Приоритет:** 🔴 P0 для платного public launch — без этого нельзя брать деньги на масштабе.
-- **Спека (полная, с контрактом):** `docs/business/billing-machine-spec-v1-2026-05-31.md`
-- **Реализует:** `docs/business/business-model-v2-2026-05-31.md` §7.
-- **Кратко:**
-  - `Subscription` entity (1:1 Seller, INV-S01): tier STARTER/PRO/BUSINESS, status
-    TRIAL→ACTIVE→PAST_DUE→SUSPENDED→CHURNED + `SubscriptionDto` в types (разблокирует Азима).
-  - Cron-переходы статусов + admin-endpoint ручной оплаты (Phase 1) + storefront read-gate
-    (SUSPENDED → магазин скрыт, перекрывает `isPublic`) + product-cap guard (Старт ≤50).
-  - Лимит заказов = **soft** (баннер+апсейл, покупателя НЕ блокируем); жёсткие гейты — фичевые.
-  - Фронт (Азим): баннеры trial/past_due, dashboard read-only при SUSPENDED, «магазин недоступен» в buyer.
-- **Последовательность:** Полат делает entity+DTO → Азим параллельно рисует states.
-- **Статус:** 🟡 спека написана 31.05, ждёт аудита Азим+Полат (6 открытых вопросов в §12 спеки).
+Полностью реализовано в предыдущих сессиях. Деталь — `done.md`.
 
 ---
 
@@ -507,8 +494,11 @@ no direct prisma. Было нарушено в 8 контроллерах — 46
   19→0, `as any` 12→0 по модулю. +9 методов в ChatRepository, +6 use-cases.
   chat-специ 48/48.
 - 🟠 `products.controller.ts` — 11 (image/attribute/option-эндпоинты) — осталось.
-- 🟡 `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — осталось.
+- ✅ `stores`, `categories` — закрыто 21.06.2026 (`753a6c0`).
+- ✅ `super-admin`, `media`, `storefront` — закрыто 23.06.2026 (этот commit): UsersRepository +4 методов, SellersRepository +1 метод; MediaModule импортирует UsersModule+SellersModule; ProductsModule импортирует UsersModule.
 - `health` — `$queryRaw SELECT 1` — ✅ легитимное исключение.
+- `telegram-webhook` — `user.updateMany` — ✅ intentional (комментарий в module: циклическая зависимость через AuthModule).
+- **Осталось:** `products.controller.ts` 11 prisma calls (image/attribute/option) — не срочно.
 - Остаток `as any` в контроллерах: ~7 (admin 3, categories 2, orders 2).
 
 ---

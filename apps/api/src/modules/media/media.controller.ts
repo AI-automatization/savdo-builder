@@ -36,7 +36,8 @@ import { RemoveBackgroundUseCase } from './use-cases/remove-background.use-case'
 import { MediaRepository } from './repositories/media.repository';
 import { TelegramStorageService } from './services/telegram-storage.service';
 import { R2StorageService } from './services/r2-storage.service';
-import { PrismaService } from '../../database/prisma.service';
+import { UsersRepository } from '../users/repositories/users.repository';
+import { SellersRepository } from '../sellers/repositories/sellers.repository';
 
 @Controller('media')
 export class MediaController {
@@ -49,7 +50,8 @@ export class MediaController {
     private readonly mediaRepo: MediaRepository,
     private readonly tgStorage: TelegramStorageService,
     private readonly r2Storage: R2StorageService,
-    private readonly prisma: PrismaService,
+    private readonly usersRepo: UsersRepository,
+    private readonly sellersRepo: SellersRepository,
   ) {}
 
   // ─── Authenticated endpoints ────────────────────────────────────────────────
@@ -92,12 +94,7 @@ export class MediaController {
 
     const { url } = await this.uploadDirect.execute(user.sub, file, 'buyer_avatar');
 
-    const buyer = await this.prisma.buyer.upsert({
-      where: { userId: user.sub },
-      create: { userId: user.sub, avatarUrl: url },
-      update: { avatarUrl: url },
-      select: { id: true, avatarUrl: true },
-    });
+    const buyer = await this.usersRepo.upsertBuyerAvatar(user.sub, url);
 
     return { success: true, data: { avatarUrl: buyer.avatarUrl } };
   }
@@ -117,11 +114,7 @@ export class MediaController {
 
     const { url } = await this.uploadDirect.execute(user.sub, file, 'seller_avatar');
 
-    const seller = await this.prisma.seller.update({
-      where: { userId: user.sub },
-      data: { avatarUrl: url },
-      select: { id: true, avatarUrl: true },
-    });
+    const seller = await this.sellersRepo.updateAvatarByUserId(user.sub, url);
 
     return { success: true, data: { avatarUrl: seller.avatarUrl } };
   }
