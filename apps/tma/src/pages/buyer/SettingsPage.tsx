@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DeleteAccountModal } from '@/components/ui/DeleteAccountModal';
 import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/lib/i18n';
 
-const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot';
 const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? `https://t.me/${BOT_USERNAME}`;
 
 const LOCALE_LABEL: Record<Locale, string> = {

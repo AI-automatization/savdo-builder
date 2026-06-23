@@ -10,7 +10,7 @@ import { showToast } from '@/components/ui/Toast';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DeleteAccountModal } from '@/components/ui/DeleteAccountModal';
 
-const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT'}`;
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot'}`;
 
 interface SellerProfile {
   id: string;

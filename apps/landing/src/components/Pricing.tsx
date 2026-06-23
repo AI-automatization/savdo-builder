@@ -24,7 +24,7 @@ type PricingProps = {
   dict: PricingDict;
 };
 
-const BOT_URL = 'https://t.me/savdo_builderBOT';
+const BOT_URL = 'https://t.me/maxsavdo_bot';
 
 export default function Pricing({ dict }: PricingProps) {
   return (

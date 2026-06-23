@@ -61,7 +61,7 @@ export default function TermsPage() {
 
       <H2>7. Контакты</H2>
       <P>
-        Вопросы и обращения: support@maxsavdo.uz, Telegram-бот @savdo_builderBOT.
+        Вопросы и обращения: support@maxsavdo.uz, Telegram-бот @maxsavdo_bot.
       </P>
     </LegalPage>
   );

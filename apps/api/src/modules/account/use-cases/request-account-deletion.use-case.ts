@@ -70,7 +70,7 @@ export class RequestAccountDeletionUseCase {
     const text =
       `⚠️ Код для УДАЛЕНИЯ аккаунта: <b>${code}</b>\n\n` +
       `Действителен 10 минут. Если вы НЕ запрашивали удаление — просто проигнорируйте это сообщение.\n\n` +
-      `После удаления у вас будет 90 дней, чтобы передумать: войдите снова через @savdo_builderBOT.`;
+      `После удаления у вас будет 90 дней, чтобы передумать: войдите снова через @maxsavdo_bot.`;
     const messageId = await this.tg.sendMessage(String(telegramId), text, { parseMode: 'HTML' });
     if (messageId === null) {
       // TG failed (bot token missing / chat blocked) — НЕ откатываем OTP-запись,

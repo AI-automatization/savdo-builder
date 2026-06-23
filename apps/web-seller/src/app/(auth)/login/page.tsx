@@ -129,7 +129,7 @@ export default function LoginPage() {
 
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Введите код</h2>
               <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
-                Код отправлен в Telegram-бот @savdo_builderBOT
+                Код отправлен в Telegram-бот @maxsavdo_bot
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>
