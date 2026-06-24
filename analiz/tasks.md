@@ -5,28 +5,6 @@
 
 ---
 
-## 🔴 [OTP-BOT-MISMATCH-001] OTP-коды не приходят — несовпадение имени бота
-
-- **Домен:** `apps/api` (конфиг Telegram Bot) + `apps/web-seller` (UI текст)
-- **Кто берёт:** Полат
-- **Приоритет:** 🔴 P0 — регистрация новых продавцов не работает
-- **Нашёл:** Азим, 18.06.2026 (через Playwright + curl прод-бэкенда)
-- **Симптом:** пользователь вводит телефон на `/login`, UI переходит на шаг «введите код», но код в Telegram не приходит.
-- **Root cause (два момента):**
-  1. **Несовпадение бота.** Фронт (`login/page.tsx:132`, `LandingFooter.tsx:34`, `products/page.tsx:47`) везде указывает `@savdo_builderBOT`. Продакшн-бэкенд в ошибке `TELEGRAM_NOT_LINKED` отвечает `@maxsavdo_bot`. Один из двух — неправильный. Нужно сверить с реальным `TELEGRAM_BOT_TOKEN` в Railway.
-  2. **Пользователь не запустил бота.** Telegram-бот не может первым написать пользователю — тот обязан нажать Start самостоятельно. Если бот ни разу не открывался, OTP физически не доставится даже при корректном запросе (backend вернёт 200, TG API молча отклонит).
-- **Что сделать:**
-  1. Проверить Railway env `TELEGRAM_BOT_TOKEN` — какой реальный username бота?
-  2. Если правильный `@savdo_builderBOT` — исправить строку ошибки `TELEGRAM_NOT_LINKED` в бэкенде (сейчас хардкодит `@maxsavdo_bot`).
-     Если правильный `@maxsavdo_bot` — сказать Азиму, он поправит 3 места во фронте.
-  3. Убедиться что в description бота есть инструкция «нажми Start перед первым входом».
-- **Временный workaround:** открыть нужного бота в Telegram → нажать Start → поделиться номером → повторить запрос OTP.
-- **Файлы (фронт):**
-  - `apps/web-seller/src/app/(auth)/login/page.tsx:132`
-  - `apps/web-seller/src/components/landing/LandingFooter.tsx:34`
-  - `apps/web-seller/src/app/(dashboard)/products/page.tsx:47`
-
----
 
 ## 🟠 [INFRA-BRANCH-RECONCILE-001] Свести деплой-ветки к `main` (предложение, нужно согласие Полат+Азим)
 
@@ -1177,7 +1155,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`WS-DESIGN-WAVE-5` 🟡** ✅ 08.05.2026 — добавлен semantic `colors.info` token в styles.ts + globals.css (light `#2563EB`, dark `#60A5FA`). Заменены 9 хардкоженных мест: CONFIRMED + SHIPPED status (×4 в dashboard/orders×2/orders-detail), TG-link icons в products list (×2), analytics block, profile TG chip (3 hex). SHIPPED унифицирован с CONFIRMED через `colors.info` (оба = «in-flight», PROCESSING остался на `accent`). Audit IDs: P2-002, P2-003, P2-013.
 - [x] **`WS-DESIGN-WAVE-6` 🟡** ✅ 08.05.2026 — products edit dragons закрыты: (a) radius выровнен create↔edit на `rounded-xl` (12px per spec) — раньше `rounded-lg` (8px) в create vs `rounded-2xl` (16px) ×4 в edit. (b) native `<select>` ×2 в edit заменены на custom `<Select>` с поиском/keyboard nav/clearable — устранено хардкоженное `background: '#1a1d2e'` на `<option>` (сломан в light theme). (c) `TITLE_EXAMPLES_BY_SLUG` + `DESCRIPTION_EXAMPLES_BY_SLUG` + 2 placeholder helper функции вынесены в новый `apps/web-seller/src/lib/product-examples.ts`. Audit IDs: P2-001, P2-004, P2-005.
 - [x] **`WS-DESIGN-WAVE-7-BACKLOG` 🟢** ✅ 08.05.2026 (частично) — закрыто 8 из 14 nit'ов: shadow > 8px ×3 (layout toast / select dropdown / emoji-picker popover) → soft 4-6px depth; onboarding 3 хардкоженных hex (#A78BFA + 2× #fff) → tokens; notifications hover-leave inverted semantics → unread bg color-mix(accent 22%) при hover; notification badge fontSize 9 → 10 (хорошо читается без потери компактности); theme-toggle redundant shadow-lg + soft inline; emoji-picker hover:bg-white/5 → row-hoverable; onboarding progress connector surfaceElevated → border (видно в light); analytics ASCII «— » divider → реальный `<hr>`. Audit IDs: P2-006, P2-009, P2-012, P3-001, P3-003, P3-004, P3-005, P3-007.
-- [ ] **`WS-DESIGN-WAVE-7-DEFERRED` 🟢** — оставшиеся 5 nit'ов отложены: P2-007 (sidebar 14%→15% accentMuted, в пределах rounding), P2-008 (onboarding `rounded-3xl` — sanctioned scene), P3-002 (chat thread skeletons beyond 3), P3-008 (analytics text-3xl — в пределах spec), P2-011+P3-009 ✅ закрыто 09.05 (WS-CHAT-RESPONSIVE-001). **P3-006 ✅ 11.05.2026** — 2 native `<select>` в settings (deliveryFeeType + languageCode) мигрированы на custom `<Select>` через `Controller` из react-hook-form. Firefox chevron, dark/light theme consistency, keyboard nav.
+- [x] **`WS-DESIGN-WAVE-7-DEFERRED` 🟢** ✅ 25.06.2026 — P3-002 (chat thread skeletons `[1,2,3]`→`[1,2,3,4,5]`) закрыт. P2-007/P2-008/P3-008 — оставлены как есть (в пределах rounding/sanctioned scene/в спеке OK). P2-011+P3-009 ✅ WS-CHAT-RESPONSIVE-001. P3-006 ✅ 11.05.2026.
 
 ---
 
@@ -1214,7 +1192,6 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 | ID | Важность | Кратко |
 |----|----------|--------|
 | Тест end-to-end в проде (Railway пофикшен 28-29.04, фичи сессии 36+37 раскатываются) | 🟡 | **Сессия 36 фронт (3 фичи):** (1) Seller `/profile` → загрузить аватар. (2) Чат seller — trash в шапке. (3) Чат seller — ⋯ → Редактировать → «изменено · …». (4) Чат seller — ⋯ → Удалить → «Сообщение удалено». (5) Через 15 мин «Редактировать» исчезает. (6) Те же 4 проверки в web-buyer `/chats`. (7) Edit от seller → buyer видит «изменено». (8) **DisplayType:** SLIDER → точки. COLLAGE_2X2 → 2×2 grid. **Сессия 37 (новое):** (9) Чат — отправить, подождать 35 мин (срок refresh), отправить ещё → должно работать (WS auth dynamic token). (10) `/notifications` (seller) — список отображается с записями (был пустой из-за contract-mismatch). (11) Витрина магазина с категорий-фильтром → выбрать SELECT-фильтр (например бренд) → dropdown с опциями появился (раньше показывался text input). |
-| `WEB-SELLER-AUTOMOTIVE-CLEANUP-001` | 🟢 | После того как Азим визуально подтвердит что Railway задеплоил `18fa355` и в `/products/create` dropdown категорий нет авто-пунктов — удалить `isHiddenCategory(slug)` regex-фильтр из `apps/web-seller/src/app/(dashboard)/products/create/page.tsx` и `[id]/edit/page.tsx`. **ОПАСНО удалять до проверки** — если cleanup не отработал на проде, продавцы снова увидят авто. |
 | ~~`WEB-BUYER-CATEGORY-FILTER-DEFENSIVE-CLEANUP-001`~~ | ✅ | Удалён defensive `.toLowerCase()` в `storefront.api.ts`. |
 
 ---

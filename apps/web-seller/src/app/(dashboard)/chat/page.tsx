@@ -518,7 +518,7 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: colors.divider }}>
           {isLoading && (
             <>
-              {[1, 2, 3].map((i) => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3">
                   <div className="w-9 h-9 rounded-full animate-pulse flex-shrink-0" style={{ background: colors.surfaceElevated }} />
                   <div className="flex-1 flex flex-col gap-1.5">

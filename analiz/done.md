@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-06-25 (Азим) — WEB-SELLER-AUTOMOTIVE-CLEANUP-001
+
+### ✅ [WS-DESIGN-WAVE-7-DEFERRED] Последний оставшийся nit закрыт
+- **Важность:** 🟢
+- **Дата:** 25.06.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/chat/page.tsx`
+- **Что сделано:** P3-002 — chat thread skeleton count увеличен с 3 до 5. P2-007/P2-008/P3-008 — намеренно не изменены (within rounding / sanctioned scene / within spec).
+
+---
+
+### ✅ [WEB-SELLER-AUTOMOTIVE-CLEANUP-001] Удалён isHiddenCategory фильтр
+- **Важность:** 🟢
+- **Дата:** 25.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/products/create/page.tsx`
+  - `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx`
+- **Что сделано:** Удалены `HIDDEN_CATEGORY_SLUGS`, `HIDDEN_CATEGORY_NAME_RE`, `isHiddenCategory()` и useMemo-обёртка в обоих файлах. `globalCategories` теперь = `globalCategoriesRaw` напрямую. Workaround был для `API-CATEGORY-SEED-CLEANUP-001` (закрыто 06.05.2026).
+
+---
+
 ## 2026-06-24 (Азим) — R2-SETUP-001: Cloudflare R2 настроен для медиафайлов
 
 ### ✅ [R2-SETUP-001] Cloudflare R2 подключён как медиа-хранилище
