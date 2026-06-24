@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { Order, ProductStatus } from '@prisma/client';
 import { ProductsRepository } from '../../products/repositories/products.repository';
@@ -12,7 +13,6 @@ import { toNum } from '../../cart/cart.mapper';
 
 function generateOrderNumber(): string {
   // ORDER-NUM-001: crypto.randomBytes вместо Date.now()+Math.random()
-  const { randomBytes } = require('crypto') as typeof import('crypto');
   return `ORD-${randomBytes(6).toString('hex').toUpperCase()}`;
 }
 
