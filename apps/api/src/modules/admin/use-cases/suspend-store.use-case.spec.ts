@@ -38,7 +38,7 @@ describe('SuspendStoreUseCase', () => {
   it('store уже SUSPENDED → 409', async () => {
     adminRepo.findStoreById.mockResolvedValue(STORE_SUSPENDED);
     await expect(useCase.execute('store-1', 'admin-1', 'fraud'))
-      .rejects.toThrow(/already suspended/);
+      .rejects.toThrow(/Only approved stores can be suspended/);
     expect(adminRepo.updateStoreStatus).not.toHaveBeenCalled();
     expect(adminRepo.writeAuditLog).not.toHaveBeenCalled();
   });
