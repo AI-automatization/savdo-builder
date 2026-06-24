@@ -6,20 +6,12 @@ import Link from 'next/link';
 import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories } from '@/hooks/use-seller';
 import { ChevronRight, ExternalLink } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
-import type { Store, StoreDeliverySettings } from 'types';
+import type { Store } from 'types';
 import { ImageUploader } from '@/components/image-uploader';
 import { Select, type SelectOption } from '@/components/select';
 import { card, colors, inputStyle as inputStyleBase } from '@/lib/styles';
 import { LanguageToggle } from '@/components/language-toggle';
 import { useTranslation } from '@/lib/i18n';
-
-// Seller Store-ответ включает nested deliverySettings; тип Store его пока не
-// моделирует (Полат добавил StoreDeliverySettings только в StorefrontStore —
-// API-STORE-DELIVERY-SETTINGS-TYPE-001). Используем канонический тип вместо
-// ad-hoc inline-литерала.
-type StoreWithDelivery = Store & {
-  deliverySettings?: StoreDeliverySettings | null;
-};
 
 // SUPPORT-CHANNEL-001: ссылка на поддержку. Когда Полат создаст канал —
 // выставит NEXT_PUBLIC_SUPPORT_URL в Railway-env. До этого фолбэк на бот
@@ -153,21 +145,20 @@ function DeliverySettingsSection() {
   const updateStore = useUpdateStore();
   const [saved, setSaved] = useState(false);
 
-  const storeWithDelivery = store as StoreWithDelivery | undefined;
-  const currentType = storeWithDelivery?.deliverySettings?.deliveryFeeType ?? 'none';
-  const currentAmount = storeWithDelivery?.deliverySettings?.fixedDeliveryFee ?? 0;
+  const currentType = store?.deliverySettings?.deliveryFeeType ?? 'none';
+  const currentAmount = store?.deliverySettings?.fixedDeliveryFee ?? 0;
 
   const { register, handleSubmit, reset, watch, control, formState: { isDirty } } = useForm<DeliveryFormValues>();
   const feeType = watch('deliveryFeeType');
 
   useEffect(() => {
-    if (storeWithDelivery) {
+    if (store) {
       reset({
         deliveryFeeType: currentType,
         deliveryFeeAmount: currentAmount > 0 ? String(currentAmount) : '',
       });
     }
-  }, [storeWithDelivery?.id, currentType, currentAmount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [store?.id, currentType, currentAmount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSubmit(values: DeliveryFormValues) {
     await updateStore.mutateAsync({
