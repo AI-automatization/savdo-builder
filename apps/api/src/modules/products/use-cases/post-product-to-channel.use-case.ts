@@ -89,16 +89,25 @@ export class PostProductToChannelUseCase {
     const caption = this.templateService.render(store.channelPostTemplate, vars);
 
     const photos = await this.resolvePhotos(product.images);
-    const buttons = [[{ text: '🛒 Открыть товар', url: productUrl }]];
+    const buttons = this.buildButtons(store, productUrl);
 
     try {
       if (photos.length === 0) {
         await this.telegramBot.sendToChannel(store.telegramChannelId, caption, buttons, 'HTML');
+        this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (text-only)`);
       } else if (photos.length === 1) {
         const fileId = await this.telegramBot.sendPhotoToChannel(
           store.telegramChannelId, photos[0].src, caption, buttons, 'HTML',
         );
-        if (fileId) await this.mediaResolver.cachePhotoFileId(photos[0].mediaId, fileId);
+        if (fileId) {
+          await this.mediaResolver.cachePhotoFileId(photos[0].mediaId, fileId);
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (1 photo)`);
+        } else {
+          // Photo failed (sendPhotoToChannel returned null) — fall back to text-only
+          this.logger.warn(`Photo failed for product ${product.id}, falling back to text-only post`);
+          await this.telegramBot.sendToChannel(store.telegramChannelId, caption, buttons, 'HTML');
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (text-only fallback)`);
+        }
       } else {
         const fileIds = await this.telegramBot.sendMediaGroupToChannel(
           store.telegramChannelId, photos.map((p) => p.src), caption, 'HTML',
@@ -109,15 +118,48 @@ export class PostProductToChannelUseCase {
               photos[i] ? this.mediaResolver.cachePhotoFileId(photos[i].mediaId, fid) : null,
             ),
           );
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (${photos.length} photos)`);
+        } else {
+          // Media group failed — fall back to text-only
+          this.logger.warn(`Media group failed for product ${product.id}, falling back to text-only post`);
+          await this.telegramBot.sendToChannel(store.telegramChannelId, caption, buttons, 'HTML');
+          this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (text-only fallback)`);
         }
       }
-      this.logger.log(`Posted product ${product.id} to channel ${store.telegramChannelId} (${photos.length} photos)`);
       return { posted: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to post product ${product.id}: ${msg}`);
       return { posted: false, reason: msg };
     }
+  }
+
+  private buildButtons(
+    store: ProductWithRelations['store'],
+    productUrl: string,
+  ): Array<Array<{ text: string; url: string }>> {
+    const rows: Array<Array<{ text: string; url: string }>> = [];
+
+    // Row 1: add-to-cart + contact (side by side if contact exists)
+    const contactUrl = this.resolveContactUrl(store);
+    if (contactUrl) {
+      rows.push([
+        { text: '🛒 В корзину', url: productUrl },
+        { text: '💬 Уточнить', url: contactUrl },
+      ]);
+    } else {
+      rows.push([{ text: '🛒 В корзину', url: productUrl }]);
+    }
+
+    return rows;
+  }
+
+  private resolveContactUrl(store: ProductWithRelations['store']): string | null {
+    if (!store) return null;
+    const link = store.telegramContactLink;
+    if (!link) return null;
+    if (link.startsWith('http')) return link;
+    return `https://t.me/${link.replace(/^@/, '')}`;
   }
 
   private async resolvePhotos(

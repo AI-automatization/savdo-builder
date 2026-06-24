@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CategoriesController } from './categories.controller';
 import { GlobalCategoriesRepository } from './repositories/global-categories.repository';
 import { StoreCategoriesRepository } from './repositories/store-categories.repository';
+import { CategoryFiltersRepository } from './repositories/category-filters.repository';
 import { GetGlobalCategoriesUseCase } from './use-cases/get-global-categories.use-case';
 import { GetStoreCategoriesUseCase } from './use-cases/get-store-categories.use-case';
 import { CreateStoreCategoryUseCase } from './use-cases/create-store-category.use-case';
@@ -17,6 +18,7 @@ import { SellersModule } from '../sellers/sellers.module';
   providers: [
     GlobalCategoriesRepository,
     StoreCategoriesRepository,
+    CategoryFiltersRepository,
     GetGlobalCategoriesUseCase,
     GetStoreCategoriesUseCase,
     CreateStoreCategoryUseCase,

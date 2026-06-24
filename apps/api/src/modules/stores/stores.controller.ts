@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Put, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -14,13 +15,22 @@ import { PublishStoreUseCase } from './use-cases/publish-store.use-case';
 import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
 import { UpdateChannelTemplateUseCase } from './use-cases/update-channel-template.use-case';
 import { TriggerChannelTestPostUseCase } from './use-cases/trigger-channel-test-post.use-case';
+import { UpdateChannelBindingUseCase } from './use-cases/update-channel-binding.use-case';
 import { PreviewChannelPostUseCase } from '../products/use-cases/preview-channel-post.use-case';
 import { ChannelTemplateService } from '../products/services/channel-template.service';
 import { StoresRepository } from './repositories/stores.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
-import { PrismaService } from '../../database/prisma.service';
+import { MediaRepository } from '../media/repositories/media.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+
+class UpdateChannelBindingDto {
+  /** @username канала для привязки. null = отвязать. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  channelId?: string | null;
+}
 
 @Controller('seller/store')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,10 +44,11 @@ export class StoresController {
     private readonly unpublishStore: UnpublishStoreUseCase,
     private readonly updateChannelTemplate: UpdateChannelTemplateUseCase,
     private readonly triggerTestPost: TriggerChannelTestPostUseCase,
+    private readonly updateChannelBinding: UpdateChannelBindingUseCase,
     private readonly previewChannelPost: PreviewChannelPostUseCase,
     private readonly storesRepo: StoresRepository,
     private readonly sellersRepo: SellersRepository,
-    private readonly prisma: PrismaService,
+    private readonly mediaRepo: MediaRepository,
   ) {}
 
   @Get()
@@ -135,6 +146,17 @@ export class StoresController {
     return this.triggerTestPost.execute(user.sub);
   }
 
+  /** Привязать (@username) или отвязать (channelId: null) TG-канал из TMA. */
+  @Patch('channel')
+  @HttpCode(HttpStatus.OK)
+  async updateChannelBindingFromTma(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateChannelBindingDto,
+  ) {
+    const channelId = dto.channelId === undefined ? null : dto.channelId;
+    return this.updateChannelBinding.execute(user.sub, channelId);
+  }
+
   // ─── Store directions (many-to-many GlobalCategory) ─────────────────────────
   // Polat 06.05: продавец вводит направления → autocomplete → multi-select.
   // Backend хранит в store_directions (junction); frontend читает /storefront/categories
@@ -143,16 +165,7 @@ export class StoresController {
   @Get('directions')
   async getDirections(@CurrentUser() user: JwtPayload) {
     const store = await this.requireMyStore(user.sub);
-    const rows = await this.prisma.storeDirection.findMany({
-      where: { storeId: store.id },
-      include: {
-        globalCategory: {
-          select: { id: true, slug: true, nameRu: true, nameUz: true, iconEmoji: true, level: true },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-    return rows.map((r) => r.globalCategory);
+    return this.storesRepo.getDirections(store.id);
   }
 
   @Put('directions')
@@ -167,30 +180,8 @@ export class StoresController {
       .slice(0, 10);
 
     const store = await this.requireMyStore(user.sub);
-
-    if (ids.length > 0) {
-      // Проверяем что все id реально существуют (защита от чужих/удалённых категорий).
-      const existing = await this.prisma.globalCategory.findMany({
-        where: { id: { in: ids }, isActive: true },
-        select: { id: true },
-      });
-      const existingIds = new Set(existing.map((c) => c.id));
-      const validIds = ids.filter((id) => existingIds.has(id));
-
-      await this.prisma.$transaction([
-        this.prisma.storeDirection.deleteMany({ where: { storeId: store.id } }),
-        ...(validIds.length > 0
-          ? [this.prisma.storeDirection.createMany({
-              data: validIds.map((globalCategoryId) => ({ storeId: store.id, globalCategoryId })),
-              skipDuplicates: true,
-            })]
-          : []),
-      ]);
-    } else {
-      await this.prisma.storeDirection.deleteMany({ where: { storeId: store.id } });
-    }
-
-    return this.getDirections(user);
+    await this.storesRepo.replaceDirections(store.id, ids);
+    return this.storesRepo.getDirections(store.id);
   }
 
   private async requireMyStore(userId: string): Promise<{ id: string }> {
@@ -208,10 +199,7 @@ export class StoresController {
     const ids = [logoMediaId, coverMediaId].filter(Boolean) as string[];
     if (!ids.length) return { logoUrl: null, coverUrl: null };
 
-    const files = await this.prisma.mediaFile.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, bucket: true, objectKey: true },
-    });
+    const files = await this.mediaRepo.findManyByIds(ids);
     const map = new Map(files.map((f) => [f.id, f]));
 
     const resolve = (id: string | null | undefined): string | null => {

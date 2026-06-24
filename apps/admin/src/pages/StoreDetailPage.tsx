@@ -122,9 +122,9 @@ const SUB_STATUS_CFG: Record<string, { bg: string; text: string; label: string }
 }
 
 const SUB_TIER_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  STARTER:  { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Starter' },
-  PRO:      { bg: 'rgba(201,168,118,0.14)', text: '#C9A876', label: 'Pro' },
-  BUSINESS: { bg: 'rgba(201,168,118,0.22)', text: '#E0C896', label: 'Business' },
+  FREE:   { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Free' },
+  PRO:    { bg: 'rgba(201,168,118,0.14)', text: '#C9A876', label: 'Pro' },
+  STUDIO: { bg: 'rgba(201,168,118,0.22)', text: '#E0C896', label: 'Studio' },
 }
 
 function SubscriptionCard({ sellerId }: { sellerId: string }) {
@@ -142,7 +142,7 @@ function SubscriptionCard({ sellerId }: { sellerId: string }) {
   }
 
   const statusCfg = sub ? (SUB_STATUS_CFG[sub.status] ?? SUB_STATUS_CFG.CHURNED) : null
-  const tierCfg   = sub ? (SUB_TIER_CFG[sub.tier]     ?? SUB_TIER_CFG.STARTER)   : null
+  const tierCfg   = sub ? (SUB_TIER_CFG[sub.tier]     ?? SUB_TIER_CFG.FREE)   : null
 
   return (
     <>
@@ -191,7 +191,7 @@ function SubscriptionCard({ sellerId }: { sellerId: string }) {
               {[
                 { label: 'Начало периода', value: fmtDate(sub.currentPeriodStart) },
                 { label: 'Конец периода', value: fmtDate(sub.currentPeriodEnd) },
-                { label: 'Осталось дней', value: sub.daysLeft === null ? '—' : String(sub.daysLeft) },
+                { label: 'Осталось дней', value: sub.daysLeft == null ? '—' : String(sub.daysLeft) },
                 { label: 'Пробный до', value: fmtDate(sub.trialEndsAt) },
                 { label: 'Грейс до', value: fmtDate(sub.graceEndsAt) },
                 { label: 'Обновлено', value: fmtDate(sub.updatedAt) },

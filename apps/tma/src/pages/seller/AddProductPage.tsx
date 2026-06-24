@@ -171,7 +171,7 @@ export default function AddProductPage() {
     if (!currentCategorySlug) return;
     const { options } = await api<{ options: string[] }>('/seller/categories/filters/option', {
       method: 'POST',
-      body: JSON.stringify({ categorySlug: currentCategorySlug, key: filterKey, value: newValue }),
+      body: { categorySlug: currentCategorySlug, key: filterKey, value: newValue },
     });
     setCategoryFilters((prev) =>
       prev.map((f) => (f.key === filterKey ? { ...f, options } : f)),

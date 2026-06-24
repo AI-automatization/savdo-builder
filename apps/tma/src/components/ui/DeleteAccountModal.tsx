@@ -7,7 +7,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { useTranslation } from '@/lib/i18n';
 import { showToast } from './Toast';
 
-const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot';
 
 interface Props {
   open: boolean;

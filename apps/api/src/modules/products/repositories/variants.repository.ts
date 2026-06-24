@@ -207,39 +207,54 @@ export class VariantsRepository {
     orderId?: string,
   ): Promise<ProductVariant> {
     return this.prisma.$transaction(async (tx) => {
-      const variant = await tx.productVariant.findFirst({
-        where: { id: variantId, deletedAt: null },
-      });
+      // STOCK-RACE-001: атомарный UPDATE с guard-ом вместо read-then-write.
+      // Паттерн идентичен checkout.repository (API-STOCK-RACE-OVERSELL-001).
+      // READ COMMITTED не защищает read→compute→write от lost update при
+      // конкурентных вызовах — используем один SQL с условием.
+      const affected = await tx.$executeRaw(Prisma.sql`
+        UPDATE "product_variants"
+        SET "stockQuantity" = "stockQuantity" + ${delta}
+        WHERE "id" = ${variantId}::uuid
+          AND "deletedAt" IS NULL
+          AND "stockQuantity" + ${delta} >= 0
+      `);
 
-      if (!variant) {
-        throw new DomainException(
-          ErrorCode.VARIANT_NOT_FOUND,
-          'Variant not found',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      const newStock = variant.stockQuantity + delta;
-
-      if (newStock < 0) {
+      if (affected === 0) {
+        // Либо variant не существует, либо stock уйдёт в минус — различаем для ошибки.
+        const existing = await tx.productVariant.findFirst({
+          where: { id: variantId, deletedAt: null },
+          select: { stockQuantity: true },
+        });
+        if (!existing) {
+          throw new DomainException(
+            ErrorCode.VARIANT_NOT_FOUND,
+            'Variant not found',
+            HttpStatus.NOT_FOUND,
+          );
+        }
         throw new DomainException(
           ErrorCode.INSUFFICIENT_STOCK,
-          `Insufficient stock: current ${variant.stockQuantity}, requested delta ${delta}`,
+          `Insufficient stock: current ${existing.stockQuantity}, requested delta ${delta}`,
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
 
-      const updated = await tx.productVariant.update({
+      const updated = await tx.productVariant.findFirst({
         where: { id: variantId },
-        data: { stockQuantity: newStock },
-        include: {
-          optionValues: { include: { optionValue: true } },
-        },
+        include: { optionValues: { include: { optionValue: true } } },
       });
+
+      if (!updated) {
+        throw new DomainException(
+          ErrorCode.VARIANT_NOT_FOUND,
+          'Variant not found after update',
+          HttpStatus.NOT_FOUND,
+        );
+      }
 
       await tx.inventoryMovement.create({
         data: {
-          productId: variant.productId,
+          productId: updated.productId,
           variantId,
           movementType: orderId
             ? (delta < 0
@@ -253,10 +268,8 @@ export class VariantsRepository {
         },
       });
 
-      // API-PRODUCT-DENORMALIZED-FIELDS-001: после каждого stock-движения
-      // пересчитываем агрегат на Product чтобы storefront/cart видели актуальное
-      // totalStock без on-the-fly recalc.
-      await this.recalcProductFields(variant.productId, tx);
+      // API-PRODUCT-DENORMALIZED-FIELDS-001
+      await this.recalcProductFields(updated.productId, tx);
 
       return updated;
     });

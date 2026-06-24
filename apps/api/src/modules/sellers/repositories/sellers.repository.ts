@@ -58,4 +58,12 @@ export class SellersRepository {
       data: { isBlocked: false, blockedReason: null },
     });
   }
+
+  async updateAvatarByUserId(userId: string, url: string): Promise<{ id: string; avatarUrl: string | null }> {
+    return this.prisma.seller.update({
+      where: { userId },
+      data: { avatarUrl: url },
+      select: { id: true, avatarUrl: true },
+    });
+  }
 }

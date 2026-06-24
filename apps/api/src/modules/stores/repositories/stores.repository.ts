@@ -56,9 +56,9 @@ export class StoresRepository {
       ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100)
       : 50;
 
-    // API-STORES-FILTER-SUSPENDED-001: фильтр по status: APPROVED — защита
-    // от случаев когда admin меняет статус, но isPublic остался true.
-    const where = { isPublic: true, deletedAt: null, status: 'APPROVED' as const };
+    // ISVISIBLE-SEMANTICS-001: isSuspendedByBilling=false гарантирует что
+    // billing-suspended магазины не видны даже если isPublic=true.
+    const where = { isPublic: true, isSuspendedByBilling: false, deletedAt: null, status: 'APPROVED' as const };
     const [stores, total] = await this.prisma.$transaction([
       this.prisma.store.findMany({
         where,
@@ -107,6 +107,7 @@ export class StoresRepository {
     return this.prisma.store.findMany({
       where: {
         isPublic: true,
+        isSuspendedByBilling: false,
         deletedAt: null,
         status: 'APPROVED',
         OR: [
@@ -183,6 +184,7 @@ export class StoresRepository {
     coverMediaId: string;
     primaryGlobalCategoryId: string;
     isPublic: boolean;
+    isSuspendedByBilling: boolean;
     publishedAt: Date;
     status: string;
     slug: string;
@@ -218,6 +220,41 @@ export class StoresRepository {
         autoPostProductsToChannel: true,
       },
     });
+  }
+
+  async getDirections(storeId: string) {
+    const rows = await this.prisma.storeDirection.findMany({
+      where: { storeId },
+      include: {
+        globalCategory: {
+          select: { id: true, slug: true, nameRu: true, nameUz: true, iconEmoji: true, level: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((r) => r.globalCategory);
+  }
+
+  async replaceDirections(storeId: string, categoryIds: string[]): Promise<void> {
+    if (categoryIds.length > 0) {
+      const existing = await this.prisma.globalCategory.findMany({
+        where: { id: { in: categoryIds }, isActive: true },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((c) => c.id));
+      const validIds = categoryIds.filter((id) => existingIds.has(id));
+      await this.prisma.$transaction([
+        this.prisma.storeDirection.deleteMany({ where: { storeId } }),
+        ...(validIds.length > 0
+          ? [this.prisma.storeDirection.createMany({
+              data: validIds.map((globalCategoryId) => ({ storeId, globalCategoryId })),
+              skipDuplicates: true,
+            })]
+          : []),
+      ]);
+    } else {
+      await this.prisma.storeDirection.deleteMany({ where: { storeId } });
+    }
   }
 
   async findChannelTemplate(storeId: string) {

@@ -21,6 +21,7 @@ describe('OtpService', () => {
   let service: OtpService;
   let config: { get: jest.Mock };
   let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
+  let prisma: { user: { findFirst: jest.Mock } };
   let queue: { add: jest.Mock };
 
   beforeEach(() => {
@@ -30,10 +31,12 @@ describe('OtpService', () => {
       set: jest.fn().mockResolvedValue(undefined),
       del: jest.fn().mockResolvedValue(undefined),
     };
+    prisma = { user: { findFirst: jest.fn().mockResolvedValue(null) } };
     queue = { add: jest.fn().mockResolvedValue(undefined) };
     service = new OtpService(
       config as unknown as ConfigService,
       redis as unknown as RedisService,
+      prisma as any,
       queue as unknown as Queue,
     );
   });
@@ -244,7 +247,7 @@ describe('OtpService', () => {
       }
     });
 
-    it('fallback botUsername=savdo_builderBOT если config пустой', async () => {
+    it('fallback botUsername=maxsavdo_bot если config пустой', async () => {
       config.get.mockImplementation((key: string) => {
         if (key === 'features.devOtpEnabled') return false;
         return undefined;
@@ -254,7 +257,7 @@ describe('OtpService', () => {
         await service.sendOtp('+998900000001', '123456');
         fail('should have thrown');
       } catch (err) {
-        expect((err as Error).message).toContain('@savdo_builderBOT');
+        expect((err as Error).message).toContain('@maxsavdo_bot');
       }
     });
   });

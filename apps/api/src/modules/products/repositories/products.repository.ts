@@ -295,7 +295,7 @@ export class ProductsRepository {
       where: {
         status: ProductStatus.ACTIVE,
         deletedAt: null,
-        store: { isPublic: true, deletedAt: null },
+        store: { isPublic: true, isSuspendedByBilling: false, deletedAt: null },
         OR: [
           { title: { contains: q, mode: 'insensitive' } },
           { description: { contains: q, mode: 'insensitive' } },
@@ -398,7 +398,7 @@ export class ProductsRepository {
     const where: Prisma.ProductWhereInput = {
       status: ProductStatus.ACTIVE,
       deletedAt: null,
-      store: { status: 'APPROVED', isPublic: true },
+      store: { status: 'APPROVED', isPublic: true, isSuspendedByBilling: false },
       ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
       ...(Object.keys(priceFilter).length > 0 && { basePrice: priceFilter }),
       ...(filters?.q?.trim() && {

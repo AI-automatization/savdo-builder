@@ -6,7 +6,7 @@ import { applyAsSeller } from '@/lib/auth';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useTranslation } from '@/lib/i18n';
 
-const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot';
 
 export default function BuyerProfilePage() {
   const { user, authenticated, logout, reauth } = useAuth();

@@ -5,39 +5,10 @@
 
 ---
 
-## 🟡 [BILLING-TIER-ENUM-SYNC-001] Синхронизировать tier-enum билл-машины с pricing v2
 
-- **Домен:** `packages/db` + `packages/types` + `apps/api` (Полат) · спека `docs/business/` (Азим — обновит).
-- **Кто берёт:** Полат (когда стартует BILLING-MACHINE-001) — **heads-up, не делать сейчас**.
-- **Приоритет:** 🟡 P1-блокер-для-биллинга — но раньше Subscription-entity к нему не приступаешь.
-- **Что изменилось (04.06, решение Азима, premium-wedge):** тарифная лестница переписана:
-  - tier-enum: ~~STARTER / PRO / BUSINESS~~ → **FREE / PRO / STUDIO**
-  - цены: ~~99k / 299k / 899k~~ → **Free (20 товаров) / Pro 149k / Studio 399k**
-  - метрика лимита = **товары** (cap только на Free, ≤20), не заказы; founding-бета сейчас бесплатно; оплата периодом (год −25%); soft-lock на Free.
-- **Действие:** при реализации `Subscription` НЕ брать tier-enum из старой
-  `billing-machine-spec-v1-2026-05-31.md` — там устаревшие STARTER/PRO/BUSINESS + 99/299/899.
-  Брать из `docs/business/pricing-rationale-v2-2026-06-04.md`. Сама спека будет
-  обновлена Азимом — сверься с её актуальной версией перед entity.
-- **Связь:** разблокируется тем же `BIZ-DECISIONS-§15` Азима, что и `BILLING-MACHINE-001`.
+## ✅ [BILLING-MACHINE-001] Подписки + энфорсмент — ЗАКРЫТО (Полат, ~10.06.2026)
 
----
-
-## 🔴 [BILLING-MACHINE-001] Подписки + энфорсмент (блокер платного launch)
-
-- **Домен:** `apps/api` + `packages/db` + `packages/types` (Полат) · `apps/web-seller` + `apps/web-buyer` (Азим)
-- **Кто берёт:** Полат (entity+cron+admin+gate) + Азим (suspended-states во фронтах)
-- **Приоритет:** 🔴 P0 для платного public launch — без этого нельзя брать деньги на масштабе.
-- **Спека (полная, с контрактом):** `docs/business/billing-machine-spec-v1-2026-05-31.md`
-- **Реализует:** `docs/business/business-model-v2-2026-05-31.md` §7.
-- **Кратко:**
-  - `Subscription` entity (1:1 Seller, INV-S01): tier STARTER/PRO/BUSINESS, status
-    TRIAL→ACTIVE→PAST_DUE→SUSPENDED→CHURNED + `SubscriptionDto` в types (разблокирует Азима).
-  - Cron-переходы статусов + admin-endpoint ручной оплаты (Phase 1) + storefront read-gate
-    (SUSPENDED → магазин скрыт, перекрывает `isPublic`) + product-cap guard (Старт ≤50).
-  - Лимит заказов = **soft** (баннер+апсейл, покупателя НЕ блокируем); жёсткие гейты — фичевые.
-  - Фронт (Азим): баннеры trial/past_due, dashboard read-only при SUSPENDED, «магазин недоступен» в buyer.
-- **Последовательность:** Полат делает entity+DTO → Азим параллельно рисует states.
-- **Статус:** 🟡 спека написана 31.05, ждёт аудита Азим+Полат (6 открытых вопросов в §12 спеки).
+Полностью реализовано в предыдущих сессиях. Деталь — `done.md`.
 
 ---
 
@@ -472,17 +443,15 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
 - `main.ts`: `app.set('trust proxy', 1)` → `req.ip` = реальный клиент,
   `@Throttle` лимиты работают per-IP. Коммит `6751b12`.
 
-## 🟡 `SEC-AUDIT-04` — нет глобального default-deny auth (A01/A05) — проверено, активной дыры нет
-- `JwtAuthGuard` не глобальный — вешается вручную. Забыли `@UseGuards` →
-  эндпоинт публичный, без fail-safe.
-- **Проверка 16.05.2026:** прошёл все 28 контроллеров — все защищённые
-  эндпоинты реально под guard'ами (per-method, осознанно). Незащищённые —
-  только публичные by design: storefront-каталог (reads), media-proxy,
-  reviews read, health-probe, telegram-webhook (защищён своим
-  `x-telegram-bot-api-secret-token`, fail-closed). **Активной дыры нет.**
-- **Остаётся (🟡 hardening):** глобальный `APP_GUARD: JwtAuthGuard` + `@Public()`
-  — defense-in-depth, чтобы БУДУЩИЙ забытый guard не открыл эндпоинт. Не срочно,
-  рефактор рискованный (28 контроллеров) — делать отдельным focused-проходом.
+## ✅ `SEC-AUDIT-04` — глобальный APP_GUARD JwtAuthGuard + @Public() — закрыто 21.06.2026
+- `common/decorators/public.decorator.ts` — `@Public()` + `IS_PUBLIC_KEY`
+- `jwt-auth.guard.ts` — `Reflector.getAllAndOverride` проверяет IS_PUBLIC → skip
+- `app.module.ts` — `APP_GUARD: JwtAuthGuard` (перед ThrottlerGuard)
+- 27 публичных эндпоинтов помечены `@Public()`: auth (telegram/otp/refresh),
+  все storefront routes, categories storefront, cart (OptionalJwt ×5),
+  analytics/track, media/proxy, reviews public GET, telegram webhook, health×2.
+  OptionalJwt-эндпоинты: `@Public()` + `@UseGuards(OptionalJwtAuthGuard)` —
+  глобальный guard пропускает, опциональный обогащает user. Коммит `9f91997`.
 
 ## ✅ `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` (A01) — закрыто 16.05.2026
 - `AdminAccessGuard` на всех 10 admin-контроллерах: вход только `super_admin`/
@@ -525,9 +494,13 @@ no direct prisma. Было нарушено в 8 контроллерах — 46
   19→0, `as any` 12→0 по модулю. +9 методов в ChatRepository, +6 use-cases.
   chat-специ 48/48.
 - 🟠 `products.controller.ts` — 11 (image/attribute/option-эндпоинты) — осталось.
-- 🟡 `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — осталось.
+- ✅ `stores`, `categories` — закрыто 21.06.2026 (`753a6c0`).
+- ✅ `super-admin`, `media`, `storefront` — закрыто 23.06.2026 (`7d4140f`): UsersRepository +4 методов, SellersRepository +1 метод; MediaModule импортирует UsersModule+SellersModule; ProductsModule импортирует UsersModule.
+- ✅ `products.controller.ts` — закрыто 24.06.2026: grep подтвердил 0 `this.prisma` — контроллер уже использует imagesRepo/attributesRepo/optionGroupsRepo. Задача была stale.
 - `health` — `$queryRaw SELECT 1` — ✅ легитимное исключение.
-- Остаток `as any` в контроллерах: ~7 (admin 3, categories 2, orders 2).
+- `telegram-webhook` — `user.updateMany` — ✅ intentional (комментарий в module: циклическая зависимость через AuthModule).
+- **Осталось:** только `as any` в контроллерах (~7: admin 3, categories 2, orders 2) — не срочно.
+- **ЗАДАЧА ЗАКРЫТА ПОЛНОСТЬЮ.**
 
 ---
 
@@ -734,7 +707,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (maxsavdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
-- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания, Полат); ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
+- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Admin i18n ✅ 24.06.2026 (Полат):** все 26 страниц admin используют `useTranslation()`. Последние 2 — `ProductsPage.tsx` (STATUS_LABELS + 20+ строк) и `DatabasePage.tsx` (6 компонентов: DetailValue/FieldInput/RowDetailPanel/EditModal/InsertModal/DatabasePage + 30+ строк). Словари ru.ts/uz.ts дополнены 50 ключами (`products.*` + `db.*`). **Осталось только:** ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 

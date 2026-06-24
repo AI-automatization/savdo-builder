@@ -7,6 +7,7 @@ export interface CartItem {
   storeId: string;
   storeSlug: string;
   storeName: string;
+  stockMax?: number;
 }
 
 const CART_KEY = 'savdo_cart';
@@ -42,6 +43,18 @@ export function saveCart(items: CartItem[]): void {
 
 export function clearCart(): void {
   localStorage.removeItem(CART_KEY);
+}
+
+// B13: removeCartItem must match both productId AND variantId to avoid
+// removing all variants of a product when only one variant is targeted.
+export function removeCartItem(
+  items: CartItem[],
+  productId: string,
+  variantId: string | undefined,
+): CartItem[] {
+  return items.filter(
+    (i) => !(i.productId === productId && i.variantId === variantId),
+  );
 }
 
 /** Returns true if the cart is empty or all items are from the same store. */

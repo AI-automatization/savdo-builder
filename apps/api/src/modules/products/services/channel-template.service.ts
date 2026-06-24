@@ -78,7 +78,11 @@ export class ChannelTemplateService {
   ]);
 
   render(template: string | null | undefined, vars: TemplateVariables): string {
-    const tpl = template?.trim() ? template : ChannelTemplateService.DEFAULT_TEMPLATE;
+    let tpl = template?.trim() ? template : ChannelTemplateService.DEFAULT_TEMPLATE;
+    // Strip UI-generated marker comment — Telegram HTML does NOT support comments (<!--...-->)
+    // and returns 400 "Unsupported start tag". sanitizeTags regex misses comments because
+    // <!--...--> starts with `!`, not `[a-zA-Z]`.
+    tpl = tpl.replace(/<!--[\s\S]*?-->\n?/g, '');
 
     let out = this.renderSections(tpl, vars);
     out = this.renderVariables(out, vars);
@@ -111,7 +115,9 @@ export class ChannelTemplateService {
    * сам — он принимает только `href` для `<a>` и `class` для `<span>`).
    */
   private sanitizeTags(text: string): string {
-    return text.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (full, slash, rawTag, rest) => {
+    // HTML comments (<!--...-->) are not allowed by Telegram — strip them entirely.
+    const stripped = text.replace(/<!--[\s\S]*?-->/g, '');
+    return stripped.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (full, slash, rawTag, rest) => {
       const tag = rawTag.toLowerCase();
       if (ChannelTemplateService.TG_ALLOWED_TAGS.has(tag)) return full;
       // не разрешённый — заменяем `<` `>` чтобы Telegram парсил как текст
@@ -135,7 +141,7 @@ export class ChannelTemplateService {
       if (lt <= gt) break; // не внутри незакрытого `<…`
       cut = lt - 1;
     }
-    let truncated = text.slice(0, cut);
+    const truncated = text.slice(0, cut);
 
     // Подсчитаем открытые теги (только из whitelist) и закроем в конце.
     const openStack: string[] = [];

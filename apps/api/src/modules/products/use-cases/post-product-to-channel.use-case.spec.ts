@@ -138,7 +138,7 @@ describe('PostProductToChannelUseCase', () => {
         '@apple_tashkent',
         expect.stringContaining('iPhone 15 Pro'),
         expect.arrayContaining([
-          expect.arrayContaining([expect.objectContaining({ text: '🛒 Открыть товар' })]),
+          expect.arrayContaining([expect.objectContaining({ text: '🛒 В корзину' })]),
         ]),
         'HTML',
       );

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Order, PaymentMethod } from '@prisma/client';
@@ -52,9 +53,10 @@ function resolvePaymentMethod(
 }
 
 function generateOrderNumber(): string {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `ORD-${ts}-${rand}`;
+  // ORDER-NUM-001: crypto.randomBytes → collision-free при любом burst трафике.
+  // Раньше Date.now()+Math.random() давал коллизии при конкурентных запросах
+  // → Postgres UniqueConstraintViolation → HTTP 500 для покупателя.
+  return `ORD-${randomBytes(6).toString('hex').toUpperCase()}`;
 }
 
 @Injectable()

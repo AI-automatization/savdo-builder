@@ -6,6 +6,7 @@ import {
   Body,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -69,6 +70,10 @@ export class AdminUsersController {
     @CurrentUser() user: JwtPayload,
   ) {
     await this.adminContext.requireAdmin(user);
+    // ADMIN-SELF-SUSPEND-001: admin cannot suspend their own user account.
+    if (id === user.sub) {
+      throw new BadRequestException('Cannot suspend your own account');
+    }
     return this.suspendUserUseCase.execute(id, user.sub, dto.reason);
   }
 

@@ -147,11 +147,19 @@ export default function ProductPage() {
     }
 
     const variantId = selectedVariant?.id;
+    const stockMax = selectedVariant
+      ? selectedVariant.stockQuantity
+      : ((product as unknown as { totalStock?: number }).totalStock);
     const existing = cart.find(
       (i) => i.productId === product.id && i.variantId === variantId,
     );
 
     if (existing) {
+      if (stockMax !== undefined && existing.qty >= stockMax) {
+        tg?.HapticFeedback.notificationOccurred('error');
+        showToast(t('cart.stockMaxReached', { count: stockMax }), 'error');
+        return;
+      }
       existing.qty += 1;
     } else {
       cart.push({
@@ -163,6 +171,7 @@ export default function ProductPage() {
         storeId: product.storeId,
         storeSlug: slug!,
         storeName: product.store?.name ?? '',
+        stockMax,
       });
     }
 

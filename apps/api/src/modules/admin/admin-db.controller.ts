@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -102,6 +103,13 @@ export class AdminDbController {
     @CurrentUser() user: JwtPayload,
   ) {
     await this.requireAdmin(user);
+    // ADMIN-SELF-LOCKOUT-001: block/role-change own user record via DB manager.
+    if (table === 'users' && id === user.sub) {
+      const dangerous = ['status', 'role', 'deletedAt'];
+      if (dangerous.some((f) => f in data)) {
+        throw new BadRequestException('Cannot modify your own user record status/role via DB manager');
+      }
+    }
     await this.adminRepo.writeAuditLog({
       actorUserId: user.sub,
       action: `db.update.${table}`,
@@ -121,6 +129,10 @@ export class AdminDbController {
     @CurrentUser() user: JwtPayload,
   ) {
     await this.requireAdmin(user);
+    // ADMIN-SELF-LOCKOUT-001: admin cannot delete their own user record.
+    if (table === 'users' && id === user.sub) {
+      throw new BadRequestException('Cannot delete your own user account via DB manager');
+    }
     await this.adminRepo.writeAuditLog({
       actorUserId: user.sub,
       action: `db.delete.${table}`,

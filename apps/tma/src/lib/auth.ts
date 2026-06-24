@@ -1,5 +1,6 @@
 import { getTgWebApp } from './telegram';
-import { api, setToken } from './api';
+import { api, setToken, clearApiCache } from './api';
+import { clearWishlistCache } from './wishlist';
 
 interface AuthResponse {
   token: string;
@@ -24,6 +25,18 @@ export async function authenticateWithTelegram(): Promise<AuthResponse | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * A7: call server logout to invalidate the session in DB, then clear all
+ * client-side caches so next user on same device starts clean.
+ * Fire-and-forget on network error — local cleanup always happens.
+ */
+export async function serverLogout(): Promise<void> {
+  await api('/auth/logout', { method: 'POST', noCache: true }).catch(() => null);
+  setToken(null);
+  clearApiCache();
+  clearWishlistCache();
 }
 
 /** Переводит текущего BUYER в SELLER.

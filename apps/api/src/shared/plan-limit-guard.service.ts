@@ -49,7 +49,7 @@ export class PlanLimitGuardService {
     this.assertSubscriptionActive(subscription.status);
 
     const limit = PLAN_CONFIG[subscription.tier].productsLimit;
-    if (limit === null) return; // null = безлимит (PRO / BUSINESS)
+    if (limit === null) return; // null = безлимит (PRO / STUDIO)
 
     const current = await this.countActiveProductsBySeller(sellerId);
     if (current >= limit) {

@@ -575,12 +575,15 @@ export class TelegramDemoHandler {
       data: {
         telegramChannelId: channelId,
         telegramChannelTitle: channelTitle ?? channelId,
+        // Синхронизация с TMA: бот говорит «автоматически постит» —
+        // значит autoPost должен быть включён сразу, без ручного шага в TMA.
+        autoPostProductsToChannel: true,
       },
     });
 
     await this.bot.sendMessage(
       chatId,
-      `✅ Канал <b>${channelTitle ?? channelId}</b> привязан!\n\nТеперь когда вы публикуете товар — бот автоматически постит его в канал с кнопками для заказа.`,
+      `✅ Канал <b>${channelTitle ?? channelId}</b> привязан!\n\nАвтопостинг включён — при публикации товара бот сам отправит его в канал с фото и кнопкой заказа.\n\n⚙️ Настроить шаблон поста можно в TMA → Настройки → Канал.`,
       { parseMode: 'HTML' },
     );
 
