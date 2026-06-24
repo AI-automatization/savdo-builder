@@ -1,5 +1,39 @@
 # Done — Азим + Полат
 
+---
+
+## 2026-06-24 (Азим) — OTP-BOT-MISMATCH-001: исправлено имя бота @maxsavdo_bot
+
+### ✅ [OTP-BOT-MISMATCH-001] Имя бота обновлено во всём web-seller
+- **Важность:** 🔴
+- **Дата:** 24.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/components/landing/LandingFooter.tsx`
+  - `apps/web-seller/src/lib/i18n/ru.ts`
+  - `apps/web-seller/src/lib/i18n/uz.ts`
+  - `apps/web-seller/src/app/(dashboard)/products/page.tsx`
+  - `apps/web-seller/src/lib/landing/demo-store.ts`
+  - `apps/web-seller/src/app/(dashboard)/settings/page.tsx`
+  - `apps/web-seller/.env.local`
+- **Что сделано:** заменено `@savdo_builderBOT` → `@maxsavdo_bot` во всех 6 файлах + добавлен `NEXT_PUBLIC_TG_BOT_USERNAME=maxsavdo_bot` в `.env.local`. Полат подтвердил 24.06.2026: актуальный бот `@maxsavdo_bot`.
+
+---
+
+## 2026-06-19 (Азим) — LANDING-RAILWAY-FIX: исправлена конфигурация Railway landing сервиса
+
+### ✅ [LANDING-RAILWAY-FIX] Railway `landing` сервис теперь деплоится с правильной ветки
+- **Важность:** 🔴 (лендинг показывал форму регистрации вместо страницы)
+- **Дата:** 19.06.2026
+- **Что было:** Railway сервис `landing` был подключён к ветке `main`. На `main` `page.tsx` = `redirect('/dashboard')` → пользователь без авторизации → редирект на `/login` → форма телефона. Лендинг не отображался вообще.
+- **Что сделано:**
+  1. Railway → сервис `landing` → Settings → Source → Branch: переключён с `main` на `landing`
+  2. Root Directory очищен (там ошибочно стояло `node apps/web-seller/server.js`)
+  3. Остальные настройки были верны: Dockerfile `/apps/web-seller/Dockerfile`, Watch Paths `apps/web-seller/**`, Start Command `node apps/web-seller/server.js`
+- **Результат:** лендинг `landing-production-9296.up.railway.app` показывает публичную страницу ✅
+- **Файлы:** настройки Railway UI (не файлы репо)
+
+---
+
 ## 2026-06-14 (Азим) — Бизнес-решения §15 + §12 закрыты
 
 ### ✅ [BIZ-DECISIONS-§15] Закрыты все открытые решения бизнес-модели и биллинг-спеки

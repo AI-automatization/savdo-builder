@@ -24,7 +24,7 @@ export const uz: Translations = {
   'auth.sendingOtp': 'Yuborilmoqda...',
   'auth.getCode': 'Kodni olish',
   'auth.enterCodeTitle': 'Kodni kiriting',
-  'auth.codeSentToTelegram': 'Kod Telegram-bot @savdo_builderBOT ga yuborildi',
+  'auth.codeSentToTelegram': 'Kod Telegram-bot @maxsavdo_bot ga yuborildi',
   'auth.telegramCodeLabel': 'Telegram kodi',
   'auth.verifying': 'Tekshirilmoqda...',
   'auth.loginButton': 'Kirish',

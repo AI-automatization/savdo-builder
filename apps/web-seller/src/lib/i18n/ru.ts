@@ -26,7 +26,7 @@ export const ru: Translations = {
   'auth.sendingOtp': 'Отправка...',
   'auth.getCode': 'Получить код',
   'auth.enterCodeTitle': 'Введите код',
-  'auth.codeSentToTelegram': 'Код отправлен в Telegram-бот @savdo_builderBOT',
+  'auth.codeSentToTelegram': 'Код отправлен в Telegram-бот @maxsavdo_bot',
   'auth.telegramCodeLabel': 'Код из Telegram',
   'auth.verifying': 'Проверка...',
   'auth.loginButton': 'Войти',

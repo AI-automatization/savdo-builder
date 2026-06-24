@@ -26,7 +26,7 @@ type StoreWithDelivery = Store & {
 // (он реально работает), битой ссылки в проде не бывает.
 const SUPPORT_URL =
   process.env.NEXT_PUBLIC_SUPPORT_URL ??
-  `https://t.me/${process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT'}`;
+  `https://t.me/${process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot'}`;
 
 const inputBase =
   'h-10 px-3.5 rounded-md text-sm focus:outline-none focus:ring-2 w-full';
