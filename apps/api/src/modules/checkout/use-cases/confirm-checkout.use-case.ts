@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Order, PaymentMethod } from '@prisma/client';
@@ -55,7 +56,6 @@ function generateOrderNumber(): string {
   // ORDER-NUM-001: crypto.randomBytes → collision-free при любом burst трафике.
   // Раньше Date.now()+Math.random() давал коллизии при конкурентных запросах
   // → Postgres UniqueConstraintViolation → HTTP 500 для покупателя.
-  const { randomBytes } = require('crypto') as typeof import('crypto');
   return `ORD-${randomBytes(6).toString('hex').toUpperCase()}`;
 }
 

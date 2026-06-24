@@ -99,7 +99,7 @@ export class ChannelPostBuilderService {
     if (buyerBaseUrl) return `${buyerBaseUrl}/${storeSlug}/products/${productId}`;
 
     const botUsername =
-      this.config?.get<string>('telegram.botUsername') ?? 'savdo_builderBOT';
+      this.config?.get<string>('telegram.botUsername') ?? 'maxsavdo_bot';
     return `https://t.me/${botUsername}?startapp=product_${productId}`;
   }
 

@@ -8,6 +8,8 @@ import { ChannelPostBuilderService } from './services/channel-post-builder.servi
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
+import { ProductImagesRepository } from './repositories/product-images.repository';
+import { ProductAttributesRepository } from './repositories/product-attributes.repository';
 import { CreateProductUseCase } from './use-cases/create-product.use-case';
 import { UpdateProductUseCase } from './use-cases/update-product.use-case';
 import { ChangeProductStatusUseCase } from './use-cases/change-product-status.use-case';
@@ -24,6 +26,7 @@ import { SellersModule } from '../sellers/sellers.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { MediaModule } from '../media/media.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
+import { UsersModule } from '../users/users.module';
 // SUBSCRIPTIONS / PLAN-LIMIT-GUARD hook — TODO добавить после refactor (вынести
 // PlanLimitGuardService в shared/, чтобы не создавать цикл
 // AdminModule → ProductsModule → SubscriptionsModule → AdminModule).
@@ -35,12 +38,15 @@ import { WishlistModule } from '../wishlist/wishlist.module';
     TelegramModule,
     MediaModule,
     WishlistModule,
+    UsersModule,
   ],
   controllers: [ProductsController, StorefrontController],
   providers: [
     ProductsRepository,
     VariantsRepository,
     OptionGroupsRepository,
+    ProductImagesRepository,
+    ProductAttributesRepository,
     ProductPresenterService,
     ChannelTemplateService,
     ChannelMediaResolverService,

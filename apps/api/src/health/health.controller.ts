@@ -2,6 +2,7 @@ import { Controller, Get, HttpCode, HttpStatus, Logger, Res } from '@nestjs/comm
 import { Response } from 'express';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../shared/redis.service';
+import { Public } from '../common/decorators/public.decorator';
 
 /**
  * Healthcheck для Railway healthcheckPath.
@@ -26,6 +27,7 @@ export class HealthController {
   ) {}
 
   @Get()
+  @Public()
   async check(@Res({ passthrough: true }) res: Response) {
     const [dbOk, redisOk] = await Promise.all([
       this.checkDb(),
@@ -48,6 +50,7 @@ export class HealthController {
 
   /** Liveness — проверяет что процесс жив (без БД/Redis). Для k8s/Railway probe. */
   @Get('live')
+  @Public()
   @HttpCode(HttpStatus.OK)
   live() {
     return { status: 'ok' };

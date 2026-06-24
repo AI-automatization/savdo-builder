@@ -42,6 +42,14 @@ export class MediaRepository {
     await this.prisma.mediaFile.delete({ where: { id } });
   }
 
+  async findManyByIds(ids: string[]) {
+    if (!ids.length) return [];
+    return this.prisma.mediaFile.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, bucket: true, objectKey: true },
+    });
+  }
+
   async findAll({ page, limit }: { page: number; limit: number }) {
     return this.prisma.mediaFile.findMany({
       orderBy: { createdAt: 'desc' },

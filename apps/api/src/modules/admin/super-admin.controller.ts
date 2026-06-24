@@ -14,7 +14,8 @@ import { AdminPermission } from '../../common/decorators/admin-permission.decora
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
-import { PrismaService } from '../../database/prisma.service';
+import { UsersRepository } from '../users/repositories/users.repository';
+import { AdminRepository } from './repositories/admin.repository';
 
 import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
 import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.use-case';
@@ -38,7 +39,8 @@ export class SuperAdminController {
   private readonly logger = new Logger(SuperAdminController.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly usersRepo: UsersRepository,
+    private readonly adminRepo: AdminRepository,
     private readonly adminAuth: AdminAuthUseCase,
     private readonly adminUsersMgmt: AdminUsersManagementUseCase,
     private readonly refundOrder: RefundOrderUseCase,
@@ -59,9 +61,9 @@ export class SuperAdminController {
   @Post('auth/mfa/setup')
   @SkipMfaCheck()
   async setupMfa(@CurrentUser() user: JwtPayload) {
-    const u = await this.prisma.user.findUnique({ where: { id: user.sub }, select: { phone: true } });
-    if (!u?.phone) throw new BadRequestException('User phone not found');
-    return this.adminAuth.setupMfa(user.sub, u.phone);
+    const phone = await this.usersRepo.findPhoneById(user.sub);
+    if (!phone) throw new BadRequestException('User phone not found');
+    return this.adminAuth.setupMfa(user.sub, phone);
   }
 
   @Post('auth/mfa/verify')
@@ -236,7 +238,7 @@ export class SuperAdminController {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
   private async requireMyAdminRecord(userId: string) {
-    const admin = await this.prisma.adminUser.findUnique({ where: { userId } });
+    const admin = await this.adminRepo.findAdminByUserId(userId);
     if (!admin) {
       throw new DomainException(ErrorCode.ADMIN_NOT_FOUND, 'Admin record not found', HttpStatus.FORBIDDEN);
     }

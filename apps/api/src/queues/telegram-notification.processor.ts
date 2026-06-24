@@ -166,7 +166,7 @@ export class TelegramNotificationProcessor extends WorkerHost {
             `«${escapeTgHtml(d.messagePreview)}»`;
 
           // Кнопка-ссылка «Открыть чат» — глубокий линк через TMA startapp.
-          const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'savdo_builderBOT';
+          const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'maxsavdo_bot';
           const startapp = `chat_${d.threadId}`;
 
           await this.telegramBot.sendMessage(d.recipientChatId, text, {
