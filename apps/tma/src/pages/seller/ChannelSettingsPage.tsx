@@ -716,7 +716,7 @@ export default function ChannelSettingsPage() {
         ) : (
           <>
             <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
-              Добавьте <b style={{ color: 'var(--tg-text-secondary)' }}>@savdo_builderBOT</b> как администратора в ваш канал, затем введите @username канала:
+              Добавьте <b style={{ color: 'var(--tg-text-secondary)' }}>@maxsavdo_bot</b> как администратора в ваш канал, затем введите @username канала:
             </p>
             <div className="flex flex-col gap-1.5">
               <div className="flex gap-2">

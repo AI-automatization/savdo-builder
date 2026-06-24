@@ -16,6 +16,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { MediaModule } from '../media/media.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     forwardRef(() => ProductsModule),
     forwardRef(() => ModerationModule),
     forwardRef(() => TelegramModule),
+    MediaModule,
   ],
   controllers: [StoresController],
   providers: [

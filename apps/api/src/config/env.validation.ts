@@ -37,7 +37,7 @@ export const envValidationSchema = Joi.object({
   // Telegram Bot — OTP через Telegram (Eskiz ЗАПРЕЩЁН)
   TELEGRAM_BOT_TOKEN: Joi.string().required(),
   TELEGRAM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
-  TELEGRAM_BOT_USERNAME: Joi.string().default('savdo_builderBOT'),
+  TELEGRAM_BOT_USERNAME: Joi.string().default('maxsavdo_bot'),
   // Telegram-канал для хранения медиа (fallback к R2). Бот должен быть
   // админом канала с правом «Публикация сообщений». Если не выставлен и
   // R2 не сконфигурирован — uploadDirect вернёт 503.

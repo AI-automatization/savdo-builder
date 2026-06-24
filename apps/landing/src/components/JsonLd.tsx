@@ -2,8 +2,8 @@ import type { FC } from 'react';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://maxsavdo.uz';
 
-const TELEGRAM_BOT = 'https://t.me/savdo_builderBOT';
-const TELEGRAM_CHANNEL = 'https://t.me/savdo_builderBOT/app';
+const TELEGRAM_BOT = 'https://t.me/maxsavdo_bot';
+const TELEGRAM_CHANNEL = 'https://t.me/maxsavdo_bot/app';
 
 const organizationSchema = {
   '@context': 'https://schema.org',

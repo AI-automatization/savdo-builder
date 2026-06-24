@@ -1,5 +1,14 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-24] [STRESS-DOS-001] 🔴 Body-парсер NestJS возвращает 500 до auth guard на большом payload
+- **Статус:** 🔴 Открыт
+- **Что случилось:** Stress test выявил: `PATCH /api/v1/admin/db/tables/products/:id` с ~500KB JSON body возвращает **500** без токена. Auth guard должен возвращать 401 ДО парсинга body, но этого не происходит.
+- **Воспроизведение:** `curl -X PATCH https://savdo-api-production.up.railway.app/api/v1/admin/db/tables/products/any -H "Content-Type: application/json" -d '{"title":"'$(python3 -c "print('x'*500000)""}'`  → 500
+- **Риск:** DoS вектор — анонимный запрос 500KB → 500. Возможно body-parser выполняется в глобальном middleware до Passport guard. При highload может исчерпать память.
+- **Вероятная причина:** NestJS `app.use(json({ limit: '1mb' }))` глобален, а Passport guard — на уровне route. Body парсится для всех роутов включая ошибочные. 500 = Prisma/service крашится на невалидном UUID при слишком длинном поле (до auth check).
+- **Fix:** В `main.ts` — `app.use(json({ limit: '100kb' }))` для admin роутов (или глобально). Или переставить auth guard выше body-parser через custom middleware order.
+- **Что сделано:** Залогировано, баг добавлен в backlog.
+
 ## [2026-06-18] [SECURITY-AUDIT-001] ✅ Исправлено — 5 уязвимостей безопасности
 - **Статус:** ✅ Исправлено (18.06.2026)
 - **BOLA-001 🔴**: Любой buyer мог отменить чужой заказ через `PATCH /buyer/orders/:id/status`. Fix: добавлен `buyerId` в `UpdateOrderStatusInput`, проверка в use-case.

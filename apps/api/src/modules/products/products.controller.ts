@@ -42,7 +42,8 @@ import { CreateOptionValueDto } from './dto/create-option-value.dto';
 import { UpdateOptionValueDto } from './dto/update-option-value.dto';
 import { AttachProductImageDto } from './dto/attach-product-image.dto';
 import { UpdateProductImageDto } from './dto/update-product-image.dto';
-import { PrismaService } from '../../database/prisma.service';
+import { ProductImagesRepository } from './repositories/product-images.repository';
+import { ProductAttributesRepository } from './repositories/product-attributes.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
@@ -71,9 +72,10 @@ export class ProductsController {
     private readonly productsRepo: ProductsRepository,
     private readonly variantsRepo: VariantsRepository,
     private readonly optionGroupsRepo: OptionGroupsRepository,
+    private readonly imagesRepo: ProductImagesRepository,
+    private readonly attributesRepo: ProductAttributesRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
-    private readonly prisma: PrismaService,
     private readonly wishlistRepo: WishlistRepository,
     private readonly presenter: ProductPresenterService,
   ) {}
@@ -473,23 +475,17 @@ export class ProductsController {
     await this.ensureProductOwnership(productId, storeId);
 
     if (dto.isPrimary) {
-      await this.prisma.productImage.updateMany({
-        where: { productId, isPrimary: true },
-        data: { isPrimary: false },
-      });
+      await this.imagesRepo.clearPrimary(productId);
     }
 
-    const existingCount = await this.prisma.productImage.count({ where: { productId } });
+    const existingCount = await this.imagesRepo.countByProductId(productId);
     const isPrimary = dto.isPrimary ?? existingCount === 0;
 
-    return this.prisma.productImage.create({
-      data: {
-        productId,
-        mediaId: dto.mediaId,
-        sortOrder: dto.sortOrder ?? existingCount,
-        isPrimary,
-      },
-      include: { media: true },
+    return this.imagesRepo.create({
+      productId,
+      mediaId: dto.mediaId,
+      sortOrder: dto.sortOrder ?? existingCount,
+      isPrimary,
     });
   }
 
@@ -504,7 +500,7 @@ export class ProductsController {
   ): Promise<void> {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    await this.prisma.productImage.deleteMany({ where: { id: imageId, productId } });
+    await this.imagesRepo.delete(productId, imageId);
   }
 
   // API-PRODUCT-IMAGES-PATCH-001: reorder (`sortOrder`) + toggle обложки
@@ -531,10 +527,7 @@ export class ProductsController {
     }
 
     // Фото должно принадлежать этому товару — нельзя править чужое по id.
-    const image = await this.prisma.productImage.findFirst({
-      where: { id: imageId, productId },
-      select: { id: true },
-    });
+    const image = await this.imagesRepo.findByProductAndId(productId, imageId);
     if (!image) {
       throw new DomainException(
         ErrorCode.NOT_FOUND,
@@ -545,19 +538,12 @@ export class ProductsController {
 
     // Одна обложка на товар: isPrimary=true снимает флаг с остальных.
     if (dto.isPrimary === true) {
-      await this.prisma.productImage.updateMany({
-        where: { productId, isPrimary: true, id: { not: imageId } },
-        data: { isPrimary: false },
-      });
+      await this.imagesRepo.clearPrimary(productId, imageId);
     }
 
-    return this.prisma.productImage.update({
-      where: { id: imageId },
-      data: {
-        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
-        ...(dto.isPrimary !== undefined ? { isPrimary: dto.isPrimary } : {}),
-      },
-      include: { media: true },
+    return this.imagesRepo.update(imageId, {
+      sortOrder: dto.sortOrder,
+      isPrimary: dto.isPrimary,
     });
   }
 
@@ -572,10 +558,7 @@ export class ProductsController {
   ) {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    return this.prisma.productAttribute.findMany({
-      where: { productId },
-      orderBy: { sortOrder: 'asc' },
-    });
+    return this.attributesRepo.findByProductId(productId);
   }
 
   @Post('seller/products/:id/attributes')
@@ -589,13 +572,11 @@ export class ProductsController {
   ) {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    return this.prisma.productAttribute.create({
-      data: {
-        productId,
-        name: body.name,
-        value: body.value,
-        sortOrder: body.sortOrder ?? 0,
-      },
+    return this.attributesRepo.create({
+      productId,
+      name: body.name,
+      value: body.value,
+      sortOrder: body.sortOrder ?? 0,
     });
   }
 
@@ -611,21 +592,14 @@ export class ProductsController {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
     // IDOR-001: verify the attribute belongs to this product (not just any product).
-    const attr = await this.prisma.productAttribute.findFirst({
-      where: { id: attrId, productId },
-      select: { id: true },
-    });
+    const attr = await this.attributesRepo.findByProductAndId(productId, attrId);
     if (!attr) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Attribute not found', HttpStatus.NOT_FOUND);
     }
-    // MASS-ASSIGN-001: explicit fields instead of spread to prevent accidental field injection.
-    return this.prisma.productAttribute.update({
-      where: { id: attrId },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.value !== undefined && { value: body.value }),
-        ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),
-      },
+    return this.attributesRepo.update(attrId, {
+      name: body.name,
+      value: body.value,
+      sortOrder: body.sortOrder,
     });
   }
 
@@ -640,7 +614,7 @@ export class ProductsController {
   ): Promise<void> {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    await this.prisma.productAttribute.deleteMany({ where: { id: attrId, productId } });
+    await this.attributesRepo.delete(productId, attrId);
   }
 
   // ─── Storefront / public routes вынесены в `StorefrontController`

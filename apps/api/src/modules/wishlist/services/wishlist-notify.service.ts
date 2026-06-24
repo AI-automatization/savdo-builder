@@ -50,7 +50,7 @@ export class WishlistNotifyService {
     }
 
     const cooldownThreshold = new Date(Date.now() - this.COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'savdo_builderBOT';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'maxsavdo_bot';
 
     // Берём кандидатов с заполненным snapshot и истёкшим cooldown.
     // priceSnapshot IS NULL = legacy запись, не нудим (нет baseline).

@@ -1,5 +1,123 @@
 # Done — Азим + Полат
 
+## 2026-06-24 (Полат) — Ahmed E2E Audit P1/P2 баги + i18n admin завершён
+
+### ✅ [AHMED-AUDIT-P1] suspend-store guard — только APPROVED → SUSPENDED
+- **Файл:** `apps/api/src/modules/admin/use-cases/suspend-store.use-case.ts`
+- **Root cause:** guard `sameAsTarget: SUSPENDED` разрешал суспенд из любого статуса; `unsuspend` всегда возвращает в APPROVED → для DRAFT/PENDING_REVIEW это неправильный rollback
+- **Fix:** guard изменён на `notInFromList: ['APPROVED']` — суспенд только из APPROVED
+
+### ✅ [AHMED-AUDIT-P1b] UI-текст modalUnapproveDesc: "черновик" → "На проверке"
+- **Файлы:** `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Fix:** `storeDetail.modalUnapproveDesc` исправлен в обоих языках — "переведён на повторную проверку (статус «На проверке»)"
+
+### ✅ [AHMED-AUDIT-P2] daysLeft undefined не показывался как "—"
+- **Файл:** `apps/admin/src/pages/StoreDetailPage.tsx:194`
+- **Fix:** `=== null` → `== null` (catches undefined тоже)
+
+### ✅ [AHMED-AUDIT-P2] ActivityLogPanel KEY_ACTIONS формат неверный → "Важные события" всегда пустой
+- **Файл:** `apps/admin/src/components/admin/ActivityLogPanel.tsx`
+- **Root cause:** `KEY_ACTIONS` содержал `'store.SUSPEND'`, `'user.SUSPEND'` и т.д. — старый формат, реальные записи аудита идут как `'STORE_SUSPENDED'`, `'USER_SUSPENDED'`
+- **Fix:** весь массив заменён на актуальные строки формата audit_log action
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] Admin i18n — все 26 страниц
+- **Закрыто 24.06.2026** — ProductsPage + DatabasePage получили `useTranslation()`
+- ru.ts/uz.ts: добавлены ключи products.* (24) и db.* (26)
+- Все ранее хардкоженные строки в admin переведены
+
+### ✅ [STRESS-TEST-001] Ноаут-прогон 30/31 PASS
+- **Файл:** `analiz/run-noauth-test.js` — 31 сценарий без JWT
+- **Баг найден:** EDGE-22 — 500k payload → 500 до auth guard (DoS вектор)
+- **Залогировано:** `analiz/logs.md` как `STRESS-DOS-001`
+
+## 2026-06-23 (Полат) — BILLING-MACHINE-001 закрыто + API-CONTROLLERS-ARCH-DEBT-001 minor remainder
+
+### ✅ [BILLING-MACHINE-001] Подписки + энфорсмент
+- Реализовано в сессии ~10.06.2026, tasks.md не был обновлён — закрыто сейчас.
+- **Schema:** `Subscription` (1:1 Seller), `SubscriptionTier {FREE PRO STUDIO}`, `SubscriptionStatus {TRIAL ACTIVE PAST_DUE SUSPENDED CHURNED CANCELLED}`, `SubscriptionPaymentMethod {MANUAL_TRANSFER CLICK PAYME COMP}`
+- **Cron:** `@Cron('0 3 * * *')` в `SubscriptionExpiryProcessor` — переходы статусов ежедневно 03:00 UTC
+- **Storefront gate:** `isSuspendedByBilling` на Store (независимо от `isPublic`) — скрывает магазин при SUSPENDED
+- **Product cap:** `PlanLimitGuardService` в `shared/` — 402 PAYMENT_REQUIRED при превышении FREE лимита (50 товаров)
+- **Admin:** `AdminSubscriptionsController` — mark-paid/extend-trial/cancel/comp
+- **Types:** `SubscriptionDto` в `packages/types/src/api/subscriptions.ts`
+- **Wired:** `SubscriptionsModule` зарегистрирован в `app.module.ts` с `ScheduleModule`
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] minor remainder — super-admin/media/storefront
+- **Коммит:** следующий commit этой сессии
+- `UsersRepository` +4 метода: `findPhoneById`, `findBuyerIdByUserId`, `upsertBuyerAvatar`, `syncTelegramId`
+- `SellersRepository` +1 метод: `updateAvatarByUserId`
+- `super-admin.controller.ts`: убран PrismaService → `UsersRepository` (findPhoneById) + `AdminRepository` (findAdminByUserId)
+- `media.controller.ts`: убран PrismaService → `UsersRepository` (upsertBuyerAvatar) + `SellersRepository` (updateAvatarByUserId)
+- `storefront.controller.ts`: убран PrismaService → `UsersRepository` (findBuyerIdByUserId)
+- `MediaModule`: добавлены импорты `UsersModule` + `SellersModule`
+- `ProductsModule`: добавлен импорт `UsersModule`
+- `telegram-webhook.controller.ts`: оставлен как intentional exception (цикл через AuthModule, см. комментарий в TelegramModule)
+- tsc --noEmit чист после изменений
+
+## 2026-06-21 (Полат) — SEC-AUDIT-04 + API-CONTROLLERS-ARCH-DEBT-001
+
+### ✅ [SEC-AUDIT-04] Глобальный APP_GUARD JwtAuthGuard + @Public()
+- **Коммит:** `9f91997`
+- `common/decorators/public.decorator.ts` — IS_PUBLIC_KEY + @Public()
+- `JwtAuthGuard` + `Reflector` — canActivate проверяет IS_PUBLIC, пропускает
+- `app.module.ts` — `APP_GUARD: JwtAuthGuard` (перед ThrottlerGuard)
+- 27 публичных эндпоинтов помечены: auth (telegram/otp/refresh), все storefront routes,
+  categories storefront, cart (OptionalJwt ×5), analytics/track, media/proxy,
+  reviews public GET, telegram webhook, health×2
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] products + stores + categories — убрать прямой prisma
+- **Коммиты:** `7c00d23` (products), `753a6c0` (stores+categories)
+- `ProductImagesRepository` — 6 методов (create/clearPrimary/update/delete/count/findByProductAndId)
+- `ProductAttributesRepository` — 5 методов (list/create/findByProductAndId/update/delete)
+- `StoresRepository` — +`getDirections`/`replaceDirections` (с transaction + validation)
+- `MediaRepository` — +`findManyByIds` (для resolveStoreImageUrls в stores)
+- `GlobalCategoriesRepository` — +`findTreeActive`/`findChildren`
+- `CategoryFiltersRepository` — `findBySlug`/`findUnique`/`updateOptions`
+- Убран `PrismaService` из: ProductsController, StoresController, CategoriesController
+- Осталось (minor): super-admin/media/storefront/telegram-webhook (по 1-2 вызова)
+
+## 2026-06-21 (Полат) — Security audit TMA + Admin (8 фиксов)
+
+### ✅ [A2-TG-REPLAY-001] Telegram initData replay-атака
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.ts`
+- **Что сделано:** добавлена проверка `auth_date < 24h`. Без неё перехваченный `initData` был валиден вечно.
+
+### ✅ [ADMIN-SELF-SUSPEND-001] Админ мог suspend свой аккаунт
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-users.controller.ts`
+- **Что сделано:** `POST /admin/users/:id/suspend` теперь возвращает 400 если `id === user.sub`.
+
+### ✅ [ADMIN-SELF-LOCKOUT-001] Самоблокировка через DB Manager
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-db.controller.ts`
+- **Что сделано:** PATCH `status/role/deletedAt` и DELETE своей строки в `users` через DB Manager заблокированы.
+
+### ✅ [A7-TMA-LOGOUT-SESSION] Logout не инвалидировал серверную сессию
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/auth.ts`, `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** `serverLogout()` вызывает `POST /auth/logout` перед очисткой токена. Сессия удаляется из БД немедленно, не ждёт `exp`.
+
+### ✅ [F16-TMA-CACHE-LEAK] API-кеш не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `clearApiCache()` при logout чистит `_cache` и `_inflight`. Данные одного пользователя не утекают следующему на том же устройстве.
+
+### ✅ [E5-TMA-WISHLIST-LEAK] Wishlist cache не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/wishlist.ts`
+- **Что сделано:** `clearWishlistCache()` при logout чистит in-memory Set и sessionStorage.
+
+### ✅ [B13-TMA-REMOVE-ITEM] removeItem удалял все варианты одного товара
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/cart.ts`, `apps/tma/src/pages/buyer/CartPage.tsx`
+- **Что сделано:** `removeCartItem(productId, variantId)` фильтрует по обоим полям. Старый `removeItem(productId)` удалял ВСЕ позиции с таким productId.
+
+### ✅ [F5-TMA-UPLOAD-TIMEOUT] apiUpload без timeout — UI зависал навсегда
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `xhr.timeout = 60_000` + `xhr.ontimeout` → `ApiError(408)`.
+
 ## 2026-06-20 (Полат) — Concurrency fixes + REDIS-CHATID-001
 
 ### ✅ [STOCK-RACE-001 / CART-001-004 / ORDER-NUM-001] Конкурентность корзины и стока

@@ -20,7 +20,7 @@ interface Store {
   telegramChannelTitle: string | null;
 }
 
-const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot';
 
 export default function SellerProfilePage() {
   const { user, logout } = useAuth();

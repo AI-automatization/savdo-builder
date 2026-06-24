@@ -101,7 +101,7 @@ const uz: Dict = {
     steps: [
       {
         n: "01",
-        title: "@savdo_builderBOT ga kiring",
+        title: "@maxsavdo_bot ga kiring",
         body: "Telegram orqali tasdiqlang — parol kerak emas. 30 soniya.",
       },
       {
@@ -278,7 +278,7 @@ const ru: Dict = {
     steps: [
       {
         n: "01",
-        title: "Зайдите в @savdo_builderBOT",
+        title: "Зайдите в @maxsavdo_bot",
         body: "Подтвердите вход через Telegram — пароли не нужны. 30 секунд.",
       },
       {
