@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive, Trash2, Plus, Store } from 'lucide-react'
+import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive, Trash2, Plus } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
+import { useTranslation } from '../lib/i18n/I18nProvider'
 
 interface ProductImage { url: string }
 interface ProductStoreRef { id: string; name: string }
@@ -26,11 +27,11 @@ interface ProductsResponse {
   total: number
 }
 
-const STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  ACTIVE:          { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Активен' },
-  DRAFT:           { bg: 'rgba(107,114,128,0.12)', text: '#6B7280', label: 'Черновик' },
-  ARCHIVED:        { bg: 'rgba(107,114,128,0.12)', text: '#6B7280', label: 'Архив' },
-  HIDDEN_BY_ADMIN: { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', label: 'Скрыт' },
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  ACTIVE:          { bg: 'rgba(16,185,129,0.12)',  text: '#10B981' },
+  DRAFT:           { bg: 'rgba(107,114,128,0.12)', text: '#6B7280' },
+  ARCHIVED:        { bg: 'rgba(107,114,128,0.12)', text: '#6B7280' },
+  HIDDEN_BY_ADMIN: { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444' },
 }
 
 function price(val: number, currency: string) {
@@ -38,6 +39,7 @@ function price(val: number, currency: string) {
 }
 
 export default function ProductsPage() {
+  const { t } = useTranslation()
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -46,13 +48,21 @@ export default function ProductsPage() {
   // P1-4 (audit 2026-06-04): toggle soft-deleted, иначе UI=7 vs DB=26 (19 удалённых).
   const [includeDeleted, setIncludeDeleted] = useState(false)
 
+  const STATUS_LABELS: Record<string, string> = {
+    ACTIVE: t('products.statusActive'),
+    DRAFT: t('products.statusDraft'),
+    ARCHIVED: t('products.statusArchived'),
+    HIDDEN_BY_ADMIN: t('products.statusHidden'),
+  }
+
+  const STATUS_FILTERS = ['', 'ACTIVE', 'HIDDEN_BY_ADMIN', 'DRAFT', 'ARCHIVED'] as const
+
   const params: string[] = ['limit=50']
   if (statusFilter) params.push(`status=${statusFilter}`)
   if (includeDeleted) params.push('includeDeleted=true')
   const query = params.join('&')
   const { data, loading, error, refetch } = useFetch<ProductsResponse>(`/api/v1/admin/products?${query}`, [statusFilter, includeDeleted])
 
-  // Локальный список — обновляется при загрузке и при оптимистичных изменениях
   const [localProducts, setLocalProducts] = useState<Product[]>([])
   useEffect(() => { setLocalProducts(data?.products ?? []) }, [data])
 
@@ -67,23 +77,20 @@ export default function ProductsPage() {
       : `/api/v1/admin/products/${product.id}/hide`
     const newStatus = isHidden ? 'ACTIVE' : 'HIDDEN_BY_ADMIN'
 
-    // Оптимистичное обновление — без перезагрузки страницы
     setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: newStatus } : p))
     setActionLoading(product.id)
     setActionError(null)
     try {
       await api.patch(endpoint, {})
     } catch (e: any) {
-      // Откат при ошибке
       setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: product.status } : p))
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(null)
     }
   }
 
   async function archiveProduct(product: Product) {
-    // Оптимистичное обновление
     setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: 'ARCHIVED' } : p))
     setActionLoading(product.id)
     setActionError(null)
@@ -91,7 +98,7 @@ export default function ProductsPage() {
       await api.patch(`/api/v1/admin/products/${product.id}/archive`, {})
     } catch (e: any) {
       setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: product.status } : p))
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(null)
     }
@@ -99,16 +106,14 @@ export default function ProductsPage() {
 
   async function deleteProduct(productId: string) {
     setConfirmDelete(null)
-    // Оптимистичное удаление из списка
     setLocalProducts(prev => prev.filter(p => p.id !== productId))
     setActionLoading(productId)
     setActionError(null)
     try {
       await api.delete(`/api/v1/admin/products/${productId}`)
     } catch (e: any) {
-      // При ошибке — восстанавливаем из оригинальных данных
       setLocalProducts(data?.products ?? [])
-      setActionError(e.message ?? 'Ошибка')
+      setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(null)
     }
@@ -119,9 +124,9 @@ export default function ProductsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>Товары</h1>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>{t('products.title')}</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>
-            {loading ? 'Загрузка...' : `${data?.total ?? 0} товаров`}
+            {loading ? t('common.loading') : t('products.count', { count: data?.total ?? 0 })}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -129,8 +134,8 @@ export default function ProductsPage() {
               ещё не реализован (см. analiz/logs.md → ADMIN-PRODUCTS-NO-CREATE-ENDPOINT).
               По клику — alert с инструкцией. После появления endpoint заменить на модалку. */}
           <button
-            onClick={() => alert('Скоро будет — пока создавайте товар через TMA seller-приложение.')}
-            title="Скоро будет — пока создавайте через TMA"
+            onClick={() => alert(t('products.createSoonAlert'))}
+            title={t('products.createSoonTitle')}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', borderRadius: 8,
@@ -141,10 +146,10 @@ export default function ProductsPage() {
               opacity: 0.85,
             }}
           >
-            <Plus size={14} /> Создать товар
+            <Plus size={14} /> {t('products.createBtn')}
           </button>
           <button onClick={refetch} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-            <RefreshCw size={14} /> Обновить
+            <RefreshCw size={14} /> {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -156,24 +161,24 @@ export default function ProductsPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск по названию..."
+            placeholder={t('products.searchPlaceholder')}
             style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 8, boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, outline: 'none' }}
           />
         </div>
-        {(['', 'ACTIVE', 'HIDDEN_BY_ADMIN', 'DRAFT', 'ARCHIVED'] as const).map(s => (
+        {STATUS_FILTERS.map(s => (
           <button key={s} onClick={() => setStatusFilter(s)} style={{
             padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
             border: `1px solid ${statusFilter === s ? 'var(--primary)' : 'var(--border)'}`,
             background: statusFilter === s ? 'var(--primary-dim)' : 'var(--surface)',
             color: statusFilter === s ? 'var(--primary)' : 'var(--text-muted)',
           }}>
-            {s === '' ? 'Все' : STATUS_CFG[s]?.label ?? s}
+            {s === '' ? t('common.all') : STATUS_LABELS[s] ?? s}
           </button>
         ))}
         {/* P1-4 (audit 2026-06-04): toggle soft-deleted — синхронизация с разделом «База данных». */}
         <button
           onClick={() => setIncludeDeleted(v => !v)}
-          title="Показать товары с deletedAt != null"
+          title="includeDeleted"
           style={{
             padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
             border: `1px solid ${includeDeleted ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`,
@@ -181,7 +186,7 @@ export default function ProductsPage() {
             color: includeDeleted ? '#EF4444' : 'var(--text-muted)',
             marginLeft: 'auto',
           }}>
-          {includeDeleted ? '✓ С удалёнными' : 'Показать удалённые'}
+          {includeDeleted ? t('products.withDeleted') : t('products.showDeleted')}
         </button>
       </div>
 
@@ -196,18 +201,19 @@ export default function ProductsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Товар', 'Магазин', 'Статус', 'Цена', 'ID', ''].map(h => (
+              {[t('products.colProduct'), t('products.colStore'), t('products.colStatus'), t('products.colPrice'), t('products.colId'), ''].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Загрузка...</td></tr>
+              <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
             ) : products.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Нет товаров</td></tr>
+              <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>{t('products.noProducts')}</td></tr>
             ) : products.map(p => {
-              const cfg = STATUS_CFG[p.status] ?? { bg: 'var(--surface2)', text: 'var(--text-muted)', label: p.status }
+              const colors = STATUS_COLORS[p.status] ?? { bg: 'var(--surface2)', text: 'var(--text-muted)' }
+              const label = STATUS_LABELS[p.status] ?? p.status
               const isHidden = p.status === 'HIDDEN_BY_ADMIN'
               const isArchived = p.status === 'ARCHIVED'
               const isProcessing = actionLoading === p.id
@@ -226,9 +232,12 @@ export default function ProductsPage() {
                       <span style={{ fontWeight: 600, color: 'var(--text)', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</span>
                     </div>
                   </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12 }}>
+                    {p.store?.name ?? p.storeName ?? '—'}
+                  </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: cfg.bg, color: cfg.text }}>
-                      {cfg.label}
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: colors.bg, color: colors.text }}>
+                      {label}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px', color: 'var(--text)', fontFamily: 'monospace', fontSize: 13 }}>
@@ -251,7 +260,7 @@ export default function ProductsPage() {
                           color: isHidden ? '#10B981' : '#EF4444',
                         }}
                       >
-                        {isHidden ? <><Eye size={13} /> Восстановить</> : <><EyeOff size={13} /> Скрыть</>}
+                        {isHidden ? <><Eye size={13} /> {t('products.restore')}</> : <><EyeOff size={13} /> {t('products.hide')}</>}
                       </button>
                       {!isArchived && (
                         <button
@@ -266,7 +275,7 @@ export default function ProductsPage() {
                             color: '#94A3B8',
                           }}
                         >
-                          <Archive size={13} /> В архив
+                          <Archive size={13} /> {t('products.archive')}
                         </button>
                       )}
                       {confirmDelete === p.id ? (
@@ -283,7 +292,7 @@ export default function ProductsPage() {
                               color: '#EF4444',
                             }}
                           >
-                            Да, удалить
+                            {t('products.deleteConfirm')}
                           </button>
                           <button
                             onClick={() => setConfirmDelete(null)}
@@ -295,7 +304,7 @@ export default function ProductsPage() {
                               color: 'var(--text-muted)',
                             }}
                           >
-                            Отмена
+                            {t('common.cancel')}
                           </button>
                         </span>
                       ) : (
@@ -311,7 +320,7 @@ export default function ProductsPage() {
                             color: '#EF4444',
                           }}
                         >
-                          <Trash2 size={13} /> Удалить
+                          <Trash2 size={13} /> {t('common.delete')}
                         </button>
                       )}
                     </div>

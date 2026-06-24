@@ -1,5 +1,35 @@
 # Done — Азим + Полат
 
+## 2026-06-24 (Полат) — Ahmed E2E Audit P1/P2 баги + i18n admin завершён
+
+### ✅ [AHMED-AUDIT-P1] suspend-store guard — только APPROVED → SUSPENDED
+- **Файл:** `apps/api/src/modules/admin/use-cases/suspend-store.use-case.ts`
+- **Root cause:** guard `sameAsTarget: SUSPENDED` разрешал суспенд из любого статуса; `unsuspend` всегда возвращает в APPROVED → для DRAFT/PENDING_REVIEW это неправильный rollback
+- **Fix:** guard изменён на `notInFromList: ['APPROVED']` — суспенд только из APPROVED
+
+### ✅ [AHMED-AUDIT-P1b] UI-текст modalUnapproveDesc: "черновик" → "На проверке"
+- **Файлы:** `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Fix:** `storeDetail.modalUnapproveDesc` исправлен в обоих языках — "переведён на повторную проверку (статус «На проверке»)"
+
+### ✅ [AHMED-AUDIT-P2] daysLeft undefined не показывался как "—"
+- **Файл:** `apps/admin/src/pages/StoreDetailPage.tsx:194`
+- **Fix:** `=== null` → `== null` (catches undefined тоже)
+
+### ✅ [AHMED-AUDIT-P2] ActivityLogPanel KEY_ACTIONS формат неверный → "Важные события" всегда пустой
+- **Файл:** `apps/admin/src/components/admin/ActivityLogPanel.tsx`
+- **Root cause:** `KEY_ACTIONS` содержал `'store.SUSPEND'`, `'user.SUSPEND'` и т.д. — старый формат, реальные записи аудита идут как `'STORE_SUSPENDED'`, `'USER_SUSPENDED'`
+- **Fix:** весь массив заменён на актуальные строки формата audit_log action
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] Admin i18n — все 26 страниц
+- **Закрыто 24.06.2026** — ProductsPage + DatabasePage получили `useTranslation()`
+- ru.ts/uz.ts: добавлены ключи products.* (24) и db.* (26)
+- Все ранее хардкоженные строки в admin переведены
+
+### ✅ [STRESS-TEST-001] Ноаут-прогон 30/31 PASS
+- **Файл:** `analiz/run-noauth-test.js` — 31 сценарий без JWT
+- **Баг найден:** EDGE-22 — 500k payload → 500 до auth guard (DoS вектор)
+- **Залогировано:** `analiz/logs.md` как `STRESS-DOS-001`
+
 ## 2026-06-23 (Полат) — BILLING-MACHINE-001 закрыто + API-CONTROLLERS-ARCH-DEBT-001 minor remainder
 
 ### ✅ [BILLING-MACHINE-001] Подписки + энфорсмент

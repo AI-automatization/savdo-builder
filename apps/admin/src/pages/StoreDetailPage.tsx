@@ -191,7 +191,7 @@ function SubscriptionCard({ sellerId }: { sellerId: string }) {
               {[
                 { label: 'Начало периода', value: fmtDate(sub.currentPeriodStart) },
                 { label: 'Конец периода', value: fmtDate(sub.currentPeriodEnd) },
-                { label: 'Осталось дней', value: sub.daysLeft === null ? '—' : String(sub.daysLeft) },
+                { label: 'Осталось дней', value: sub.daysLeft == null ? '—' : String(sub.daysLeft) },
                 { label: 'Пробный до', value: fmtDate(sub.trialEndsAt) },
                 { label: 'Грейс до', value: fmtDate(sub.graceEndsAt) },
                 { label: 'Обновлено', value: fmtDate(sub.updatedAt) },

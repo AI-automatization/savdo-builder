@@ -1,9 +1,11 @@
 /**
- * APPROVED/PENDING_REVIEW/DRAFT/REJECTED → SUSPENDED.
+ * APPROVED → SUSPENDED.
  *
  * Реализовано через `createStatusTransitionUseCase` (DUP-001 refactor).
  * Состояние / контракты:
- *   - guard: `status === 'SUSPENDED'` → ADMIN_STORE_ALREADY_SUSPENDED (409)
+ *   - guard: только из APPROVED; иначе STORE_INVALID_TRANSITION (409)
+ *     Причина: unsuspend всегда возвращает в APPROVED — без сохранения previousStatus
+ *     нельзя гарантировать корректный rollback для DRAFT/PENDING_REVIEW магазинов.
  *   - update: `adminRepo.updateStoreStatus(id, 'SUSPENDED')`
  *   - audit: STORE_SUSPENDED, payload `{ reason, adminId, previousStatus }`
  *   - INV-A01 (audit log), INV-A02 (reason обязателен на DTO-level)
@@ -18,10 +20,10 @@ export class SuspendStoreUseCase extends createStatusTransitionUseCase<Store, St
   find: (repo, id) => repo.findStoreById(id) as Promise<Store | null>,
   update: (repo, id) => repo.updateStoreStatus(id, 'SUSPENDED') as Promise<Store>,
   guard: {
-    kind: 'sameAsTarget',
-    target: 'SUSPENDED',
-    conflictErrorCode: ErrorCode.ADMIN_STORE_ALREADY_SUSPENDED,
-    conflictMessage: 'Store is already suspended',
+    kind: 'notInFromList',
+    fromStatuses: ['APPROVED'],
+    conflictErrorCode: ErrorCode.STORE_INVALID_TRANSITION,
+    conflictMessage: 'Only approved stores can be suspended',
   },
   notFound: { errorCode: ErrorCode.STORE_NOT_FOUND, message: 'Store not found' },
   audit: { action: 'STORE_SUSPENDED', entityType: 'Store' },
