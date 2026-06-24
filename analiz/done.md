@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-06-24 (Азим) — R2-SETUP-001: Cloudflare R2 настроен для медиафайлов
+
+### ✅ [R2-SETUP-001] Cloudflare R2 подключён как медиа-хранилище
+- **Важность:** 🔴
+- **Дата:** 24.06.2026
+- **Файлы:** `apps/api/.env`
+- **Что сделано:**
+  - Создан bucket `maxsavdo-media` (Eastern Europe, EEUR)
+  - API токен `maxsavdo-api` (Object Read & Write)
+  - Public URL: `https://pub-32ada73dd9634c45ae75dd4b61636cd9.r2.dev`
+  - Заполнены все `STORAGE_*` переменные в `apps/api/.env`
+  - Полат добавил переменные в Railway → API передеплоен
+  - Проверено на проде: `status:ok`, `db:up`, `redis:up`
+  - Upload service уже был готов (Полат) — только credentials нужны были
+  - Старые фото: Telegram. Новые фото: R2 (с 24.06.2026)
+
+---
+
 ## 2026-06-24 (Азим) — OTP-BOT-MISMATCH-001: исправлено имя бота @maxsavdo_bot
 
 ### ✅ [OTP-BOT-MISMATCH-001] Имя бота обновлено во всём web-seller
