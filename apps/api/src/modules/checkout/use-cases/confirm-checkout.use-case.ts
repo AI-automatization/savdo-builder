@@ -274,6 +274,7 @@ export class ConfirmCheckoutUseCase {
     // TG notification → seller (fire-and-forget, never blocks).
     try {
       this.tgNotifier.notifyNewOrder({
+        recipientChatId: store.seller.telegramChatId ? String(store.seller.telegramChatId) : undefined,
         sellerTelegramUsername: store.seller.telegramUsername,
         orderNumber: order.orderNumber,
         storeName: store.name,

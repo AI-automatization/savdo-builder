@@ -13,6 +13,24 @@ const KEY_PHONE = (chatId: string) => `tg:phone:${chatId}`;
 const KEY_STATE = (chatId: string) => `tg:state:${chatId}`;
 const KEY_TMP   = (chatId: string, field: string) => `tg:tmp:${chatId}:${field}`;
 
+// ── Транслитерация кириллицы для slug-генерации ───────────────────────────────
+const CYRILLIC_MAP: Record<string, string> = {
+  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'j',к:'k',
+  л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
+  ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
+};
+
+function toLatinSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[а-яё]/g, (c) => CYRILLIC_MAP[c] ?? '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 40);
+}
+
 // ── Статусы заказов ───────────────────────────────────────────────────────────
 const ORDER_LABEL: Record<string, string> = {
   PENDING:   '🟡 Ожидает',
@@ -116,6 +134,19 @@ export class TelegramDemoHandler {
     }
 
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+
+    // store_<slug>: покупатель пришёл по ссылке магазина через бот.
+    // Открываем TMA кнопкой — Telegram передаст start_param в webapp context.
+    if (startParam?.startsWith('store_')) {
+      const twaUrl = process.env.TMA_URL ?? 'https://maxsavdo.uz';
+      await this.bot.sendWithWebApp(
+        chatId,
+        `🏪 <b>Открыть магазин в приложении maxsavdo</b>`,
+        [[{ text: '🛒 Открыть магазин', web_app: { url: twaUrl } }]],
+        'HTML',
+      );
+      return;
+    }
 
     // TMA-BECOME-SELLER-CTA-001: deep-link из TMA "Стать продавцом".
     // Whitelist строгий — любой другой param игнорируется, идёт обычный flow.
@@ -372,13 +403,8 @@ export class TelegramDemoHandler {
       return;
     }
 
-    // Генерируем slug из названия магазина
-    const slug = storeName
-      .toLowerCase()
-      .replace(/[^a-zа-яё0-9\s]/gi, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .slice(0, 40) + '-' + Date.now().toString(36);
+    // Генерируем slug из названия магазина (транслитерация + latin-only)
+    const slug = toLatinSlug(storeName) + '-' + Date.now().toString(36);
 
     try {
       // TMA-BECOME-SELLER-CTA-001 (12.05.2026): purchaser уже может быть зарегистрирован
@@ -400,7 +426,7 @@ export class TelegramDemoHandler {
             description: description || null,
             city: 'Tashkent',
             telegramContactLink: username ? `https://t.me/${username}` : '',
-            status: 'DRAFT' as const,
+            status: 'PENDING_REVIEW' as const,
           },
         },
       };
@@ -442,6 +468,9 @@ export class TelegramDemoHandler {
         userId = created.id;
         this.logger.log(`Registered seller userId=${userId} store=${slug}`);
       }
+
+      // Открыть кейс модерации — иначе магазин в PENDING_REVIEW не появится в очереди
+      await this.openModerationCaseForStore(userId, slug);
 
       await this.bot.sendInlineKeyboard(
         chatId,
@@ -499,24 +528,22 @@ export class TelegramDemoHandler {
     if (!seller) { await this.handleStart(chatId); return; }
 
     const name = storeName.trim();
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-zа-яё0-9\s]/gi, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .slice(0, 40) + '-' + Date.now().toString(36);
+    const slug = toLatinSlug(name) + '-' + Date.now().toString(36);
 
     try {
-      await this.prisma.store.create({
+      const newStore = await this.prisma.store.create({
         data: {
           sellerId: seller.id,
           name,
           slug,
           city: 'Tashkent',
           telegramContactLink: '',
-          status: 'DRAFT',
+          status: 'PENDING_REVIEW',
         },
       });
+
+      // Открыть кейс модерации
+      await this.openModerationCaseForStore(user.id, newStore.slug);
 
       // Магазин создан — переходим к привязке канала
       await this.setState(chatId, 'awaiting_channel');
@@ -640,6 +667,27 @@ export class TelegramDemoHandler {
     }
 
     this.logger.log(`Posted product ${productId} to channel ${store.telegramChannelId} (images: ${imageUrls.length})`);
+  }
+
+  /** Создаёт кейс модерации для магазина (idempotent). Inline без ModerationTriggerService чтобы избежать cyclic DI. */
+  private async openModerationCaseForStore(userId: string, storeSlug: string): Promise<void> {
+    try {
+      const seller = await this.prisma.seller.findUnique({ where: { userId } });
+      if (!seller) return;
+      const store = await this.prisma.store.findFirst({ where: { sellerId: seller.id, slug: storeSlug, deletedAt: null } });
+      if (!store) return;
+      const existing = await this.prisma.moderationCase.findFirst({
+        where: { entityType: 'store', entityId: store.id, status: 'OPEN' },
+      });
+      if (!existing) {
+        await this.prisma.moderationCase.create({
+          data: { entityType: 'store', entityId: store.id, caseType: 'VERIFICATION', status: 'OPEN' },
+        });
+        this.logger.log(`Moderation case opened for store ${store.id} (bot registration)`);
+      }
+    } catch (err) {
+      this.logger.error(`openModerationCaseForStore failed: ${err}`);
+    }
   }
 
   private resolveMediaUrl(media: { id: string; objectKey?: string | null; bucket?: string | null }): string {

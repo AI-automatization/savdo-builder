@@ -1,5 +1,37 @@
 # Done — Азим + Полат
 
+## 2026-06-25 (Полат) — UX + Bot Sync audit fixes (P0/P1)
+
+### ✅ [P0-SYNC-001] notifyNewOrder теперь доставляет через chatId
+- **Файлы:** `seller-notification.service.ts`, `telegram-notification.processor.ts`, `confirm-checkout.use-case.ts`
+- **Фикс:** добавлен `recipientChatId?` в `NotifyNewOrderData`; processor использует chatId как primary, @username как fallback; checkout передаёт `store.seller.telegramChatId`
+
+### ✅ [P0-SYNC-002] Bot stores теперь создаются в PENDING_REVIEW + открывается ModerationCase
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** оба места `status: 'DRAFT'` → `'PENDING_REVIEW'`; добавлен private `openModerationCaseForStore()` через Prisma inline
+
+### ✅ [P0-SYNC-003] Slug транслитерация для кириллических названий в боте
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлена `toLatinSlug()` с `CYRILLIC_MAP`; оба места slug-генерации обновлены
+
+### ✅ [P1-SYNC-005] handleStart: store_ deeplink теперь открывает TMA кнопкой
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлен handler для `startParam?.startsWith('store_')` → `sendWithWebApp`
+
+### ✅ [P0-ONBOARD-003] apply-seller теперь заполняет telegramChatId из user.telegramId
+- **Файл:** `apply-seller.use-case.ts`
+- **Фикс:** `telegramChatId: user.telegramId` если есть
+
+### ✅ [P0-ONBOARD-004] TMA DashboardPage welcome-баннер для новых продавцов
+- **Файл:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Фикс:** `isNewSeller` = productCount===0 && orderCount===0 → показывает welcomeBanner с CTA
+
+### 📋 [ONBOARDING-AUDIT-AZIM-001] Задачи Азиму записаны в tasks.md
+- web-seller: `toSlug()` для кириллицы, дубль TG полей, «Войти» подсказка
+- web-buyer: OtpGate инструкция про @maxsavdo_bot
+
+---
+
 ## 2026-06-24 (Полат) — Ahmed E2E Audit P1/P2 баги + i18n admin завершён
 
 ### ✅ [AHMED-AUDIT-P1] suspend-store guard — только APPROVED → SUSPENDED
