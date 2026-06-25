@@ -82,6 +82,8 @@ export default function DashboardPage() {
     ? orders.filter((o) => o.status === 'PENDING').length
     : 0;
 
+  const isNewSeller = !loading && productCount === 0 && orderCount === 0;
+
   const statsCards = [
     { label: t('seller.dashboard.totalProducts'), value: productCount ?? '—', icon: '📦', path: '/seller/products', urgent: false },
     { label: t('seller.dashboard.totalOrders'),   value: orderCount   ?? '—', icon: '🛒', path: '/seller/orders',   urgent: false },
@@ -160,8 +162,36 @@ export default function DashboardPage() {
     </>
   );
 
+  const welcomeBanner = isNewSeller ? (
+    <GlassCard className="flex flex-col gap-3 p-4" style={{ border: '1px solid rgba(167,139,250,0.35)', background: 'rgba(167,139,250,0.08)' }}>
+      <div className="flex items-center gap-3">
+        <Sticker emoji="🚀" size={36} />
+        <div>
+          <p className="text-sm font-bold" style={{ color: 'var(--tg-text-primary)' }}>Добро пожаловать в maxsavdo!</p>
+          <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>Добавьте первый товар, чтобы начать продавать</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => navigate('/seller/products/add')}
+          className="flex-1 h-10 rounded-xl text-sm font-semibold text-white"
+          style={{ background: 'var(--tg-accent)' }}
+        >
+          ➕ Добавить товар
+        </button>
+        <button
+          onClick={() => navigate('/seller/store')}
+          className="flex-1 h-10 rounded-xl text-sm font-semibold"
+          style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.3)', color: 'var(--tg-text-primary)' }}
+        >
+          🏪 Мой магазин
+        </button>
+      </div>
+    </GlassCard>
+  ) : null;
+
   return (
-    
+
       <div className="flex flex-col gap-4">
         {/* Заголовок */}
         <div className="flex items-center gap-3">
@@ -195,6 +225,8 @@ export default function DashboardPage() {
             <GearIcon />
           </button>
         </div>
+
+        {welcomeBanner}
 
         {isDesktop ? (
           /* ── Desktop: two-column layout ── */
