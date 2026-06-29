@@ -1,5 +1,86 @@
 # Done — Азим + Полат
 
+## 2026-06-29 (Полат) — Live-аудит админки + фиксы (orchestrator-сессия)
+
+### ✅ [STRESS-DOS-001] Явный лимит body-parser (DoS hardening)
+- **Важность:** 🔴
+- **Файлы:** `apps/api/src/main.ts`
+- **Что сделано:** `bodyParser:false` + `useBodyParser('json'|'urlencoded',{limit:'100kb'})`. Большой payload → 413 до guard/Prisma. Media (multipart 10MB) не затронут. tsc чистый.
+- **⚠️ TODO перед прод-пушем:** runtime smoke (POST ≤100kb ok, >100kb → 413).
+
+### ✅ [BUG-3] NumberTicker overdamped — дашборд долго показывал 0
+- **Важность:** 🟡
+- **Файлы:** `apps/admin/src/components/ui/number-ticker.tsx`
+- **Что сделано:** spring `{damping:60,stiffness:100}` (ζ≈3, 10-20с) → `{damping:30,stiffness:120}` (ζ≈1.37, ~0.8с, без overshoot).
+
+### ✅ [BUG-1] admin/subscriptions list не считал daysLeft
+- **Важность:** 🟡
+- **Файлы:** `apps/api/src/modules/admin/admin-subscriptions.controller.ts`
+- **Что сделано:** добавлен расчёт `daysLeft` для каждого элемента в list endpoint (раньше только detail). Колонка «ОСТАЛОСЬ» больше не пустая.
+
+### ✅ [BUG-TMA-1] Greeting «Привет, .!» при пустом first_name
+- **Важность:** 🟢
+- **Файлы:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Что сделано:** fallback `user.first_name || user.username || 'вас'`.
+
+---
+
+## 2026-06-25 (Полат) — INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+### ✅ [INFRA-BACKUP-DRILL-FIRST-RUN-001] Restore drill — PASS
+- **drill_status:** PASS
+- **Дамп:** 0.28 MB, pg_dump v18 (Railway Postgres 18.4)
+- **Restore:** pg_restore --no-owner --no-acl → exit 0
+- **Данные:** users=12, sellers=9, stores=9, products=34, orders=22, order_items=26, carts=6
+- **Orphans:** все 0 — FK-целостность ок
+- **Инструмент:** Docker postgres:18-bookworm (pg_dump 16 несовместим с PG 18)
+- **Репорт:** `analiz/logs.md` → [2026-06-25] INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+---
+
+## 2026-06-25 (Полат) — INFRA-UPTIME-ALERTS-001
+
+### ✅ [INFRA-UPTIME-ALERTS-001] UptimeRobot — 6 мониторов, email-алерты
+- **Сервис:** uptimerobot.com (free план, 6/50 мониторов использовано)
+- **Мониторы:** API `/health/live`, web-buyer, web-seller, admin, TMA, landing
+- **Алерт:** email на `polatbekismoilov17@gmail.com`, интервал 5 мин
+- **Примечание:** Telegram-алерт — только платный план UptimeRobot; оставили email
+- **Скрипт:** `scripts/setup-uptimerobot.ps1` (для будущего воспроизведения)
+
+---
+
+## 2026-06-25 (Полат) — UX + Bot Sync audit fixes (P0/P1)
+
+### ✅ [P0-SYNC-001] notifyNewOrder теперь доставляет через chatId
+- **Файлы:** `seller-notification.service.ts`, `telegram-notification.processor.ts`, `confirm-checkout.use-case.ts`
+- **Фикс:** добавлен `recipientChatId?` в `NotifyNewOrderData`; processor использует chatId как primary, @username как fallback; checkout передаёт `store.seller.telegramChatId`
+
+### ✅ [P0-SYNC-002] Bot stores теперь создаются в PENDING_REVIEW + открывается ModerationCase
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** оба места `status: 'DRAFT'` → `'PENDING_REVIEW'`; добавлен private `openModerationCaseForStore()` через Prisma inline
+
+### ✅ [P0-SYNC-003] Slug транслитерация для кириллических названий в боте
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлена `toLatinSlug()` с `CYRILLIC_MAP`; оба места slug-генерации обновлены
+
+### ✅ [P1-SYNC-005] handleStart: store_ deeplink теперь открывает TMA кнопкой
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлен handler для `startParam?.startsWith('store_')` → `sendWithWebApp`
+
+### ✅ [P0-ONBOARD-003] apply-seller теперь заполняет telegramChatId из user.telegramId
+- **Файл:** `apply-seller.use-case.ts`
+- **Фикс:** `telegramChatId: user.telegramId` если есть
+
+### ✅ [P0-ONBOARD-004] TMA DashboardPage welcome-баннер для новых продавцов
+- **Файл:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Фикс:** `isNewSeller` = productCount===0 && orderCount===0 → показывает welcomeBanner с CTA
+
+### 📋 [ONBOARDING-AUDIT-AZIM-001] Задачи Азиму записаны в tasks.md
+- web-seller: `toSlug()` для кириллицы, дубль TG полей, «Войти» подсказка
+- web-buyer: OtpGate инструкция про @maxsavdo_bot
+
+---
+
 ## 2026-06-24 (Полат) — Ahmed E2E Audit P1/P2 баги + i18n admin завершён
 
 ### ✅ [AHMED-AUDIT-P1] suspend-store guard — только APPROVED → SUSPENDED

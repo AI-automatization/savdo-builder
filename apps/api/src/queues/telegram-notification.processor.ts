@@ -73,6 +73,8 @@ export class TelegramNotificationProcessor extends WorkerHost {
       switch (job.name) {
         case TELEGRAM_JOB_NEW_ORDER: {
           const d = job.data as NotifyNewOrderData;
+          const recipient = d.recipientChatId ?? (d.sellerTelegramUsername ? `@${d.sellerTelegramUsername}` : null);
+          if (!recipient) break;
           const loc = d.locale;
           const text =
             t(loc, 'notify.newOrder.title', { orderNumber: d.orderNumber }) + '\n' +
@@ -82,7 +84,7 @@ export class TelegramNotificationProcessor extends WorkerHost {
               total: fmt(d.total, loc),
               currency: currencyLabel(d.currency, loc),
             });
-          await this.telegramBot.sendMessage(`@${d.sellerTelegramUsername}`, text);
+          await this.telegramBot.sendMessage(recipient, text);
           break;
         }
 

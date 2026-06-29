@@ -46,6 +46,7 @@ export class ApplySellerUseCase {
           fullName: '',
           sellerType: 'individual',
           telegramUsername: '',
+          ...(user.telegramId ? { telegramChatId: user.telegramId } : {}),
         },
       }),
       this.prisma.user.update({

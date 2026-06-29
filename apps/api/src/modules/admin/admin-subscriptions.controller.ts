@@ -86,13 +86,24 @@ export class AdminSubscriptionsController {
     const validTier = tier && (['FREE', 'PRO', 'STUDIO'] as const).includes(tier as SubscriptionTier)
       ? (tier as SubscriptionTier)
       : undefined;
-    return this.subscriptionsRepo.findAllAdmin({
+    const result = await this.subscriptionsRepo.findAllAdmin({
       status: validStatus,
       tier: validTier,
       sellerId: sellerId || undefined,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 50,
     });
+    const now = Date.now();
+    const items = result.items.map((sub) => {
+      const target =
+        sub.status === 'TRIAL' ? sub.trialEndsAt
+        : sub.status === 'ACTIVE' ? sub.currentPeriodEnd
+        : sub.status === 'PAST_DUE' ? sub.graceEndsAt
+        : null;
+      const daysLeft = target ? Math.max(0, Math.ceil((target.getTime() - now) / 86_400_000)) : null;
+      return { ...sub, daysLeft };
+    });
+    return { ...result, items };
   }
 
   @Get(':id')
