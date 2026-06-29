@@ -5,6 +5,36 @@
 
 ---
 
+## 🧭 [SESSION-CHECKPOINT 2026-06-29] Orchestrator-сессия — итоги + открытые решения
+
+### ✅ Задеплоено в этой сессии (8 фиксов, ветки api/admin/tma)
+- `STRESS-DOS-001` — body-parser 100kb + 413 в exception filter (подтверждён в проде: large→413, small→401).
+- `BUG-3` NumberTicker (давал визуально неверные числа по всей админке, вкл. Аналитику).
+- `BUG-1` admin/subscriptions daysLeft · `BUG-TMA-1` greeting (seller).
+- `ADMIN-PRODUCTS-NO-STORE-FIELD` · `ADMIN-STORES-NO-COUNTS-001` (_count товаров/заказов).
+- `alert()`→toast на «Создать товар» (убрал блокирующий диалог).
+- Проверено: `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` уже исправлен (лог обновлён); BUG-TMA-1 «.» — не баг (TG-имя аккаунта).
+
+### 🤝 ТРЕБУЕТ РЕШЕНИЯ КОМАНДЫ/OWNER (не делать без ответа)
+1. **[DECISION-ROLE-MODEL]** Может ли аккаунт быть seller И buyer одновременно? Единый источник
+   истины роли? Сейчас рассинхрон: TMA → `users.role`, бот → наличие seller-профиля
+   (`ROLE-SOURCE-INCONSISTENCY-001` в logs). Блокирует пункт 2.
+2. **[DECISION-ROLE-CHANGE-UI]** Строить ли в админке смену роли (UI + `PATCH /admin/users/:id/role`)?
+   Политика side-effects при SELLER→BUYER (магазин/заказы)? Сейчас только raw `/database`
+   (`ADMIN-NO-ROLE-CHANGE-UI-001`). Зависит от п.1.
+3. **[DECISION-ADMIN-CREATE-PRODUCT]** Нужен ли POST /admin/products? Для какого магазина, форма?
+   (`ADMIN-PRODUCTS-NO-CREATE-ENDPOINT`, сейчас заглушка-toast).
+4. **[OWNER] 🔴 INFRA-RAILWAY-PAST-DUE-001** — оплатить подписку Railway (риск отключения прода).
+5. **[DECISION-TEST-DATA]** Чистить тестовые товары с протухшими фото (BUG-TMA-2) или забить?
+
+### ⏭ Готов взять сразу после решения
+- После п.1 → role-change UI + endpoint (п.2, зона Полата). После п.3 → POST /admin/products + форма.
+
+### 🟡 Мелочь
+- `apps/admin` tsc падает на `TS2688 vitest/globals` (битый install/версия, не код; не блокирует Vite-build).
+
+---
+
 
 ## ✅ [BILLING-MACHINE-001] Подписки + энфорсмент — ЗАКРЫТО (Полат, ~10.06.2026)
 
