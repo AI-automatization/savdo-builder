@@ -40,6 +40,26 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
+    // STRESS-DOS-001: ошибки express body-parser (PayloadTooLargeError
+    // type=entity.too.large → 413; entity.parse.failed → 400) бросаются в
+    // middleware ДО Nest-пайплайна и НЕ являются HttpException → раньше падали
+    // в 500 + спамили Sentry на каждый oversized/битый запрос (само по себе
+    // мини-DoS через лог-шум). Отдаём корректный 4xx без репорта инцидента.
+    const rawStatus =
+      (exception as { status?: number; statusCode?: number })?.status ??
+      (exception as { statusCode?: number })?.statusCode;
+    if (typeof rawStatus === 'number' && rawStatus >= 400 && rawStatus < 500) {
+      const isTooLarge =
+        rawStatus === HttpStatus.PAYLOAD_TOO_LARGE ||
+        (exception as { type?: string })?.type === 'entity.too.large';
+      return response.status(rawStatus).json({
+        statusCode: rawStatus,
+        code: isTooLarge ? ErrorCode.FILE_TOO_LARGE : ErrorCode.VALIDATION_ERROR,
+        message: isTooLarge ? 'Payload too large' : 'Malformed request body',
+        details: {},
+      });
+    }
+
     // API-SENTRY-001: unhandled exception всегда 500 — репортим в ErrorReporter.
     ErrorReporter.captureException(exception, this.requestContext(request));
     this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));

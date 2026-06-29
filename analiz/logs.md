@@ -1,5 +1,72 @@
 # Logs — локальные тесты и баги
 
+## [2026-06-29] [ROLE-SOURCE-INCONSISTENCY-001] 🟡 Бот и TMA по-разному определяют роль
+- **Статус:** 🟡 Открыто (рассинхрон, найден при buyer-тесте 29.06).
+- **Что:** сменил `users.role` SELLER→BUYER для +998904840748 (через /database).
+  - **TMA**: при свежем запуске переавторизовался → JWT с role=BUYER → корректно открыл
+    **витрину покупателя** (Магазины/Корзина/Заказы/Чат). ✅ TMA смотрит на `users.role`.
+  - **Бот /start**: всё равно показал **seller-меню** («панель управления», Товары/Магазин/
+    Статистика). ❌ Бот определяет роль по наличию `sellers`-профиля, НЕ по `users.role`.
+- **Импакт:** один аккаунт показывает разный интерфейс в боте (seller) и TMA (buyer) —
+  путаница; смена роли через users.role не полностью переключает опыт.
+- **Фикс (предложение):** единый источник истины для роли (или users.role, или явная
+  проверка seller-профиля) в обеих поверхностях. Решить продуктово: может ли аккаунт быть
+  одновременно seller+buyer (тогда UI должен это поддерживать явно, а не зависеть от точки входа).
+
+## [2026-06-29] [BUYER-FLOW-TEST-001] ✅ Buyer-флоу TMA протестирован
+- **Статус:** ✅ Работает. Тест аккаунта +998904840748 (временно BUYER, потом возвращён в SELLER).
+- **Проверено OK:** витрина магазинов (список + поиск), страница магазина тест5 (6 товаров,
+  фильтры категорий, цены), корзина (пустое состояние + «Перейти к магазинам»), навигация
+  Магазины/Корзина/Заказы/Чат. Реальный заказ НЕ размещался (прод).
+- **Находки:** (1) greeting «Привет, .!» — НЕ код-баг: buyer `StoresPage.tsx:192` уже
+  корректно обрабатывает пустое имя (`first_name?.trim() ? ... : welcomeAnon`). «.» —
+  это РЕАЛЬНОЕ TG-имя тестового аккаунта (точка), проходит truthy. Прод-юзеры с нормальным
+  именем этого не увидят. Чинить не нужно. (2) «ФОТО НЕДОСТУПНО»
+  у тест5-товаров = BUG-TMA-2 (протухшие telegram file_id, data hygiene). (3) Смена роли
+  через /database работает + пишется в audit_log (✅ аудит).
+
+## [2026-06-29] [ADMIN-NO-ROLE-CHANGE-UI-001] 🟡 UX-нестыковка: нельзя сменить роль SELLER↔BUYER из UI
+- **Статус:** 🟡 Открыто (UX/функциональный пробел). Репорт владельца 29.06.2026.
+- **Что:** в карточке пользователя (`/users/:id`) блок «Действия» = только «Заблокировать»
+  + «Impersonate». Сменить роль SELLER↔BUYER из UI нельзя. `AdminUsersPage.changeRole`
+  покрывает только админские роли. Чтобы протестировать/перевести аккаунт в покупателя,
+  приходится лезть в raw-правку через `/database` (admin DB page) — неудобно и опасно
+  (можно задеть связки store/seller).
+- **Импакт:** типовая операция поддержки (перевести продавца в покупателя и наоборот,
+  напр. для теста или по запросу) требует ручной правки БД вместо кнопки.
+- **Фикс (предложение):** добавить в UserDetailPage действие «Сменить роль» (SELLER/BUYER)
+  с confirmation-модалом + backend endpoint `PATCH /admin/users/:id/role` с валидацией
+  (нельзя менять роль админам через этот путь; при SELLER→BUYER — проверить/обработать
+  активные магазины/заказы). Зона: `apps/api` + `apps/admin`.
+- **Где:** `apps/admin/src/pages/UserDetailPage.tsx` (Действия), `apps/api/.../admin-users.controller.ts`.
+
+## [2026-06-29] [INFRA-RAILWAY-PAST-DUE-001] 🔴 P0 — подписка Railway просрочена
+- **Статус:** 🔴 ОТКРЫТО — требует оплаты (действие владельца, не код).
+- **Что:** в Railway dashboard баннер «Your subscription is past due. Please pay the
+  outstanding balance to avoid service disruption». Все сервисы пока **Online**
+  (savdo-api/admin/tma/web-buyer/web-seller/landing/Redis/Postgres), но риск отключения.
+- **Импакт:** при suspend — весь прод (каталог, OTP, заказы, админка) ляжет.
+- **Действие:** Полату — оплатить баланс Railway. Бэкапы БД есть (drill PASS 25.06),
+  но downtime прод = потеря лидов/доверия в бету.
+
+## [2026-06-29] [ADMIN-STORES-NO-COUNTS-001] ✅ ИСПРАВЛЕНО — colонки ТОВАРЫ/ЗАКАЗЫ = «—»
+- **Статус:** ✅ Исправлено (29.06.2026). Подтверждён вживую: admin /stores показывал
+  «—» в ТОВАРЫ/ЗАКАЗЫ у всех магазинов (тест5/Abdulaziz реально имеют товары/заказы).
+- **Root cause:** `admin.repository.findStores()` include только `seller`, без `_count`.
+  API-ответ не содержал counts (проверено fetch'ем — нет `_count`/productsCount).
+- **Fix:** добавлен `_count: { select: { products: true, orders: true } }`. Фронт
+  `StoresPage.tsx:238,246` уже читает `s._count?.products`/`orders`. tsc чистый.
+- **Файлы:** `apps/api/src/modules/admin/repositories/admin.repository.ts` (findStores).
+
+## [2026-06-29] [ADMIN-ANALYTICS-KPI-WRONG?] ✅ НЕ БАГ API — это BUG-3 (NumberTicker)
+- **Статус:** ✅ Объяснено. На /analytics KPI показывали ~5% от истинных значений
+  (Заказов 0 vs 8, Выручка 952765 vs 18977775, Отменено 1% vs 20%, newSellers/Stores 0 vs 6).
+- **Root cause:** API `/admin/analytics/summary` отдаёт ВЕРНО (totalOrders:8 и т.д.).
+  AnalyticsDashboardPage рендерит KPI через `NumberTicker` (строки 117-127) — на момент
+  скриншота overdamped-пружина (BUG-3) доползла лишь до ~5% цели → визуально неверные
+  цифры. Фикс BUG-3 (быстрая пружина) уже запушен в admin-ветку — устранит и это.
+- **Урок:** BUG-3 давал не «медленно», а ВИЗУАЛЬНО НЕВЕРНЫЕ числа по всей админке.
+
 ## [2026-06-29] [AUDIT-ADMIN-LIVE-001] Live UI-аудит админки (браузер) + фиксы
 - **Статус:** 🟡 В процессе (браузер-сессия прервалась — extension disconnect).
 - **Метод:** claude-in-chrome, прод `adminsb.up.railway.app`, MFA-сессия Полата, read-only.
@@ -42,10 +109,17 @@
 ## [2026-06-24] [STRESS-DOS-001] ✅ ИСПРАВЛЕНО 29.06.2026 — Body-парсер без явного лимита
 - **Статус:** ✅ Исправлено (29.06.2026, Полат). Fix в `apps/api/src/main.ts`:
   `bodyParser: false` в NestFactory.create + явные `app.useBodyParser('json'|'urlencoded', { limit: '100kb' })`.
-  Большое тело → **413** на этапе парсинга, до guard/Prisma. Media не затронут
+  Большое тело отсекается на этапе парсинга, до guard/Prisma. Media не затронут
   (multipart FileInterceptor multer 10MB + presigned R2). raw body нигде не нужен
-  (telegram webhook валидирует header-токеном). tsc чистый. ⚠️ Перед прод-пушем —
-  runtime smoke: обычный POST (≤100kb) работает, >100kb → 413.
+  (telegram webhook валидирует header-токеном). tsc чистый.
+- **Companion-фикс (29.06, после деплоя):** прод-smoke показал large→**500** (не 413).
+  Root cause: `PayloadTooLargeError` body-parser'а НЕ `HttpException` → падал в
+  финальную ветку `GlobalExceptionFilter` → 500 + спам в Sentry на каждый oversized
+  запрос (мини-DoS через лог-шум). Фикс: filter ловит raw-ошибки с HTTP-статусом
+  4xx (type=entity.too.large→413, entity.parse.failed→400) и отдаёт корректный код
+  без репорта инцидента. `apps/api/src/common/filters/global-exception.filter.ts`.
+- **Smoke baseline (прод 29.06):** health 200, small POST→401 (парсится), large→500
+  (баг подтверждён реальным). После companion-деплоя ожидается large→413.
 - **Что случилось:** Stress test выявил: `PATCH /api/v1/admin/db/tables/products/:id` с ~500KB JSON body возвращает **500** без токена. Auth guard должен возвращать 401 ДО парсинга body, но этого не происходит.
 - **Воспроизведение:** `curl -X PATCH https://savdo-api-production.up.railway.app/api/v1/admin/db/tables/products/any -H "Content-Type: application/json" -d '{"title":"'$(python3 -c "print('x'*500000)""}'`  → 500
 - **Риск:** DoS вектор — анонимный запрос 500KB → 500. Возможно body-parser выполняется в глобальном middleware до Passport guard. При highload может исчерпать память.

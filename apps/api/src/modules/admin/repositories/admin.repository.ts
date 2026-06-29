@@ -228,6 +228,10 @@ export class AdminRepository {
         take: limit,
         include: {
           seller: { select: { id: true, fullName: true, verificationStatus: true } },
+          // ADMIN-STORES-NO-COUNTS-001 (подтверждён вживую 29.06.2026): admin
+          // список показывал «—» в колонках ТОВАРЫ/ЗАКАЗЫ — endpoint не отдавал
+          // counts. Фронт (StoresPage.tsx:238,246) уже читает _count.products/orders.
+          _count: { select: { products: true, orders: true } },
         },
       }),
       this.prisma.store.count({ where }),
