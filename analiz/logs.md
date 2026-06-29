@@ -182,8 +182,14 @@
 - **Импакт:** TMA `/buyer` карточки магазинов всегда показывали 0. У Azim в
   БД 3 активных товара — теперь видно `📦 3`.
 
-## [2026-06-04] [ADMIN-PRODUCTS-NO-STORE-FIELD] 🟡 Backend не возвращает store в admin/products
-- **Статус:** 🟡 Открыто. **Кто:** Полат (или параллельная P2-3/4 сессия api).
+## [2026-06-04] [ADMIN-PRODUCTS-NO-STORE-FIELD] ✅ ИСПРАВЛЕНО 29.06.2026
+- **Статус:** ✅ Исправлено (29.06.2026, Полат). В `products.repository.ts` добавлен
+  `adminProductListInclude` (images + store{id,name,slug}) + тип `AdminProductListItem`;
+  `findAll()` теперь `include: adminProductListInclude`, return-type обновлён.
+  Фронт `ProductsPage.tsx:236` уже читал `p.store?.name ?? p.storeName ?? '—'` —
+  правки фронта не нужны. tsc чистый.
+- **(исходный репорт ниже)**
+- **Статус (old):** 🟡 Открыто. **Кто:** Полат (или параллельная P2-3/4 сессия api).
 - **Где:** `apps/api/src/modules/products/repositories/products.repository.ts:142` —
   метод `findAll()` имеет `include: { images: ... }` БЕЗ `store: { select: { name: true } }`.
 - **Импакт UI:** P2-6 (audit-2026-06-04) — в `apps/admin/src/pages/ProductsPage.tsx`
