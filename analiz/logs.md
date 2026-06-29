@@ -1,7 +1,46 @@
 # Logs — локальные тесты и баги
 
-## [2026-06-24] [STRESS-DOS-001] 🔴 Body-парсер NestJS возвращает 500 до auth guard на большом payload
-- **Статус:** 🔴 Открыт
+## [2026-06-29] [AUDIT-ADMIN-LIVE-001] Live UI-аудит админки (браузер) + фиксы
+- **Статус:** 🟡 В процессе (браузер-сессия прервалась — extension disconnect).
+- **Метод:** claude-in-chrome, прод `adminsb.up.railway.app`, MFA-сессия Полата, read-only.
+- **✅ Проверено OK:** Dashboard (числа 9/9/0/22 корректны), Пользователи (фильтры
+  роль/статус, поиск, детальная карточка, защита «нельзя блокировать админа через UI»),
+  Заказы (список + фильтры), Продавцы (список).
+- **✅ Исправлено этой сессией:**
+  - `BUG-3` NumberTicker — overdamped spring (ζ≈3, полз 10-20с) → `{damping:30,stiffness:120}` (ζ≈1.37). `apps/admin/src/components/ui/number-ticker.tsx`.
+  - `BUG-1` admin/subscriptions list не считал `daysLeft` (фронт `=== null` мимо `undefined` → «дн.» без числа). Добавлен расчёт в list endpoint. `apps/api/.../admin-subscriptions.controller.ts`.
+  - `BUG-TMA-1` greeting «Привет, .!» при пустом first_name → fallback `username/'вас'`. `apps/tma/.../seller/DashboardPage.tsx`.
+  - `STRESS-DOS-001` (см. ниже) — body-parser limit.
+- **🔴 Подтверждено вживую (открытые баги, фикс-кандидаты — моя зона):**
+  - `ADMIN-PRODUCTS-NO-STORE-FIELD` — колонка «МАГАЗИН» = «—» для ВСЕХ 14 товаров. Бэк не возвращает store в admin/products. `apps/api/.../products.repository.ts`.
+  - `ADMIN-PRODUCT-CREATE-HANG?` 🟡 ПОДОЗРЕНИЕ — клик «Создать товар» на `/products` → страница не вышла из document_idle, затем extension disconnect. Нужно перепроверить: зависает ли форма создания (возможно висит fetch категорий/магазина). НЕ подтверждено (мог быть разрыв расширения).
+- **🟡 Прочее:** `apps/admin` tsc падает на `TS2688 vitest/globals` — битый subpath в node_modules (env/install issue, не код). Кандидат: убрать из `tsconfig types[]` или починить установку vitest.
+- **⏭ Не пройдено (браузер отвалился):** Магазины, Категории, Подписки (детально), Модерация, Аналитика, Товары-детально.
+
+## [2026-06-25] [INFRA-BACKUP-DRILL-FIRST-RUN-001] ✅ Restore drill — PASS
+- **Статус:** ✅ PASS
+- **Что сделано:** Полный restore drill на прод-дампе
+- **Шаги:**
+  - `pg_dump` (postgres:18-bookworm via Docker) → дамп 0.28 MB за ~10 сек
+  - `docker run postgres:18-bookworm` staging на порту 55432
+  - `pg_restore --no-owner --no-acl` → exit 0, все FK constraints созданы
+- **Integrity checks:**
+  ```
+  users=12, sellers=9, stores=9, products=34,
+  orders=22, order_items=26, carts=6
+  orphan_sellers=0, orphan_stores=0, orphan_order_items=0, null_totalAmount=0
+  ```
+- **drill_status: PASS**
+- **Примечание:** Railway Postgres 18.4 — требует pg_dump v18 (postgres:18-bookworm образ)
+- **Следующий drill:** последняя пятница июня 2026 → 26.06.2026 (или июль)
+
+## [2026-06-24] [STRESS-DOS-001] ✅ ИСПРАВЛЕНО 29.06.2026 — Body-парсер без явного лимита
+- **Статус:** ✅ Исправлено (29.06.2026, Полат). Fix в `apps/api/src/main.ts`:
+  `bodyParser: false` в NestFactory.create + явные `app.useBodyParser('json'|'urlencoded', { limit: '100kb' })`.
+  Большое тело → **413** на этапе парсинга, до guard/Prisma. Media не затронут
+  (multipart FileInterceptor multer 10MB + presigned R2). raw body нигде не нужен
+  (telegram webhook валидирует header-токеном). tsc чистый. ⚠️ Перед прод-пушем —
+  runtime smoke: обычный POST (≤100kb) работает, >100kb → 413.
 - **Что случилось:** Stress test выявил: `PATCH /api/v1/admin/db/tables/products/:id` с ~500KB JSON body возвращает **500** без токена. Auth guard должен возвращать 401 ДО парсинга body, но этого не происходит.
 - **Воспроизведение:** `curl -X PATCH https://savdo-api-production.up.railway.app/api/v1/admin/db/tables/products/any -H "Content-Type: application/json" -d '{"title":"'$(python3 -c "print('x'*500000)""}'`  → 500
 - **Риск:** DoS вектор — анонимный запрос 500KB → 500. Возможно body-parser выполняется в глобальном middleware до Passport guard. При highload может исчерпать память.
