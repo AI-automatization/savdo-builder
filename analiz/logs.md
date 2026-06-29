@@ -13,7 +13,12 @@
   - `STRESS-DOS-001` (см. ниже) — body-parser limit.
 - **🔴 Подтверждено вживую (открытые баги, фикс-кандидаты — моя зона):**
   - `ADMIN-PRODUCTS-NO-STORE-FIELD` — колонка «МАГАЗИН» = «—» для ВСЕХ 14 товаров. Бэк не возвращает store в admin/products. `apps/api/.../products.repository.ts`.
-  - `ADMIN-PRODUCT-CREATE-HANG?` 🟡 ПОДОЗРЕНИЕ — клик «Создать товар» на `/products` → страница не вышла из document_idle, затем extension disconnect. Нужно перепроверить: зависает ли форма создания (возможно висит fetch категорий/магазина). НЕ подтверждено (мог быть разрыв расширения).
+  - ~~`ADMIN-PRODUCT-CREATE-HANG?`~~ ❌ СНЯТО — это НЕ баг формы. Кнопка «Создать товар»
+    (`ProductsPage.tsx:137`) = `onClick={() => alert(t('products.createSoonAlert'))}` —
+    намеренная заглушка «coming soon» (ADMIN-PRODUCTS-NO-CREATE-ENDPOINT ещё открыт).
+    Блокирующий `alert()` заморозил браузер-автоматизацию (extension disconnect) — мой
+    клик его вызвал. 🟡 Минорный UX-долг: `alert()` вместо app-toast (sonner)/DialogShell
+    как везде в админке. Не P-блокер.
 - **🟡 Прочее:** `apps/admin` tsc падает на `TS2688 vitest/globals` — битый subpath в node_modules (env/install issue, не код). Кандидат: убрать из `tsconfig types[]` или починить установку vitest.
 - **⏭ Не пройдено (браузер отвалился):** Магазины, Категории, Подписки (детально), Модерация, Аналитика, Товары-детально.
 
@@ -474,8 +479,12 @@
   - `railway.toml` — `healthcheckPath` → `/api/v1/health/live` (чистый
     liveness, без БД/Redis ping); `restartPolicyMaxRetries` 3 → 10.
 
-## [2026-05-16] [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] 🟡 «Самовывоз» всё равно платит доставку
-- **Статус:** 🟡 Предупреждение — тикет Полату заведён в `tasks.md`, не исправлено.
+## [2026-05-16] [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] ✅ ИСПРАВЛЕНО (verified 29.06.2026)
+- **Статус:** ✅ Исправлено (подтверждено аудитом 29.06.2026 — запись была устаревшей).
+  `ConfirmCheckoutDto.deliveryMode` ('delivery'|'pickup') добавлен; `confirm-checkout.use-case.ts:144-146`:
+  `input.deliveryMode === 'pickup' ? 0 : computeDeliveryFee(store.deliverySettings)`. Preview-эндпоинт
+  тоже принимает `deliveryMode` (checkout.controller.ts:55). Suммы preview/confirm согласованы.
+- **(исходный репорт ниже — был 🟡 Открыт)**
 - **Что случилось:** при закрытии `WB-B01` обнаружено: `confirm-checkout.use-case`
   считает `deliveryFee` через `computeDeliveryFee(store.deliverySettings)`
   безусловно. Backend не знает про режим «Самовывоз» (в `ConfirmCheckoutDto`
