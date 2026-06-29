@@ -205,7 +205,7 @@ export default function DashboardPage() {
             <h1 className="text-base font-bold text-gradient">{t('seller.dashboard.title')}</h1>
             {user && (
               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
-                {t('seller.dashboard.greeting', { name: user.first_name })} 👋
+                {t('seller.dashboard.greeting', { name: user.first_name || user.username || 'вас' })} 👋
               </p>
             )}
           </div>
