@@ -1,5 +1,54 @@
 # Done — Азим + Полат
 
+## 2026-06-29 (Полат) — Live-аудит админки + фиксы (orchestrator-сессия)
+
+### ✅ [STRESS-DOS-001] Явный лимит body-parser (DoS hardening)
+- **Важность:** 🔴
+- **Файлы:** `apps/api/src/main.ts`
+- **Что сделано:** `bodyParser:false` + `useBodyParser('json'|'urlencoded',{limit:'100kb'})`. Большой payload → 413 до guard/Prisma. Media (multipart 10MB) не затронут. tsc чистый.
+- **⚠️ TODO перед прод-пушем:** runtime smoke (POST ≤100kb ok, >100kb → 413).
+
+### ✅ [BUG-3] NumberTicker overdamped — дашборд долго показывал 0
+- **Важность:** 🟡
+- **Файлы:** `apps/admin/src/components/ui/number-ticker.tsx`
+- **Что сделано:** spring `{damping:60,stiffness:100}` (ζ≈3, 10-20с) → `{damping:30,stiffness:120}` (ζ≈1.37, ~0.8с, без overshoot).
+
+### ✅ [BUG-1] admin/subscriptions list не считал daysLeft
+- **Важность:** 🟡
+- **Файлы:** `apps/api/src/modules/admin/admin-subscriptions.controller.ts`
+- **Что сделано:** добавлен расчёт `daysLeft` для каждого элемента в list endpoint (раньше только detail). Колонка «ОСТАЛОСЬ» больше не пустая.
+
+### ✅ [BUG-TMA-1] Greeting «Привет, .!» при пустом first_name
+- **Важность:** 🟢
+- **Файлы:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Что сделано:** fallback `user.first_name || user.username || 'вас'`.
+
+---
+
+## 2026-06-25 (Полат) — INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+### ✅ [INFRA-BACKUP-DRILL-FIRST-RUN-001] Restore drill — PASS
+- **drill_status:** PASS
+- **Дамп:** 0.28 MB, pg_dump v18 (Railway Postgres 18.4)
+- **Restore:** pg_restore --no-owner --no-acl → exit 0
+- **Данные:** users=12, sellers=9, stores=9, products=34, orders=22, order_items=26, carts=6
+- **Orphans:** все 0 — FK-целостность ок
+- **Инструмент:** Docker postgres:18-bookworm (pg_dump 16 несовместим с PG 18)
+- **Репорт:** `analiz/logs.md` → [2026-06-25] INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+---
+
+## 2026-06-25 (Полат) — INFRA-UPTIME-ALERTS-001
+
+### ✅ [INFRA-UPTIME-ALERTS-001] UptimeRobot — 6 мониторов, email-алерты
+- **Сервис:** uptimerobot.com (free план, 6/50 мониторов использовано)
+- **Мониторы:** API `/health/live`, web-buyer, web-seller, admin, TMA, landing
+- **Алерт:** email на `polatbekismoilov17@gmail.com`, интервал 5 мин
+- **Примечание:** Telegram-алерт — только платный план UptimeRobot; оставили email
+- **Скрипт:** `scripts/setup-uptimerobot.ps1` (для будущего воспроизведения)
+
+---
+
 ## 2026-06-25 (Полат) — UX + Bot Sync audit fixes (P0/P1)
 
 ### ✅ [P0-SYNC-001] notifyNewOrder теперь доставляет через chatId
