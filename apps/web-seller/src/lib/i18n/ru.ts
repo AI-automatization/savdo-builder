@@ -134,10 +134,10 @@ export const ru = {
   'mock.nav.search': 'Поиск',
   'mock.nav.cart': 'Корзина',
   'mock.nav.profile': 'Профиль',
-  'mock.p1': 'Сумка Nur',
-  'mock.p2': 'Часы Aura',
-  'mock.p3': 'Туфли Bloom',
-  'mock.p4': 'Парфюм Coco',
+  'mock.p1': 'Кожаная сумка',
+  'mock.p2': 'Часы Gold Classic',
+  'mock.p3': 'Туфли на каблуке',
+  'mock.p4': 'Парфюм Rose Noir',
 } as const;
 
 export type RuKey = keyof typeof ru;

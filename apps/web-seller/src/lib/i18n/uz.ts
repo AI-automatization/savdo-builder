@@ -136,8 +136,8 @@ export const uz: Record<keyof typeof ru, string> = {
   'mock.nav.search': 'Qidiruv',
   'mock.nav.cart': 'Savatcha',
   'mock.nav.profile': 'Profil',
-  'mock.p1': 'Sumka Nur',
-  'mock.p2': 'Soat Aura',
-  'mock.p3': 'Tufli Bloom',
-  'mock.p4': 'Parfyum Coco',
+  'mock.p1': 'Charm sumka',
+  'mock.p2': 'Soat Gold Classic',
+  'mock.p3': 'Poshnali tufli',
+  'mock.p4': 'Rose Noir atir',
 };

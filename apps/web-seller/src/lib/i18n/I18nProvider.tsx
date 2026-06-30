@@ -26,8 +26,8 @@ function interpolate(template: string, vars?: Record<string, string | number>): 
   return template.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
 }
 
-export function I18nProvider({ initialLocale, children }: { initialLocale: Locale; children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(initialLocale);
+export function I18nProvider({ initialLocale = DEFAULT_LOCALE, children }: { initialLocale?: Locale; children: ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale ?? DEFAULT_LOCALE);
 
   useEffect(() => {
     if (typeof document !== 'undefined') document.documentElement.lang = locale;
