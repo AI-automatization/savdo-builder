@@ -11,7 +11,7 @@ import { useLogout } from "../../hooks/use-auth";
 import { useUnreadCount } from "../../hooks/use-notifications";
 import { useUnreadChatCount } from "../../hooks/use-chat";
 import { useSellerOrders } from "../../hooks/use-orders";
-import { OrderStatus } from "types";
+import { OrderStatus } from "@/lib/enums";
 import { ShoppingCart } from "lucide-react";
 import { colors, shell, shellTop } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";

@@ -96,7 +96,7 @@ export class TelegramDemoHandler {
       // Новый пользователь — просим телефон
       await this.bot.sendMessage(
         chatId,
-        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nДобро пожаловать в <b>Savdo</b> — маркетплейс в Telegram.\n\nДля входа поделитесь номером телефона:`,
+        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nДобро пожаловать в <b>maxsavdo</b> — маркетплейс продавцов Узбекистана.\n\nДля входа поделитесь номером телефона:`,
         { parseMode: 'HTML' },
       );
       await this.bot.sendContactRequest(chatId);
@@ -149,7 +149,7 @@ export class TelegramDemoHandler {
       : '';
 
     const text = [
-      '📖 <b>Помощь — Savdo</b>',
+      '📖 <b>Помощь — maxsavdo</b>',
       '',
       '<b>Команды:</b>',
       '/start — Главное меню',
@@ -445,7 +445,7 @@ export class TelegramDemoHandler {
 
       await this.bot.sendInlineKeyboard(
         chatId,
-        `🎉 <b>Магазин создан!</b>\n\n🏪 ${escapeTgHtml(storeName)}\n🔗 savdo.uz/${escapeTgHtml(slug)}\n\nТеперь настройте Telegram-канал для автопостинга товаров:`,
+        `🎉 <b>Магазин создан!</b>\n\n🏪 ${escapeTgHtml(storeName)}\n🔗 maxsavdo.uz/${escapeTgHtml(slug)}\n\nТеперь настройте Telegram-канал для автопостинга товаров:`,
         [
           [{ text: '📢 Привязать TG канал', callback_data: 'seller_link_channel' }],
           [{ text: '⏭ Пропустить',         callback_data: 'seller_skip_channel'  }],
@@ -656,7 +656,7 @@ export class TelegramDemoHandler {
 
   async showSellerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
-    const twaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
+    const twaUrl = process.env.TMA_URL ?? 'https://maxsavdo.uz';
     const rows: Array<Array<InlineButton | WebAppButton>> = [
       [{ text: '📱 Открыть приложение', web_app: { url: twaUrl } }],
       [
@@ -771,7 +771,7 @@ export class TelegramDemoHandler {
 
     await this.bot.sendMessage(
       chatId,
-      `🏪 <b>${escapeTgHtml(store.name)}</b>\n🔗 savdo.uz/${escapeTgHtml(store.slug)}\n📌 Статус: ${store.status}${channel}`,
+      `🏪 <b>${escapeTgHtml(store.name)}</b>\n🔗 maxsavdo.uz/${escapeTgHtml(store.slug)}\n📌 Статус: ${store.status}${channel}`,
       { parseMode: 'HTML' },
     );
   }
@@ -802,7 +802,7 @@ export class TelegramDemoHandler {
 
   async showBuyerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
-    const twaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
+    const twaUrl = process.env.TMA_URL ?? 'https://maxsavdo.uz';
     const rows: Array<Array<InlineButton | WebAppButton>> = [
       [{ text: '📱 Открыть приложение', web_app: { url: twaUrl } }],
       [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
@@ -840,7 +840,7 @@ export class TelegramDemoHandler {
       ? products.map((p, i) => `${i + 1}. <b>${escapeTgHtml(p.title)}</b> — ${Number(String(p.basePrice ?? 0)).toLocaleString('ru')} сум`).join('\n')
       : '📭 Товаров пока нет';
 
-    const tmaUrl = process.env.TMA_URL ?? 'https://savdo.uz';
+    const tmaUrl = process.env.TMA_URL ?? 'https://maxsavdo.uz';
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? '';
     const storeLink = botUsername && store.slug
       ? `https://t.me/${botUsername}?startapp=store_${store.slug}`
@@ -858,7 +858,7 @@ export class TelegramDemoHandler {
 
     const buyer = await this.prisma.buyer.findUnique({ where: { userId: user.id } });
     if (!buyer) {
-      await this.bot.sendMessage(chatId, '📭 У вас ещё нет заказов. Оформите первый на savdo.uz');
+      await this.bot.sendMessage(chatId, '📭 У вас ещё нет заказов. Оформите первый на maxsavdo.uz');
       return;
     }
 

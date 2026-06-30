@@ -169,6 +169,7 @@ export const ru: Translations = {
   'nav.products': 'Товары',
   'nav.categories': 'Категории',
   'nav.orders': 'Заказы',
+  'nav.subscriptions': 'Подписки',
   'nav.moderation': 'Модерация',
   'nav.analytics': 'Аналитика',
   'nav.events': 'События',
@@ -184,7 +185,7 @@ export const ru: Translations = {
   'nav.queues': 'Очереди (Bull)',
 
   // ── Login ─────────────────────────────────────────────────────────────
-  'login.title': 'Savdo Admin',
+  'login.title': 'maxsavdo Admin',
   'login.subtitlePhone': 'Вход через Telegram OTP',
   'login.subtitleOtp': 'Код отправлен на {phone}',
   'login.subtitleMfa': 'Введите код из приложения-аутентификатора',
@@ -210,7 +211,7 @@ export const ru: Translations = {
   'login.openQueues': 'Открываем Bull Board...',
   'login.errPhoneFormat': 'Формат: +998XXXXXXXXX (9 цифр после кода)',
   'login.errSendFailed': 'Ошибка отправки кода',
-  'login.errNotAdmin': 'Доступ запрещён. Этот кабинет только для администраторов Savdo.',
+  'login.errNotAdmin': 'Доступ запрещён. Этот кабинет только для администраторов maxsavdo.',
   'login.errTgNotLinked': 'Telegram не привязан. Напиши боту @savdo_builderBOT команду /start',
   'login.errBadCode': 'Неверный или просроченный код.',
   'login.errBadMfa': 'Неверный TOTP код',
@@ -694,4 +695,79 @@ export const ru: Translations = {
   'storeDetail.modalApproveDesc': 'Магазин «{name}» будет верифицирован, опубликован и появится в поиске покупателей.',
   'storeDetail.modalUnapproveTitle': 'Снять одобрение',
   'storeDetail.modalUnapproveDesc': 'Магазин «{name}» будет скрыт из поиска и переведён обратно в черновик.',
+
+  // ── Subscriptions (BILLING-MACHINE-001) ───────────────────────────────
+  'subscriptions.title': 'Подписки',
+  'subscriptions.searchPlaceholder': 'Поиск по имени или @username...',
+  'subscriptions.notFound': 'Подписки не найдены',
+  'subscriptions.allStatuses': 'Все статусы',
+  'subscriptions.allTiers': 'Все тарифы',
+  'subscriptions.daysShort': 'дн.',
+
+  // Tier labels
+  'subscriptions.tierStarter': 'Starter',
+  'subscriptions.tierPro': 'Pro',
+  'subscriptions.tierBusiness': 'Business',
+
+  // Status labels
+  'subscriptions.statusActive': 'Активна',
+  'subscriptions.statusTrial': 'Триал',
+  'subscriptions.statusPastDue': 'Просрочена',
+  'subscriptions.statusSuspended': 'Приостановлена',
+  'subscriptions.statusChurned': 'Утрачена',
+  'subscriptions.statusCancelled': 'Отменена',
+  'subscriptions.cancelAtPeriodEnd': 'Отменяется в конце периода',
+
+  // Table columns
+  'subscriptions.colSeller': 'Продавец',
+  'subscriptions.colTier': 'Тариф',
+  'subscriptions.colStatus': 'Статус',
+  'subscriptions.colPeriodEnd': 'Конец периода',
+  'subscriptions.colDaysLeft': 'Осталось',
+
+  // Detail fields
+  'subscriptions.fieldPeriodStart': 'Начало периода',
+  'subscriptions.fieldPeriodEnd': 'Конец периода',
+  'subscriptions.fieldTrialEndsAt': 'Конец триала',
+  'subscriptions.fieldGraceEndsAt': 'Льготный до',
+  'subscriptions.fieldDaysLeft': 'Дней осталось',
+  'subscriptions.fieldUpdatedAt': 'Обновлено',
+  'subscriptions.fieldTier': 'Тариф',
+  'subscriptions.fieldAmountUzs': 'Сумма (UZS)',
+  'subscriptions.fieldMethod': 'Способ оплаты',
+  'subscriptions.fieldNotes': 'Заметки',
+  'subscriptions.fieldDays': 'Дней',
+  'subscriptions.fieldReason': 'Причина',
+
+  // Actions
+  'subscriptions.actionMarkPaid': 'Отметить оплату',
+  'subscriptions.actionExtendTrial': 'Продлить триал',
+  'subscriptions.actionCancel': 'Отменить подписку',
+  'subscriptions.cancelAction': 'Отменить',
+  'subscriptions.terminalNote': 'Подписка в терминальном статусе — действия недоступны.',
+
+  // Form placeholders
+  'subscriptions.notesPlaceholder': 'Внутренние заметки (видны только админам)',
+  'subscriptions.reasonPlaceholder': 'Почему продлеваем триал (попадёт в audit log)',
+
+  // Confirm dialogs
+  'subscriptions.confirmCancelTitle': 'Отменить подписку?',
+  'subscriptions.confirmCancelBody': 'Подписка продавца «{name}» будет переведена в CANCELLED. Доступ сохраняется до конца оплаченного периода.',
+
+  // Toasts
+  'subscriptions.toastMarkedPaid': 'Оплата зарегистрирована',
+  'subscriptions.toastTrialExtended': 'Триал продлён на {days} дн.',
+  'subscriptions.toastCancelled': 'Подписка отменена',
+
+  // Errors
+  'subscriptions.errAmountRequired': 'Укажите сумму больше 0',
+  'subscriptions.errDatesRequired': 'Укажите даты начала и конца периода',
+  'subscriptions.errEndAfterStart': 'Конец периода должен быть позже начала',
+  'subscriptions.errDaysRange': 'Укажите от 1 до 365 дней',
+
+  // Payment methods
+  'subscriptions.method.MANUAL_TRANSFER': 'Перевод',
+  'subscriptions.method.CLICK': 'Click',
+  'subscriptions.method.PAYME': 'Payme',
+  'subscriptions.method.COMP': 'Бесплатно',
 };

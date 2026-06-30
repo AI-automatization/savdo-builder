@@ -31,8 +31,8 @@ export function LandingFooter() {
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: colors.textDim }}>{t('footer.contact')}</p>
-          <a href="https://t.me/savdo_builderBOT" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:opacity-80" style={{ color: colors.info }}>
-            <Send size={16} /> @savdo_builderBOT
+          <a href="https://t.me/maxsavdo_bot" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:opacity-80" style={{ color: colors.info }}>
+            <Send size={16} /> @maxsavdo_bot
           </a>
           <div className="mt-4"><LangToggle /></div>
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { UserRole } from 'types';
+import { UserRole } from '@/lib/enums';
 import type { ChatThread } from 'types';
 import { getThreadDisplay } from '@/lib/api/chat.api';
 import { ArrowLeft, MessageSquare, MoreVertical, Pencil, Trash2, User as UserIcon } from 'lucide-react';

@@ -2,6 +2,7 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { SlugService } from '../../stores/services/slug.service';
 
 export interface AdminCreateStoreInput {
   sellerId: string;
@@ -15,24 +16,17 @@ export interface AdminCreateStoreInput {
 
 @Injectable()
 export class AdminCreateStoreUseCase {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private slugify(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 60) || 'store';
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly slugService: SlugService,
+  ) {}
 
   private async uniqueSlug(base: string): Promise<string> {
-    let slug = this.slugify(base);
+    let slug = this.slugService.generate(base);
     let attempt = 0;
     while (await this.prisma.store.findUnique({ where: { slug } })) {
       attempt++;
-      slug = `${this.slugify(base)}-${attempt}`;
+      slug = `${this.slugService.generate(base)}-${attempt}`;
     }
     return slug;
   }

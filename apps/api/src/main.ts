@@ -101,8 +101,8 @@ async function bootstrap() {
   const swaggerEnabled = !isProd || process.env.SWAGGER_ENABLED === 'true';
   if (swaggerEnabled) {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('Savdo API')
-      .setDescription('Backend для savdo-builder — TG-storefront + buyer/seller flows.')
+      .setTitle('maxsavdo API')
+      .setDescription('Backend для maxsavdo — TG-storefront + buyer/seller flows.')
       .setVersion('1.0')
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', name: 'JWT', in: 'header' },

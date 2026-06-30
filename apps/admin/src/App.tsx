@@ -33,6 +33,7 @@ const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage'))
 const FeatureFlagsPage = lazy(() => import('./pages/FeatureFlagsPage'))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
 const MfaSetupPage = lazy(() => import('./pages/MfaSetupPage'))
+const SubscriptionsPage = lazy(() => import('./pages/SubscriptionsPage'))
 
 function PageFallback() {
   const { t } = useTranslation()
@@ -101,6 +102,7 @@ export default function App() {
               <Route path="stores" element={<StoresPage />} />
               <Route path="stores/:id" element={<StoreDetailPage />} />
               <Route path="orders" element={<OrdersPage />} />
+              <Route path="subscriptions" element={<SubscriptionsPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="moderation" element={<ModerationPage />} />
               <Route path="moderation/:id" element={<ModerationDetailPage />} />

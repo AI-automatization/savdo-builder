@@ -7,4 +7,3 @@ export const DEFAULT_LOCALE: Locale = 'ru';
 export const LOCALE_COOKIE = 'ms_locale';
 
 export type Dict = Record<string, string>;
-export type Translations = Dict;

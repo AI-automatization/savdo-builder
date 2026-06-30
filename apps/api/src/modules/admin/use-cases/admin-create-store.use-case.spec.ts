@@ -5,6 +5,8 @@
  */
 import { AdminCreateStoreUseCase } from './admin-create-store.use-case';
 import { PrismaService } from '../../../database/prisma.service';
+import { SlugService } from '../../stores/services/slug.service';
+import { StoresRepository } from '../../stores/repositories/stores.repository';
 
 describe('AdminCreateStoreUseCase', () => {
   let useCase: AdminCreateStoreUseCase;
@@ -29,7 +31,10 @@ describe('AdminCreateStoreUseCase', () => {
         create: jest.fn().mockResolvedValue({ id: 'store-1', slug: 'my-cool-store' }),
       },
     };
-    useCase = new AdminCreateStoreUseCase(prisma as unknown as PrismaService);
+    // DUP-003: реальный SlugService — он stateless, не требует StoresRepository
+    // для метода generate(). Передаём заглушку т.к. constructor требует.
+    const slugService = new SlugService({ existsBySlug: jest.fn() } as unknown as StoresRepository);
+    useCase = new AdminCreateStoreUseCase(prisma as unknown as PrismaService, slugService);
   });
 
   describe('preconditions', () => {

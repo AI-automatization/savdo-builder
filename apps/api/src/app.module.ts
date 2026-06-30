@@ -13,6 +13,7 @@ import { featuresConfig } from './config/features.config';
 import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/prisma.module';
 import { RedisModule } from './shared/redis.module';
+import { SharedServicesModule } from './shared/shared-services.module';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -28,6 +29,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
@@ -49,6 +51,7 @@ import { QueuesModule } from './queues/queues.module';
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     DatabaseModule,
     RedisModule,
+    SharedServicesModule,
     IdempotencyModule,
     QueuesModule,
     AuthModule,
@@ -65,6 +68,7 @@ import { QueuesModule } from './queues/queues.module';
     NotificationsModule,
     ChatModule,
     AdminModule,
+    SubscriptionsModule,
     ModerationModule,
     AnalyticsModule,
     WishlistModule,

@@ -1,6 +1,209 @@
 # Logs — локальные тесты и баги
 
-## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡→🟢 Реклассифицировано 24.05.2026
+## [2026-06-16] [CROSS-AGENT-STATUS-SYNC-001] Сверка статусов перед стартом suspended-states (BILLING-MACHINE-001)
+- **Статус:** 🟡 Предупреждение (расхождение статусов между сессиями, не баг кода).
+- **Что случилось:** перед стартом suspended-states (фронтовая часть BILLING-MACHINE-001) сверил три
+  пункта текущего статуса с кодом — включая `origin/api`/`origin/main`, не только локальные файлы.
+- **Сверка:**
+  1. Suspended/churned-гейтинг в `apps/web-buyer` и `apps/web-seller` — действительно ещё не реализован
+     (нет проверок `SUSPENDED`/`CHURNED`/`subscriptionStatus` в storefront-роуте, `middleware.ts`,
+     dashboard layout web-seller). Backend DTO (`SubscriptionDto`, `SubscriptionStatus`) уже есть в
+     `packages/types`. Storefront read-gate на бэке (`apps/api/.../stores.repository.ts` `findBySlug()`)
+     сейчас фильтрует только по `store.status==='APPROVED'`, без проверки `subscription.status` —
+     нужен на входе для фронтового 404.
+  2. `WEB-QA-BUGFIX-2026-05-15` — по `analiz/tasks.md:598-620` закрыт целиком 19.05.2026 (волны
+     `123b70a`/`73ff29f`, `fb5febf`/`47ea98d`, `3e2cee2`). На текущий момент блокеров запуска оттуда нет.
+  3. Билинг-спека (`billing-machine-spec-v1-2026-05-31.md`) была на старых названиях/ценах (STARTER/PRO/
+     BUSINESS) — обновлена под FREE/PRO/STUDIO (см. запись ниже, 17.06).
+- **Что сделано:** код не менялся, только сверка. Статус передан Полату. Лог — чтобы при следующей
+  сверке не повторять то же расследование.
+- **🔧 Исправление 17.06.2026:** пункт 3 выше был дан по устаревшему локальному git-кэшу (`origin/api`
+  не был свежо `fetch`'нут перед проверкой). После `git fetch origin api`: enum уже переименован в
+  `FREE/PRO/STUDIO` коммитом `9ba6c7c`/`c5a0bc6` (**15.06.2026**, за день до его сообщения) — то есть
+  его заявление было верным. Тикет `BILLING-TIER-ENUM-SYNC-001` он сам закрыл коммитом `d2dc499`
+  (16.06.2026 20:46), Prisma client перегенерирован `6c53a25`. **Урок:** перед любым "Полат
+  заявил X неверно" — обязателен `git fetch origin <branch>` непосредственно перед проверкой,
+  не доверять локальному кэшу веток collaborator'а.
+- **Файлы для справки:** `packages/types/src/enums.ts` (origin/api, origin/main); `analiz/tasks.md:598-620`
+  (WEB-QA-BUGFIX); `analiz/tasks.md` на ветке `origin/api` — `BILLING-TIER-ENUM-SYNC-001`.
+
+## [2026-06-14] [WEB-010] OtpGate default purpose 'login' создавала SELLER у покупателей
+- **Статус:** ✅ Исправлено (Азим, web-buyer, 14.06.2026).
+- **Что случилось:** `apps/web-buyer/src/components/auth/OtpGate.tsx` (shared компонент) имел
+  `purpose = 'login'` как дефолт. Backend при verify-otp создаёт BUYER для `purpose='checkout'`
+  и SELLER для `purpose='login'`. Покупатели, аутентифицировавшиеся через /orders, /profile,
+  /wishlist (не через checkout), регистрировались как SELLER — не могли пользоваться buyer-фичами.
+- **Не затронуто:** checkout flow (`(minimal)/checkout/page.tsx`) имеет свою локальную OtpGate
+  с захардкоженным `purpose: 'checkout'` — там баг отсутствовал.
+- **Фикс:** изменён дефолт `purpose = 'login'` → `purpose = 'checkout'` в shared OtpGate.
+  Ветка `fix/web-010-otpgate-purpose` от `origin/web-buyer` → запушена, PR создать
+  и смержить в `web-buyer` (Railway задеплоит автоматически).
+- **Файл:** `apps/web-buyer/src/components/auth/OtpGate.tsx:25`
+
+## [2026-06-07] [CHECKOUT-PAYMENTMETHOD-NOT-SENT-001] Выбор способа оплаты на checkout не отправлялся
+- **Статус:** ✅ Исправлено (Азим, web-buyer).
+- **Что случилось:** на checkout покупатель выбирал «Наличные/Картой/Online», но `handleConfirm`
+  (`apps/web-buyer/src/app/(minimal)/checkout/page.tsx`) слал payload БЕЗ `paymentMethod` и БЕЗ
+  `deliveryMode` → бэкенд всегда писал дефолт (`cash`/COD, `delivery`). Аналитика `order_created`
+  хардкодила `"COD"`. То есть выбор оплаты и режим pickup были декоративными.
+- **Корень:** поля `paymentMethod`/`deliveryMode` существуют в `CheckoutConfirmRequest`
+  (`packages/types/src/api/cart.ts:150,155`), но фронт их не передавал.
+- **Что сделано:** добавил `paymentMethod` + `deliveryMode: mode` в `confirm.mutateAsync`,
+  аналитику перевёл на реальный `paymentMethod`. Заодно честный копирайт под реалии УЗ (такси/встреча,
+  не курьер/POS): «Наличные курьеру»→«Наличные», «Картой курьеру — UzCard/Humo POS-терминал»→
+  «Картой при получении / UzCard·Humo», «Комментарий курьеру»→«Комментарий к заказу».
+- **Проверка:** `tsc -p apps/web-buyer` — в `checkout/page.tsx` ошибок нет (остальные ошибки tsc —
+  пре-existing `WEB-SELLER-ENUM-AS-VALUE-BUILD-001`, зона Полата). НЕ закоммичено.
+- **Примечание:** полноценный «перевод на карту продавца» (MANUAL_TRANSFER + показ карты) — отдельно,
+  нужен Полат (поле реквизитов в `Seller`/`Store` + семантика `card`). Сейчас `card`=«при получении».
+
+## [2026-06-07] [MEDIA-TG-NOT-MIGRATED-001] Фото старого магазина грузятся из Telegram, не из Supabase
+- **Статус:** 🔴 Баг данных (НЕ код-баг, НЕ зона Азима). Первопричина и фикс — зона Полата (apps/api / media / данные).
+- **Что случилось:** на витрине `savdo-builder-by-production…/azim-mnx4na25` фото товаров грузятся через
+  TG-прокси, а не напрямую из Supabase «как в ТМА». Жалоба Азима.
+- **Диагностика (доказательства, прод-API):**
+  - `GET /api/v1/stores/azim-mnx4na25/products` → у товаров `images[].url =
+    https://…/api/v1/media/proxy/<id>` (прокси, не direct CDN).
+  - `curl -D - …/media/proxy/2fda9aec-…` → `HTTP 200`, `Content-Type: image/jpeg`,
+    **`x-storage-backend: telegram`** (стрим из Telegram, НЕ 302-redirect на Supabase).
+  - Значит у этих `MediaFile` `bucket='telegram'` — они залиты 17–18.04.2026, когда upload падал в
+    TG-fallback (Supabase ещё не был сконфигурирован). Их **никто не мигрировал**.
+- **Почему НЕ веб-баг:** и web-buyer, и TMA рендерят URL-строку как есть из одного и того же storefront-API
+  (`ProductPresenterService.resolveImageUrl`). Фронт ничего не резолвит. В вебе чинить нечего.
+- **Почему «в ТМА работает»:** новые/уже-мигрированные фото лежат в Supabase → отдаются direct CDN. Для
+  ЭТОГО старого магазина и в ТМА фото стримились бы из Telegram (тот же API-URL).
+- **Новые загрузки — ОК:** `UploadDirectUseCase` сначала пишет в Supabase (`r2Storage.isConfigured()`),
+  Telegram только fallback. Это чисто backlog старых данных, не текущий баг.
+- **Фикс (готов, зона Полата):** прогнать существующий admin-эндпоинт
+  `POST /api/v1/admin/media/migrate-tg-to-r2?limit=200` (permission `media:migrate`,
+  `MigrateTgMediaToR2UseCase`) — он качает TG-файлы, заливает в Supabase, обновляет `bucket`+`objectKey`.
+  Истёкшие TG file_id → `bucket='telegram-expired'` (фронт покажет «Без фото»). Прогонять батчами до 0.
+- **Что сделано:** залогировано, НЕ фикшено (не зона Азима). Хэндофф Полату.
+
+## [2026-06-04] [WEB-SELLER-ENUM-AS-VALUE-BUILD-001] Build web-seller красный — enum-типы используются как значения
+- **Статус:** ✅ Исправлено 07.06.2026 (Азим, обход в своей зоне) — `pnpm --filter web-seller build` зелёный (`/` лендинг server-rendered, 0 TS-ошибок).
+- **Фикс (07.06):** создан `apps/web-seller/src/lib/enums.ts` — runtime-const-шим (`UserRole`/`OrderStatus`/
+  `StoreStatus`/`ProductStatus` как `as const satisfies Record<string, …T>`, тип реэкспортится из `types`).
+  7 dashboard-импортов перенаправлены с `'types'` на `'@/lib/enums'` (по 1 строке на файл). `packages/types`
+  НЕ тронут (зона Полата). Forward-совместимо: если Полат вернёт реальные enum'ы — литералы продолжат
+  присваиваться. Когда Полат дочистит типы — шим можно удалить, вернув импорты на `types`.
+- **Что случилось:** `pnpm build` / `tsc --noEmit` в `apps/web-seller` падают десятками ошибок
+  `TS2693: 'UserRole'/'OrderStatus'/'StoreStatus' only refers to a type, but is being used as a value`.
+  Next build: `Export UserRole doesn't exist in target module` / `module has no exports at all`.
+- **Корень:** в `packages/types/src/enums.ts` (зона Полата) `UserRole`/`OrderStatus`/`StoreStatus`
+  объявлены как **`export type`** (юнионы строк), а dashboard-страницы импортят их как значения
+  (`import { UserRole } from 'types'` + `OrderStatus.PENDING`, Record<OrderStatus,...> и т.п.).
+  Типы рантайм-экспорта не дают → и tsc, и сборка падают.
+- **Где бьёт:** `(dashboard)/chat/page.tsx`, `dashboard/page.tsx`, `orders/[id]/page.tsx`, `orders/page.tsx`,
+  `products/page.tsx`, `products/[id]/edit/page.tsx`, `layout.tsx`. Лендинг (`components/landing`) НЕ затронут —
+  от `types` не зависит, рендерится 200 OK.
+- **Корень (для истории):** в `packages/types/src/enums.ts` (зона Полата) `UserRole`/`OrderStatus`/`StoreStatus`/
+  `ProductStatus` объявлены как `export type` (DUP-008, 01.06) — рантайм-значений не дают, а dashboard
+  использовал их как значения. Это блокировало деплой готового лендинга на ветке `feat/seller-landing`.
+
+## [2026-06-02] [TMA-AUDIT-001] Баг-аудит apps/tma (Telegram Mini App, домен Полата)
+- **Статус:** 🟡 найдено ~10 реальных багов (0 критичных) + 2 ложные тревоги опровергнуты. НЕ фикшено (зона Полата).
+- **Метод:** safe-проверки (vitest 14/14 ✅, `tsc -b` ✅, `vite build` ✅ 135 модулей) + 4 параллельных
+  code-review агента по подсистемам (checkout/cart/orders, фото/товары, chat/socket, auth/theme/nav).
+  Каждая 🔴-находка верифицирована ручным чтением кода Азимом. **Живой E2E не гонялся** (риск
+  мусорных заказов на проде / нужен локальный бэк). Запущено по запросу Азима.
+
+### ❌ Ложные тревоги (опровергнуты чтением — Полату НЕ чинить):
+- **BackButton «двойная регистрация обработчика»** (`components/layout/BackButton.tsx:24`) — неверно:
+  `return () => tg.BackButton.offClick(handler)` есть, useEffect-cleanup снимает старый handler перед
+  навешиванием нового при смене pathname. Накопления нет.
+- **BuyerGuard «пропускает неавторизованного» = security breach** (`App.tsx:91-98`) — не баг: by design.
+  Витрина покупателя публичная (каталог/товар/корзина — гостевые, корзина в localStorage), приватных
+  данных гость не видит. В TMA юзер и так авто-авторизуется через Telegram initData. SellerGuard
+  (приватный dashboard) auth требует корректно (`!user → Navigate '/'`).
+
+### 🟡 Подтверждённые реальные баги (Полату):
+1. **Вариант-цикл без error-handling — частичная потеря данных** (`pages/seller/AddProductPage.tsx:365-381`).
+   POST вариантов в цикле **без** try-catch, в отличие от атрибутов (416-432, `failedAttrs`) и фото
+   (436+, try-catch). Если вариант 3 из 5 упал (сеть/timeout) → throw в общий catch, товар уже создан
+   (DRAFT), часть вариантов есть, часть нет, юзер видит generic-ошибку без указания какой вариант. Fix:
+   обернуть как атрибуты (`failedVariants[]` + showToast). Severity 🟡 (товар recoverable в редакторе).
+2. **Socket не сбрасывается при logout** (`providers/AuthProvider.tsx:68-72`). `logout` зовёт только
+   `setToken(null)`+`resetCartSync()`, НЕ зовёт `destroySocket`/`resetNotifications`/`resetChatUnread`/
+   `unbindSellerNotifications` → WS-соединение и listeners остаются. Severity 🟡 (в TMA logout редок —
+   auth авто-через-Telegram, 401→reauth а не logout; латентная утечка при logout/login циклах).
+3. **Дубли connect-listener в seller-нотификациях** (`lib/sellerNotifications.ts:51-69`). И `socket.once
+   ('connect', join)`, и `socket.on('connect', join)` — при reconnect join-room эмитится 2×; повторный
+   `bindSellerNotifications` не снимает старый `on('connect')` (нет ссылки на off). Severity 🟡.
+4. **`connect`-listener не off'ится в reset** (`lib/notifications.ts`, `lib/chatUnread.ts`).
+   `resetNotifications` снимает `notification:new`, но не `connect` → при logout/login копятся. Severity 🟡.
+5. **typing stopTimer не чистится при unmount** (`lib/useChatTyping.ts`). `stopTimer` ставится в callback
+   `emitTyping` (2.5с), cleanup useEffect его не очищает → после закрытия чата таймер эмитит на сервер. 🟡.
+6. **Утечка blob-URL в AddProductPage** (`pages/seller/AddProductPage.tsx`, `photoPreviews`).
+   `URL.createObjectURL` revoke'ится только в `removePhoto`, нет cleanup при unmount → уход со страницы
+   с N добавленными фото оставляет N blob-URL в памяти (на слабом WebView копится). 🟡. (EditProductPage
+   чист — там `FileReader`/`data:` URL, revoke не нужен.)
+7. **addToCart без проверки стока** (`components/ui/ProductCard.tsx:26-49`). Кнопка «+» добавляет товар
+   с `totalStock<=0` несмотря на бейдж «нет в наличии»; backend отобьёт при checkout (422), но UX. 🟡.
+8. **Lazy-чанки без ChunkLoadError boundary** (`App.tsx:59-79`). React.lazy без обработки сбоя загрузки
+   чанка → при деплое новой версии активный юзер на старой получает белый экран при навигации. 🟡.
+9. **Phone-поле checkout инициализируется до загрузки user** (`pages/buyer/CheckoutPage.tsx:30`).
+   `useState(() => formatUzPhone(user?.phone ?? ''))` — при прямом открытии /checkout user ещё null →
+   поле телефона пустое вместо предзаполненного. 🟡 UX.
+10. **Detail заказа не обновляется после смены статуса** (`pages/seller/OrdersPage.tsx:191-228`).
+    `changeStatus` обновляет список (`setOrders`), но не открытый detail bottom-sheet → старый статус
+    до переоткрытия. 🟡 UX.
+
+### 🟢 Мелочи / UX (не баги):
+- Нет `capture="environment"` на `<input type=file>` товара (`AddProductPage:961`, `EditProductPage:969`)
+  → на телефоне открывается галерея, а не камера. (Связано с фичей «сфоткать товар» — продавцу лишний шаг.)
+- Нет frontend-проверки размера файла фото (риск зависания WebView на 50MB+, backend-лимит есть).
+- `SocketStatusBadge` cleanup без defensive-проверки существования socket.
+
+### ✅ Безопасность проверки (для справки):
+- typecheck/build/unit — ноль риска (локально, оффлайн, код не менялся, lockfile не трогался).
+- Чистые компоненты (баги не найдены): EditProductPage, ImageCropper, ProductImage, ImagePlaceholder, api.ts.
+- **Не проверено вообще** (нужен живой E2E): реальная загрузка на R2, поведение при плохом интернете,
+  фактический checkout-флоу (на API висит P0 `API-CHECKOUT-CONFIRM-500-001` — бьёт и по TMA).
+
+## [2026-05-31] [WEB-AUDIT-BUYER-SELLER-001] Полный баг-аудит web-buyer + web-seller
+- **Статус:** ✅ 8 багов исправлено (запушено на deploy-ветки) / 🟡 5 найдено, НЕ фикшено (архитектура/env/Полат)
+- **Метод:** 6 параллельных code-review агентов по подсистемам, статический анализ
+  (tsc/build/тесты локально не гонялись — нет devDeps), каждая находка верифицирована чтением кода.
+
+### ✅ Исправлено (web-buyer `2efd38b`, web-seller `dcd5eb8`):
+1. **checkout double-submit** (buyer) — `handleConfirm` без синхронного замка: быстрый
+   double-tap создавал 2 заказа (mutateAsync не дедуплицирует). Добавлен `useRef`-замок. **Нарушало INV-C03.**
+2. **корзина «пусто» 60с** (buyer) — `useConfirmCheckout` писал `setQueryData(['cart'],null)`;
+   при частичном сбое clearCart возврат на /cart показывал пусто. → `invalidateQueries`.
+3. **totalAmount из устаревших subtotal** (buyer) — `useRemoveCartItem` ручной пересчёт → `invalidateQueries`.
+4. **утечка blob-URL** (seller) — `multi-image-uploader` `createObjectURL` без `revokeObjectURL`,
+   блобы висели всю сессию. Добавлен revoke при удалении + размонтировании.
+5. **priceOverride → 0** (seller) — variants-matrix при очистке поля затирал цену в 0 (`Number||0`) → `undefined`.
+6. **тихий unhandled rejection** (seller) — `product-variants` handleAdd без try/catch, форма висела молча → catch + `common.error`.
+7. **тихая потеря варианта** (seller) — create/page пропущенный вариант не считался failed,
+   баннер частичного сбоя молчал → `failedVariants++`.
+8. **stale отфильтрованные списки** (seller) — `use-products` `invalidateQueries(list())` матчил
+   только `list(undefined)` → префикс `['products','list']`.
+
+### 🟡 Найдено, НЕ исправлено (требует решения/не фронт-код):
+- **middleware не защищает dashboard** (seller `middleware.ts`) — токен в localStorage, на сервере
+  недоступен; защита только client-side. Фундаментально: нужен httpOnly-cookie (передизайн auth). **Решение за командой.**
+- **WEB-002: `NEXT_PUBLIC_API_URL` fallback на localhost** (оба, `lib/api/client.ts`/`env.ts`) — если env
+  не задан на Railway, прод бьёт в localhost. Уже задокументировано. **Фикс — env в Railway, не код.**
+- **hydration-flash auth** (оба, `lib/auth/context.tsx` + buyer checkout `useState`-init из localStorage) —
+  SSR=null, client=token → mismatch. В checkout это ОСОЗНАННЫЙ tradeoff (коммент в коде). Архитектурное.
+- ✅ **socket: re-join после reconnect** (оба `use-chat.ts`) — **ИСПРАВЛЕНО 31.05.2026.**
+  В `useChatSocket` не было `socket.on('connect', joinRoom)` → после сетевого разрыва socket.io
+  переподключался, но `join-chat-room` не переэмитился → собеседник в открытом треде переставал
+  получать `chat:message` пока не сменит тред. У web-seller вдобавок не было `leave-chat-room` в
+  cleanup → подписки на старые комнаты копились. Приведено к проверенному паттерну
+  `useBuyerSocket`/`useSellerSocket` тех же файлов. web-buyer `a1428c3`, web-seller `b976c67`.
+  tsc чист, `onMessage`/badge-логика не тронута. (Замечание «`use-seller-socket.ts` дубли
+  connect-listener» — ложная тревога: там один корректный connect-listener, дублей нет.)
+- ✅ **seller login: двойной редирект** (login page) — **ИСПРАВЛЕНО 31.05.2026.**
+  `handleVerify` делал `router.replace` в `onSuccess` мутации, а `useEffect([user])` делал ещё
+  один role-aware `router.replace` когда `useVerifyOtp.onSuccess` звал `login()` → setUser.
+  Двойная навигация + неоднозначность порядка. **Решение:** редирект отдан целиком `useEffect`
+  (источник истины — контекстный `user`, он же нужен для гарда «залогинен → зашёл на /login»);
+  `mutate.onSuccess` теперь только `track.otpVerified`. Хук пишет auth-состояние, useEffect владеет
+  навигацией — гонка исчезла. web-seller `bbbe92e`, tsc чист. (WEB-011 в исходной формулировке
+  — отсутствие `login()` + role-check — был закрыт ранее; это остаточная двойственность.)
 - **Статус:** 🟢 Root cause найден; frontend-фикс применён локально (uncommitted), backend-тикет заведён.
 - **Замечен:** через Playwright MCP в ходе `VERIFY-CHECKOUT-CONFIRM-500-001` (21.05.2026)
   на проде `savdo-builder-by-production.up.railway.app/azim-mnx4na25`.

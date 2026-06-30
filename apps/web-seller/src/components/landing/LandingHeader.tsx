@@ -32,7 +32,7 @@ export function LandingHeader() {
   }, []);
 
   const primaryHref = isAuthenticated ? '/dashboard' : '/login';
-  const primaryLabel = isAuthenticated ? t('nav.toCabinet') : t('cta.create');
+  const primaryLabel = isAuthenticated ? t('nav.dashboard') : t('cta.create');
 
   return (
     <header

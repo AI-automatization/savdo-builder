@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { OrderStatus } from 'types';
+import { OrderStatus } from '@/lib/enums';
 import { useSellerOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
 import { card, cardMuted, colors, dangerTint, inputStyle } from '@/lib/styles';

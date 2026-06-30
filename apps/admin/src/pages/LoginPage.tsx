@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft, Sun, Moon, Lock } from 'lucide-react'
+import { ArrowRight, Loader2, AlertCircle, MessageCircle, ChevronLeft, Sun, Moon, Lock } from 'lucide-react'
 import { api, auth } from '../lib/api'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '../lib/i18n'
+import { MaxsavdoMark } from '../components/brand/MaxsavdoLogo'
 
 /** Decode JWT payload (no signature verify — фронт только читает claim'ы). */
 function decodeJwtPayload<T = Record<string, unknown>>(token: string): T | null {
@@ -238,10 +239,10 @@ export default function LoginPage() {
           maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 10%, transparent 100%)',
         }}
       />
-      {/* Glow */}
+      {/* Glow — Champagne Gold halo (BRAND-ADMIN-REBRAND-001) */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse, rgba(201,168,118,0.10) 0%, transparent 70%)',
           filter: 'blur(80px)',
         }}
       />
@@ -259,10 +260,10 @@ export default function LoginPage() {
       {/* Card */}
       <div className="relative z-10 w-full max-w-[400px] rounded-2xl p-8 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
 
-        {/* Logo */}
+        {/* Logo — BRAND-ADMIN-REBRAND-001: maxsavdo mark */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/20">
-            <Store size={20} color="white" />
+          <div className="mb-4">
+            <MaxsavdoMark size={44} />
           </div>
           <h1 className="text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{t('login.title')}</h1>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -276,13 +277,17 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Step bar */}
+        {/* Step bar — Champagne Gold for active steps */}
         <div className="flex gap-1.5 mb-6">
           {[1, 2, 3].map(s => (
-            <div key={s} className={cn(
-              'flex-1 h-0.5 rounded-full transition-colors duration-300',
-              s <= step ? 'bg-indigo-500' : 'bg-white/10',
-            )} />
+            <div
+              key={s}
+              className={cn(
+                'flex-1 h-0.5 rounded-full transition-colors duration-300',
+                s <= step ? '' : 'bg-white/10',
+              )}
+              style={s <= step ? { background: 'var(--primary)' } : undefined}
+            />
           ))}
         </div>
 
@@ -316,7 +321,7 @@ export default function LoginPage() {
             <button
               onClick={sendOtp}
               disabled={loading}
-              className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-base btn-primary w-full h-9 flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
                 ? <><Loader2 size={15} className="animate-spin" /> {t('login.sending')}</>
@@ -380,7 +385,7 @@ export default function LoginPage() {
             <button
               onClick={completeMfaSetup}
               disabled={loading || mfaCode.length !== 6}
-              className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-base btn-primary w-full h-9 flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
                 ? <><Loader2 size={15} className="animate-spin" /> {t('login.checking')}</>
@@ -423,7 +428,7 @@ export default function LoginPage() {
             <button
               onClick={verifyMfa}
               disabled={loading || mfaCode.length !== 6}
-              className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-base btn-primary w-full h-9 flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
                 ? <><Loader2 size={15} className="animate-spin" /> {t('login.checking')}</>

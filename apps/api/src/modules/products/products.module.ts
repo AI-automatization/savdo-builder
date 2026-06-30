@@ -4,6 +4,7 @@ import { StorefrontController } from './storefront.controller';
 import { ProductPresenterService } from './services/product-presenter.service';
 import { ChannelTemplateService } from './services/channel-template.service';
 import { ChannelMediaResolverService } from './services/channel-media-resolver.service';
+import { ChannelPostBuilderService } from './services/channel-post-builder.service';
 import { ProductsRepository } from './repositories/products.repository';
 import { VariantsRepository } from './repositories/variants.repository';
 import { OptionGroupsRepository } from './repositories/option-groups.repository';
@@ -23,9 +24,18 @@ import { SellersModule } from '../sellers/sellers.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { MediaModule } from '../media/media.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
+// SUBSCRIPTIONS / PLAN-LIMIT-GUARD hook — TODO добавить после refactor (вынести
+// PlanLimitGuardService в shared/, чтобы не создавать цикл
+// AdminModule → ProductsModule → SubscriptionsModule → AdminModule).
 
 @Module({
-  imports: [forwardRef(() => StoresModule), SellersModule, TelegramModule, MediaModule, WishlistModule],
+  imports: [
+    forwardRef(() => StoresModule),
+    SellersModule,
+    TelegramModule,
+    MediaModule,
+    WishlistModule,
+  ],
   controllers: [ProductsController, StorefrontController],
   providers: [
     ProductsRepository,
@@ -34,6 +44,7 @@ import { WishlistModule } from '../wishlist/wishlist.module';
     ProductPresenterService,
     ChannelTemplateService,
     ChannelMediaResolverService,
+    ChannelPostBuilderService,
     CreateProductUseCase,
     UpdateProductUseCase,
     ChangeProductStatusUseCase,

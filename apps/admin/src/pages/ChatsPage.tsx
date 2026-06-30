@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
+import { formatAdminDate } from '../lib/format'
 import { confirmDialog } from '../components/admin/ConfirmDialog'
 
 interface ThreadRow {
@@ -25,12 +26,6 @@ interface ThreadDetail {
   messages: Array<{ id: string; senderUserId: string; body: string; createdAt: string }>
 }
 
-function formatDate(iso: string | null, dateLocale: string) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString(dateLocale, {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  })
-}
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   OPEN:   { bg: 'rgba(34,211,238,0.10)', color: '#22D3EE' },
@@ -181,7 +176,7 @@ export default function ChatsPage() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                      {formatDate(thread.lastMessageAt, dateLocale)}
+                      {formatAdminDate(thread.lastMessageAt, dateLocale, { year: 'none' })}
                     </td>
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <button

@@ -11,6 +11,8 @@ import { UserRole, SellerVerificationStatus } from '@prisma/client';
 import { AdminCreateSellerUseCase } from './admin-create-seller.use-case';
 import { AdminCreateStoreUseCase } from './admin-create-store.use-case';
 import { PrismaService } from '../../../database/prisma.service';
+import { SlugService } from '../../stores/services/slug.service';
+import { StoresRepository } from '../../stores/repositories/stores.repository';
 
 describe('AdminCreateSellerUseCase', () => {
   let useCase: AdminCreateSellerUseCase;
@@ -94,7 +96,9 @@ describe('AdminCreateStoreUseCase', () => {
         create: jest.fn().mockResolvedValue({ id: 'store-1', slug: 'test-store' }),
       },
     };
-    useCase = new AdminCreateStoreUseCase(prisma as unknown as PrismaService);
+    // DUP-003: SlugService stateless, repo-заглушка для конструктора.
+    const slugService = new SlugService({ existsBySlug: jest.fn() } as unknown as StoresRepository);
+    useCase = new AdminCreateStoreUseCase(prisma as unknown as PrismaService, slugService);
   });
 
   it('seller не найден → 404', async () => {
