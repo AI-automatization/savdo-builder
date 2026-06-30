@@ -15,7 +15,7 @@
   - **P0-2** OtpGate (web-buyer): на шаге `code` показывается подсказка «Не пришёл код? Откройте @maxsavdo_bot и нажмите Start»
   - **P1-1** login/page.tsx: добавлен hint «Впервые здесь? Просто введите номер — аккаунт создастся автоматически»; исправлен ботнейм `@savdo_builderBOT` → `@maxsavdo_bot`
   - **P1-2** Step2 онбординга: убрано дублирующее поле `telegramContactLink`, теперь генерируется автоматически из `telegramUsername` (`https://t.me/<username>`)
-- **Примечание:** коммит на `feat/seller-landing`, нужно смержить/cherry-pick в `web-seller` + `web-buyer` для деплоя
+- **Deploy-ветки:** изменения распространены на `web-seller` (коммит `64c5971`) и `web-buyer` (коммит `9c67af7`) и запушены — деплой Railway запустится автоматически
 
 ---
 
