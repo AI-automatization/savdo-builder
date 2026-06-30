@@ -1,5 +1,24 @@
 # Done — Азим + Полат
 
+## 2026-06-30 (Азим) — ONBOARDING-AUDIT-AZIM-001 закрыт
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] Фиксы онбординга + auth
+- **Важность:** 🔴 (P0 — блокировало регистрацию продавцов с кириллическими названиями)
+- **Дата:** 30.06.2026
+- **Коммит:** `7d8e16b` (feat/seller-landing)
+- **Файлы:**
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+  - `apps/web-seller/src/app/(auth)/login/page.tsx`
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx`
+- **Что сделано:**
+  - **P0-1** `toSlug()`: добавлена транслитерация кириллицы (CYRILLIC map) — «Электро Маркет» → `elektro-market` вместо пустой строки / API 400
+  - **P0-2** OtpGate (web-buyer): на шаге `code` показывается подсказка «Не пришёл код? Откройте @maxsavdo_bot и нажмите Start»
+  - **P1-1** login/page.tsx: добавлен hint «Впервые здесь? Просто введите номер — аккаунт создастся автоматически»; исправлен ботнейм `@savdo_builderBOT` → `@maxsavdo_bot`
+  - **P1-2** Step2 онбординга: убрано дублирующее поле `telegramContactLink`, теперь генерируется автоматически из `telegramUsername` (`https://t.me/<username>`)
+- **Примечание:** коммит на `feat/seller-landing`, нужно смержить/cherry-pick в `web-seller` + `web-buyer` для деплоя
+
+---
+
 ## 2026-06-14 (Азим) — Бизнес-решения §15 + §12 закрыты
 
 ### ✅ [BIZ-DECISIONS-§15] Закрыты все открытые решения бизнес-модели и биллинг-спеки
@@ -7193,3 +7212,87 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - 130 → **330 cases (+154%)**
   - 8 → **26 spec files (+225%)**
   - Покрыты все P0/P1 critical use-cases из аудита: финансы (cart/checkout/order/refund), auth (OTP/JWT), state machines (order/product), moderation (suspend/approve/reject/archive/unapprove), admin management (privileges), broadcasts (rate-limit/dedup), seller verification.
+
+---
+
+## 2026-06-30 (Азим) — Billing UI + Landing audit + Railway deploy
+
+### ✅ [BILLING-MACHINE-001 / FRONT] Billing UI — баннеры подписки + страница тарифов
+
+- **Важность:** 🔴 P0 (фронт-часть BILLING-MACHINE-001)
+- **Дата:** 30.06.2026
+- **Коммит:** `fa224a2` (ветка `web-seller`)
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — баннеры TRIAL / PAST_DUE / SUSPENDED, read-only overlay
+  - `apps/web-seller/src/app/(dashboard)/pricing/page.tsx` — страница тарифов (STARTER/PRO/BUSINESS), upgrade modal с Telegram-deeplink
+  - `apps/web-seller/src/hooks/use-subscription.ts` — хук подписки (mock data, ждёт API Полата)
+  - `apps/web-seller/src/lib/api/subscription.api.ts` — API-заглушка подписки
+  - `apps/web-seller/src/lib/i18n/ru.ts` + `uz.ts` — ключи billing.*
+- **Что сделано:**
+  - TRIAL ≤7 дней → золотой баннер «осталось N дней»
+  - PAST_DUE → янтарный баннер «оплатите подписку»
+  - SUSPENDED → красный баннер + read-only overlay на дашборде (pointer-events: none)
+  - `/pricing` добавлен в nav; страница показывает 3 тира с CTA → Telegram-менеджер
+  - Фронт-часть готова, API (`/seller/subscription`) ждёт Полата
+
+---
+
+### ✅ [LANDING-MOCK-PHONE-I18N] Mock-phone лендинга — raw i18n-ключи исправлены
+
+- **Важность:** 🟡 P1 (визуальный дефект)
+- **Дата:** 30.06.2026
+- **Коммит:** `fa224a2` (ветка `web-seller`)
+- **Файлы:** `apps/web-seller/src/lib/i18n/ru.ts`, `apps/web-seller/src/lib/i18n/uz.ts`
+- **Что сделано:** Добавлены недостающие i18n-ключи для mock-телефона (`phone.*`) на обоих языках.
+  До фикса компонент показывал строки вида `"phone.store"` вместо настоящих значений.
+
+---
+
+### ✅ [LANDING-I18NPROVIDER-FIX] I18nProvider default locale + реалистичные товары
+
+- **Важность:** 🟡 P1
+- **Дата:** 30.06.2026
+- **Коммит:** `c6235a6` (ветка `feat/seller-landing`)
+- **Файлы:**
+  - `apps/web-seller/src/app/page.tsx` — серверный компонент лендинга
+  - `apps/web-seller/src/components/landing/PhoneMockup.tsx` (или аналог) — реалистичные названия товаров
+- **Что сделано:** Исправлен `I18nProvider` — locale теперь передаётся с сервера через `getServerLocale()`.
+  Mock-товары заменены на реалистичные узбекские названия с правильными ценами.
+
+---
+
+### ✅ [LANDING-AUDIT-001] Полный аудит лендинга — 5 багов найдено и исправлено
+
+- **Важность:** 🔴 P0 (TS-сборка + старый бот)
+- **Дата:** 30.06.2026
+- **Коммит:** `ac0c525` (ветка `feat/seller-landing`)
+- **Файлы:**
+  - `apps/web-seller/src/lib/landing/analytics.ts`
+  - `apps/web-seller/src/lib/landing/demo-store.ts`
+  - `apps/web-seller/src/components/landing/LandingFooter.tsx`
+  - `apps/web-seller/.env.example`
+  - `apps/web-seller/src/lib/i18n/uz.ts`
+- **Что сделано (5 багов):**
+  1. **TS build error** — `'demo_tma_opened'` отсутствовало в `LandingEvent` union type → добавлено в `analytics.ts:4`
+  2. **Старый бот в footer** — `@savdo_builderBOT` → `@maxsavdo_bot` в `LandingFooter.tsx:34` (кнопка связи в подвале)
+  3. **Старый бот в demo-store** — fallback `'savdo_builderBOT'` → `'maxsavdo_bot'` в `demo-store.ts:4` (кнопка «Открыть в Telegram» в Hero)
+  4. **Старый бот в env.example** — `NEXT_PUBLIC_TG_BOT_USERNAME=maxsavdo_bot` исправлено
+  5. **Unicode encoding bug в uz.ts** — строки 14-15 использовали U+2018/U+2019 (типографские кавычки) как **разделители TypeScript-строк** вместо ASCII `'` (U+0027) → `TS1127: Invalid character` на нескольких строках. Причина: скорее всего вставка из rich-text редактора. Исправлено Node.js-скриптом (line 14 переведена на double-quote для значения с апострофами).
+- **Частично закрывает:** `OTP-BOT-MISMATCH-001` (фронт-часть landing; api-часть — Полат)
+
+---
+
+### ✅ [LANDING-DEPLOY-MERGE] Merge feat/seller-landing → deploy/seller-landing + push в Railway
+
+- **Важность:** 🔴 P0 (Railway деплой лендинга)
+- **Дата:** 30.06.2026
+- **Коммит:** `6091676` (ветка `deploy/seller-landing`)
+- **Файлы:** merge commit (13 конфликтов разрешено)
+- **Что сделано:**
+  - `feat/seller-landing` (все audit-фиксы) смержен в `deploy/seller-landing`
+  - 13 файлов конфликтовали: landing-файлы → `--theirs` (feat/seller-landing новее), dashboard-файлы (`products/[id]/edit`, `dashboard/page.tsx`) → `--ours` (deploy/seller-landing полнее)
+  - Ветка запушена в origin → Railway `landing`-сервис подхватит при следующем деплое
+  - **Блокер:** Railway subscription past due → деплой заморожен. Как только оплатят — изменения появятся автоматически.
+- **Ветки:**
+  - `web-seller` → Railway `savdo-builder-sl` ✅ задеплоено (`fa224a2`)
+  - `deploy/seller-landing` → Railway `landing` ⏳ ждёт оплаты Railway
