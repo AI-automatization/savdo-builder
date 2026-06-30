@@ -423,6 +423,7 @@ export const ru: Translations = {
   'auth.signIn': 'Войти',
   'auth.changePhone': 'Изменить номер',
   'auth.phoneAriaLabel': 'Телефон',
+  'auth.botHint': 'Не пришёл код? Откройте @maxsavdo_bot в Telegram и нажмите Start',
 
   // theme — theme-toggle labels
   'theme.enableLight': 'Включить светлую тему',

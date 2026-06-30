@@ -136,6 +136,9 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
               >
                 {t('auth.changePhone')}
               </button>
+              <p className="text-xs text-center px-2 py-1.5 rounded" style={{ background: colors.surfaceMuted, color: colors.textDim }}>
+                {t('auth.botHint')}
+              </p>
             </>
           )}
           {error && <p className="text-xs text-center" style={{ color: colors.danger }}>{error}</p>}

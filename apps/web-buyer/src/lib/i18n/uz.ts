@@ -421,6 +421,7 @@ export const uz: Translations = {
   'auth.signIn': 'Kirish',
   'auth.changePhone': 'Raqamni oʻzgartirish',
   'auth.phoneAriaLabel': 'Telefon',
+  'auth.botHint': 'Kod kelmadimi? Telegramda @maxsavdo_bot ni oching va Start tugmasini bosing',
 
   // theme — theme-toggle labels
   'theme.enableLight': 'Yorugʻ mavzuni yoqish',
