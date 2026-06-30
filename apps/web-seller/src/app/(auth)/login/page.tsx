@@ -81,8 +81,11 @@ export default function LoginPage() {
           {step === "phone" ? (
             <>
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>{t('auth.loginTitle')}</h2>
-              <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
+              <p className="text-sm mb-2" style={{ color: colors.textMuted }}>
                 {t('auth.loginSubtitle')}
+              </p>
+              <p className="text-xs mb-5" style={{ color: colors.textDim }}>
+                {t('auth.newUserHint')}
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>

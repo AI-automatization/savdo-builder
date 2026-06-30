@@ -29,6 +29,7 @@ export const uz: Translations = {
   'auth.verifying': 'Tekshirilmoqda...',
   'auth.loginButton': 'Kirish',
   'auth.startBotHint': "Kod kelmadimi? Telegramda @maxsavdo_bot ni oching va Start tugmasini bosing",
+  'auth.newUserHint': "Birinchi marta? Faqat raqamingizni kiriting — hisob avtomatik yaratiladi",
   'auth.codeNotReceived': 'Kod kelmadimi?',
   'auth.resendCode': 'Qayta yuborish',
   // onboarding

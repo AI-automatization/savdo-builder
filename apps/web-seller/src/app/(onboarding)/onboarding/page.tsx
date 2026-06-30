@@ -210,7 +210,6 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
 interface Step2Data {
   telegramUsername: string;
   city: string;
-  telegramContactLink: string;
 }
 
 function Step2({
@@ -261,25 +260,6 @@ function Step2({
         <FieldError message={errors.telegramUsername?.message} />
       </div>
 
-      <div>
-        <Label required>{t('onboarding.telegramLinkLabel')}</Label>
-        <input
-          className="focus:outline-none"
-          style={inputStyle}
-          placeholder="https://t.me/texnoshop"
-          {...register('telegramContactLink', {
-            required: t('onboarding.telegramLinkRequired'),
-            pattern: {
-              value: /^https:\/\/t\.me\/.+/,
-              message: t('onboarding.telegramLinkPattern'),
-            },
-          })}
-        />
-        <FieldError message={errors.telegramContactLink?.message} />
-        <p className="mt-1 text-xs" style={{ color: colors.textDim }}>
-          {t('onboarding.telegramLinkHint')}
-        </p>
-      </div>
 
       <div>
         <Label required>{t('onboarding.cityLabel')}</Label>
@@ -453,9 +433,9 @@ export default function OnboardingPage() {
     }
 
     // Normalise telegram username
-    const telegramUsername = data.telegramUsername.startsWith('@')
-      ? data.telegramUsername
-      : `@${data.telegramUsername}`;
+    const rawUsername = data.telegramUsername.replace(/^@/, '');
+    const telegramUsername = `@${rawUsername}`;
+    const telegramContactLink = `https://t.me/${rawUsername}`;
 
     // Магазин создаём ПЕРВЫМ и отдельно. Раньше createStore + updateProfile шли
     // в Promise.all — при сбое профиля магазин уже создан, а retry падал дублем
@@ -466,7 +446,7 @@ export default function OnboardingPage() {
         name:                step1Data.name,
         slug:                step1Data.slug,
         city:                data.city,
-        telegramContactLink: data.telegramContactLink,
+        telegramContactLink,
       });
     } catch {
       setError(t('onboarding.errorCreateStore'));

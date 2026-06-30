@@ -31,6 +31,7 @@ export const ru: Translations = {
   'auth.verifying': 'Проверка...',
   'auth.loginButton': 'Войти',
   'auth.startBotHint': 'Не получили код? Откройте @maxsavdo_bot в Telegram и нажмите Старт',
+  'auth.newUserHint': 'Впервые здесь? Просто введите номер — аккаунт создастся автоматически',
   'auth.codeNotReceived': 'Не пришёл код?',
   'auth.resendCode': 'Отправить снова',
   // onboarding — онбординг и создание магазина
