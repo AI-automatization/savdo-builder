@@ -84,8 +84,11 @@ export default function LoginPage() {
           {step === "phone" ? (
             <>
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Войти</h2>
-              <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
+              <p className="text-sm mb-1" style={{ color: colors.textMuted }}>
                 Введите номер телефона — отправим код
+              </p>
+              <p className="text-xs mb-5" style={{ color: colors.textDim }}>
+                Впервые здесь? Просто введите номер — аккаунт создастся автоматически
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>
@@ -129,7 +132,7 @@ export default function LoginPage() {
 
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Введите код</h2>
               <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
-                Код отправлен в Telegram-бот @savdo_builderBOT
+                Код отправлен в Telegram-бот @maxsavdo_bot
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>

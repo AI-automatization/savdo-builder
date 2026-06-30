@@ -120,6 +120,18 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
               >
                 Изменить номер
               </button>
+              <p className="text-xs text-center" style={{ color: colors.textDim }}>
+                Не пришёл код? Откройте{' '}
+                <a
+                  href="https://t.me/maxsavdo_bot"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: colors.accent }}
+                >
+                  @maxsavdo_bot
+                </a>{' '}
+                и нажмите Start
+              </p>
             </>
           )}
           {error && <p className="text-xs text-center" style={{ color: colors.danger }}>{error}</p>}
