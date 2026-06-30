@@ -140,6 +140,18 @@ export const ru: Translations = {
   'userDetail.activateSellerSuccess': 'Продавец активирован на рынке',
   'userDetail.activateSellerRequired': 'Заполните все обязательные поля',
 
+  // HYBRID-4: смена дефолтного контекста (роли). Non-destructive.
+  'userDetail.changeRole': 'Сменить роль',
+  'userDetail.changeRoleToSeller': 'Сделать продавцом',
+  'userDetail.changeRoleToBuyer': 'Сделать покупателем',
+  'userDetail.changeRoleTitle': 'Сменить роль пользователя',
+  'userDetail.changeRoleToSellerDesc': 'Дефолтный контекст станет «продавец». Профиль покупателя и данные сохраняются — аккаунт по-прежнему сможет покупать.',
+  'userDetail.changeRoleToBuyerDesc': 'Дефолтный контекст станет «покупатель». Профиль продавца и магазин сохраняются — аккаунт по-прежнему сможет продавать.',
+  'userDetail.changeRoleReasonPlaceholder': 'Причина (необязательно)',
+  'userDetail.changeRoleSubmit': 'Сменить',
+  'userDetail.changeRoleSubmitting': 'Смена...',
+  'userDetail.changeRoleSuccess': 'Роль изменена',
+
   // ── Theme ─────────────────────────────────────────────────────────────
   'theme.light': 'Светлая тема',
   'theme.dark': 'Тёмная тема',

@@ -15,23 +15,33 @@
 - `alert()`→toast на «Создать товар» (убрал блокирующий диалог).
 - Проверено: `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` уже исправлен (лог обновлён); BUG-TMA-1 «.» — не баг (TG-имя аккаунта).
 
-### 🤝 ТРЕБУЕТ РЕШЕНИЯ КОМАНДЫ/OWNER (не делать без ответа)
-1. **[DECISION-ROLE-MODEL]** Может ли аккаунт быть seller И buyer одновременно? Единый источник
-   истины роли? Сейчас рассинхрон: TMA → `users.role`, бот → наличие seller-профиля
-   (`ROLE-SOURCE-INCONSISTENCY-001` в logs). Блокирует пункт 2.
-2. **[DECISION-ROLE-CHANGE-UI]** Строить ли в админке смену роли (UI + `PATCH /admin/users/:id/role`)?
-   Политика side-effects при SELLER→BUYER (магазин/заказы)? Сейчас только raw `/database`
-   (`ADMIN-NO-ROLE-CHANGE-UI-001`). Зависит от п.1.
-3. **[DECISION-ADMIN-CREATE-PRODUCT]** Нужен ли POST /admin/products? Для какого магазина, форма?
-   (`ADMIN-PRODUCTS-NO-CREATE-ENDPOINT`, сейчас заглушка-toast).
+### ✅ РЕШЕНИЯ ПРИНЯТЫ (30.06.2026, Полат)
+1. **[DECISION-ROLE-MODEL] → ГИБРИД.** Аккаунт может и продавать, и покупать. `role` = АКТИВНЫЙ
+   КОНТЕКСТ (дефолт при входе), способности (canSell/canBuy) выводятся из наличия профилей
+   (Buyer? у всех; Seller?+store → canSell). Guards не меняются (проверяют активный контекст).
+   ADR: `D:/Obsidian Vault/PROJECTS/savdo-builder/decisions/2026-06-30--role-.md`.
+2. **[DECISION-ROLE-CHANGE-UI] → ДА, сделано (HYBRID-4).** Side-effects: NON-DESTRUCTIVE
+   (профили/магазин сохраняются — в гибриде обе способности сосуществуют). См. done.md.
+3. **[DECISION-ADMIN-CREATE-PRODUCT] → НЕ СЕЙЧАС.** Товары создаёт продавец в TMA; админ-создание
+   тянет атрибуцию к магазину + пересмотр модерации. Оставлена toast-заглушка. Низкий приоритет.
+
+### 🔵 [HYBRID] Фаза 2 — переключение контекста (готов взять, зона Полата api/tma)
+- **HYBRID-1** [api] `POST /auth/switch-context` — ре-выдача access token с запрошенным контекстом,
+  если есть способность (SELLER ⇒ нужен store). Ставит `storeId` claim.
+- **HYBRID-2** [tma] Тоггл «Продавец/Покупатель» (виден если есть обе способности); seller заблокирован без store.
+- **HYBRID-3** [api/bot] Выровнять меню бота под TMA (дефолт по `users.role`, обе кнопки если обе способности).
+  Закрывает `ROLE-SOURCE-INCONSISTENCY-001`. Сейчас бот решает по наличию seller-профиля
+  (`telegram-demo.handler.ts:98,136,164`), TMA — по `users.role` (`telegram-auth.use-case.ts:187,198`).
+- **HYBRID-5** [api] Реконсиляция доступности seller-контекста при создании/удалении store.
+- **HYBRID-6** [types] `me` отдаёт `capabilities {canSell,canBuy,hasStore}` для UI-тоггла.
+- Схема (`packages/db`) — миграция НЕ нужна (Buyer?+Seller? уже сосуществуют, Seller.store? nullable).
+
+### 🤝 ОСТАЁТСЯ OWNER/КОМАНДА
 4. **[OWNER] 🔴 INFRA-RAILWAY-PAST-DUE-001** — оплатить подписку Railway (риск отключения прода).
 5. **[DECISION-TEST-DATA]** Чистить тестовые товары с протухшими фото (BUG-TMA-2) или забить?
 
-### ⏭ Готов взять сразу после решения
-- После п.1 → role-change UI + endpoint (п.2, зона Полата). После п.3 → POST /admin/products + форма.
-
-### 🟡 Мелочь
-- `apps/admin` tsc падает на `TS2688 vitest/globals` (битый install/версия, не код; не блокирует Vite-build).
+### ✅ Закрытая мелочь
+- ~~`apps/admin` tsc TS2688 vitest/globals~~ → исправлено (`pnpm install`, vitest восстановлен). 30.06.
 
 ---
 

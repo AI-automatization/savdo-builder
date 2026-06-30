@@ -1,5 +1,32 @@
 # Done — Азим + Полат
 
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 1 + vitest fix
+
+### ✅ [HYBRID-4] Смена роли (дефолтного контекста) из админки
+- **Важность:** 🟡
+- **Дата:** 30.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/dto/change-user-role.dto.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/change-user-role.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin-users.controller.ts` (PATCH `:id/role`)
+  - `apps/api/src/modules/admin/admin.module.ts` (DI)
+  - `apps/admin/src/pages/UserDetailPage.tsx` (кнопка + модал)
+  - `apps/admin/src/lib/i18n/{ru,uz}.ts` (ключи changeRole*)
+- **Что сделано:** `PATCH /api/v1/admin/users/:id/role` (BUYER|SELLER, `user:update`, audit_log,
+  self-guard). NON-DESTRUCTIVE по ADR гибридной модели: смена дефолтного контекста не
+  трогает профили/магазин. SELLER требует наличие seller-профиля (иначе 400 — для нового
+  продавца есть «Активировать продавца»). BUYER гарантирует buyer-профиль (upsert).
+  В UI кнопка «Сделать продавцом/покупателем» в ActionPanel (не-админ, не-blocked) + модал
+  с описанием последствий и опц. причиной. Закрывает `ADMIN-NO-ROLE-CHANGE-UI-001`.
+  Раньше роль менялась только сырым `/database`. api+admin tsc чистые.
+
+### ✅ [INFRA-VITEST-MISSING] apps/admin tsc падал на TS2688 vitest/globals
+- **Важность:** 🟢
+- **Дата:** 30.06.2026
+- **Что сделано:** `vitest@2.1.8` не был установлен (отсутствовал `globals.d.ts`) → tsconfig
+  `types:["vitest/globals"]` ронял `tsc --noEmit`. `pnpm install --frozen-lockfile` восстановил
+  из lockfile (без изменений lock). tsc admin теперь EXIT 0. Это была «мелочь» из чекпоинта 29.06.
+
 ## 2026-06-29 (Полат) — Live-аудит админки + фиксы (orchestrator-сессия)
 
 ### ✅ [STRESS-DOS-001] Явный лимит body-parser (DoS hardening)

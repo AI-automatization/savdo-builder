@@ -140,6 +140,18 @@ export const uz: Translations = {
   'userDetail.activateSellerSuccess': 'Sotuvchi bozorda faollashtirildi',
   'userDetail.activateSellerRequired': 'Barcha majburiy maydonlarni toʻldiring',
 
+  // HYBRID-4: standart kontekstni (rolni) almashtirish. Non-destructive.
+  'userDetail.changeRole': 'Rolni almashtirish',
+  'userDetail.changeRoleToSeller': 'Sotuvchi qilish',
+  'userDetail.changeRoleToBuyer': 'Xaridor qilish',
+  'userDetail.changeRoleTitle': 'Foydalanuvchi rolini almashtirish',
+  'userDetail.changeRoleToSellerDesc': 'Standart kontekst «sotuvchi» boʻladi. Xaridor profili va maʼlumotlari saqlanadi — hisob baribir xarid qila oladi.',
+  'userDetail.changeRoleToBuyerDesc': 'Standart kontekst «xaridor» boʻladi. Sotuvchi profili va doʻkon saqlanadi — hisob baribir sota oladi.',
+  'userDetail.changeRoleReasonPlaceholder': 'Sabab (ixtiyoriy)',
+  'userDetail.changeRoleSubmit': 'Almashtirish',
+  'userDetail.changeRoleSubmitting': 'Almashtirilmoqda...',
+  'userDetail.changeRoleSuccess': 'Rol oʻzgartirildi',
+
   // ── Theme ─────────────────────────────────────────────────────────────
   'theme.light': 'Yorugʻ mavzu',
   'theme.dark': 'Qorongʻu mavzu',

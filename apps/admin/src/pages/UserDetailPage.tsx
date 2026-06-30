@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye, Rocket } from 'lucide-react'
+import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye, Rocket, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
@@ -69,6 +69,11 @@ export default function UserDetailPage() {
   // ADMIN-MANUAL-ACTIVATION-UI-001: ручная активация продавца на рынке.
   const [activateModal, setActivateModal] = useState(false)
   const [activating, setActivating] = useState(false)
+
+  // HYBRID-4: смена дефолтного контекста (роли). Non-destructive.
+  const [roleModal, setRoleModal] = useState(false)
+  const [roleReason, setRoleReason] = useState('')
+  const [roleLoading, setRoleLoading] = useState(false)
   const [activateForm, setActivateForm] = useState({
     fullName: '',
     sellerType: 'individual' as 'individual' | 'business',
@@ -186,6 +191,28 @@ export default function UserDetailPage() {
     }
   }
 
+  // HYBRID-4: смена дефолтного контекста. target вычисляется как противоположный
+  // текущей роли. Backend non-destructive: профили/магазин сохраняются.
+  async function changeRole(target: 'BUYER' | 'SELLER') {
+    if (!id) return
+    setRoleLoading(true)
+    setActionError(null)
+    try {
+      await api.patch(`/api/v1/admin/users/${id}/role`, {
+        role: target,
+        ...(roleReason.trim() ? { reason: roleReason.trim() } : {}),
+      })
+      toast.success(t('userDetail.changeRoleSuccess'))
+      setRoleModal(false)
+      setRoleReason('')
+      refetch()
+    } catch (e: any) {
+      setActionError(e.message ?? t('common.error'))
+    } finally {
+      setRoleLoading(false)
+    }
+  }
+
   if (loading) {
     return <div className="p-8 text-[14px]" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
   }
@@ -202,6 +229,15 @@ export default function UserDetailPage() {
 
   const roleCfg = ROLE_CFG[user.role] ?? ROLE_CFG.BUYER
   const isBlocked = user.status === 'BLOCKED'
+
+  // HYBRID-4: тоггл роли доступен не-админам. SELLER → можно вернуть в BUYER
+  // всегда (non-destructive). BUYER → в SELLER только если seller-профиль уже
+  // есть (без него backend отклонит; для создания нового продавца есть
+  // отдельная кнопка «Активировать продавца»).
+  const roleTarget: 'BUYER' | 'SELLER' = user.role === 'SELLER' ? 'BUYER' : 'SELLER'
+  const canToggleRole =
+    !user.admin &&
+    (user.role === 'SELLER' || (user.role === 'BUYER' && !!user.seller))
 
   return (
     <div className="px-8 pt-8 pb-12 min-h-screen">
@@ -409,6 +445,22 @@ export default function UserDetailPage() {
               }}
             >
               <Rocket size={14} /> {t('userDetail.activateSeller')}
+            </button>
+          )}
+
+          {/* HYBRID-4: смена дефолтного контекста (роли) */}
+          {canToggleRole && !isBlocked && (
+            <button
+              onClick={() => { setRoleReason(''); setActionError(null); setRoleModal(true) }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[14px] font-semibold"
+              style={{
+                border: '1px solid rgba(129,140,248,0.3)',
+                background: 'rgba(129,140,248,0.08)',
+                color: '#818CF8',
+                cursor: 'pointer',
+              }}
+            >
+              <Repeat size={14} /> {roleTarget === 'SELLER' ? t('userDetail.changeRoleToSeller') : t('userDetail.changeRoleToBuyer')}
             </button>
           )}
         </ActionPanel>
@@ -686,6 +738,56 @@ export default function UserDetailPage() {
               }}
             >
               {activating ? t('userDetail.activateSellerSubmitting') : t('userDetail.activateSellerSubmit')}
+            </button>
+          </div>
+        </DialogShell>
+      )}
+
+      {/* Change Role Modal — HYBRID-4 (non-destructive смена дефолтного контекста) */}
+      {roleModal && (
+        <DialogShell
+          onClose={() => !roleLoading && setRoleModal(false)}
+          width={440}
+          ariaLabelledBy="role-modal-title"
+          closeOnBackdrop={!roleLoading}
+          closeOnEscape={!roleLoading}
+        >
+          <h3 id="role-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: 'var(--text)' }}>
+            {t('userDetail.changeRoleTitle')}
+          </h3>
+          <p className="m-0 mb-4 text-[13px]" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {roleTarget === 'SELLER' ? t('userDetail.changeRoleToSellerDesc') : t('userDetail.changeRoleToBuyerDesc')}
+          </p>
+          <textarea
+            value={roleReason}
+            onChange={e => setRoleReason(e.target.value)}
+            placeholder={t('userDetail.changeRoleReasonPlaceholder')}
+            rows={2}
+            className="w-full px-3.5 py-3 rounded-xl text-[14px] resize-y outline-none"
+            style={{
+              background: 'var(--surface2)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
+          />
+          <div className="flex gap-2.5 justify-end mt-4">
+            <button
+              onClick={() => setRoleModal(false)}
+              disabled={roleLoading}
+              className="px-5 py-2.5 rounded-xl text-[14px]"
+              style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: roleLoading ? 'not-allowed' : 'pointer' }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={() => changeRole(roleTarget)}
+              disabled={roleLoading}
+              className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+              style={{ border: 'none', background: '#818CF8', color: 'white', cursor: roleLoading ? 'wait' : 'pointer', opacity: roleLoading ? 0.6 : 1 }}
+            >
+              {roleLoading ? t('userDetail.changeRoleSubmitting') : t('userDetail.changeRoleSubmit')}
             </button>
           </div>
         </DialogShell>
