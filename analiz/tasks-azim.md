@@ -20,16 +20,16 @@
 
 ---
 
-## 🆕 02.06.2026 — бизнес+маркетинг теперь зона Азима (не код)
+## 🆕 02.06.2026 — бизнес+маркетинг: зоны уточнены (обновлено 25.06.2026)
 
-> Зафиксировано 02.06: бизнес-модель, монетизация, маркетинг, GTM — целиком Азим.
-> Мастер-роадмап: `docs/business/roadmap-to-production-2026-06-02.md`. Порядок ниже = приоритет.
+> Азим: бизнес-модель, монетизация, ценообразование + фронт (web-buyer/web-seller).
+> Юсуф (с 25.06.2026): маркетинг, контент, GTM, продажи — главный по продвижению, не кодит.
+> Мастер-роадмап: `docs/business/roadmap-to-production-2026-06-02.md`.
 
 - [x] **[BIZ-DECISIONS-§15]** ✅ Закрыто 14.06.2026 — все 16 решений зафиксированы в §15 business-model-v2 и §12 billing-spec.
-- [ ] **[BILLING-FRONT]** После Subscription-DTO Полата: suspended-states (баннеры trial/past_due,
-  dashboard read-only, «магазин недоступен» в buyer) + pricing-страница + выбор тарифа в onboarding.
-- [ ] **[MARKETING-CHANNELS]** Завести Instagram @maxsavdo + Telegram-канал @maxsavdo (контент-план §9.2).
-- [ ] **[GTM-OUTREACH-LIST]** Собрать 80–120 контактов продавцов в приватный Google Sheet (НЕ в репо).
+- [x] **[BILLING-FRONT]** ✅ Закрыто 25.06.2026 — баннеры trial/past_due/suspended, pricing-страница с реальным API, upgrade modal.
+- [ ] **[MARKETING-CHANNELS]** → **Юсуф** (lead). Завести Instagram @maxsavdo + Telegram-канал @maxsavdo (контент-план §9.2).
+- [ ] **[GTM-OUTREACH-LIST]** → **Юсуф + Азим**. Собрать 80–120 контактов продавцов в приватный Google Sheet (НЕ в репо).
   Сверить UZ-скрипты нативно (`gtm-phase-a`).
 
 ---

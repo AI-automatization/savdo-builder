@@ -11,12 +11,14 @@ import { useLogout } from "../../hooks/use-auth";
 import { useUnreadCount } from "../../hooks/use-notifications";
 import { useUnreadChatCount } from "../../hooks/use-chat";
 import { useSellerOrders } from "../../hooks/use-orders";
+import { useSubscription } from "../../hooks/use-subscription";
 import { OrderStatus } from "@/lib/enums";
 import { ShoppingCart } from "lucide-react";
 import { colors, shell, shellTop } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { buyerHostDisplay, buyerStoreDisplay, buyerStoreUrl } from "@/lib/buyer-url";
 import { useTranslation } from "@/lib/i18n";
+import { warningTint, dangerTint } from "@/lib/styles";
 import { MaxsavdoLogo } from "@/components/brand/MaxsavdoLogo";
 
 // ── Nav item definitions (icons only — labels resolved via t() in component) ──
@@ -46,6 +48,11 @@ const NAV_ITEMS = [
     href: "/analytics",
     key:  "nav.analytics",
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>,
+  },
+  {
+    href: "/pricing",
+    key:  "nav.pricing",
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" /></svg>,
   },
   {
     href: "/settings",
@@ -189,6 +196,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isAuthenticated } = useAuth();
   const { data: store, isLoading: storeLoading, error: storeError } = useStore({ enabled: user?.role === 'SELLER' });
   const { toasts } = useSellerSocket();
+  const { data: subscription } = useSubscription();
   const { data: unreadCount = 0 } = useUnreadCount();
   const unreadChatCount = useUnreadChatCount();
   const { data: pendingOrders } = useSellerOrders({ status: OrderStatus.PENDING });
@@ -324,8 +332,65 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
+        {/* Subscription status banners */}
+        {subscription?.status === 'TRIAL' && subscription.daysLeft != null && subscription.daysLeft <= 7 && (
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+            style={{ background: colors.accentMuted, borderBottom: `1px solid ${colors.accentBorder}` }}
+          >
+            <span style={{ color: colors.accent }}>
+              {t('billing.trialBanner', { n: subscription.daysLeft })}
+            </span>
+            <Link href="/pricing" className="text-xs font-semibold whitespace-nowrap hover:opacity-80" style={{ color: colors.accent }}>
+              {t('billing.viewPlans')}
+            </Link>
+          </div>
+        )}
+        {subscription?.status === 'PAST_DUE' && (
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+            style={{ background: warningTint(0.12), borderBottom: `1px solid ${warningTint(0.30)}` }}
+          >
+            <span style={{ color: colors.warning }}>{t('billing.pastDueBanner')}</span>
+            <a
+              href="tg://resolve?domain=ismailov_0011"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold whitespace-nowrap hover:opacity-80"
+              style={{ color: colors.warning }}
+            >
+              {t('billing.writeManager')}
+            </a>
+          </div>
+        )}
+        {subscription?.status === 'SUSPENDED' && (
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+            style={{ background: dangerTint(0.12), borderBottom: `1px solid ${dangerTint(0.25)}` }}
+          >
+            <span style={{ color: colors.danger }}>{t('billing.suspendedBanner')}</span>
+            <a
+              href="tg://resolve?domain=ismailov_0011"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold whitespace-nowrap hover:opacity-80"
+              style={{ color: colors.danger }}
+            >
+              {t('billing.writeManager')}
+            </a>
+          </div>
+        )}
+
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6" style={{ background: colors.bg }}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 relative" style={{ background: colors.bg }}>
+          {/* Suspended read-only overlay */}
+          {subscription?.status === 'SUSPENDED' && (
+            <div
+              className="absolute inset-0 pointer-events-auto"
+              style={{ background: dangerTint(0.04), zIndex: 10 }}
+              aria-hidden="true"
+            />
+          )}
           {children}
         </main>
       </div>

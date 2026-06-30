@@ -60,18 +60,20 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 ---
 
 ## Команда и зоны ответственности
-| Разработчик | Домен | Нельзя трогать |
-|------------|-------|----------------|
+| Участник | Домен | Нельзя трогать |
+|---------|-------|----------------|
 | Полат | `apps/api`, `apps/admin`, `packages/db`, `packages/types`, `apps/mobile-buyer`, `apps/mobile-seller` | `apps/web-*` |
 | Азим | `apps/web-buyer`, `apps/web-seller` | `apps/api`, `packages/db`, `apps/admin`, `apps/mobile-*` |
+| Юсуф | Маркетинг, контент, GTM, продажи (не кодит) | Весь код |
 | ~~Яхьо~~ | ~~`apps/admin`~~ | — (admin перешёл к Полату, 01.04.2026) |
 
-**packages/db** — только Полатр. Остальные сообщают о проблемах, не правят.
-**packages/types** — Полатр пишет, остальные только читают.
+**packages/db** — только Полат. Остальные сообщают о проблемах, не правят.
+**packages/types** — Полат пишет, остальные только читают.
 **packages/ui** — все могут добавлять компоненты.
 **apps/mobile-*** — заморожены до Phase 3.
 
-**Бизнес-модель, монетизация, ценообразование, маркетинг, GTM, контент, продажи — Азим** (с 02.06.2026).
+**Маркетинг, GTM, контент, продажи — Юсуф** (с 25.06.2026), Азим участвует как второй.
+**Бизнес-модель, монетизация, ценообразование — Азим** (с 02.06.2026).
 Полат — только инженерия/инфра (api/admin/db/types/tma + DevOps/биллинг-cron); бизнес-решения он больше
 не owns, только consult по техвыполнимости (напр. multi-store/INV-S01). Гибкость: правки в `apps/web-buyer`/
 `apps/web-seller` под бизнес-нужды делаем по ходу. Мастер-план: `docs/business/roadmap-to-production-2026-06-02.md`.
@@ -87,7 +89,7 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 | Завершённые задачи | `docs/done/[domain].md` |
 | API контракты (нужные endpoints) | `docs/contracts/` |
 | **Дизайн-система (UI)** | `docs/design/maxsavdo-design-v2.md` (liquid-authority.md — deprecated) |
-| **Бизнес-модель / монетизация / GTM / контент** (владелец Азим) | `docs/business/` — мастер `business-model-v2`, роадмап `roadmap-to-production`, контент-карта `completeness-map`, пилот `content/` |
+| **Бизнес-модель / монетизация** (Азим) · **GTM / контент** (Юсуф) | `docs/business/` — мастер `business-model-v2`, роадмап `roadmap-to-production`, контент-карта `completeness-map`, пилот `content/` |
 
 **Перед любой задачей** — прочитать релевантный файл из docs/V1.1/.
 **Перед любой UI-задачей** — прочитать `docs/design/maxsavdo-design-v2.md`.

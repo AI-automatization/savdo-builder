@@ -2,6 +2,93 @@
 
 ---
 
+## 2026-06-25 (Азим) — Итоги сессии (продолжение)
+
+### ✅ [PRICING-PAGE-002] Подключить реальный API к странице тарифов
+- **Важность:** 🔴
+- **Дата:** 25.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/lib/api/subscription.api.ts` (новый)
+  - `apps/web-seller/src/hooks/use-subscription.ts` (новый)
+  - `apps/web-seller/src/app/(dashboard)/pricing/page.tsx`
+  - `apps/web-seller/src/lib/i18n/ru.ts` (billing.* ключи)
+  - `apps/web-seller/src/lib/i18n/uz.ts` (billing.* ключи)
+- **Что сделано:** Создан `getSubscription()` (GET /api/v1/seller/subscription) и хук `useSubscription`. Страница тарифов переписана: реальный tier/status/daysLeft вместо хардкода «Free — бета». Баннеры TRIAL (daysLeft ≤ 7) и PAST_DUE на странице.
+
+### ✅ [BILLING-FRONTEND-UPGRADE-001] Upgrade modal Phase 1 — TG deeplink
+- **Важность:** 🔴
+- **Дата:** 25.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/pricing/page.tsx`
+- **Что сделано:** Кнопки «Перейти на Pro/Studio» активны для tier'ов выше текущего. По клику открывается modal-sheet с фичами, ценой и CTA «Написать менеджеру →» → `tg://resolve?domain=ismailov_0011&text=Хочу+перейти+на+{tier}.+Мой+магазин:+{slug}`.
+
+### ✅ [BILLING-FRONTEND-BANNERS-001] TRIAL/PAST_DUE баннеры в layout дашборда
+- **Важность:** 🟡
+- **Дата:** 25.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx`
+- **Что сделано:** Добавлен `useSubscription()` в layout. Три баннера над `<main>`: TRIAL (daysLeft ≤ 7, accent, ссылка → /pricing), PAST_DUE (amber, ссылка → менеджер), SUSPENDED (danger, ссылка → менеджер + прозрачный read-only overlay над контентом).
+
+---
+
+## 2026-06-25 (Азим) — Итоги сессии
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] toSlug() кириллица + OtpGate инструкция + UI тексты
+- **Важность:** 🟡
+- **Дата:** 25.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+  - `apps/web-seller/src/app/(auth)/login/page.tsx`
+  - `apps/web-seller/src/lib/i18n/ru.ts`
+  - `apps/web-seller/src/lib/i18n/uz.ts`
+- **Что сделано:**
+  1. **toSlug() кириллица** — добавлена таблица транслитерации `cyrillicToLatin` (а→a, б→b, … я→ya) + замена `[^\w\s-]` → `[^a-z0-9\s-]` и trim дефисов с краёв. «Красота и Стиль» → `krasota-i-stil`.
+  2. **OtpGate инструкция** — в OTP-шаге login/page.tsx добавлена плашка `auth.startBotHint` с инструкцией для первых пользователей: «Откройте @maxsavdo_bot и нажмите Старт».
+  3. **UI тексты** — `auth.loginSubtitle` уточнён (добавлено «в Telegram»); новый ключ `auth.startBotHint` добавлен в ru.ts и uz.ts.
+- **tsc:** exit 0 ✅
+
+---
+
+### ✅ [STORE-WITH-DELIVERY-CLEANUP-001] Удалён локальный тип StoreWithDelivery в settings
+- **Важность:** 🟢
+- **Дата:** 25.06.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/settings/page.tsx`
+- **Что сделано:** Полат добавил `deliverySettings?: StoreDeliverySettings` в канонический тип `Store` (`packages/types/src/api/stores.ts:29`). Локальный extension-тип `StoreWithDelivery` и каст `as StoreWithDelivery` удалены. Все `storeWithDelivery?.deliverySettings?.X` → `store?.deliverySettings?.X`.
+
+---
+
+### ✅ [WEB-010/011/012/013 VERIFY] Аудит Полата — все 4 проблемы уже исправлены
+- **Важность:** 🟡
+- **Дата:** 25.06.2026
+- **Файлы:** (только чтение, правки не нужны)
+- **Что сделано:** Проверил все 4 задачи из аудита Полата (10.04.2026):
+  - WEB-010 — OtpGate использует `purpose: 'checkout'` ✅
+  - WEB-011 — login page проверяет роль после входа ✅
+  - WEB-012 — middleware пускает BUYER на `/onboarding` ✅
+  - WEB-013 — `NEXT_PUBLIC_BUYER_URL` есть в `.env.example` ✅
+
+---
+
+### ✅ [SUBSCRIPTION-API-AUDIT] Аудит модуля подписок Полата
+- **Важность:** 🟡
+- **Дата:** 25.06.2026
+- **Файлы:** `packages/types/src/api/subscriptions.ts`, `apps/api/src/modules/subscriptions/`
+- **Что сделано:** Обнаружено что Полат полностью реализовал subscription module: `GET /api/v1/seller/subscription` возвращает `SubscriptionDto` (tier, status, daysLeft, trialEndsAt, plan.productsLimit). Auto-start TRIAL для новых sellers. Также: mark-paid, cancel, extend-trial, expiry-cron, backfill-trials. Это разблокирует BILLING-MACHINE фронт-часть Азима.
+
+---
+
+## 2026-06-25 (Азим) — PRICING-PAGE-001
+
+### ✅ [PRICING-PAGE-001] Страница тарифов в дашборде seller
+- **Важность:** 🟡
+- **Дата:** 25.06.2026
+- **Файлы:**
+  - `apps/web-seller/src/app/(dashboard)/layout.tsx` — добавлен nav item "Тарифы" с tag-иконкой
+  - `apps/web-seller/src/app/(dashboard)/pricing/page.tsx` — новая страница (создана)
+- **Что сделано:** Добавлен пункт "Тарифы" (nav.pricing) в сайдбар после "Аналитика". Страница показывает текущий план (Free — бета), три тира (Free/Pro/Studio) из существующих i18n-ключей, disabled-кнопки "Скоро" на платных тирах, note "Оплата через Click и Payme — скоро". Компонент Pricing из landing не переиспользован (зависит от useReveal/landingTrack — landing-specific хуки).
+
+---
+
 ## 2026-06-25 (Азим) — WEB-SELLER-AUTOMOTIVE-CLEANUP-001
 
 ### ✅ [WS-DESIGN-WAVE-7-DEFERRED] Последний оставшийся nit закрыт

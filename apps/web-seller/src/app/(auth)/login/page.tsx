@@ -125,8 +125,11 @@ export default function LoginPage() {
               </button>
 
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>{t('auth.enterCodeTitle')}</h2>
-              <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
+              <p className="text-sm mb-2" style={{ color: colors.textMuted }}>
                 {t('auth.codeSentToTelegram')}
+              </p>
+              <p className="text-xs mb-5 px-3 py-2 rounded-md" style={{ background: colors.surfaceMuted, color: colors.textDim }}>
+                {t('auth.startBotHint')}
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>
