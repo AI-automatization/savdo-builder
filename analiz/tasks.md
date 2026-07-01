@@ -5,6 +5,23 @@
 
 ---
 
+## 🟡 [DEMO-BUTTON-RAILWAY-001] Кнопка «Посмотреть демо-магазин» не работает без Railway
+
+- **Домен:** `apps/web-seller` (лендинг) + Railway env
+- **Кто берёт:** Азим
+- **Приоритет:** 🟡 P1 — кнопка ведёт на прод-URL buyer'а, не работает без оплаченного Railway
+- **Симптом:** кнопка на Hero-секции лендинга (`/`) открывает `https://maxsavdo.uz/azim-mnx4na25`
+  (прод web-buyer). Если Railway не оплачен — сайт недоступен.
+- **Root cause:** `NEXT_PUBLIC_BUYER_URL` не задан в Railway env для `web-seller` → фолбэк на `https://maxsavdo.uz` (`src/lib/buyer-url.ts:4`).
+- **Что сделать после оплаты Railway:**
+  1. Railway → сервис `web-seller` → Variables → добавить:
+     `NEXT_PUBLIC_BUYER_URL=https://savdo-builder-by-production.up.railway.app`
+  2. Редеплоить web-seller.
+- **Локальный воркэраунд (уже сделан 01.07.2026):** `apps/web-seller/.env.local` → `NEXT_PUBLIC_BUYER_URL=http://localhost:3002` + web-buyer запущен на 3002.
+- **Файлы:** `apps/web-seller/src/lib/buyer-url.ts`, `apps/web-seller/src/lib/landing/demo-store.ts`
+
+---
+
 ## 🔴 [OTP-BOT-MISMATCH-001] OTP-коды не приходят — несовпадение имени бота
 
 - **Домен:** `apps/api` (конфиг Telegram Bot) + `apps/web-seller` (UI текст)

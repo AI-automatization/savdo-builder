@@ -17,6 +17,8 @@ import { colors, shell, shellTop } from "@/lib/styles";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { buyerHostDisplay, buyerStoreDisplay, buyerStoreUrl } from "@/lib/buyer-url";
 import { MaxsavdoLogo } from "@/components/brand/MaxsavdoLogo";
+import { useSubscription } from "@/hooks/use-subscription";
+import { SubscriptionBanner, SuspendedOverlay } from "@/components/subscription/SubscriptionBanner";
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 
@@ -188,6 +190,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: pendingOrders } = useSellerOrders({ status: OrderStatus.PENDING });
   const pendingCount = pendingOrders?.meta.total ?? 0;
   const logoutMutation = useLogout();
+  const { data: subscription } = useSubscription();
+  const isSuspended = subscription?.status === 'SUSPENDED' || subscription?.status === 'CHURNED';
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -317,8 +321,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
+        {/* Subscription banner (TRIAL warning / PAST_DUE / SUSPENDED) */}
+        {subscription && <SubscriptionBanner subscription={subscription} />}
+
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6" style={{ background: colors.bg }}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 relative" style={{ background: colors.bg }}>
+          {isSuspended && <SuspendedOverlay />}
           {children}
         </main>
       </div>
