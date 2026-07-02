@@ -5,6 +5,75 @@
 
 ---
 
+> ✅ 02.07 закрыты (см. done.md): TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009,
+> TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
+> Все — код-комплит + tsc TMA EXIT 0. Осталась live-ретест-проверка на устройстве.
+
+## 🟡 [TMA-SETTINGS-GEAR-CRASH-013] Интермиттентный ErrorBoundary при открытии Настроек
+- **Домен:** apps/tma · **Кто взял:** Полат · **Приоритет:** 🟡 · **Статус:** НЕ фикшен (нужен стек)
+- **Что:** при открытии Настроек иногда ErrorBoundary «Что-то пошло не так» (воспроизвёлся 1/2),
+  предшествует форсированный ре-init мини-аппа. Сама шестерёнка (`StoresPage.tsx:209`) — обычный
+  client-side `navigate('/buyer/settings')`, reload не вызывает → вероятно артефакт форс-reload
+  iframe (Telegram Web/среда), обнаживший хрупкость при холодном старте (гонка auth/hydration).
+- **Почему не фикшен:** нужен реальный стек ошибки (read_console не работает в cross-origin iframe
+  аудита) — remote-debug на устройстве. Правка #012 попутно сделала SettingsPage null-safe по
+  capabilities (мог быть один из триггеров).
+- **След. шаг:** поймать стек через Telegram WebView remote debug / Sentry; обернуть подозрительные
+  мест в guard или показывать loading вместо throw при незагруженном auth.
+- **Детали:** logs.md → TMA-SETTINGS-GEAR-CRASH-013.
+
+## 🔴 [PERF-TMA-HEAT-001] Телефон греется/сильно нагружается в TMA — расследование
+- **Домен:** apps/tma · **Кто взял:** Полат · **Приоритет:** 🔴 (жалобы пользователей)
+- **Что:** юзеры жалуются что телефон в TMA перегревается и «прям пиздец как нагружает».
+- **Расследование по коду (30.06, тайт-петель/коротких setInterval НЕТ → грев = GPU-композитинг):**
+  1. **🥇 Ambient blur в AppShell** (`components/layout/AppShell.tsx:22-38`): 3 больших
+     `filter: blur(72px/56px/40px)` радиальных слоя, `fixed inset-0`, dark-mode. Большие blur
+     поверх скроллящегося вьюпорта в мобильном WebView → постоянная перерастеризация GPU. Главный
+     подозреваемый по грелке. Фикс: убрать/уменьшить blur радиусы, 1 слой вместо 3, или отключить
+     на мобилке / gate по prefers-reduced-motion / low-power.
+  2. **🥈 Reconnect-петля socket.io + вечный pulse SocketStatusBadge**: socket.ts использует
+     дефолты socket.io (reconnection бесконечный, 1-5с). При баге TMA-WS-STALE-TOKEN-001 (сокет с
+     битым токеном после reauth/switch) хендшейк вечно фейлится → periodic reconnect + badge
+     `pulse 1.4s infinite` при status='connecting' (`SocketStatusBadge.tsx:57`) крутится вечно.
+     Частично закрыто фиксом teardown (30.06), но добавить `reconnectionAttempts` лимит + backoff.
+  3. **🥉 Always-on infinite CSS-анимации**: `DashboardPage.tsx:258,336` (`pulse 1.5s infinite`
+     ×2), `.orchid-pulse`/`.cyan-ping` в index.css — проверить, не висят ли на всегда-видимых
+     элементах (не только loading). Каждая держит компоузитор активным.
+- **Как подтвердить:** профилировать на реальном устройстве (Chrome DevTools Performance / Telegram
+  WebView remote debug) — Rendering → Paint flashing / FPS meter, смотреть GPU/Compositing.
+- **Файлы:** `apps/tma/src/components/layout/AppShell.tsx`, `lib/socket.ts`,
+  `components/ui/SocketStatusBadge.tsx`, `index.css`, `pages/seller/DashboardPage.tsx`.
+
+## 🟡 [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов
+- **Домен:** apps/api + apps/tma + apps/admin · **Кто взял:** Полат
+- **Что:** функция архивации «закрытых» заказов. Закрытые = **DELIVERED + CANCELLED** (терминальные
+  статусы по state machine). Архив убирает их из основного списка (сейчас в TMA-Заказах есть
+  «Доставлены»/«Отменены» фильтры + «показать отменённые», но нет архива-скрытия). Нужно: флаг
+  архивации (или производное по статусу+дате), UI «В архив» + раздел «Архив», не терять данные.
+- **Уточнить:** архив = ручной (кнопка) или авто (по времени после DELIVERED/CANCELLED)? Скоуп:
+  seller-заказы, buyer-заказы, admin?
+
+## 🟡 [FEAT-CATEGORY-JOURNAL-001] Журнал категорий
+- **Домен:** apps/admin + apps/api · **Кто взял:** Полат
+- **Что:** «категория журнал» — журнал/лог изменений категорий (кто/когда добавил/переименовал/
+  удалил категорию). Связано с находкой AUDIT-TMA-LIVE `увлажниьель` (мусор в каталоге) — журнал
+  поможет отслеживать порчу каталога. Уточнить точный скоуп у Полата.
+
+## 🟡 [FEAT-CUSTOM-ROLES-001] Добавление собственной роли
+- **Домен:** apps/api + apps/admin · **Кто взял:** Полат
+- **Что:** «добавление собственной роли» — кастомные роли (сверх BUYER/SELLER/ADMIN или сверх
+  admin-ролей super_admin/admin/moderator/support/finance/read_only из
+  `common/constants/admin-permissions.ts`). Уточнить: это про admin-роли (RBAC-матрица) или про
+  пользовательские роли? Пересекается с гибридной моделью ролей (ADR 30.06).
+
+## 🟡 [FEAT-DESIGN-OPTIMIZATION-001] Оптимизация дизайна
+- **Домен:** apps/tma (+ web) · **Кто взял:** Полат/Азим
+- **Что:** «оптимизация дизайна» — общая задача на полировку UI/UX. Пересекается с PERF-TMA-HEAT-001
+  (убрать тяжёлые blur), TMA-IOS-FIXED-MODAL-002 (модалы), и находками live-аудита. Уточнить
+  конкретику (какие экраны/элементы).
+
+---
+
 ## 🧭 [SESSION-CHECKPOINT 2026-06-29] Orchestrator-сессия — итоги + открытые решения
 
 ### ✅ Задеплоено в этой сессии (8 фиксов, ветки api/admin/tma)
@@ -25,16 +94,18 @@
 3. **[DECISION-ADMIN-CREATE-PRODUCT] → НЕ СЕЙЧАС.** Товары создаёт продавец в TMA; админ-создание
    тянет атрибуцию к магазину + пересмотр модерации. Оставлена toast-заглушка. Низкий приоритет.
 
-### 🔵 [HYBRID] Фаза 2 — переключение контекста (готов взять, зона Полата api/tma)
-- **HYBRID-1** [api] `POST /auth/switch-context` — ре-выдача access token с запрошенным контекстом,
-  если есть способность (SELLER ⇒ нужен store). Ставит `storeId` claim.
-- **HYBRID-2** [tma] Тоггл «Продавец/Покупатель» (виден если есть обе способности); seller заблокирован без store.
-- **HYBRID-3** [api/bot] Выровнять меню бота под TMA (дефолт по `users.role`, обе кнопки если обе способности).
-  Закрывает `ROLE-SOURCE-INCONSISTENCY-001`. Сейчас бот решает по наличию seller-профиля
-  (`telegram-demo.handler.ts:98,136,164`), TMA — по `users.role` (`telegram-auth.use-case.ts:187,198`).
-- **HYBRID-5** [api] Реконсиляция доступности seller-контекста при создании/удалении store.
-- **HYBRID-6** [types] `me` отдаёт `capabilities {canSell,canBuy,hasStore}` для UI-тоггла.
-- Схема (`packages/db`) — миграция НЕ нужна (Buyer?+Seller? уже сосуществуют, Seller.store? nullable).
+### 🔵 [HYBRID] Фаза 2 — переключение контекста (в основном СДЕЛАНО 30.06)
+- ✅ **HYBRID-1** [api] `POST /auth/switch-context` — ре-выдача токена + персист users.role. → done.md
+- ✅ **HYBRID-2** [tma] Тоггл «Продавец/Покупатель» в buyer+seller ProfilePage + фикс латентного
+  бага «режим покупателя» (BuyerGuard бросал SELLER назад). → done.md
+- ✅ **HYBRID-3** [api/bot] Меню бота по `users.role` + кнопки переключения. Закрыл
+  `ROLE-SOURCE-INCONSISTENCY-001`. → done.md
+- ✅ **HYBRID-6** [api] `capabilities {canBuy,canSell,hasStore}` в /auth/me и /auth/telegram. → done.md
+- 🔲 **HYBRID-5** [api] Проактивная реконсиляция при удалении/архивации магазина (сейчас
+  переключение реактивно гейтится на store — основной риск закрыт, это hardening).
+- Схема (`packages/db`) — миграция НЕ понадобилась (Buyer?+Seller? уже сосуществуют).
+- ⚠️ **НЕ ЗАКОММИЧЕНО:** Фаза 2 (api+bot+tma) на диске, tsc всех трёх зелёный, но пользователь
+  отклонял git-операции — коммит/деплой по его команде. Фаза 1 (HYBRID-4) закоммичена (af39641, main).
 
 ### 🤝 ОСТАЁТСЯ OWNER/КОМАНДА
 4. **[OWNER] 🔴 INFRA-RAILWAY-PAST-DUE-001** — оплатить подписку Railway (риск отключения прода).
