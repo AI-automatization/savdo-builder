@@ -7,15 +7,20 @@ import { Spinner } from '@/components/ui/Spinner';
 import { OrderRowSkeleton } from '@/components/ui/Skeleton';
 import { Stars } from '@/components/ui/Stars';
 import { showToast } from '@/components/ui/Toast';
+import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { useTranslation } from '@/lib/i18n';
 
 interface OrderItem {
   id: string;
-  productTitleSnapshot: string;
+  // TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009: имена полей приведены к контракту
+  // API-маппера (apps/api/src/modules/orders/orders.mapper.ts:34-43) — раньше тут
+  // были productTitleSnapshot/lineTotalAmount/variantTitleSnapshot, из-за чего
+  // Number(undefined)=NaN → «не число сум» и пустое имя у каждой позиции заказа.
+  title: string;
   quantity: number;
-  lineTotalAmount: number | string;
-  variantTitleSnapshot?: string | null;
+  subtotal: number | string;
+  variantTitle?: string | null;
 }
 
 interface Order {
@@ -68,7 +73,7 @@ function compareOrders(a: Order, b: Order): number {
 
 export default function OrdersPage() {
   const { authenticated } = useAuth();
-  const { viewportWidth } = useTelegram();
+  const { tg, viewportWidth } = useTelegram();
   const { t, locale } = useTranslation();
   const isWide = (viewportWidth ?? 0) >= 1024;
   const fmt = (n: number) => n.toLocaleString(locale === 'uz' ? 'uz' : 'ru');
@@ -101,6 +106,40 @@ export default function OrdersPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSending, setReviewSending] = useState(false);
   const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
+  // TMA-BUYER-NO-CANCEL-011: отмена заказа покупателем. По state-machine
+  // (update-order-status.use-case.ts) покупателю разрешён ТОЛЬКО переход
+  // PENDING→CANCELLED, поэтому кнопка показывается лишь для status === 'PENDING'.
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const cancelOrder = async (orderId: string) => {
+    if (cancellingId) return;
+    const ok = await confirmDialog({
+      title: t('orders.cancelConfirmTitle'),
+      body: t('orders.cancelConfirmBody'),
+      confirmText: t('orders.cancelConfirmYes'),
+      cancelText: t('orders.cancelKeep'),
+      danger: true,
+    });
+    if (!ok) return;
+    setCancellingId(orderId);
+    try {
+      await api(`/buyer/orders/${orderId}/status`, {
+        method: 'PATCH',
+        body: { status: 'CANCELLED' },
+      });
+      tg?.HapticFeedback.notificationOccurred('success');
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: 'CANCELLED' } : o)));
+      setDetails((prev) =>
+        prev[orderId] ? { ...prev, [orderId]: { ...prev[orderId], status: 'CANCELLED' } } : prev,
+      );
+      showToast(t('orders.cancelled'));
+    } catch (err) {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast(err instanceof Error ? err.message : t('orders.cancelError'), 'error');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const submitReview = async () => {
     if (!reviewing || reviewSending) return;
@@ -363,11 +402,11 @@ export default function OrdersPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-primary)' }}>
-                                {item.productTitleSnapshot}
+                                {item.title}
                               </p>
-                              {item.variantTitleSnapshot && (
+                              {item.variantTitle && (
                                 <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
-                                  {item.variantTitleSnapshot}
+                                  {item.variantTitle}
                                 </p>
                               )}
                               <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
@@ -375,14 +414,14 @@ export default function OrdersPage() {
                               </p>
                             </div>
                             <p className="text-xs font-semibold shrink-0" style={{ color: 'var(--tg-text-secondary)' }}>
-                              {fmt(Number(item.lineTotalAmount))} {t('common.currency')}
+                              {fmt(Number(item.subtotal))} {t('common.currency')}
                             </p>
                           </div>
                           {canReview && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setReviewing({ orderId: o.id, itemId: item.id, productTitle: item.productTitleSnapshot });
+                                setReviewing({ orderId: o.id, itemId: item.id, productTitle: item.title });
                                 setReviewRating(5);
                                 setReviewComment('');
                               }}
@@ -404,6 +443,17 @@ export default function OrdersPage() {
                     <p className="text-xs pt-2" style={{ color: 'var(--tg-text-muted)' }}>
                       {t('orders.noItems')}
                     </p>
+                  )}
+                  {/* TMA-BUYER-NO-CANCEL-011: покупатель может отменить только PENDING. */}
+                  {o.status === 'PENDING' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); cancelOrder(o.id); }}
+                      disabled={cancellingId === o.id}
+                      className="self-start mt-1 text-xxs font-semibold py-1.5 px-3 rounded-lg disabled:opacity-50"
+                      style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', color: '#EF4444' }}
+                    >
+                      {cancellingId === o.id ? '…' : `✕ ${t('orders.cancelCta')}`}
+                    </button>
                   )}
                 </div>
               )}

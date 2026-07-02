@@ -12,6 +12,31 @@ export interface CartItem {
 
 const CART_KEY = 'savdo_cart';
 
+// TMA-CART-BADGE-STALE-010: корзина живёт в localStorage без реактивности —
+// бейдж в BottomNav не обновлялся при смене qty/clearCart на текущей странице
+// (только при ре-навигации). Делаем pub/sub: мутации шлют событие, подписчики
+// (бейдж) перечитывают счётчик. 'storage' покрывает кросс-табовые изменения.
+const CART_EVENT = 'savdo:cart-changed';
+
+function emitCartChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(CART_EVENT));
+}
+
+export function cartItemCount(): number {
+  return getCart().reduce((s, i) => s + i.qty, 0);
+}
+
+export function subscribeCart(cb: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const onStorage = (e: StorageEvent) => { if (e.key === CART_KEY) cb(); };
+  window.addEventListener(CART_EVENT, cb);
+  window.addEventListener('storage', onStorage);
+  return () => {
+    window.removeEventListener(CART_EVENT, cb);
+    window.removeEventListener('storage', onStorage);
+  };
+}
+
 function isValidItem(item: unknown): item is CartItem {
   if (!item || typeof item !== 'object') return false;
   const i = item as Record<string, unknown>;
@@ -39,10 +64,12 @@ export function getCart(): CartItem[] {
 
 export function saveCart(items: CartItem[]): void {
   localStorage.setItem(CART_KEY, JSON.stringify(items));
+  emitCartChanged();
 }
 
 export function clearCart(): void {
   localStorage.removeItem(CART_KEY);
+  emitCartChanged();
 }
 
 // B13: removeCartItem must match both productId AND variantId to avoid
