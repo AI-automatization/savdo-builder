@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Package, Eye, EyeOff, AlertCircle, Search, RefreshCw, Archive, Trash2, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { useTranslation } from '../lib/i18n/I18nProvider'
@@ -132,9 +133,9 @@ export default function ProductsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* P2-8 (audit 2026-06-04): placeholder-кнопка. Endpoint POST /admin/products
               ещё не реализован (см. analiz/logs.md → ADMIN-PRODUCTS-NO-CREATE-ENDPOINT).
-              По клику — alert с инструкцией. После появления endpoint заменить на модалку. */}
+              По клику — toast с инструкцией (раньше блокирующий alert(), 29.06). */}
           <button
-            onClick={() => alert(t('products.createSoonAlert'))}
+            onClick={() => toast.info(t('products.createSoonAlert'))}
             title={t('products.createSoonTitle')}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Param,
   Body,
   Query,
@@ -20,11 +21,13 @@ import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.de
 
 import { ListUsersDto } from './dto/list-users.dto';
 import { AdminActionDto } from './dto/admin-action.dto';
+import { ChangeUserRoleDto } from './dto/change-user-role.dto';
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
 import { GetUserDetailUseCase } from './use-cases/get-user-detail.use-case';
 import { SuspendUserUseCase } from './use-cases/suspend-user.use-case';
 import { UnsuspendUserUseCase } from './use-cases/unsuspend-user.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
+import { ChangeUserRoleUseCase } from './use-cases/change-user-role.use-case';
 import { AdminRepository } from './repositories/admin.repository';
 import { AdminContextService } from './services/admin-context.service';
 
@@ -48,6 +51,7 @@ export class AdminUsersController {
     private readonly suspendUserUseCase: SuspendUserUseCase,
     private readonly unsuspendUserUseCase: UnsuspendUserUseCase,
     private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
+    private readonly changeUserRoleUseCase: ChangeUserRoleUseCase,
   ) {}
 
   @Get()
@@ -111,5 +115,26 @@ export class AdminUsersController {
       payload: { userId: id, fullName: body.fullName },
     });
     return seller;
+  }
+
+  // PATCH /api/v1/admin/users/:id/role  (HYBRID-4: смена дефолтного контекста)
+  @Patch(':id/role')
+  @AdminPermission('user:update')
+  async changeRole(
+    @Param('id') id: string,
+    @Body() dto: ChangeUserRoleDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.adminContext.requireAdmin(user);
+    // ADMIN-SELF-ROLE-001: admin не меняет роль собственного аккаунта.
+    if (id === user.sub) {
+      throw new BadRequestException('Cannot change your own role');
+    }
+    return this.changeUserRoleUseCase.execute({
+      userId: id,
+      role: dto.role,
+      actorUserId: user.sub,
+      reason: dto.reason,
+    });
   }
 }

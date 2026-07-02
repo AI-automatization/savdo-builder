@@ -159,9 +159,14 @@ export class TelegramDemoHandler {
       return;
     }
 
-    // Обычный пользователь — показываем меню
+    // Обычный пользователь — показываем меню.
+    // HYBRID-3 (ADR 2026-06-30): источник истины роли = users.role (как в TMA),
+    // а НЕ просто наличие seller-профиля. Раньше бот показывал seller-меню любому
+    // у кого есть seller-профиль, даже если users.role=BUYER → рассинхрон с TMA
+    // (ROLE-SOURCE-INCONSISTENCY-001). Теперь дефолт по активному контексту;
+    // переключиться можно кнопкой (switch_to_seller / switch_to_buyer).
     const displayName = firstName ?? user.phone;
-    if (seller) {
+    if (user.role === 'SELLER' && seller) {
       await this.showSellerMenu(chatId, displayName);
     } else {
       await this.showBuyerMenu(chatId, displayName);
@@ -719,6 +724,8 @@ export class TelegramDemoHandler {
         { text: '📊 Статистика', callback_data: 'seller_stats'      },
       ],
       [{ text: '📢 Привязать Telegram-канал', callback_data: 'seller_link_channel' }],
+      // HYBRID-3: переключение в режим покупателя (покупать может любой аккаунт).
+      [{ text: '🛒 Режим покупателя', callback_data: 'switch_to_buyer' }],
     ];
     await this.bot.sendWithWebApp(
       chatId,
@@ -859,7 +866,56 @@ export class TelegramDemoHandler {
       [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
       [{ text: '📦 Мои заказы',   callback_data: 'buyer_orders'     }],
     ];
+    // HYBRID-3: если у аккаунта есть seller-профиль + магазин — показываем
+    // переключатель в режим продавца (гибридная модель: один аккаунт обе роли).
+    const switchUser = await this.resolveUser(chatId);
+    if (switchUser) {
+      const seller = await this.prisma.seller.findUnique({ where: { userId: switchUser.id }, select: { id: true } });
+      const store = seller
+        ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null }, select: { id: true } })
+        : null;
+      if (store) {
+        rows.push([{ text: '🏪 Режим продавца', callback_data: 'switch_to_seller' }]);
+      }
+    }
     await this.bot.sendWithWebApp(chatId, `👋 Привет, <b>${escapeTgHtml(name)}</b>!`, rows, 'HTML');
+  }
+
+  // HYBRID-3: переключение активного контекста из бота (зеркалит
+  // POST /auth/switch-context). Персистит users.role — единый источник истины
+  // для бота и TMA.
+  async handleSwitchToBuyer(chatId: string): Promise<void> {
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+    // Гарантируем buyer-профиль (как ensureBuyerProfile в API).
+    await this.prisma.buyer.upsert({ where: { userId: user.id }, create: { userId: user.id }, update: {} });
+    if (user.role !== 'BUYER') {
+      await this.prisma.user.update({ where: { id: user.id }, data: { role: 'BUYER' } });
+    }
+    await this.showBuyerMenu(chatId, user.phone);
+  }
+
+  async handleSwitchToSeller(chatId: string): Promise<void> {
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id }, select: { id: true } });
+    const store = seller
+      ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null }, select: { id: true } })
+      : null;
+    if (!seller || !store) {
+      // Нет магазина → нельзя в режим продавца (инвариант гибридной модели).
+      await this.bot.sendInlineKeyboard(
+        chatId,
+        '🏪 У вас ещё нет магазина. Создайте магазин, чтобы войти в режим продавца.',
+        [[{ text: '🏪 Стать продавцом', callback_data: 'reg_seller' }]],
+        'HTML',
+      );
+      return;
+    }
+    if (user.role !== 'SELLER') {
+      await this.prisma.user.update({ where: { id: user.id }, data: { role: 'SELLER' } });
+    }
+    await this.showSellerMenu(chatId, user.phone);
   }
 
   async handleBuyerFindStore(chatId: string): Promise<void> {

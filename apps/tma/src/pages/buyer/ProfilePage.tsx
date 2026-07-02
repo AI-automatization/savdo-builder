@@ -9,11 +9,32 @@ import { useTranslation } from '@/lib/i18n';
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot';
 
 export default function BuyerProfilePage() {
-  const { user, authenticated, logout, reauth } = useAuth();
+  const { user, authenticated, logout, reauth, switchContext } = useAuth();
   const { tg, user: tgUser } = useTelegram();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [applying, setApplying] = useState(false);
+  const [switching, setSwitching] = useState(false);
+
+  // HYBRID-2: способности аккаунта для тоггла контекста.
+  const canSell = user?.capabilities?.canSell ?? false;
+  const hasStore = user?.capabilities?.hasStore ?? false;
+
+  const handleSwitchToSeller = async () => {
+    if (!hasStore) return;
+    setSwitching(true);
+    try {
+      const ok = await switchContext('SELLER');
+      if (ok) {
+        tg?.HapticFeedback.notificationOccurred('success');
+        navigate('/seller', { replace: true });
+      } else {
+        tg?.HapticFeedback.notificationOccurred('error');
+      }
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   // Продавцы не должны быть на странице покупателя
   useEffect(() => {
@@ -89,8 +110,35 @@ export default function BuyerProfilePage() {
           )}
         </GlassCard>
 
-        {/* Хочешь стать продавцом? — только для покупателей */}
-        {authenticated && user?.role === 'BUYER' && (
+        {/* HYBRID-2: у аккаунта уже есть магазин — предлагаем переключиться в режим продавца */}
+        {authenticated && user?.role === 'BUYER' && canSell && (
+          <GlassCard className="p-4 flex items-center gap-3">
+            <span style={{ fontSize: 28 }}>🏪</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: 'var(--tg-text-primary)' }}>{t('profile.switchToSellerTitle')}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--tg-text-muted)' }}>
+                {hasStore ? t('profile.switchToSellerSubtitle') : t('profile.switchToSellerNoStore')}
+              </p>
+            </div>
+            <button
+              onClick={handleSwitchToSeller}
+              disabled={switching || !hasStore}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl shrink-0"
+              style={{
+                background: 'var(--tg-accent-dim)',
+                color: 'var(--tg-accent)',
+                border: '1px solid var(--tg-accent-border)',
+                cursor: switching ? 'wait' : hasStore ? 'pointer' : 'not-allowed',
+                opacity: hasStore ? 1 : 0.5,
+              }}
+            >
+              {switching ? '...' : t('profile.switchToSellerCta')}
+            </button>
+          </GlassCard>
+        )}
+
+        {/* Хочешь стать продавцом? — только для покупателей БЕЗ seller-профиля */}
+        {authenticated && user?.role === 'BUYER' && !canSell && (
           <GlassCard className="p-4 flex items-center gap-3">
             <span style={{ fontSize: 28 }}>🏪</span>
             <div className="flex-1">
