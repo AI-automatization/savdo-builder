@@ -10,6 +10,14 @@ export function getSocket(): Socket {
     socket = io(BASE_URL, {
       autoConnect: false,
       auth: { token: getToken() },
+      // PERF-TMA-HEAT-001: дефолт socket.io — бесконечный reconnect. При баге со stale-token
+      // хендшейк фейлится вечно → постоянный CPU-цикл + вечный pulse в SocketStatusBadge →
+      // телефон греется. Ограничиваем попытки + backoff: после лимита сокет уходит в
+      // 'disconnected' (точка без анимации), цикл останавливается. Повторный connectSocket()
+      // (навигация/reauth) при необходимости заново поднимет соединение.
+      reconnectionAttempts: 8,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 8000,
     });
   }
   return socket;

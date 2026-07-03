@@ -19,24 +19,29 @@ export function AppShell({ children, role }: Props) {
 
   return (
     <div data-role={role} className="min-h-screen flex flex-col" style={{ background: 'var(--tg-bg-gradient)' }}>
-      {/* Ambient depth layers (только в тёмной теме — в светлой создают грязь) */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden z-0 hidden dark:block" data-ambient>
-        <div className="absolute rounded-full" style={{
-          width: 480, height: 480, top: -180, right: -120,
-          background: 'radial-gradient(circle, var(--tg-accent-glow) 0%, transparent 68%)',
-          filter: 'blur(72px)',
-        }} />
-        <div className="absolute rounded-full" style={{
-          width: 320, height: 320, bottom: -100, left: -80,
-          background: 'radial-gradient(circle, var(--tg-cyan-dim) 0%, transparent 70%)',
-          filter: 'blur(56px)',
-        }} />
-        <div className="absolute rounded-full" style={{
-          width: 260, height: 260, top: '40%', left: '50%', transform: 'translateX(-50%)',
-          background: 'radial-gradient(circle, rgba(13,17,32,0.60) 0%, transparent 70%)',
-          filter: 'blur(40px)',
-        }} />
-      </div>
+      {/* Ambient depth layers (только тёмная тема + ТОЛЬКО десктоп).
+          PERF-TMA-HEAT-001: на мобилке 3 слоя filter:blur поверх fixed inset-0 при скролле
+          заставляли WebView перерастеризовывать GPU каждый кадр → телефон грелся. Ambient —
+          чисто декоративный фон (не сигнал), поэтому на телефоне отключён полностью.
+          Мягкость даём через сам radial-gradient (без filter:blur) — тот же вид, ноль
+          per-frame рестеризации. Слой промотирован в свой composite-слой (translateZ). */}
+      {isDesktop && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 overflow-hidden z-0 hidden dark:block"
+          data-ambient
+          style={{ transform: 'translateZ(0)' }}
+        >
+          <div className="absolute rounded-full" style={{
+            width: 620, height: 620, top: -240, right: -180,
+            background: 'radial-gradient(circle, var(--tg-accent-glow) 0%, transparent 72%)',
+          }} />
+          <div className="absolute rounded-full" style={{
+            width: 420, height: 420, bottom: -140, left: -120,
+            background: 'radial-gradient(circle, var(--tg-cyan-dim) 0%, transparent 74%)',
+          }} />
+        </div>
+      )}
 
       <ToastContainer />
       <ConfirmContainer />
