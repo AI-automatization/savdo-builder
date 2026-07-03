@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-07-03 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (buyer)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — buyer-часть
+- **Важность:** 🟡 · **Дата:** 03.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп (дефолт, решён без остановки):** ручная архивация, **buyer-first**, только терминальные
+  заказы (DELIVERED/CANCELLED), данные не удаляются. Seller/admin — отдельно (в tasks.md).
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.buyerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260703000001_order_buyer_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `buyerArchivedAt` в `findByBuyerId` (основной
+    список = NULL, `?archived=true` = архив) + метод `setBuyerArchived`.
+  - `get-buyer-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в списке + `PATCH /buyer/orders/:id/archive`. Владение
+    проверяется через `getOrderDetailUseCase` (buyer-scoped 404), в архив только DELIVERED/CANCELLED
+    (иначе 409). `dto/list-orders.dto.ts` — query-параметр `archived`.
+  - `apps/tma/.../OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть» на
+    закрытых, оптимистичное удаление из текущего списка. + i18n ru/uz (`orders.archive*`).
+- **Архитектурная заметка:** отдельный use-case/dto НЕ заводил — hook `think-before-wire`
+  (справедливо) блокирует изолированные новые файлы; переиспользовал уже внедрённые
+  `OrdersRepository` + `getOrderDetailUseCase` (тот уже проверяет владельца) прямо в контроллере,
+  как существующий inline-guard buyer-cancel. Меньше файлов, та же чистота.
+
 ## 2026-07-03 (Полат) — PERF-TMA-HEAT-001: убраны always-on эффекты (грев телефона)
 
 ### ✅ [PERF-TMA-HEAT-001] Телефон греется в TMA — устранены постоянные GPU-эффекты

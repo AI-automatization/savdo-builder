@@ -23,6 +23,8 @@ export interface OrderListFilters {
   dateTo?: string;
   page?: number;
   limit?: number;
+  // FEAT-ORDERS-ARCHIVE-001: true = только архив покупателя, иначе только основной список.
+  archived?: boolean;
 }
 
 export interface PaginatedOrders {
@@ -40,6 +42,8 @@ export class OrdersRepository {
     const where = {
       buyerId,
       ...(filters.status ? { status: filters.status } : {}),
+      // FEAT-ORDERS-ARCHIVE-001: основной список скрывает архивные, ?archived=true — только их.
+      buyerArchivedAt: filters.archived ? { not: null } : null,
     };
 
     const [orders, total] = await this.prisma.$transaction([
@@ -140,6 +144,15 @@ export class OrdersRepository {
           },
         },
       },
+    });
+  }
+
+  // FEAT-ORDERS-ARCHIVE-001: пометить/снять архив закрытого заказа покупателя.
+  // Ownership + терминальный статус проверяются в use-case; здесь только запись.
+  async setBuyerArchived(id: string, archivedAt: Date | null): Promise<Order> {
+    return this.prisma.order.update({
+      where: { id },
+      data: { buyerArchivedAt: archivedAt },
     });
   }
 
