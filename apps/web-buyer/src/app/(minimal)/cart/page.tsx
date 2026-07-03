@@ -43,7 +43,7 @@ const pluralRu = (n: number) => n === 1 ? "товар" : n < 5 ? "товара" 
 
 // ── QtyStepper ────────────────────────────────────────────────────────────────
 
-function QtyStepper({ value, onChange }: { value: number; onChange: (q: number) => void }) {
+function QtyStepper({ value, onChange, disabled }: { value: number; onChange: (q: number) => void; disabled?: boolean }) {
   return (
     <div
       className="flex items-center rounded-md"
@@ -52,7 +52,7 @@ function QtyStepper({ value, onChange }: { value: number; onChange: (q: number) 
       <button
         type="button"
         onClick={() => onChange(Math.max(1, value - 1))}
-        disabled={value <= 1}
+        disabled={disabled || value <= 1}
         className="px-2.5 py-1.5 text-sm disabled:opacity-40"
         style={{ color: colors.textMuted }}
       >
@@ -64,7 +64,8 @@ function QtyStepper({ value, onChange }: { value: number; onChange: (q: number) 
       <button
         type="button"
         onClick={() => onChange(value + 1)}
-        className="px-2.5 py-1.5 text-sm"
+        disabled={disabled}
+        className="px-2.5 py-1.5 text-sm disabled:opacity-40"
         style={{ color: colors.textBody }}
       >
         +
@@ -80,6 +81,7 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
   const update = useUpdateCartItem();
   const remove = useRemoveCartItem();
   const [imgFailed, setImgFailed] = useState(false);
+  const [rowError, setRowError] = useState<string>();
 
   const busy = update.isPending || remove.isPending;
 
@@ -87,11 +89,25 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
   const outOfStock =
     item.product.stock === 0 || item.product.isAvailable === false;
 
+  function describeErr(e: unknown): string {
+    const err = e as { response?: { data?: { message?: string } } };
+    return err?.response?.data?.message ?? t('cart.updateError');
+  }
+
+  function handleRemove() {
+    setRowError(undefined);
+    remove.mutate(item.id, { onError: (e) => setRowError(describeErr(e)) });
+  }
+
   function adjustQty(next: number) {
+    setRowError(undefined);
     if (next <= 0) {
-      remove.mutate(item.id);
+      handleRemove();
     } else {
-      update.mutate({ itemId: item.id, data: { quantity: next } });
+      update.mutate(
+        { itemId: item.id, data: { quantity: next } },
+        { onError: (e) => setRowError(describeErr(e)) },
+      );
       if (next > item.quantity) {
         track.addToCart(storeId, item.productId, item.variantId, next - item.quantity);
       }
@@ -151,7 +167,7 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
                 {t('cart.notify')}
               </button>
               <button
-                onClick={() => remove.mutate(item.id)}
+                onClick={handleRemove}
                 disabled={busy}
                 className="text-[10px] disabled:opacity-40"
                 style={{ color: colors.textMuted, background: "transparent", border: "none" }}
@@ -162,10 +178,10 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
           ) : (
             <>
               <div className="flex items-center gap-2.5">
-                <QtyStepper value={item.quantity} onChange={adjustQty} />
+                <QtyStepper value={item.quantity} onChange={adjustQty} disabled={busy} />
                 <button
                   type="button"
-                  onClick={() => remove.mutate(item.id)}
+                  onClick={handleRemove}
                   disabled={busy}
                   className="text-[10px] disabled:opacity-40"
                   style={{ color: colors.textMuted, background: "transparent", border: "none" }}
@@ -179,6 +195,9 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
             </>
           )}
         </div>
+        {rowError && (
+          <p className="text-[10px] mt-1" style={{ color: colors.danger }}>{rowError}</p>
+        )}
       </div>
     </div>
   );

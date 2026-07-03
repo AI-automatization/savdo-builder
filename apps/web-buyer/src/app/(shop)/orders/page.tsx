@@ -125,7 +125,14 @@ function OrdersList() {
 
   useEffect(() => {
     if (!data?.data) return;
-    setAccOrders((prev) => (page === 1 ? data.data : [...prev, ...data.data]));
+    setAccOrders((prev) => {
+      if (page === 1) return data.data;
+      // Any background refetch of the current page (WS-triggered status-change
+      // invalidation, window refocus) re-delivers the same rows — dedupe by id
+      // instead of blindly appending, or they'd double up on screen.
+      const seen = new Set(prev.map((o) => o.id));
+      return [...prev, ...data.data.filter((o) => !seen.has(o.id))];
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.data]);
 

@@ -29,11 +29,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const logoutRef = useRef<() => Promise<void>>(async () => {});
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const token = getAccessToken();
-    return token ? getStoredUser() : null;
-  });
+  // Always start at null (matches the server-rendered tree) — reading localStorage
+  // in the lazy initializer would populate this during the hydration render itself
+  // and desync from the SSR'd guest-view markup, causing a hydration failure.
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   const login = useCallback(
     async (accessToken: string, refreshToken: string, authUser: AuthUser) => {
@@ -86,18 +85,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { logoutRef.current = logout; }, [logout]);
 
-  // Refresh user from server on mount (validates token + gets fresh data)
+  // Hydrate from localStorage post-mount (client-only, avoids SSR/CSR mismatch),
+  // then refresh from server to validate the token + get fresh data.
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
+    const stored = getStoredUser();
+    if (stored) setUser(stored);
     getMe()
       .then((freshUser) => {
         storeUser(freshUser);
         setUser(freshUser);
       })
       .catch(() => {
-        // Bad token — clean local state, no /auth/logout call (avoids loop).
-        localLogout();
+        // A genuinely invalid/expired token already triggers `savdo:auth:expired`
+        // from the apiClient 401-refresh interceptor (handled below) — don't also
+        // log out here, or a network blip / 5xx on a flaky connection would force
+        // a valid session out.
       });
   }, [localLogout]);
 

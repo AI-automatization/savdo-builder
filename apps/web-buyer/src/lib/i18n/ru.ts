@@ -317,6 +317,8 @@ export const ru: Translations = {
   'cart.emptyHint': 'Добавьте товар в корзину чтобы оформить заказ',
   'cart.toStores': 'К магазинам',
   'cart.loadError': 'Не удалось загрузить корзину',
+  'cart.addError': 'Не удалось добавить товар в корзину. Попробуйте ещё раз.',
+  'cart.updateError': 'Не удалось изменить количество. Попробуйте ещё раз.',
   'cart.chatTitle': 'Корзина · {items}',
   'cart.chatInitialText': 'Хочу уточнить по товарам из корзины:\n{items}',
 

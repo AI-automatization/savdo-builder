@@ -114,6 +114,7 @@ export default function ProductPage() {
   const [selection, setSelection] = useState<OptionSelection>({});
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [addError, setAddError] = useState<string>();
   const [shared, setShared] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -171,6 +172,8 @@ export default function ProductPage() {
   // because we read snapshot inputs without resetting first.
   useEffect(() => {
     if (!product) return;
+    setActiveImage(0);
+    setAddError(undefined);
     if (hasGroups) {
       setSelection(initialSelectionFromVariants(activeVariants, optionGroups));
       setSelectedVariantId(null);
@@ -198,15 +201,21 @@ export default function ProductPage() {
 
   async function handleAddToCart() {
     if (!product) return;
+    setAddError(undefined);
     const variantId = selectedVariantObj?.id ?? null;
-    await addToCart.mutateAsync({
-      productId: product.id,
-      variantId: variantId ?? undefined,
-      quantity: qty,
-    });
-    track.addToCart(product.storeId, product.id, variantId, qty);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    try {
+      await addToCart.mutateAsync({
+        productId: product.id,
+        variantId: variantId ?? undefined,
+        quantity: qty,
+      });
+      track.addToCart(product.storeId, product.id, variantId, qty);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setAddError(err?.response?.data?.message ?? t('cart.addError'));
+    }
   }
 
   const isCtaDisabled = isLoading || isUnavailable || isOutOfStock || requiresVariantSelection || addToCart.isPending;
@@ -679,6 +688,9 @@ export default function ProductPage() {
                         {t('product.discuss')}
                       </button>
                     </div>
+                    {addError && (
+                      <p className="text-xs" style={{ color: colors.danger }}>{addError}</p>
+                    )}
                   </div>
                 )}
 
@@ -767,46 +779,51 @@ export default function ProductPage() {
           {/* ── Mobile sticky bottom CTA ──────────────────────────────────────── */}
           {!notFound && !isLoading && (
             <div
-              className="md:hidden sticky bottom-0 z-30 flex gap-2 p-3 border-t"
+              className="md:hidden sticky bottom-0 z-30 flex flex-col gap-1.5 p-3 border-t"
               style={{ background: colors.surfaceMuted, borderColor: colors.divider }}
             >
-              <QtyStepper
-                qty={qty}
-                onDec={() => setQty(q => Math.max(1, q - 1))}
-                onInc={() => setQty(q => q + 1)}
-              />
-              <button
-                onClick={handleAddToCart}
-                disabled={isCtaDisabled}
-                className="flex-1 text-sm font-bold transition-all active:scale-[0.98]"
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: 6,
-                  background: isCtaDisabled ? colors.surfaceMuted : colors.brand,
-                  color: isCtaDisabled ? colors.textDim : colors.brandTextOnBg,
-                  border: isCtaDisabled ? `1px solid ${colors.border}` : 'none',
-                  cursor: isCtaDisabled ? 'not-allowed' : 'pointer',
-                  opacity: isCtaDisabled ? 0.5 : 1,
-                }}
-              >
-                {ctaLabel()}
-              </button>
-              <button
-                onClick={() => {
-                  if (!product) return;
-                  track.chatStarted(product.storeId, "product");
-                  setChatOpen(true);
-                }}
-                aria-label={t('product.discussLabel')}
-                className="flex-shrink-0 w-12 h-12 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-[0.92]"
-                style={{
-                  background: colors.accent,
-                  color: colors.accentTextOnBg,
-                  borderRadius: 6,
-                }}
-              >
-                <MessageSquare size={20} />
-              </button>
+              {addError && (
+                <p className="text-xs" style={{ color: colors.danger }}>{addError}</p>
+              )}
+              <div className="flex gap-2">
+                <QtyStepper
+                  qty={qty}
+                  onDec={() => setQty(q => Math.max(1, q - 1))}
+                  onInc={() => setQty(q => q + 1)}
+                />
+                <button
+                  onClick={handleAddToCart}
+                  disabled={isCtaDisabled}
+                  className="flex-1 text-sm font-bold transition-all active:scale-[0.98]"
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 6,
+                    background: isCtaDisabled ? colors.surfaceMuted : colors.brand,
+                    color: isCtaDisabled ? colors.textDim : colors.brandTextOnBg,
+                    border: isCtaDisabled ? `1px solid ${colors.border}` : 'none',
+                    cursor: isCtaDisabled ? 'not-allowed' : 'pointer',
+                    opacity: isCtaDisabled ? 0.5 : 1,
+                  }}
+                >
+                  {ctaLabel()}
+                </button>
+                <button
+                  onClick={() => {
+                    if (!product) return;
+                    track.chatStarted(product.storeId, "product");
+                    setChatOpen(true);
+                  }}
+                  aria-label={t('product.discussLabel')}
+                  className="flex-shrink-0 w-12 h-12 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-[0.92]"
+                  style={{
+                    background: colors.accent,
+                    color: colors.accentTextOnBg,
+                    borderRadius: 6,
+                  }}
+                >
+                  <MessageSquare size={20} />
+                </button>
+              </div>
             </div>
           )}
         </>

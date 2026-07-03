@@ -315,6 +315,8 @@ export const uz: Translations = {
   'cart.emptyHint': 'Buyurtma berish uchun mahsulotni savatga qoʻshing',
   'cart.toStores': 'Doʻkonlarga oʻtish',
   'cart.loadError': 'Savatni yuklashda xato',
+  'cart.addError': 'Mahsulotni savatga qoʻshib boʻlmadi. Qaytadan urinib koʻring.',
+  'cart.updateError': 'Miqdorni oʻzgartirib boʻlmadi. Qaytadan urinib koʻring.',
   'cart.chatTitle': 'Savat · {items}',
   'cart.chatInitialText': 'Savat mahsulotlari boʻyicha aniqlashtirmoqchiman:\n{items}',
 
