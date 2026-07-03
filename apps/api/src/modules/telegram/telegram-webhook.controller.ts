@@ -203,6 +203,10 @@ export class TelegramWebhookController {
     if (data === 'buyer_find_store') { await this.demo.handleBuyerFindStore(chatId); return; }
     if (data === 'buyer_orders')     { await this.demo.handleBuyerOrders(chatId);    return; }
 
+    // HYBRID-3: переключение активного контекста (гибридная модель ролей)
+    if (data === 'switch_to_buyer')  { await this.demo.handleSwitchToBuyer(chatId);  return; }
+    if (data === 'switch_to_seller') { await this.demo.handleSwitchToSeller(chatId); return; }
+
     if (data.startsWith('open_store_')) {
       const slug        = data.replace('open_store_', '');
       const tmaUrl      = process.env.TMA_URL ?? '';

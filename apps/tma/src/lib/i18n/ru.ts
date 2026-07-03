@@ -99,6 +99,15 @@ export const ru: Translations = {
   'profile.becomeSellerCta': 'Открыть магазин',
   'profile.role.buyer': 'Покупатель',
   'profile.footer': 'Savdo · Покупатель',
+  // HYBRID-2: переключение контекста (продавец/покупатель)
+  'profile.switchToSellerTitle': 'Режим продавца',
+  'profile.switchToSellerSubtitle': 'У вас есть магазин — управляйте товарами и заказами',
+  'profile.switchToSellerNoStore': 'Сначала создайте магазин',
+  'profile.switchToSellerCta': 'Перейти',
+  'profile.switchToBuyerTitle': 'Режим покупателя',
+  'profile.switchToBuyerSubtitle': 'Покупайте в других магазинах на этом же аккаунте',
+  'profile.switchToBuyerCta': 'Перейти',
+  'profile.switching': 'Переключаем...',
 
   // ── Cart ──────────────────────────────────────────────────────────────
   'cart.title': 'Корзина',
@@ -189,6 +198,14 @@ export const ru: Translations = {
   'orders.status.SHIPPED': 'В пути',
   'orders.status.DELIVERED': 'Доставлен',
   'orders.status.CANCELLED': 'Отменён',
+  // TMA-BUYER-NO-CANCEL-011: отмена заказа покупателем
+  'orders.cancelCta': 'Отменить заказ',
+  'orders.cancelConfirmTitle': 'Отменить заказ?',
+  'orders.cancelConfirmBody': 'Заказ будет отменён, товары вернутся в наличие. Отменить нельзя будет вернуть.',
+  'orders.cancelConfirmYes': 'Отменить заказ',
+  'orders.cancelKeep': 'Не отменять',
+  'orders.cancelled': '✅ Заказ отменён',
+  'orders.cancelError': 'Не удалось отменить заказ',
 
   // ── Stores ────────────────────────────────────────────────────────────
   'stores.title': 'Магазины',
