@@ -6,12 +6,14 @@ import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TelegramAuthDto } from './dto/telegram-auth.dto';
+import { SwitchContextDto } from './dto/switch-context.dto';
 import { RequestOtpUseCase } from './use-cases/request-otp.use-case';
 import { VerifyOtpUseCase } from './use-cases/verify-otp.use-case';
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
 import { GetMeUseCase } from './use-cases/get-me.use-case';
 import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
+import { SwitchContextUseCase } from './use-cases/switch-context.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
@@ -27,6 +29,7 @@ export class AuthController {
     private readonly logoutSession: LogoutSessionUseCase,
     private readonly getMe: GetMeUseCase,
     private readonly telegramAuth: TelegramAuthUseCase,
+    private readonly switchContext: SwitchContextUseCase,
   ) {}
 
   @Post('telegram')
@@ -76,5 +79,17 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getMeHandler(@CurrentUser() user: JwtPayload) {
     return this.getMe.execute(user.sub);
+  }
+
+  // HYBRID-1: переключение активного контекста (продавец/покупатель) без перелогина.
+  @Post('switch-context')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async switchContextHandler(@Body() dto: SwitchContextDto, @CurrentUser() user: JwtPayload) {
+    return this.switchContext.execute({
+      userId: user.sub,
+      sessionId: user.sessionId,
+      context: dto.context,
+    });
   }
 }

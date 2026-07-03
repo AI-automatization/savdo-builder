@@ -203,6 +203,9 @@ export class TelegramAuthUseCase {
       ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 
+    // HYBRID-6: способности для тоггла контекста в TMA (продавец/покупатель).
+    const capabilities = await this.authRepo.findCapabilities(resolvedUser.id);
+
     return {
       token: accessToken,
       refreshToken,
@@ -210,6 +213,7 @@ export class TelegramAuthUseCase {
         id: resolvedUser.id,
         role: resolvedUser.role,
         phone: resolvedUser.phone,
+        capabilities,
       },
     };
   }

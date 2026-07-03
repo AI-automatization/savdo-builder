@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useTelegram } from './TelegramProvider';
-import { authenticateWithTelegram, serverLogout } from '@/lib/auth';
+import { authenticateWithTelegram, serverLogout, switchContext as apiSwitchContext, type Capabilities } from '@/lib/auth';
 import { setUnauthorizedHandler } from '@/lib/api';
 import { hydrateWishlist } from '@/lib/wishlist';
 import { syncCartToBackend, resetCartSync } from '@/lib/cartSync';
@@ -9,6 +9,8 @@ interface User {
   id: string;
   role: 'BUYER' | 'SELLER' | 'ADMIN';
   phone: string | null;
+  // HYBRID-6: способности аккаунта для тоггла контекста (продавец/покупатель).
+  capabilities?: Capabilities;
 }
 
 interface AuthCtx {
@@ -20,6 +22,9 @@ interface AuthCtx {
   authVersion: number;
   logout: () => void;
   reauth: () => Promise<void>;
+  /** HYBRID-1: переключение активного контекста (продавец/покупатель) без перелогина.
+   *  Возвращает true при успехе. */
+  switchContext: (context: 'BUYER' | 'SELLER') => Promise<boolean>;
 }
 
 const Ctx = createContext<AuthCtx>({
@@ -29,13 +34,16 @@ const Ctx = createContext<AuthCtx>({
   authVersion: 0,
   logout: () => {},
   reauth: async () => {},
+  switchContext: async () => false,
 });
 
 export const useAuth = () => useContext(Ctx);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { ready, isTelegram } = useTelegram();
-  const [state, setState] = useState<Omit<AuthCtx, 'logout' | 'reauth'>>({
+  // switchContext, как logout/reauth, — функция уровня Provider value, а не часть
+  // стейта, поэтому исключаем её из типа стейта (иначе tsc -b требует поле в setState).
+  const [state, setState] = useState<Omit<AuthCtx, 'logout' | 'reauth' | 'switchContext'>>({
     user: null, loading: true, authenticated: false, authVersion: 0,
   });
   const reauthingRef = useRef(false);
@@ -71,6 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, user: null, loading: false, authenticated: false }));
   }, []);
 
+  // HYBRID-1: переключение активного контекста. Обновляет role в state и бампает
+  // authVersion → компоненты, завязанные на роль/данные, перезагружаются.
+  const switchContext = useCallback(async (context: 'BUYER' | 'SELLER'): Promise<boolean> => {
+    const res = await apiSwitchContext(context);
+    if (!res) return false;
+    setState(prev => ({
+      ...prev,
+      user: prev.user ? { ...prev.user, role: res.role } : prev.user,
+      authVersion: prev.authVersion + 1,
+    }));
+    return true;
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
     doAuth();
@@ -89,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [doAuth]);
 
   return (
-    <Ctx.Provider value={{ ...state, logout, reauth: doAuth }}>
+    <Ctx.Provider value={{ ...state, logout, reauth: doAuth, switchContext }}>
       {children}
     </Ctx.Provider>
   );

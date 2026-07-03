@@ -7,7 +7,7 @@ import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { showToast } from '@/components/ui/Toast';
-import { setLocalFlag, type WishlistItem } from '@/lib/wishlist';
+import { setLocalFlag, subscribe as subscribeWishlist, isInWishlist, type WishlistItem } from '@/lib/wishlist';
 import { clickableA11y } from '@/lib/a11y';
 import { useTranslation } from '@/lib/i18n';
 
@@ -45,14 +45,15 @@ export default function WishlistPage() {
       .finally(() => setLoading(false));
   }, [authenticated, t]);
 
-  // Keep page in sync with optimistic toggles
+  // TMA-CART-BADGE-STALE-010 (wishlist-часть): раньше этот эффект был пустым
+  // (return undefined) — при удалении товара из избранного через ♡ на карточке
+  // список не обновлялся до ре-навигации. Теперь подписываемся на изменения
+  // wishlist-стора и убираем из списка товары, которых больше нет в избранном.
   useEffect(() => {
-    if (!authenticated || loading) return;
-    // No real-time refetch needed; WishlistButton optimistic-removes from server.
-    // We just remove from local list when an item's flag flips to false.
-    // Listening directly via subscribe() since our local state doesn't auto-refresh.
-    return undefined;
-  }, [authenticated, loading]);
+    return subscribeWishlist(() => {
+      setItems((prev) => prev.filter((it) => isInWishlist(it.productId)));
+    });
+  }, []);
 
   const cols =
     viewportWidth >= 1536 ? 'grid-cols-7' :

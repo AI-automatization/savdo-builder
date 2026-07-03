@@ -1,5 +1,122 @@
 # Done — Азим + Полат
 
+## 2026-07-02 (Полат) — Фиксы после живого buyer-аудита TMA (4 бага)
+
+### ✅ [TMA-BUILD-AUTHCTX-014] Прод-сборка TMA была сломана с Phase 2 (tsc -b)
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · найдено при live-ретесте (`pnpm build`)
+- **Файлы:** `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** тип стейта был `Omit<AuthCtx,'logout'|'reauth'>` — после добавления `switchContext`
+  в `AuthCtx` (Phase 2) он стал требоваться в setState → `tsc -b` падал (2 ошибки). Исправил на
+  `Omit<AuthCtx,'logout'|'reauth'|'switchContext'>` (switchContext — функция уровня Provider value).
+- **⚠️ ВАЖНО:** `tsc --noEmit` давал ложный зелёный (корневой tsconfig Vite = `files:[]` + references,
+  компилит пусто). Реальный чек — `pnpm build` (`tsc -b`). Впредь проверять сборку им.
+  После фикса: `tsc -b && vite build` EXIT 0, `vitest` 18/18.
+
+### ✅ [TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009] Детали заказа: «не число» + пустое имя
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/OrdersPage.tsx`
+- **Что сделано:** привёл интерфейс `OrderItem` и 5 использований к контракту API-маппера —
+  `productTitleSnapshot→title`, `lineTotalAmount→subtotal`, `variantTitleSnapshot→variantTitle`.
+  API (`orders.mapper.ts`) НЕ трогал (используется и web-buyer Азима). Устранён `NaN`→«не число».
+
+### ✅ [TMA-BUYER-NO-CANCEL-011] Отмена заказа покупателем
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/OrdersPage.tsx`, `lib/i18n/{ru,uz}.ts`
+- **Что сделано:** кнопка «Отменить заказ» в раскрытом блоке + `cancelOrder` через `confirmDialog`
+  → `PATCH /buyer/orders/:id/status {status:'CANCELLED'}`, оптимистичное обновление списка/детали.
+  Гейт `status==='PENDING'` — по state-machine (`update-order-status.use-case.ts:20`) покупателю
+  разрешён только переход PENDING→CANCELLED. Новые i18n-ключи `orders.cancel*`.
+
+### ✅ [TMA-HYBRID-SETTINGS-BECOMESELLER-012] Настройки: switchContext вместо онбординга
+- **Важность:** 🟡 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/SettingsPage.tsx`
+- **Что сделано:** блок гейтится по `capabilities.canSell` (как в ProfilePage): есть seller-профиль
+  → «Переключиться в режим продавца» (switchContext→/seller), нет → онбординг become_seller.
+  Раньше проверялся только `role==='BUYER'` → владелец магазина видел онбординг. Null-safe.
+
+### ✅ [TMA-CART-BADGE-STALE-010] Реактивность бейджа корзины + списка избранного
+- **Важность:** 🟡 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/lib/cart.ts` (pub/sub + `cartItemCount`/`subscribeCart`),
+  `components/layout/BottomNav.tsx` (реактивный `cartCount`), `pages/buyer/WishlistPage.tsx`
+  (подписка на wishlist-стор + фильтрация списка).
+- **Что сделано:** `saveCart`/`clearCart` шлют событие `savdo:cart-changed`; бейдж корзины
+  подписан → обновляется на add/remove/clear без ре-навигации. WishlistPage: заменил мёртвый
+  `useEffect` на подписку `subscribeWishlist` → удалённые из ♡ товары уходят из списка сразу.
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 2 TMA (тоггл)
+
+### ✅ [HYBRID-2] Тоггл контекста в TMA + фикс латентного бага «режим покупателя»
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `apps/tma/src/lib/auth.ts` (switchContext + Capabilities),
+  `providers/AuthProvider.tsx` (capabilities в state + switchContext),
+  `pages/buyer/ProfilePage.tsx`, `pages/seller/ProfilePage.tsx`, `lib/i18n/{ru,uz}.ts`
+- **Что сделано:**
+  - AuthProvider хранит `user.capabilities {canBuy,canSell,hasStore}` (из ответа /auth/telegram)
+    и отдаёт `switchContext(context)` — вызывает POST /auth/switch-context, обновляет role в
+    state + бампает authVersion.
+  - Buyer ProfilePage: карточка «Режим продавца» показывается если есть seller-профиль
+    (`canSell`), кнопка активна только при наличии магазина (`hasStore`). Карточка «стать
+    продавцом» теперь только для тех, у кого seller-профиля НЕТ (`!canSell`).
+  - Seller ProfilePage: кнопка «Режим покупателя» теперь через `switchContext('BUYER')`.
+- **🐛 Латентный баг (найден+исправлен):** старая seller-кнопка делала `navigate('/buyer')`
+  напрямую, но `BuyerGuard` (App.tsx:97) отбрасывал SELLER обратно на /seller → кнопка НЕ
+  работала. Теперь сначала меняется активный контекст (role→BUYER), потом навигация.
+- **Осталось по Фазе 2:** HYBRID-5 (проактивная реконсиляция при удалении магазина — сейчас
+  переключение реактивно гейтится на наличии store, основной риск закрыт).
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 2 backend + бот
+
+### ✅ [HYBRID-1] POST /auth/switch-context — переключение контекста без перелогина
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `apps/api/src/modules/auth/dto/switch-context.dto.ts` (новый),
+  `.../use-cases/switch-context.use-case.ts` (новый), `auth.controller.ts`, `auth.module.ts`
+- **Что сделано:** ре-выдаёт access token с новым role-claim (+storeId для SELLER).
+  Персистит `users.role` (refresh-session читает его из БД → контекст сохраняется; бот/TMA
+  дефолтят на последний контекст). SELLER требует активный магазин (иначе 400 «нет магазина»).
+  BUYER гарантирует buyer-профиль. ADMIN/BLOCKED/deleted отбиваются.
+
+### ✅ [HYBRID-6] me.capabilities + capabilities в /auth/telegram
+- **Важность:** 🟢 · **Дата:** 30.06.2026
+- **Файлы:** `auth.repository.ts` (findCapabilities), `get-me.use-case.ts`, `telegram-auth.use-case.ts`
+- **Что сделано:** `{ canBuy, canSell, hasStore }` для UI-тоггла. Отдаётся в GET /auth/me и в
+  ответе /auth/telegram (TMA получает сразу без лишнего round-trip).
+
+### ✅ [HYBRID-3] Бот: единый источник истины роли + переключатель
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `telegram-demo.handler.ts`, `telegram-webhook.controller.ts`
+- **Что сделано:** `handleStart` теперь решает меню по `users.role` (как TMA), а не по наличию
+  seller-профиля → закрывает `ROLE-SOURCE-INCONSISTENCY-001`. Кнопки «🛒 Режим покупателя»
+  (в seller-меню) и «🏪 Режим продавца» (в buyer-меню, только если есть магазин). Хендлеры
+  `handleSwitchToBuyer/Seller` зеркалят switch-context (персист users.role, SELLER требует store).
+- **Осталось:** HYBRID-2 (тоггл в TMA UI), HYBRID-5 (проактивная реконсиляция при удалении store).
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 1 + vitest fix
+
+### ✅ [HYBRID-4] Смена роли (дефолтного контекста) из админки
+- **Важность:** 🟡
+- **Дата:** 30.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/dto/change-user-role.dto.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/change-user-role.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin-users.controller.ts` (PATCH `:id/role`)
+  - `apps/api/src/modules/admin/admin.module.ts` (DI)
+  - `apps/admin/src/pages/UserDetailPage.tsx` (кнопка + модал)
+  - `apps/admin/src/lib/i18n/{ru,uz}.ts` (ключи changeRole*)
+- **Что сделано:** `PATCH /api/v1/admin/users/:id/role` (BUYER|SELLER, `user:update`, audit_log,
+  self-guard). NON-DESTRUCTIVE по ADR гибридной модели: смена дефолтного контекста не
+  трогает профили/магазин. SELLER требует наличие seller-профиля (иначе 400 — для нового
+  продавца есть «Активировать продавца»). BUYER гарантирует buyer-профиль (upsert).
+  В UI кнопка «Сделать продавцом/покупателем» в ActionPanel (не-админ, не-blocked) + модал
+  с описанием последствий и опц. причиной. Закрывает `ADMIN-NO-ROLE-CHANGE-UI-001`.
+  Раньше роль менялась только сырым `/database`. api+admin tsc чистые.
+
+### ✅ [INFRA-VITEST-MISSING] apps/admin tsc падал на TS2688 vitest/globals
+- **Важность:** 🟢
+- **Дата:** 30.06.2026
+- **Что сделано:** `vitest@2.1.8` не был установлен (отсутствовал `globals.d.ts`) → tsconfig
+  `types:["vitest/globals"]` ронял `tsc --noEmit`. `pnpm install --frozen-lockfile` восстановил
+  из lockfile (без изменений lock). tsc admin теперь EXIT 0. Это была «мелочь» из чекпоинта 29.06.
+
 ## 2026-06-29 (Полат) — Live-аудит админки + фиксы (orchestrator-сессия)
 
 ### ✅ [STRESS-DOS-001] Явный лимит body-parser (DoS hardening)
