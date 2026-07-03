@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-07-03 (Азим) — OTP-BOT-MISMATCH-001 фронт-часть закрыта + 2 отложенных commit'а задокументированы
+
+### ✅ [OTP-BOT-MISMATCH-001] Добиты 3 последних хардкода `@savdo_builderBOT`
+- **Важность:** 🟡 (понижено с 🔴 — бэк-подтверждение у Полата остаётся отдельным пунктом)
+- **Дата:** 03.07.2026
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/products/page.tsx:47`,
+  `apps/web-buyer/src/app/terms/page.tsx:64`, `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:27`
+- **Что сделано:** бот официально `@maxsavdo_bot` (переименован 24.06.2026). Три оставшихся
+  хардкода/fallback-константы со старым `@savdo_builderBOT` в web-buyer/web-seller обновлены.
+  `tsc --noEmit` чист на обеих правках web-seller; web-buyer чист на изменённых файлах (есть
+  27 pre-existing ошибок в других файлах — см. `WEB-BUYER-ENUM-AS-VALUE-001` ниже, не мой код).
+  Заодно попутно найден и залогирован новый тикет `WEB-BUYER-ENUM-AS-VALUE-001` (Полат).
+- **Уборка:** удалено 15 untracked verification-скриншотов из корня репо (Playwright-снимки
+  за 18-30.06, уже не нужны — верификация задокументирована в прошлых сессиях).
+
+### 📝 Ретроактивная запись — 2 коммита с прошлой сессии (01.07.2026), не были занесены в done.md
+- **[BILLING-MACHINE-001 UI]** `2185d08` — subscription banners + suspended overlay: `SubscriptionBanner`
+  (TRIAL≤7дн/PAST_DUE/SUSPENDED+CHURNED), `SuspendedOverlay` (blur поверх контента), hook
+  `use-subscription` (`retry:false` — backend-эндпоинт ещё не задеплоен Полатом), dashboard layout wiring.
+  Закрывает фронт-часть `BILLING-MACHINE-001` для Азима — Полат должен задеплоить
+  `GET /seller/subscription`, после чего проверить баннеры вживую.
+- **[WS-DESIGN-WAVE-7-DEFERRED]** `6ad847e` — chat skeleton 3→5 строк (`chat/page.tsx:516`),
+  закрывает P3-002, последний пункт design-audit волны 7.
+
 ## 2026-06-30 (Азим) — ONBOARDING-AUDIT-AZIM-001 закрыт
 
 ### ✅ [ONBOARDING-AUDIT-AZIM-001] Фиксы онбординга + auth

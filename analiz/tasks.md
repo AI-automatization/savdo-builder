@@ -22,26 +22,44 @@
 
 ---
 
-## 🔴 [OTP-BOT-MISMATCH-001] OTP-коды не приходят — несовпадение имени бота
+## 🟡 [OTP-BOT-MISMATCH-001] OTP-коды не приходят — несовпадение имени бота
 
-- **Домен:** `apps/api` (конфиг Telegram Bot) + `apps/web-seller` (UI текст)
-- **Кто берёт:** Полат
-- **Приоритет:** 🔴 P0 — регистрация новых продавцов не работает
-- **Нашёл:** Азим, 18.06.2026 (через Playwright + curl прод-бэкенда)
-- **Симптом:** пользователь вводит телефон на `/login`, UI переходит на шаг «введите код», но код в Telegram не приходит.
-- **Root cause (два момента):**
-  1. **Несовпадение бота.** Фронт (`login/page.tsx:132`, `LandingFooter.tsx:34`, `products/page.tsx:47`) везде указывает `@savdo_builderBOT`. Продакшн-бэкенд в ошибке `TELEGRAM_NOT_LINKED` отвечает `@maxsavdo_bot`. Один из двух — неправильный. Нужно сверить с реальным `TELEGRAM_BOT_TOKEN` в Railway.
-  2. **Пользователь не запустил бота.** Telegram-бот не может первым написать пользователю — тот обязан нажать Start самостоятельно. Если бот ни разу не открывался, OTP физически не доставится даже при корректном запросе (backend вернёт 200, TG API молча отклонит).
-- **Что сделать:**
-  1. Проверить Railway env `TELEGRAM_BOT_TOKEN` — какой реальный username бота?
-  2. Если правильный `@savdo_builderBOT` — исправить строку ошибки `TELEGRAM_NOT_LINKED` в бэкенде (сейчас хардкодит `@maxsavdo_bot`).
-     Если правильный `@maxsavdo_bot` — сказать Азиму, он поправит 3 места во фронте.
-  3. Убедиться что в description бота есть инструкция «нажми Start перед первым входом».
-- **Временный workaround:** открыть нужного бота в Telegram → нажать Start → поделиться номером → повторить запрос OTP.
-- **Файлы (фронт):**
-  - `apps/web-seller/src/app/(auth)/login/page.tsx:132`
-  - `apps/web-seller/src/components/landing/LandingFooter.tsx:34`
-  - `apps/web-seller/src/app/(dashboard)/products/page.tsx:47`
+- **Домен:** `apps/api` (конфиг Telegram Bot) — остаток за Полатом.
+- **Кто берёт:** Полат (Азимова фронт-часть закрыта 03.07.2026).
+- **Приоритет:** 🟡 P1 (понижено с P0 — фронт больше не путает пользователя; бэк-подтверждение остаётся).
+- **Нашёл:** Азим, 18.06.2026 (через Playwright + curl прод-бэкенда).
+- **✅ 03.07.2026 (Азим) — фронт-часть закрыта.** Бот официально переименован в `@maxsavdo_bot`
+  (см. `project-telegram-bot-rename.md`, 24.06.2026). Добиты 3 оставшихся хардкода `@savdo_builderBOT`:
+  `apps/web-seller/src/app/(dashboard)/products/page.tsx:47` (fallback-константа),
+  `apps/web-buyer/src/app/terms/page.tsx:64`, `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:27`.
+  Весь web-buyer + web-seller теперь консистентно ссылаются на `@maxsavdo_bot`. tsc чист
+  (обе правки не задели pre-existing `packages/types` enum-as-value ошибки — см. ниже).
+- **Остаток (Полат, `apps/api`):** ещё живы хардкоды `savdo_builderBOT` в `apps/api/**`,
+  `apps/admin/**`, `apps/tma/**`, `.env.example` — свериться с реальным `TELEGRAM_BOT_TOKEN`
+  в Railway и обновить/убедиться, что бэкенд-ошибка `TELEGRAM_NOT_LINKED` и все notification-сервисы
+  шлют пользователя на правильный `@maxsavdo_bot`. Плюс убедиться что в description бота есть
+  инструкция «нажми Start перед первым входом» (бот не может писать первым).
+- **Временный workaround:** открыть `@maxsavdo_bot` в Telegram → нажать Start → поделиться номером → повторить запрос OTP.
+
+---
+
+## 🆕 [WEB-BUYER-ENUM-AS-VALUE-001] `packages/types` enum-as-value ошибки в web-buyer (не закрыто, в отличие от web-seller)
+
+- **Домен:** `packages/types` (Полат) — тот же root cause что `WEB-SELLER-ENUM-AS-VALUE-BUILD-001`.
+- **Нашёл:** Азим, 03.07.2026 (при верификации `tsc --noEmit` после правки bot-username).
+- **Симптом:** `tsc --noEmit -p apps/web-buyer` — 27 ошибок `TS2693 'OrderStatus'/'DeliveryType'/
+  'ThreadType'/'ProductStatus' only refers to a type, but is being used as a value here` в
+  `(shop)/orders/[id]/page.tsx`, `(shop)/orders/page.tsx`, `components/store/ProductCard.tsx`.
+- **Root cause:** те же `export type` вместо `export enum` в `packages/types/src/enums.ts`, что
+  ловил web-seller (см. `logs.md` `WEB-SELLER-ENUM-AS-VALUE-BUILD-001`). web-seller получил
+  локальный runtime-шим (`apps/web-seller/src/lib/enums.ts`) 07.06.2026, web-buyer — нет.
+  Не мой фикс сейчас (не трогал эти файлы) — не проверял, ломает ли это прод-сборку
+  (`next build` может пройти на затронутых роутах, если статически не типизировано жёстко) — не проверено.
+- **Что сделать:** либо канонизировать `packages/types/enums.ts` на `export enum` (правильный фикс,
+  Полат), либо завести аналогичный шим `apps/web-buyer/src/lib/enums.ts` как временный обход (Азим).
+- **Не блокер прямо сейчас** — не проверено, падает ли реальная prod-сборка web-buyer на Railway
+  (возможно уже мигрировано на ветке `web-buyer`, локальный `main`/`feat/seller-landing` может быть
+  позади). Проверить `pnpm --filter web-buyer build` перед эскалацией в P0.
 
 ---
 
