@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
 
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 
 export function HomeHero() {
   const { t } = useTranslation();

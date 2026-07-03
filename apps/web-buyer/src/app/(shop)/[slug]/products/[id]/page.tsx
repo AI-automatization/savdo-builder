@@ -27,7 +27,7 @@ import {
 } from "@/lib/variants";
 import { useTranslation } from "@/lib/i18n";
 
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 
 const fmt = (n: unknown) => {
   const num = typeof n === "number" ? n : Number(n);

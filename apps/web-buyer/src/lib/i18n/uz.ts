@@ -541,7 +541,7 @@ export const uz: Translations = {
   'legal.terms.s6.heading': '6. Shartlarning oʻzgarishi',
   'legal.terms.s6.p1': 'Platforma ushbu Shartlarni yangilash huquqiga ega. Joriy versiya maxsavdo.uz/terms manzilida joylashtiriladi. Oʻzgartirishlar eʼlon qilingandan keyin xizmatdan foydalanishni davom ettirish yangi tahrirga rozilikni bildiradi.',
   'legal.terms.s7.heading': '7. Aloqa',
-  'legal.terms.s7.p1': 'Savol va murojaatlar: support@maxsavdo.uz, Telegram-bot @savdo_builderBOT.',
+  'legal.terms.s7.p1': 'Savol va murojaatlar: support@maxsavdo.uz, Telegram-bot @maxsavdo_bot.',
 
   // legal — refund (qaytarish va almashtirish)
   'legal.refund.title': 'Tovarni qaytarish va almashtirish',
@@ -573,7 +573,7 @@ export const uz: Translations = {
   'legal.help.effectiveDate': '21-may, 2026-yil',
   'legal.help.intro': 'Eng koʻp beriladigan savollarga qisqa javoblar. Agar savolingizga javob bu yerda boʻlmasa — support@maxsavdo.uz manziliga yozing, yordam beramiz.',
   'legal.help.s1.q': 'Buyurtma qanday qilinadi?',
-  'legal.help.s1.a': 'Magazinni maxsavdo.uz/<magazin> manzili boʻyicha yoki Telegram-chatdan oching. Mahsulotlarni savatga qoʻshing, "Buyurtma berish" tugmasini bosing, ism, telefon va yetkazib berish manzilini koʻrsating. Raqamingizni @savdo_builderBOT botidan kelgan kod bilan tasdiqlang. Toʻlov — qabul qilishda naqd pul yoki sotuvchiga oʻtkazma.',
+  'legal.help.s1.a': 'Magazinni maxsavdo.uz/<magazin> manzili boʻyicha yoki Telegram-chatdan oching. Mahsulotlarni savatga qoʻshing, "Buyurtma berish" tugmasini bosing, ism, telefon va yetkazib berish manzilini koʻrsating. Raqamingizni @maxsavdo_bot botidan kelgan kod bilan tasdiqlang. Toʻlov — qabul qilishda naqd pul yoki sotuvchiga oʻtkazma.',
   'legal.help.s2.q': 'Qanday toʻlov usullari mavjud?',
   'legal.help.s2.a': 'Hozir naqd toʻlov (mahsulotni qoʻlga olishda) va sotuvchining Click/Payme hisobiga oʻtkazma orqali toʻlov mavjud. Karta bilan toʻliq onlayn toʻlov va Click/Payme orqali platforma ichida toʻgʻridan-toʻgʻri toʻlov keyinroq paydo boʻladi.',
   'legal.help.s3.q': 'Yetkazib berish qanday amalga oshiriladi?',
@@ -583,9 +583,9 @@ export const uz: Translations = {
   'legal.help.s5.q': 'Sotuvchi bilan qanday bogʻlanish mumkin?',
   'legal.help.s5.a': 'Mahsulot yoki magazin kartasidan "Sotuvchi bilan chat" tugmasini bosing — platforma ichidagi chat ochiladi. Buyurtma berilgandan keyin "Mening buyurtmalarim" boʻlimida aniq buyurtma boʻyicha tafsilotlarni muhokama qilishingiz mumkin. Chat real vaqt rejimida ishlaydi.',
   'legal.help.s6.q': 'Qanday qilib sotuvchi boʻlish mumkin?',
-  'legal.help.s6.a': '"Profil" boʻlimida "Sotuvchi boʻlish" tugmasini bosing — sizni @savdo_builderBOT botiga olib oʻtamiz, u yerda bir necha daqiqada oʻz magazinni ochasiz, dastlabki mahsulotlarni qoʻshasiz va maxsavdo.uz/<sizning-magazin> havolasini olasiz. Roʻyxatdan oʻtish bepul, MVP bosqichida komissiya yoki obuna toʻlovi yoʻq.',
+  'legal.help.s6.a': '"Profil" boʻlimida "Sotuvchi boʻlish" tugmasini bosing — sizni @maxsavdo_bot botiga olib oʻtamiz, u yerda bir necha daqiqada oʻz magazinni ochasiz, dastlabki mahsulotlarni qoʻshasiz va maxsavdo.uz/<sizning-magazin> havolasini olasiz. Roʻyxatdan oʻtish bepul, MVP bosqichida komissiya yoki obuna toʻlovi yoʻq.',
   'legal.help.s7.q': 'Agar tasdiqlash kodi kelmasa, nima qilish kerak?',
-  'legal.help.s7.a': 'OTP-kod @savdo_builderBOT Telegram bot orqali yuboriladi. Quyidagilarni tekshiring: botni kamida bir marta ochgan boʻlsangiz ("Start" bosgan); telefon raqamingiz +998 XX XXX XX XX formatida koʻrsatilgan; Telegram ochiq va internet bor. Agar kod baribir kelmasa — support@maxsavdo.uz ga yozing.',
+  'legal.help.s7.a': 'OTP-kod @maxsavdo_bot Telegram bot orqali yuboriladi. Quyidagilarni tekshiring: botni kamida bir marta ochgan boʻlsangiz ("Start" bosgan); telefon raqamingiz +998 XX XXX XX XX formatida koʻrsatilgan; Telegram ochiq va internet bor. Agar kod baribir kelmasa — support@maxsavdo.uz ga yozing.',
   'legal.help.s8.q': 'Interfeys tilini qanday oʻzgartirish mumkin?',
   'legal.help.s8.a': '"Profil" boʻlimida tilni RU/UZ ga almashtiring. Oʻzgarish darhol qoʻllaniladi va shu qurilmada saqlanadi.',
 

@@ -30,7 +30,7 @@ import { useTranslation } from "@/lib/i18n";
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 // SUPPORT-CHANNEL-001: ссылка на поддержку. Когда Полат создаст канал —
 // выставит NEXT_PUBLIC_SUPPORT_URL в Railway-env. До этого фолбэк на бот
 // (он реально работает), так что битой ссылки в проде не бывает.
