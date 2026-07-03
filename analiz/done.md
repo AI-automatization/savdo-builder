@@ -1,5 +1,31 @@
 # Done — Азим + Полат
 
+## 2026-07-03 (Полат) — PERF-TMA-HEAT-001: убраны always-on эффекты (грев телефона)
+
+### ✅ [PERF-TMA-HEAT-001] Телефон греется в TMA — устранены постоянные GPU-эффекты
+- **Важность:** 🔴 · **Дата:** 03.07.2026 · `pnpm build` (tsc -b + vite) EXIT 0, `vitest` 18/18
+- **Файлы:** `apps/tma/src/components/layout/AppShell.tsx`, `apps/tma/src/lib/socket.ts`,
+  `apps/tma/src/index.css`
+- **Что сделано (по 3 подтверждённым офендерам расследования):**
+  1. **Ambient blur** (`AppShell.tsx`): 3 слоя `filter: blur(72/56/40px)` на `fixed inset-0` при
+     скролле в мобильном WebView заставляли GPU перерастеризовывать каждый кадр. Отключены **на
+     мобилке** (`{isDesktop && …}`), на десктопе — 2 слоя БЕЗ `filter:blur` (мягкость через
+     radial-gradient стопы + `translateZ(0)` в свой composite-слой). Мобилка = ноль per-frame blur.
+  2. **socket.io reconnect** (`socket.ts`): дефолт = бесконечный reconnect; при stale-token баге
+     хендшейк фейлился вечно → CPU-цикл + вечный pulse. Добавлены `reconnectionAttempts:8` +
+     backoff (`reconnectionDelay:1000`, `Max:8000`). После лимита → 'disconnected' (точка без
+     анимации), цикл встаёт.
+  3. **glass-shimmer** (`index.css`): `animation: shimmer infinite` висел на **КАЖДОЙ** GlassCard
+     (список карточек = N вечных анимаций). Переведён на взаимодействие (`:hover`/`:active` = один
+     проход), как и задумывалось комментом «micro-reflection on hover».
+- **НЕ трогал (осознанно):** `pulse` в DashboardPage (258/336) и `SocketStatusBadge` — это
+  условные СИГНАЛЫ (срочный заказ / проблема связи), ровно тот «блик по событию» из
+  FEAT-DESIGN-OPTIMIZATION-001. `.status-dot`(cyan-ping)/`.orchid-pulse` — dead CSS (не в .tsx),
+  рантайм-стоимости нет.
+- **Остаток:** финальное подтверждение профайлером на реальном устройстве (Chrome DevTools
+  Performance / TG WebView remote debug) — код-часть закрыта.
+- **Связь:** частично закрывает и FEAT-DESIGN-OPTIMIZATION-001 (принцип «анимация = сигнал»).
+
 ## 2026-07-02 (Полат) — Фиксы после живого buyer-аудита TMA (4 бага)
 
 ### ✅ [TMA-BUILD-AUTHCTX-014] Прод-сборка TMA была сломана с Phase 2 (tsc -b)
