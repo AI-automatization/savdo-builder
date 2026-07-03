@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -31,6 +31,9 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // D12: stable idempotency key per checkout session. Generated once on mount
+  // so retries (network timeout, double-tap) replay the same key → API dedupes.
+  const idempotencyKeyRef = useRef(crypto.randomUUID());
   // TMA-CHECKOUT-SUCCESS-PAGE-001: вместо моментального navigate показываем
   // success screen с orderNumber + кнопкой «Мои заказы». UX consistency с
   // web-buyer (router.replace на /orders/:id).
@@ -68,6 +71,7 @@ export default function CheckoutPage() {
     try {
       const order = await api<{ id: string; orderNumber?: string; totalAmount: number }>('/orders', {
         method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKeyRef.current },
         body: {
           items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, quantity: i.qty })),
           buyerName: name.trim(),

@@ -177,64 +177,85 @@ export class CheckoutRepository {
       });
 
       for (const item of data.items) {
-        if (!item.variantId) continue;
-
-        // API-CHECKOUT-CONFIRM-500-001 (defensive): валидируем UUID формат до
-        // raw SQL чтобы не получить PostgresError "invalid input syntax for
-        // type uuid" → HTTP 500. Невалидный variantId = битый cart data,
-        // бросаем понятный CHECKOUT_STOCK_INSUFFICIENT (item будет re-validate
-        // в next request).
-        if (!isValidUuid(item.variantId)) {
-          throw new DomainException(
-            ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
-            `Invalid variant reference for ${item.productTitleSnapshot}`,
-            HttpStatus.UNPROCESSABLE_ENTITY,
-            { productId: item.productId, variantId: item.variantId },
-          );
-        }
-
-        // API-CHECKOUT-CONFIRM-500-001 (defensive): аналогично для productId.
         if (!isValidUuid(item.productId)) {
           throw new DomainException(
             ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
             `Invalid product reference for ${item.productTitleSnapshot}`,
             HttpStatus.UNPROCESSABLE_ENTITY,
-            { productId: item.productId, variantId: item.variantId },
+            { productId: item.productId, variantId: item.variantId ?? null },
           );
         }
 
-        // API-STOCK-RACE-OVERSELL-001 (QA-AUDIT P0):
-        // Старый decrement без guard позволял двум параллельным транзакциям
-        // вычитать одинаковый stock → minus values, oversell. Atomic UPDATE
-        // с WHERE stockQuantity >= qty: если 0 rows affected — недостаточно
-        // в другой параллельной транзакции уже вычли.
-        const affected = await tx.$executeRaw(Prisma.sql`
-          UPDATE "product_variants"
-          SET "stockQuantity" = "stockQuantity" - ${item.quantity}
-          WHERE "id" = ${item.variantId}::uuid
-            AND "stockQuantity" >= ${item.quantity}
-        `);
+        if (item.variantId) {
+          // API-CHECKOUT-CONFIRM-500-001 (defensive): validate UUID before raw SQL.
+          if (!isValidUuid(item.variantId)) {
+            throw new DomainException(
+              ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+              `Invalid variant reference for ${item.productTitleSnapshot}`,
+              HttpStatus.UNPROCESSABLE_ENTITY,
+              { productId: item.productId, variantId: item.variantId },
+            );
+          }
 
-        if (affected === 0) {
-          throw new DomainException(
-            ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
-            `Insufficient stock for ${item.productTitleSnapshot}`,
-            HttpStatus.UNPROCESSABLE_ENTITY,
-            { productId: item.productId, variantId: item.variantId },
-          );
+          // API-STOCK-RACE-OVERSELL-001: atomic decrement with guard to prevent oversell.
+          const affected = await tx.$executeRaw(Prisma.sql`
+            UPDATE "product_variants"
+            SET "stockQuantity" = "stockQuantity" - ${item.quantity}
+            WHERE "id" = ${item.variantId}::uuid
+              AND "stockQuantity" >= ${item.quantity}
+          `);
+
+          if (affected === 0) {
+            throw new DomainException(
+              ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+              `Insufficient stock for ${item.productTitleSnapshot}`,
+              HttpStatus.UNPROCESSABLE_ENTITY,
+              { productId: item.productId, variantId: item.variantId },
+            );
+          }
+
+          await tx.inventoryMovement.create({
+            data: {
+              productId: item.productId,
+              variantId: item.variantId,
+              movementType: InventoryMovementType.ORDER_DEDUCTED,
+              quantityDelta: -item.quantity,
+              referenceType: 'order',
+              referenceId: order.id,
+              note: 'Order placed',
+            },
+          });
+        } else {
+          // Non-variant products: atomically deduct from product.totalStock.
+          const result = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              totalStock: { gte: item.quantity },
+            },
+            data: { totalStock: { decrement: item.quantity } },
+          });
+
+          if (result.count === 0) {
+            throw new DomainException(
+              ErrorCode.CHECKOUT_STOCK_INSUFFICIENT,
+              `Insufficient stock for ${item.productTitleSnapshot}`,
+              HttpStatus.UNPROCESSABLE_ENTITY,
+              { productId: item.productId },
+            );
+          }
+
+          await tx.inventoryMovement.create({
+            data: {
+              productId: item.productId,
+              variantId: null,
+              movementType: InventoryMovementType.ORDER_DEDUCTED,
+              quantityDelta: -item.quantity,
+              referenceType: 'order',
+              referenceId: order.id,
+              note: 'Order placed',
+            },
+          });
         }
-
-        await tx.inventoryMovement.create({
-          data: {
-            productId: item.productId,
-            variantId: item.variantId,
-            movementType: InventoryMovementType.ORDER_DEDUCTED,
-            quantityDelta: -item.quantity,
-            referenceType: 'order',
-            referenceId: order.id,
-            note: 'Order placed',
-          },
-        });
       }
 
       return order;

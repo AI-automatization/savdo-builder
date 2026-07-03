@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { MediaVisibility } from '@prisma/client';
-import { TelegramStorageService } from '../services/telegram-storage.service';
+import sharp from 'sharp';
 import { R2StorageService } from '../services/r2-storage.service';
 import { MediaRepository } from '../repositories/media.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
@@ -33,7 +33,6 @@ export class UploadDirectUseCase {
   private readonly logger = new Logger(UploadDirectUseCase.name);
 
   constructor(
-    private readonly tgStorage: TelegramStorageService,
     private readonly r2Storage: R2StorageService,
     private readonly mediaRepo: MediaRepository,
   ) {}
@@ -63,76 +62,63 @@ export class UploadDirectUseCase {
       );
     }
 
-    // ── Primary: R2/Supabase (S3-compatible) если сконфигурирован
-    if (this.r2Storage.isConfigured()) {
-      try {
-        const bucket = this.r2Storage.getDefaultBucket();
-        const ext = pickExtension(file.mimetype);
-        const objectKey = `${purpose}/${new Date().getFullYear()}/${randomUUID()}.${ext}`;
-        await this.r2Storage.uploadObject(bucket, objectKey, file.buffer, file.mimetype);
-
-        const isPrivate = purpose === 'seller_doc';
-        const mediaFile = await this.mediaRepo.create({
-          ownerUserId: userId,
-          bucket,
-          objectKey,
-          mimeType: file.mimetype,
-          fileSize: BigInt(file.size),
-          // SEC-005: документы продавцов приватны, не отдаются через public proxy.
-          visibility: isPrivate ? MediaVisibility.PROTECTED : MediaVisibility.PUBLIC,
-        });
-
-        // Public Supabase: отдаём direct CDN URL (без 302 через /proxy/:id).
-        // Раньше клиент делал GET /proxy → 302 → CDN — лишний round-trip.
-        // PRIVATE/seller_doc остаются за /private/:id (там auth + RLS check).
-        const publicUrl = !isPrivate ? this.r2Storage.getPublicUrl(objectKey) : '';
-        return {
-          mediaFileId: mediaFile.id,
-          url: isPrivate
-            ? `/api/v1/media/private/${mediaFile.id}`
-            : (publicUrl || `/api/v1/media/proxy/${mediaFile.id}`),
-        };
-      } catch (err) {
-        this.logger.error('R2/Supabase upload failed — falling back to Telegram', err instanceof Error ? err.stack : err);
-        // продолжаем к Telegram fallback
-      }
-    }
-
-    // ── Fallback: Telegram channel storage
-    if (!this.tgStorage.isConfigured()) {
+    if (!this.r2Storage.isConfigured()) {
       throw new DomainException(
         ErrorCode.SERVICE_UNAVAILABLE,
-        'Direct upload is not available — neither R2/Supabase nor Telegram storage configured',
+        'Storage not configured',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
 
-    let fileId: string;
+    const bucket = this.r2Storage.getDefaultBucket();
+
+    let uploadBuffer = file.buffer;
+    let uploadMime = file.mimetype;
+    let uploadExt = pickExtension(file.mimetype);
+
+    if (IMAGE_MIME_TYPES.has(file.mimetype) && purpose !== 'seller_doc') {
+      try {
+        uploadBuffer = await sharp(file.buffer)
+          .resize({ width: 1280, height: 1280, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 92 })
+          .toBuffer();
+        uploadMime = 'image/jpeg';
+        uploadExt = 'jpg';
+      } catch (sharpErr) {
+        this.logger.warn(`Sharp processing failed, uploading original: ${sharpErr instanceof Error ? sharpErr.message : String(sharpErr)}`);
+      }
+    }
+
+    const objectKey = `${purpose}/${new Date().getFullYear()}/${randomUUID()}.${uploadExt}`;
+
     try {
-      fileId = await this.tgStorage.uploadFile(file.buffer, file.originalname, file.mimetype);
-    } catch (err: unknown) {
-      this.logger.error('Telegram upload failed', err instanceof Error ? err.stack : err);
+      await this.r2Storage.uploadObject(bucket, objectKey, uploadBuffer, uploadMime);
+    } catch (err) {
+      this.logger.error('R2 upload failed', err instanceof Error ? err.stack : err);
       throw new DomainException(
         ErrorCode.MEDIA_UPLOAD_FAILED,
-        'File upload failed — storage unavailable',
+        'File upload failed — R2 storage unavailable',
         HttpStatus.BAD_GATEWAY,
       );
     }
 
+    const isPrivate = purpose === 'seller_doc';
     const mediaFile = await this.mediaRepo.create({
       ownerUserId: userId,
-      bucket: 'telegram',
-      objectKey: `tg:${fileId}`,
-      mimeType: file.mimetype,
-      fileSize: BigInt(file.size),
-      visibility: MediaVisibility.PUBLIC,
+      bucket,
+      objectKey,
+      mimeType: uploadMime,
+      fileSize: BigInt(uploadBuffer.length),
+      // SEC-005: документы продавцов приватны, не отдаются через public proxy.
+      visibility: isPrivate ? MediaVisibility.PROTECTED : MediaVisibility.PUBLIC,
     });
 
+    const publicUrl = !isPrivate ? this.r2Storage.getPublicUrl(objectKey) : '';
     return {
       mediaFileId: mediaFile.id,
-      url: purpose === 'seller_doc'
+      url: isPrivate
         ? `/api/v1/media/private/${mediaFile.id}`
-        : `/api/v1/media/proxy/${mediaFile.id}`,
+        : (publicUrl || `/api/v1/media/proxy/${mediaFile.id}`),
     };
   }
 }

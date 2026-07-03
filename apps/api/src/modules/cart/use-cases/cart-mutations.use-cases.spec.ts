@@ -7,8 +7,10 @@ import { UpdateCartItemUseCase } from './update-cart-item.use-case';
 import { RemoveFromCartUseCase } from './remove-from-cart.use-case';
 import { ClearCartUseCase } from './clear-cart.use-case';
 import { CartRepository } from '../repositories/cart.repository';
+import { ProductsRepository } from '../../products/repositories/products.repository';
+import { VariantsRepository } from '../../products/repositories/variants.repository';
 
-const ITEM = { id: 'item-1', cartId: 'cart-1', productId: 'p-1', quantity: 2, unitPriceSnapshot: 100 };
+const ITEM = { id: 'item-1', cartId: 'cart-1', productId: 'p-1', variantId: null, quantity: 2, unitPriceSnapshot: 100 };
 const CART_FULL = {
   id: 'cart-1',
   storeId: 'store-1',
@@ -23,14 +25,23 @@ describe('UpdateCartItemUseCase', () => {
     updateItemQuantity: jest.Mock;
     findById: jest.Mock;
   };
+  let productsRepo: { findById: jest.Mock };
+  let variantsRepo: { findById: jest.Mock };
 
   beforeEach(() => {
     cartRepo = {
       findItemById: jest.fn().mockResolvedValue(ITEM),
-      updateItemQuantity: jest.fn().mockResolvedValue(undefined),
+      updateItemQuantity: jest.fn().mockResolvedValue({ ...ITEM, quantity: 5 }),
       findById: jest.fn().mockResolvedValue(CART_FULL),
     };
-    useCase = new UpdateCartItemUseCase(cartRepo as unknown as CartRepository);
+    // Non-variant product with plenty of stock
+    productsRepo = { findById: jest.fn().mockResolvedValue({ totalStock: 100 }) };
+    variantsRepo = { findById: jest.fn().mockResolvedValue({ stockQuantity: 100 }) };
+    useCase = new UpdateCartItemUseCase(
+      cartRepo as unknown as CartRepository,
+      productsRepo as unknown as ProductsRepository,
+      variantsRepo as unknown as VariantsRepository,
+    );
   });
 
   it('item не найден → CART_ITEM_NOT_FOUND', async () => {
@@ -53,10 +64,17 @@ describe('UpdateCartItemUseCase', () => {
       .rejects.toThrow(/at least 1/);
   });
 
-  it('happy path → updateItemQuantity + reload mapped cart', async () => {
+  it('happy path → updateItemQuantity с expectedQuantity + reload mapped cart', async () => {
     const result = await useCase.execute({ itemId: 'item-1', cartId: 'cart-1', quantity: 5 });
-    expect(cartRepo.updateItemQuantity).toHaveBeenCalledWith('item-1', 5);
+    // CART-003: теперь передаём expectedQuantity=2 (текущий qty из ITEM) для optimistic lock
+    expect(cartRepo.updateItemQuantity).toHaveBeenCalledWith('item-1', 5, 2);
     expect(result.id).toBe('cart-1');
+  });
+
+  it('CART-003: concurrent update → null → CONFLICT 409', async () => {
+    cartRepo.updateItemQuantity.mockResolvedValue(null);
+    await expect(useCase.execute({ itemId: 'item-1', cartId: 'cart-1', quantity: 5 }))
+      .rejects.toThrow(/modified concurrently/);
   });
 });
 

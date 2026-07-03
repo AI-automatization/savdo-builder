@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
-import { getCart } from '@/lib/cart';
+import { cartItemCount, subscribeCart } from '@/lib/cart';
 import { subscribeToUnread } from '@/lib/notifications';
 import { subscribeToChatUnread } from '@/lib/chatUnread';
 
@@ -15,7 +15,7 @@ interface NavItem {
 
 const buyerTabs: NavItem[] = [
   { path: '/buyer',        label: 'Магазины', icon: '🏪', exact: true },
-  { path: '/buyer/cart',   label: 'Корзина',  icon: '🛒', badge: () => getCart().reduce((s, i) => s + i.qty, 0) },
+  { path: '/buyer/cart',   label: 'Корзина',  icon: '🛒' },
   { path: '/buyer/orders', label: 'Заказы',   icon: '📦' },
   { path: '/buyer/chat',   label: 'Чат',      icon: '💬' },
 ];
@@ -48,6 +48,11 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
   const [chatUnread, setChatUnread] = useState(0);
   useEffect(() => subscribeToChatUnread(setChatUnread), []);
 
+  // TMA-CART-BADGE-STALE-010: реактивный счётчик корзины (qty), обновляется на
+  // add/remove/clear через subscribeCart, без ожидания ре-навигации.
+  const [cartCount, setCartCount] = useState(cartItemCount);
+  useEffect(() => subscribeCart(() => setCartCount(cartItemCount())), []);
+
   return (
     <nav
       data-role={role}
@@ -64,7 +69,8 @@ export function BottomNav({ role }: { role: 'BUYER' | 'SELLER' }) {
     >
       {tabs.map((tab) => {
         const active = isActive(tab, location.pathname);
-        const tabBadge = tab.badge?.() ?? 0;
+        const isCartTab = tab.path === '/buyer/cart';
+        const tabBadge = isCartTab ? cartCount : (tab.badge?.() ?? 0);
         // UX-002: на иконке «Чат» — точный счётчик непрочитанных сообщений
         // (chatUnread) + общие in-app notifications (unread). На остальных — только tabBadge.
         const isChatTab = tab.path.endsWith('/chat');

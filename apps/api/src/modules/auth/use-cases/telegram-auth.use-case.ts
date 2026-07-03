@@ -73,6 +73,17 @@ export class TelegramAuthUseCase {
       throw new DomainException(ErrorCode.UNAUTHORIZED, 'Invalid Telegram initData signature', HttpStatus.UNAUTHORIZED);
     }
 
+    // A2-TG-REPLAY-001: Telegram docs recommend rejecting initData older than 24h.
+    // Without this check, an intercepted initData is valid indefinitely.
+    const authDate = params.get('auth_date');
+    if (!authDate) {
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'Missing auth_date in initData', HttpStatus.BAD_REQUEST);
+    }
+    const authDateMs = Number(authDate) * 1000;
+    if (isNaN(authDateMs) || Date.now() - authDateMs > 24 * 60 * 60 * 1000) {
+      throw new DomainException(ErrorCode.UNAUTHORIZED, 'Telegram initData has expired', HttpStatus.UNAUTHORIZED);
+    }
+
     // Parse user from initData
     const userParam = params.get('user');
     if (!userParam) {
@@ -192,6 +203,9 @@ export class TelegramAuthUseCase {
       ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 
+    // HYBRID-6: способности для тоггла контекста в TMA (продавец/покупатель).
+    const capabilities = await this.authRepo.findCapabilities(resolvedUser.id);
+
     return {
       token: accessToken,
       refreshToken,
@@ -199,6 +213,7 @@ export class TelegramAuthUseCase {
         id: resolvedUser.id,
         role: resolvedUser.role,
         phone: resolvedUser.phone,
+        capabilities,
       },
     };
   }

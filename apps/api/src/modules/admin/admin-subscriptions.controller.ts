@@ -31,6 +31,7 @@ import { ExtendTrialUseCase } from '../subscriptions/use-cases/extend-trial.use-
 import { CancelSubscriptionUseCase } from '../subscriptions/use-cases/cancel-subscription.use-case';
 import { CompSubscriptionUseCase } from '../subscriptions/use-cases/comp-subscription.use-case';
 import { BackfillTrialsUseCase } from '../subscriptions/use-cases/backfill-trials.use-case';
+import { BetaGrandfatherUseCase } from '../subscriptions/use-cases/beta-grandfather.use-case';
 import { MarkPaidDto } from '../subscriptions/dto/mark-paid.dto';
 import { ExtendTrialDto } from '../subscriptions/dto/extend-trial.dto';
 import { CancelSubscriptionDto } from '../subscriptions/dto/cancel-subscription.dto';
@@ -54,6 +55,7 @@ export class AdminSubscriptionsController {
     private readonly cancel: CancelSubscriptionUseCase,
     private readonly comp: CompSubscriptionUseCase,
     private readonly backfill: BackfillTrialsUseCase,
+    private readonly betaGrandfather: BetaGrandfatherUseCase,
   ) {}
 
   private async requireAdmin(user: JwtPayload) {
@@ -72,6 +74,7 @@ export class AdminSubscriptionsController {
   async list(
     @Query('status') status: string | undefined,
     @Query('tier') tier: string | undefined,
+    @Query('sellerId') sellerId: string | undefined,
     @Query('page') page: string | undefined,
     @Query('limit') limit: string | undefined,
     @CurrentUser() user: JwtPayload,
@@ -80,15 +83,27 @@ export class AdminSubscriptionsController {
     const validStatus = status && (['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CHURNED', 'CANCELLED'] as const).includes(status as SubscriptionStatus)
       ? (status as SubscriptionStatus)
       : undefined;
-    const validTier = tier && (['STARTER', 'PRO', 'BUSINESS'] as const).includes(tier as SubscriptionTier)
+    const validTier = tier && (['FREE', 'PRO', 'STUDIO'] as const).includes(tier as SubscriptionTier)
       ? (tier as SubscriptionTier)
       : undefined;
-    return this.subscriptionsRepo.findAllAdmin({
+    const result = await this.subscriptionsRepo.findAllAdmin({
       status: validStatus,
       tier: validTier,
+      sellerId: sellerId || undefined,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 50,
     });
+    const now = Date.now();
+    const items = result.items.map((sub) => {
+      const target =
+        sub.status === 'TRIAL' ? sub.trialEndsAt
+        : sub.status === 'ACTIVE' ? sub.currentPeriodEnd
+        : sub.status === 'PAST_DUE' ? sub.graceEndsAt
+        : null;
+      const daysLeft = target ? Math.max(0, Math.ceil((target.getTime() - now) / 86_400_000)) : null;
+      return { ...sub, daysLeft };
+    });
+    return { ...result, items };
   }
 
   @Get(':id')
@@ -102,7 +117,14 @@ export class AdminSubscriptionsController {
         HttpStatus.NOT_FOUND,
       );
     }
-    return subscription;
+    const now = Date.now();
+    const target =
+      subscription.status === 'TRIAL' ? subscription.trialEndsAt
+      : subscription.status === 'ACTIVE' ? subscription.currentPeriodEnd
+      : subscription.status === 'PAST_DUE' ? subscription.graceEndsAt
+      : null;
+    const daysLeft = target ? Math.max(0, Math.ceil((target.getTime() - now) / 86_400_000)) : null;
+    return { ...subscription, daysLeft };
   }
 
   @Post(':id/mark-paid')
@@ -171,5 +193,18 @@ export class AdminSubscriptionsController {
   async backfillEndpoint(@CurrentUser() user: JwtPayload) {
     await this.requireAdmin(user);
     return this.backfill.execute(user.sub);
+  }
+
+  /**
+   * BIZ-DECISIONS-§15 (2026-06-14): Beta grandfather — все продавцы получают
+   * tier=PRO ACTIVE бесплатно до 01.09.2026.
+   * Idempotent UPSERT — безопасно вызывать повторно.
+   * CHURNED-продавцы не затрагиваются.
+   */
+  @Post('beta-grandfather')
+  @AdminPermission('subscription:moderate')
+  async betaGrandfatherEndpoint(@CurrentUser() user: JwtPayload) {
+    await this.requireAdmin(user);
+    return this.betaGrandfather.execute(user.sub);
   }
 }

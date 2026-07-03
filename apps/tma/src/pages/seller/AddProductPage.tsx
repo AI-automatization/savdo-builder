@@ -6,7 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ImageCropper } from '@/components/ui/ImageCropper';
-import { Select } from '@/components/ui/Select';
+import { CreatableSelect } from '@/components/ui/CreatableSelect';
 import { showToast } from '@/components/ui/Toast';
 import { glass } from '@/lib/styles';
 
@@ -85,10 +85,12 @@ export default function AddProductPage() {
   const [globalCategories, setGlobalCategories]   = useState<GlobalCategory[]>([]);
   const [globalCategoryId, setGlobalCategoryId]   = useState<string>('');
   const [categoryFilters, setCategoryFilters] = useState<CategoryFilter[]>([]);
+  const [currentCategorySlug, setCurrentCategorySlug] = useState<string>('');
   const [attrValues, setAttrValues] = useState<Record<string, string | boolean>>({});
   // TMA-DYNAMIC-VARIANT-FILTERS-001: multi_select поля категории формируют
   // ProductOptionGroup + ProductVariant matrix. Map: filterKey → { selectedValues, stockByValue }.
   const [variantOptions, setVariantOptions] = useState<Record<string, { selected: string[]; stock: Record<string, number> }>>({});
+  const [newChipInput, setNewChipInput] = useState<Record<string, string>>({});
   const [attrs, setAttrs] = useState<AttrRow[]>([]);
   const [attrName, setAttrName] = useState('');
   const [attrValue, setAttrValue] = useState('');
@@ -144,6 +146,7 @@ export default function AddProductPage() {
     }
     const cat = globalCategories.find((c) => c.id === globalCategoryId);
     if (!cat?.slug) return;
+    setCurrentCategorySlug(cat.slug);
     const ac = new AbortController();
     filtersAbortRef.current = ac;
     api<CategoryFilter[]>(`/storefront/categories/${cat.slug}/filters`, { signal: ac.signal })
@@ -162,6 +165,18 @@ export default function AddProductPage() {
     padding: '12px 16px',
     borderRadius: 12,
   } as const;
+
+  // Добавить новое значение в CategoryFilter.options (расшаривается между всеми продавцами)
+  async function handleCreateFilterOption(filterKey: string, newValue: string) {
+    if (!currentCategorySlug) return;
+    const { options } = await api<{ options: string[] }>('/seller/categories/filters/option', {
+      method: 'POST',
+      body: { categorySlug: currentCategorySlug, key: filterKey, value: newValue },
+    });
+    setCategoryFilters((prev) =>
+      prev.map((f) => (f.key === filterKey ? { ...f, options } : f)),
+    );
+  }
 
   // Категория имеет multi_select поля → они сами формируют варианты с
   // запасом per option. Хардкод-toggle "Товар с размерами" в этом случае
@@ -654,14 +669,18 @@ export default function AddProductPage() {
                   {f.isRequired && <span style={{ color: '#f87171' }}> *</span>}
                 </label>
                 {f.fieldType === 'select' && f.options ? (
-                  <Select
+                  <CreatableSelect
                     value={String(attrValues[f.key] ?? '')}
                     onChange={(v) => setAttrValues((prev) => ({ ...prev, [f.key]: v }))}
                     options={f.options.map((opt) => ({
                       value: opt,
                       label: f.unit ? `${opt} ${f.unit}` : opt,
                     }))}
-                    placeholder="— выберите —"
+                    onCreateOption={async (val) => {
+                      await handleCreateFilterOption(f.key, val);
+                      setAttrValues((prev) => ({ ...prev, [f.key]: val }));
+                    }}
+                    placeholder="— выберите или введите —"
                     clearable={!f.isRequired}
                     ariaLabel={f.nameRu}
                   />
@@ -725,6 +744,81 @@ export default function AddProductPage() {
                           </button>
                         );
                       })}
+                    </div>
+                    {/* Добавить новый вариант в multi_select */}
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        value={newChipInput[f.key] ?? ''}
+                        onChange={(e) => setNewChipInput((p) => ({ ...p, [f.key]: e.target.value }))}
+                        placeholder={f.unit ? `Новый вариант (${f.unit})` : 'Новый вариант'}
+                        style={{ ...inputStyle, flex: 1, padding: '8px 12px', fontSize: 13 }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = (newChipInput[f.key] ?? '').trim();
+                            if (!val) return;
+                            void handleCreateFilterOption(f.key, val).then(() => {
+                              setCategoryFilters((prev) =>
+                                prev.map((ff) =>
+                                  ff.key === f.key
+                                    ? { ...ff, options: [...(ff.options ?? []), val] }
+                                    : ff,
+                                ),
+                              );
+                              setVariantOptions((prev) => {
+                                const cur = prev[f.key] ?? { selected: [], stock: {} };
+                                if (cur.selected.includes(val)) return prev;
+                                return {
+                                  ...prev,
+                                  [f.key]: {
+                                    selected: [...cur.selected, val],
+                                    stock: { ...cur.stock, [val]: 0 },
+                                  },
+                                };
+                              });
+                              setNewChipInput((p) => ({ ...p, [f.key]: '' }));
+                            });
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = (newChipInput[f.key] ?? '').trim();
+                          if (!val) return;
+                          void handleCreateFilterOption(f.key, val).then(() => {
+                            setCategoryFilters((prev) =>
+                              prev.map((ff) =>
+                                ff.key === f.key
+                                  ? { ...ff, options: [...(ff.options ?? []), val] }
+                                  : ff,
+                              ),
+                            );
+                            setVariantOptions((prev) => {
+                              const cur = prev[f.key] ?? { selected: [], stock: {} };
+                              if (cur.selected.includes(val)) return prev;
+                              return {
+                                ...prev,
+                                [f.key]: {
+                                  selected: [...cur.selected, val],
+                                  stock: { ...cur.stock, [val]: 0 },
+                                },
+                              };
+                            });
+                            setNewChipInput((p) => ({ ...p, [f.key]: '' }));
+                          });
+                        }}
+                        style={{
+                          minHeight: 36, minWidth: 36,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          borderRadius: 10, border: '1px solid rgba(167,139,250,0.40)',
+                          background: 'rgba(167,139,250,0.15)',
+                          color: '#A855F7', fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        +
+                      </button>
                     </div>
                     {(variantOptions[f.key]?.selected.length ?? 0) > 0 && (
                       <div className="flex flex-col gap-1.5 mt-1 pt-2" style={{ borderTop: '1px solid var(--tg-border-soft)' }}>

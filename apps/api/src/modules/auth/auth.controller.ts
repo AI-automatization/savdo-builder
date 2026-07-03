@@ -6,13 +6,16 @@ import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TelegramAuthDto } from './dto/telegram-auth.dto';
+import { SwitchContextDto } from './dto/switch-context.dto';
 import { RequestOtpUseCase } from './use-cases/request-otp.use-case';
 import { VerifyOtpUseCase } from './use-cases/verify-otp.use-case';
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
 import { GetMeUseCase } from './use-cases/get-me.use-case';
 import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
+import { SwitchContextUseCase } from './use-cases/switch-context.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('auth')
@@ -26,9 +29,11 @@ export class AuthController {
     private readonly logoutSession: LogoutSessionUseCase,
     private readonly getMe: GetMeUseCase,
     private readonly telegramAuth: TelegramAuthUseCase,
+    private readonly switchContext: SwitchContextUseCase,
   ) {}
 
   @Post('telegram')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 10 } }) // TMA initData verify: до 10/мин
   async telegramAuthHandler(@Body() dto: TelegramAuthDto) {
@@ -36,6 +41,7 @@ export class AuthController {
   }
 
   @Post('request-otp')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 5 } }) // защита от OTP-bomb: 5/мин на IP
   async requestOtpHandler(@Body() dto: RequestOtpDto) {
@@ -44,6 +50,7 @@ export class AuthController {
   }
 
   @Post('verify-otp')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 10 } }) // brute-force OTP: 10/мин
   async verifyOtpHandler(@Body() dto: VerifyOtpDto, @Req() req: Request) {
@@ -54,6 +61,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async refreshHandler(@Body() dto: RefreshTokenDto) {
@@ -71,5 +79,17 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getMeHandler(@CurrentUser() user: JwtPayload) {
     return this.getMe.execute(user.sub);
+  }
+
+  // HYBRID-1: переключение активного контекста (продавец/покупатель) без перелогина.
+  @Post('switch-context')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async switchContextHandler(@Body() dto: SwitchContextDto, @CurrentUser() user: JwtPayload) {
+    return this.switchContext.execute({
+      userId: user.sub,
+      sessionId: user.sessionId,
+      context: dto.context,
+    });
   }
 }

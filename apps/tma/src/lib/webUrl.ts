@@ -23,7 +23,7 @@ export function webStoreLabel(slug: string): string {
 // TMA-SHARE-001: централизованные helper'ы для deep-link и Telegram share.
 // Раньше каждый компонент строил deep-link вручную — дублирование + риск
 // рассинхрона форматов с TMA parseStartParam.
-const BOT_USERNAME = (import.meta.env.VITE_BOT_USERNAME as string | undefined) ?? '';
+const BOT_USERNAME = (import.meta.env.VITE_BOT_USERNAME as string | undefined) ?? 'maxsavdo_bot';
 
 // Deep-link в Mini App: открывает магазин внутри Telegram одним тапом.
 // Если бот не сконфигурён — fallback на публичный web-storefront (откроется

@@ -7,7 +7,8 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DeleteAccountModal } from '@/components/ui/DeleteAccountModal';
 import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/lib/i18n';
 
-const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot';
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? `https://t.me/${BOT_USERNAME}`;
 
 const LOCALE_LABEL: Record<Locale, string> = {
   ru: 'Русский',
@@ -15,11 +16,21 @@ const LOCALE_LABEL: Record<Locale, string> = {
 };
 
 export default function BuyerSettingsPage() {
-  const { user, authenticated, logout } = useAuth();
+  const { user, authenticated, logout, switchContext } = useAuth();
   const { tg, user: tgUser } = useTelegram();
   const { t, locale, setLocale } = useTranslation();
   const navigate = useNavigate();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+
+  // TMA-HYBRID-SETTINGS-BECOMESELLER-012: раньше блок «Стать продавцом» гейтился
+  // только по role==='BUYER' и игнорировал capabilities → владелец магазина в
+  // buyer-контексте видел онбординг «создайте магазин» вместо переключения в
+  // режим продавца. Теперь как в ProfilePage: есть seller-профиль → switchContext,
+  // нет → онбординг become_seller.
+  const canSell = user?.capabilities?.canSell ?? false;
+  const hasStore = user?.capabilities?.hasStore ?? false;
+  const isBuyerContext = authenticated && user?.role === 'BUYER';
 
   const handleLogout = () => {
     tg?.HapticFeedback.notificationOccurred('warning');
@@ -32,7 +43,21 @@ export default function BuyerSettingsPage() {
     tg?.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=become_seller`);
   };
 
-  const canBecomeSeller = authenticated && user?.role === 'BUYER';
+  const handleSwitchToSeller = async () => {
+    if (!hasStore || switching) return;
+    setSwitching(true);
+    try {
+      const ok = await switchContext('SELLER');
+      if (ok) {
+        tg?.HapticFeedback.notificationOccurred('success');
+        navigate('/seller', { replace: true });
+      } else {
+        tg?.HapticFeedback.notificationOccurred('error');
+      }
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   return (
 
@@ -127,8 +152,36 @@ export default function BuyerSettingsPage() {
           </p>
         </GlassCard>
 
-        {/* ── Стать продавцом ── */}
-        {canBecomeSeller && (
+        {/* ── Переключиться в режим продавца (у аккаунта уже есть seller-профиль) ── */}
+        {isBuyerContext && canSell && (
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
+              {t('profile.switchToSellerTitle')}
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--tg-text-secondary)' }}>
+              {hasStore ? t('profile.switchToSellerSubtitle') : t('profile.switchToSellerNoStore')}
+            </p>
+            <button
+              type="button"
+              onClick={handleSwitchToSeller}
+              disabled={switching || !hasStore}
+              aria-label={t('profile.switchToSellerCta')}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+              style={{
+                background: 'var(--tg-accent-dim)',
+                color: 'var(--tg-accent)',
+                border: '1px solid var(--tg-accent-border)',
+                minHeight: 44,
+                cursor: switching ? 'wait' : hasStore ? 'pointer' : 'not-allowed',
+              }}
+            >
+              🏪 {switching ? '...' : t('profile.switchToSellerCta')}
+            </button>
+          </GlassCard>
+        )}
+
+        {/* ── Стать продавцом (buyer без seller-профиля) ── */}
+        {isBuyerContext && !canSell && (
           <GlassCard className="p-4 flex flex-col gap-3">
             <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: 'var(--tg-text-dim)' }}>
               {t('settings.becomeSeller')}
@@ -167,6 +220,17 @@ export default function BuyerSettingsPage() {
               <span>🤖</span> {t('settings.tgBot')}
             </span>
             <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>@{BOT_USERNAME} →</span>
+          </button>
+
+          <button
+            onClick={() => tg?.openTelegramLink(SUPPORT_URL)}
+            className="flex items-center justify-between py-2.5 text-sm"
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
+          >
+            <span className="flex items-center gap-3">
+              <span>💬</span> {t('settings.support')}
+            </span>
+            <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>→</span>
           </button>
 
           <button

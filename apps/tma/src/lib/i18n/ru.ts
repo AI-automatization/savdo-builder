@@ -99,6 +99,15 @@ export const ru: Translations = {
   'profile.becomeSellerCta': 'Открыть магазин',
   'profile.role.buyer': 'Покупатель',
   'profile.footer': 'Savdo · Покупатель',
+  // HYBRID-2: переключение контекста (продавец/покупатель)
+  'profile.switchToSellerTitle': 'Режим продавца',
+  'profile.switchToSellerSubtitle': 'У вас есть магазин — управляйте товарами и заказами',
+  'profile.switchToSellerNoStore': 'Сначала создайте магазин',
+  'profile.switchToSellerCta': 'Перейти',
+  'profile.switchToBuyerTitle': 'Режим покупателя',
+  'profile.switchToBuyerSubtitle': 'Покупайте в других магазинах на этом же аккаунте',
+  'profile.switchToBuyerCta': 'Перейти',
+  'profile.switching': 'Переключаем...',
 
   // ── Cart ──────────────────────────────────────────────────────────────
   'cart.title': 'Корзина',
@@ -120,6 +129,7 @@ export const ru: Translations = {
   'cart.decreaseQty': 'Уменьшить количество',
   'cart.increaseQty': 'Увеличить количество',
   'cart.removeItem': 'Удалить из корзины',
+  'cart.stockMaxReached': 'Максимум {count} шт. в наличии',
   'cart.replace': 'Заменить',
   'cart.updated': '🛒 Корзина обновлена',
   'common.currency': 'сум',
@@ -188,6 +198,14 @@ export const ru: Translations = {
   'orders.status.SHIPPED': 'В пути',
   'orders.status.DELIVERED': 'Доставлен',
   'orders.status.CANCELLED': 'Отменён',
+  // TMA-BUYER-NO-CANCEL-011: отмена заказа покупателем
+  'orders.cancelCta': 'Отменить заказ',
+  'orders.cancelConfirmTitle': 'Отменить заказ?',
+  'orders.cancelConfirmBody': 'Заказ будет отменён, товары вернутся в наличие. Отменить нельзя будет вернуть.',
+  'orders.cancelConfirmYes': 'Отменить заказ',
+  'orders.cancelKeep': 'Не отменять',
+  'orders.cancelled': '✅ Заказ отменён',
+  'orders.cancelError': 'Не удалось отменить заказ',
 
   // ── Stores ────────────────────────────────────────────────────────────
   'stores.title': 'Магазины',
@@ -252,6 +270,7 @@ export const ru: Translations = {
   'settings.becomeSellerCta': '🏪 Стать продавцом',
   'settings.app': 'Приложение',
   'settings.tgBot': 'Telegram-бот',
+  'settings.support': 'Поддержка',
   'settings.role.buyer': 'Покупатель',
   'settings.role.seller': 'Продавец',
 
@@ -380,6 +399,11 @@ export const ru: Translations = {
   'seller.store.errNoTg': 'Введите ссылку Telegram для связи',
   // STORE-STATUS-BADGE-001: статус магазина + подсказки/действия.
   'seller.store.status.pendingHint': 'Заявка проверяется. Обычно занимает 1-2 дня.',
+  'seller.store.status.pendingTitle': 'Магазин на проверке',
+  'seller.store.status.pendingTime': 'Обычно 1–2 дня',
+  'seller.store.status.pendingStep1': 'Мы получили вашу заявку',
+  'seller.store.status.pendingStep2': 'Модератор проверяет данные магазина',
+  'seller.store.status.pendingStep3': 'После одобрения ваш магазин появится на платформе',
   'seller.store.status.approvedHint': 'Магазин активен',
   'seller.store.status.rejectedHint': 'Заявка отклонена. Исправьте замечания и отправьте заново.',
   'seller.store.status.rejectedReasonLabel': 'Причина:',
@@ -409,7 +433,7 @@ export const ru: Translations = {
   'seller.channel.binding.header': 'Привязка канала',
   'seller.channel.binding.attached': '✅ Канал привязан',
   'seller.channel.binding.notAttached': 'Канал ещё не привязан',
-  'seller.channel.binding.hint': 'Откройте чат с @savdo_builderBOT, отправьте /start и выберите «Привязать канал». Боту нужны права администратора в вашем канале.',
+  'seller.channel.binding.hint': 'Откройте чат с @maxsavdo_bot, отправьте /start и выберите «Привязать канал». Боту нужны права администратора в вашем канале.',
   'seller.channel.binding.channelLabel': 'Telegram-канал',
   'seller.channel.binding.channelPlaceholder': '@your_channel',
   'seller.channel.binding.changeViaBot': 'Чтобы сменить канал — используйте бота /start',

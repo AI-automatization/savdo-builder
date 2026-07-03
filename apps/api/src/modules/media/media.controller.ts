@@ -24,6 +24,7 @@ import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { MediaVisibility } from '@prisma/client';
 import { RequestUploadDto } from './dto/request-upload.dto';
@@ -31,10 +32,12 @@ import { RequestUploadUseCase } from './use-cases/request-upload.use-case';
 import { ConfirmUploadUseCase } from './use-cases/confirm-upload.use-case';
 import { DeleteMediaUseCase } from './use-cases/delete-media.use-case';
 import { UploadDirectUseCase, UploadedFile as UploadedFileType } from './use-cases/upload-direct.use-case';
+import { RemoveBackgroundUseCase } from './use-cases/remove-background.use-case';
 import { MediaRepository } from './repositories/media.repository';
 import { TelegramStorageService } from './services/telegram-storage.service';
 import { R2StorageService } from './services/r2-storage.service';
-import { PrismaService } from '../../database/prisma.service';
+import { UsersRepository } from '../users/repositories/users.repository';
+import { SellersRepository } from '../sellers/repositories/sellers.repository';
 
 @Controller('media')
 export class MediaController {
@@ -43,10 +46,12 @@ export class MediaController {
     private readonly confirmUpload: ConfirmUploadUseCase,
     private readonly deleteMedia: DeleteMediaUseCase,
     private readonly uploadDirect: UploadDirectUseCase,
+    private readonly removeBg: RemoveBackgroundUseCase,
     private readonly mediaRepo: MediaRepository,
     private readonly tgStorage: TelegramStorageService,
     private readonly r2Storage: R2StorageService,
-    private readonly prisma: PrismaService,
+    private readonly usersRepo: UsersRepository,
+    private readonly sellersRepo: SellersRepository,
   ) {}
 
   // ─── Authenticated endpoints ────────────────────────────────────────────────
@@ -89,12 +94,7 @@ export class MediaController {
 
     const { url } = await this.uploadDirect.execute(user.sub, file, 'buyer_avatar');
 
-    const buyer = await this.prisma.buyer.upsert({
-      where: { userId: user.sub },
-      create: { userId: user.sub, avatarUrl: url },
-      update: { avatarUrl: url },
-      select: { id: true, avatarUrl: true },
-    });
+    const buyer = await this.usersRepo.upsertBuyerAvatar(user.sub, url);
 
     return { success: true, data: { avatarUrl: buyer.avatarUrl } };
   }
@@ -114,13 +114,21 @@ export class MediaController {
 
     const { url } = await this.uploadDirect.execute(user.sub, file, 'seller_avatar');
 
-    const seller = await this.prisma.seller.update({
-      where: { userId: user.sub },
-      data: { avatarUrl: url },
-      select: { id: true, avatarUrl: true },
-    });
+    const seller = await this.sellersRepo.updateAvatarByUserId(user.sub, url);
 
     return { success: true, data: { avatarUrl: seller.avatarUrl } };
+  }
+
+  /** Remove background from an existing product image via remove.bg API. */
+  @Post('seller/:mediaId/remove-bg')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  @HttpCode(HttpStatus.OK)
+  async removeBackground(
+    @CurrentUser() user: JwtPayload,
+    @Param('mediaId') mediaId: string,
+  ) {
+    return this.removeBg.execute({ mediaId, ownerUserId: user.sub });
   }
 
   @Post(':id/confirm')
@@ -148,6 +156,7 @@ export class MediaController {
   // SEC-TG-001: Telegram файлы стримятся через сервер, чтобы Bot Token не попал
   // в Location-заголовок. R2 публичный CDN — там redirect остаётся.
   @Get('proxy/:id')
+  @Public()
   async proxyFile(@Param('id') id: string, @Res() res: Response): Promise<void> {
     const mediaFile = await this.mediaRepo.findById(id);
 
@@ -162,8 +171,14 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
-      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      try {
+        // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+        await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      } catch {
+        // Telegram вернул 400/404 (file_id протух или невалиден) — не пробрасываем
+        // Axios ошибку в GlobalExceptionFilter, отдаём 404.
+        if (!res.headersSent) throw new NotFoundException('Media file not available');
+      }
       return;
     }
 
@@ -214,8 +229,12 @@ export class MediaController {
 
     if (mediaFile.bucket === 'telegram' && mediaFile.objectKey.startsWith('tg:')) {
       const fileId = mediaFile.objectKey.slice(3);
-      // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
-      await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      try {
+        // SEC-TG-001: стрим через сервер — bot token остаётся server-side.
+        await this.tgStorage.streamToResponse(fileId, mediaFile.mimeType, res);
+      } catch {
+        if (!res.headersSent) throw new NotFoundException('Media file not available');
+      }
       return;
     }
 

@@ -28,7 +28,19 @@ async function bootstrap() {
   // В dev — fallback на цветной ConsoleLogger.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: new StructuredLogger(),
+    // STRESS-DOS-001: отключаем дефолтный body-parser, чтобы ниже задать
+    // явный консервативный лимит. Анонимный 500KB-payload не должен доходить
+    // до Prisma/guard — отсекаем на парсинге через 413.
+    bodyParser: false,
   });
+
+  // STRESS-DOS-001: явный лимит JSON/urlencoded тел. API не принимает больших
+  // payload'ов в JSON — файлы идут через multipart FileInterceptor (multer,
+  // свой лимит 10MB) и presigned R2 URL. 100kb с запасом покрывает любой
+  // легитимный JSON (товар с вариантами/атрибутами ~ единицы KB). Большое тело
+  // → 413 Payload Too Large на этапе парсинга, до auth guard и до сервиса.
+  app.useBodyParser('json', { limit: '100kb' });
+  app.useBodyParser('urlencoded', { limit: '100kb', extended: true });
 
   // API-SENTRY-001: подключаем Sentry request handler (tracing + breadcrumbs).
   // No-op если SENTRY_DSN не задан — нет риска для прода.

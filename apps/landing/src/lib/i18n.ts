@@ -46,7 +46,7 @@ export type Dict = {
     monthly: string;
     perMonth: string;
     plans: Array<{
-      id: "free" | "pro" | "business";
+      id: "free" | "pro" | "studio";
       name: string;
       price: string;
       period: string;
@@ -101,7 +101,7 @@ const uz: Dict = {
     steps: [
       {
         n: "01",
-        title: "@savdobuilderBOT ga kiring",
+        title: "@maxsavdo_bot ga kiring",
         body: "Telegram orqali tasdiqlang — parol kerak emas. 30 soniya.",
       },
       {
@@ -172,7 +172,7 @@ const uz: Dict = {
         period: "soʻm",
         tagline: "Sinab koʻrish uchun",
         features: [
-          "10 ta mahsulotgacha",
+          "20 ta mahsulotgacha",
           "Telegram-bot",
           "MaxSavdo brendi bilan sayt",
           "Asosiy statistika",
@@ -182,7 +182,7 @@ const uz: Dict = {
       {
         id: "pro",
         name: "Pro",
-        price: "99 000",
+        price: "149 000",
         period: "soʻm/oy",
         tagline: "Faol savdogarlar uchun",
         features: [
@@ -196,9 +196,9 @@ const uz: Dict = {
         highlight: true,
       },
       {
-        id: "business",
-        name: "Business",
-        price: "249 000",
+        id: "studio",
+        name: "Studio",
+        price: "399 000",
         period: "soʻm/oy",
         tagline: "Komandali doʻkonlar uchun",
         features: [
@@ -208,7 +208,7 @@ const uz: Dict = {
           "Prioritet qoʻllab-quvvatlash",
           "API kirishi",
         ],
-        cta: "Business ni tanlash",
+        cta: "Studio ni tanlash",
       },
     ],
   },
@@ -278,7 +278,7 @@ const ru: Dict = {
     steps: [
       {
         n: "01",
-        title: "Зайдите в @savdobuilderBOT",
+        title: "Зайдите в @maxsavdo_bot",
         body: "Подтвердите вход через Telegram — пароли не нужны. 30 секунд.",
       },
       {
@@ -349,7 +349,7 @@ const ru: Dict = {
         period: "сум",
         tagline: "Попробовать",
         features: [
-          "До 10 товаров",
+          "До 20 товаров",
           "Telegram-бот",
           "Сайт с брендом MaxSavdo",
           "Базовая статистика",
@@ -359,7 +359,7 @@ const ru: Dict = {
       {
         id: "pro",
         name: "Pro",
-        price: "99 000",
+        price: "149 000",
         period: "сум/мес",
         tagline: "Для активных продавцов",
         features: [
@@ -373,9 +373,9 @@ const ru: Dict = {
         highlight: true,
       },
       {
-        id: "business",
-        name: "Business",
-        price: "249 000",
+        id: "studio",
+        name: "Studio",
+        price: "399 000",
         period: "сум/мес",
         tagline: "Для магазинов с командой",
         features: [
@@ -385,7 +385,7 @@ const ru: Dict = {
           "Приоритетная поддержка",
           "API-доступ",
         ],
-        cta: "Выбрать Business",
+        cta: "Выбрать Studio",
       },
     ],
   },

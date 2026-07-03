@@ -121,12 +121,14 @@ export class OrdersController {
       );
     }
 
+    const buyerId = await this.resolveBuyerId(user.sub);
     return this.updateOrderStatusUseCase.execute({
       orderId,
       newStatus: dto.status,
       reason: dto.reason,
       actorRole: 'BUYER',
       actorUserId: user.sub,
+      buyerId,
     });
   }
 

@@ -102,6 +102,14 @@ export class BulkMergeCartUseCase {
         if (variant.priceOverride != null) {
           unitPrice = toNum(variant.priceOverride);
         }
+        // Skip items that exceed available stock.
+        if (variant.stockQuantity < item.quantity) {
+          skipped++;
+          continue;
+        }
+      } else if ((product as any).totalStock < item.quantity) {
+        skipped++;
+        continue;
       }
 
       valid.push({
@@ -133,50 +141,34 @@ export class BulkMergeCartUseCase {
     }
     const targetStoreId = storeIds[0];
 
-    // Resolve cart: existing buyer cart с тем же store → reuse; mismatch → clear + setStoreId.
-    let cart = await this.cartRepo.findByBuyerId(input.buyerId);
-    if (!cart) {
-      const created = await this.cartRepo.createForBuyer(input.buyerId, targetStoreId);
-      cart = await this.cartRepo.findById(created.id);
-    } else if (cart.storeId !== targetStoreId) {
+    // CART-002: getOrCreateForBuyer атомарен (INSERT ON CONFLICT).
+    let cart = await this.cartRepo.getOrCreateForBuyer(input.buyerId, targetStoreId);
+
+    // Store mismatch → clear items + switch storeId (TMA cart wins).
+    if (cart.storeId !== targetStoreId) {
       this.logger.log(
         `Bulk-merge: store mismatch for buyer ${input.buyerId} (${cart.storeId} → ${targetStoreId}), clearing`,
       );
       await this.cartRepo.clearCart(cart.id);
       await this.cartRepo.setStoreId(cart.id, targetStoreId);
-      cart = await this.cartRepo.findById(cart.id);
+      cart = await this.cartRepo.getOrCreateForBuyer(input.buyerId, targetStoreId);
     }
 
-    if (!cart) {
-      throw new DomainException(
-        ErrorCode.CART_NOT_FOUND,
-        'Failed to resolve buyer cart',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
-    // Добавляем items (с дедупликацией).
+    // CART-001: upsertItem атомарно через ON CONFLICT вместо find→insert/update loop.
+    // Параллельные bulk-merge (double login) не создадут дублей.
     let imported = 0;
-    for (const item of valid) {
-      const existing = await this.cartRepo.findItemByProductAndVariant(
-        cart.id,
-        item.productId,
-        item.variantId,
-      );
-      if (existing) {
-        const newQty = Math.min(existing.quantity + item.quantity, 100);
-        await this.cartRepo.updateItemQuantity(existing.id, newQty);
-      } else {
-        await this.cartRepo.addItem(cart.id, {
+    await Promise.all(
+      valid.map(async (item) => {
+        await this.cartRepo.upsertItem(cart.id, {
           productId: item.productId,
           variantId: item.variantId ?? undefined,
           quantity: Math.min(item.quantity, 100),
           unitPriceSnapshot: item.unitPrice,
           salePriceSnapshot: item.salePrice ?? undefined,
-        });
-      }
-      imported++;
-    }
+        }, 100);
+        imported++;
+      }),
+    );
 
     // Reload cart с актуальными items для return.
     const finalCart = await this.cartRepo.findById(cart.id);

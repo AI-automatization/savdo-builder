@@ -8,6 +8,9 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { DeleteAccountModal } from '@/components/ui/DeleteAccountModal';
+
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot'}`;
 
 interface SellerProfile {
   id: string;
@@ -62,6 +65,7 @@ export default function SellerSettingsPage() {
   const { tg } = useTelegram();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const handleLogout = () => {
     tg?.HapticFeedback.notificationOccurred('warning');
@@ -343,6 +347,16 @@ export default function SellerSettingsPage() {
             <span>👤</span> Профиль
           </button>
           <button
+            onClick={() => tg?.openTelegramLink(SUPPORT_URL)}
+            className="flex items-center justify-between py-2.5 text-sm"
+            style={{ color: 'var(--tg-text-secondary)', borderBottom: '1px solid var(--tg-border-soft)' }}
+          >
+            <span className="flex items-center gap-3">
+              <span>💬</span> Поддержка
+            </span>
+            <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>→</span>
+          </button>
+          <button
             onClick={handleLogout}
             className="flex items-center gap-3 py-2.5 text-sm"
             style={{ color: 'rgba(248,113,113,0.80)' }}
@@ -351,11 +365,42 @@ export default function SellerSettingsPage() {
           </button>
         </GlassCard>
 
+        {/* ── Опасная зона (ACCOUNT-DELETION-OTP-001) ── */}
+        <GlassCard
+          className="p-4 flex flex-col gap-3"
+          style={{ borderColor: 'rgba(239,68,68,0.25)' }}
+        >
+          <p className="text-xxs font-semibold uppercase tracking-widest" style={{ color: '#F87171' }}>
+            Опасная зона
+          </p>
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--tg-text-secondary)' }}>
+            Удаление аккаунта необратимо. Магазин, товары и заказы будут удалены через 90 дней.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              tg?.HapticFeedback.impactOccurred('medium');
+              setDeleteModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
+            style={{
+              background: 'rgba(239,68,68,0.12)',
+              color: '#F87171',
+              border: '1px solid rgba(239,68,68,0.35)',
+              minHeight: 44,
+            }}
+          >
+            🗑 Удалить аккаунт
+          </button>
+        </GlassCard>
+
         <p className="text-center text-xxs" style={{ color: 'var(--tg-text-dim)' }}>
           Savdo · v1.0
         </p>
 
+        <DeleteAccountModal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} />
+
       </div>
-    
+
   );
 }

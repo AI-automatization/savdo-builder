@@ -38,6 +38,7 @@ import { AccountDeletionModule } from './modules/account/account-deletion.module
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { QueuesModule } from './queues/queues.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -79,8 +80,10 @@ import { QueuesModule } from './queues/queues.module';
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    // SEC-AUDIT-04: глобальный guard — любой новый эндпоинт закрыт по умолчанию.
+    // Публичные эндпоинты помечены @Public() и пропускаются через canActivate.
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Глобальный ThrottlerGuard — без него @Throttle декораторы не работают.
-    // ВНИМАНИЕ: до этого коммита @Throttle({...}) на sendMessage был silent no-op.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

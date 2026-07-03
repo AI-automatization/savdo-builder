@@ -14,6 +14,7 @@ import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { LogoutSessionUseCase } from './use-cases/logout-session.use-case';
 import { GetMeUseCase } from './use-cases/get-me.use-case';
 import { TelegramAuthUseCase } from './use-cases/telegram-auth.use-case';
+import { SwitchContextUseCase } from './use-cases/switch-context.use-case';
 import { TelegramModule } from '../telegram/telegram.module';
 import { OtpProcessor } from '../../queues/otp.processor';
 import { QUEUE_OTP } from '../../queues/queues.module';
@@ -40,6 +41,7 @@ import { RedisModule } from '../../shared/redis.module';
     LogoutSessionUseCase,
     GetMeUseCase,
     TelegramAuthUseCase,
+    SwitchContextUseCase,
     OtpProcessor,
   ],
   exports: [JwtAuthGuard, TokenService, AuthRepository],

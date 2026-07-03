@@ -101,6 +101,15 @@ export const uz: Translations = {
   'profile.becomeSellerCta': 'Doʻkon ochish',
   'profile.role.buyer': 'Xaridor',
   'profile.footer': 'Savdo · Xaridor',
+  // HYBRID-2: kontekstni almashtirish (sotuvchi/xaridor)
+  'profile.switchToSellerTitle': 'Sotuvchi rejimi',
+  'profile.switchToSellerSubtitle': 'Sizda doʻkon bor — mahsulot va buyurtmalarni boshqaring',
+  'profile.switchToSellerNoStore': 'Avval doʻkon yarating',
+  'profile.switchToSellerCta': 'Oʻtish',
+  'profile.switchToBuyerTitle': 'Xaridor rejimi',
+  'profile.switchToBuyerSubtitle': 'Shu hisob bilan boshqa doʻkonlardan xarid qiling',
+  'profile.switchToBuyerCta': 'Oʻtish',
+  'profile.switching': 'Almashtirilmoqda...',
 
   // ── Cart ──────────────────────────────────────────────────────────────
   'cart.title': 'Savat',
@@ -122,6 +131,7 @@ export const uz: Translations = {
   'cart.decreaseQty': 'Sonini kamaytirish',
   'cart.increaseQty': 'Sonini koʻpaytirish',
   'cart.removeItem': 'Savatdan oʻchirish',
+  'cart.stockMaxReached': 'Maksimum {count} dona mavjud',
   'cart.replace': 'Almashtirish',
   'cart.updated': '🛒 Savat yangilandi',
   'common.currency': 'soʻm',
@@ -191,6 +201,14 @@ export const uz: Translations = {
   'orders.status.SHIPPED': 'Yoʻlda',
   'orders.status.DELIVERED': 'Yetkazib berildi',
   'orders.status.CANCELLED': 'Bekor qilindi',
+  // TMA-BUYER-NO-CANCEL-011: xaridor buyurtmani bekor qilishi
+  'orders.cancelCta': 'Buyurtmani bekor qilish',
+  'orders.cancelConfirmTitle': 'Buyurtma bekor qilinsinmi?',
+  'orders.cancelConfirmBody': 'Buyurtma bekor qilinadi, tovarlar omborga qaytadi. Buni ortga qaytarib boʻlmaydi.',
+  'orders.cancelConfirmYes': 'Bekor qilish',
+  'orders.cancelKeep': 'Yoʻq',
+  'orders.cancelled': '✅ Buyurtma bekor qilindi',
+  'orders.cancelError': 'Buyurtmani bekor qilib boʻlmadi',
 
   // ── Stores ────────────────────────────────────────────────────────────
   'stores.title': 'Doʻkonlar',
@@ -255,6 +273,7 @@ export const uz: Translations = {
   'settings.becomeSellerCta': '🏪 Sotuvchi boʻlish',
   'settings.app': 'Ilova',
   'settings.tgBot': 'Telegram-bot',
+  'settings.support': 'Qoʻllab-quvvatlash',
   'settings.role.buyer': 'Xaridor',
   'settings.role.seller': 'Sotuvchi',
 
@@ -381,6 +400,11 @@ export const uz: Translations = {
   'seller.store.errNoTg': 'Aloqa uchun Telegram havolasini kiriting',
   // STORE-STATUS-BADGE-001: doʻkon statusi + maslahatlar/amallar.
   'seller.store.status.pendingHint': 'Arizangiz tekshirilmoqda. Odatda 1-2 kun oladi.',
+  'seller.store.status.pendingTitle': "Do'kon tekshiruvda",
+  'seller.store.status.pendingTime': 'Odatda 1–2 kun',
+  'seller.store.status.pendingStep1': 'Arizangiz qabul qilindi',
+  'seller.store.status.pendingStep2': "Moderator do'kon ma'lumotlarini tekshiradi",
+  'seller.store.status.pendingStep3': "Tasdiqlangandan so'ng do'koningiz platformada paydo bo'ladi",
   'seller.store.status.approvedHint': 'Doʻkon faol',
   'seller.store.status.rejectedHint': 'Ariza rad etildi. Kamchiliklarni tuzating va qayta yuboring.',
   'seller.store.status.rejectedReasonLabel': 'Sabab:',
@@ -410,7 +434,7 @@ export const uz: Translations = {
   'seller.channel.binding.header': 'Kanalni bogʻlash',
   'seller.channel.binding.attached': '✅ Kanal bogʻlandi',
   'seller.channel.binding.notAttached': 'Kanal hali bogʻlanmagan',
-  'seller.channel.binding.hint': '@savdo_builderBOT bilan chatni oching, /start yuboring va «Kanalni bogʻlash»ni tanlang. Botga kanalda administrator huquqlari kerak.',
+  'seller.channel.binding.hint': '@maxsavdo_bot bilan chatni oching, /start yuboring va «Kanalni bogʻlash»ni tanlang. Botga kanalda administrator huquqlari kerak.',
   'seller.channel.binding.channelLabel': 'Telegram kanal',
   'seller.channel.binding.channelPlaceholder': '@your_channel',
   'seller.channel.binding.changeViaBot': 'Kanalni almashtirish uchun /start botini ishlating',

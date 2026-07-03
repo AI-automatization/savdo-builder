@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 import { useTranslation } from '../lib/i18n'
 import { MaxsavdoMark } from '../components/brand/MaxsavdoLogo'
 
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL ?? 'https://t.me/maxsavdo_bot';
+
 /** Decode JWT payload (no signature verify — фронт только читает claim'ы). */
 function decodeJwtPayload<T = Record<string, unknown>>(token: string): T | null {
   try {
@@ -511,6 +513,20 @@ export default function LoginPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Support footer */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-10">
+        <a
+          href={SUPPORT_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1.5 text-xs transition-colors hover:opacity-80"
+          style={{ color: 'var(--text-dim)' }}
+        >
+          <MessageCircle size={12} />
+          {t('login.support')}
+        </a>
       </div>
     </div>
   )

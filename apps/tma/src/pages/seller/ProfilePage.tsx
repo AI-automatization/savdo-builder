@@ -20,14 +20,33 @@ interface Store {
   telegramChannelTitle: string | null;
 }
 
-const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? 'maxsavdo_bot';
 
 export default function SellerProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, switchContext } = useAuth();
   const { tg, user: tgUser } = useTelegram();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [store, setStore] = useState<Store | null>(null);
+  const [switching, setSwitching] = useState(false);
+
+  // HYBRID-2: переключение в режим покупателя. Раньше кнопка делала navigate('/buyer')
+  // напрямую — но BuyerGuard (App.tsx) отбрасывал SELLER обратно на /seller.
+  // Теперь сначала меняем активный контекст (role→BUYER), затем навигируем.
+  const handleSwitchToBuyer = async () => {
+    setSwitching(true);
+    try {
+      const ok = await switchContext('BUYER');
+      if (ok) {
+        tg?.HapticFeedback.notificationOccurred('success');
+        navigate('/buyer', { replace: true });
+      } else {
+        tg?.HapticFeedback.notificationOccurred('error');
+      }
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -177,11 +196,12 @@ export default function SellerProfilePage() {
             {t('seller.profile.manageProducts')}
           </button>
           <button
-            onClick={() => navigate('/buyer')}
+            onClick={handleSwitchToBuyer}
+            disabled={switching}
             className="flex items-center gap-3 py-2.5 text-sm"
-            style={{ color: 'rgba(52,211,153,0.85)', borderBottom: '1px solid var(--tg-border-soft)' }}
+            style={{ color: 'rgba(52,211,153,0.85)', borderBottom: '1px solid var(--tg-border-soft)', cursor: switching ? 'wait' : 'pointer' }}
           >
-            {t('seller.profile.buyerMode')}
+            {switching ? t('profile.switching') : t('seller.profile.buyerMode')}
           </button>
           <button
             onClick={openBot}

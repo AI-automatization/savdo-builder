@@ -10,10 +10,13 @@ import { PublishStoreUseCase } from './use-cases/publish-store.use-case';
 import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
 import { UpdateChannelTemplateUseCase } from './use-cases/update-channel-template.use-case';
 import { TriggerChannelTestPostUseCase } from './use-cases/trigger-channel-test-post.use-case';
+import { UpdateChannelBindingUseCase } from './use-cases/update-channel-binding.use-case';
 import { SellersModule } from '../sellers/sellers.module';
 import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
 import { ModerationModule } from '../moderation/moderation.module';
+import { TelegramModule } from '../telegram/telegram.module';
+import { MediaModule } from '../media/media.module';
 
 @Module({
   imports: [
@@ -21,6 +24,8 @@ import { ModerationModule } from '../moderation/moderation.module';
     AuthModule,
     forwardRef(() => ProductsModule),
     forwardRef(() => ModerationModule),
+    forwardRef(() => TelegramModule),
+    MediaModule,
   ],
   controllers: [StoresController],
   providers: [
@@ -34,6 +39,7 @@ import { ModerationModule } from '../moderation/moderation.module';
     UnpublishStoreUseCase,
     UpdateChannelTemplateUseCase,
     TriggerChannelTestPostUseCase,
+    UpdateChannelBindingUseCase,
   ],
   exports: [StoresRepository, SlugService],
 })

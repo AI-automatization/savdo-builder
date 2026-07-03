@@ -19,8 +19,8 @@ type HeroProps = {
   dict: HeroDict;
 };
 
-const BOT_URL = 'https://t.me/savdobuilderBOT';
-const TMA_URL = 'https://t.me/savdobuilderBOT/app';
+const BOT_URL = 'https://t.me/maxsavdo_bot';
+const TMA_URL = 'https://t.me/maxsavdo_bot/app';
 
 export default function Hero({ dict }: HeroProps) {
   return (
