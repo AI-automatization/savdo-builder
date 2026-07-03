@@ -59,23 +59,19 @@
 
 ---
 
-## 🆕 [WEB-BUYER-ENUM-AS-VALUE-001] `packages/types` enum-as-value ошибки в web-buyer (не закрыто, в отличие от web-seller)
+## ❌ [WEB-BUYER-ENUM-AS-VALUE-001] ЛОЖНАЯ ТРЕВОГА — retracted 03.07.2026
 
-- **Домен:** `packages/types` (Полат) — тот же root cause что `WEB-SELLER-ENUM-AS-VALUE-BUILD-001`.
-- **Нашёл:** Азим, 03.07.2026 (при верификации `tsc --noEmit` после правки bot-username).
-- **Симптом:** `tsc --noEmit -p apps/web-buyer` — 27 ошибок `TS2693 'OrderStatus'/'DeliveryType'/
-  'ThreadType'/'ProductStatus' only refers to a type, but is being used as a value here` в
-  `(shop)/orders/[id]/page.tsx`, `(shop)/orders/page.tsx`, `components/store/ProductCard.tsx`.
-- **Root cause:** те же `export type` вместо `export enum` в `packages/types/src/enums.ts`, что
-  ловил web-seller (см. `logs.md` `WEB-SELLER-ENUM-AS-VALUE-BUILD-001`). web-seller получил
-  локальный runtime-шим (`apps/web-seller/src/lib/enums.ts`) 07.06.2026, web-buyer — нет.
-  Не мой фикс сейчас (не трогал эти файлы) — не проверял, ломает ли это прод-сборку
-  (`next build` может пройти на затронутых роутах, если статически не типизировано жёстко) — не проверено.
-- **Что сделать:** либо канонизировать `packages/types/enums.ts` на `export enum` (правильный фикс,
-  Полат), либо завести аналогичный шим `apps/web-buyer/src/lib/enums.ts` как временный обход (Азим).
-- **Не блокер прямо сейчас** — не проверено, падает ли реальная prod-сборка web-buyer на Railway
-  (возможно уже мигрировано на ветке `web-buyer`, локальный `main`/`feat/seller-landing` может быть
-  позади). Проверить `pnpm --filter web-buyer build` перед эскалацией в P0.
+- **Статус:** опровергнуто. Заведено 03.07 по `tsc` внутри основного чекаута (`_port-web-buyer`
+  branch switch, общий `node_modules` с другими ветками) — 27 ошибок `TS2693` на `OrderStatus`/
+  `DeliveryType`/`ThreadType`/`ProductStatus` как значения.
+- **Что оказалось:** причина — стухший pnpm-symlink `packages/types` в основном чекауте (после
+  переключения веток без переустановки), НЕ реальный код на `web-buyer`. Перепроверено в чистом
+  git worktree (`.worktrees/audit-web-buyer` @ `origin/web-buyer`) со свежим `pnpm install`:
+  `packages/types/src/enums.ts` использует `export enum OrderStatus {...}` (реальный enum, не
+  `export type`), `tsc --noEmit -p apps/web-buyer` — 0 ошибок.
+- **Урок:** после `git checkout` на другую ветку в общем чекауте — `node_modules`/workspace-symlinks
+  могут не соответствовать новому состоянию `packages/*`. Для достоверной проверки чужой ветки —
+  отдельный `git worktree` + `pnpm install` в нём, не branch switch в основном каталоге.
 
 ---
 
