@@ -1,5 +1,23 @@
 # Done — Азим + Полат
 
+## 2026-07-03 (Азим) — OTP-BOT-MISMATCH-001: bot-fix дошёл до реальной деплой-ветки web-buyer
+
+### ✅ [OTP-BOT-MISMATCH-001] Прямая правка `origin/web-buyer` (7 доп. хардкодов, которых нет на feat/seller-landing)
+- **Важность:** 🟡
+- **Дата:** 03.07.2026
+- **Коммит:** `9227e66` на `origin/web-buyer` (запушен напрямую, не через `feat/seller-landing` — файлы
+  на деплой-ветке физически другие после i18n-рефакторинга).
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx`,
+  `apps/web-buyer/src/app/(shop)/profile/page.tsx`, `apps/web-buyer/src/components/home/HomeHero.tsx`,
+  `apps/web-buyer/src/lib/i18n/ru.ts` (×3 строки), `apps/web-buyer/src/lib/i18n/uz.ts` (×3 строки).
+- **Что сделано:** после коммита `cb1c653` на `feat/seller-landing` (3 хардкода) сверил напрямую
+  `origin/web-buyer` через disposable-branch `git grep savdo_builderBOT` — нашёл ещё 7 живых мест,
+  которых даже не существует на этом checkout. `origin/web-seller` сверен тем же способом — уже чист,
+  ничего чинить не пришлось (independently исправлено раньше или там просто другая история).
+- **Важно:** не пытался «портировать» коммит `2185d08` (subscription banners) на `web-seller` — эта
+  ветка уже содержит собственную, более полную i18n'зированную реализацию тех же баннеров. Портировать
+  старую версию с `feat/seller-landing` было бы регрессом. См. tasks.md `OTP-BOT-MISMATCH-001` для деталей.
+
 ## 2026-07-03 (Азим) — OTP-BOT-MISMATCH-001 фронт-часть закрыта + 2 отложенных commit'а задокументированы
 
 ### ✅ [OTP-BOT-MISMATCH-001] Добиты 3 последних хардкода `@savdo_builderBOT`

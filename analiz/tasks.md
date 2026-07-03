@@ -28,12 +28,28 @@
 - **Кто берёт:** Полат (Азимова фронт-часть закрыта 03.07.2026).
 - **Приоритет:** 🟡 P1 (понижено с P0 — фронт больше не путает пользователя; бэк-подтверждение остаётся).
 - **Нашёл:** Азим, 18.06.2026 (через Playwright + curl прод-бэкенда).
-- **✅ 03.07.2026 (Азим) — фронт-часть закрыта.** Бот официально переименован в `@maxsavdo_bot`
-  (см. `project-telegram-bot-rename.md`, 24.06.2026). Добиты 3 оставшихся хардкода `@savdo_builderBOT`:
-  `apps/web-seller/src/app/(dashboard)/products/page.tsx:47` (fallback-константа),
-  `apps/web-buyer/src/app/terms/page.tsx:64`, `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:27`.
-  Весь web-buyer + web-seller теперь консистентно ссылаются на `@maxsavdo_bot`. tsc чист
-  (обе правки не задели pre-existing `packages/types` enum-as-value ошибки — см. ниже).
+- **✅ 03.07.2026 (Азим) — фронт-часть закрыта, НО в двух местах отдельно** (эта ветка
+  `feat/seller-landing` разошлась с реальными деплой-ветками `web-buyer`/`web-seller`,
+  см. `INFRA-BRANCH-RECONCILE-001`):
+  1. **На `feat/seller-landing`** (этот checkout) — 3 хардкода: `web-seller products/page.tsx:47`,
+     `web-buyer terms/page.tsx:64`, `web-buyer products/[id]/page.tsx:27` → `@maxsavdo_bot`.
+     Коммит `cb1c653`, запушен.
+  2. **На реальной деплой-ветке `origin/web-buyer`** (Railway источник) — при сверке нашлось
+     ЕЩЁ 7 хардкодов, которых на `feat/seller-landing` даже не существует (ветка успела эволюционировать
+     отдельно: i18n-рефакторинг вынес юридические тексты в `ru.ts`/`uz.ts`, добавились `HomeHero.tsx`
+     и `(shop)/profile/page.tsx`, которых нет на этом checkout). Пофикшено напрямую на `web-buyer`
+     (без промежуточного коммита на `feat/seller-landing` — файлы там просто другие): `products/[id]/
+     page.tsx`, `profile/page.tsx`, `HomeHero.tsx`, + 5 строк в `lib/i18n/ru.ts` и `lib/i18n/uz.ts`
+     (`legal.terms.s7.p1`, `legal.help.s1.a`, `legal.help.s6.a`, `legal.help.s7.a`). Коммит `9227e66`,
+     запушен напрямую в `origin/web-buyer` → Railway передеплоит.
+  3. **`origin/web-seller`** — сверен целиком (`grep savdo_builderBOT`), уже чист, ничего не нашлось
+     (эта ветка ушла вперёд и, похоже, независимо получила свежую версию где бот уже правильный —
+     чтобы не тратить время, я НЕ трогал её и не пытался «портировать» на неё старый billing-banner
+     код с `feat/seller-landing`: `web-seller` уже содержит собственную i18n'зированную реализацию
+     подписочных баннеров, более полную, чем моя от 01.07 — портировать назад было бы регрессом).
+- **Урок:** при сверке per-app деплой-веток нельзя полагаться на локальный checkout одной фиче-ветки —
+  надо `git grep` НАПРЯМУЮ по `origin/<deploy-branch>` (или временный disposable-branch), потому что
+  ветки давно разошлись сильнее, чем кажется по `git log`.
 - **Остаток (Полат, `apps/api`):** ещё живы хардкоды `savdo_builderBOT` в `apps/api/**`,
   `apps/admin/**`, `apps/tma/**`, `.env.example` — свериться с реальным `TELEGRAM_BOT_TOKEN`
   в Railway и обновить/убедиться, что бэкенд-ошибка `TELEGRAM_NOT_LINKED` и все notification-сервисы
