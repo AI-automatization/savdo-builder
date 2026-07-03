@@ -291,6 +291,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const hasOptions = optionGroups.length > 0;
 
@@ -358,16 +359,23 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
   }
 
   async function handleUpdate(variantId: string, f: VariantForm) {
-    await update.mutateAsync({
-      productId,
-      variantId,
-      sku:           f.sku.trim(),
-      titleOverride: f.titleOverride.trim() || undefined,
-      priceOverride: f.priceOverride !== '' ? Number(f.priceOverride) : undefined,
-      stockQuantity: Number(f.stockQuantity) || 0,
-      isActive:      f.isActive,
-    });
-    setEditingId(null);
+    setEditError(null);
+    try {
+      await update.mutateAsync({
+        productId,
+        variantId,
+        sku:           f.sku.trim(),
+        titleOverride: f.titleOverride.trim() || undefined,
+        priceOverride: f.priceOverride !== '' ? Number(f.priceOverride) : undefined,
+        stockQuantity: Number(f.stockQuantity) || 0,
+        isActive:      f.isActive,
+      });
+      setEditingId(null);
+    } catch {
+      // Same failure mode as handleAdd (e.g. duplicate SKU) — without this the
+      // form just sat there with no feedback, indistinguishable from a hang.
+      setEditError(t('common.error'));
+    }
   }
 
   async function performDelete() {
@@ -460,7 +468,7 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
                     type="button"
                     className="text-xs transition-opacity opacity-40 hover:opacity-80"
                     style={{ color: colors.accent }}
-                    onClick={() => { setAdding(false); setEditingId(v.id); }}
+                    onClick={() => { setAdding(false); setEditError(null); setEditingId(v.id); }}
                   >
                     <Pencil size={14} />
                   </button>
@@ -478,14 +486,19 @@ export function ProductVariantsSection({ productId, productSku, optionGroups = [
             </div>
 
             {editingId === v.id && (
-              <InlineVariantForm
-                initial={variantToForm(v)}
-                saving={update.isPending}
-                onSave={(f) => handleUpdate(v.id, f)}
-                onCancel={() => setEditingId(null)}
-                optionGroups={optionGroups}
-                hideOptions
-              />
+              <>
+                <InlineVariantForm
+                  initial={variantToForm(v)}
+                  saving={update.isPending}
+                  onSave={(f) => handleUpdate(v.id, f)}
+                  onCancel={() => { setEditingId(null); setEditError(null); }}
+                  optionGroups={optionGroups}
+                  hideOptions
+                />
+                {editError && (
+                  <p className="text-xs" style={{ color: colors.danger }}>{editError}</p>
+                )}
+              </>
             )}
           </div>
         );

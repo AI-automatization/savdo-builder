@@ -380,18 +380,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </a>
           </div>
         )}
+        {subscription?.status === 'CHURNED' && (
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+            style={{ background: dangerTint(0.12), borderBottom: `1px solid ${dangerTint(0.25)}` }}
+          >
+            <span style={{ color: colors.danger }}>{t('billing.churnedBanner')}</span>
+            <a
+              href="tg://resolve?domain=ismailov_0011"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold whitespace-nowrap hover:opacity-80"
+              style={{ color: colors.danger }}
+            >
+              {t('billing.writeManager')}
+            </a>
+          </div>
+        )}
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 relative" style={{ background: colors.bg }}>
-          {/* Suspended read-only overlay */}
-          {subscription?.status === 'SUSPENDED' && (
+        <main className="flex-1 relative overflow-hidden" style={{ background: colors.bg }}>
+          {/* Scroll container is nested so the lock overlay below (an `absolute`
+              sibling, not a child of this scrolling div) stays pinned over the
+              whole visible pane instead of scrolling away with the content. */}
+          <div className="absolute inset-0 overflow-y-auto p-4 md:p-6">
+            {children}
+          </div>
+          {/* Read-only lock — SUSPENDED and CHURNED are both past the point of
+              write access; CHURNED is strictly worse than SUSPENDED in the
+              billing state machine and must be locked the same way. */}
+          {(subscription?.status === 'SUSPENDED' || subscription?.status === 'CHURNED') && (
             <div
               className="absolute inset-0 pointer-events-auto"
               style={{ background: dangerTint(0.04), zIndex: 10 }}
               aria-hidden="true"
             />
           )}
-          {children}
         </main>
       </div>
 

@@ -299,8 +299,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   }
 
   async function handleStatusChange(status: ProductStatus) {
-    await updateStatus.mutateAsync({ id, status });
-    router.push('/products');
+    try {
+      await updateStatus.mutateAsync({ id, status });
+      router.push('/products');
+    } catch {
+      // Rejected transition (e.g. DRAFT -> ARCHIVED isn't allowed) — surfaced
+      // via updateStatus.isError below instead of failing silently.
+    }
   }
 
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -606,7 +611,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 {t('products.edit.makeActive')}
               </button>
             )}
-            {product.status !== ProductStatus.DRAFT && (
+            {/* DRAFT and ARCHIVED are only reachable from ACTIVE per the backend's
+                allowed-transitions table (DRAFT:[ACTIVE], ACTIVE:[ARCHIVED,DRAFT],
+                ARCHIVED:[ACTIVE]) — showing these for the wrong source status let
+                the seller trigger a 422 with no explanation. */}
+            {product.status === ProductStatus.ACTIVE && (
               <button
                 onClick={() => handleStatusChange(ProductStatus.DRAFT)}
                 disabled={updateStatus.isPending}
@@ -616,7 +625,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 {t('products.edit.toDraft')}
               </button>
             )}
-            {product.status !== ProductStatus.ARCHIVED && (
+            {product.status === ProductStatus.ACTIVE && (
               <button
                 onClick={() => handleStatusChange(ProductStatus.ARCHIVED)}
                 disabled={updateStatus.isPending}
@@ -627,6 +636,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               </button>
             )}
           </div>
+
+          {updateStatus.isError && (
+            <div
+              className="px-4 py-3 rounded-xl text-sm"
+              style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
+            >
+              {t('products.edit.errorStatus')}
+            </div>
+          )}
 
           <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: "0.75rem" }}>
             <button

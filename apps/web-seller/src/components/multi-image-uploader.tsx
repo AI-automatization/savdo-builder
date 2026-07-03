@@ -77,31 +77,33 @@ export function MultiImageUploader({
 
     setError(null);
     setUploading(true);
-    try {
-      const uploaded: MultiImageItem[] = [];
-      for (const file of toUpload) {
-        if (!ALLOWED_TYPES.includes(file.type)) {
-          setError(t('uploader.onlyFormats'));
-          continue;
-        }
-        if (file.size > MAX_BYTES) {
-          setError(t('uploader.fileTooLargeNamed', { name: file.name }));
-          continue;
-        }
+    // `value` is a fixed snapshot for this call — accumulate locally and flush
+    // via onChange after EACH successful upload (not just once at the end), so
+    // a later file failing doesn't discard photos that already exist server-side.
+    const uploaded: MultiImageItem[] = [];
+    let lastError: unknown;
+    for (const file of toUpload) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        setError(t('uploader.onlyFormats'));
+        continue;
+      }
+      if (file.size > MAX_BYTES) {
+        setError(t('uploader.fileTooLargeNamed', { name: file.name }));
+        continue;
+      }
+      try {
         const { mediaFileId } = await uploadDirect(file, 'product_image');
         const previewUrl = URL.createObjectURL(file);
         createdBlobs.current.add(previewUrl);
         uploaded.push({ mediaId: mediaFileId, previewUrl });
-      }
-      if (uploaded.length > 0) {
         onChange([...value, ...uploaded]);
+      } catch (err) {
+        lastError = err;
       }
-    } catch (err) {
-      setError(describeError(err));
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
     }
+    if (lastError) setError(describeError(lastError));
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = '';
   }
 
   function removeAt(idx: number) {

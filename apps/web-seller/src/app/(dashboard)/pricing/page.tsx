@@ -59,7 +59,8 @@ export default function PricingPage() {
 
   const statusStyle: React.CSSProperties =
     status === 'PAST_DUE'  ? { background: warningTint(0.15), color: colors.warning,  border: `1px solid ${warningTint(0.30)}` } :
-    status === 'SUSPENDED' ? { background: dangerTint(0.12),  color: colors.danger,   border: `1px solid ${dangerTint(0.25)}`  } :
+    status === 'SUSPENDED' ||
+    status === 'CHURNED'   ? { background: dangerTint(0.12),  color: colors.danger,   border: `1px solid ${dangerTint(0.25)}`  } :
                              { background: colors.surface,    color: colors.textDim,  border: `1px solid ${colors.border}`     };
 
   return (
@@ -89,6 +90,21 @@ export default function PricingPage() {
           style={{ background: warningTint(0.12), border: `1px solid ${warningTint(0.30)}` }}>
           <p className="text-sm font-medium" style={{ color: colors.warning }}>
             {t('billing.pastDueBanner')}
+          </p>
+          <a href={managerDeeplink('Pro')} target="_blank" rel="noopener noreferrer"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap flex-shrink-0 transition-opacity hover:opacity-90"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}>
+            {t('billing.writeManager')}
+          </a>
+        </div>
+      )}
+
+      {/* Churned — banner with CTA */}
+      {status === 'CHURNED' && (
+        <div className="rounded-xl px-4 py-3 mb-4 flex items-center justify-between gap-3"
+          style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}` }}>
+          <p className="text-sm font-medium" style={{ color: colors.danger }}>
+            {t('billing.churnedBanner')}
           </p>
           <a href={managerDeeplink('Pro')} target="_blank" rel="noopener noreferrer"
             className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap flex-shrink-0 transition-opacity hover:opacity-90"

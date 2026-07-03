@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getSocket } from '../lib/socket';
 import { useStore } from './use-seller';
 import { orderKeys } from './use-orders';
+import { chatKeys } from './use-chat';
 
 export interface ToastMessage {
   id: number;
@@ -72,6 +73,11 @@ export function useSellerSocket() {
     }
 
     function onChatNewMessage(payload: { threadId: string; buyerName?: string }) {
+      // The seller may be on any page other than this exact open thread (that
+      // case is handled by useChatSocket) — invalidate here too so the sidebar
+      // unread badge updates immediately instead of waiting for an unrelated
+      // refetch (tab refocus, navigation).
+      queryClient.invalidateQueries({ queryKey: chatKeys.threads });
       const body = payload.buyerName ? `${payload.buyerName} написал(а) вам` : 'Новое сообщение в чате';
       addToast(`💬 ${body}`);
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
