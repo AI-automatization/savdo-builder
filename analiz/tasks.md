@@ -73,15 +73,15 @@
   API build 0, admin build 0, api-тесты без регрессий (9 предсуществующих). Owner выбрал: общий
   AuditModule + панель в CategoriesPage.
 
-## 🟡 [FEAT-CUSTOM-ROLES-001] Добавление собственной admin-роли (RBAC) — СКОУП УТОЧНЁН 04.07
+## 🟢 [FEAT-CUSTOM-ROLES-001] Кастомные admin-роли (RBAC) — СДЕЛАНО 04.07 (api + admin)
 - **Домен:** apps/api + apps/admin · **Кто взял:** Полат
-- **✅ Скоуп (owner 04.07):** это про **admin RBAC-роли** — кастомные роли для сотрудников админки
-  сверх super_admin/admin/moderator/support/finance/read_only, с гибким набором permissions.
-  НЕ про пользовательские BUYER/SELLER.
-- **Что делать (следующая сессия):** модель кастомной роли (name + set permissions) в БД/константах,
-  UI управления ролями в admin, применить в AdminPermissionGuard. Затрагивает
-  `common/constants/admin-permissions.ts` + RBAC-матрицу. Пересекается с гибридной моделью (ADR 30.06).
-  ⚠️ T2 (security/RBAC) — начать со spec-driven плана + миграция ролей аккуратно (prod).
+- **✅ 04.07 (см. done.md):** таблица `admin_custom_roles` (name/label/permissions[]), CRUD только
+  super_admin, словарь permissions + reserved-защита от эскалации (`admin/db/system/*` запрещены),
+  guard-fallback на кастомную роль (permission + entry-gate), UI управления ролями + назначение в
+  AdminUsersPage, i18n ru/uz. `AdminUser.adminRole` переиспользован (свободная строка) — БД AdminUser
+  не менялась. API build 0, admin build 0, +6 security-тестов (22/22 в use-case). Миграция additive.
+- **🔲 Остаток (опц.):** страница-обзор permissions на роль; переназначение админов при удалении роли
+  сейчас блокируется (надо вручную сменить роль). Достаточно для MVP.
 
 ## 🟢 [FEAT-DESIGN-OPTIMIZATION-001] Оптимизация дизайна — блик по событию — TMA код-закрыт 04.07
 - **Домен:** apps/tma (+ web=Азим) · **Кто взял:** Полат/Азим · **Приоритет:** 🟡 (нагрузка на телефон)

@@ -2,13 +2,18 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { AuditService } from '../../audit/audit.service';
+import { isBaseAdminRole, isAssignableCustomPermission } from '../../../common/constants/admin-permissions';
 
 const VALID_ADMIN_ROLES = ['super_admin', 'admin', 'moderator', 'support', 'finance', 'read_only'] as const;
 export type AdminRoleType = typeof VALID_ADMIN_ROLES[number];
 
 @Injectable()
 export class AdminUsersManagementUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   // ── GET /admin/admins ──────────────────────────────────────────────
   async list() {
@@ -34,7 +39,7 @@ export class AdminUsersManagementUseCase {
   // ── POST /admin/admins ─────────────────────────────────────────────
   // body { phone, adminRole }
   async create(actorAdminId: string, phone: string, adminRole: string) {
-    this.requireValidRole(adminRole);
+    await this.assertAssignableRole(adminRole);
 
     const actor = await this.requireSuperadmin(actorAdminId);
 
@@ -72,7 +77,7 @@ export class AdminUsersManagementUseCase {
 
   // ── PATCH /admin/admins/:id/role ───────────────────────────────────
   async changeRole(actorAdminId: string, targetAdminId: string, newRole: string) {
-    this.requireValidRole(newRole);
+    await this.assertAssignableRole(newRole);
 
     const actor = await this.requireSuperadmin(actorAdminId);
 
@@ -124,14 +129,121 @@ export class AdminUsersManagementUseCase {
     return { ok: true };
   }
 
-  private requireValidRole(role: string): asserts role is AdminRoleType {
-    if (!VALID_ADMIN_ROLES.includes(role as AdminRoleType)) {
+  // Роль назначаема, если это базовая роль ИЛИ существующая кастомная роль.
+  private async assertAssignableRole(role: string): Promise<void> {
+    if (isBaseAdminRole(role)) return;
+    const custom = await this.prisma.adminCustomRole.findUnique({ where: { name: role } });
+    if (custom) return;
+    throw new DomainException(
+      ErrorCode.VALIDATION_ERROR,
+      `Invalid role '${role}'. Base: ${VALID_ADMIN_ROLES.join(', ')} или существующая кастомная роль.`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  // ── FEAT-CUSTOM-ROLES-001: CRUD кастомных ролей (только super_admin) ────────
+
+  async listCustomRoles() {
+    return this.prisma.adminCustomRole.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async createCustomRole(actorAdminId: string, nameRaw: string, label: string, permissions: string[]) {
+    const actor = await this.requireSuperadmin(actorAdminId);
+    const name = this.normalizeRoleName(nameRaw);
+
+    if (isBaseAdminRole(name)) {
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, `Имя '${name}' занято базовой ролью`, HttpStatus.BAD_REQUEST);
+    }
+    if (await this.prisma.adminCustomRole.findUnique({ where: { name } })) {
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, `Роль '${name}' уже существует`, HttpStatus.BAD_REQUEST);
+    }
+    this.validateCustomPermissions(permissions);
+    if (!label?.trim()) {
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'label обязателен', HttpStatus.BAD_REQUEST);
+    }
+
+    const role = await this.prisma.adminCustomRole.create({
+      data: { name, label: label.trim(), permissions, createdByAdminId: actorAdminId },
+    });
+    await this.audit.write({
+      actorUserId: actor.userId,
+      action: 'CUSTOM_ROLE_CREATED',
+      entityType: 'AdminCustomRole',
+      entityId: role.id,
+      payload: { name, label: role.label, permissions },
+    });
+    return role;
+  }
+
+  async updateCustomRole(actorAdminId: string, id: string, data: { label?: string; permissions?: string[] }) {
+    const actor = await this.requireSuperadmin(actorAdminId);
+    const role = await this.prisma.adminCustomRole.findUnique({ where: { id } });
+    if (!role) throw new DomainException(ErrorCode.NOT_FOUND, 'Роль не найдена', HttpStatus.NOT_FOUND);
+
+    if (data.permissions) this.validateCustomPermissions(data.permissions);
+
+    const updated = await this.prisma.adminCustomRole.update({
+      where: { id },
+      data: {
+        ...(data.label !== undefined ? { label: data.label.trim() } : {}),
+        ...(data.permissions !== undefined ? { permissions: data.permissions } : {}),
+      },
+    });
+    await this.audit.write({
+      actorUserId: actor.userId,
+      action: 'CUSTOM_ROLE_UPDATED',
+      entityType: 'AdminCustomRole',
+      entityId: id,
+      payload: { name: role.name, before: { label: role.label, permissions: role.permissions }, after: { label: updated.label, permissions: updated.permissions } },
+    });
+    return updated;
+  }
+
+  async deleteCustomRole(actorAdminId: string, id: string) {
+    const actor = await this.requireSuperadmin(actorAdminId);
+    const role = await this.prisma.adminCustomRole.findUnique({ where: { id } });
+    if (!role) throw new DomainException(ErrorCode.NOT_FOUND, 'Роль не найдена', HttpStatus.NOT_FOUND);
+
+    const assigned = await this.prisma.adminUser.count({ where: { adminRole: role.name } });
+    if (assigned > 0) {
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
-        `Invalid role. Allowed: ${VALID_ADMIN_ROLES.join(', ')}`,
+        `Роль назначена ${assigned} админам — сначала переназначьте их`,
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    await this.prisma.adminCustomRole.delete({ where: { id } });
+    await this.audit.write({
+      actorUserId: actor.userId,
+      action: 'CUSTOM_ROLE_DELETED',
+      entityType: 'AdminCustomRole',
+      entityId: id,
+      payload: { name: role.name, label: role.label },
+    });
+    return { ok: true };
+  }
+
+  private validateCustomPermissions(permissions: string[]): void {
+    if (!Array.isArray(permissions) || permissions.length === 0) {
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'permissions обязательны (непустой массив)', HttpStatus.BAD_REQUEST);
+    }
+    const bad = permissions.filter((p) => !isAssignableCustomPermission(p));
+    if (bad.length) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        `Недопустимые permissions: ${bad.join(', ')}. Reserved (admin/db/system/*) и неизвестные запрещены.`,
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private normalizeRoleName(raw: string): string {
+    const name = (raw ?? '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (name.length < 2) {
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'Имя роли: минимум 2 символа [a-z0-9_]', HttpStatus.BAD_REQUEST);
+    }
+    return name;
   }
 
   private async requireSuperadmin(adminId: string) {

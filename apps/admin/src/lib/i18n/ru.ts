@@ -639,6 +639,25 @@ export const ru: Translations = {
   'mfa.disableWarning': 'Аккаунт станет защищён только паролем. Это снижает безопасность — продолжайте только если это действительно необходимо.',
   'mfa.disableConfirm': 'Отключить MFA',
 
+  // ── FEAT-CUSTOM-ROLES-001: кастомные роли ─────────────────────────────
+  'common.edit': 'Изменить',
+  'customRoles.manage': 'Кастомные роли',
+  'customRoles.title': 'Кастомные роли',
+  'customRoles.hint': 'Роли сверх базовых, с гибким набором прав. Управляет только super_admin.',
+  'customRoles.new': 'Новая роль',
+  'customRoles.empty': 'Кастомных ролей пока нет',
+  'customRoles.fieldName': 'Идентификатор (латиница, _)',
+  'customRoles.fieldLabel': 'Название',
+  'customRoles.fieldPerms': 'Разрешения',
+  'customRoles.saved': 'Роль сохранена',
+  'customRoles.deleted': 'Роль удалена',
+  'customRoles.errRequired': 'Укажите название и хотя бы одно разрешение',
+  'customRoles.errName': 'Укажите идентификатор роли',
+  'customRoles.errSave': 'Не удалось сохранить роль',
+  'customRoles.errDelete': 'Не удалось удалить роль',
+  'customRoles.deleteTitle': 'Удалить роль?',
+  'customRoles.deleteDesc': 'Роль «{role}» будет удалена. Убедитесь, что она никому не назначена.',
+
   // ── Admin users ───────────────────────────────────────────────────────
   'adminUsers.title': 'Администраторы',
   'adminUsers.subtitle': 'Управление доступом сотрудников панели',
