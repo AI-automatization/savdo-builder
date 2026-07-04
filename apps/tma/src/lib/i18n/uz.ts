@@ -209,6 +209,16 @@ export const uz: Translations = {
   'orders.cancelKeep': 'Yoʻq',
   'orders.cancelled': '✅ Buyurtma bekor qilindi',
   'orders.cancelError': 'Buyurtmani bekor qilib boʻlmadi',
+  // FEAT-ORDERS-ARCHIVE-001: yopilgan buyurtmalarni arxivlash
+  'orders.archiveTitle': 'Buyurtmalar arxivi',
+  'orders.viewArchive': 'Arxiv',
+  'orders.viewActive': 'Faol',
+  'orders.archiveCta': 'Arxivga',
+  'orders.unarchiveCta': 'Qaytarish',
+  'orders.archivedToast': '🗄️ Buyurtma arxivda',
+  'orders.unarchivedToast': '↩ Buyurtma qaytarildi',
+  'orders.archiveError': 'Arxivni oʻzgartirib boʻlmadi',
+  'orders.emptyArchive': 'Arxiv hozircha boʻsh',
 
   // ── Stores ────────────────────────────────────────────────────────────
   'stores.title': 'Doʻkonlar',
