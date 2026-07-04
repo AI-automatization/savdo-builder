@@ -9,7 +9,7 @@ import { useProduct, useProducts } from "@/hooks/use-storefront";
 import { useAddToCart } from "@/hooks/use-cart";
 import { ProductStatus, ThreadType } from "types";
 import { track } from "@/lib/analytics";
-import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Heart, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Heart, Minus, Plus, AlertTriangle } from "lucide-react";
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import ProductCard from "@/components/store/ProductCard";
 import { ProductReviews } from "@/components/store/ProductReviews";
@@ -270,20 +270,24 @@ export default function ProductPage() {
           {/* Right actions */}
           <div className="flex items-center gap-2 ml-auto">
             {!notFound && product && (
-              <Tooltip label={inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}>
+              <Tooltip label={toggleWishlist.isError ? t('product.wishlistToggleError') : inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}>
                 <button
                   onClick={handleWishlistToggle}
-                  aria-label={inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}
+                  aria-label={toggleWishlist.isError ? t('product.wishlistToggleError') : inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}
                   aria-pressed={inWishlist}
                   className="w-9 h-9 flex items-center justify-center rounded transition-colors"
                   style={{
                     background: colors.surface,
                     border: `1px solid ${colors.border}`,
-                    color: inWishlist ? colors.brand : colors.textMuted,
+                    color: toggleWishlist.isError ? colors.danger : inWishlist ? colors.brand : colors.textMuted,
                     opacity: toggleWishlist.isPending ? 0.6 : 1,
                   }}
                 >
-                  <Heart size={18} fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={inWishlist ? 0 : 1.75} />
+                  {toggleWishlist.isError ? (
+                    <AlertTriangle size={18} />
+                  ) : (
+                    <Heart size={18} fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={inWishlist ? 0 : 1.75} />
+                  )}
                 </button>
               </Tooltip>
             )}

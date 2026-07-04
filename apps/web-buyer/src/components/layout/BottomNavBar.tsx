@@ -60,7 +60,10 @@ export function BottomNavBar({
       >
         <nav className="flex items-center justify-around px-2 pt-2.5 pb-2 max-w-md mx-auto">
           {NAV.map(({ key, href, label, icon, badge }) => {
-            const isActive = key === active;
+            // wishlist/notifications have no dedicated tab — both are reached
+            // only from the profile menu, so that's the tab that should light up.
+            const isActive = key === active
+              || (key === 'profile' && (active === 'wishlist' || active === 'notifications'));
             const badgeLabel = badge != null && badge > 0
               ? `${label} (${badge > 9 ? t('nav.unreadBadge', { count: '9+' }) : t('nav.unreadBadge', { count: String(badge) })})`
               : label;

@@ -74,6 +74,7 @@ export const ru: Translations = {
   'product.back': 'Назад',
   'product.wishlistAdd': 'В избранное',
   'product.wishlistRemove': 'Убрать из избранного',
+  'product.wishlistToggleError': 'Не удалось сохранить. Нажмите ещё раз.',
   'product.shareTelegram': 'Поделиться в Telegram',
   'product.linkCopied': 'Ссылка скопирована',
   'product.showPhoto': 'Показать фото {n}',

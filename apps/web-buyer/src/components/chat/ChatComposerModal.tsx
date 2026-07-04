@@ -27,12 +27,22 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  // onClose/isPending read via refs so this effect runs once on mount — keeping it
+  // keyed to `onClose` (a fresh arrow fn on every parent re-render) tore the
+  // listener down and rebuilt it constantly, which is also what let Esc/backdrop
+  // fire mid-send below (isPending wasn't checked at all before).
+  const onCloseRef = useRef(onClose);
+  const isPendingRef = useRef(create.isPending);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => { isPendingRef.current = create.isPending; }, [create.isPending]);
+
   // A11y: Esc закрывает, focus заперт внутри (Tab/Shift+Tab циклятся)
   useEffect(() => {
     const prevFocus = document.activeElement as HTMLElement | null;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onClose();
+        if (isPendingRef.current) return; // don't drop an in-flight send / its error
+        onCloseRef.current();
         return;
       }
       if (e.key === "Tab" && dialogRef.current) {
@@ -56,7 +66,7 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
       document.removeEventListener("keydown", onKey);
       prevFocus?.focus?.();
     };
-  }, [onClose]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSend() {
     const trimmed = text.trim();
@@ -76,7 +86,7 @@ export default function ChatComposerModal({ contextType, contextId, title, initi
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
       style={{ background: "rgba(15,17,21,0.5)" }}
-      onClick={onClose}
+      onClick={() => { if (!create.isPending) onClose(); }}
     >
       <div
         ref={dialogRef}

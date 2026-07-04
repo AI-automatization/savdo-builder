@@ -38,18 +38,14 @@ interface ToggleArgs {
   productId: string;
   /** Currently in wishlist? Used to pick POST vs DELETE. */
   inWishlist: boolean;
-  /** Optional product preview — used for an optimistic insert when adding. */
-  productPreview?: WishlistItem['product'];
 }
 
 /**
- * Optimistic toggle. Adds or removes locally before the request resolves;
- * reverts on failure.
- *
- * Note: when adding, server only returns {id, productId, createdAt} — no embedded
- * product. We pre-insert with `productPreview` if supplied, then rely on the next
- * refetch to fill in any drift. If `productPreview` is missing, we skip the
- * optimistic insert (the heart will still flip via the predicted next set).
+ * Optimistic toggle. Removes locally before the request resolves, reverts on
+ * failure. Adding has no optimistic insert — the server only returns
+ * {id, productId, createdAt} with no embedded product, so there's nothing to
+ * render until the onSettled refetch lands; the heart's own `inWishlist` state
+ * still flips immediately from the mutation args.
  */
 export function useToggleWishlist() {
   const queryClient = useQueryClient();
@@ -63,24 +59,15 @@ export function useToggleWishlist() {
       }
     },
 
-    onMutate: async ({ productId, inWishlist, productPreview }) => {
+    onMutate: async ({ productId, inWishlist }) => {
       await queryClient.cancelQueries({ queryKey: WISHLIST_KEYS.list });
       const prev = queryClient.getQueryData<WishlistItem[]>(WISHLIST_KEYS.list);
 
-      queryClient.setQueryData<WishlistItem[]>(WISHLIST_KEYS.list, (current) => {
-        const list = current ?? [];
-        if (inWishlist) {
-          return list.filter((i) => i.productId !== productId);
-        }
-        if (!productPreview) return list;
-        const optimistic: WishlistItem = {
-          id: `optimistic-${productId}`,
-          productId,
-          createdAt: new Date().toISOString(),
-          product: productPreview,
-        };
-        return [optimistic, ...list];
-      });
+      if (inWishlist) {
+        queryClient.setQueryData<WishlistItem[]>(WISHLIST_KEYS.list, (current) =>
+          (current ?? []).filter((i) => i.productId !== productId),
+        );
+      }
 
       return { prev };
     },
@@ -91,8 +78,8 @@ export function useToggleWishlist() {
       }
     },
 
-    // Refetch after to pull authoritative data (replaces optimistic placeholder
-    // with the server-issued WishlistItem incl. real id and embedded product).
+    // Refetch after to pull authoritative data (fills in the added item with
+    // its server-issued id + embedded product, since add has no local copy).
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: WISHLIST_KEYS.list });
     },

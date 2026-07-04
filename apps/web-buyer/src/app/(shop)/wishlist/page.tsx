@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { WishlistItem } from "types";
-import { Heart, ShoppingBag } from "lucide-react";
+import { Heart, ShoppingBag, AlertTriangle } from "lucide-react";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OtpGate } from "@/components/auth/OtpGate";
 import { useAuth } from "@/lib/auth/context";
@@ -140,14 +140,18 @@ function WishlistCard({ item }: { item: WishlistItem }) {
           type="button"
           onClick={handleRemove}
           disabled={toggleWishlist.isPending}
-          aria-label={t('wishlist.removeLabel')}
+          aria-label={toggleWishlist.isError ? t('product.wishlistToggleError') : t('wishlist.removeLabel')}
           className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90"
           style={{
             background: "rgba(255,255,255,0.85)",
             opacity: toggleWishlist.isPending ? 0.6 : 1,
           }}
         >
-          <Heart size={14} fill={colors.brand} stroke={colors.brand} />
+          {toggleWishlist.isError ? (
+            <AlertTriangle size={14} color={colors.danger} />
+          ) : (
+            <Heart size={14} fill={colors.brand} stroke={colors.brand} />
+          )}
         </button>
 
         {/* OOS overlay */}

@@ -72,6 +72,7 @@ export const uz: Translations = {
   'product.back': 'Orqaga',
   'product.wishlistAdd': 'Sevimlilar',
   'product.wishlistRemove': 'Sevimlilardan olib tashlash',
+  'product.wishlistToggleError': 'Saqlab bo‘lmadi. Yana bir bor bosing.',
   'product.shareTelegram': 'Telegramda ulashish',
   'product.linkCopied': 'Havola nusxalandi',
   'product.showPhoto': '{n}-rasmni koʻrsatish',

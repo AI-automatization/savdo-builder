@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { ProductListItem } from "types";
 import { ProductStatus } from "types";
-import { ShoppingBag, Layers, Heart } from "lucide-react";
+import { ShoppingBag, Layers, Heart, AlertTriangle } from "lucide-react";
 import { colors } from "@/lib/styles";
 import { useAuth } from "@/lib/auth/context";
 import { useToggleWishlist, useWishlistIds } from "@/hooks/use-wishlist";
@@ -146,21 +146,25 @@ export default function ProductCard({ product, storeSlug }: Props) {
           <button
             type="button"
             onClick={handleHeartClick}
-            aria-label={inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}
+            aria-label={toggleWishlist.isError ? t('product.wishlistToggleError') : inWishlist ? t('product.wishlistRemove') : t('product.wishlistAdd')}
             aria-pressed={inWishlist}
             className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
             style={{
               background: 'rgba(255,255,255,0.85)',
-              color: inWishlist ? colors.brand : colors.textBody,
+              color: toggleWishlist.isError ? colors.danger : inWishlist ? colors.brand : colors.textBody,
               zIndex: 4,
               opacity: toggleWishlist.isPending ? 0.6 : 1,
             }}
           >
-            <Heart
-              size={16}
-              fill={inWishlist ? "currentColor" : "none"}
-              strokeWidth={inWishlist ? 0 : 1.75}
-            />
+            {toggleWishlist.isError ? (
+              <AlertTriangle size={16} />
+            ) : (
+              <Heart
+                size={16}
+                fill={inWishlist ? "currentColor" : "none"}
+                strokeWidth={inWishlist ? 0 : 1.75}
+              />
+            )}
           </button>
 
           {/* Out of stock overlay */}
