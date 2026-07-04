@@ -1210,6 +1210,24 @@ model AdminUser {
   @@map("admin_users")
 }
 
+// FEAT-CUSTOM-ROLES-001: кастомные admin-роли сверх базовых (super_admin/admin/
+// moderator/support/finance/read_only). Базовые роли остаются в коде
+// (admin-permissions.ts) под PR-review; кастомные — управляются super_admin из
+// панели. `name` кладётся в AdminUser.adminRole (та уже свободная строка), guard
+// резолвит permissions отсюда, если роль не базовая. permissions — подмножество
+// известного словаря без reserved (`*`, `admin:*`, `db:*`, `system:*`).
+model AdminCustomRole {
+  id               String   @id @default(uuid())
+  name             String   @unique // slug-идентификатор, кладётся в AdminUser.adminRole
+  label            String            // человекочитаемое название
+  permissions      String[]          // resource:action из словаря
+  createdByAdminId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("admin_custom_roles")
+}
+
 // DB-AUDIT-001: была дыра — таблица существовала в DB (migration 20260503020000)
 // но модель в schema.prisma отсутствовала. Refund use-case использовал raw SQL.
 model OrderRefund {

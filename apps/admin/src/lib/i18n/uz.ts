@@ -640,6 +640,25 @@ export const uz: Translations = {
   'mfa.disableConfirm': 'MFA ni oʻchirish',
 
   // ── Admin users ───────────────────────────────────────────────────────
+  // FEAT-CUSTOM-ROLES-001: maxsus rollar
+  'common.edit': 'Tahrirlash',
+  'customRoles.manage': 'Maxsus rollar',
+  'customRoles.title': 'Maxsus rollar',
+  'customRoles.hint': 'Bazaviy rollardan tashqari, moslashuvchan huquqlar toʻplami bilan. Faqat super_admin boshqaradi.',
+  'customRoles.new': 'Yangi rol',
+  'customRoles.empty': 'Hozircha maxsus rollar yoʻq',
+  'customRoles.fieldName': 'Identifikator (lotin, _)',
+  'customRoles.fieldLabel': 'Nomi',
+  'customRoles.fieldPerms': 'Ruxsatlar',
+  'customRoles.saved': 'Rol saqlandi',
+  'customRoles.deleted': 'Rol oʻchirildi',
+  'customRoles.errRequired': 'Nom va kamida bitta ruxsatni koʻrsating',
+  'customRoles.errName': 'Rol identifikatorini koʻrsating',
+  'customRoles.errSave': 'Rolni saqlab boʻlmadi',
+  'customRoles.errDelete': 'Rolni oʻchirib boʻlmadi',
+  'customRoles.deleteTitle': 'Rol oʻchirilsinmi?',
+  'customRoles.deleteDesc': '«{role}» roli oʻchiriladi. U hech kimga tayinlanmaganiga ishonch hosil qiling.',
+
   'adminUsers.title': 'Administratorlar',
   'adminUsers.subtitle': 'Panel xodimlari kirishini boshqarish',
   'adminUsers.add': 'Administrator qoʻshish',

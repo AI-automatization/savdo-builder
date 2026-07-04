@@ -1,5 +1,34 @@
 # Done — Азим + Полат
 
+## 2026-07-04 (Полат) — FEAT-CUSTOM-ROLES-001: кастомные admin-роли (RBAC)
+
+### ✅ [FEAT-CUSTOM-ROLES-001] Кастомные admin-роли с гибкими permissions
+- **Важность:** 🟡 (T2 security/RBAC) · **Дата:** 04.07.2026 · API build 0, admin build 0, +6 тестов
+- **Owner (04.07):** admin RBAC-роли (не пользовательские BUYER/SELLER).
+- **Дизайн (минимальный след):** `AdminUser.adminRole` — уже свободная строка, поэтому кастомная роль =
+  имя в `adminRole` + новая таблица `admin_custom_roles`. AdminUser НЕ менялся. Guard/entry-gate
+  получают fallback: роль не базовая → permissions тянутся из БД. Базовые роли остаются в коде
+  (PR-review-гейт сохранён).
+- **Security-guardrails:** CRUD ролей только super_admin; permissions строго из словаря
+  `ADMIN_PERMISSION_VOCABULARY`; reserved запрещены (`*`, `admin:*`, `db:*`, `system:*`) — нет
+  эскалации до управления админами/raw DB; имя не может совпасть с базовой ролью; удаление роли
+  блокируется, если назначена админам; каждое изменение → audit_log (AuditService).
+- **Backend (`apps/api`):**
+  - `schema.prisma` + миграция `20260704000002_admin_custom_roles` (CREATE TABLE, additive/prod-safe).
+  - `common/constants/admin-permissions.ts` — `BASE_ADMIN_ROLES`, `isBaseAdminRole`,
+    `ADMIN_PERMISSION_VOCABULARY`, `isAssignableCustomPermission` (reserved-фильтр).
+  - `admin.repository.ts` — CRUD кастомных ролей + `countAdminsWithRole`.
+  - `admin-users-management.use-case.ts` — createCustomRole/updateCustomRole/deleteCustomRole/
+    listCustomRoles + `assertAssignableRole` (async: базовая ИЛИ существующая кастомная) + audit.
+  - `super-admin.controller.ts` — `/admin/custom-roles` CRUD + `/admin/permissions/vocabulary`.
+  - `admin-permission.guard.ts` + `admin-access.guard.ts` — fallback на кастомную роль из БД.
+  - `admin-auth.use-case.ts` — `resolveAdminPermissions` (getMe + impersonate custom-aware).
+  - `+6 security-тестов` в use-case.spec (reserved/wildcard/base-collision/happy+audit/delete-block/non-super).
+- **Frontend (`apps/admin`):** `AdminUsersPage.tsx` — модал управления ролями (список + форма с
+  чекбоксами permissions по ресурсам), кастомные роли в пикерах Add/Edit, безопасные бейджи
+  (`roleBadge`/`roleLabel` для не-базовых). i18n ru/uz `customRoles.*` + `common.edit`.
+- **ADR:** решение о минимальном следе (adminRole-строка vs новый FK) — в Obsidian.
+
 ## 2026-07-04 (Полат) — FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий
 
 ### ✅ [FEAT-CATEGORY-JOURNAL-001] Журнал категорий (api + admin)
