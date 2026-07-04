@@ -9,12 +9,12 @@ import { PrismaService } from '../database/prisma.service';
 
 @WebSocketGateway({
   cors: {
-    // Принимает любой *.up.railway.app + telegram + savdo.uz + список из ALLOWED_ORIGINS
+    // Принимает любой *.up.railway.app + telegram + savdo.uz / maxsavdo.uz + список из ALLOWED_ORIGINS
     origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
       if (!origin) return cb(null, true);
       const list = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) ?? [];
       if (list.includes(origin)) return cb(null, true);
-      const patterns = [/\.railway\.app$/i, /(^|\.)telegram\.org$/i, /(^|\.)t\.me$/i, /(^|\.)savdo\.uz$/i];
+      const patterns = [/\.railway\.app$/i, /(^|\.)telegram\.org$/i, /(^|\.)t\.me$/i, /(^|\.)savdo\.uz$/i, /(^|\.)maxsavdo\.uz$/i];
       if (patterns.some((re) => re.test(new URL(origin).hostname))) return cb(null, true);
       cb(null, false);
     },
