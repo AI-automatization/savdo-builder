@@ -69,6 +69,8 @@ export class OrdersRepository {
     const where: any = {
       storeId,
       ...(filters.status ? { status: filters.status } : {}),
+      // FEAT-ORDERS-ARCHIVE-001: основной список скрывает архивные, ?archived=true — только их.
+      sellerArchivedAt: filters.archived ? { not: null } : null,
     };
 
     if (filters.search) {
@@ -153,6 +155,15 @@ export class OrdersRepository {
     return this.prisma.order.update({
       where: { id },
       data: { buyerArchivedAt: archivedAt },
+    });
+  }
+
+  // FEAT-ORDERS-ARCHIVE-001: пометить/снять архив закрытого заказа продавца.
+  // Ownership (storeId) + терминальный статус проверяются в контроллере; здесь только запись.
+  async setSellerArchived(id: string, archivedAt: Date | null): Promise<Order> {
+    return this.prisma.order.update({
+      where: { id },
+      data: { sellerArchivedAt: archivedAt },
     });
   }
 

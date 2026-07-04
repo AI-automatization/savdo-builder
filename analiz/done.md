@@ -1,5 +1,26 @@
 # Done — Азим + Полат
 
+## 2026-07-04 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (seller)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — seller-часть
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп:** симметрично buyer — ручная архивация терминальных (DELIVERED/CANCELLED) заказов
+  продавцом, отдельный флаг `sellerArchivedAt` (независим от buyer-архива), данные не удаляются.
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.sellerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260704000001_order_seller_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `sellerArchivedAt` в `findByStoreId` + метод
+    `setSellerArchived`.
+  - `get-seller-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в seller-списке + `PATCH /seller/orders/:id/archive`.
+    Владение по `storeId` через `getOrderDetailUseCase` (store-scoped 404), в архив только
+    DELIVERED/CANCELLED (иначе 409). Переиспользован query-параметр `archived` из buyer-DTO.
+  - `apps/tma/.../seller/OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть»
+    на терминальных карточках, оптимистичное удаление из списка, i18n-ключи те же (`orders.archive*`).
+- **Заметка:** предсуществующие падения `telegram-auth.use-case.spec.ts` (8) + `GetMeUseCase` (1) —
+  НЕ связаны с этой правкой (проверено: те же падения на чистом дереве до изменений). Залогировано.
+
 ## 2026-07-03 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (buyer)
 
 ### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — buyer-часть

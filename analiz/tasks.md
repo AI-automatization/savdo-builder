@@ -47,12 +47,14 @@
 - **Файлы:** `apps/tma/src/components/layout/AppShell.tsx`, `lib/socket.ts`,
   `components/ui/SocketStatusBadge.tsx`, `index.css`, `pages/seller/DashboardPage.tsx`.
 
-## 🟡 [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — BUYER done 03.07, остались seller/admin
+## 🟢 [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — BUYER+SELLER done 04.07 (admin — опц.)
 - **Домен:** apps/api + apps/tma + apps/admin · **Кто взял:** Полат · **Owner переподтвердил 03.07**
-- **✅ 03.07 buyer-часть сделана (см. done.md):** `Order.buyerArchivedAt`, `PATCH /buyer/orders/:id/
-  archive`, фильтр списка, TMA переключатель «Активные↔Архив» + кнопка. Build/тесты зелёные.
-- **🔲 Остаток:** seller-архив (свой флаг `sellerArchivedAt` + UI в seller-заказах) и/или admin-вид.
-  Решить, нужен ли он вообще — owner просил про заказы в целом; buyer-поток закрыт.
+- **✅ 03.07 buyer-часть (см. done.md):** `Order.buyerArchivedAt`, `PATCH /buyer/orders/:id/archive`,
+  фильтр списка, TMA переключатель «Активные↔Архив» + кнопка. Build/тесты зелёные. В проде (api+tma).
+- **✅ 04.07 seller-часть (см. done.md):** `Order.sellerArchivedAt` + миграция, `PATCH /seller/orders/
+  :id/archive`, фильтр `?archived=true` в `findByStoreId`, TMA seller переключатель + кнопка «В архив/
+  Вернуть» на терминальных карточках. API build 0, TMA build 0, TMA тесты 18/18.
+- **🔲 Остаток (низкий приоритет):** admin-вид архива — нужен ли вообще? buyer+seller потоки закрыты.
 - **Owner (03.07):** «архивация закрытых — отменённые, успешно завершённые и т.д.». Терминальные
   статусы по схеме = **DELIVERED** (успешно завершён) + **CANCELLED** (отменён) — других закрытых нет.
 - **Что:** функция архивации «закрытых» заказов. Закрытые = **DELIVERED + CANCELLED** (терминальные
