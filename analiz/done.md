@@ -1,5 +1,25 @@
 # Done — Азим + Полат
 
+## 2026-07-04 (Полат) — FEAT-DESIGN-OPTIMIZATION-001: блик только по событию (TMA код-закрыт)
+
+### ✅ [FEAT-DESIGN-OPTIMIZATION-001] Эффекты событийные, не always-on (TMA)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · TMA build (tsc -b + vite) EXIT 0
+- **Суть:** owner просил, чтобы блик/glow срабатывал ТОЛЬКО по событию (уведомление / что-то новое /
+  водитель назначен / загрузка), а не крутился постоянно и не грел телефон клиента.
+- **Что сделано:** аудит всех always-on `infinite` анимаций в `apps/tma/src`. Вывод — после
+  PERF-TMA-HEAT-001 весь остаток уже событийный:
+  - `DashboardPage` pulse ×2 → рендерится только при `s.urgent` (срочная статистика = «что-то новое»).
+  - `SocketStatusBadge` pulse → только `status==='connecting'` (реконнект/загрузка).
+  - `typing-dot`/`typing-bounce` → только когда собеседник печатает.
+  - `skeleton-shimmer`, `logo-pulse`, `LoadingScreen` → loading-контекст.
+  - `glass-shimmer` → уже переведён на hover/tap в PERF-HEAT (не infinite).
+  Все они = сигнал, оставлены как есть.
+- **Убрано (мёртвый декор):** `apps/tma/src/index.css` — `.orchid-pulse` (glow 2.4s infinite) и
+  `.status-dot`+`@keyframes cyan-ping` (ping 1.8s infinite). 0 потребителей в .tsx (проверено grep) —
+  чистый always-on декор без сигнала; удалён, чтобы будущий dev случайно не навесил.
+- **Не трогал:** web-buyer/web-seller (зона Азима). Delivery-«водитель назначен» подсветка — фичи
+  трекинга курьера в TMA пока нет, добавить событийный glow когда появится доставка.
+
 ## 2026-07-04 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (seller)
 
 ### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — seller-часть
