@@ -1,5 +1,13 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-04] [API-TEST-AUTH-SUITE-FAIL] Падают auth/admin тесты (не блокер, предсуществующее)
+- **Статус:** 🟡 Предупреждение (не блокирует деплой — падения не в моей текущей задаче)
+- **Что случилось:** `pnpm --filter api test` → 9 failed: `telegram-auth.use-case.spec.ts` (8) +
+  `admin/.../admin-list-detail.use-cases.spec.ts › GetMeUseCase happy` (1). 863 passed.
+- **Что сделано:** проверил через `git stash` — на чистом дереве (до правки FEAT-ORDERS-ARCHIVE-001
+  seller) те же 8 падений в telegram-auth. Значит НЕ регрессия от архива. Вероятно рассинхрон
+  мока User/JWT-claims после какой-то auth-правки. **TODO:** разобрать отдельно (Полат, api-зона).
+
 ## [2026-07-02] [AUDIT-TMA-BUYER-LIVE-001] Живой аудит buyer-флоу (аккаунт 2 переведён в BUYER)
 > ✅ ИСПРАВЛЕНО 02.07 (код-комплит, tsc TMA EXIT 0, см. done.md): -009, -011, -012, -010.
 > ⏳ Открыто: -013 (нужен реальный стек, remote-debug). Все фиксы ждут live-ретеста на устройстве.

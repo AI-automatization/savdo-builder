@@ -12,6 +12,8 @@ export interface GetSellerOrdersInput {
   dateTo?: string;
   page?: number;
   limit?: number;
+  // FEAT-ORDERS-ARCHIVE-001: true = только архив продавца, иначе только основной список.
+  archived?: boolean;
 }
 
 @Injectable()
@@ -39,6 +41,7 @@ export class GetSellerOrdersUseCase {
       dateTo: input.dateTo,
       page,
       limit,
+      archived: input.archived,
     });
 
     const data = result.orders.map((o: any) => {
