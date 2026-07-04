@@ -891,6 +891,12 @@ model Order {
   cancelledAt        DateTime?
   completedAt        DateTime?
   cancelReason       String?
+  // FEAT-ORDERS-ARCHIVE-001: покупатель прячет закрытый (DELIVERED/CANCELLED) заказ из
+  // основного списка. NULL = в основном списке, дата = в архиве. Данные не удаляются.
+  buyerArchivedAt    DateTime?
+  // FEAT-ORDERS-ARCHIVE-001: продавец прячет закрытый (DELIVERED/CANCELLED) заказ из
+  // основного списка своих заказов. NULL = в основном списке, дата = в архиве.
+  sellerArchivedAt   DateTime?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 

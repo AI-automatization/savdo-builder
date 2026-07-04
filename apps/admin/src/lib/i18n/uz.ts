@@ -450,6 +450,15 @@ export const uz: Translations = {
   'categories.editAction': 'Tahrirlash',
   'categories.activate': 'Faollashtirish',
   'categories.deactivate': 'Faolsizlantirish',
+  // FEAT-CATEGORY-JOURNAL-001: turkum oʻzgarishlari jurnali
+  'categories.history': 'Tarix',
+  'categories.historyTitle': 'Turkum oʻzgarishlari jurnali',
+  'categories.historyEmpty': 'Hozircha oʻzgarishlar yoʻq',
+  'categories.historyLoadError': 'Jurnalni yuklab boʻlmadi',
+  'categories.histCreated': 'Yaratildi',
+  'categories.histUpdated': 'Oʻzgartirildi',
+  'categories.histDeleted': 'Oʻchirildi',
+  'categories.histSeeded': 'Turkumlar importi (seed)',
 
   // ── Audit log ─────────────────────────────────────────────────────────
   'audit.title': 'Audit jurnali',

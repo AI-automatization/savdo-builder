@@ -11,9 +11,10 @@ import { DeleteStoreCategoryUseCase } from './use-cases/delete-store-category.us
 import { GlobalCategoriesSeedService } from './global-categories-seed.service';
 import { StoresModule } from '../stores/stores.module';
 import { SellersModule } from '../sellers/sellers.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [StoresModule, SellersModule],
+  imports: [StoresModule, SellersModule, AuditModule],
   controllers: [CategoriesController],
   providers: [
     GlobalCategoriesRepository,

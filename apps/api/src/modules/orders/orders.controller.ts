@@ -20,6 +20,7 @@ import { ErrorCode } from '../../shared/constants/error-codes';
 import { UsersRepository } from '../users/repositories/users.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
+import { OrdersRepository } from './repositories/orders.repository';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { GetBuyerOrdersUseCase } from './use-cases/get-buyer-orders.use-case';
@@ -38,6 +39,7 @@ export class OrdersController {
     private readonly usersRepo: UsersRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
+    private readonly ordersRepo: OrdersRepository,
     private readonly getBuyerOrdersUseCase: GetBuyerOrdersUseCase,
     private readonly getSellerOrdersUseCase: GetSellerOrdersUseCase,
     private readonly getOrderDetailUseCase: GetOrderDetailUseCase,
@@ -64,6 +66,8 @@ export class OrdersController {
       status: query.status,
       page,
       limit,
+      // FEAT-ORDERS-ARCHIVE-001: ?archived=true → показать архив, иначе основной список.
+      archived: query.archived === 'true',
     });
 
     const orders = (result as any).orders ?? [];
@@ -132,6 +136,34 @@ export class OrdersController {
     });
   }
 
+  // PATCH /api/v1/buyer/orders/:id/archive
+  // FEAT-ORDERS-ARCHIVE-001: покупатель прячет/возвращает закрытый заказ.
+  @Patch('buyer/orders/:id/archive')
+  @Roles('BUYER')
+  async archiveBuyerOrder(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') orderId: string,
+    @Body() body: { archived?: boolean },
+  ) {
+    const archived = body?.archived === true;
+    const buyerId = await this.resolveBuyerId(user.sub);
+
+    // Владение заказом проверяется здесь (buyer-scoped fetch бросит 404 на чужой).
+    const order = await this.getOrderDetailUseCase.execute({ orderId, buyerId });
+
+    // В архив можно только закрытые (DELIVERED/CANCELLED); возврат из архива — всегда.
+    if (archived && order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELLED) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Only delivered or cancelled orders can be archived',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const updated = await this.ordersRepo.setBuyerArchived(orderId, archived ? new Date() : null);
+    return { id: updated.id, archived: updated.buyerArchivedAt !== null };
+  }
+
   // ─── SELLER ROUTES ───────────────────────────────────────────────────────────
 
   // GET /api/v1/seller/orders
@@ -151,7 +183,35 @@ export class OrdersController {
       dateTo: query.dateTo,
       page: query.page,
       limit: query.limit,
+      archived: query.archived === 'true',
     });
+  }
+
+  // PATCH /api/v1/seller/orders/:id/archive
+  @Patch('seller/orders/:id/archive')
+  @Roles('SELLER')
+  async archiveSellerOrder(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') orderId: string,
+    @Body() body: { archived?: boolean },
+  ) {
+    const archived = body?.archived === true;
+    const storeId = await this.resolveStoreId(user.sub);
+
+    // Владение заказом проверяется здесь (store-scoped fetch бросит 404 на чужой).
+    const order = await this.getOrderDetailUseCase.execute({ orderId, storeId });
+
+    // В архив можно только закрытые (DELIVERED/CANCELLED); возврат из архива — всегда.
+    if (archived && order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELLED) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Only delivered or cancelled orders can be archived',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const updated = await this.ordersRepo.setSellerArchived(orderId, archived ? new Date() : null);
+    return { id: updated.id, archived: updated.sellerArchivedAt !== null };
   }
 
   // GET /api/v1/seller/orders/:id

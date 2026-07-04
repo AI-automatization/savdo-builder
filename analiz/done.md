@@ -1,5 +1,118 @@
 # Done — Азим + Полат
 
+## 2026-07-04 (Полат) — FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий
+
+### ✅ [FEAT-CATEGORY-JOURNAL-001] Журнал категорий (api + admin)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` 0, admin build 0, api-тесты без регрессий
+- **Решения owner (04.07):** запись через общий AuditModule (не зависимость categories→admin);
+  UI = панель «История» прямо в admin CategoriesPage.
+- **Проблема:** admin-CRUD глобальных категорий был единственным admin-потоком БЕЗ audit_log —
+  порчу каталога (напр. `увлажниьель`) нельзя отследить. Читалка журнала уже существовала.
+- **Backend (`apps/api`):**
+  - `modules/audit/audit.service.ts` + `audit.module.ts` — НОВЫЙ общий сервис записи audit_log,
+    вынесен из AdminRepository (PrismaModule глобальный → импортов не нужно). Доменные модули пишут
+    журнал без зависимости от AdminModule (исправлена инверсия слоёв).
+  - `admin.repository.ts` — `writeAuditLog` делегирует в `AuditService` (сигнатура сохранена, все
+    admin-вызовы работают без правок); `admin.module.ts` импортирует AuditModule.
+  - `categories.controller.ts` — admin create/update/delete/seed пишут audit (`CATEGORY_CREATED/
+    UPDATED/DELETED/SEEDED`, entityType=`GlobalCategory`, update → компактный before→after дифф);
+    `categories.module.ts` импортирует AuditModule.
+- **Frontend (`apps/admin`):** `CategoriesPage.tsx` — кнопка «История» + модал журнала (бейдж
+  действия, дифф/сводка payload, кто+когда), тянет `GET /admin/audit-log?entityType=GlobalCategory`.
+  i18n ru/uz — ключи `categories.history*`/`categories.hist*`.
+- **Проверка hook think-before-wire:** новый AuditService прошёл (токен basename `audit` совпал с
+  существующими `*audit*`-импортами → потребители найдены, ложной блокировки нет).
+
+## 2026-07-04 (Полат) — FEAT-DESIGN-OPTIMIZATION-001: блик только по событию (TMA код-закрыт)
+
+### ✅ [FEAT-DESIGN-OPTIMIZATION-001] Эффекты событийные, не always-on (TMA)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · TMA build (tsc -b + vite) EXIT 0
+- **Суть:** owner просил, чтобы блик/glow срабатывал ТОЛЬКО по событию (уведомление / что-то новое /
+  водитель назначен / загрузка), а не крутился постоянно и не грел телефон клиента.
+- **Что сделано:** аудит всех always-on `infinite` анимаций в `apps/tma/src`. Вывод — после
+  PERF-TMA-HEAT-001 весь остаток уже событийный:
+  - `DashboardPage` pulse ×2 → рендерится только при `s.urgent` (срочная статистика = «что-то новое»).
+  - `SocketStatusBadge` pulse → только `status==='connecting'` (реконнект/загрузка).
+  - `typing-dot`/`typing-bounce` → только когда собеседник печатает.
+  - `skeleton-shimmer`, `logo-pulse`, `LoadingScreen` → loading-контекст.
+  - `glass-shimmer` → уже переведён на hover/tap в PERF-HEAT (не infinite).
+  Все они = сигнал, оставлены как есть.
+- **Убрано (мёртвый декор):** `apps/tma/src/index.css` — `.orchid-pulse` (glow 2.4s infinite) и
+  `.status-dot`+`@keyframes cyan-ping` (ping 1.8s infinite). 0 потребителей в .tsx (проверено grep) —
+  чистый always-on декор без сигнала; удалён, чтобы будущий dev случайно не навесил.
+- **Не трогал:** web-buyer/web-seller (зона Азима). Delivery-«водитель назначен» подсветка — фичи
+  трекинга курьера в TMA пока нет, добавить событийный glow когда появится доставка.
+
+## 2026-07-04 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (seller)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — seller-часть
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп:** симметрично buyer — ручная архивация терминальных (DELIVERED/CANCELLED) заказов
+  продавцом, отдельный флаг `sellerArchivedAt` (независим от buyer-архива), данные не удаляются.
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.sellerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260704000001_order_seller_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `sellerArchivedAt` в `findByStoreId` + метод
+    `setSellerArchived`.
+  - `get-seller-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в seller-списке + `PATCH /seller/orders/:id/archive`.
+    Владение по `storeId` через `getOrderDetailUseCase` (store-scoped 404), в архив только
+    DELIVERED/CANCELLED (иначе 409). Переиспользован query-параметр `archived` из buyer-DTO.
+  - `apps/tma/.../seller/OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть»
+    на терминальных карточках, оптимистичное удаление из списка, i18n-ключи те же (`orders.archive*`).
+- **Заметка:** предсуществующие падения `telegram-auth.use-case.spec.ts` (8) + `GetMeUseCase` (1) —
+  НЕ связаны с этой правкой (проверено: те же падения на чистом дереве до изменений). Залогировано.
+
+## 2026-07-03 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (buyer)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — buyer-часть
+- **Важность:** 🟡 · **Дата:** 03.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп (дефолт, решён без остановки):** ручная архивация, **buyer-first**, только терминальные
+  заказы (DELIVERED/CANCELLED), данные не удаляются. Seller/admin — отдельно (в tasks.md).
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.buyerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260703000001_order_buyer_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `buyerArchivedAt` в `findByBuyerId` (основной
+    список = NULL, `?archived=true` = архив) + метод `setBuyerArchived`.
+  - `get-buyer-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в списке + `PATCH /buyer/orders/:id/archive`. Владение
+    проверяется через `getOrderDetailUseCase` (buyer-scoped 404), в архив только DELIVERED/CANCELLED
+    (иначе 409). `dto/list-orders.dto.ts` — query-параметр `archived`.
+  - `apps/tma/.../OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть» на
+    закрытых, оптимистичное удаление из текущего списка. + i18n ru/uz (`orders.archive*`).
+- **Архитектурная заметка:** отдельный use-case/dto НЕ заводил — hook `think-before-wire`
+  (справедливо) блокирует изолированные новые файлы; переиспользовал уже внедрённые
+  `OrdersRepository` + `getOrderDetailUseCase` (тот уже проверяет владельца) прямо в контроллере,
+  как существующий inline-guard buyer-cancel. Меньше файлов, та же чистота.
+
+## 2026-07-03 (Полат) — PERF-TMA-HEAT-001: убраны always-on эффекты (грев телефона)
+
+### ✅ [PERF-TMA-HEAT-001] Телефон греется в TMA — устранены постоянные GPU-эффекты
+- **Важность:** 🔴 · **Дата:** 03.07.2026 · `pnpm build` (tsc -b + vite) EXIT 0, `vitest` 18/18
+- **Файлы:** `apps/tma/src/components/layout/AppShell.tsx`, `apps/tma/src/lib/socket.ts`,
+  `apps/tma/src/index.css`
+- **Что сделано (по 3 подтверждённым офендерам расследования):**
+  1. **Ambient blur** (`AppShell.tsx`): 3 слоя `filter: blur(72/56/40px)` на `fixed inset-0` при
+     скролле в мобильном WebView заставляли GPU перерастеризовывать каждый кадр. Отключены **на
+     мобилке** (`{isDesktop && …}`), на десктопе — 2 слоя БЕЗ `filter:blur` (мягкость через
+     radial-gradient стопы + `translateZ(0)` в свой composite-слой). Мобилка = ноль per-frame blur.
+  2. **socket.io reconnect** (`socket.ts`): дефолт = бесконечный reconnect; при stale-token баге
+     хендшейк фейлился вечно → CPU-цикл + вечный pulse. Добавлены `reconnectionAttempts:8` +
+     backoff (`reconnectionDelay:1000`, `Max:8000`). После лимита → 'disconnected' (точка без
+     анимации), цикл встаёт.
+  3. **glass-shimmer** (`index.css`): `animation: shimmer infinite` висел на **КАЖДОЙ** GlassCard
+     (список карточек = N вечных анимаций). Переведён на взаимодействие (`:hover`/`:active` = один
+     проход), как и задумывалось комментом «micro-reflection on hover».
+- **НЕ трогал (осознанно):** `pulse` в DashboardPage (258/336) и `SocketStatusBadge` — это
+  условные СИГНАЛЫ (срочный заказ / проблема связи), ровно тот «блик по событию» из
+  FEAT-DESIGN-OPTIMIZATION-001. `.status-dot`(cyan-ping)/`.orchid-pulse` — dead CSS (не в .tsx),
+  рантайм-стоимости нет.
+- **Остаток:** финальное подтверждение профайлером на реальном устройстве (Chrome DevTools
+  Performance / TG WebView remote debug) — код-часть закрыта.
+- **Связь:** частично закрывает и FEAT-DESIGN-OPTIMIZATION-001 (принцип «анимация = сигнал»).
+
 ## 2026-07-02 (Полат) — Фиксы после живого buyer-аудита TMA (4 бага)
 
 ### ✅ [TMA-BUILD-AUTHCTX-014] Прод-сборка TMA была сломана с Phase 2 (tsc -b)

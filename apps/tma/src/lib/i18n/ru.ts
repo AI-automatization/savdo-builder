@@ -206,6 +206,16 @@ export const ru: Translations = {
   'orders.cancelKeep': 'Не отменять',
   'orders.cancelled': '✅ Заказ отменён',
   'orders.cancelError': 'Не удалось отменить заказ',
+  // FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов покупателем
+  'orders.archiveTitle': 'Архив заказов',
+  'orders.viewArchive': 'Архив',
+  'orders.viewActive': 'Активные',
+  'orders.archiveCta': 'В архив',
+  'orders.unarchiveCta': 'Вернуть',
+  'orders.archivedToast': '🗄️ Заказ в архиве',
+  'orders.unarchivedToast': '↩ Заказ возвращён',
+  'orders.archiveError': 'Не удалось изменить архив',
+  'orders.emptyArchive': 'В архиве пока пусто',
 
   // ── Stores ────────────────────────────────────────────────────────────
   'stores.title': 'Магазины',

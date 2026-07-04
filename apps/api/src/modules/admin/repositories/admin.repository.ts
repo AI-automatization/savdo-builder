@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { toPrismaPagination } from '../../../common/utils/pagination';
+import { AuditService } from '../../audit/audit.service';
 
 @Injectable()
 export class AdminRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   // ── AdminUser ─────────────────────────────────────────────────────────────
 
@@ -16,6 +20,8 @@ export class AdminRepository {
 
   // ── AuditLog ──────────────────────────────────────────────────────────────
 
+  // FEAT-CATEGORY-JOURNAL-001: делегирует в общий AuditService (запись вынесена,
+  // сигнатура сохранена — все admin-вызовы работают без изменений).
   async writeAuditLog(data: {
     actorUserId: string;
     action: string;
@@ -23,16 +29,7 @@ export class AdminRepository {
     entityId: string;
     payload?: object;
   }) {
-    return this.prisma.auditLog.create({
-      data: {
-        actorUserId: data.actorUserId,
-        actorType: 'admin',
-        action: data.action,
-        entityType: data.entityType,
-        entityId: data.entityId,
-        payload: data.payload ?? {},
-      },
-    });
+    return this.audit.write({ ...data, actorType: 'admin' });
   }
 
   async findAuditLogs(filters: {

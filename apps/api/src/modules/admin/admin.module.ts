@@ -5,6 +5,7 @@ import { StoresModule } from '../stores/stores.module';
 import { ProductsModule } from '../products/products.module';
 import { OrdersModule } from '../orders/orders.module';
 import { AuthModule } from '../auth/auth.module';
+import { AuditModule } from '../audit/audit.module';
 
 import { AdminRepository } from './repositories/admin.repository';
 import { AdminNotificationsRepository } from './repositories/admin-notifications.repository';
@@ -62,6 +63,7 @@ import { MediaModule } from '../media/media.module';
 @Module({
   imports: [
     UsersModule, SellersModule, StoresModule, ProductsModule, OrdersModule, AuthModule,
+    AuditModule,
     TelegramModule,
     MediaModule,
     BullModule.registerQueue({ name: QUEUE_TELEGRAM_NOTIFICATIONS }),
