@@ -83,9 +83,12 @@ async function bootstrap() {
     ...(process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
   ];
 
-  // Паттерны: кастомный домен savdo.uz (+ поддомены) и Telegram WebView host.
+  // Паттерны: кастомные домены savdo.uz / maxsavdo.uz (+ поддомены) и Telegram
+  // WebView host. maxsavdo.uz — купленный прод-домен (весь домен наш, поэтому
+  // wildcard по поддоменам безопасен, в отличие от общего *.up.railway.app).
   const ORIGIN_PATTERNS = [
     /^https:\/\/([a-z0-9-]+\.)?savdo\.uz$/i,
+    /^https:\/\/([a-z0-9-]+\.)?maxsavdo\.uz$/i,
     /^https:\/\/(web\.)?telegram\.org$/i,
     /^https:\/\/t\.me$/i,
   ];
