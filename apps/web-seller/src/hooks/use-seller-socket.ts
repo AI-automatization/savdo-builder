@@ -6,6 +6,7 @@ import { getSocket } from '../lib/socket';
 import { useStore } from './use-seller';
 import { orderKeys } from './use-orders';
 import { chatKeys } from './use-chat';
+import { NOTIF_KEYS } from './use-notifications';
 
 export interface ToastMessage {
   id: number;
@@ -85,15 +86,29 @@ export function useSellerSocket() {
       }
     }
 
+    // API-WS-PUSH-NOTIFICATIONS-001: backend joins this socket to `user:${userId}`
+    // on connect (chat.gateway.ts handleConnection) and emits here on every new
+    // in-app notification — no separate room-join needed, only a listener.
+    function onNotificationNew(payload: { id: string; type: string; title: string; body: string }) {
+      queryClient.invalidateQueries({ queryKey: NOTIF_KEYS.inbox });
+      queryClient.invalidateQueries({ queryKey: NOTIF_KEYS.unreadCount });
+      addToast(`🔔 ${payload.title}`);
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification(payload.title, { body: payload.body, icon: '/favicon.ico' });
+      }
+    }
+
     socket.on('order:new', onOrderNew);
     socket.on('order:status_changed', onOrderStatusChanged);
     socket.on('chat:new_message', onChatNewMessage);
+    socket.on('notification:new', onNotificationNew);
 
     return () => {
       socket.off('connect', joinRoom);
       socket.off('order:new', onOrderNew);
       socket.off('order:status_changed', onOrderStatusChanged);
       socket.off('chat:new_message', onChatNewMessage);
+      socket.off('notification:new', onNotificationNew);
     };
   }, [store?.id, queryClient, addToast]);
 

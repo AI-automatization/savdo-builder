@@ -130,8 +130,10 @@ function ProgressBar({ step }: { step: number }) {
 
 interface Step1Data { name: string; slug: string }
 
-function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Step1Data>();
+function Step1({ onNext, defaultValues }: { onNext: (data: Step1Data) => void; defaultValues?: Step1Data | null }) {
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Step1Data>({
+    defaultValues: defaultValues ?? undefined,
+  });
   const { t } = useTranslation();
   const name = watch('name', '');
 
@@ -390,6 +392,9 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string>();
   const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
   const [storeName, setStoreName] = useState('');
+  // covers the applySeller() await too, which runs before any mutation's own
+  // isPending flips true — without it a double-click can fire createStore twice (INV-S01).
+  const [step2Submitting, setStep2Submitting] = useState(false);
 
   const createStore      = useCreateStore();
   const updateProfile    = useUpdateSellerProfile();
@@ -417,53 +422,58 @@ export default function OnboardingPage() {
   }
 
   async function handleStep2(data: Step2Data) {
-    if (!step1Data) return;
+    if (!step1Data || step2Submitting) return;
+    setStep2Submitting(true);
     setError(undefined);
 
-    // Если пользователь ещё BUYER — сначала upgrade до SELLER и получаем новые токены.
-    // applySeller идемпотентен на retry: при role==='SELLER' этот блок пропускается.
-    if (user && user.role !== 'SELLER') {
+    try {
+      // Если пользователь ещё BUYER — сначала upgrade до SELLER и получаем новые токены.
+      // applySeller идемпотентен на retry: при role==='SELLER' этот блок пропускается.
+      if (user && user.role !== 'SELLER') {
+        try {
+          const applied = await applySeller();
+          login(applied.accessToken, applied.refreshToken, applied.user);
+        } catch {
+          setError(t('onboarding.errorApplySeller'));
+          return;
+        }
+      }
+
+      // Normalise telegram username
+      const rawUsername = data.telegramUsername.replace(/^@/, '');
+      const telegramUsername = `@${rawUsername}`;
+      const telegramContactLink = `https://t.me/${rawUsername}`;
+
+      // Магазин создаём ПЕРВЫМ и отдельно. Раньше createStore + updateProfile шли
+      // в Promise.all — при сбое профиля магазин уже создан, а retry падал дублем
+      // (INV-S01: один продавец = один магазин) и запирал на шаге 2.
+      let store;
       try {
-        const applied = await applySeller();
-        login(applied.accessToken, applied.refreshToken, applied.user);
+        store = await createStore.mutateAsync({
+          name:                step1Data.name,
+          slug:                step1Data.slug,
+          city:                data.city,
+          telegramContactLink,
+        });
       } catch {
-        setError(t('onboarding.errorApplySeller'));
+        setError(t('onboarding.errorCreateStore'));
         return;
       }
+
+      // Профиль (telegram username) — вторично. Сбой здесь НЕ должен запирать
+      // продавца: магазин уже создан, username дозаполняется в настройках.
+      try {
+        await updateProfile.mutateAsync({ telegramUsername });
+      } catch {
+        /* non-fatal — магазин создан, профиль можно дозаполнить позже */
+      }
+
+      track.storeCreated(store.id, store.slug);
+      track.sellerProfileCompleted(store.id);
+      setStep(2);
+    } finally {
+      setStep2Submitting(false);
     }
-
-    // Normalise telegram username
-    const rawUsername = data.telegramUsername.replace(/^@/, '');
-    const telegramUsername = `@${rawUsername}`;
-    const telegramContactLink = `https://t.me/${rawUsername}`;
-
-    // Магазин создаём ПЕРВЫМ и отдельно. Раньше createStore + updateProfile шли
-    // в Promise.all — при сбое профиля магазин уже создан, а retry падал дублем
-    // (INV-S01: один продавец = один магазин) и запирал на шаге 2.
-    let store;
-    try {
-      store = await createStore.mutateAsync({
-        name:                step1Data.name,
-        slug:                step1Data.slug,
-        city:                data.city,
-        telegramContactLink,
-      });
-    } catch {
-      setError(t('onboarding.errorCreateStore'));
-      return;
-    }
-
-    // Профиль (telegram username) — вторично. Сбой здесь НЕ должен запирать
-    // продавца: магазин уже создан, username дозаполняется в настройках.
-    try {
-      await updateProfile.mutateAsync({ telegramUsername });
-    } catch {
-      /* non-fatal — магазин создан, профиль можно дозаполнить позже */
-    }
-
-    track.storeCreated(store.id, store.slug);
-    track.sellerProfileCompleted(store.id);
-    setStep(2);
   }
 
   async function handleSubmit() {
@@ -492,13 +502,13 @@ export default function OnboardingPage() {
 
       <ProgressBar step={step} />
 
-      {step === 0 && <Step1 onNext={handleStep1} />}
+      {step === 0 && <Step1 onNext={handleStep1} defaultValues={step1Data} />}
 
       {step === 1 && (
         <Step2
           onNext={handleStep2}
           onBack={() => setStep(0)}
-          isLoading={createStore.isPending || updateProfile.isPending}
+          isLoading={step2Submitting || createStore.isPending || updateProfile.isPending}
           error={error}
         />
       )}

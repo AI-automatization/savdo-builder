@@ -39,6 +39,11 @@ export function useReadAll() {
       queryClient.setQueryData(NOTIF_KEYS.unreadCount, 0);
       queryClient.invalidateQueries({ queryKey: NOTIF_KEYS.inbox });
     },
+    onError: () => {
+      // Failed mark-all-read must not silently claim success — invalidate so the
+      // real (unchanged) unread state re-syncs from the server on next render.
+      queryClient.invalidateQueries({ queryKey: NOTIF_KEYS.unreadCount });
+    },
   });
 }
 

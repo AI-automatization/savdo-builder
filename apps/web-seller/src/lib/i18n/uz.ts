@@ -244,6 +244,7 @@ export const uz: Translations = {
   'notifications.title': 'Bildirishnomalar',
   'notifications.lastCount': 'Soʻnggi {count} ta bildirishnoma',
   'notifications.readAll': 'Barchasini oʻqish',
+  'notifications.readAllError': 'Barchasini oʻqilgan deb belgilab boʻlmadi. Qayta urinib koʻring.',
   'notifications.tabAll': 'Barchasi',
   'notifications.tabUnread': 'Oʻqilmaganlar',
   'notifications.empty': 'Hozircha bildirishnoma yoʻq',

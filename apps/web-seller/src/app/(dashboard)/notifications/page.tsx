@@ -120,14 +120,19 @@ export default function NotificationsPage() {
             {t('notifications.lastCount', { count: items.length })}
           </p>
         </div>
-        <button
-          onClick={() => readAll.mutate()}
-          disabled={readAll.isPending}
-          className="text-xs px-3 py-1.5 rounded-md transition-opacity hover:opacity-80 disabled:opacity-40"
-          style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
-        >
-          {t('notifications.readAll')}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => readAll.mutate()}
+            disabled={readAll.isPending}
+            className="text-xs px-3 py-1.5 rounded-md transition-opacity hover:opacity-80 disabled:opacity-40"
+            style={{ background: colors.accentMuted, color: colors.accent, border: `1px solid ${colors.accentBorder}` }}
+          >
+            {t('notifications.readAll')}
+          </button>
+          {readAll.isError && (
+            <span className="text-[11px]" style={{ color: colors.danger }}>{t('notifications.readAllError')}</span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

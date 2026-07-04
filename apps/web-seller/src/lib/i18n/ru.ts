@@ -246,6 +246,7 @@ export const ru: Translations = {
   'notifications.title': 'Уведомления',
   'notifications.lastCount': 'Последние {count} уведомлений',
   'notifications.readAll': 'Прочитать все',
+  'notifications.readAllError': 'Не удалось отметить как прочитанные. Попробуйте ещё раз.',
   'notifications.tabAll': 'Все',
   'notifications.tabUnread': 'Непрочитанные',
   'notifications.empty': 'Уведомлений пока нет',

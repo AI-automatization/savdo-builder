@@ -148,7 +148,7 @@ function DeliverySettingsSection() {
   const currentType = store?.deliverySettings?.deliveryFeeType ?? 'none';
   const currentAmount = store?.deliverySettings?.fixedDeliveryFee ?? 0;
 
-  const { register, handleSubmit, reset, watch, control, formState: { isDirty } } = useForm<DeliveryFormValues>();
+  const { register, handleSubmit, reset, watch, control, formState: { errors, isDirty } } = useForm<DeliveryFormValues>();
   const feeType = watch('deliveryFeeType');
 
   useEffect(() => {
@@ -217,7 +217,7 @@ function DeliverySettingsSection() {
         </Field>
 
         {feeType === 'fixed' && (
-          <Field label={t('settings.labelDeliveryAmount')}>
+          <Field label={t('settings.labelDeliveryAmount')} error={errors.deliveryFeeAmount?.message}>
             <input
               {...register('deliveryFeeAmount', {
                 pattern: { value: /^\d+$/, message: t('settings.deliveryAmountPattern') },
@@ -275,6 +275,9 @@ function StoreSettingsSection() {
   const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<StoreFormValues>();
   const [logoMediaId, setLogoMediaId]   = useState<string | null>(null);
   const [coverMediaId, setCoverMediaId] = useState<string | null>(null);
+  // logo/cover live outside react-hook-form (ImageUploader isn't a registered field),
+  // so `isDirty` never sees them — track separately or Save stays disabled after a photo change.
+  const [imagesDirty, setImagesDirty] = useState(false);
 
   useEffect(() => {
     if (store) {
@@ -301,6 +304,9 @@ function StoreSettingsSection() {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     reset(values);
+    setLogoMediaId(null);
+    setCoverMediaId(null);
+    setImagesDirty(false);
   }
 
   if (isLoading) {
@@ -328,7 +334,7 @@ function StoreSettingsSection() {
         <Field label={t('settings.labelStoreCover')}>
           <ImageUploader
             value={coverMediaId}
-            onChange={setCoverMediaId}
+            onChange={(id) => { setCoverMediaId(id); setImagesDirty(true); }}
             purpose="store_banner"
             previewUrl={store?.coverUrl ?? null}
             aspectRatio="3/1"
@@ -340,7 +346,7 @@ function StoreSettingsSection() {
           <div style={{ width: 72, height: 72 }}>
             <ImageUploader
               value={logoMediaId}
-              onChange={setLogoMediaId}
+              onChange={(id) => { setLogoMediaId(id); setImagesDirty(true); }}
               purpose="store_logo"
               previewUrl={store?.logoUrl ?? null}
             />
@@ -405,7 +411,7 @@ function StoreSettingsSection() {
         <div className="flex items-center gap-3 pt-1">
           <button
             type="submit"
-            disabled={!isDirty || updateStore.isPending}
+            disabled={(!isDirty && !imagesDirty) || updateStore.isPending}
             className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
             style={{ background: colors.accent, color: colors.accentTextOnBg }}
           >
