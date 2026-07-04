@@ -183,7 +183,35 @@ export class OrdersController {
       dateTo: query.dateTo,
       page: query.page,
       limit: query.limit,
+      archived: query.archived === 'true',
     });
+  }
+
+  // PATCH /api/v1/seller/orders/:id/archive
+  @Patch('seller/orders/:id/archive')
+  @Roles('SELLER')
+  async archiveSellerOrder(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') orderId: string,
+    @Body() body: { archived?: boolean },
+  ) {
+    const archived = body?.archived === true;
+    const storeId = await this.resolveStoreId(user.sub);
+
+    // Владение заказом проверяется здесь (store-scoped fetch бросит 404 на чужой).
+    const order = await this.getOrderDetailUseCase.execute({ orderId, storeId });
+
+    // В архив можно только закрытые (DELIVERED/CANCELLED); возврат из архива — всегда.
+    if (archived && order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELLED) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Only delivered or cancelled orders can be archived',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const updated = await this.ordersRepo.setSellerArchived(orderId, archived ? new Date() : null);
+    return { id: updated.id, archived: updated.sellerArchivedAt !== null };
   }
 
   // GET /api/v1/seller/orders/:id
