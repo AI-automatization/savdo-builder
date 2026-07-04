@@ -1,5 +1,48 @@
 # Done — Азим + Полат
 
+## 2026-07-04 (Полат) — FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий
+
+### ✅ [FEAT-CATEGORY-JOURNAL-001] Журнал категорий (api + admin)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` 0, admin build 0, api-тесты без регрессий
+- **Решения owner (04.07):** запись через общий AuditModule (не зависимость categories→admin);
+  UI = панель «История» прямо в admin CategoriesPage.
+- **Проблема:** admin-CRUD глобальных категорий был единственным admin-потоком БЕЗ audit_log —
+  порчу каталога (напр. `увлажниьель`) нельзя отследить. Читалка журнала уже существовала.
+- **Backend (`apps/api`):**
+  - `modules/audit/audit.service.ts` + `audit.module.ts` — НОВЫЙ общий сервис записи audit_log,
+    вынесен из AdminRepository (PrismaModule глобальный → импортов не нужно). Доменные модули пишут
+    журнал без зависимости от AdminModule (исправлена инверсия слоёв).
+  - `admin.repository.ts` — `writeAuditLog` делегирует в `AuditService` (сигнатура сохранена, все
+    admin-вызовы работают без правок); `admin.module.ts` импортирует AuditModule.
+  - `categories.controller.ts` — admin create/update/delete/seed пишут audit (`CATEGORY_CREATED/
+    UPDATED/DELETED/SEEDED`, entityType=`GlobalCategory`, update → компактный before→after дифф);
+    `categories.module.ts` импортирует AuditModule.
+- **Frontend (`apps/admin`):** `CategoriesPage.tsx` — кнопка «История» + модал журнала (бейдж
+  действия, дифф/сводка payload, кто+когда), тянет `GET /admin/audit-log?entityType=GlobalCategory`.
+  i18n ru/uz — ключи `categories.history*`/`categories.hist*`.
+- **Проверка hook think-before-wire:** новый AuditService прошёл (токен basename `audit` совпал с
+  существующими `*audit*`-импортами → потребители найдены, ложной блокировки нет).
+
+## 2026-07-04 (Полат) — FEAT-DESIGN-OPTIMIZATION-001: блик только по событию (TMA код-закрыт)
+
+### ✅ [FEAT-DESIGN-OPTIMIZATION-001] Эффекты событийные, не always-on (TMA)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · TMA build (tsc -b + vite) EXIT 0
+- **Суть:** owner просил, чтобы блик/glow срабатывал ТОЛЬКО по событию (уведомление / что-то новое /
+  водитель назначен / загрузка), а не крутился постоянно и не грел телефон клиента.
+- **Что сделано:** аудит всех always-on `infinite` анимаций в `apps/tma/src`. Вывод — после
+  PERF-TMA-HEAT-001 весь остаток уже событийный:
+  - `DashboardPage` pulse ×2 → рендерится только при `s.urgent` (срочная статистика = «что-то новое»).
+  - `SocketStatusBadge` pulse → только `status==='connecting'` (реконнект/загрузка).
+  - `typing-dot`/`typing-bounce` → только когда собеседник печатает.
+  - `skeleton-shimmer`, `logo-pulse`, `LoadingScreen` → loading-контекст.
+  - `glass-shimmer` → уже переведён на hover/tap в PERF-HEAT (не infinite).
+  Все они = сигнал, оставлены как есть.
+- **Убрано (мёртвый декор):** `apps/tma/src/index.css` — `.orchid-pulse` (glow 2.4s infinite) и
+  `.status-dot`+`@keyframes cyan-ping` (ping 1.8s infinite). 0 потребителей в .tsx (проверено grep) —
+  чистый always-on декор без сигнала; удалён, чтобы будущий dev случайно не навесил.
+- **Не трогал:** web-buyer/web-seller (зона Азима). Delivery-«водитель назначен» подсветка — фичи
+  трекинга курьера в TMA пока нет, добавить событийный glow когда появится доставка.
+
 ## 2026-07-04 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (seller)
 
 ### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — seller-часть

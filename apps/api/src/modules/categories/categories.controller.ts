@@ -35,6 +35,7 @@ import { CategoryFiltersRepository } from './repositories/category-filters.repos
 import { GlobalCategoriesSeedService } from './global-categories-seed.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
+import { AuditService } from '../audit/audit.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 
@@ -102,7 +103,11 @@ export class CategoriesController {
     private readonly seedService: GlobalCategoriesSeedService,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
+    private readonly audit: AuditService,
   ) {}
+
+  // FEAT-CATEGORY-JOURNAL-001: константа entityType журнала глобальных категорий.
+  private static readonly CATEGORY_ENTITY = 'GlobalCategory';
 
   // ─── Public ──────────────────────────────────────────────────────────────────
 
@@ -226,11 +231,18 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
-  async adminSeedCategories() {
+  async adminSeedCategories(@CurrentUser() user: JwtPayload) {
     const [cats, filters] = await Promise.all([
       this.seedService.seedCategories(),
       this.seedService.seedFilters(),
     ]);
+    await this.audit.write({
+      actorUserId: user.sub,
+      action: 'CATEGORY_SEEDED',
+      entityType: CategoriesController.CATEGORY_ENTITY,
+      entityId: 'ALL',
+      payload: { categoriesUpserted: cats, filtersUpserted: filters },
+    });
     return { success: true, categoriesUpserted: cats, filtersUpserted: filters };
   }
 
@@ -246,7 +258,10 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
-  async adminCreateCategory(@Body() dto: CreateGlobalCategoryDto) {
+  async adminCreateCategory(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateGlobalCategoryDto,
+  ) {
     const existing = await this.globalCategoriesRepo.findBySlug(dto.slug);
     if (existing) {
       throw new ConflictException(`Категория со slug «${dto.slug}» уже существует`);
@@ -255,7 +270,15 @@ export class CategoriesController {
       const parent = await this.globalCategoriesRepo.findById(dto.parentId);
       if (!parent) throw new NotFoundException('Родительская категория не найдена');
     }
-    return this.globalCategoriesRepo.create(dto);
+    const created = await this.globalCategoriesRepo.create(dto);
+    await this.audit.write({
+      actorUserId: user.sub,
+      action: 'CATEGORY_CREATED',
+      entityType: CategoriesController.CATEGORY_ENTITY,
+      entityId: created.id,
+      payload: { slug: created.slug, nameRu: created.nameRu, nameUz: created.nameUz, parentId: created.parentId },
+    });
+    return created;
   }
 
   @Patch('admin/categories/:id')
@@ -263,6 +286,7 @@ export class CategoriesController {
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
   async adminUpdateCategory(
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body() dto: UpdateGlobalCategoryDto,
   ) {
@@ -278,7 +302,27 @@ export class CategoriesController {
       const parent = await this.globalCategoriesRepo.findById(dto.parentId);
       if (!parent) throw new NotFoundException('Родительская категория не найдена');
     }
-    return this.globalCategoriesRepo.update(id, dto);
+    const updated = await this.globalCategoriesRepo.update(id, dto);
+
+    // Пишем только реально изменившиеся поля (before/after) — компактный дифф в журнале.
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    for (const key of Object.keys(dto) as (keyof UpdateGlobalCategoryDto)[]) {
+      if ((cat as Record<string, unknown>)[key] !== (updated as Record<string, unknown>)[key]) {
+        before[key] = (cat as Record<string, unknown>)[key];
+        after[key] = (updated as Record<string, unknown>)[key];
+      }
+    }
+    if (Object.keys(after).length > 0) {
+      await this.audit.write({
+        actorUserId: user.sub,
+        action: 'CATEGORY_UPDATED',
+        entityType: CategoriesController.CATEGORY_ENTITY,
+        entityId: id,
+        payload: { slug: updated.slug, before, after },
+      });
+    }
+    return updated;
   }
 
   @Delete('admin/categories/:id')
@@ -286,10 +330,20 @@ export class CategoriesController {
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async adminDeleteCategory(@Param('id') id: string) {
+  async adminDeleteCategory(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
     const cat = await this.globalCategoriesRepo.findById(id);
     if (!cat) throw new NotFoundException('Категория не найдена');
     await this.globalCategoriesRepo.delete(id);
+    await this.audit.write({
+      actorUserId: user.sub,
+      action: 'CATEGORY_DELETED',
+      entityType: CategoriesController.CATEGORY_ENTITY,
+      entityId: id,
+      payload: { slug: cat.slug, nameRu: cat.nameRu, nameUz: cat.nameUz },
+    });
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────

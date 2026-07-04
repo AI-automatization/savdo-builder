@@ -450,6 +450,15 @@ export const ru: Translations = {
   'categories.editAction': 'Редактировать',
   'categories.activate': 'Активировать',
   'categories.deactivate': 'Деактивировать',
+  // FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий
+  'categories.history': 'История',
+  'categories.historyTitle': 'Журнал изменений категорий',
+  'categories.historyEmpty': 'Изменений пока нет',
+  'categories.historyLoadError': 'Не удалось загрузить журнал',
+  'categories.histCreated': 'Создана',
+  'categories.histUpdated': 'Изменена',
+  'categories.histDeleted': 'Удалена',
+  'categories.histSeeded': 'Импорт категорий (seed)',
 
   // ── Audit log ─────────────────────────────────────────────────────────
   'audit.title': 'Аудит-лог',
