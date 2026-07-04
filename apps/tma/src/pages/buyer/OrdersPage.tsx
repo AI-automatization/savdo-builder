@@ -110,6 +110,31 @@ export default function OrdersPage() {
   // (update-order-status.use-case.ts) покупателю разрешён ТОЛЬКО переход
   // PENDING→CANCELLED, поэтому кнопка показывается лишь для status === 'PENDING'.
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  // FEAT-ORDERS-ARCHIVE-001: покупатель прячет закрытые (DELIVERED/CANCELLED) заказы
+  // в «Архив». archivedView=false — основной список, true — архив.
+  const [archivedView, setArchivedView] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+
+  const archiveOrder = async (orderId: string, toArchive: boolean) => {
+    if (archivingId) return;
+    setArchivingId(orderId);
+    try {
+      await api(`/buyer/orders/${orderId}/archive`, {
+        method: 'PATCH',
+        body: { archived: toArchive },
+      });
+      tg?.HapticFeedback.notificationOccurred('success');
+      // Заказ уехал в другой раздел — убираем из текущего списка.
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      if (expandedId === orderId) setExpandedId(null);
+      showToast(toArchive ? t('orders.archivedToast') : t('orders.unarchivedToast'));
+    } catch (err) {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast(err instanceof Error ? err.message : t('orders.archiveError'), 'error');
+    } finally {
+      setArchivingId(null);
+    }
+  };
 
   const cancelOrder = async (orderId: string) => {
     if (cancellingId) return;
@@ -164,7 +189,7 @@ export default function OrdersPage() {
 
   const fetchFirst = (signal?: AbortSignal) => {
     setError(false);
-    api<PagedResponse>('/buyer/orders?limit=10&page=1', { signal, forceFresh: true })
+    api<PagedResponse>(`/buyer/orders?limit=10&page=1${archivedView ? '&archived=true' : ''}`, { signal, forceFresh: true })
       .then((res) => {
         if (signal?.aborted) return;
         setOrders(res.data ?? []);
@@ -183,9 +208,10 @@ export default function OrdersPage() {
     if (!authenticated) { setLoading(false); return; }
     const ac = new AbortController();
     setLoading(true);
+    setExpandedId(null);
     fetchFirst(ac.signal);
     return () => ac.abort();
-  }, [authenticated]);
+  }, [authenticated, archivedView]);
 
   // AUDIT-NETWORK-LOADING-2026-05-07 P0#2: AbortController на pagination — иначе
   // при unmount или быстром переключении вкладок stale-ответ срабатывает setOrders.
@@ -203,7 +229,7 @@ export default function OrdersPage() {
     loadMoreAbortRef.current = ac;
     const nextPage = page + 1;
     setLoadingMore(true);
-    api<PagedResponse>(`/buyer/orders?limit=10&page=${nextPage}`, { signal: ac.signal })
+    api<PagedResponse>(`/buyer/orders?limit=10&page=${nextPage}${archivedView ? '&archived=true' : ''}`, { signal: ac.signal })
       .then((res) => {
         if (ac.signal.aborted) return;
         setOrders((prev) => [...prev, ...(res.data ?? [])]);
@@ -245,15 +271,31 @@ export default function OrdersPage() {
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="page-icon">📦</div>
+          <div className="page-icon">{archivedView ? '🗄️' : '📦'}</div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-gradient">{t('orders.title')}</h1>
+            <h1 className="text-base font-bold text-gradient">
+              {archivedView ? t('orders.archiveTitle') : t('orders.title')}
+            </h1>
             {!loading && orders.length > 0 && (
               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-muted)' }}>
                 {pluralOrders(orders.length)}
               </p>
             )}
           </div>
+          {/* FEAT-ORDERS-ARCHIVE-001: переключатель основной список ↔ архив. */}
+          {authenticated && (
+            <button
+              onClick={() => setArchivedView((v) => !v)}
+              className="shrink-0 text-xxs font-semibold py-1.5 px-3 rounded-full"
+              style={{
+                background: 'var(--tg-surface-hover)',
+                border: '1px solid var(--tg-border)',
+                color: 'var(--tg-text-secondary)',
+              }}
+            >
+              {archivedView ? `← ${t('orders.viewActive')}` : `🗄️ ${t('orders.viewArchive')}`}
+            </button>
+          )}
         </div>
 
         {/* Status filter tabs */}
@@ -328,8 +370,10 @@ export default function OrdersPage() {
 
         {authenticated && !loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
-            <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.empty')}</p>
+            <span style={{ fontSize: 36 }}>{archivedView ? '🗄️' : '📭'}</span>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>
+              {archivedView ? t('orders.emptyArchive') : t('orders.empty')}
+            </p>
           </div>
         )}
 
@@ -453,6 +497,17 @@ export default function OrdersPage() {
                       style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', color: '#EF4444' }}
                     >
                       {cancellingId === o.id ? '…' : `✕ ${t('orders.cancelCta')}`}
+                    </button>
+                  )}
+                  {/* FEAT-ORDERS-ARCHIVE-001: архивировать/вернуть можно только закрытые. */}
+                  {(o.status === 'DELIVERED' || o.status === 'CANCELLED') && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); archiveOrder(o.id, !archivedView); }}
+                      disabled={archivingId === o.id}
+                      className="self-start mt-1 text-xxs font-semibold py-1.5 px-3 rounded-lg disabled:opacity-50"
+                      style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)' }}
+                    >
+                      {archivingId === o.id ? '…' : (archivedView ? `↩ ${t('orders.unarchiveCta')}` : `🗄️ ${t('orders.archiveCta')}`)}
                     </button>
                   )}
                 </div>
