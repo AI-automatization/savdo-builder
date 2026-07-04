@@ -14,6 +14,7 @@ import { ADMIN_PERMISSION_KEY } from '../decorators/admin-permission.decorator';
 import {
   getAdminPermissions,
   hasAdminPermission,
+  isBaseAdminRole,
 } from '../constants/admin-permissions';
 
 /**
@@ -64,7 +65,16 @@ export class AdminPermissionGuard implements CanActivate {
       adminRole = admin?.adminRole;
     }
 
-    const perms = getAdminPermissions(adminRole);
+    let perms = getAdminPermissions(adminRole);
+    // FEAT-CUSTOM-ROLES-001: если роль не базовая и код-матрица пуста — это может
+    // быть кастомная роль, resolve permissions из БД (только для custom-админов).
+    if (perms.length === 0 && adminRole && !isBaseAdminRole(adminRole)) {
+      const custom = await this.prisma.adminCustomRole.findUnique({
+        where: { name: adminRole },
+        select: { permissions: true },
+      });
+      perms = custom?.permissions ?? [];
+    }
     if (!hasAdminPermission(perms, required)) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
