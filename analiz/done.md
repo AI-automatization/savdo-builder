@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-07-04 (Полат) — FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий
+
+### ✅ [FEAT-CATEGORY-JOURNAL-001] Журнал категорий (api + admin)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` 0, admin build 0, api-тесты без регрессий
+- **Решения owner (04.07):** запись через общий AuditModule (не зависимость categories→admin);
+  UI = панель «История» прямо в admin CategoriesPage.
+- **Проблема:** admin-CRUD глобальных категорий был единственным admin-потоком БЕЗ audit_log —
+  порчу каталога (напр. `увлажниьель`) нельзя отследить. Читалка журнала уже существовала.
+- **Backend (`apps/api`):**
+  - `modules/audit/audit.service.ts` + `audit.module.ts` — НОВЫЙ общий сервис записи audit_log,
+    вынесен из AdminRepository (PrismaModule глобальный → импортов не нужно). Доменные модули пишут
+    журнал без зависимости от AdminModule (исправлена инверсия слоёв).
+  - `admin.repository.ts` — `writeAuditLog` делегирует в `AuditService` (сигнатура сохранена, все
+    admin-вызовы работают без правок); `admin.module.ts` импортирует AuditModule.
+  - `categories.controller.ts` — admin create/update/delete/seed пишут audit (`CATEGORY_CREATED/
+    UPDATED/DELETED/SEEDED`, entityType=`GlobalCategory`, update → компактный before→after дифф);
+    `categories.module.ts` импортирует AuditModule.
+- **Frontend (`apps/admin`):** `CategoriesPage.tsx` — кнопка «История» + модал журнала (бейдж
+  действия, дифф/сводка payload, кто+когда), тянет `GET /admin/audit-log?entityType=GlobalCategory`.
+  i18n ru/uz — ключи `categories.history*`/`categories.hist*`.
+- **Проверка hook think-before-wire:** новый AuditService прошёл (токен basename `audit` совпал с
+  существующими `*audit*`-импортами → потребители найдены, ложной блокировки нет).
+
 ## 2026-07-04 (Полат) — FEAT-DESIGN-OPTIMIZATION-001: блик только по событию (TMA код-закрыт)
 
 ### ✅ [FEAT-DESIGN-OPTIMIZATION-001] Эффекты событийные, не always-on (TMA)

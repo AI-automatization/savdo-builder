@@ -64,18 +64,24 @@
 - **Уточнить:** архив = ручной (кнопка) или авто (по времени после DELIVERED/CANCELLED)? Скоуп:
   seller-заказы, buyer-заказы, admin?
 
-## 🟡 [FEAT-CATEGORY-JOURNAL-001] Журнал категорий
+## 🟢 [FEAT-CATEGORY-JOURNAL-001] Журнал категорий — СДЕЛАНО 04.07 (api + admin)
 - **Домен:** apps/admin + apps/api · **Кто взял:** Полат
-- **Что:** «категория журнал» — журнал/лог изменений категорий (кто/когда добавил/переименовал/
-  удалил категорию). Связано с находкой AUDIT-TMA-LIVE `увлажниьель` (мусор в каталоге) — журнал
-  поможет отслеживать порчу каталога. Уточнить точный скоуп у Полата.
+- **✅ 04.07 (см. done.md):** admin-мутации категорий (create/update/delete/seed) пишут audit_log
+  через новый общий `AuditModule`/`AuditService` (вынесен из AdminRepository — categories больше не
+  зависит от admin). Читалка уже была (`GET /admin/audit-log?entityType=GlobalCategory`). В admin
+  CategoriesPage добавлена кнопка «История» + модал журнала (кто/когда/что, before→after дифф).
+  API build 0, admin build 0, api-тесты без регрессий (9 предсуществующих). Owner выбрал: общий
+  AuditModule + панель в CategoriesPage.
 
-## 🟡 [FEAT-CUSTOM-ROLES-001] Добавление собственной роли
+## 🟡 [FEAT-CUSTOM-ROLES-001] Добавление собственной admin-роли (RBAC) — СКОУП УТОЧНЁН 04.07
 - **Домен:** apps/api + apps/admin · **Кто взял:** Полат
-- **Что:** «добавление собственной роли» — кастомные роли (сверх BUYER/SELLER/ADMIN или сверх
-  admin-ролей super_admin/admin/moderator/support/finance/read_only из
-  `common/constants/admin-permissions.ts`). Уточнить: это про admin-роли (RBAC-матрица) или про
-  пользовательские роли? Пересекается с гибридной моделью ролей (ADR 30.06).
+- **✅ Скоуп (owner 04.07):** это про **admin RBAC-роли** — кастомные роли для сотрудников админки
+  сверх super_admin/admin/moderator/support/finance/read_only, с гибким набором permissions.
+  НЕ про пользовательские BUYER/SELLER.
+- **Что делать (следующая сессия):** модель кастомной роли (name + set permissions) в БД/константах,
+  UI управления ролями в admin, применить в AdminPermissionGuard. Затрагивает
+  `common/constants/admin-permissions.ts` + RBAC-матрицу. Пересекается с гибридной моделью (ADR 30.06).
+  ⚠️ T2 (security/RBAC) — начать со spec-driven плана + миграция ролей аккуратно (prod).
 
 ## 🟢 [FEAT-DESIGN-OPTIMIZATION-001] Оптимизация дизайна — блик по событию — TMA код-закрыт 04.07
 - **Домен:** apps/tma (+ web=Азим) · **Кто взял:** Полат/Азим · **Приоритет:** 🟡 (нагрузка на телефон)
