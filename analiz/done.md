@@ -1,5 +1,29 @@
 # Done — Азим + Полат
 
+## 2026-07-05 (Полат) — SUSPENDED-ENFORCEMENT-001: backend-гейт приостановленной подписки
+
+### ✅ [SUSPENDED-ENFORCEMENT-001] SUSPENDED больше не обходится на API (каталог)
+- **Важность:** 🔴 (security/billing) · **Дата:** 05.07.2026 · API build 0, +8 тестов (8/8)
+- **Триггер:** аудит Азима (web-buyer/web-seller, 03.07). Критичный #2: фронтовый read-only
+  оверлей web-seller обходился скроллом, а **на бэке SUSPENDED гейтился только при создании
+  товара** (`create-product.use-case.ts` → `enforceProductsLimit`). Остальные ~21 seller-мутаций
+  (правка/удаление товара, статус, варианты, сток, опции, фото, атрибуты, **репост в TG-канал**)
+  для приостановленного продавца проходили на 200.
+- **Root cause:** `PlanLimitGuardService.assertSubscriptionActive` был private и вызывался только
+  из `enforceProductsLimit`/`enforceFeature` (последний вообще мёртвый — 0 вызовов).
+- **Фикс (минимальный след, choke-point):** `resolveStoreId()` в `ProductsController` — единый
+  проход всех seller-роутов, уже инкапсулирует ACCESS-001 (isBlocked). Добавлен туда
+  subscription-гейт (enforce по умолчанию); 4 GET-роута (чтения) освобождены флагом
+  `{ requireActiveSubscription: false }` — dashboard остаётся read-only, а не мёртвым (§7).
+  Новый публичный `PlanLimitGuardService.assertActiveSubscription(sellerId)` (fail-open при
+  отсутствии подписки: приостановленный всегда имеет строку, отсутствие = data-gap).
+- **Файлы:** `apps/api/src/shared/plan-limit-guard.service.ts` (+метод),
+  `apps/api/src/modules/products/products.controller.ts` (inject + resolveStoreId + 4 GET),
+  `apps/api/src/shared/plan-limit-guard.service.spec.ts` (новый, 8 тестов).
+- **Вне скоупа (открытый вопрос Азиму):** orders-контроллер (`seller/orders/:id/status`,
+  `mark-paid`, `archive`) — блокировать ли фулфилмент СТАРЫХ заказов приостановленному продавцу
+  (строго §7) или дать довести до конца ради покупателя. Ждём решения владельца бизнес-модели.
+
 ## 2026-07-04 (Полат) — FEAT-CUSTOM-ROLES-001: кастомные admin-роли (RBAC)
 
 ### ✅ [FEAT-CUSTOM-ROLES-001] Кастомные admin-роли с гибкими permissions

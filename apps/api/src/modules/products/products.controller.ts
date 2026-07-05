@@ -46,6 +46,7 @@ import { ProductImagesRepository } from './repositories/product-images.repositor
 import { ProductAttributesRepository } from './repositories/product-attributes.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
+import { PlanLimitGuardService } from '../../shared/plan-limit-guard.service';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
 import { ProductPresenterService } from './services/product-presenter.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
@@ -78,6 +79,7 @@ export class ProductsController {
     private readonly storesRepo: StoresRepository,
     private readonly wishlistRepo: WishlistRepository,
     private readonly presenter: ProductPresenterService,
+    private readonly planLimitGuard: PlanLimitGuardService,
   ) {}
 
   // ─── Seller routes ────────────────────────────────────────────────────────
@@ -92,7 +94,7 @@ export class ProductsController {
     @Query('storeCategoryId') storeCategoryId?: string,
     @Query('limit') limit?: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     const parsedLimit = limit ? parseInt(limit, 10) : undefined;
     const [products, total] = await Promise.all([
       this.productsRepo.findByStoreId(storeId, {
@@ -151,7 +153,7 @@ export class ProductsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     const product = await this.productsRepo.findById(id);
 
     if (!product) {
@@ -252,7 +254,7 @@ export class ProductsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     const product = await this.productsRepo.findById(productId);
 
     if (!product) {
@@ -556,7 +558,7 @@ export class ProductsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     await this.ensureProductOwnership(productId, storeId);
     return this.attributesRepo.findByProductId(productId);
   }
@@ -636,7 +638,22 @@ export class ProductsController {
     assertProductOwnership(product, storeId);
   }
 
-  private async resolveStoreId(userId: string): Promise<string> {
+  /**
+   * Единый seller-access choke-point. Инкапсулирует все гейты доступа:
+   *  - ACCESS-001: blocked seller;
+   *  - SUSPENDED-ENFORCEMENT-001: приостановленная подписка (только для мутаций).
+   *
+   * `requireActiveSubscription` (по умолчанию true) гейтит все mutation-роуты
+   * (create/update/delete товара, варианты, фото, атрибуты, репост в канал).
+   * GET-роуты (чтения) вызывают с `false` — dashboard остаётся read-only при
+   * SUSPENDED, а не мёртвым (business-model-v2 §7). Заказы гейтятся отдельно в
+   * orders-контроллере (открытый вопрос политики к Азиму).
+   */
+  private async resolveStoreId(
+    userId: string,
+    opts: { requireActiveSubscription?: boolean } = {},
+  ): Promise<string> {
+    const { requireActiveSubscription = true } = opts;
     const seller = await this.sellersRepo.findByUserId(userId);
     if (!seller) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Seller not found', HttpStatus.NOT_FOUND);
@@ -645,6 +662,11 @@ export class ProductsController {
     // ACCESS-001: blocked sellers must not manage products.
     if (seller.isBlocked) {
       throw new DomainException(ErrorCode.SELLER_BLOCKED, 'Seller account is blocked', HttpStatus.FORBIDDEN);
+    }
+
+    // SUSPENDED-ENFORCEMENT-001: приостановленный продавец не может менять каталог.
+    if (requireActiveSubscription) {
+      await this.planLimitGuard.assertActiveSubscription(seller.id);
     }
 
     const store = await this.storesRepo.findBySellerId(seller.id);
