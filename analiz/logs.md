@@ -1,5 +1,93 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-07] [WEB-AUDIT-BUYER-SELLER-003] Раунд 3 аудита — заказы/товары/каталог/профиль, 9 находок
+- **Статус:** 🔴 Найдено, НЕ исправлено (только аудит + ручная перепроверка). Продолжение серии
+  `WEB-AUDIT-BUYER-SELLER-002` по зонам, не разбиравшимся 03-05.07: seller-заказы (list+detail),
+  seller-товары (create+list+categories+pricing), buyer-каталог/discovery (home/products/stores/[slug]),
+  buyer-профиль/заказ-детейл/чаты/уведомления.
+- **Метод:** 4 параллельных `feature-dev:code-reviewer` агента, каждый — на реальных деплой-ветках
+  через disposable git worktree (`origin/web-buyer`@`bb6cf91`, `origin/web-seller`@`e2dd0f9`, свежий
+  `pnpm install` в обоих — `.worktrees/audit-web-buyer-0707`, `.worktrees/audit-web-seller-0707`).
+
+### 🔴 CRITICAL — buyer может пытаться отменить уже подтверждённый заказ (нарушение state machine)
+`apps/web-buyer/src/app/(shop)/orders/[id]/page.tsx:250` — `canCancel` включает `OrderStatus.CONFIRMED`,
+хотя по `docs/V1.1/02_state_machines.md` §3 единственный buyer-переход — `PENDING → CANCELLED`
+(`CONFIRMED → CANCELLED` — только seller, с обязательным комментарием). Кнопка «Отменить» остаётся
+активной для любого заказа, который продавец уже подтвердил.
+
+### 🔴 CRITICAL (парная находка) — ошибка отмены заказа полностью тихая
+`apps/web-buyer/src/hooks/use-orders.ts:42-51` (`useCancelOrder` без `onError`) +
+`orders/[id]/page.tsx:502-509` (кнопка проверяет только `isPending`, не `isError`/`error`). Когда
+бэкенд отклонит отмену (тот самый сценарий выше, или сетевая ошибка) — `isPending` просто гаснет,
+confirm-карточка остаётся открытой, покупатель не понимает что произошло. Тот же класс тихих сбоев,
+что уже чинили раньше в этом проекте.
+- **Фикс:** сузить `canCancel` до `order.status === OrderStatus.PENDING` + добавить `onError`
+  в `useCancelOrder` (или читать `cancelOrder.error`) с переводимым текстом ошибки.
+
+### 🟡 MAJOR — seller: `pendingId` — общий на всю страницу заказов, ломает concurrent-submit guard
+`apps/web-seller/src/app/(dashboard)/orders/page.tsx:316-336` (+ disabled-state строки 220/230).
+Один `useState<string|null>` на всю таблицу заказов: клик на заказ A ставит `pendingId=A`, пока
+запрос летит — заказ B НЕ задизейблен (`isLoading = pendingId===order.id` false для B), клик на B
+запускает второй запрос, но `finally` от A безусловно сбрасывает `pendingId=null`, разблокируя B
+раньше, чем его собственный запрос завершится → двойной клик на B может выстрелить `updateOrderStatus`
+дважды. **Фикс:** `Set<string>`/`Record<string, boolean>` вместо одного скаляра.
+
+### 🟡 MAJOR — seller: ошибки смены статуса заказа не показываются продавцу
+`orders/page.tsx:316-336`, `orders/[id]/page.tsx:131-152` — `mutateAsync` в `try/finally` без `catch`,
+`updateStatus.isError` нигде не читается. Отказ бэка (невалидный переход, `SUBSCRIPTION_SUSPENDED`,
+сеть) — кнопка просто перестаёт крутиться, без объяснения. Тот же паттерн уже чинили на
+`products/[id]/edit/page.tsx:640`.
+
+### 🟡 MAJOR — buyer: инбокс уведомлений без real-time подписки (зеркало seller-бага, уже пофикшенного)
+`apps/web-buyer/src/hooks/use-buyer-socket.ts` — подписан только на `order:status_changed`, нет
+`notification:new` (как только что добавили на seller-стороне 05.07). `useNotifications()` без
+`refetchInterval`, ничего не инвалидирует инбокс при push — новое уведомление не появится, пока
+страница не перемонтируется/не будет refocus.
+
+### 🟡 MAJOR (ниже уверенность) — buyer: список чатов без обновления других тредов в реальном времени
+`apps/web-buyer/src/hooks/use-chat.ts:59-105` — сокет джойнится только на открытый тред, для остальных
+тредов в списке `/chats` новое сообщение не обновит превью/бейдж до refocus/remount. Возможно
+осознанное упрощение — не 100% подтверждено.
+
+### 🟡 MAJOR — seller: дубль категории магазина через Enter без guard на pending
+`apps/web-seller/src/app/(dashboard)/store/categories/page.tsx:33-38,107` — кнопка «Добавить»
+задизейблена на `isPending`, но `onKeyDown` (Enter) вызывает `handleCreate()` напрямую без проверки
+pending. Двойной Enter (или медленный запрос + повторное нажатие) создаёт две одинаковые категории
+с одинаковым `sortOrder`. Нет backend-throttle на этом эндпоинте (в отличие от создания товара).
+
+### 🟡 MAJOR — buyer: сортировка «Новые» в каталоге магазинов не сортирует по дате
+`apps/web-buyer/src/app/(shop)/stores/page.tsx:65-69` — бэкенд отдаёт `[verified by publishedAt desc,
+unverified by publishedAt desc]`, фронт делает `.reverse()` вместо реальной сортировки по дате (нет
+`publishedAt` в payload). Результат — не «новые сверху», а «неверифицированные сверху в старом-первым
+порядке», то есть буквально противоположность ожидаемому. Комментарий в коде показывает, что автор
+знал про отсутствие `publishedAt`, но воркэраунд не даёт нужный результат вообще.
+
+### 🟢 Минор (низкая уверенность ~60, для сведения) — buyer: фильтры каталога магазинов могут разойтись с URL
+`stores/page.tsx:31-52` — состояние фильтров инициализируется из `searchParams` один раз, дальше
+только `filters→URL`, обратного `searchParams→filters` нет. Сейчас недостижимо (нет внутренних ссылок
+на `/stores?...` с уже смонтированным компонентом), но латентная проблема на будущее.
+
+### ❌ Проверено, багов нет (сведено, чтобы не пересматривать эти зоны заново)
+- Seller: forward-transition map и `CANCELLABLE`-список (list+detail) точно соответствуют
+  `02_state_machines.md` §3; enum-шим синхронизирован с `packages/types`; cancel-reason required
+  консистентен со спекой; per-detail-page double-submit guard корректен (нет кросс-заказ гонки на
+  detail); pagination-аккумулятор на orders/page.tsx дедуплицирует корректно; INV-C03 не под риском
+  (line items — read-only).
+- Seller products/create: раздельный `useState` для images/attributes/variants НЕ повторяет
+  settings-баг (isDirty) — `onSubmit` обрабатывает их безусловно; partial-failure экран (WS-B10)
+  корректно показывает частичные сбои; submit заблокирован на всю длительность мульти-степ сабмита.
+  products/page.tsx: status-toggle корректно скопирован per-row, нет кросс-row лока. Пагинация
+  `/seller/products` — гипотеза о скрытых товарах опровергнута (бэк отдаёт всё без `limit`).
+  variants-matrix-builder: cartesian/separator-логика верна. categories: moveUp/moveDown корректны
+  (кнопки блокируются на shared `isPending`, страдает только Enter-путь выше). pricing: read-only.
+- Buyer catalog: home/products/[slug] — без hydration/state-багов; infinite-scroll на products
+  использует `data.pages.flatMap` (не ручной аккумулятор, не повторяет orders-list дедуп-баг);
+  RegisterRecentStore — write-only, без SSR-mismatch; ProductCard на каталоге без add-to-cart
+  (INV-C01 не касается); хуки каталога — стандартный TanStack Query.
+- Buyer profile/orders/chats: avatar upload/logout — try/catch корректны; `ChatsView` auto-select
+  guard корректен; `useReadAll` optimistic update корректен.
+- **Definition of done для темы:** решение Азима — фиксить сейчас (какие из 9) или оставить как тикеты.
+
 ## [2026-07-04] [WEB-AUDIT-BUYER-SELLER-002] Продолжение аудита — непокрытые зоны, 10 новых багов
 - **Статус:** 🔴 Найдено, НЕ исправлено (только аудит + ручная перепроверка). Продолжение вчерашнего
   аудита по зонам, которые вчера не смотрели: web-seller `/settings`+онбординг+`/notifications`,
