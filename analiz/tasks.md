@@ -5,6 +5,31 @@
 
 ---
 
+## 🟠 [DOMAIN-MAXSAVDO-UZ-DNS-001] Навести maxsavdo.uz на прод (лендинг + поддомены) — IN PROGRESS
+
+- **Домен:** DNS/регистратор (обычно зона Полата per CLAUDE.md, но взято Азимом — прямое решение Азима
+  07.07.2026, т.к. это часть бизнес-запуска, не инженерии).
+- **Кто берёт:** Азим (Claude выполняет по факту предоставленных доступов).
+- **Приоритет:** 🟠 — блокирует «maxsavdo.uz» как публичный вход, но не блокирует остальной прод.
+- **Статус на 07.07.2026:**
+  1. ✅ Лендинг на `origin/web-seller` `/` восстановлен и живой (см. `LANDING-DEPLOY-RESTORE-001`
+     в `done.md`) — цель для домена готова.
+  2. ❌ DNS для `maxsavdo.uz` не настроен вообще (`nslookup maxsavdo.uz 8.8.8.8` → `SERVFAIL`, домен
+     нигде не резолвится).
+  3. ⏳ План выбран — **План Б (Cloudflare)**: смена nameserver в AHOST на Cloudflare Free, apex-домен
+     нативно на `maxsavdo.uz` → web-seller (лендинг), поддомены `api.`/`admin.`/`app.`/`seller.` →
+     соответствующие Railway-сервисы.
+  4. ⏳ Ждём доступ к AHOST (и Cloudflare-аккаунт под план Б) — пользователь согласился дать
+     логин/пароль в чате.
+- **После получения доступа сделать:** завести Cloudflare-зону → сменить NS в AHOST → Railway custom
+  domains на каждый сервис → обновить env фронтов (`NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_BUYER_URL`
+  и т.п. → `api.maxsavdo.uz` и т.д., см. `[[project-railway-deploy-branches]]`) → URL Mini App в
+  BotFather. Backend CORS/WS уже готов принимать `*.maxsavdo.uz`.
+- **Связано:** `DEMO-BUTTON-RAILWAY-001` (тот же `NEXT_PUBLIC_BUYER_URL`), `[[project-domain-maxsavdo-uz]]`
+  (Obsidian-память с деталями обоих планов).
+
+---
+
 ## 📍 [PROJECT-STATUS-CONSOLIDATED-001] Консолидированный статус проекта — 05.07.2026
 
 > Свод «чего не хватает», собранный из `docs/business/roadmap-to-production-2026-06-02.md` +
