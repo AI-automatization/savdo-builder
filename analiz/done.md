@@ -1,5 +1,87 @@
 # Done — Азим + Полат
 
+## 2026-07-05 (Азим) — WEB-AUDIT-BUYER-SELLER-002 cont.: все 10 находок исправлены, запушены
+
+### ✅ [WEB-AUDIT-BUYER-SELLER-002 cont.] 10/10 фиксов из аудита 04.07 — запушены напрямую в web-seller/web-buyer
+- **Важность:** 🔴 3 критичных + 🟡 6 важных + 🟢 2 минор (10 пунктов, один пункт вырос до двух микро-фиксов)
+- **Дата:** 05.07.2026
+- **Метод:** правки в тех же disposable worktree, что и находки (`.worktrees/audit-web-seller-0704`
+  @ `origin/web-seller`, `.worktrees/audit-web-buyer-0704` @ `origin/web-buyer`), `tsc --noEmit` чист
+  на обеих. Запушено напрямую: `web-seller` (`d4bb40c..e2dd0f9`), `web-buyer` (`02082a7..bb6cf91`).
+- **web-seller (6 находок, коммит `e2dd0f9`):**
+  - `(dashboard)/settings/page.tsx` — лого/обложка теперь отдельным `imagesDirty` state
+    включают Save (RHF `isDirty` их не видел, т.к. `ImageUploader` живёт вне формы через
+    свой `useState`); ошибка валидации суммы доставки теперь рендерится (`errors` не
+    деструктурировался из `formState`)
+  - `(onboarding)/onboarding/page.tsx` — Step1 передаёт `defaultValues` в форму Step1 при
+    возврате с Step2 (данные больше не теряются); `handleStep2` обёрнут в `step2Submitting`
+    guard, перекрывающий весь async-путь включая `applySeller()` — закрывает риск INV-S01
+    от даблклика
+  - `hooks/use-seller-socket.ts` — добавлен листенер `notification:new` (бэк уже шлёт событие
+    в комнату `user:${userId}`, куда сокет автоматически джойнится на connect — фронту не
+    хватало только подписки), инвалидирует inbox+unreadCount вместо жизни на 30с поллинге
+  - `hooks/use-notifications.ts` — `useReadAll` получил `onError` (инвалидирует unreadCount,
+    чтобы реальное состояние подтянулось с сервера вместо тихого молчания)
+  - `app/(dashboard)/notifications/page.tsx` + `lib/i18n/{ru,uz}.ts` — добавлен
+    `notifications.readAllError`, показывается рядом с кнопкой при `readAll.isError`
+- **web-buyer (4 находки, коммит `bb6cf91`):**
+  - `components/chat/ChatComposerModal.tsx` — Escape и клик по фону теперь проверяют
+    `create.isPending` перед закрытием (не роняют отправку и не теряют ошибку); focus-trap
+    эффект переведён на mount-once через refs (`onCloseRef`/`isPendingRef`) вместо
+    пересоздания на каждый ре-рендер родителя (закрывает и PLAUSIBLE-находку №8)
+  - `hooks/use-wishlist.ts` — удалён мёртвый optimistic-insert (никто не передавал
+    `productPreview`), `onMutate` теперь только для removal-ветки
+  - `components/store/ProductCard.tsx`, `app/(shop)/[slug]/products/[id]/page.tsx`,
+    `app/(shop)/wishlist/page.tsx` + `lib/i18n/{ru,uz}.ts` — при `toggleWishlist.isError`
+    сердечко меняется на `AlertTriangle` (danger-цвет + aria-label с текстом ошибки) —
+    без глобальной toast-инфры в проекте это минимально инвазивный сигнал, не ломающий
+    компактную вёрстку карточек
+  - `components/layout/BottomNavBar.tsx` — `wishlist`/`notifications` не имеют отдельной
+    вкладки (обе достижимы только из меню `/profile`) → вкладка `profile` теперь
+    подсвечивается и для них
+- **Не тронуто (не фронт, для Полата):** `notifyInApp()` в apps/api нигде не вызывается —
+  даже после этого фикса push будет пустым; wishlist OOS невозможен без добавления стока
+  в контракт `get-wishlist.use-case.ts`.
+
+## 2026-07-04 (Азим) — WEB-AUDIT-BUYER-SELLER-002 cont.: 10 новых находок, PENDING DECISION (не исправлено)
+
+### ⏳ [WEB-AUDIT-BUYER-SELLER-002 cont.] Продолжение аудита — найдено, НЕ исправлено, ждёт решения Азима
+- **Статус:** ⏳ pending decision — фиксить сейчас или в бэклог (не готово, не закрывать как ✅)
+- **Важность:** 🔴 3 критичных + 🟡 6 важных + 🟢 2 минор
+- **Дата:** 04.07.2026
+- **Метод:** disposable git worktree на `origin/web-buyer`@`02082a7` / `origin/web-seller`@`d4bb40c`,
+  свежий `pnpm install`, каждая находка перепроверена вручную чтением файла/строки. Полный текст —
+  `analiz/logs.md` запись `[2026-07-04] [WEB-AUDIT-BUYER-SELLER-002]`, задача — `analiz/tasks.md`.
+- **web-seller `/settings` + онбординг (4 находки):**
+  - 🔴 `(dashboard)/settings/page.tsx` (~275-277,408) — Save не активируется при смене лого/обложки:
+    `isDirty` — чисто RHF-состояние, `logoMediaId`/`coverMediaId` живут в отдельном `useState` вне
+    формы → кнопка остаётся disabled, картинка молча теряется.
+  - 🟡 `(dashboard)/settings/page.tsx` (~151,220) — ошибка валидации суммы доставки не показывается:
+    `errors` не деструктурируется из `formState`, `Field` не получает `error`.
+  - 🟡 `(onboarding)/onboarding/page.tsx` (~133,495) — данные Step1 (название/slug) теряются при
+    «Назад» со Step2: `step1Data` не передаётся в `Step1` как `defaultValues`.
+  - 🟡 `(onboarding)/onboarding/page.tsx` (~389,419-467,501) — риск INV-S01: кнопка Step2 не защищена
+    от двойного клика во время `await applySeller()` (идёт до старта отслеживаемых мутаций).
+- **web-seller `/notifications` (2 находки):**
+  - 🔴 `hooks/use-seller-socket.ts` (~88-90) — фронт не подписан на WS `notification:new`, живёт
+    только на 30с polling.
+  - 🟡 `hooks/use-notifications.ts` (~34-43) — `useReadAll()` без `onError`, сбой mark-all-read тихий.
+- **web-buyer `ChatComposerModal` (2 находки):**
+  - 🔴 `components/chat/ChatComposerModal.tsx` (~34-37,79) — Escape/клик по фону закрывают модалку
+    без учёта `create.isPending` → форс-редирект на `/chats` или потерянная ошибка отправки.
+  - 🟡 PLAUSIBLE (не до конца подтверждено) — focus-trap эффект пересоздаётся на ре-рендер родителя.
+- **web-buyer `/wishlist` (2 находки, 🟢 минор):**
+  - 🟢 `hooks/use-wishlist.ts` — ошибка add/remove не показывается юзеру; мёртвый optimistic-insert
+    код (никто не передаёт `productPreview`).
+  - 🟢 `BottomNavBar` не подсвечивает активную вкладку wishlist.
+- **Антипаттерн (искать похожее по всему web-buyer/web-seller):** React-Hook-Form `isDirty` не видит
+  изменения полей вне формы (типичный кейс — `ImageUploader`/медиа-виджет через отдельный `useState`
+  вместо `register`/`setValue({shouldDirty:true})`) → Save может остаться disabled при реальных правках.
+- **Не web-домен (для Полата, к сведению):** `notifyInApp()` в apps/api нигде не вызывается; wishlist
+  OOS невозможен без добавления стока в контракт `get-wishlist.use-case.ts`.
+- **Что дальше:** решение Азима 04.07 — фиксы НЕ применять сейчас, оставить как тикеты
+  (`analiz/tasks.md` секция Азима). Переносить в ✅ только после реального фикса + `tsc`/lint зелёных.
+
 ## 2026-07-03 (Азим) — WEB-AUDIT-BUYER-SELLER-002: 14 багов исправлены на деплой-ветках
 
 ### ✅ [WEB-AUDIT-BUYER-SELLER-002] Полный аудит → 14 фиксов, запушены напрямую в web-buyer/web-seller

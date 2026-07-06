@@ -5,6 +5,117 @@
 
 ---
 
+## 📍 [PROJECT-STATUS-CONSOLIDATED-001] Консолидированный статус проекта — 05.07.2026
+
+> Свод «чего не хватает», собранный из `docs/business/roadmap-to-production-2026-06-02.md` +
+> факта по `tasks.md`/`done.md`. Не отдельная задача — указатель на существующие ID ниже,
+> чтобы не искать по всему файлу. Обновлять при следующей ревизии статуса.
+
+### 🔴 Блокеры платного запуска
+1. **Биллинг-бэкенд не готов** — фронт (баннеры/pricing) сдан 30.06, но `GET /seller/subscription`
+   ещё НЕ задеплоен Полатом → `Subscription`-entity/cron/read-gate по факту не реализованы,
+   хотя числятся «разблокировано». Слить в одну работу с `BILLING-TEZCODE-INTEGRATE-001` (webhook
+   всё равно нужен той же entity). См. `BILLING-MACHINE-001`.
+2. **Юрлицо не зарегистрировано** (ИП/ООО) — без этого нельзя официально принимать деньги
+   даже при готовом биллинге. См. `LEGAL-OFFER-REQUISITES-001`.
+3. **Checkout confirm не подтверждён живым тестом** — Playwright дошёл до OTP-шага, но реальный
+   проход (телефон→OTP→confirm) не сделан. См. `VERIFY-CHECKOUT-CONFIRM-500-001`.
+
+### 🟠 Инфра-харденинг (не блокер, но риск «упадёт ночью — никто не узнает»)
+См. `INFRA-UPTIME-ALERTS-001`, `SENTRY-DSN-001`, `INFRA-BACKUP-DRILL-FIRST-RUN-001`,
+`INFRA-BACKUP-R2-SETUP-001`, `SUPPORT-CHANNEL-001` (остаток Полата — сам TG-канал + env).
+
+### 🟡 Визуальный/архитектурный долг
+- TMA всё ещё на старой палитре (Orchid/Cyan), не мигрирован на design-v2.
+- `REFACTOR-DRY-001` (~400-500 строк дублей), `API-CONTROLLERS-ARCH-DEBT-001` (прямой Prisma
+  в 8 контроллерах вместо repository) — tech debt, не горит.
+
+### 🟠 Домен/DNS
+Куплен через AHOST, план (A vs Б=Cloudflare, рекомендован Б) ждёт подтверждения Полата.
+
+### 🔴 Маркетинг — под вопросом владения
+`MARKETING-IG-MONTH1-001` (IG/TG-запуск, outreach-лист) должен был стартовать в июне, по факту
+не запущен — и с 25.06.2026 маркетинг/GTM формально зона Юсуфа, не Азима. Нужно решить,
+переоформлять ли задачу на него.
+
+### Рекомендованный порядок действий
+1. Уточнить у Полата реальный статус `Subscription`-entity → слить с `BILLING-TEZCODE-INTEGRATE-001`.
+2. Регистрация юрлица (бизнес-шаг, не код) — разблокирует деньги.
+3. Живой тест checkout confirm (телефон + OTP) — закрыть `VERIFY-CHECKOUT-CONFIRM-500-001`.
+4. Параллельно — инфра-харденинг и маркетинг-переоформление, не блокируют друг друга.
+
+---
+
+## 🔴 [BILLING-TEZCODE-INTEGRATE-001] Подключить maxsavdo к центральному биллингу tezcode-billing — СРОЧНО, дедлайн уже прошёл
+
+- **Домен:** `apps/api` (Полат).
+- **Кто берёт:** Полат.
+- **Приоритет:** 🔴 P0 — по графику Абдулазиза тестовые платежи должны были начаться 05.07.2026 (сегодня),
+  webhookUrl должен был уйти ему ещё вчера (04.07.2026, конец дня). Нужно срочно узнать у Полата статус.
+- **Контекст:** maxsavdo — один из продуктов группы «TEZ KOD» (RAOS, CoreMed, TezDetal, MaxSavdo, WeWatch).
+  04.07.2026 Абдулазиз объявил централизацию биллинга всех продуктов через один сервис
+  **tezcode-billing** (`pay.tezcode.dev`, админка `admin.tezcode.dev`, Payme+Click готовы, Uzum скоро) —
+  вместо того чтобы каждый продукт сам интегрировал платёжки. `productCode = MAXSAVDO`.
+- **Хорошая новость:** архитектурно это уже заложено в `docs/business/billing-machine-spec-v1-2026-05-31.md`
+  как «Phase 2 — авто-биллинг»: схема `Subscription` уже содержит `externalProvider`/`externalSubId`,
+  таблица переходов статусов уже написана как `admin (Phase 1) / webhook (Phase 2)`. Просто Phase 2
+  наступает раньше срока (планировался Q3 2026) — переделывать схему не нужно, нужно реализовать
+  приём вебхука по контракту tezcode-billing.
+- **Бизнес-параметры (уже согласованы 14.06.2026, вопросов к Азиму нет):**
+  - `productCode = MAXSAVDO`, планы: **Pro 149k / Studio 399k сум/мес** + годовые (−20%).
+  - Free-план вне биллинга (бесплатный, без checkout).
+  - `TRIAL_DAYS=30` без карты — совпадает с обязательной «студийной политикой» tezcode.
+- **Источник контракта:** репо `AI-automatization/tezcode-billing` → `docs/INTEGRATION.md` (общий контракт)
+  + `docs/integrations/maxsavdo.md` (специфика продукта).
+- **Что сделать:**
+  1. **Env** (ключи выдаёт лично Абдулазиз, НЕ через чат): `BILLING_URL=https://pay.tezcode.dev`,
+     `BILLING_API_KEY`, `BILLING_HMAC_SECRET`, `BILLING_PRODUCT_CODE=MAXSAVDO`.
+  2. **Checkout:** `POST {BILLING_URL}/v1/checkout` (заголовки `X-Api-Key` + `Idempotency-Key`),
+     тело `{ productCode: 'MAXSAVDO', customerId, planSlug, provider: 'PAYME'|'CLICK', months }` →
+     ответ `{ paymentId, checkoutUrl }` → редирект юзера на `checkoutUrl`. Сумму считает биллинг,
+     не фронт. Это же дальше вызовет кнопка «Выбрать план» в `PRICING-PAGE-001` (Азим, зависит от этого).
+  3. **Webhook-приёмник** (`POST /billing/webhook` или свой путь — сообщить Абдулазизу):
+     - Проверка подписи: `X-Signature === HMAC-SHA256("{X-Timestamp}.{X-Nonce}.{raw body}", BILLING_HMAC_SECRET)`,
+       считать по **сырому** телу до `JSON.parse`, сравнивать `timingSafeEqual` (нужен
+       `NestFactory.create(..., { rawBody: true })`).
+     - Reject `X-Timestamp` старше 5 минут (replay-защита); nonce одноразовый.
+     - Дедуп по `X-Event-Id` (стабилен между ретраями) — повтор → 200 без повторного применения.
+     - Ordering: применять только если `version > last_seen_version` подписки.
+     - Ответ 2xx за <10 сек, тяжёлую работу — в фон (иначе биллинг ретраит до 10 раз → dead-letter).
+     - Референс-код (NestJS) есть в `INTEGRATION.md` — просто адаптировать под `apps/api`.
+     - События: `subscription.activated` (включить/продлить до `expiresAt`), `subscription.refunded`
+       (отключить доступ).
+  4. **Pull-фоллбэк (рекомендован):** ежесуточный cron — подписки с `expiresAt < now+1д` дёрнуть
+     `GET {BILLING_URL}/v1/subscription/{id}` и сверить статус.
+  5. **Security-проверка (важно!):** в чате явно предупредили — у RAOS был баг: свой
+     `POST /billing/upgrade` активировал подписку БЕЗ оплаты. Проверить, что аналогичный
+     admin-эндпоинт ручной активации из Phase 1 (`lastPaymentNote`, см. billing-machine-spec §Phase 1)
+     не доступен публично/без строгой admin-авторизации — теперь через checkout идут реальные деньги.
+  6. Отправить свой `webhookUrl` Абдулазизу для регистрации → получить `apiKey`/`hmacSecret`.
+- **Чек-лист приёмки** (из `INTEGRATION.md`, по нему Абдулазиз будет принимать интеграцию):
+  - checkout по каждому провайдеру возвращает ссылку; повтор `Idempotency-Key` не создаёт дубль.
+  - доступ включается ТОЛЬКО по вебхуку/pull — не по return-url, не по кнопке.
+  - в проде нет пути «активировать план без оплаты».
+  - битая подпись → 401; протухший timestamp → 401.
+  - повторный `X-Event-Id` → 200 без повторного применения.
+  - событие с меньшим `version` после большего → игнор.
+  - `subscription.refunded` реально отключает доступ.
+  - секреты только в env — не в коде/логах/фронте.
+  - деньги нигде не через `Number` (`amountTiyin` — строка/BigInt).
+  - cron-сверка pull'ом настроена.
+- **Связано:** `BILLING-MACHINE-001` (эта задача — часть его Phase 2, не отдельная система),
+  `PRICING-PAGE-001` (Азим, ждёт готового `checkoutUrl`-эндпоинта).
+
+---
+
+## ✅ [WEB-AUDIT-BUYER-SELLER-002 cont.] Продолжение аудита 04.07 — все 10 находок исправлены и запушены 05.07.2026
+
+Закрыто. Детали — `analiz/done.md` запись `2026-07-05`. Остаток для Полата (не фронт,
+не блокер): `notifyInApp()` в apps/api нигде не вызывается; wishlist OOS невозможен без
+добавления стока в контракт `get-wishlist.use-case.ts`.
+
+---
+
 ## 🟡 [DEMO-BUTTON-RAILWAY-001] Кнопка «Посмотреть демо-магазин» не работает без Railway
 
 - **Домен:** `apps/web-seller` (лендинг) + Railway env
