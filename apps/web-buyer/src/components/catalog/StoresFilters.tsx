@@ -4,7 +4,7 @@ import { colors } from '@/lib/styles';
 import type { StoresCatalogItem } from '@/lib/api/storefront.api';
 import { useTranslation } from '@/lib/i18n';
 
-export type StoresSortKey = 'top' | 'new' | 'rating';
+export type StoresSortKey = 'top' | 'rating';
 
 export interface StoresFiltersState {
   city: string | 'all';
@@ -28,7 +28,6 @@ export function StoresFilters({
 
   const SORT_LABELS: Record<StoresSortKey, string> = {
     top: t('catalog.sort.top'),
-    new: t('catalog.sort.new'),
     rating: t('catalog.sort.rating'),
   };
 

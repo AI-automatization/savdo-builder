@@ -247,7 +247,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   const order = rawOrder ? normalizeOrder(rawOrder) : null;
   const isCancelled = order?.status === OrderStatus.CANCELLED;
-  const canCancel = order && [OrderStatus.PENDING, OrderStatus.CONFIRMED].includes(order.status);
+  const canCancel = order?.status === OrderStatus.PENDING;
   const subtotal = order?.items.reduce((s, it) => s + it.subtotal, 0) ?? 0;
   const totalQty = order?.items.reduce((s, i) => s + (i.quantity ?? 0), 0) ?? 0;
 
@@ -508,6 +508,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     {cancelOrder.isPending ? "..." : t('orders.detail.confirmCancelYes')}
                   </button>
                 </div>
+                {cancelOrder.isError && (
+                  <p className="text-[11px] text-center" style={{ color: colors.danger }}>
+                    {t('orders.detail.cancelError')}
+                  </p>
+                )}
               </div>
             )}
           </div>

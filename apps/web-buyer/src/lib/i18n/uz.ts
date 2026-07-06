@@ -163,6 +163,7 @@ export const uz: Translations = {
   'orders.detail.cancelBtn': 'Buyurtmani bekor qilish',
   'orders.detail.confirmCancelQuestion': 'Buyurtma #{number} ni bekor qilasizmi?',
   'orders.detail.confirmCancelYes': 'Ha, bekor qilish',
+  'orders.detail.cancelError': 'Buyurtmani bekor qilib boʻlmadi. Ehtimol, sotuvchi allaqachon uni qayta ishlashni boshlagan.',
   'orders.detail.storeFallback': 'Doʻkon',
   'orders.meta.PENDING.label': 'Tasdiqlash kutilmoqda',
   'orders.meta.PENDING.eta': 'Sotuvchi tez orada buyurtmani koʻrib chiqadi',

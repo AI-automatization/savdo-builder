@@ -16,7 +16,7 @@ import { colors } from '@/lib/styles';
 import { track } from '@/lib/analytics';
 import { useTranslation } from '@/lib/i18n';
 
-const SORT_KEYS: StoresSortKey[] = ['top', 'new', 'rating'];
+const SORT_KEYS: StoresSortKey[] = ['top', 'rating'];
 
 function parseSort(v: string | null): StoresSortKey {
   return (SORT_KEYS as string[]).includes(v ?? '') ? (v as StoresSortKey) : 'top';
@@ -62,12 +62,10 @@ function StoresCatalogInner() {
         (a, b) =>
           (b.avgRating ?? 0) - (a.avgRating ?? 0) || b.reviewCount - a.reviewCount,
       );
-    } else if (filters.sort === 'new') {
-      // Backend default order: [isVerified desc, publishedAt desc].
-      // Без publishedAt в payload «new» = backend order reversed.
-      out = [...out].reverse();
     }
     // 'top' — backend default (verified сверху, потом publishedAt desc).
+    // 'new' убран: backend не отдаёт publishedAt в payload, честно отсортировать
+    // по дате на фронте нечем (см. WEB-AUDIT-BUYER-SELLER-003).
     return out;
   }, [stores, filters]);
 

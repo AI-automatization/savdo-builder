@@ -165,6 +165,7 @@ export const ru: Translations = {
   'orders.detail.cancelBtn': 'Отменить заказ',
   'orders.detail.confirmCancelQuestion': 'Отменить заказ #{number}?',
   'orders.detail.confirmCancelYes': 'Да, отменить',
+  'orders.detail.cancelError': 'Не удалось отменить заказ. Возможно, продавец уже начал его обработку.',
   'orders.detail.storeFallback': 'Магазин',
   'orders.meta.PENDING.label': 'Ожидает подтверждения',
   'orders.meta.PENDING.eta': 'Продавец скоро рассмотрит заказ',

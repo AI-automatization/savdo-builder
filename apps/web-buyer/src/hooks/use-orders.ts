@@ -47,5 +47,8 @@ export function useCancelOrder() {
       queryClient.setQueryData(orderKeys.detail(order.id), order);
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
     },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+    },
   });
 }
