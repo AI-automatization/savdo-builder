@@ -130,6 +130,7 @@ export const ru: Translations = {
   'orders.noSearchResults': 'Ничего не найдено по запросу «{query}». Попробуйте загрузить больше заказов.',
   'orders.noStatusResults': 'Нет заказов со статусом "{status}"',
   'orders.loadError': 'Не удалось загрузить заказы. Попробуйте обновить страницу.',
+  'orders.actionError': 'Не удалось изменить статус заказа. Попробуйте ещё раз.',
   'orders.loadMore': 'Загрузить ещё',
   'orders.loadingMore': 'Загрузка...',
   'orders.noProductTitle': 'Без товаров',

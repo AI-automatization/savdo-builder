@@ -31,6 +31,7 @@ export default function StoreCategoriesPage() {
   const deletingItem = sorted.find((c) => c.id === deletingId) ?? null;
 
   async function handleCreate() {
+    if (createMut.isPending) return;
     const name = newName.trim();
     if (!name) return;
     await createMut.mutateAsync({ name, sortOrder: sorted.length });
@@ -48,6 +49,7 @@ export default function StoreCategoriesPage() {
   }
 
   async function saveEdit() {
+    if (updateMut.isPending) return;
     const name = editName.trim();
     if (!name || !editingId) return;
     await updateMut.mutateAsync({ id: editingId, name });

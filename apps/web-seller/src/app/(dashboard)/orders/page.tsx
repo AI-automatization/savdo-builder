@@ -122,12 +122,14 @@ function OrderRow({
   order,
   onAction,
   onCancel,
-  pendingId,
+  pendingIds,
+  rowError,
 }: {
   order: OrderListItem;
   onAction: (order: OrderListItem, toStatus: OrderStatus) => void;
   onCancel: (order: OrderListItem) => void;
-  pendingId: string | null;
+  pendingIds: Set<string>;
+  rowError?: string;
 }) {
   const { t } = useTranslation();
   const statusColor = {
@@ -141,7 +143,7 @@ function OrderRow({
   const statusLabel = t(`orders.status.${order.status}`) || order.status;
   const next = NEXT_TRANSITION_KEY[order.status];
   const canCancel = CANCELLABLE.includes(order.status);
-  const isLoading = pendingId === order.id;
+  const isLoading = pendingIds.has(order.id);
 
   return (
     <div
@@ -235,6 +237,12 @@ function OrderRow({
           </button>
         )}
       </div>
+
+      {rowError && (
+        <p className="sm:col-span-5 text-xs" style={{ color: colors.danger }}>
+          {rowError}
+        </p>
+      )}
     </div>
   );
 }
@@ -258,7 +266,8 @@ export default function OrdersPage() {
   const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [cancelTarget, setCancelTarget] = useState<OrderListItem | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [page, setPage] = useState(1);
   const [accOrders, setAccOrders] = useState<OrderListItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -313,25 +322,40 @@ export default function OrdersPage() {
     setSearchQuery('');
   }
 
+  function setRowPending(id: string, pending: boolean) {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
   async function handleAction(order: OrderListItem, toStatus: OrderStatus) {
-    setPendingId(order.id);
+    setRowPending(order.id, true);
+    setRowErrors((prev) => { const { [order.id]: _drop, ...rest } = prev; return rest; });
     try {
       await updateStatus.mutateAsync({ id: order.id, status: toStatus });
       track.orderStatusChanged(order.id, order.status, toStatus);
+    } catch {
+      setRowErrors((prev) => ({ ...prev, [order.id]: t('orders.actionError') }));
     } finally {
-      setPendingId(null);
+      setRowPending(order.id, false);
     }
   }
 
   async function handleCancelConfirm(reason: string) {
     if (!cancelTarget) return;
-    setPendingId(cancelTarget.id);
+    const id = cancelTarget.id;
+    setRowPending(id, true);
+    setRowErrors((prev) => { const { [id]: _drop, ...rest } = prev; return rest; });
     try {
-      await updateStatus.mutateAsync({ id: cancelTarget.id, status: OrderStatus.CANCELLED, reason });
-      track.orderStatusChanged(cancelTarget.id, cancelTarget.status, OrderStatus.CANCELLED);
+      await updateStatus.mutateAsync({ id, status: OrderStatus.CANCELLED, reason });
+      track.orderStatusChanged(id, cancelTarget.status, OrderStatus.CANCELLED);
       setCancelTarget(null);
+    } catch {
+      setRowErrors((prev) => ({ ...prev, [id]: t('orders.actionError') }));
     } finally {
-      setPendingId(null);
+      setRowPending(id, false);
     }
   }
 
@@ -465,7 +489,8 @@ export default function OrdersPage() {
             order={order}
             onAction={(o, s) => handleAction(o, s)}
             onCancel={setCancelTarget}
-            pendingId={pendingId}
+            pendingIds={pendingIds}
+            rowError={rowErrors[order.id]}
           />
         ))}
       </div>
@@ -488,7 +513,7 @@ export default function OrdersPage() {
           order={cancelTarget}
           onClose={() => setCancelTarget(null)}
           onConfirm={handleCancelConfirm}
-          loading={pendingId === cancelTarget.id}
+          loading={pendingIds.has(cancelTarget.id)}
         />
       )}
     </div>

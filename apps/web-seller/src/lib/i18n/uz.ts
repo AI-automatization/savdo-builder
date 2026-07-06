@@ -128,6 +128,7 @@ export const uz: Translations = {
   'orders.noSearchResults': '«{query}» boʻyicha hech narsa topilmadi. Koʻproq buyurtma yuklashga urinib koʻring.',
   'orders.noStatusResults': '"{status}" holatidagi buyurtmalar yoʻq',
   'orders.loadError': 'Buyurtmalarni yuklab boʻlmadi. Sahifani yangilang.',
+  'orders.actionError': 'Buyurtma holatini oʻzgartirib boʻlmadi. Qayta urinib koʻring.',
   'orders.loadMore': 'Koʻproq yuklash',
   'orders.loadingMore': 'Yuklanmoqda...',
   'orders.noProductTitle': 'Mahsulotsiz',

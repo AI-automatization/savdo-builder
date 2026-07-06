@@ -134,6 +134,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     try {
       await updateStatus.mutateAsync({ id, status: toStatus });
       track.orderStatusChanged(id, order.status, toStatus);
+    } catch {
+      // isError read from updateStatus below — nothing else to do here.
     } finally {
       setPending(false);
     }
@@ -146,6 +148,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       await updateStatus.mutateAsync({ id, status: OrderStatus.CANCELLED, reason });
       track.orderStatusChanged(id, order.status, OrderStatus.CANCELLED);
       setShowCancel(false);
+    } catch {
+      // isError read from updateStatus below — nothing else to do here.
     } finally {
       setPending(false);
     }
@@ -254,6 +258,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             >
               {t('orders.detail.cancelBtn')}
             </button>
+          )}
+          {updateStatus.isError && (
+            <p className="w-full text-xs" style={{ color: colors.danger }}>
+              {t('orders.actionError')}
+            </p>
           )}
         </div>
       )}
