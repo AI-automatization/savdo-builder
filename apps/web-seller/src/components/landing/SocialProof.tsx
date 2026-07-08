@@ -31,7 +31,7 @@ export function SocialProof() {
           <Sparkles size={18} style={{ color: colors.accent }} />
           <span className="text-sm" style={{ color: colors.textPrimary }}>
             <span className="font-semibold">{t('proof.betaTitle')}</span>
-            <span style={{ color: colors.textMuted }}> — {t('proof.betaBody')}</span>
+            <span style={{ color: colors.textMuted }}> — {t('proof.betaDesc')}</span>
           </span>
         </div>
       </div>

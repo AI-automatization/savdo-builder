@@ -1,7 +1,7 @@
 import { buyerStoreUrl } from '@/lib/buyer-url';
 
 const DEFAULT_DEMO_SLUG = 'azim-mnx4na25';
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 
 function demoSlug(): string {
   return process.env.NEXT_PUBLIC_DEMO_STORE_SLUG?.trim() || DEFAULT_DEMO_SLUG;
