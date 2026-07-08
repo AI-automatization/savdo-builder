@@ -1,5 +1,36 @@
 # Done — Азим + Полат
 
+## 2026-07-08 (Азим/Claude) — LANDING-BRANCH-DRIFT-001: maxsavdo.uz показывал mock-плейсхолдеры + мёртвую ссылку демо
+
+### ✅ [LANDING-BRANCH-DRIFT-001] Синхронизирован `landing`-ветка с `web-seller`, починен fallback buyer-url
+- **Важность:** 🟠 · **Дата:** 08.07.2026
+- **Симптом:** на `maxsavdo.uz` в моке телефона на Hero вместо названий товаров показывались сырые
+  i18n-ключи (`mock.p1`, `mock.p2`...), а кнопка «Посмотреть демо-магазин» вела на
+  `maxsavdo.uz/{slug}` → 404.
+- **Root cause 1 (mock.p1):** `landing` Railway-сервис (домен `maxsavdo.uz`) деплоится с ветки
+  `landing`, а НЕ `web-seller` (см. `[[PROJECTS/savdo-builder/sessions/2026-06-19-13-01-landing-railway-fix-branch-mainlanding]]`
+  в Obsidian). `Hero.tsx` на `landing` уже дёргал `t('mock.p1')` с 19.06, но переводы для этих
+  ключей добавили только на `web-seller` (commit `ae45d601`/`fa224a28`) и никогда не портировали
+  обратно — ветки разошлись, `t()` фолбэчился на сырой ключ.
+- **Root cause 2 (демо-ссылка):** `buyer-url.ts` → `FALLBACK = 'https://maxsavdo.uz'` — устаревший
+  дефолт с домиграционной (AHOST) схемы. После переезда на Cloudflare-домены (`DOMAIN-MAXSAVDO-UZ-DNS-001`,
+  07.07) buyer-стор живёт на `shop.maxsavdo.uz`, а `NEXT_PUBLIC_BUYER_URL` на Railway-сервисе
+  `landing` не выставлен → фолбэк резолвился на сам landing-домен, где нет `/{slug}` роута.
+- **Фикс:**
+  1. На `landing` (commit `6a558666`): подтянуты 7 файлов с `web-seller` (ru.ts/uz.ts — 18
+     недостающих ключей `mock.*`/`showcase.niche*`, `layout.tsx` — I18nProvider, `LandingPage.tsx` —
+     редирект залогиненного SELLER на `/dashboard`, `LandingFooter.tsx`+`demo-store.ts` — ребренд
+     `@maxsavdo_bot`, `SocialProof.tsx` — фикс опечатки ключа `betaBody`→`betaDesc`).
+  2. На `landing` (commit `6c755e99`) и `web-seller` (commit `b35d05db`): `buyer-url.ts` FALLBACK
+     → `https://shop.maxsavdo.uz` + обновлён smoke-тест `buyer-url.test.ts`.
+- **Файлы:** `apps/web-seller/src/lib/i18n/{ru,uz}.ts`, `apps/web-seller/src/app/layout.tsx`,
+  `apps/web-seller/src/components/landing/{LandingPage,LandingFooter,SocialProof}.tsx`,
+  `apps/web-seller/src/lib/landing/demo-store.ts`, `apps/web-seller/src/lib/buyer-url.ts`,
+  `apps/web-seller/src/__tests__/smoke/buyer-url.test.ts` — на ветках `landing` и `web-seller`.
+- **Не сделано (нужен доступ к Railway UI, не CLI):** явно выставить `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`
+  на сервисе `landing` в Railway Variables (сейчас держится только на code-fallback — работает, но
+  правильнее задать явно, как на остальных сервисах). См. `#antipattern` ниже.
+
 ## 2026-07-05 (Полат) — SUSPENDED-ENFORCEMENT-001: backend-гейт приостановленной подписки
 
 ### ✅ [SUSPENDED-ENFORCEMENT-001] SUSPENDED больше не обходится на API (каталог)
