@@ -30,6 +30,11 @@
 - **Не сделано (нужен доступ к Railway UI, не CLI):** явно выставить `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`
   на сервисе `landing` в Railway Variables (сейчас держится только на code-fallback — работает, но
   правильнее задать явно, как на остальных сервисах). См. `#antipattern` ниже.
+- **Доп. фикс той же серии (08.07, commit `68553d39` на `landing`):** аудит лендинга нашёл
+  `og:image` → `http://localhost:8080/opengraph-image?...` (превью ссылки в Telegram/Instagram
+  битое) — причина та же категория бага: `apps/web-seller/src/app/layout.tsx` не задавал
+  `metadataBase`, Next.js резолвил auto-generated `opengraph-image.tsx` в дефолтный localhost.
+  Добавлен `metadataBase: new URL('https://maxsavdo.uz')`.
 
 ## 2026-07-05 (Полат) — SUSPENDED-ENFORCEMENT-001: backend-гейт приостановленной подписки
 
