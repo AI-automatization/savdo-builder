@@ -16,6 +16,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://maxsavdo.uz'),
   title: "maxsavdo — Seller Dashboard",
   description: "Управляй магазином в Telegram",
 };
