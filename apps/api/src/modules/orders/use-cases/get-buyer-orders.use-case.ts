@@ -10,6 +10,8 @@ export interface GetBuyerOrdersInput {
   status?: OrderStatus;
   page?: number;
   limit?: number;
+  // FEAT-ORDERS-ARCHIVE-001: true = архивные заказы, иначе основной список.
+  archived?: boolean;
 }
 
 @Injectable()
@@ -31,6 +33,7 @@ export class GetBuyerOrdersUseCase {
       status: input.status,
       page: input.page,
       limit: input.limit,
+      archived: input.archived,
     });
   }
 }

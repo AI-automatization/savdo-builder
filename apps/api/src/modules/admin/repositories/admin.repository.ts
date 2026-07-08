@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { toPrismaPagination } from '../../../common/utils/pagination';
+import { AuditService } from '../../audit/audit.service';
 
 @Injectable()
 export class AdminRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   // ── AdminUser ─────────────────────────────────────────────────────────────
 
@@ -16,6 +20,8 @@ export class AdminRepository {
 
   // ── AuditLog ──────────────────────────────────────────────────────────────
 
+  // FEAT-CATEGORY-JOURNAL-001: делегирует в общий AuditService (запись вынесена,
+  // сигнатура сохранена — все admin-вызовы работают без изменений).
   async writeAuditLog(data: {
     actorUserId: string;
     action: string;
@@ -23,16 +29,7 @@ export class AdminRepository {
     entityId: string;
     payload?: object;
   }) {
-    return this.prisma.auditLog.create({
-      data: {
-        actorUserId: data.actorUserId,
-        actorType: 'admin',
-        action: data.action,
-        entityType: data.entityType,
-        entityId: data.entityId,
-        payload: data.payload ?? {},
-      },
-    });
+    return this.audit.write({ ...data, actorType: 'admin' });
   }
 
   async findAuditLogs(filters: {
@@ -61,6 +58,37 @@ export class AdminRepository {
     ]);
 
     return { logs, total };
+  }
+
+  // ── FEAT-CUSTOM-ROLES-001: кастомные admin-роли ────────────────────────────
+
+  async listCustomRoles() {
+    return this.prisma.adminCustomRole.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async findCustomRoleByName(name: string) {
+    return this.prisma.adminCustomRole.findUnique({ where: { name } });
+  }
+
+  async findCustomRoleById(id: string) {
+    return this.prisma.adminCustomRole.findUnique({ where: { id } });
+  }
+
+  async createCustomRole(data: { name: string; label: string; permissions: string[]; createdByAdminId?: string }) {
+    return this.prisma.adminCustomRole.create({ data });
+  }
+
+  async updateCustomRole(id: string, data: { label?: string; permissions?: string[] }) {
+    return this.prisma.adminCustomRole.update({ where: { id }, data });
+  }
+
+  async deleteCustomRole(id: string) {
+    return this.prisma.adminCustomRole.delete({ where: { id } });
+  }
+
+  /** Сколько админов сейчас на этой роли (по имени = AdminUser.adminRole). */
+  async countAdminsWithRole(roleName: string) {
+    return this.prisma.adminUser.count({ where: { adminRole: roleName } });
   }
 
   // ── User operations ───────────────────────────────────────────────────────
@@ -228,6 +256,10 @@ export class AdminRepository {
         take: limit,
         include: {
           seller: { select: { id: true, fullName: true, verificationStatus: true } },
+          // ADMIN-STORES-NO-COUNTS-001 (подтверждён вживую 29.06.2026): admin
+          // список показывал «—» в колонках ТОВАРЫ/ЗАКАЗЫ — endpoint не отдавал
+          // counts. Фронт (StoresPage.tsx:238,246) уже читает _count.products/orders.
+          _count: { select: { products: true, orders: true } },
         },
       }),
       this.prisma.store.count({ where }),

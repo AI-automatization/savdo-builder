@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Tags, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, X, Save, AlertCircle } from 'lucide-react'
+import { Tags, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, X, Save, AlertCircle, History } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
@@ -17,6 +17,16 @@ interface GlobalCategory {
 }
 
 const EMPTY_FORM = { nameRu: '', nameUz: '', slug: '', parentId: '', sortOrder: '0', isActive: true }
+
+// FEAT-CATEGORY-JOURNAL-001: запись журнала (audit_log, entityType=GlobalCategory)
+interface CategoryAuditLog {
+  id: string
+  actorUserId: string | null
+  action: string
+  entityId: string
+  payload: Record<string, any>
+  createdAt: string
+}
 
 // DUP-003: preview slugify должен быть синхронен с backend `SlugService.generate()`.
 // Backend regex: latin-only, dash-separated, fallback на server-side. Если поле slug
@@ -47,6 +57,26 @@ export default function CategoriesPage() {
   const [formError, setFormError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  // FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий (модал)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyLogs, setHistoryLogs] = useState<CategoryAuditLog[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
+
+  async function openHistory() {
+    setHistoryOpen(true)
+    setHistoryLoading(true)
+    setHistoryError('')
+    try {
+      const res = await api.get<{ logs: CategoryAuditLog[] }>('/api/v1/admin/audit-log?entityType=GlobalCategory&limit=50')
+      setHistoryLogs(res.logs ?? [])
+    } catch (e: any) {
+      setHistoryError(e.message ?? t('categories.historyLoadError'))
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
 
   const roots = categories.filter(c => !c.parentId)
   const children = (parentId: string) => categories.filter(c => c.parentId === parentId)
@@ -155,14 +185,24 @@ export default function CategoriesPage() {
             {categories.length}
           </span>
         </div>
-        <button
-          onClick={() => openCreate()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-          style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)' }}
-        >
-          <Plus size={14} />
-          {t('categories.add')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openHistory}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
+            style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+          >
+            <History size={14} />
+            {t('categories.history')}
+          </button>
+          <button
+            onClick={() => openCreate()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
+            style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)' }}
+          >
+            <Plus size={14} />
+            {t('categories.add')}
+          </button>
+        </div>
       </div>
 
       {actionError && (
@@ -349,6 +389,78 @@ export default function CategoriesPage() {
           </div>
         </div>
       )}
+
+      {/* FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div className="rounded-xl w-[560px] max-h-[80vh] flex flex-col shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2">
+                <History size={16} style={{ color: 'var(--text-muted)' }} />
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{t('categories.historyTitle')}</h3>
+              </div>
+              <button onClick={() => setHistoryOpen(false)} aria-label={t('common.close')}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
+            </div>
+
+            <div className="overflow-y-auto px-5 py-3 flex flex-col gap-2">
+              {historyLoading && (
+                <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
+              )}
+              {!historyLoading && historyError && (
+                <div className="text-sm py-8 text-center" style={{ color: '#f87171' }}>{historyError}</div>
+              )}
+              {!historyLoading && !historyError && historyLogs.length === 0 && (
+                <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('categories.historyEmpty')}</div>
+              )}
+              {!historyLoading && !historyError && historyLogs.map(log => (
+                <HistoryEntry key={log.id} log={log} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// FEAT-CATEGORY-JOURNAL-001: одна запись журнала категорий
+function HistoryEntry({ log }: { log: CategoryAuditLog }) {
+  const { t } = useTranslation()
+  const meta: Record<string, { label: string; color: string }> = {
+    CATEGORY_CREATED: { label: t('categories.histCreated'), color: '#10B981' },
+    CATEGORY_UPDATED: { label: t('categories.histUpdated'), color: '#818cf8' },
+    CATEGORY_DELETED: { label: t('categories.histDeleted'), color: '#f87171' },
+    CATEGORY_SEEDED:  { label: t('categories.histSeeded'),  color: '#eab308' },
+  }
+  const m = meta[log.action] ?? { label: log.action, color: 'var(--text-muted)' }
+  const p = log.payload ?? {}
+
+  let summary = ''
+  if (log.action === 'CATEGORY_UPDATED' && p.before && p.after) {
+    summary = Object.keys(p.after)
+      .map(k => `${k}: ${JSON.stringify(p.before[k])} → ${JSON.stringify(p.after[k])}`)
+      .join(', ')
+  } else if (log.action === 'CATEGORY_SEEDED') {
+    summary = `${p.categoriesUpserted ?? '?'} кат. / ${p.filtersUpserted ?? '?'} фильтров`
+  } else {
+    summary = [p.nameRu, p.slug ? `(${p.slug})` : ''].filter(Boolean).join(' ')
+  }
+
+  const when = new Date(log.createdAt).toLocaleString('ru', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+
+  return (
+    <div className="flex items-start gap-3 py-2 text-sm" style={{ borderBottom: '1px solid var(--border)' }}>
+      <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--surface2)', color: m.color, border: `1px solid ${m.color}33` }}>
+        {m.label}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="truncate" style={{ color: 'var(--text)' }}>{summary || '—'}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
+          {when}{log.actorUserId ? ` · ${log.actorUserId.slice(0, 8)}` : ''}
+        </p>
+      </div>
     </div>
   )
 }

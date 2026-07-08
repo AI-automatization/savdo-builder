@@ -31,8 +31,8 @@ export async function syncCartToBackend(): Promise<{ ok: boolean; imported?: num
 
   const items = getCart();
   if (items.length === 0) {
-    // Ничего sync'ить — флаг всё равно ставим (state = «synchronized empty»).
-    localStorage.setItem(SYNCED_FLAG_KEY, '1');
+    // C9: не ставим флаг при пустой корзине — пользователь может добавить
+    // товары позже до logout и они должны sync'нуться при следующем вызове.
     return { ok: true, imported: 0, skipped: 0 };
   }
 

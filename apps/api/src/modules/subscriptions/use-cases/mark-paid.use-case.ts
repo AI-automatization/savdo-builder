@@ -96,17 +96,17 @@ export class MarkPaidUseCase {
       `Subscription ${subscriptionId} marked paid by admin=${adminUserId}, tier=${data.tier}, period=${data.periodStart.toISOString()}..${data.periodEnd.toISOString()}`,
     );
 
-    // Reactivate store (если был скрыт из-за subscription SUSPENDED).
-    // Условие: predecessor status SUSPENDED/PAST_DUE/CANCELLED + store.status === APPROVED + isPublic === false.
+    // ISVISIBLE-SEMANTICS-001: сбрасываем isSuspendedByBilling (не трогаем isPublic).
+    // isPublic — намерение продавца; isSuspendedByBilling — billing enforcement.
     if (subscription.status === 'SUSPENDED' || subscription.status === 'PAST_DUE' || subscription.status === 'CANCELLED') {
       try {
         const store = await this.storesRepo.findBySellerId(subscription.sellerId);
-        if (store && store.status === 'APPROVED' && !store.isPublic) {
-          await this.storesRepo.update(store.id, { isPublic: true });
-          this.logger.log(`Store ${store.id} re-published (isPublic=true) after subscription reactivation`);
+        if (store && store.isSuspendedByBilling) {
+          await this.storesRepo.update(store.id, { isSuspendedByBilling: false });
+          this.logger.log(`Store ${store.id} billing-unsuspended after subscription reactivation`);
         }
       } catch (e) {
-        this.logger.error(`Failed to re-publish store for seller=${subscription.sellerId}: ${(e as Error).message}`);
+        this.logger.error(`Failed to billing-unsuspend store for seller=${subscription.sellerId}: ${(e as Error).message}`);
       }
     }
 

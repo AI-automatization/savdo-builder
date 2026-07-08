@@ -5,23 +5,155 @@
 
 ---
 
+> ✅ 02.07 закрыты (см. done.md): TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009,
+> TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
+> Все — код-комплит + tsc TMA EXIT 0. Осталась live-ретест-проверка на устройстве.
 
-## 🔴 [BILLING-MACHINE-001] Подписки + энфорсмент (блокер платного launch)
+## 🟡 [TMA-SETTINGS-GEAR-CRASH-013] Интермиттентный ErrorBoundary при открытии Настроек
+- **Домен:** apps/tma · **Кто взял:** Полат · **Приоритет:** 🟡 · **Статус:** НЕ фикшен (нужен стек)
+- **Что:** при открытии Настроек иногда ErrorBoundary «Что-то пошло не так» (воспроизвёлся 1/2),
+  предшествует форсированный ре-init мини-аппа. Сама шестерёнка (`StoresPage.tsx:209`) — обычный
+  client-side `navigate('/buyer/settings')`, reload не вызывает → вероятно артефакт форс-reload
+  iframe (Telegram Web/среда), обнаживший хрупкость при холодном старте (гонка auth/hydration).
+- **Почему не фикшен:** нужен реальный стек ошибки (read_console не работает в cross-origin iframe
+  аудита) — remote-debug на устройстве. Правка #012 попутно сделала SettingsPage null-safe по
+  capabilities (мог быть один из триггеров).
+- **След. шаг:** поймать стек через Telegram WebView remote debug / Sentry; обернуть подозрительные
+  мест в guard или показывать loading вместо throw при незагруженном auth.
+- **Детали:** logs.md → TMA-SETTINGS-GEAR-CRASH-013.
 
-- **Домен:** `apps/api` + `packages/db` + `packages/types` (Полат) · `apps/web-seller` + `apps/web-buyer` (Азим)
-- **Кто берёт:** Полат (entity+cron+admin+gate) + Азим (suspended-states во фронтах)
-- **Приоритет:** 🔴 P0 для платного public launch — без этого нельзя брать деньги на масштабе.
-- **Спека (полная, с контрактом):** `docs/business/billing-machine-spec-v1-2026-05-31.md`
-- **Реализует:** `docs/business/business-model-v2-2026-05-31.md` §7.
-- **Кратко:**
-  - `Subscription` entity (1:1 Seller, INV-S01): tier STARTER/PRO/BUSINESS, status
-    TRIAL→ACTIVE→PAST_DUE→SUSPENDED→CHURNED + `SubscriptionDto` в types (разблокирует Азима).
-  - Cron-переходы статусов + admin-endpoint ручной оплаты (Phase 1) + storefront read-gate
-    (SUSPENDED → магазин скрыт, перекрывает `isPublic`) + product-cap guard (Старт ≤50).
-  - Лимит заказов = **soft** (баннер+апсейл, покупателя НЕ блокируем); жёсткие гейты — фичевые.
-  - Фронт (Азим): баннеры trial/past_due, dashboard read-only при SUSPENDED, «магазин недоступен» в buyer.
-- **Последовательность:** Полат делает entity+DTO → Азим параллельно рисует states.
-- **Статус:** 🟡 спека написана 31.05, ждёт аудита Азим+Полат (6 открытых вопросов в §12 спеки).
+## 🟢 [PERF-TMA-HEAT-001] Телефон греется в TMA — КОД ЗАКРЫТ 03.07 (остался device-profiling)
+- **Домен:** apps/tma · **Кто взял:** Полат · **Приоритет:** 🔴→🟢 (код-часть сделана)
+- **✅ 03.07 сделано (см. done.md):** отключён ambient-blur на мобилке + без `filter:blur`,
+  socket reconnect ограничен (attempts:8+backoff), glass-shimmer с infinite → на hover/tap.
+  Build EXIT 0, тесты 18/18. **Остаток:** подтвердить профайлером на реальном устройстве.
+- **Что (исходно):** юзеры жалуются что телефон в TMA перегревается и «прям пиздец как нагружает».
+- **Расследование по коду (30.06, тайт-петель/коротких setInterval НЕТ → грев = GPU-композитинг):**
+  1. **🥇 Ambient blur в AppShell** (`components/layout/AppShell.tsx:22-38`): 3 больших
+     `filter: blur(72px/56px/40px)` радиальных слоя, `fixed inset-0`, dark-mode. Большие blur
+     поверх скроллящегося вьюпорта в мобильном WebView → постоянная перерастеризация GPU. Главный
+     подозреваемый по грелке. Фикс: убрать/уменьшить blur радиусы, 1 слой вместо 3, или отключить
+     на мобилке / gate по prefers-reduced-motion / low-power.
+  2. **🥈 Reconnect-петля socket.io + вечный pulse SocketStatusBadge**: socket.ts использует
+     дефолты socket.io (reconnection бесконечный, 1-5с). При баге TMA-WS-STALE-TOKEN-001 (сокет с
+     битым токеном после reauth/switch) хендшейк вечно фейлится → periodic reconnect + badge
+     `pulse 1.4s infinite` при status='connecting' (`SocketStatusBadge.tsx:57`) крутится вечно.
+     Частично закрыто фиксом teardown (30.06), но добавить `reconnectionAttempts` лимит + backoff.
+  3. **🥉 Always-on infinite CSS-анимации**: `DashboardPage.tsx:258,336` (`pulse 1.5s infinite`
+     ×2), `.orchid-pulse`/`.cyan-ping` в index.css — проверить, не висят ли на всегда-видимых
+     элементах (не только loading). Каждая держит компоузитор активным.
+- **Как подтвердить:** профилировать на реальном устройстве (Chrome DevTools Performance / Telegram
+  WebView remote debug) — Rendering → Paint flashing / FPS meter, смотреть GPU/Compositing.
+- **Файлы:** `apps/tma/src/components/layout/AppShell.tsx`, `lib/socket.ts`,
+  `components/ui/SocketStatusBadge.tsx`, `index.css`, `pages/seller/DashboardPage.tsx`.
+
+## 🟢 [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — BUYER+SELLER done 04.07 (admin — опц.)
+- **Домен:** apps/api + apps/tma + apps/admin · **Кто взял:** Полат · **Owner переподтвердил 03.07**
+- **✅ 03.07 buyer-часть (см. done.md):** `Order.buyerArchivedAt`, `PATCH /buyer/orders/:id/archive`,
+  фильтр списка, TMA переключатель «Активные↔Архив» + кнопка. Build/тесты зелёные. В проде (api+tma).
+- **✅ 04.07 seller-часть (см. done.md):** `Order.sellerArchivedAt` + миграция, `PATCH /seller/orders/
+  :id/archive`, фильтр `?archived=true` в `findByStoreId`, TMA seller переключатель + кнопка «В архив/
+  Вернуть» на терминальных карточках. API build 0, TMA build 0, TMA тесты 18/18.
+- **🔲 Остаток (низкий приоритет):** admin-вид архива — нужен ли вообще? buyer+seller потоки закрыты.
+- **Owner (03.07):** «архивация закрытых — отменённые, успешно завершённые и т.д.». Терминальные
+  статусы по схеме = **DELIVERED** (успешно завершён) + **CANCELLED** (отменён) — других закрытых нет.
+- **Что:** функция архивации «закрытых» заказов. Закрытые = **DELIVERED + CANCELLED** (терминальные
+  статусы по state machine). Архив убирает их из основного списка (сейчас в TMA-Заказах есть
+  «Доставлены»/«Отменены» фильтры + «показать отменённые», но нет архива-скрытия). Нужно: флаг
+  архивации (или производное по статусу+дате), UI «В архив» + раздел «Архив», не терять данные.
+- **Уточнить:** архив = ручной (кнопка) или авто (по времени после DELIVERED/CANCELLED)? Скоуп:
+  seller-заказы, buyer-заказы, admin?
+
+## 🟢 [FEAT-CATEGORY-JOURNAL-001] Журнал категорий — СДЕЛАНО 04.07 (api + admin)
+- **Домен:** apps/admin + apps/api · **Кто взял:** Полат
+- **✅ 04.07 (см. done.md):** admin-мутации категорий (create/update/delete/seed) пишут audit_log
+  через новый общий `AuditModule`/`AuditService` (вынесен из AdminRepository — categories больше не
+  зависит от admin). Читалка уже была (`GET /admin/audit-log?entityType=GlobalCategory`). В admin
+  CategoriesPage добавлена кнопка «История» + модал журнала (кто/когда/что, before→after дифф).
+  API build 0, admin build 0, api-тесты без регрессий (9 предсуществующих). Owner выбрал: общий
+  AuditModule + панель в CategoriesPage.
+
+## 🟢 [FEAT-CUSTOM-ROLES-001] Кастомные admin-роли (RBAC) — СДЕЛАНО 04.07 (api + admin)
+- **Домен:** apps/api + apps/admin · **Кто взял:** Полат
+- **✅ 04.07 (см. done.md):** таблица `admin_custom_roles` (name/label/permissions[]), CRUD только
+  super_admin, словарь permissions + reserved-защита от эскалации (`admin/db/system/*` запрещены),
+  guard-fallback на кастомную роль (permission + entry-gate), UI управления ролями + назначение в
+  AdminUsersPage, i18n ru/uz. `AdminUser.adminRole` переиспользован (свободная строка) — БД AdminUser
+  не менялась. API build 0, admin build 0, +6 security-тестов (22/22 в use-case). Миграция additive.
+- **🔲 Остаток (опц.):** страница-обзор permissions на роль; переназначение админов при удалении роли
+  сейчас блокируется (надо вручную сменить роль). Достаточно для MVP.
+
+## 🟢 [FEAT-DESIGN-OPTIMIZATION-001] Оптимизация дизайна — блик по событию — TMA код-закрыт 04.07
+- **Домен:** apps/tma (+ web=Азим) · **Кто взял:** Полат/Азим · **Приоритет:** 🟡 (нагрузка на телефон)
+- **✅ 04.07 TMA-часть закрыта (см. done.md):** проведён аудит ВСЕХ always-on `infinite` анимаций.
+  Результат: после PERF-TMA-HEAT-001 остаток — уже событийные сигналы (urgent-dot → только `s.urgent`,
+  SocketStatusBadge → только `connecting`, typing-dot → только при печати, skeleton/logo/LoadingScreen →
+  loading). Ровно как просил owner. Убраны 2 мёртвых декоративных keyframe (`.orchid-pulse`,
+  `.status-dot`/`cyan-ping`, 0 потребителей) чтобы их случайно не навесили. Build EXIT 0.
+- **🔲 Остаток:** web-buyer/web-seller (зона Азима — не трогаю). delivery-«назначен водитель» glow —
+  фичи трекинга курьера пока нет в TMA; появится доставка → добавить событийную подсветку тогда.
+- **Что (уточнено owner-ом 03.07):** сейчас в UI слишком много ПОСТОЯННЫХ блик/glow/pulse-эффектов
+  «просто так» — они всегда крутят компоузитор и **нагружают телефон клиента впустую**. Требование:
+  сделать эффекты **событийными (conditional)** — блик/подсветка срабатывает ТОЛЬКО когда есть смысл:
+  - пришло **уведомление**;
+  - появилось **что-то новое** (новый заказ/товар/сообщение);
+  - назначен **водитель/курьер** (delivery-событие) — тогда бликует/подсвечивается;
+  - идёт **загрузка** (loading-состояние).
+  Вне этих событий — никакого always-on свечения (статичный вид). Экономит GPU/батарею клиента.
+- **Связано:** PERF-TMA-HEAT-001 (убрать тяжёлые ambient-blur + вечные `pulse ... infinite`),
+  TMA-IOS-FIXED-MODAL-002 (модалы). Общий принцип: анимация = сигнал, а не фон.
+- **Скоуп:** пройти always-on анимации (`index.css` `.orchid-pulse`/`.cyan-ping`, `DashboardPage`
+  pulse ×2, `SocketStatusBadge`) → перевести на триггер-по-событию или убрать. Уточнить у Полата
+  список экранов, где эффект должен ОСТАТЬСЯ как событийный сигнал.
+
+---
+
+## 🧭 [SESSION-CHECKPOINT 2026-06-29] Orchestrator-сессия — итоги + открытые решения
+
+### ✅ Задеплоено в этой сессии (8 фиксов, ветки api/admin/tma)
+- `STRESS-DOS-001` — body-parser 100kb + 413 в exception filter (подтверждён в проде: large→413, small→401).
+- `BUG-3` NumberTicker (давал визуально неверные числа по всей админке, вкл. Аналитику).
+- `BUG-1` admin/subscriptions daysLeft · `BUG-TMA-1` greeting (seller).
+- `ADMIN-PRODUCTS-NO-STORE-FIELD` · `ADMIN-STORES-NO-COUNTS-001` (_count товаров/заказов).
+- `alert()`→toast на «Создать товар» (убрал блокирующий диалог).
+- Проверено: `API-CHECKOUT-PICKUP-DELIVERY-FEE-001` уже исправлен (лог обновлён); BUG-TMA-1 «.» — не баг (TG-имя аккаунта).
+
+### ✅ РЕШЕНИЯ ПРИНЯТЫ (30.06.2026, Полат)
+1. **[DECISION-ROLE-MODEL] → ГИБРИД.** Аккаунт может и продавать, и покупать. `role` = АКТИВНЫЙ
+   КОНТЕКСТ (дефолт при входе), способности (canSell/canBuy) выводятся из наличия профилей
+   (Buyer? у всех; Seller?+store → canSell). Guards не меняются (проверяют активный контекст).
+   ADR: `D:/Obsidian Vault/PROJECTS/savdo-builder/decisions/2026-06-30--role-.md`.
+2. **[DECISION-ROLE-CHANGE-UI] → ДА, сделано (HYBRID-4).** Side-effects: NON-DESTRUCTIVE
+   (профили/магазин сохраняются — в гибриде обе способности сосуществуют). См. done.md.
+3. **[DECISION-ADMIN-CREATE-PRODUCT] → НЕ СЕЙЧАС.** Товары создаёт продавец в TMA; админ-создание
+   тянет атрибуцию к магазину + пересмотр модерации. Оставлена toast-заглушка. Низкий приоритет.
+
+### 🔵 [HYBRID] Фаза 2 — переключение контекста (в основном СДЕЛАНО 30.06)
+- ✅ **HYBRID-1** [api] `POST /auth/switch-context` — ре-выдача токена + персист users.role. → done.md
+- ✅ **HYBRID-2** [tma] Тоггл «Продавец/Покупатель» в buyer+seller ProfilePage + фикс латентного
+  бага «режим покупателя» (BuyerGuard бросал SELLER назад). → done.md
+- ✅ **HYBRID-3** [api/bot] Меню бота по `users.role` + кнопки переключения. Закрыл
+  `ROLE-SOURCE-INCONSISTENCY-001`. → done.md
+- ✅ **HYBRID-6** [api] `capabilities {canBuy,canSell,hasStore}` в /auth/me и /auth/telegram. → done.md
+- 🔲 **HYBRID-5** [api] Проактивная реконсиляция при удалении/архивации магазина (сейчас
+  переключение реактивно гейтится на store — основной риск закрыт, это hardening).
+- Схема (`packages/db`) — миграция НЕ понадобилась (Buyer?+Seller? уже сосуществуют).
+- ⚠️ **НЕ ЗАКОММИЧЕНО:** Фаза 2 (api+bot+tma) на диске, tsc всех трёх зелёный, но пользователь
+  отклонял git-операции — коммит/деплой по его команде. Фаза 1 (HYBRID-4) закоммичена (af39641, main).
+
+### 🤝 ОСТАЁТСЯ OWNER/КОМАНДА
+4. **[OWNER] 🔴 INFRA-RAILWAY-PAST-DUE-001** — оплатить подписку Railway (риск отключения прода).
+5. **[DECISION-TEST-DATA]** Чистить тестовые товары с протухшими фото (BUG-TMA-2) или забить?
+
+### ✅ Закрытая мелочь
+- ~~`apps/admin` tsc TS2688 vitest/globals~~ → исправлено (`pnpm install`, vitest восстановлен). 30.06.
+
+---
+
+
+## ✅ [BILLING-MACHINE-001] Подписки + энфорсмент — ЗАКРЫТО (Полат, ~10.06.2026)
+
+Полностью реализовано в предыдущих сессиях. Деталь — `done.md`.
 
 ---
 
@@ -456,17 +588,15 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
 - `main.ts`: `app.set('trust proxy', 1)` → `req.ip` = реальный клиент,
   `@Throttle` лимиты работают per-IP. Коммит `6751b12`.
 
-## 🟡 `SEC-AUDIT-04` — нет глобального default-deny auth (A01/A05) — проверено, активной дыры нет
-- `JwtAuthGuard` не глобальный — вешается вручную. Забыли `@UseGuards` →
-  эндпоинт публичный, без fail-safe.
-- **Проверка 16.05.2026:** прошёл все 28 контроллеров — все защищённые
-  эндпоинты реально под guard'ами (per-method, осознанно). Незащищённые —
-  только публичные by design: storefront-каталог (reads), media-proxy,
-  reviews read, health-probe, telegram-webhook (защищён своим
-  `x-telegram-bot-api-secret-token`, fail-closed). **Активной дыры нет.**
-- **Остаётся (🟡 hardening):** глобальный `APP_GUARD: JwtAuthGuard` + `@Public()`
-  — defense-in-depth, чтобы БУДУЩИЙ забытый guard не открыл эндпоинт. Не срочно,
-  рефактор рискованный (28 контроллеров) — делать отдельным focused-проходом.
+## ✅ `SEC-AUDIT-04` — глобальный APP_GUARD JwtAuthGuard + @Public() — закрыто 21.06.2026
+- `common/decorators/public.decorator.ts` — `@Public()` + `IS_PUBLIC_KEY`
+- `jwt-auth.guard.ts` — `Reflector.getAllAndOverride` проверяет IS_PUBLIC → skip
+- `app.module.ts` — `APP_GUARD: JwtAuthGuard` (перед ThrottlerGuard)
+- 27 публичных эндпоинтов помечены `@Public()`: auth (telegram/otp/refresh),
+  все storefront routes, categories storefront, cart (OptionalJwt ×5),
+  analytics/track, media/proxy, reviews public GET, telegram webhook, health×2.
+  OptionalJwt-эндпоинты: `@Public()` + `@UseGuards(OptionalJwtAuthGuard)` —
+  глобальный guard пропускает, опциональный обогащает user. Коммит `9f91997`.
 
 ## ✅ `SEC-AUDIT-05` — admin-эндпоинты без `@AdminPermission` (A01) — закрыто 16.05.2026
 - `AdminAccessGuard` на всех 10 admin-контроллерах: вход только `super_admin`/
@@ -509,9 +639,13 @@ no direct prisma. Было нарушено в 8 контроллерах — 46
   19→0, `as any` 12→0 по модулю. +9 методов в ChatRepository, +6 use-cases.
   chat-специ 48/48.
 - 🟠 `products.controller.ts` — 11 (image/attribute/option-эндпоинты) — осталось.
-- 🟡 `stores` 7, `categories` 3, `super-admin`/`media`/`storefront` 1-2 — осталось.
+- ✅ `stores`, `categories` — закрыто 21.06.2026 (`753a6c0`).
+- ✅ `super-admin`, `media`, `storefront` — закрыто 23.06.2026 (`7d4140f`): UsersRepository +4 методов, SellersRepository +1 метод; MediaModule импортирует UsersModule+SellersModule; ProductsModule импортирует UsersModule.
+- ✅ `products.controller.ts` — закрыто 24.06.2026: grep подтвердил 0 `this.prisma` — контроллер уже использует imagesRepo/attributesRepo/optionGroupsRepo. Задача была stale.
 - `health` — `$queryRaw SELECT 1` — ✅ легитимное исключение.
-- Остаток `as any` в контроллерах: ~7 (admin 3, categories 2, orders 2).
+- `telegram-webhook` — `user.updateMany` — ✅ intentional (комментарий в module: циклическая зависимость через AuthModule).
+- **Осталось:** только `as any` в контроллерах (~7: admin 3, categories 2, orders 2) — не срочно.
+- **ЗАДАЧА ЗАКРЫТА ПОЛНОСТЬЮ.**
 
 ---
 
@@ -718,7 +852,7 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 - [x] **`API-PRODUCT-IMAGES-BROKEN-SUPABASE-URLS-001`** ✅ 15.05.2026 (Полат) — bucket-маркер `broken`: `resolveImageUrl` отдаёт `''` для `telegram-expired` и `broken` (frontend сразу рисует placeholder без 404). Новый `AuditBrokenMediaUrlsUseCase` сканирует `MediaFile`, HEAD-проверяет URL (axios 5s), помечает мёртвые `bucket='broken'`. Endpoint `POST /admin/media/audit-broken-urls` (`media:migrate`, audit_log). Коммит `ffffb9c`. Запустить аудит на проде после redeploy api. Подробности — `analiz/done.md` Wave 21.
 - [x] **`WEB-SELLER-STORE-CATEGORIES-CRUD-001`** ✅ 14.05.2026 (Азим) — отдельная страница `/store/categories` (list + inline edit + add form + delete confirm + move-up/down arrows). В Settings StoreCategoriesSection заменён на компактную ссылку. Backend `/seller/categories` уже был. Подробности в `analiz/done.md`.
 - [x] **`MARKETING-SEO-INFRA-001`** ✅ 11.05.2026 — `<html lang>` → ru. `sitemap.ts` (home + 4 legal). `robots.ts` (allow / disallow privates). `manifest.ts` (maxsavdo PWA). JSON-LD Organization sitewide + Product schema на product layout (UZS pricing, schema.org/Offer). Зона Азима.
-- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Осталось:** 24 внутренних page'и admin (инкрементально по мере касания, Полат); ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
+- [~] **`MARKETING-LOCALIZATION-UZ-001`** 🔴 — **Инфра ✅ 12.05.2026 (Полат, TMA):** `apps/tma/src/lib/i18n/` zero-deps React Context — `ru.ts` (default) + `uz.ts` (Latin, обратный апостроф `ʻ` U+02BB). `useTranslation()` hook возвращает `{ t, locale, setLocale }` с `{name}` интерполяцией. Auto-detect через `tg.initDataUnsafe.user.language_code` (`ru`→ru, `uz`→uz, иначе ru-fallback). Сохранение в `localStorage['savdo_locale']`. `<html lang>` обновляется. SettingsPage: переключатель `Русский` / `Oʻzbek` с haptic. StoresPage (главная): заголовок, табы, плейсхолдер поиска, sort labels, verified badge — все через `t()`. **Skill записан:** `.claude/skills/uzbek-translator/SKILL.md` (правила алфавита, грамматика, e-commerce глоссарий 60+ терминов, чек-лист). **TMA seller-страницы ✅ 15.05.2026** (Profile/Store/Dashboard/Orders, коммит `1b9245c`). **TMA buyer-страницы ✅ 15.05.2026** — Cart/Checkout/Orders/Product/Wishlist уже были локализованы, добавлены ChatPage/StorePage/StoresPage (коммит `aad2bab`). Все 10 buyer + 5 seller страниц TMA на `t()`. **API Telegram-уведомления ✅ 15.05.2026** — locale = `User.languageCode` получателя резолвится во всех producer use-cases (notifyNewOrder/OrderStatusChanged/ChatMessage), коммит `0e18129`. **Admin i18n-инфра ✅ 16.05.2026** — `apps/admin/src/lib/i18n/` (zero-deps, аналог TMA), DashboardLayout (навигация + переключатель RU/UZ) и LoginPage локализованы, коммит `666b88b`. **web-buyer ✅ 17.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/profile` + 5 волн извлечения строк (storefront/catalog, orders/chats/profile/notifications/wishlist, cart/checkout, юр-страницы, shared). 508 ключей ru/uz. Ветка `web-buyer` HEAD `aac61e8`. **web-seller ✅ 18.05.2026 (Азим)** — i18n-инфра + переключатель RU/UZ в `/settings` + 3 волны (auth/onboarding, dashboard-страницы, shared). 533 ключа ru/uz. Ветка `web-seller` HEAD `eb31728`. План: `docs/superpowers/plans/2026-05-17-uz-localization-web.md`. **Admin i18n ✅ 24.06.2026 (Полат):** все 26 страниц admin используют `useTranslation()`. Последние 2 — `ProductsPage.tsx` (STATUS_LABELS + 20+ строк) и `DatabasePage.tsx` (6 компонентов: DetailValue/FieldInput/RowDetailPanel/EditModal/InsertModal/DatabasePage + 30+ строк). Словари ru.ts/uz.ts дополнены 50 ключами (`products.*` + `db.*`). **Осталось только:** ревью узбекских переводов Азимом (юр-тексты web-buyer Wave 4 помечены `// REVIEW`).
 - [x] **`MARKETING-PUBLIC-OFFER-PAGES-001`** ✅ 11.05.2026 — 4 страницы (/terms, /privacy, /offer, /refund) с прозой на русском, shared `LegalPage` компонент. Checkout footer теперь линкует на /offer и /privacy underlined. Реквизиты юр.лица в /offer — placeholder, нужны после регистрации.
 - [ ] **`MARKETING-PAYMENT-CLICK-PAYME-001`** 🔴 — Online payment `disabled: true` в checkout. 75% UZ e-com через Click/Payme. **Cash-only = провал conversion**. (Backend реализация после открытия бизнес-счёта.)
 
@@ -1201,7 +1335,58 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 
 ### 🟡 На Азиме — код
 
-_(пусто — WEB-ORDER-PREVIEW-001 закрыт 18.04.2026, см. done.md)_
+## 🔴 [ONBOARDING-AUDIT-AZIM-001] Фиксы онбординга — web-buyer + web-seller (25.06.2026)
+
+Источник: UX-аудит 80 персон. P0 блокеры которые ломают реальную эксплуатацию.
+
+### P0-1: `toSlug()` убивает кириллические названия магазинов
+- **Файл:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx:18-25`
+- **Проблема:** `[^\w\s-]` вырезает кириллицу → «Электро Маркет» → `""` → валидация проходит → API 400
+- **Фикс:** добавить транслитерацию перед regex:
+```typescript
+const CYRILLIC: Record<string, string> = {
+  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'j',к:'k',
+  л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
+  ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
+};
+
+function toSlug(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[а-яё]/g, (c) => CYRILLIC[c] ?? '')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+```
+
+### P0-2: OtpGate не объясняет что нужен бот
+- **Файл:** `apps/web-buyer/src/components/auth/OtpGate.tsx:55-59`
+- **Проблема:** код отправлен в Telegram, но пользователь не знает что нужен @maxsavdo_bot
+- **Фикс:** добавить под текстом `step === 'code'`:
+```tsx
+{step === 'code' && (
+  <p className="text-xs mt-1" style={{ color: colors.textDim }}>
+    Не пришёл код? Убедитесь, что запустили{' '}
+    <a href="https://t.me/maxsavdo_bot" target="_blank" rel="noreferrer" style={{ color: colors.accent }}>
+      @maxsavdo_bot
+    </a>
+  </p>
+)}
+```
+
+### P1-1: «Войти» пугает новых пользователей
+- **Файл:** `apps/web-seller/src/app/(auth)/login/page.tsx`
+- **Фикс:** добавить под заголовком подсказку: «Если вы здесь впервые — введите номер телефона, аккаунт создастся автоматически»
+
+### P1-2: Два дублирующих TG поля в Step 2 онбординга
+- **Файл:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+- **Фикс:** убрать отдельное поле `telegramContactLink`, генерировать из `telegramUsername`: `https://t.me/${username}`
+
+- **Домен:** apps/web-buyer, apps/web-seller (Азим)
+- **Приоритет:** P0-1 и P0-2 → сразу, P1 → до следующего демо
 
 ---
 

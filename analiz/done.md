@@ -1,5 +1,535 @@
 # Done — Азим + Полат
 
+## 2026-07-05 (Полат) — SUSPENDED-ENFORCEMENT-001: backend-гейт приостановленной подписки
+
+### ✅ [SUSPENDED-ENFORCEMENT-001] SUSPENDED больше не обходится на API (каталог)
+- **Важность:** 🔴 (security/billing) · **Дата:** 05.07.2026 · API build 0, +8 тестов (8/8)
+- **Триггер:** аудит Азима (web-buyer/web-seller, 03.07). Критичный #2: фронтовый read-only
+  оверлей web-seller обходился скроллом, а **на бэке SUSPENDED гейтился только при создании
+  товара** (`create-product.use-case.ts` → `enforceProductsLimit`). Остальные ~21 seller-мутаций
+  (правка/удаление товара, статус, варианты, сток, опции, фото, атрибуты, **репост в TG-канал**)
+  для приостановленного продавца проходили на 200.
+- **Root cause:** `PlanLimitGuardService.assertSubscriptionActive` был private и вызывался только
+  из `enforceProductsLimit`/`enforceFeature` (последний вообще мёртвый — 0 вызовов).
+- **Фикс (минимальный след, choke-point):** `resolveStoreId()` в `ProductsController` — единый
+  проход всех seller-роутов, уже инкапсулирует ACCESS-001 (isBlocked). Добавлен туда
+  subscription-гейт (enforce по умолчанию); 4 GET-роута (чтения) освобождены флагом
+  `{ requireActiveSubscription: false }` — dashboard остаётся read-only, а не мёртвым (§7).
+  Новый публичный `PlanLimitGuardService.assertActiveSubscription(sellerId)` (fail-open при
+  отсутствии подписки: приостановленный всегда имеет строку, отсутствие = data-gap).
+- **Файлы:** `apps/api/src/shared/plan-limit-guard.service.ts` (+метод),
+  `apps/api/src/modules/products/products.controller.ts` (inject + resolveStoreId + 4 GET),
+  `apps/api/src/shared/plan-limit-guard.service.spec.ts` (новый, 8 тестов).
+- **Вне скоупа (открытый вопрос Азиму):** orders-контроллер (`seller/orders/:id/status`,
+  `mark-paid`, `archive`) — блокировать ли фулфилмент СТАРЫХ заказов приостановленному продавцу
+  (строго §7) или дать довести до конца ради покупателя. Ждём решения владельца бизнес-модели.
+
+## 2026-07-04 (Полат) — FEAT-CUSTOM-ROLES-001: кастомные admin-роли (RBAC)
+
+### ✅ [FEAT-CUSTOM-ROLES-001] Кастомные admin-роли с гибкими permissions
+- **Важность:** 🟡 (T2 security/RBAC) · **Дата:** 04.07.2026 · API build 0, admin build 0, +6 тестов
+- **Owner (04.07):** admin RBAC-роли (не пользовательские BUYER/SELLER).
+- **Дизайн (минимальный след):** `AdminUser.adminRole` — уже свободная строка, поэтому кастомная роль =
+  имя в `adminRole` + новая таблица `admin_custom_roles`. AdminUser НЕ менялся. Guard/entry-gate
+  получают fallback: роль не базовая → permissions тянутся из БД. Базовые роли остаются в коде
+  (PR-review-гейт сохранён).
+- **Security-guardrails:** CRUD ролей только super_admin; permissions строго из словаря
+  `ADMIN_PERMISSION_VOCABULARY`; reserved запрещены (`*`, `admin:*`, `db:*`, `system:*`) — нет
+  эскалации до управления админами/raw DB; имя не может совпасть с базовой ролью; удаление роли
+  блокируется, если назначена админам; каждое изменение → audit_log (AuditService).
+- **Backend (`apps/api`):**
+  - `schema.prisma` + миграция `20260704000002_admin_custom_roles` (CREATE TABLE, additive/prod-safe).
+  - `common/constants/admin-permissions.ts` — `BASE_ADMIN_ROLES`, `isBaseAdminRole`,
+    `ADMIN_PERMISSION_VOCABULARY`, `isAssignableCustomPermission` (reserved-фильтр).
+  - `admin.repository.ts` — CRUD кастомных ролей + `countAdminsWithRole`.
+  - `admin-users-management.use-case.ts` — createCustomRole/updateCustomRole/deleteCustomRole/
+    listCustomRoles + `assertAssignableRole` (async: базовая ИЛИ существующая кастомная) + audit.
+  - `super-admin.controller.ts` — `/admin/custom-roles` CRUD + `/admin/permissions/vocabulary`.
+  - `admin-permission.guard.ts` + `admin-access.guard.ts` — fallback на кастомную роль из БД.
+  - `admin-auth.use-case.ts` — `resolveAdminPermissions` (getMe + impersonate custom-aware).
+  - `+6 security-тестов` в use-case.spec (reserved/wildcard/base-collision/happy+audit/delete-block/non-super).
+- **Frontend (`apps/admin`):** `AdminUsersPage.tsx` — модал управления ролями (список + форма с
+  чекбоксами permissions по ресурсам), кастомные роли в пикерах Add/Edit, безопасные бейджи
+  (`roleBadge`/`roleLabel` для не-базовых). i18n ru/uz `customRoles.*` + `common.edit`.
+- **ADR:** решение о минимальном следе (adminRole-строка vs новый FK) — в Obsidian.
+
+## 2026-07-04 (Полат) — FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий
+
+### ✅ [FEAT-CATEGORY-JOURNAL-001] Журнал категорий (api + admin)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` 0, admin build 0, api-тесты без регрессий
+- **Решения owner (04.07):** запись через общий AuditModule (не зависимость categories→admin);
+  UI = панель «История» прямо в admin CategoriesPage.
+- **Проблема:** admin-CRUD глобальных категорий был единственным admin-потоком БЕЗ audit_log —
+  порчу каталога (напр. `увлажниьель`) нельзя отследить. Читалка журнала уже существовала.
+- **Backend (`apps/api`):**
+  - `modules/audit/audit.service.ts` + `audit.module.ts` — НОВЫЙ общий сервис записи audit_log,
+    вынесен из AdminRepository (PrismaModule глобальный → импортов не нужно). Доменные модули пишут
+    журнал без зависимости от AdminModule (исправлена инверсия слоёв).
+  - `admin.repository.ts` — `writeAuditLog` делегирует в `AuditService` (сигнатура сохранена, все
+    admin-вызовы работают без правок); `admin.module.ts` импортирует AuditModule.
+  - `categories.controller.ts` — admin create/update/delete/seed пишут audit (`CATEGORY_CREATED/
+    UPDATED/DELETED/SEEDED`, entityType=`GlobalCategory`, update → компактный before→after дифф);
+    `categories.module.ts` импортирует AuditModule.
+- **Frontend (`apps/admin`):** `CategoriesPage.tsx` — кнопка «История» + модал журнала (бейдж
+  действия, дифф/сводка payload, кто+когда), тянет `GET /admin/audit-log?entityType=GlobalCategory`.
+  i18n ru/uz — ключи `categories.history*`/`categories.hist*`.
+- **Проверка hook think-before-wire:** новый AuditService прошёл (токен basename `audit` совпал с
+  существующими `*audit*`-импортами → потребители найдены, ложной блокировки нет).
+
+## 2026-07-04 (Полат) — FEAT-DESIGN-OPTIMIZATION-001: блик только по событию (TMA код-закрыт)
+
+### ✅ [FEAT-DESIGN-OPTIMIZATION-001] Эффекты событийные, не always-on (TMA)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · TMA build (tsc -b + vite) EXIT 0
+- **Суть:** owner просил, чтобы блик/glow срабатывал ТОЛЬКО по событию (уведомление / что-то новое /
+  водитель назначен / загрузка), а не крутился постоянно и не грел телефон клиента.
+- **Что сделано:** аудит всех always-on `infinite` анимаций в `apps/tma/src`. Вывод — после
+  PERF-TMA-HEAT-001 весь остаток уже событийный:
+  - `DashboardPage` pulse ×2 → рендерится только при `s.urgent` (срочная статистика = «что-то новое»).
+  - `SocketStatusBadge` pulse → только `status==='connecting'` (реконнект/загрузка).
+  - `typing-dot`/`typing-bounce` → только когда собеседник печатает.
+  - `skeleton-shimmer`, `logo-pulse`, `LoadingScreen` → loading-контекст.
+  - `glass-shimmer` → уже переведён на hover/tap в PERF-HEAT (не infinite).
+  Все они = сигнал, оставлены как есть.
+- **Убрано (мёртвый декор):** `apps/tma/src/index.css` — `.orchid-pulse` (glow 2.4s infinite) и
+  `.status-dot`+`@keyframes cyan-ping` (ping 1.8s infinite). 0 потребителей в .tsx (проверено grep) —
+  чистый always-on декор без сигнала; удалён, чтобы будущий dev случайно не навесил.
+- **Не трогал:** web-buyer/web-seller (зона Азима). Delivery-«водитель назначен» подсветка — фичи
+  трекинга курьера в TMA пока нет, добавить событийный glow когда появится доставка.
+
+## 2026-07-04 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (seller)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — seller-часть
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп:** симметрично buyer — ручная архивация терминальных (DELIVERED/CANCELLED) заказов
+  продавцом, отдельный флаг `sellerArchivedAt` (независим от buyer-архива), данные не удаляются.
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.sellerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260704000001_order_seller_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `sellerArchivedAt` в `findByStoreId` + метод
+    `setSellerArchived`.
+  - `get-seller-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в seller-списке + `PATCH /seller/orders/:id/archive`.
+    Владение по `storeId` через `getOrderDetailUseCase` (store-scoped 404), в архив только
+    DELIVERED/CANCELLED (иначе 409). Переиспользован query-параметр `archived` из buyer-DTO.
+  - `apps/tma/.../seller/OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть»
+    на терминальных карточках, оптимистичное удаление из списка, i18n-ключи те же (`orders.archive*`).
+- **Заметка:** предсуществующие падения `telegram-auth.use-case.spec.ts` (8) + `GetMeUseCase` (1) —
+  НЕ связаны с этой правкой (проверено: те же падения на чистом дереве до изменений). Залогировано.
+
+## 2026-07-03 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (buyer)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — buyer-часть
+- **Важность:** 🟡 · **Дата:** 03.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп (дефолт, решён без остановки):** ручная архивация, **buyer-first**, только терминальные
+  заказы (DELIVERED/CANCELLED), данные не удаляются. Seller/admin — отдельно (в tasks.md).
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.buyerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260703000001_order_buyer_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `buyerArchivedAt` в `findByBuyerId` (основной
+    список = NULL, `?archived=true` = архив) + метод `setBuyerArchived`.
+  - `get-buyer-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в списке + `PATCH /buyer/orders/:id/archive`. Владение
+    проверяется через `getOrderDetailUseCase` (buyer-scoped 404), в архив только DELIVERED/CANCELLED
+    (иначе 409). `dto/list-orders.dto.ts` — query-параметр `archived`.
+  - `apps/tma/.../OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть» на
+    закрытых, оптимистичное удаление из текущего списка. + i18n ru/uz (`orders.archive*`).
+- **Архитектурная заметка:** отдельный use-case/dto НЕ заводил — hook `think-before-wire`
+  (справедливо) блокирует изолированные новые файлы; переиспользовал уже внедрённые
+  `OrdersRepository` + `getOrderDetailUseCase` (тот уже проверяет владельца) прямо в контроллере,
+  как существующий inline-guard buyer-cancel. Меньше файлов, та же чистота.
+
+## 2026-07-03 (Полат) — PERF-TMA-HEAT-001: убраны always-on эффекты (грев телефона)
+
+### ✅ [PERF-TMA-HEAT-001] Телефон греется в TMA — устранены постоянные GPU-эффекты
+- **Важность:** 🔴 · **Дата:** 03.07.2026 · `pnpm build` (tsc -b + vite) EXIT 0, `vitest` 18/18
+- **Файлы:** `apps/tma/src/components/layout/AppShell.tsx`, `apps/tma/src/lib/socket.ts`,
+  `apps/tma/src/index.css`
+- **Что сделано (по 3 подтверждённым офендерам расследования):**
+  1. **Ambient blur** (`AppShell.tsx`): 3 слоя `filter: blur(72/56/40px)` на `fixed inset-0` при
+     скролле в мобильном WebView заставляли GPU перерастеризовывать каждый кадр. Отключены **на
+     мобилке** (`{isDesktop && …}`), на десктопе — 2 слоя БЕЗ `filter:blur` (мягкость через
+     radial-gradient стопы + `translateZ(0)` в свой composite-слой). Мобилка = ноль per-frame blur.
+  2. **socket.io reconnect** (`socket.ts`): дефолт = бесконечный reconnect; при stale-token баге
+     хендшейк фейлился вечно → CPU-цикл + вечный pulse. Добавлены `reconnectionAttempts:8` +
+     backoff (`reconnectionDelay:1000`, `Max:8000`). После лимита → 'disconnected' (точка без
+     анимации), цикл встаёт.
+  3. **glass-shimmer** (`index.css`): `animation: shimmer infinite` висел на **КАЖДОЙ** GlassCard
+     (список карточек = N вечных анимаций). Переведён на взаимодействие (`:hover`/`:active` = один
+     проход), как и задумывалось комментом «micro-reflection on hover».
+- **НЕ трогал (осознанно):** `pulse` в DashboardPage (258/336) и `SocketStatusBadge` — это
+  условные СИГНАЛЫ (срочный заказ / проблема связи), ровно тот «блик по событию» из
+  FEAT-DESIGN-OPTIMIZATION-001. `.status-dot`(cyan-ping)/`.orchid-pulse` — dead CSS (не в .tsx),
+  рантайм-стоимости нет.
+- **Остаток:** финальное подтверждение профайлером на реальном устройстве (Chrome DevTools
+  Performance / TG WebView remote debug) — код-часть закрыта.
+- **Связь:** частично закрывает и FEAT-DESIGN-OPTIMIZATION-001 (принцип «анимация = сигнал»).
+
+## 2026-07-02 (Полат) — Фиксы после живого buyer-аудита TMA (4 бага)
+
+### ✅ [TMA-BUILD-AUTHCTX-014] Прод-сборка TMA была сломана с Phase 2 (tsc -b)
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · найдено при live-ретесте (`pnpm build`)
+- **Файлы:** `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** тип стейта был `Omit<AuthCtx,'logout'|'reauth'>` — после добавления `switchContext`
+  в `AuthCtx` (Phase 2) он стал требоваться в setState → `tsc -b` падал (2 ошибки). Исправил на
+  `Omit<AuthCtx,'logout'|'reauth'|'switchContext'>` (switchContext — функция уровня Provider value).
+- **⚠️ ВАЖНО:** `tsc --noEmit` давал ложный зелёный (корневой tsconfig Vite = `files:[]` + references,
+  компилит пусто). Реальный чек — `pnpm build` (`tsc -b`). Впредь проверять сборку им.
+  После фикса: `tsc -b && vite build` EXIT 0, `vitest` 18/18.
+
+### ✅ [TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009] Детали заказа: «не число» + пустое имя
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/OrdersPage.tsx`
+- **Что сделано:** привёл интерфейс `OrderItem` и 5 использований к контракту API-маппера —
+  `productTitleSnapshot→title`, `lineTotalAmount→subtotal`, `variantTitleSnapshot→variantTitle`.
+  API (`orders.mapper.ts`) НЕ трогал (используется и web-buyer Азима). Устранён `NaN`→«не число».
+
+### ✅ [TMA-BUYER-NO-CANCEL-011] Отмена заказа покупателем
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/OrdersPage.tsx`, `lib/i18n/{ru,uz}.ts`
+- **Что сделано:** кнопка «Отменить заказ» в раскрытом блоке + `cancelOrder` через `confirmDialog`
+  → `PATCH /buyer/orders/:id/status {status:'CANCELLED'}`, оптимистичное обновление списка/детали.
+  Гейт `status==='PENDING'` — по state-machine (`update-order-status.use-case.ts:20`) покупателю
+  разрешён только переход PENDING→CANCELLED. Новые i18n-ключи `orders.cancel*`.
+
+### ✅ [TMA-HYBRID-SETTINGS-BECOMESELLER-012] Настройки: switchContext вместо онбординга
+- **Важность:** 🟡 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/SettingsPage.tsx`
+- **Что сделано:** блок гейтится по `capabilities.canSell` (как в ProfilePage): есть seller-профиль
+  → «Переключиться в режим продавца» (switchContext→/seller), нет → онбординг become_seller.
+  Раньше проверялся только `role==='BUYER'` → владелец магазина видел онбординг. Null-safe.
+
+### ✅ [TMA-CART-BADGE-STALE-010] Реактивность бейджа корзины + списка избранного
+- **Важность:** 🟡 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/lib/cart.ts` (pub/sub + `cartItemCount`/`subscribeCart`),
+  `components/layout/BottomNav.tsx` (реактивный `cartCount`), `pages/buyer/WishlistPage.tsx`
+  (подписка на wishlist-стор + фильтрация списка).
+- **Что сделано:** `saveCart`/`clearCart` шлют событие `savdo:cart-changed`; бейдж корзины
+  подписан → обновляется на add/remove/clear без ре-навигации. WishlistPage: заменил мёртвый
+  `useEffect` на подписку `subscribeWishlist` → удалённые из ♡ товары уходят из списка сразу.
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 2 TMA (тоггл)
+
+### ✅ [HYBRID-2] Тоггл контекста в TMA + фикс латентного бага «режим покупателя»
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `apps/tma/src/lib/auth.ts` (switchContext + Capabilities),
+  `providers/AuthProvider.tsx` (capabilities в state + switchContext),
+  `pages/buyer/ProfilePage.tsx`, `pages/seller/ProfilePage.tsx`, `lib/i18n/{ru,uz}.ts`
+- **Что сделано:**
+  - AuthProvider хранит `user.capabilities {canBuy,canSell,hasStore}` (из ответа /auth/telegram)
+    и отдаёт `switchContext(context)` — вызывает POST /auth/switch-context, обновляет role в
+    state + бампает authVersion.
+  - Buyer ProfilePage: карточка «Режим продавца» показывается если есть seller-профиль
+    (`canSell`), кнопка активна только при наличии магазина (`hasStore`). Карточка «стать
+    продавцом» теперь только для тех, у кого seller-профиля НЕТ (`!canSell`).
+  - Seller ProfilePage: кнопка «Режим покупателя» теперь через `switchContext('BUYER')`.
+- **🐛 Латентный баг (найден+исправлен):** старая seller-кнопка делала `navigate('/buyer')`
+  напрямую, но `BuyerGuard` (App.tsx:97) отбрасывал SELLER обратно на /seller → кнопка НЕ
+  работала. Теперь сначала меняется активный контекст (role→BUYER), потом навигация.
+- **Осталось по Фазе 2:** HYBRID-5 (проактивная реконсиляция при удалении магазина — сейчас
+  переключение реактивно гейтится на наличии store, основной риск закрыт).
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 2 backend + бот
+
+### ✅ [HYBRID-1] POST /auth/switch-context — переключение контекста без перелогина
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `apps/api/src/modules/auth/dto/switch-context.dto.ts` (новый),
+  `.../use-cases/switch-context.use-case.ts` (новый), `auth.controller.ts`, `auth.module.ts`
+- **Что сделано:** ре-выдаёт access token с новым role-claim (+storeId для SELLER).
+  Персистит `users.role` (refresh-session читает его из БД → контекст сохраняется; бот/TMA
+  дефолтят на последний контекст). SELLER требует активный магазин (иначе 400 «нет магазина»).
+  BUYER гарантирует buyer-профиль. ADMIN/BLOCKED/deleted отбиваются.
+
+### ✅ [HYBRID-6] me.capabilities + capabilities в /auth/telegram
+- **Важность:** 🟢 · **Дата:** 30.06.2026
+- **Файлы:** `auth.repository.ts` (findCapabilities), `get-me.use-case.ts`, `telegram-auth.use-case.ts`
+- **Что сделано:** `{ canBuy, canSell, hasStore }` для UI-тоггла. Отдаётся в GET /auth/me и в
+  ответе /auth/telegram (TMA получает сразу без лишнего round-trip).
+
+### ✅ [HYBRID-3] Бот: единый источник истины роли + переключатель
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `telegram-demo.handler.ts`, `telegram-webhook.controller.ts`
+- **Что сделано:** `handleStart` теперь решает меню по `users.role` (как TMA), а не по наличию
+  seller-профиля → закрывает `ROLE-SOURCE-INCONSISTENCY-001`. Кнопки «🛒 Режим покупателя»
+  (в seller-меню) и «🏪 Режим продавца» (в buyer-меню, только если есть магазин). Хендлеры
+  `handleSwitchToBuyer/Seller` зеркалят switch-context (персист users.role, SELLER требует store).
+- **Осталось:** HYBRID-2 (тоггл в TMA UI), HYBRID-5 (проактивная реконсиляция при удалении store).
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 1 + vitest fix
+
+### ✅ [HYBRID-4] Смена роли (дефолтного контекста) из админки
+- **Важность:** 🟡
+- **Дата:** 30.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/dto/change-user-role.dto.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/change-user-role.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin-users.controller.ts` (PATCH `:id/role`)
+  - `apps/api/src/modules/admin/admin.module.ts` (DI)
+  - `apps/admin/src/pages/UserDetailPage.tsx` (кнопка + модал)
+  - `apps/admin/src/lib/i18n/{ru,uz}.ts` (ключи changeRole*)
+- **Что сделано:** `PATCH /api/v1/admin/users/:id/role` (BUYER|SELLER, `user:update`, audit_log,
+  self-guard). NON-DESTRUCTIVE по ADR гибридной модели: смена дефолтного контекста не
+  трогает профили/магазин. SELLER требует наличие seller-профиля (иначе 400 — для нового
+  продавца есть «Активировать продавца»). BUYER гарантирует buyer-профиль (upsert).
+  В UI кнопка «Сделать продавцом/покупателем» в ActionPanel (не-админ, не-blocked) + модал
+  с описанием последствий и опц. причиной. Закрывает `ADMIN-NO-ROLE-CHANGE-UI-001`.
+  Раньше роль менялась только сырым `/database`. api+admin tsc чистые.
+
+### ✅ [INFRA-VITEST-MISSING] apps/admin tsc падал на TS2688 vitest/globals
+- **Важность:** 🟢
+- **Дата:** 30.06.2026
+- **Что сделано:** `vitest@2.1.8` не был установлен (отсутствовал `globals.d.ts`) → tsconfig
+  `types:["vitest/globals"]` ронял `tsc --noEmit`. `pnpm install --frozen-lockfile` восстановил
+  из lockfile (без изменений lock). tsc admin теперь EXIT 0. Это была «мелочь» из чекпоинта 29.06.
+
+## 2026-06-29 (Полат) — Live-аудит админки + фиксы (orchestrator-сессия)
+
+### ✅ [STRESS-DOS-001] Явный лимит body-parser (DoS hardening)
+- **Важность:** 🔴
+- **Файлы:** `apps/api/src/main.ts`
+- **Что сделано:** `bodyParser:false` + `useBodyParser('json'|'urlencoded',{limit:'100kb'})`. Большой payload → 413 до guard/Prisma. Media (multipart 10MB) не затронут. tsc чистый.
+- **⚠️ TODO перед прод-пушем:** runtime smoke (POST ≤100kb ok, >100kb → 413).
+
+### ✅ [BUG-3] NumberTicker overdamped — дашборд долго показывал 0
+- **Важность:** 🟡
+- **Файлы:** `apps/admin/src/components/ui/number-ticker.tsx`
+- **Что сделано:** spring `{damping:60,stiffness:100}` (ζ≈3, 10-20с) → `{damping:30,stiffness:120}` (ζ≈1.37, ~0.8с, без overshoot).
+
+### ✅ [BUG-1] admin/subscriptions list не считал daysLeft
+- **Важность:** 🟡
+- **Файлы:** `apps/api/src/modules/admin/admin-subscriptions.controller.ts`
+- **Что сделано:** добавлен расчёт `daysLeft` для каждого элемента в list endpoint (раньше только detail). Колонка «ОСТАЛОСЬ» больше не пустая.
+
+### ✅ [BUG-TMA-1] Greeting «Привет, .!» при пустом first_name
+- **Важность:** 🟢
+- **Файлы:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Что сделано:** fallback `user.first_name || user.username || 'вас'`.
+
+---
+
+## 2026-06-25 (Полат) — INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+### ✅ [INFRA-BACKUP-DRILL-FIRST-RUN-001] Restore drill — PASS
+- **drill_status:** PASS
+- **Дамп:** 0.28 MB, pg_dump v18 (Railway Postgres 18.4)
+- **Restore:** pg_restore --no-owner --no-acl → exit 0
+- **Данные:** users=12, sellers=9, stores=9, products=34, orders=22, order_items=26, carts=6
+- **Orphans:** все 0 — FK-целостность ок
+- **Инструмент:** Docker postgres:18-bookworm (pg_dump 16 несовместим с PG 18)
+- **Репорт:** `analiz/logs.md` → [2026-06-25] INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+---
+
+## 2026-06-25 (Полат) — INFRA-UPTIME-ALERTS-001
+
+### ✅ [INFRA-UPTIME-ALERTS-001] UptimeRobot — 6 мониторов, email-алерты
+- **Сервис:** uptimerobot.com (free план, 6/50 мониторов использовано)
+- **Мониторы:** API `/health/live`, web-buyer, web-seller, admin, TMA, landing
+- **Алерт:** email на `polatbekismoilov17@gmail.com`, интервал 5 мин
+- **Примечание:** Telegram-алерт — только платный план UptimeRobot; оставили email
+- **Скрипт:** `scripts/setup-uptimerobot.ps1` (для будущего воспроизведения)
+
+---
+
+## 2026-06-25 (Полат) — UX + Bot Sync audit fixes (P0/P1)
+
+### ✅ [P0-SYNC-001] notifyNewOrder теперь доставляет через chatId
+- **Файлы:** `seller-notification.service.ts`, `telegram-notification.processor.ts`, `confirm-checkout.use-case.ts`
+- **Фикс:** добавлен `recipientChatId?` в `NotifyNewOrderData`; processor использует chatId как primary, @username как fallback; checkout передаёт `store.seller.telegramChatId`
+
+### ✅ [P0-SYNC-002] Bot stores теперь создаются в PENDING_REVIEW + открывается ModerationCase
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** оба места `status: 'DRAFT'` → `'PENDING_REVIEW'`; добавлен private `openModerationCaseForStore()` через Prisma inline
+
+### ✅ [P0-SYNC-003] Slug транслитерация для кириллических названий в боте
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлена `toLatinSlug()` с `CYRILLIC_MAP`; оба места slug-генерации обновлены
+
+### ✅ [P1-SYNC-005] handleStart: store_ deeplink теперь открывает TMA кнопкой
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлен handler для `startParam?.startsWith('store_')` → `sendWithWebApp`
+
+### ✅ [P0-ONBOARD-003] apply-seller теперь заполняет telegramChatId из user.telegramId
+- **Файл:** `apply-seller.use-case.ts`
+- **Фикс:** `telegramChatId: user.telegramId` если есть
+
+### ✅ [P0-ONBOARD-004] TMA DashboardPage welcome-баннер для новых продавцов
+- **Файл:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Фикс:** `isNewSeller` = productCount===0 && orderCount===0 → показывает welcomeBanner с CTA
+
+### 📋 [ONBOARDING-AUDIT-AZIM-001] Задачи Азиму записаны в tasks.md
+- web-seller: `toSlug()` для кириллицы, дубль TG полей, «Войти» подсказка
+- web-buyer: OtpGate инструкция про @maxsavdo_bot
+
+---
+
+## 2026-06-24 (Полат) — Ahmed E2E Audit P1/P2 баги + i18n admin завершён
+
+### ✅ [AHMED-AUDIT-P1] suspend-store guard — только APPROVED → SUSPENDED
+- **Файл:** `apps/api/src/modules/admin/use-cases/suspend-store.use-case.ts`
+- **Root cause:** guard `sameAsTarget: SUSPENDED` разрешал суспенд из любого статуса; `unsuspend` всегда возвращает в APPROVED → для DRAFT/PENDING_REVIEW это неправильный rollback
+- **Fix:** guard изменён на `notInFromList: ['APPROVED']` — суспенд только из APPROVED
+
+### ✅ [AHMED-AUDIT-P1b] UI-текст modalUnapproveDesc: "черновик" → "На проверке"
+- **Файлы:** `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Fix:** `storeDetail.modalUnapproveDesc` исправлен в обоих языках — "переведён на повторную проверку (статус «На проверке»)"
+
+### ✅ [AHMED-AUDIT-P2] daysLeft undefined не показывался как "—"
+- **Файл:** `apps/admin/src/pages/StoreDetailPage.tsx:194`
+- **Fix:** `=== null` → `== null` (catches undefined тоже)
+
+### ✅ [AHMED-AUDIT-P2] ActivityLogPanel KEY_ACTIONS формат неверный → "Важные события" всегда пустой
+- **Файл:** `apps/admin/src/components/admin/ActivityLogPanel.tsx`
+- **Root cause:** `KEY_ACTIONS` содержал `'store.SUSPEND'`, `'user.SUSPEND'` и т.д. — старый формат, реальные записи аудита идут как `'STORE_SUSPENDED'`, `'USER_SUSPENDED'`
+- **Fix:** весь массив заменён на актуальные строки формата audit_log action
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] Admin i18n — все 26 страниц
+- **Закрыто 24.06.2026** — ProductsPage + DatabasePage получили `useTranslation()`
+- ru.ts/uz.ts: добавлены ключи products.* (24) и db.* (26)
+- Все ранее хардкоженные строки в admin переведены
+
+### ✅ [STRESS-TEST-001] Ноаут-прогон 30/31 PASS
+- **Файл:** `analiz/run-noauth-test.js` — 31 сценарий без JWT
+- **Баг найден:** EDGE-22 — 500k payload → 500 до auth guard (DoS вектор)
+- **Залогировано:** `analiz/logs.md` как `STRESS-DOS-001`
+
+## 2026-06-23 (Полат) — BILLING-MACHINE-001 закрыто + API-CONTROLLERS-ARCH-DEBT-001 minor remainder
+
+### ✅ [BILLING-MACHINE-001] Подписки + энфорсмент
+- Реализовано в сессии ~10.06.2026, tasks.md не был обновлён — закрыто сейчас.
+- **Schema:** `Subscription` (1:1 Seller), `SubscriptionTier {FREE PRO STUDIO}`, `SubscriptionStatus {TRIAL ACTIVE PAST_DUE SUSPENDED CHURNED CANCELLED}`, `SubscriptionPaymentMethod {MANUAL_TRANSFER CLICK PAYME COMP}`
+- **Cron:** `@Cron('0 3 * * *')` в `SubscriptionExpiryProcessor` — переходы статусов ежедневно 03:00 UTC
+- **Storefront gate:** `isSuspendedByBilling` на Store (независимо от `isPublic`) — скрывает магазин при SUSPENDED
+- **Product cap:** `PlanLimitGuardService` в `shared/` — 402 PAYMENT_REQUIRED при превышении FREE лимита (50 товаров)
+- **Admin:** `AdminSubscriptionsController` — mark-paid/extend-trial/cancel/comp
+- **Types:** `SubscriptionDto` в `packages/types/src/api/subscriptions.ts`
+- **Wired:** `SubscriptionsModule` зарегистрирован в `app.module.ts` с `ScheduleModule`
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] minor remainder — super-admin/media/storefront
+- **Коммит:** следующий commit этой сессии
+- `UsersRepository` +4 метода: `findPhoneById`, `findBuyerIdByUserId`, `upsertBuyerAvatar`, `syncTelegramId`
+- `SellersRepository` +1 метод: `updateAvatarByUserId`
+- `super-admin.controller.ts`: убран PrismaService → `UsersRepository` (findPhoneById) + `AdminRepository` (findAdminByUserId)
+- `media.controller.ts`: убран PrismaService → `UsersRepository` (upsertBuyerAvatar) + `SellersRepository` (updateAvatarByUserId)
+- `storefront.controller.ts`: убран PrismaService → `UsersRepository` (findBuyerIdByUserId)
+- `MediaModule`: добавлены импорты `UsersModule` + `SellersModule`
+- `ProductsModule`: добавлен импорт `UsersModule`
+- `telegram-webhook.controller.ts`: оставлен как intentional exception (цикл через AuthModule, см. комментарий в TelegramModule)
+- tsc --noEmit чист после изменений
+
+## 2026-06-21 (Полат) — SEC-AUDIT-04 + API-CONTROLLERS-ARCH-DEBT-001
+
+### ✅ [SEC-AUDIT-04] Глобальный APP_GUARD JwtAuthGuard + @Public()
+- **Коммит:** `9f91997`
+- `common/decorators/public.decorator.ts` — IS_PUBLIC_KEY + @Public()
+- `JwtAuthGuard` + `Reflector` — canActivate проверяет IS_PUBLIC, пропускает
+- `app.module.ts` — `APP_GUARD: JwtAuthGuard` (перед ThrottlerGuard)
+- 27 публичных эндпоинтов помечены: auth (telegram/otp/refresh), все storefront routes,
+  categories storefront, cart (OptionalJwt ×5), analytics/track, media/proxy,
+  reviews public GET, telegram webhook, health×2
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] products + stores + categories — убрать прямой prisma
+- **Коммиты:** `7c00d23` (products), `753a6c0` (stores+categories)
+- `ProductImagesRepository` — 6 методов (create/clearPrimary/update/delete/count/findByProductAndId)
+- `ProductAttributesRepository` — 5 методов (list/create/findByProductAndId/update/delete)
+- `StoresRepository` — +`getDirections`/`replaceDirections` (с transaction + validation)
+- `MediaRepository` — +`findManyByIds` (для resolveStoreImageUrls в stores)
+- `GlobalCategoriesRepository` — +`findTreeActive`/`findChildren`
+- `CategoryFiltersRepository` — `findBySlug`/`findUnique`/`updateOptions`
+- Убран `PrismaService` из: ProductsController, StoresController, CategoriesController
+- Осталось (minor): super-admin/media/storefront/telegram-webhook (по 1-2 вызова)
+
+## 2026-06-21 (Полат) — Security audit TMA + Admin (8 фиксов)
+
+### ✅ [A2-TG-REPLAY-001] Telegram initData replay-атака
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.ts`
+- **Что сделано:** добавлена проверка `auth_date < 24h`. Без неё перехваченный `initData` был валиден вечно.
+
+### ✅ [ADMIN-SELF-SUSPEND-001] Админ мог suspend свой аккаунт
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-users.controller.ts`
+- **Что сделано:** `POST /admin/users/:id/suspend` теперь возвращает 400 если `id === user.sub`.
+
+### ✅ [ADMIN-SELF-LOCKOUT-001] Самоблокировка через DB Manager
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-db.controller.ts`
+- **Что сделано:** PATCH `status/role/deletedAt` и DELETE своей строки в `users` через DB Manager заблокированы.
+
+### ✅ [A7-TMA-LOGOUT-SESSION] Logout не инвалидировал серверную сессию
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/auth.ts`, `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** `serverLogout()` вызывает `POST /auth/logout` перед очисткой токена. Сессия удаляется из БД немедленно, не ждёт `exp`.
+
+### ✅ [F16-TMA-CACHE-LEAK] API-кеш не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `clearApiCache()` при logout чистит `_cache` и `_inflight`. Данные одного пользователя не утекают следующему на том же устройстве.
+
+### ✅ [E5-TMA-WISHLIST-LEAK] Wishlist cache не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/wishlist.ts`
+- **Что сделано:** `clearWishlistCache()` при logout чистит in-memory Set и sessionStorage.
+
+### ✅ [B13-TMA-REMOVE-ITEM] removeItem удалял все варианты одного товара
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/cart.ts`, `apps/tma/src/pages/buyer/CartPage.tsx`
+- **Что сделано:** `removeCartItem(productId, variantId)` фильтрует по обоим полям. Старый `removeItem(productId)` удалял ВСЕ позиции с таким productId.
+
+### ✅ [F5-TMA-UPLOAD-TIMEOUT] apiUpload без timeout — UI зависал навсегда
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `xhr.timeout = 60_000` + `xhr.ontimeout` → `ApiError(408)`.
+
+## 2026-06-20 (Полат) — Concurrency fixes + REDIS-CHATID-001
+
+### ✅ [STOCK-RACE-001 / CART-001-004 / ORDER-NUM-001] Конкурентность корзины и стока
+- **Важность:** 🔴 P0 · **Дата:** 20.06.2026 · **Коммит:** `3115fb4`
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts`
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts`
+  - `apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts`
+  - `apps/api/src/modules/cart/use-cases/bulk-merge-cart.use-case.ts`
+  - `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`
+  - `apps/api/src/modules/checkout/use-cases/create-direct-order.use-case.ts`
+  - `packages/db/prisma/migrations/20260620000001_cart_concurrency_indexes/`
+- **Что сделано:** 5 race-condition фиксов: `adjustStock` → атомарный `$executeRaw WHERE stock+delta>=0`,
+  `upsertItem` → ON CONFLICT DO UPDATE (partial unique index на cart_items), `getOrCreateForBuyer` →
+  INSERT ON CONFLICT (partial unique index на carts), bulk-merge sequential loop → Promise.all,
+  `generateOrderNumber` → `crypto.randomBytes(6)` вместо Date.now()+Math.random().
+
+### ✅ [CART-003] Optimistic lock в updateItemQuantity
+- **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `6165599`
+- **Файлы:**
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts`
+  - `apps/api/src/modules/cart/use-cases/update-cart-item.use-case.ts`
+  - `apps/api/src/modules/cart/use-cases/cart-mutations.use-cases.spec.ts`
+- **Что сделано:** `updateItemQuantity` принимает `expectedQuantity` — атомарный `WHERE quantity = expected`.
+  Если 0 строк затронуто (конкурентное изменение) → use-case бросает 409 CONFLICT. Тест добавлен.
+
+### ✅ [ISVISIBLE-SEMANTICS-001] isSuspendedByBilling отдельно от isPublic
+- **Важность:** 🔴 P0 · **Дата:** 20.06.2026 · **Коммит:** `45aa01f`
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` + migration `20260620000002`
+  - `expire-subscriptions.use-case.ts`, `mark-paid.use-case.ts`, `comp-subscription.use-case.ts`
+  - `stores.repository.ts`, `products.repository.ts`, `get-featured-storefront.use-case.ts`
+  - `wishlist.repository.ts`, `get-wishlist.use-case.ts`
+- **Что сделано:** добавлено поле `isSuspendedByBilling Boolean @default(false)` на Store.
+  Billing-логика теперь трогает только этот флаг, isPublic не меняет.
+  Storefront-фильтры: `isPublic=true AND isSuspendedByBilling=false`.
+  Устраняет два бага: случайное un-hiding при реактивации + bypass suspension через toggle.
+
+### ✅ [REDIS-CHATID-001] DB-fallback для chatId при Redis miss в OTP
+- **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `fd9e3a9`
+- **Файлы:**
+  - `apps/api/src/modules/telegram/telegram-webhook.controller.ts`
+  - `apps/api/src/modules/auth/services/otp.service.ts`
+  - `apps/api/src/modules/auth/services/otp.service.spec.ts`
+- **Что сделано:** при получении контакта в боте chatId пишется в Redis и в `User.telegramId` (PostgreSQL).
+  В `sendOtp`: Redis miss → fallback на `User.telegramId` из DB + восстановление Redis.
+  Устраняет `TELEGRAM_NOT_LINKED` после Redis flush или смены инстанса.
+
 ## 2026-06-12 (Полат) — Stock check bug + Admin subscription widget + TMA onboarding + Delete account
 
 ### ✅ [BUG-STOCK-SIMPLE-001] Stock не проверялся для простых товаров (без вариантов)

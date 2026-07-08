@@ -18,4 +18,10 @@ export class ListOrdersDto extends PaginationDto {
   @IsOptional()
   @IsISO8601()
   dateTo?: string;
+
+  // FEAT-ORDERS-ARCHIVE-001: query-параметр (строка) — 'true' показывает архив покупателя.
+  // Парсится в boolean в контроллере (query всегда строка).
+  @IsOptional()
+  @IsString()
+  archived?: string;
 }

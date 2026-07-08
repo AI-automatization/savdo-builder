@@ -3,6 +3,7 @@ import { Database, Search, Edit2, Trash2, Plus, X, Check, AlertTriangle, Refresh
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { PaginationBar } from '../components/admin/PaginationBar'
+import { useTranslation } from '../lib/i18n/I18nProvider'
 
 type DbFieldType = 'string' | 'text' | 'number' | 'boolean' | 'datetime' | 'json' | 'enum'
 
@@ -92,6 +93,7 @@ function CellValue({ col, val }: { col: string; val: unknown }) {
 }
 
 function DetailValue({ col, val }: { col: string; val: unknown }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   if (val === null || val === undefined) return <span style={{ color: 'var(--text-dim)' }}>null</span>
   if (typeof val === 'boolean') return (
@@ -123,7 +125,7 @@ function DetailValue({ col, val }: { col: string; val: unknown }) {
         {s.length > 100 && (
           <button onClick={() => setExpanded(x => !x)}
             style={{ marginTop: 4, fontSize: 11, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-            {expanded ? 'Свернуть' : 'Развернуть'}
+            {expanded ? t('db.collapse') : t('db.expand')}
           </button>
         )}
       </div>
@@ -148,25 +150,26 @@ function RowDetailPanel({ row, writableFields, isReadonly, onEdit, onDelete, onC
   onDelete: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div style={{ width: 340, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <Eye size={14} color="var(--primary)" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Запись</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{t('db.rowDetailTitle')}</span>
         </div>
         <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
           {!isReadonly && writableFields.length > 0 && (
             <button onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 28, padding: '0 10px', borderRadius: 6, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              <Edit2 size={11} /> Изменить
+              <Edit2 size={11} /> {t('db.editBtn')}
             </button>
           )}
           {!isReadonly && (
-            <button onClick={onDelete} aria-label="Удалить запись" style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid var(--border-error)', background: 'var(--surface-error)', color: 'var(--error)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={onDelete} aria-label={t('db.deleteTitle')} style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid var(--border-error)', background: 'var(--surface-error)', color: 'var(--error)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Trash2 size={12} aria-hidden="true" />
             </button>
           )}
-          <button onClick={onClose} aria-label="Закрыть панель" style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} aria-label={t('common.close')} style={{ height: 28, width: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={13} aria-hidden="true" />
           </button>
         </div>
@@ -200,7 +203,6 @@ function toDatetimeLocal(val: string | undefined): string {
   if (!val) return ''
   const d = new Date(val)
   if (isNaN(d.getTime())) return ''
-  // Local time (без смещения), padStart до 2 цифр
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
@@ -210,7 +212,8 @@ function FieldInput({ meta, value, onChange }: {
   value: string
   onChange: (v: string) => void
 }) {
-  // Boolean → 2 кнопки (true/false) + кнопка очистить (если nullable)
+  const { t } = useTranslation()
+
   if (meta.type === 'boolean') {
     return (
       <div style={{ display: 'flex', gap: 8 }}>
@@ -239,11 +242,10 @@ function FieldInput({ meta, value, onChange }: {
     )
   }
 
-  // Enum → <select> + опция "(пусто)" если nullable
   if (meta.type === 'enum') {
     return (
       <select value={value} onChange={e => onChange(e.target.value)} style={baseInputStyle}>
-        {meta.nullable && <option value="">— не задано —</option>}
+        {meta.nullable && <option value="">{t('db.enumEmpty')}</option>}
         {(meta.enumValues ?? []).map(v => (
           <option key={v} value={v}>{v}</option>
         ))}
@@ -251,7 +253,6 @@ function FieldInput({ meta, value, onChange }: {
     )
   }
 
-  // Datetime → <input type="datetime-local">
   if (meta.type === 'datetime') {
     return (
       <input type="datetime-local" value={toDatetimeLocal(value)}
@@ -260,15 +261,13 @@ function FieldInput({ meta, value, onChange }: {
     )
   }
 
-  // Number → <input type="number">
   if (meta.type === 'number') {
     return (
       <input type="number" value={value} onChange={e => onChange(e.target.value)}
-        style={baseInputStyle} placeholder={meta.nullable ? 'оставьте пустым = null' : '0'} />
+        style={baseInputStyle} placeholder={meta.nullable ? t('db.nullablePlaceholder') : '0'} />
     )
   }
 
-  // Json → <textarea> с auto-pretty при потере фокуса
   if (meta.type === 'json') {
     const onBlur = () => {
       if (!value.trim()) return
@@ -282,11 +281,10 @@ function FieldInput({ meta, value, onChange }: {
       <textarea value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
         rows={6} spellCheck={false}
         style={{ ...baseInputStyle, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
-        placeholder={meta.nullable ? '{ } или оставить пустым = null' : '{ }'} />
+        placeholder={meta.nullable ? t('db.nullableJsonPlaceholder') : '{ }'} />
     )
   }
 
-  // Text (long) → <textarea>
   if (meta.type === 'text') {
     return (
       <textarea value={value} onChange={e => onChange(e.target.value)} rows={4}
@@ -294,10 +292,9 @@ function FieldInput({ meta, value, onChange }: {
     )
   }
 
-  // String → <input type="text">
   return (
     <input value={value} onChange={e => onChange(e.target.value)} style={baseInputStyle}
-      placeholder={meta.nullable ? 'оставьте пустым = null' : ''} />
+      placeholder={meta.nullable ? t('db.nullablePlaceholder') : ''} />
   )
 }
 
@@ -310,7 +307,6 @@ function fieldLabel(meta: DbFieldMeta): string {
 // ── Edit Modal ────────────────────────────────────────────────────────────────
 
 function fallbackMeta(field: string, val: unknown): DbFieldMeta {
-  // Если бэк не прислал fieldMetas (старая версия API) — выводим тип по runtime-значению.
   if (typeof val === 'boolean') return { name: field, type: 'boolean', nullable: true }
   if (typeof val === 'number')  return { name: field, type: 'number',  nullable: true }
   if (val && typeof val === 'object') return { name: field, type: 'json', nullable: true }
@@ -322,7 +318,7 @@ function serializeForSubmit(meta: DbFieldMeta, raw: string): unknown {
   if (raw === '' && meta.nullable) return null
   if (meta.type === 'json') {
     if (!raw.trim()) return meta.nullable ? null : raw
-    try { return JSON.parse(raw) } catch { return raw } // оставим строку — бэк отдаст 400
+    try { return JSON.parse(raw) } catch { return raw }
   }
   if (meta.type === 'datetime') {
     if (!raw) return meta.nullable ? null : raw
@@ -338,6 +334,7 @@ function EditModal({ row, writableFields, fieldMetas, onSave, onCancel }: {
   onSave: (data: Record<string, unknown>) => Promise<void>
   onCancel: () => void
 }) {
+  const { t } = useTranslation()
   const metaMap = new Map<string, DbFieldMeta>(
     (fieldMetas ?? []).map(m => [m.name, m]),
   )
@@ -365,7 +362,7 @@ function EditModal({ row, writableFields, fieldMetas, onSave, onCancel }: {
       }
       await onSave(payload)
     }
-    catch (e: any) { setErr(e.message ?? 'Ошибка') }
+    catch (e: any) { setErr(e.message ?? t('common.error')) }
     finally { setSaving(false) }
   }
 
@@ -373,8 +370,8 @@ function EditModal({ row, writableFields, fieldMetas, onSave, onCancel }: {
     <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 540, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Редактировать</h3>
-          <button onClick={onCancel} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.editModalTitle')}</h3>
+          <button onClick={onCancel} aria-label={t('common.close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -399,9 +396,9 @@ function EditModal({ row, writableFields, fieldMetas, onSave, onCancel }: {
         {err && <div role="alert" style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{err}</div>}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>Отмена</button>
+          <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>{t('common.cancel')}</button>
           <button onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
-            <Check size={14} /> {saving ? 'Сохранение...' : 'Сохранить'}
+            <Check size={14} /> {saving ? t('db.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -417,6 +414,7 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
   onSave: (data: Record<string, unknown>) => Promise<void>
   onCancel: () => void
 }) {
+  const { t } = useTranslation()
   const metaMap = new Map<string, DbFieldMeta>(
     (fieldMetas ?? []).map(m => [m.name, m]),
   )
@@ -427,7 +425,6 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
     const init: Record<string, string> = {}
     writableFields.forEach(f => {
       const meta = resolveMeta(f)
-      // Дефолт по типу (улучшает UX): boolean → 'false', enum → первое значение
       if (meta.type === 'boolean') init[f] = ''
       else if (meta.type === 'enum' && meta.enumValues?.length && !meta.nullable) init[f] = meta.enumValues[0]
       else init[f] = ''
@@ -444,13 +441,12 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
       for (const f of writableFields) {
         const v = values[f] ?? ''
         const meta = resolveMeta(f)
-        // Не отправляем пустые поля если они optional — пусть Prisma применит default.
         if (v === '' && meta.nullable) continue
         payload[f] = serializeForSubmit(meta, v)
       }
       await onSave(payload)
     }
-    catch (e: any) { setErr(e.message ?? 'Ошибка') }
+    catch (e: any) { setErr(e.message ?? t('common.error')) }
     finally { setSaving(false) }
   }
 
@@ -458,8 +454,8 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
     <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 540, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Добавить запись</h3>
-          <button onClick={onCancel} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.insertModalTitle')}</h3>
+          <button onClick={onCancel} aria-label={t('common.close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
         {writableFields.map(field => {
           const meta = resolveMeta(field)
@@ -474,9 +470,9 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
         })}
         {err && <div role="alert" style={{ fontSize: 12, color: '#EF4444', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, marginBottom: 14 }}>{err}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>Отмена</button>
+          <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>{t('common.cancel')}</button>
           <button onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
-            <Plus size={14} /> {saving ? 'Сохранение...' : 'Добавить'}
+            <Plus size={14} /> {saving ? t('db.saving') : t('db.add')}
           </button>
         </div>
       </div>
@@ -487,6 +483,7 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function DatabasePage() {
+  const { t } = useTranslation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTable, setActiveTable] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -520,7 +517,7 @@ export default function DatabasePage() {
       setSelectedRow(prev => prev ? { ...prev, ...data } : null)
       setTableVersion(v => v + 1)
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка сохранения')
+      setActionError(e.message ?? t('common.error'))
     }
   }
 
@@ -533,7 +530,7 @@ export default function DatabasePage() {
       setSelectedRow(null)
       setTableVersion(v => v + 1)
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка удаления')
+      setActionError(e.message ?? t('common.error'))
       setDeleteConfirmId(null)
     }
   }
@@ -546,7 +543,7 @@ export default function DatabasePage() {
       setShowInsert(false)
       setTableVersion(v => v + 1)
     } catch (e: any) {
-      setActionError(e.message ?? 'Ошибка создания записи')
+      setActionError(e.message ?? t('common.error'))
     }
   }
 
@@ -561,7 +558,6 @@ export default function DatabasePage() {
   const currentTableMeta = tablesData?.find(t => t.table === activeTable)
   const writableFields = currentTableMeta?.writableFields ?? []
   const isReadonly = currentTableMeta?.readonly ?? true
-  // Берём fieldMetas из rowsData (свежее), иначе из tablesData (load-time)
   const fieldMetas = rowsData?.fieldMetas ?? currentTableMeta?.fieldMetas
 
   return (
@@ -574,40 +570,40 @@ export default function DatabasePage() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Database size={15} color="var(--primary)" />
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>База данных</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t('db.title')}</span>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>10 таблиц · whitelist</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>{t('db.subtitle')}</div>
           </div>
         </div>
 
         <div style={{ padding: '8px', flex: 1 }}>
-          {tablesLoading && <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--text-dim)' }}>Загрузка...</div>}
+          {tablesLoading && <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--text-dim)' }}>{t('common.loading')}</div>}
           {tablesError && (
             <div style={{ padding: '10px 12px', fontSize: 12, color: '#EF4444', background: 'rgba(239,68,68,0.08)', borderRadius: 8, margin: '4px 0' }}>
-              <div style={{ fontWeight: 600, marginBottom: 3 }}>API недоступен</div>
+              <div style={{ fontWeight: 600, marginBottom: 3 }}>{t('db.apiUnavailable')}</div>
               <div style={{ wordBreak: 'break-word', marginBottom: 8, color: 'var(--text-muted)', fontSize: 11 }}>
-                {tablesError.includes('fetch') ? 'Запустите: pnpm dev:api' : tablesError}
+                {tablesError.includes('fetch') ? t('db.apiStartHint') : tablesError}
               </div>
               <button onClick={refetchTables} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                <RefreshCw size={10} /> Повторить
+                <RefreshCw size={10} /> {t('common.retry')}
               </button>
             </div>
           )}
           {!tablesLoading && !tablesError && !tablesData?.length && (
-            <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--text-dim)' }}>Таблицы не найдены</div>
+            <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--text-dim)' }}>{t('db.noTables')}</div>
           )}
-          {tablesData?.map(t => (
-            <button key={t.table}
-              onClick={() => { setActiveTable(t.table); setSearch(''); setSearchInput('') }}
+          {tablesData?.map(tbl => (
+            <button key={tbl.table}
+              onClick={() => { setActiveTable(tbl.table); setSearch(''); setSearchInput('') }}
               style={{ width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8, border: 'none',
-                background: activeTable === t.table ? 'rgba(99,102,241,0.12)' : 'transparent',
-                color: activeTable === t.table ? 'var(--primary)' : 'var(--text-muted)',
+                background: activeTable === tbl.table ? 'rgba(99,102,241,0.12)' : 'transparent',
+                color: activeTable === tbl.table ? 'var(--primary)' : 'var(--text-muted)',
                 fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                {t.readonly && <Lock size={10} style={{ opacity: 0.5, flexShrink: 0 }} />}
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.table}</span>
+                {tbl.readonly && <Lock size={10} style={{ opacity: 0.5, flexShrink: 0 }} />}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tbl.table}</span>
               </span>
-              <span style={{ fontSize: 11, fontFamily: 'monospace', opacity: 0.6, flexShrink: 0, marginLeft: 4 }}>{t.count.toLocaleString()}</span>
+              <span style={{ fontSize: 11, fontFamily: 'monospace', opacity: 0.6, flexShrink: 0, marginLeft: 4 }}>{tbl.count.toLocaleString()}</span>
             </button>
           ))}
         </div>
@@ -619,42 +615,42 @@ export default function DatabasePage() {
         {!activeTable ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
             <Database size={44} color="var(--text-dim)" />
-            <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Выберите таблицу слева</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('db.selectTable')}</div>
           </div>
         ) : (
           <>
             {/* Toolbar */}
             <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-              <button onClick={() => setSidebarOpen(o => !o)} title={sidebarOpen ? 'Скрыть таблицы' : 'Показать таблицы'}
+              <button onClick={() => setSidebarOpen(o => !o)} title={sidebarOpen ? t('db.hideTables') : t('db.showTables')}
                 style={{ height: 32, width: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
               </button>
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{activeTable}</span>
               {isReadonly && (
                 <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, background: 'rgba(148,163,184,0.1)', color: '#94A3B8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Lock size={9} />только чтение
+                  <Lock size={9} />{t('db.readonlyBadge')}
                 </span>
               )}
-              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{rowsData?.total ?? 0} записей</span>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('db.rowsCount', { count: rowsData?.total ?? 0 })}</span>
               <div style={{ flex: 1 }} />
               <div style={{ position: 'relative' }}>
                 <Search size={12} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                 <input value={searchInput} onChange={e => setSearchInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && setSearch(searchInput.trim())}
-                  placeholder="Поиск..." style={{ paddingLeft: 28, paddingRight: 10, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 12, outline: 'none', width: 160 }} />
+                  placeholder={t('common.search')} style={{ paddingLeft: 28, paddingRight: 10, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 12, outline: 'none', width: 160 }} />
               </div>
-              <button onClick={() => setSearch(searchInput.trim())} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Найти</button>
+              <button onClick={() => setSearch(searchInput.trim())} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t('common.find')}</button>
               {search && (
                 <button onClick={() => { setSearch(''); setSearchInput('') }} style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <X size={13} />
                 </button>
               )}
-              <button onClick={() => setTableVersion(v => v + 1)} title="Обновить"
+              <button onClick={() => setTableVersion(v => v + 1)} title={t('common.refresh')}
                 style={{ height: 32, width: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <RefreshCw size={13} />
               </button>
               {!isReadonly && writableFields.length > 0 && (
                 <button onClick={() => setShowInsert(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, height: 32, padding: '0 12px', borderRadius: 8, border: 'none', background: 'rgba(16,185,129,0.12)', color: '#10B981', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  <Plus size={13} /> Добавить
+                  <Plus size={13} /> {t('db.add')}
                 </button>
               )}
             </div>
@@ -662,17 +658,17 @@ export default function DatabasePage() {
             {actionError && (
               <div style={{ margin: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'var(--surface-error)', border: '1px solid var(--border-error-soft)', color: 'var(--error)', fontSize: 13, flexShrink: 0 }}>
                 <AlertTriangle size={13} aria-hidden="true" /> {actionError}
-                <button onClick={() => setActionError(null)} aria-label="Скрыть ошибку" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><X size={13} aria-hidden="true" /></button>
+                <button onClick={() => setActionError(null)} aria-label={t('common.close')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><X size={13} aria-hidden="true" /></button>
               </div>
             )}
 
             {/* Table */}
             <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
               {rowsLoading ? (
-                <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
+                <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{t('common.loading')}</div>
               ) : rows.length === 0 ? (
                 <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-                  {search ? `Ничего не найдено по «${search}»` : 'Таблица пуста'}
+                  {search ? t('db.noResults', { q: search }) : t('db.emptyTable')}
                 </div>
               ) : (
                 <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -702,18 +698,18 @@ export default function DatabasePage() {
                           ))}
                           <td style={{ padding: '9px 14px' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                              <button onClick={() => setSelectedRow(isSel ? null : row)} title="Подробнее"
+                              <button onClick={() => setSelectedRow(isSel ? null : row)} title={t('db.rowDetailTitle')}
                                 style={{ padding: '3px 7px', borderRadius: 6, border: `1px solid ${isSel ? 'var(--primary)' : 'var(--border)'}`, background: isSel ? 'rgba(99,102,241,0.1)' : 'var(--surface)', color: isSel ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                 <Eye size={12} />
                               </button>
                               {!isReadonly && writableFields.length > 0 && (
-                                <button onClick={() => { setSelectedRow(row); setEditRow(row) }} title="Редактировать"
+                                <button onClick={() => { setSelectedRow(row); setEditRow(row) }} title={t('db.editModalTitle')}
                                   style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                   <Edit2 size={12} />
                                 </button>
                               )}
                               {!isReadonly && (
-                                <button onClick={() => setDeleteConfirmId(String(row.id))} title="Удалить" aria-label="Удалить запись"
+                                <button onClick={() => setDeleteConfirmId(String(row.id))} title={t('db.deleteTitle')} aria-label={t('db.deleteTitle')}
                                   style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid var(--border-error-soft)', background: 'var(--surface-error)', color: 'var(--error)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                   <Trash2 size={12} aria-hidden="true" />
                                 </button>
@@ -735,7 +731,7 @@ export default function DatabasePage() {
                   page={rowsData.page}
                   totalPages={rowsData.totalPages}
                   total={rowsData.total}
-                  itemsLabel="записей"
+                  itemsLabel={t('db.itemsLabel')}
                   compact
                   onPageChange={setPage}
                 />
@@ -773,15 +769,15 @@ export default function DatabasePage() {
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 380 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <AlertTriangle size={20} color="#EF4444" />
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Удалить запись?</h3>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.deleteTitle')}</h3>
             </div>
             <p style={{ margin: '0 0 6px', color: 'var(--text-muted)', fontSize: 13 }}>
               ID: <code style={{ fontFamily: 'monospace', fontSize: 11 }}>{deleteConfirmId.slice(0, 16)}…</code>
             </p>
-            <p style={{ margin: '0 0 20px', color: '#EF4444', fontSize: 12 }}>Это действие необратимо.</p>
+            <p style={{ margin: '0 0 20px', color: '#EF4444', fontSize: 12 }}>{t('db.deleteWarning')}</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setDeleteConfirmId(null)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>Отмена</button>
-              <button onClick={() => handleDelete(deleteConfirmId)} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#EF4444', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Удалить</button>
+              <button onClick={() => setDeleteConfirmId(null)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>{t('common.cancel')}</button>
+              <button onClick={() => handleDelete(deleteConfirmId)} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#EF4444', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('common.delete')}</button>
             </div>
           </div>
         </div>

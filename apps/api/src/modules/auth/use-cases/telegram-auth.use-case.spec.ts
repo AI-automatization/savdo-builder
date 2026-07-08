@@ -22,7 +22,7 @@ const BOT_TOKEN = 'TEST_BOT_TOKEN';
 function buildInitData(userObj: any, validHash: boolean = true): string {
   const params = new URLSearchParams();
   params.set('user', JSON.stringify(userObj));
-  params.set('auth_date', '1735689600');
+  params.set('auth_date', String(Math.floor(Date.now() / 1000)));
 
   if (!validHash) {
     params.set('hash', 'invalid-hash-here');
@@ -114,7 +114,7 @@ describe('TelegramAuthUseCase', () => {
 
     it('user отсутствует в params → VALIDATION_ERROR', async () => {
       const params = new URLSearchParams();
-      params.set('auth_date', '1735689600');
+      params.set('auth_date', String(Math.floor(Date.now() / 1000)));
       const arr: string[] = [];
       params.forEach((v, k) => arr.push(`${k}=${v}`));
       arr.sort();
@@ -128,6 +128,7 @@ describe('TelegramAuthUseCase', () => {
     it('user JSON невалидный → VALIDATION_ERROR', async () => {
       const params = new URLSearchParams();
       params.set('user', '{not-json}');
+      params.set('auth_date', String(Math.floor(Date.now() / 1000)));
       const arr: string[] = [];
       params.forEach((v, k) => arr.push(`${k}=${v}`));
       arr.sort();

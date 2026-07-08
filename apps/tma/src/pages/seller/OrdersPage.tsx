@@ -129,6 +129,9 @@ export default function SellerOrdersPage() {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
+  // FEAT-ORDERS-ARCHIVE-001: переключатель «Активные ↔ Архив» + id заказа в процессе (раз)архивации.
+  const [archivedView, setArchivedView] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
   // FEAT-004-FE: «Написать покупателю» modal
   const [chatOrderId, setChatOrderId] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState('');
@@ -165,16 +168,19 @@ export default function SellerOrdersPage() {
     ordersAbortRef.current = ac;
     setError(false);
     // forceFresh: заказы быстро меняются — статусы, новые поступления.
-    api<{ data: Order[] }>('/seller/orders', { signal: ac.signal, forceFresh: true })
+    const url = archivedView ? '/seller/orders?archived=true' : '/seller/orders';
+    api<{ data: Order[] }>(url, { signal: ac.signal, forceFresh: true })
       .then((r) => { if (!ac.signal.aborted) setOrders(r.data ?? []); })
       .catch(() => { if (!ac.signal.aborted) setError(true); })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchOrders();
     return () => ordersAbortRef.current?.abort();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [archivedView]);
 
   // Auto-open detail if navigated with ?openId=:id (из DashboardPage «Последние заказы»)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -245,10 +251,43 @@ export default function SellerOrdersPage() {
     }
   };
 
+  // FEAT-ORDERS-ARCHIVE-001: спрятать закрытый заказ в архив / вернуть в активные.
+  const archiveOrder = async (orderId: string, toArchive: boolean) => {
+    setArchivingId(orderId);
+    try {
+      await api(`/seller/orders/${orderId}/archive`, {
+        method: 'PATCH',
+        body: { archived: toArchive },
+      });
+      tg?.HapticFeedback.notificationOccurred('success');
+      // Оптимистично убираем из текущего списка (архивный/активный — взаимоисключающие).
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setDetailId(null);
+      setDetail(null);
+      showToast(toArchive ? t('orders.archivedToast') : t('orders.unarchivedToast'));
+    } catch (err) {
+      tg?.HapticFeedback.notificationOccurred('error');
+      showToast(`❌ ${err instanceof Error ? err.message : t('orders.archiveError')}`, 'error');
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col gap-4">
-        <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>{t('seller.orders.title')}</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-base font-bold" style={{ color: 'var(--tg-text-primary)' }}>
+            {archivedView ? t('orders.archiveTitle') : t('seller.orders.title')}
+          </h1>
+          <button
+            onClick={() => setArchivedView((v) => !v)}
+            className="shrink-0 text-xxs font-semibold py-1.5 px-3 rounded-full transition-all active:opacity-70"
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-secondary)' }}
+          >
+            {archivedView ? t('orders.viewActive') : t('orders.viewArchive')}
+          </button>
+        </div>
 
         {/* Status filter tabs */}
         <div className="scroll-fade-x">
@@ -311,8 +350,8 @@ export default function SellerOrdersPage() {
 
         {!loading && !error && !orders.length && (
           <div className="flex flex-col items-center gap-2 py-10">
-            <span style={{ fontSize: 36 }}>📭</span>
-            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{t('orders.empty')}</p>
+            <span style={{ fontSize: 36 }}>{archivedView ? '🗄️' : '📭'}</span>
+            <p style={{ color: 'var(--tg-text-muted)', fontSize: 13 }}>{archivedView ? t('orders.emptyArchive') : t('orders.empty')}</p>
           </div>
         )}
         {!loading && !error && orders.length > 0 && orders.filter((o) => matchesFilter(o.status, statusFilter)).length === 0 && (
@@ -324,8 +363,9 @@ export default function SellerOrdersPage() {
 
         {(() => {
           const filtered = [...orders].sort(compareOrders).filter((o) => matchesFilter(o.status, statusFilter));
-          // Когда фильтр Все — отменённые прячем под кнопку "Показать N отменённых"
-          const hideCancelled = statusFilter === 'all' && !showCancelled;
+          // Когда фильтр Все — отменённые прячем под кнопку "Показать N отменённых".
+          // В архиве не прячем — там все заказы уже закрытые (DELIVERED/CANCELLED).
+          const hideCancelled = !archivedView && statusFilter === 'all' && !showCancelled;
           const visible = hideCancelled ? filtered.filter((o) => o.status !== 'CANCELLED') : filtered;
           const cancelledHidden = hideCancelled ? filtered.filter((o) => o.status === 'CANCELLED').length : 0;
 
@@ -403,6 +443,20 @@ export default function SellerOrdersPage() {
                         ✕ Отменить
                       </button>
                     )}
+                  </div>
+                )}
+
+                {/* FEAT-ORDERS-ARCHIVE-001: архивация/возврат закрытых (DELIVERED/CANCELLED) */}
+                {(o.status === 'DELIVERED' || o.status === 'CANCELLED') && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); archiveOrder(o.id, !archivedView); }}
+                      disabled={archivingId === o.id}
+                      className="w-full py-2 rounded-xl text-xs font-semibold transition-opacity active:opacity-70 disabled:opacity-40"
+                      style={{ background: 'var(--tg-surface-hover)', color: 'var(--tg-text-secondary)', border: '1px solid var(--tg-border-soft)' }}
+                    >
+                      {archivingId === o.id ? '...' : archivedView ? t('orders.unarchiveCta') : t('orders.archiveCta')}
+                    </button>
                   </div>
                 )}
               </GlassCard>

@@ -12,9 +12,11 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { SkipMfaCheck } from '../../common/decorators/skip-mfa.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
+import { ADMIN_PERMISSION_VOCABULARY } from '../../common/constants/admin-permissions';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
-import { PrismaService } from '../../database/prisma.service';
+import { UsersRepository } from '../users/repositories/users.repository';
+import { AdminRepository } from './repositories/admin.repository';
 
 import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
 import { AdminUsersManagementUseCase } from './use-cases/admin-users-management.use-case';
@@ -38,7 +40,8 @@ export class SuperAdminController {
   private readonly logger = new Logger(SuperAdminController.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly usersRepo: UsersRepository,
+    private readonly adminRepo: AdminRepository,
     private readonly adminAuth: AdminAuthUseCase,
     private readonly adminUsersMgmt: AdminUsersManagementUseCase,
     private readonly refundOrder: RefundOrderUseCase,
@@ -59,9 +62,9 @@ export class SuperAdminController {
   @Post('auth/mfa/setup')
   @SkipMfaCheck()
   async setupMfa(@CurrentUser() user: JwtPayload) {
-    const u = await this.prisma.user.findUnique({ where: { id: user.sub }, select: { phone: true } });
-    if (!u?.phone) throw new BadRequestException('User phone not found');
-    return this.adminAuth.setupMfa(user.sub, u.phone);
+    const phone = await this.usersRepo.findPhoneById(user.sub);
+    if (!phone) throw new BadRequestException('User phone not found');
+    return this.adminAuth.setupMfa(user.sub, phone);
   }
 
   @Post('auth/mfa/verify')
@@ -142,6 +145,55 @@ export class SuperAdminController {
   ) {
     const actor = await this.requireMyAdminRecord(user.sub);
     return this.adminUsersMgmt.revoke(actor.id, targetId);
+  }
+
+  // ─── FEAT-CUSTOM-ROLES-001: кастомные роли (только super_admin) ─────────────
+
+  // Словарь permissions для UI (какие можно выдать кастомной роли).
+  @Get('permissions/vocabulary')
+  @AdminPermission('admin:read')
+  async permissionVocabulary() {
+    return { permissions: ADMIN_PERMISSION_VOCABULARY };
+  }
+
+  @Get('custom-roles')
+  @AdminPermission('admin:read')
+  async listCustomRoles() {
+    return this.adminUsersMgmt.listCustomRoles();
+  }
+
+  @Post('custom-roles')
+  @AdminPermission('admin:create')
+  async createCustomRole(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { name: string; label: string; permissions: string[] },
+  ) {
+    if (!body?.name || !body?.label || !Array.isArray(body?.permissions)) {
+      throw new BadRequestException('name, label, permissions[] required');
+    }
+    const actor = await this.requireMyAdminRecord(user.sub);
+    return this.adminUsersMgmt.createCustomRole(actor.id, body.name, body.label, body.permissions);
+  }
+
+  @Patch('custom-roles/:id')
+  @AdminPermission('admin:update')
+  async updateCustomRole(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() body: { label?: string; permissions?: string[] },
+  ) {
+    const actor = await this.requireMyAdminRecord(user.sub);
+    return this.adminUsersMgmt.updateCustomRole(actor.id, id, body);
+  }
+
+  @Delete('custom-roles/:id')
+  @AdminPermission('admin:delete')
+  async deleteCustomRole(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const actor = await this.requireMyAdminRecord(user.sub);
+    return this.adminUsersMgmt.deleteCustomRole(actor.id, id);
   }
 
   // ─── Refund order ──────────────────────────────────────────────────────────
@@ -236,7 +288,7 @@ export class SuperAdminController {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
   private async requireMyAdminRecord(userId: string) {
-    const admin = await this.prisma.adminUser.findUnique({ where: { userId } });
+    const admin = await this.adminRepo.findAdminByUserId(userId);
     if (!admin) {
       throw new DomainException(ErrorCode.ADMIN_NOT_FOUND, 'Admin record not found', HttpStatus.FORBIDDEN);
     }

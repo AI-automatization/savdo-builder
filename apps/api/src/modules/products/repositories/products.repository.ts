@@ -80,12 +80,21 @@ const allPublicProductInclude = Prisma.validator<Prisma.ProductInclude>()({
   _count:   { select: { variants: { where: { isActive: true, deletedAt: null } } } },
 });
 
+// Admin list view (ADMIN-PRODUCTS-NO-STORE-FIELD, подтверждён вживую 29.06.2026):
+// раньше findAll включал только images → колонка «МАГАЗИН» в admin была «—».
+// Добавлен store, чтобы admin видел к какому магазину относится товар.
+const adminProductListInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images: { orderBy: { sortOrder: 'asc' as const }, take: 1 },
+  store:  { select: { id: true, name: true, slug: true } },
+});
+
 export type SellerProductListItem   = Prisma.ProductGetPayload<{ include: typeof sellerProductInclude }>;
 export type PublicProductListItem   = Prisma.ProductGetPayload<{ include: typeof publicProductInclude }>;
 export type SellerProductDetail     = Prisma.ProductGetPayload<{ include: typeof sellerProductDetailInclude }>;
 export type PublicProductDetail     = Prisma.ProductGetPayload<{ include: typeof publicProductDetailInclude }>;
 export type SearchProductHit        = Prisma.ProductGetPayload<{ include: typeof searchProductInclude }>;
 export type AllPublicProductItem    = Prisma.ProductGetPayload<{ include: typeof allPublicProductInclude }>;
+export type AdminProductListItem    = Prisma.ProductGetPayload<{ include: typeof adminProductListInclude }>;
 
 export interface CreateProductData {
   storeId: string;
@@ -128,7 +137,7 @@ export class ProductsRepository {
     // P1-4 (audit 2026-06-04): admin может явно запросить soft-deleted записи,
     // чтобы UI совпадал с «База данных» (raw view). По умолчанию — скрываем.
     includeDeleted?: boolean;
-  }): Promise<{ products: Product[]; total: number }> {
+  }): Promise<{ products: AdminProductListItem[]; total: number }> {
     const page  = filters?.page  ?? 1;
     const limit = filters?.limit ?? 20;
     const skip  = (page - 1) * limit;
@@ -141,7 +150,7 @@ export class ProductsRepository {
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
-        include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } },
+        include: adminProductListInclude,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -295,7 +304,7 @@ export class ProductsRepository {
       where: {
         status: ProductStatus.ACTIVE,
         deletedAt: null,
-        store: { isPublic: true, deletedAt: null },
+        store: { isPublic: true, isSuspendedByBilling: false, deletedAt: null },
         OR: [
           { title: { contains: q, mode: 'insensitive' } },
           { description: { contains: q, mode: 'insensitive' } },
@@ -398,7 +407,7 @@ export class ProductsRepository {
     const where: Prisma.ProductWhereInput = {
       status: ProductStatus.ACTIVE,
       deletedAt: null,
-      store: { status: 'APPROVED', isPublic: true },
+      store: { status: 'APPROVED', isPublic: true, isSuspendedByBilling: false },
       ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
       ...(Object.keys(priceFilter).length > 0 && { basePrice: priceFilter }),
       ...(filters?.q?.trim() && {

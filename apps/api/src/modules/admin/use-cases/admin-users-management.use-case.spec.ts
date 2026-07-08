@@ -19,16 +19,26 @@ const ADM   = { id: 'a-adm',   userId: 'u-adm',   adminRole: 'admin',       isSu
 describe('AdminUsersManagementUseCase', () => {
   let useCase: AdminUsersManagementUseCase;
   let prisma: {
-    adminUser: { findMany: jest.Mock; findUnique: jest.Mock; create: jest.Mock; update: jest.Mock; delete: jest.Mock };
+    adminUser: { findMany: jest.Mock; findUnique: jest.Mock; create: jest.Mock; update: jest.Mock; delete: jest.Mock; count: jest.Mock };
+    adminCustomRole: { findMany: jest.Mock; findUnique: jest.Mock; create: jest.Mock; update: jest.Mock; delete: jest.Mock };
     user:      { findUnique: jest.Mock; update: jest.Mock };
     $transaction: jest.Mock;
   };
+  let audit: { write: jest.Mock };
 
   beforeEach(() => {
     prisma = {
       adminUser: {
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      adminCustomRole: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -42,7 +52,11 @@ describe('AdminUsersManagementUseCase', () => {
         return Promise.all(ops);
       }),
     };
-    useCase = new AdminUsersManagementUseCase(prisma as unknown as PrismaService);
+    audit = { write: jest.fn().mockResolvedValue(undefined) };
+    useCase = new AdminUsersManagementUseCase(
+      prisma as unknown as PrismaService,
+      audit as any,
+    );
   });
 
   describe('list()', () => {
@@ -215,6 +229,63 @@ describe('AdminUsersManagementUseCase', () => {
       const result = await useCase.revoke('a-super', 'a-mod');
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(result).toEqual({ ok: true });
+    });
+  });
+
+  // FEAT-CUSTOM-ROLES-001: кастомные роли + security-guardrails
+  describe('custom roles', () => {
+    beforeEach(() => {
+      prisma.adminUser.findUnique.mockImplementation((args: any) =>
+        args.where.id === 'a-super' ? SUPER : null,
+      );
+    });
+
+    it('createCustomRole: reserved permission (admin:*) → VALIDATION_ERROR', async () => {
+      await expect(
+        useCase.createCustomRole('a-super', 'catalog_mgr', 'Каталог', ['admin:create']),
+      ).rejects.toThrow(/Недопустимые permissions/);
+      expect(prisma.adminCustomRole.create).not.toHaveBeenCalled();
+    });
+
+    it('createCustomRole: wildcard "*" запрещён → VALIDATION_ERROR', async () => {
+      await expect(
+        useCase.createCustomRole('a-super', 'catalog_mgr', 'Каталог', ['*']),
+      ).rejects.toThrow(/Недопустимые permissions/);
+    });
+
+    it('createCustomRole: имя базовой роли → VALIDATION_ERROR', async () => {
+      await expect(
+        useCase.createCustomRole('a-super', 'moderator', 'Дубль', ['category:read']),
+      ).rejects.toThrow(/занято базовой ролью/);
+    });
+
+    it('createCustomRole: happy path → создаёт + пишет audit', async () => {
+      prisma.adminCustomRole.findUnique.mockResolvedValue(null);
+      prisma.adminCustomRole.create.mockResolvedValue({ id: 'cr-1', name: 'catalog_mgr', label: 'Каталог', permissions: ['category:read', 'category:moderate'] });
+
+      const role = await useCase.createCustomRole('a-super', 'Catalog Mgr', 'Каталог', ['category:read', 'category:moderate']);
+      expect(prisma.adminCustomRole.create).toHaveBeenCalledWith({
+        data: { name: 'catalog_mgr', label: 'Каталог', permissions: ['category:read', 'category:moderate'], createdByAdminId: 'a-super' },
+      });
+      expect(audit.write).toHaveBeenCalledWith(expect.objectContaining({ action: 'CUSTOM_ROLE_CREATED', entityType: 'AdminCustomRole' }));
+      expect(role.id).toBe('cr-1');
+    });
+
+    it('deleteCustomRole: роль назначена админам → CONFLICT', async () => {
+      prisma.adminCustomRole.findUnique.mockResolvedValue({ id: 'cr-1', name: 'catalog_mgr', label: 'Каталог' });
+      prisma.adminUser.count.mockResolvedValue(2);
+
+      await expect(useCase.deleteCustomRole('a-super', 'cr-1')).rejects.toThrow(/назначена 2 админам/);
+      expect(prisma.adminCustomRole.delete).not.toHaveBeenCalled();
+    });
+
+    it('createCustomRole: не-super_admin → FORBIDDEN', async () => {
+      prisma.adminUser.findUnique.mockImplementation((args: any) =>
+        args.where.id === 'a-mod' ? MOD : null,
+      );
+      await expect(
+        useCase.createCustomRole('a-mod', 'catalog_mgr', 'Каталог', ['category:read']),
+      ).rejects.toThrow(/super_admin/);
     });
   });
 });

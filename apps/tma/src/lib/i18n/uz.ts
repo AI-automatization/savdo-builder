@@ -101,6 +101,15 @@ export const uz: Translations = {
   'profile.becomeSellerCta': 'Doʻkon ochish',
   'profile.role.buyer': 'Xaridor',
   'profile.footer': 'Savdo · Xaridor',
+  // HYBRID-2: kontekstni almashtirish (sotuvchi/xaridor)
+  'profile.switchToSellerTitle': 'Sotuvchi rejimi',
+  'profile.switchToSellerSubtitle': 'Sizda doʻkon bor — mahsulot va buyurtmalarni boshqaring',
+  'profile.switchToSellerNoStore': 'Avval doʻkon yarating',
+  'profile.switchToSellerCta': 'Oʻtish',
+  'profile.switchToBuyerTitle': 'Xaridor rejimi',
+  'profile.switchToBuyerSubtitle': 'Shu hisob bilan boshqa doʻkonlardan xarid qiling',
+  'profile.switchToBuyerCta': 'Oʻtish',
+  'profile.switching': 'Almashtirilmoqda...',
 
   // ── Cart ──────────────────────────────────────────────────────────────
   'cart.title': 'Savat',
@@ -192,6 +201,24 @@ export const uz: Translations = {
   'orders.status.SHIPPED': 'Yoʻlda',
   'orders.status.DELIVERED': 'Yetkazib berildi',
   'orders.status.CANCELLED': 'Bekor qilindi',
+  // TMA-BUYER-NO-CANCEL-011: xaridor buyurtmani bekor qilishi
+  'orders.cancelCta': 'Buyurtmani bekor qilish',
+  'orders.cancelConfirmTitle': 'Buyurtma bekor qilinsinmi?',
+  'orders.cancelConfirmBody': 'Buyurtma bekor qilinadi, tovarlar omborga qaytadi. Buni ortga qaytarib boʻlmaydi.',
+  'orders.cancelConfirmYes': 'Bekor qilish',
+  'orders.cancelKeep': 'Yoʻq',
+  'orders.cancelled': '✅ Buyurtma bekor qilindi',
+  'orders.cancelError': 'Buyurtmani bekor qilib boʻlmadi',
+  // FEAT-ORDERS-ARCHIVE-001: yopilgan buyurtmalarni arxivlash
+  'orders.archiveTitle': 'Buyurtmalar arxivi',
+  'orders.viewArchive': 'Arxiv',
+  'orders.viewActive': 'Faol',
+  'orders.archiveCta': 'Arxivga',
+  'orders.unarchiveCta': 'Qaytarish',
+  'orders.archivedToast': '🗄️ Buyurtma arxivda',
+  'orders.unarchivedToast': '↩ Buyurtma qaytarildi',
+  'orders.archiveError': 'Arxivni oʻzgartirib boʻlmadi',
+  'orders.emptyArchive': 'Arxiv hozircha boʻsh',
 
   // ── Stores ────────────────────────────────────────────────────────────
   'stores.title': 'Doʻkonlar',

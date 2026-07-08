@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
@@ -50,6 +51,7 @@ export class ReviewsController {
   // GET /api/v1/storefront/products/:id/reviews
   // Public — на странице товара показывается всем (включая гостям).
   @Get('storefront/products/:id/reviews')
+  @Public()
   async listForProduct(
     @Param('id') productId: string,
     @Query('page') page?: string,

@@ -63,7 +63,7 @@ export class ConfirmAccountDeletionUseCase {
       const text =
         '🗑️ Аккаунт удалён.\n\n' +
         'Восстановление возможно в течение <b>90 дней</b> — просто войдите снова ' +
-        'через @savdo_builderBOT, и аккаунт активируется автоматически.\n\n' +
+        'через @maxsavdo_bot, и аккаунт активируется автоматически.\n\n' +
         'После 90 дней данные будут стёрты безвозвратно.';
       const sent = await this.tg.sendMessage(String(user.telegramId), text, { parseMode: 'HTML' });
       if (sent === null) {

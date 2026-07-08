@@ -127,6 +127,20 @@ export class AuthRepository {
     });
   }
 
+  /**
+   * HYBRID-6: способности аккаунта для UI-тоггла контекста.
+   *  - canBuy: покупать может любой (buyer-профиль гарантируется при switch).
+   *  - canSell: есть seller-профиль (показывает опцию «продавец» в тоггле).
+   *  - hasStore: есть активный магазин (гейт фактического переключения в SELLER).
+   */
+  async findCapabilities(userId: string): Promise<{ canBuy: boolean; canSell: boolean; hasStore: boolean }> {
+    const [seller, store] = await this.prisma.$transaction([
+      this.prisma.seller.findUnique({ where: { userId }, select: { id: true } }),
+      this.prisma.store.findFirst({ where: { seller: { userId }, deletedAt: null }, select: { id: true } }),
+    ]);
+    return { canBuy: true, canSell: !!seller, hasStore: !!store };
+  }
+
   async createUserWithSeller(data: { phone: string }) {
     return this.prisma.user.create({
       data: {

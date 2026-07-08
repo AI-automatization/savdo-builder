@@ -1,5 +1,365 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-04] [API-TEST-AUTH-SUITE-FAIL] Падают auth/admin тесты (не блокер, предсуществующее)
+- **Статус:** 🟡 Предупреждение (не блокирует деплой — падения не в моей текущей задаче)
+- **Что случилось:** `pnpm --filter api test` → 9 failed: `telegram-auth.use-case.spec.ts` (8) +
+  `admin/.../admin-list-detail.use-cases.spec.ts › GetMeUseCase happy` (1). 863 passed.
+- **Что сделано:** проверил через `git stash` — на чистом дереве (до правки FEAT-ORDERS-ARCHIVE-001
+  seller) те же 8 падений в telegram-auth. Значит НЕ регрессия от архива. Вероятно рассинхрон
+  мока User/JWT-claims после какой-то auth-правки. **TODO:** разобрать отдельно (Полат, api-зона).
+
+## [2026-07-02] [AUDIT-TMA-BUYER-LIVE-001] Живой аудит buyer-флоу (аккаунт 2 переведён в BUYER)
+> ✅ ИСПРАВЛЕНО 02.07 (код-комплит, tsc TMA EXIT 0, см. done.md): -009, -011, -012, -010.
+> ⏳ Открыто: -013 (нужен реальный стек, remote-debug). Все фиксы ждут live-ретеста на устройстве.
+- **Как:** аккаунт +998904840748 (Исмаилов пулатбек) переведён в роль BUYER, TMA открыт через
+  Telegram Web. Пройден весь покупательский флоу вживую: витрина → товар → корзина → checkout →
+  заказы → чат.
+- **Прошло OK:** Витрина (вкладки Магазины/Товары, фильтры категорий+цены+сортировка, ♡-вишлист,
+  fallback «ФОТО НЕДОСТУПНО» = мой фикс ProductImage работает), Страница товара (галерея,
+  категория, остаток, вариант, описание, ссылка на магазин, «задать вопрос продавцу»),
+  Корзина (степпер qty, удаление, Итого — пересчёт корректный), Checkout (телефон предзаполнен из
+  аккаунта, валидация пустого имени «Заполните имя и телефон» — работает, заказ НЕ создаётся;
+  Idempotency-Key присутствует), Список заказов (10 шт, фильтры, статусы, суммы), Чат (список
+  диалогов + окно переписки: бабблы/таймстампы/ввод/вложение/«Открыть магазин»).
+- **Реальный заказ НЕ оформлялся** (клик «Подтвердить» = необратимое действие + уведомление
+  продавца, оставлено на подтверждение владельца). Happy-path создания заказа вживую НЕ пройден.
+
+### 🔴 [TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009] Детали заказа: «не число сум» + пустое имя товара
+- **Статус:** 🔴 Критично, воспроизводится у КАЖДОГО заказа (подтверждено вживую + по коду).
+- **Что:** при раскрытии любого заказа в «Мои заказы» позиция рендерится как «× 1 — не число сум»:
+  цена = NaN («не число» = `NaN.toLocaleString('ru')`), название товара пустое.
+- **Root cause (контрактное рассогласование, обе стороны — зона Полата):**
+  `apps/api/src/modules/orders/orders.mapper.ts:34-43` (`mapOrderDetail`, отдаётся из
+  `orders.controller.ts:105` для `GET /buyer/orders/:id`) возвращает позиции с полями
+  `title` / `subtotal` / `variantTitle`. А TMA `apps/tma/src/pages/buyer/OrdersPage.tsx:13-19`
+  читает `productTitleSnapshot` / `lineTotalAmount` / `variantTitleSnapshot` → все `undefined` →
+  `Number(undefined)` = NaN, имя = ''.
+- **Фикс (кандидат, НЕ применён):** привести TMA к контракту mapper-а — читать `item.title`,
+  `Number(item.subtotal)`, `item.variantTitle` в `OrdersPage.tsx` (интерфейс + строки 366/374/378).
+  Менять API нельзя вслепую — `mapOrderDetail` может использоваться и web-buyer (зона Азима).
+
+### 🟡 [TMA-CART-BADGE-STALE-010] Stale-list: бейдж корзины и вишлист не обновляются в моменте
+- **Статус:** 🟡 Реактивность/консистентность (вживую, воспроизводимо).
+- **Что:** (1) после инкремента qty на странице «Корзина» (1→2) бейдж на иконке остался «1»; на
+  Checkout/Заказы тот же бейдж уже «2». (2) после `clearCart()` на success-экране заказа бейдж
+  остался «1». (3) удаление из «Избранного» не убирает товар из списка в моменте (заголовок остаётся
+  «1 товар»), только после ухода и возврата на страницу. Единое семейство: списки/счётчики не
+  реагируют на мутацию, обновляются лишь при ре-навигации/ре-фетче.
+- **Фикс (кандидат):** сделать cart-бейдж и wishlist-список реактивными на мутации (общий стор/событие).
+
+### 🔴 [TMA-BUYER-NO-CANCEL-011] Покупатель НЕ может отменить свой заказ из TMA (нет UI)
+- **Статус:** 🔴 Функциональный пробел (вживую + по коду). Зона Полата (apps/tma).
+- **Что:** в «Мои заказы» при раскрытии заказа нет кнопки отмены. У seller-версии она есть
+  (`apps/tma/src/pages/seller/OrdersPage.tsx:230` `cancelOrder` + кнопка `:403` «✕ Отменить»), а в
+  `apps/tma/src/pages/buyer/OrdersPage.tsx` отмены нет вообще (в expanded-детейле только отзыв для
+  DELIVERED). При этом API это поддерживает: `apps/api/src/modules/orders/orders.controller.ts:109-133`
+  (`PATCH /buyer/orders/:id/status`, только CANCELLED для роли BUYER).
+- **Последствие:** покупатель не может отменить ошибочный заказ сам → нагрузка на продавца/поддержку.
+- **Фикс (кандидат):** добавить кнопку «Отменить заказ» в buyer OrdersPage для отменяемых статусов
+  (PENDING/PROCESSING) с ConfirmModal → `PATCH /buyer/orders/:id/status {status:'CANCELLED', reason}`.
+  Стоки восстановятся по INV-O04. НЕ применено.
+
+### 🟡 [TMA-HYBRID-SETTINGS-BECOMESELLER-012] Hybrid-владелец магазина в buyer-контексте видит онбординг «Стать продавцом»
+- **Статус:** 🟡 Логика hybrid-модели (вживую + по коду). Зона Полата (связано с Phase 2 hybrid).
+- **Что:** аккаунт +998904840748 УЖЕ владеет магазином тест5 (seller-профиль есть), но в
+  buyer-контексте в «Настройках» показывается блок «Стать продавцом» с онбордингом «создайте магазин»
+  (кнопка ведёт в бот `?start=become_seller`). Должно быть «Переключиться в режим продавца»
+  (switchContext), т.к. seller-профиль/магазин уже есть.
+- **Root cause:** `apps/tma/src/pages/buyer/SettingsPage.tsx:36` —
+  `canBecomeSeller = authenticated && user?.role === 'BUYER'`; проверяется ТОЛЬКО `role`, а
+  `capabilities.canSell/hasStore` (добавлены мной в AuthProvider на Phase 2) НЕ используются.
+  `handleBecomeSeller` (`:31-34`) всегда шлёт в онбординг-деплинк.
+- **Фикс (кандидат):** если `capabilities.canSell && hasStore` → показывать «switch to seller mode»
+  (switchContext), иначе — онбординг «become seller». НЕ применено.
+
+### 🟡 [TMA-SETTINGS-GEAR-CRASH-013] Интермиттентный ErrorBoundary при открытии Настроек (шестерёнка)
+- **Статус:** 🟡 Плавающий крэш (вживую, воспроизвёлся 1 раз из 2).
+- **Что:** клик по шестерёнке форсит полную ре-инициализацию мини-аппа («ЗАГРУЖАЕМ…»), и на первом
+  заходе показался ErrorBoundary «Что-то пошло не так. Попробуйте вернуться на главную». Кнопка «На
+  главную» восстановила, повторный клик по шестерёнке открыл Настройки штатно.
+- **Гипотеза:** гонка при ре-init/re-auth (возможно связано с WS/токеном, семейство
+  TMA-WS-STALE-TOKEN-001). Нужно поймать реальную ошибку через remote-debug/console на устройстве.
+- **Замечание:** зачем шестерёнка вообще делает полный reload аппа? Настройки — внутренний роут,
+  переход должен быть client-side без ре-инициализации.
+
+### ✅ Проверено вживую и РАБОТАЕТ (buyer, доп. функции 02.07)
+- Поиск товаров (по названию), сортировка ↑/↓Цена, фильтр по категории (пустое состояние «Ничего не
+  найдено»), фильтр по цене (Цена от/до + «Сброс цены») — всё фильтрует корректно.
+- Вишлист: добавление (♡ toggle), страница «Избранное», удаление, пустое состояние — ок (кроме
+  stale-remove из -010).
+- Отправка сообщения в чат продавцу → **бот-уведомление продавцу в реальном времени** (с телефоном,
+  контекстом товара, кнопкой «Открыть чат»).
+- Настройки: бейдж роли «Покупатель» (BUYER подтверждён), тема (авто-синк TG), язык RU/Oʻzbek.
+- Fullscreen/desktop-layout мини-аппа (боковая навигация, сетка 2-4 колонки).
+- Два разных плейсхолдера фото: «ФОТО НЕДОСТУПНО» (load-failed) vs «НЕТ ФОТО» (нет src) —
+  ProductImage различает корректно. Low-stock бейдж «ОСТАЛОСЬ N».
+
+### ✅ Дозакрыто вживую 02.07 (ранее «не покрыто»)
+- **«Задать вопрос продавцу»** — ПРОТЕСТИРОВАНО ВЖИВУЮ: со стр. товара «телефон» клик → создание/
+  открытие треда (контекст PRODUCT) → переход в «Сообщения», тред тест5·📦телефон присутствует.
+  Код: `apps/tma/src/pages/buyer/ProductPage.tsx:117-135` (POST `/chat/threads`
+  {contextType:'PRODUCT', contextId, firstMessage} → navigate('/buyer/chat')). Работает.
+- **Варианты товара** — аудит по коду + данным. UI полностью реализован для ОБОИХ случаев:
+  сгруппированные опции (`ProductPage.tsx:388-426`, комбинаторная доступность через
+  `lib/variants.ts isValueAvailable` — недоступные значения зачёркнуты/disabled, цена по
+  `priceOverride`, gate add-to-cart по `requiresVariantSelection`) и плоский fallback
+  (`:429-460`, label `titleOverride ?? "Вариант N"`). ВЖИВУЮ подтверждён плоский случай: у товаров
+  «телефон» и «Жунал» — один вариант «Вариант 1». Мультигрупповой селектор кликнуть нельзя: в
+  каталоге НЕТ товара с несколькими option-группами (данные, не баг). Для 100%-live нужен seed
+  товара с 2+ группами опций.
+
+### ⚠️ Осознанно не тестировалось
+- Переключение контекста обратно в seller («Стать продавцом») — намеренно не кликал (баг -012 +
+  завершило бы buyer-аудит).
+- Языковой тоггл RU↔Oʻzbek — тривиальный i18n-свитч, пропущен чтобы не оставить UI на узбекском.
+
+## [2026-06-30] [AUDIT-TMA-LIVE-001] Живой аудит TMA через Telegram Web (2 аккаунта)
+- **Как:** web.telegram.org → @maxsavdo_bot → Mini App, аккаунт 1 (seller без магазина) и
+  аккаунт 2 (seller с магазином: 6 товаров, 5 заказов, выручка 18.1M). Cross-origin iframe —
+  аудит визуальный (скриншоты), клики по нижней навигации нестабильны (нужна 2-я попытка).
+- **Прошло OK:** Mini App грузится в Telegram; Дашборд (KPI 6/5/0, аналитика 18.1M + график +
+  ТОП товары), Товары (цены/остатки/АКТИВЕН статусы), Заказы (фильтры Все5/Доставлены3/Отменены2,
+  номера/даты/маски телефонов/статусы, «показать отменённые»). Приветствие, тариф, нижняя навигация.
+- **Покрыто вживую (seller-сторона ~полностью):** Дашборд (2 акк: с магазином и без), Товары,
+  Заказы, Чат (список + тред-детейл: бабблы/таймстампы/контекст товара/закрыть-тред/ввод),
+  Магазин (статус ОДОБРЕНО, направления 2/10, edit/share/copy), модал «Направление магазина»
+  (BottomSheet+поиск+сетка+автосейв), форма «Редактировать товар» (название/цена/описание/тип).
+- **НЕ покрыто вживую:** buyer-флоу (аккаунт в seller-контексте; витрина/корзина/checkout
+  покупателя не достижимы без context-switch, который не задеплоен, или без buyer-аккаунта);
+  Тариф-страница, Настройки (шестерёнка), image upload, order-detail, AddProduct (≈ EditProduct).
+  Блокеры: cross-origin iframe (scroll/клики нестабильны), нет buyer-контекста.
+
+### 🟡 [TMA-CATALOG-GARBAGE-CATEGORY-007] Битая категория «увлажниьель» в каталоге направлений
+- **Статус:** 🟡 Данные (вживую в модале «Направление магазина»).
+- **Что:** первым пунктом в каталоге направлений магазина — «увлажниьель» (мягкий знак не на
+  месте, generic 📦-иконка) среди нормальных (Электроника, Одежда, Мебель...). Мусорное/тестовое
+  название затесалось в curated-каталог направлений.
+- **Фикс:** почистить catalog направлений (`packages/db` seed/категории), убрать test-мусор.
+
+### 🟢 [TMA-CHAT-PHONE-UNMASKED-008] Телефон покупателя в чат-списке не маскирован (в заказах — маскирован)
+- **Статус:** 🟢 Мелочь/консистентность (вживую). В списке чатов seller видит полный
+  `+998933940145`, а в списке заказов — маскировано `+99893...`. Для чата это оправдано (связь),
+  но нестыковка. Плюс в тред-детейле поле ввода и нижняя app-навигация видны одновременно (тесно).
+
+### 🔴 [BUG-TMA-2 ПОДТВЕРЖДЁН ВЖИВУЮ — МАССОВО] Все фото товаров «ФОТО НЕДОСТУПНО»
+- **Статус:** 🔴 Критично по UX (подтверждено вживую на реальном магазине).
+- **Что:** у ВСЕХ 6 товаров в списке + во всех превью заказов — «⚠️ ФОТО НЕДОСТУПНО». Весь
+  магазин без картинок → маркетплейс выглядит сломанным/недоверенным. Причина: протухшие
+  telegram file_id (`tg:`-медиа), media-proxy на сервере не может их отдать.
+- **Фикс:** (1) data hygiene — перезалить медиа в R2; (2) при аплоаде сразу класть в R2, не
+  хранить tg file_id как постоянный источник; (3) [сделано] `ProductImage` сброс errored на
+  смену src (TMA-PRODUCTIMAGE-STALE-ERROR-005). Корень — серверный (media/R2), зона Полата.
+- **Где:** `apps/api` media-proxy + upload flow, `packages/db` MediaFile.
+
+### 🟡 [TMA-DASH-NOSTORE-ERROR-006] Продавец без магазина видит ОШИБКУ аналитики вместо онбординга
+- **Статус:** 🟡 Баг UX (воспроизведён вживую на аккаунте 1).
+- **Что:** у продавца БЕЗ магазина дашборд показывает «❌ Не удалось загрузить аналитику» + KPI
+  «Товаров —», «Всего заказов —» (прочерки). Должно быть пустое/онбординг-состояние «Создайте
+  магазин», а не ошибка. «Ожидают 0» (pendingOrders) при этом грузится — рассинхрон состояний.
+- **Фикс:** на дашборде различать «нет магазина» (онбординг-CTA) vs «реальная ошибка загрузки».
+- **Где:** `apps/tma/src/pages/seller/DashboardPage.tsx` (+ analytics endpoint должен отдавать
+  пустой результат для store-less seller, не ошибку — `apps/api` analytics.controller).
+
+### 🟢 [BUG-TMA-1 ПОДТВЕРЖДЁН ВЖИВУЮ] Приветствие «Привет, .!»
+- **Статус:** 🟢 Косметика (только тестовый аккаунт с first_name="."). Реальные юзеры с именем
+  не увидят. `DashboardPage` greeting `user.first_name || username || 'вас'` — «.» truthy → «.».
+- **Фикс (опц.):** тримить/валидировать имя (одиночные пунктуации → fallback на 'вас').
+
+## [2026-06-30] [AUDIT-TMA-001] Аудит TMA по коду — Проход 1 (ядро/деньги/realtime)
+- **Статус:** 🟡 В процессе. Покрытие ~50% (глубоко: api/cart/checkout/orders-buyer/socket/
+  notifications/auth-roles/imageUrl). НЕ покрыто: seller-страницы, buyer ProductPage/StorePage/
+  StoresPage, chat-страницы целиком, wishlist, компоненты (ImageCropper/AddressAutocomplete/
+  CategoryModal), variants.ts, pendingOrders.ts, cartSync.ts.
+- **Чисто (багов нет):** `lib/api.ts` (кэш+dedup+timeout+SWR, per-token cacheKey),
+  `lib/cart.ts` (валидация+variant-aware), `pages/buyer/CheckoutPage.tsx` (idempotency-key,
+  guest-block, серверный totalAmount), `pages/buyer/OrdersPage.tsx` (AbortController везде),
+  `lib/imageUrl.ts`.
+
+### 🔴 [TMA-WS-STALE-TOKEN-001] Сокет живёт со старым токеном (logout/reauth/switch-context)
+- **Статус:** 🔴 Баг (подтверждён по коду).
+- **Что:** `destroySocket()` (`lib/socket.ts:43`) ОПРЕДЕЛЁН, но **нигде не вызывается**
+  (grep по всему TMA — только определение). Сокет — модульный синглтон; `connectSocket()`
+  (socket.ts:22) обновляет `auth.token`, но реконнектит только `if (!s.connected)` (строка 26).
+  Итог: после смены токена соединение продолжает жить со старым.
+- **Последствия:** (1) `serverLogout` (`lib/auth.ts:44`) НЕ рвёт WS и НЕ вызывает
+  `resetNotifications()` → счётчик уведомлений и WS-подписки утекают к следующему юзеру на том же
+  устройстве. (2) После 401→reauth (`AuthProvider.doAuth`) чат/realtime работают на старом токене
+  (спасает только 5-мин fallback-poll счётчика, но не сам чат). (3) Мой HYBRID-2 `switchContext`
+  оставляет WS в старом контексте.
+- **Фикс:** вызывать `destroySocket()` в `serverLogout` (+ `resetNotifications()`) и в
+  `switchContext` — чтобы следующий `connectSocket()` поднял соединение со свежим токеном.
+- **Где:** `apps/tma/src/lib/socket.ts:22-27,43`, `lib/auth.ts:44`, `lib/notifications.ts`.
+
+### ✅ [TMA-WS-STALE-TOKEN-001 РАСШИРЕН] pendingOrders + chatUnread тоже утекали на logout
+- **Статус:** ✅ ИСПРАВЛЕНО 30.06. При аудите Прохода 2 нашёл что `resetPendingOrders()`
+  (`lib/pendingOrders.ts:51`) и `resetChatUnread()` (`lib/chatUnread.ts:80`) — определены но
+  НИКОГДА не вызывались (как и destroySocket). serverLogout теперь зовёт все 4 teardown:
+  resetNotifications + resetPendingOrders + resetChatUnread + destroySocket.
+- **Где:** `apps/tma/src/lib/auth.ts:46-57`.
+
+### 🟡 [TMA-CART-CROSS-STORE-SILENT-003] Молчаливое стирание корзины при добавлении из другого магазина
+- **Статус:** 🟡 UX-баг (подтверждён по коду).
+- **Что:** `ProductPage.addToCart` (`pages/buyer/ProductPage.tsx:145-147`): если в корзине товары
+  магазина A и добавляешь товар магазина B — `cart = []` молча, без предупреждения/подтверждения.
+  INV-C01 (корзина = один магазин) соблюдён, но потеря корзины A без уведомления.
+- **Фикс:** перед заменой показать confirmDialog «В корзине товары другого магазина — очистить?»
+  (confirmDialog уже используется в проекте). Приоритет средний.
+- **Где:** `pages/buyer/ProductPage.tsx:145-147`. Доп.: `stockMax` для простых товаров берётся через
+  `as unknown as { totalStock }` (стр. 152) — не в интерфейсе Product, может быть undefined.
+
+### 🟡 [TMA-I18N-SUBSCRIPTION-HARDCODED-RU-004] SubscriptionPage — хардкод русского, нет uz
+- **Статус:** 🟡 Tech debt (задокументирован TODO в коде, стр. 21-22).
+- **Что:** вся `pages/seller/SubscriptionPage.tsx` на русском строками (TIER/STATUS/FEATURE labels,
+  кнопки, тексты) — узбекские продавцы видят RU. Не проведён через i18n ru.ts/uz.ts.
+- **Фикс:** вынести строки в i18n. Приоритет средний (единственная непереведённая страница из
+  прочитанных).
+
+### 🟡 [TMA-IOS-FIXED-MODAL-002] 5 рукописных fixed-модалов минуют BottomSheet; нет iOS scroll-lock
+- **Статус:** 🟡 PLAUSIBLE (без iOS-девайса вживую не подтверждено; совпадает с
+  `reference_tma_fixed_position_audit`).
+- **Что:** `fixed inset-0` модалы в `pages/buyer/ChatPage.tsx:347,692`, `pages/seller/ChatPage.tsx:378,684`,
+  `pages/buyer/OrdersPage.tsx:430` — рукописные, минуют общий `BottomSheet` (который хотя бы
+  портирует в body). НИ ОДИН модал в TMA не делает iOS body scroll-lock (grep: нет
+  `document.body.style.position='fixed'`/overflow-lock). По заметке памяти position:fixed
+  ломается в iOS WebView при скроллируемом body.
+- **Фикс:** прогнать страничные модалы через `BottomSheet` + добавить хук scroll-lock (body
+  position:fixed на время открытия). Приоритет средний — проверить на реальном iOS.
+- **Где:** buyer/seller ChatPage, buyer OrdersPage review-modal.
+
+
+## [2026-06-29] [ROLE-SOURCE-INCONSISTENCY-001] 🟡 Бот и TMA по-разному определяют роль
+- **Статус:** 🟡 Открыто → план фикса принят 30.06: закрывается **HYBRID-3** (Фаза 2,
+  выравнивание меню бота). Решено продуктово (ADR 30.06): аккаунт МОЖЕТ быть seller+buyer
+  одновременно (гибрид), `role` = активный контекст. Бот будет дефолтить по `users.role` и
+  показывать обе кнопки при наличии обеих способностей. tasks.md → блок HYBRID Фаза 2.
+- **Что:** сменил `users.role` SELLER→BUYER для +998904840748 (через /database).
+  - **TMA**: при свежем запуске переавторизовался → JWT с role=BUYER → корректно открыл
+    **витрину покупателя** (Магазины/Корзина/Заказы/Чат). ✅ TMA смотрит на `users.role`.
+  - **Бот /start**: всё равно показал **seller-меню** («панель управления», Товары/Магазин/
+    Статистика). ❌ Бот определяет роль по наличию `sellers`-профиля, НЕ по `users.role`.
+- **Импакт:** один аккаунт показывает разный интерфейс в боте (seller) и TMA (buyer) —
+  путаница; смена роли через users.role не полностью переключает опыт.
+- **Фикс (предложение):** единый источник истины для роли (или users.role, или явная
+  проверка seller-профиля) в обеих поверхностях. Решить продуктово: может ли аккаунт быть
+  одновременно seller+buyer (тогда UI должен это поддерживать явно, а не зависеть от точки входа).
+
+## [2026-06-29] [BUYER-FLOW-TEST-001] ✅ Buyer-флоу TMA протестирован
+- **Статус:** ✅ Работает. Тест аккаунта +998904840748 (временно BUYER, потом возвращён в SELLER).
+- **Проверено OK:** витрина магазинов (список + поиск), страница магазина тест5 (6 товаров,
+  фильтры категорий, цены), корзина (пустое состояние + «Перейти к магазинам»), навигация
+  Магазины/Корзина/Заказы/Чат. Реальный заказ НЕ размещался (прод).
+- **Находки:** (1) greeting «Привет, .!» — НЕ код-баг: buyer `StoresPage.tsx:192` уже
+  корректно обрабатывает пустое имя (`first_name?.trim() ? ... : welcomeAnon`). «.» —
+  это РЕАЛЬНОЕ TG-имя тестового аккаунта (точка), проходит truthy. Прод-юзеры с нормальным
+  именем этого не увидят. Чинить не нужно. (2) «ФОТО НЕДОСТУПНО»
+  у тест5-товаров = BUG-TMA-2 (протухшие telegram file_id, data hygiene). (3) Смена роли
+  через /database работает + пишется в audit_log (✅ аудит).
+
+## [2026-06-29] [ADMIN-NO-ROLE-CHANGE-UI-001] 🟡 UX-нестыковка: нельзя сменить роль SELLER↔BUYER из UI
+- **Статус:** ✅ ИСПРАВЛЕНО 30.06 (HYBRID-4). `PATCH /admin/users/:id/role` + кнопка/модал в
+  UserDetailPage. Non-destructive (профили/магазин сохраняются), audit_log, self-guard,
+  SELLER требует seller-профиль. Детали — done.md 30.06.2026.
+- **Статус (история):** 🟡 Открыто (UX/функциональный пробел). Репорт владельца 29.06.2026.
+- **Что:** в карточке пользователя (`/users/:id`) блок «Действия» = только «Заблокировать»
+  + «Impersonate». Сменить роль SELLER↔BUYER из UI нельзя. `AdminUsersPage.changeRole`
+  покрывает только админские роли. Чтобы протестировать/перевести аккаунт в покупателя,
+  приходится лезть в raw-правку через `/database` (admin DB page) — неудобно и опасно
+  (можно задеть связки store/seller).
+- **Импакт:** типовая операция поддержки (перевести продавца в покупателя и наоборот,
+  напр. для теста или по запросу) требует ручной правки БД вместо кнопки.
+- **Фикс (предложение):** добавить в UserDetailPage действие «Сменить роль» (SELLER/BUYER)
+  с confirmation-модалом + backend endpoint `PATCH /admin/users/:id/role` с валидацией
+  (нельзя менять роль админам через этот путь; при SELLER→BUYER — проверить/обработать
+  активные магазины/заказы). Зона: `apps/api` + `apps/admin`.
+- **Где:** `apps/admin/src/pages/UserDetailPage.tsx` (Действия), `apps/api/.../admin-users.controller.ts`.
+
+## [2026-06-29] [INFRA-RAILWAY-PAST-DUE-001] 🔴 P0 — подписка Railway просрочена
+- **Статус:** 🔴 ОТКРЫТО — требует оплаты (действие владельца, не код).
+- **Что:** в Railway dashboard баннер «Your subscription is past due. Please pay the
+  outstanding balance to avoid service disruption». Все сервисы пока **Online**
+  (savdo-api/admin/tma/web-buyer/web-seller/landing/Redis/Postgres), но риск отключения.
+- **Импакт:** при suspend — весь прод (каталог, OTP, заказы, админка) ляжет.
+- **Действие:** Полату — оплатить баланс Railway. Бэкапы БД есть (drill PASS 25.06),
+  но downtime прод = потеря лидов/доверия в бету.
+
+## [2026-06-29] [ADMIN-STORES-NO-COUNTS-001] ✅ ИСПРАВЛЕНО — colонки ТОВАРЫ/ЗАКАЗЫ = «—»
+- **Статус:** ✅ Исправлено (29.06.2026). Подтверждён вживую: admin /stores показывал
+  «—» в ТОВАРЫ/ЗАКАЗЫ у всех магазинов (тест5/Abdulaziz реально имеют товары/заказы).
+- **Root cause:** `admin.repository.findStores()` include только `seller`, без `_count`.
+  API-ответ не содержал counts (проверено fetch'ем — нет `_count`/productsCount).
+- **Fix:** добавлен `_count: { select: { products: true, orders: true } }`. Фронт
+  `StoresPage.tsx:238,246` уже читает `s._count?.products`/`orders`. tsc чистый.
+- **Файлы:** `apps/api/src/modules/admin/repositories/admin.repository.ts` (findStores).
+
+## [2026-06-29] [ADMIN-ANALYTICS-KPI-WRONG?] ✅ НЕ БАГ API — это BUG-3 (NumberTicker)
+- **Статус:** ✅ Объяснено. На /analytics KPI показывали ~5% от истинных значений
+  (Заказов 0 vs 8, Выручка 952765 vs 18977775, Отменено 1% vs 20%, newSellers/Stores 0 vs 6).
+- **Root cause:** API `/admin/analytics/summary` отдаёт ВЕРНО (totalOrders:8 и т.д.).
+  AnalyticsDashboardPage рендерит KPI через `NumberTicker` (строки 117-127) — на момент
+  скриншота overdamped-пружина (BUG-3) доползла лишь до ~5% цели → визуально неверные
+  цифры. Фикс BUG-3 (быстрая пружина) уже запушен в admin-ветку — устранит и это.
+- **Урок:** BUG-3 давал не «медленно», а ВИЗУАЛЬНО НЕВЕРНЫЕ числа по всей админке.
+
+## [2026-06-29] [AUDIT-ADMIN-LIVE-001] Live UI-аудит админки (браузер) + фиксы
+- **Статус:** 🟡 В процессе (браузер-сессия прервалась — extension disconnect).
+- **Метод:** claude-in-chrome, прод `adminsb.up.railway.app`, MFA-сессия Полата, read-only.
+- **✅ Проверено OK:** Dashboard (числа 9/9/0/22 корректны), Пользователи (фильтры
+  роль/статус, поиск, детальная карточка, защита «нельзя блокировать админа через UI»),
+  Заказы (список + фильтры), Продавцы (список).
+- **✅ Исправлено этой сессией:**
+  - `BUG-3` NumberTicker — overdamped spring (ζ≈3, полз 10-20с) → `{damping:30,stiffness:120}` (ζ≈1.37). `apps/admin/src/components/ui/number-ticker.tsx`.
+  - `BUG-1` admin/subscriptions list не считал `daysLeft` (фронт `=== null` мимо `undefined` → «дн.» без числа). Добавлен расчёт в list endpoint. `apps/api/.../admin-subscriptions.controller.ts`.
+  - `BUG-TMA-1` greeting «Привет, .!» при пустом first_name → fallback `username/'вас'`. `apps/tma/.../seller/DashboardPage.tsx`.
+  - `STRESS-DOS-001` (см. ниже) — body-parser limit.
+- **🔴 Подтверждено вживую (открытые баги, фикс-кандидаты — моя зона):**
+  - `ADMIN-PRODUCTS-NO-STORE-FIELD` — колонка «МАГАЗИН» = «—» для ВСЕХ 14 товаров. Бэк не возвращает store в admin/products. `apps/api/.../products.repository.ts`.
+  - ~~`ADMIN-PRODUCT-CREATE-HANG?`~~ ❌ СНЯТО — это НЕ баг формы. Кнопка «Создать товар»
+    (`ProductsPage.tsx:137`) = `onClick={() => alert(t('products.createSoonAlert'))}` —
+    намеренная заглушка «coming soon» (ADMIN-PRODUCTS-NO-CREATE-ENDPOINT ещё открыт).
+    Блокирующий `alert()` заморозил браузер-автоматизацию (extension disconnect) — мой
+    клик его вызвал. 🟡 Минорный UX-долг: `alert()` вместо app-toast (sonner)/DialogShell
+    как везде в админке. Не P-блокер.
+- **🟡 Прочее:** `apps/admin` tsc падает на `TS2688 vitest/globals` — битый subpath в node_modules (env/install issue, не код). Кандидат: убрать из `tsconfig types[]` или починить установку vitest.
+- **⏭ Не пройдено (браузер отвалился):** Магазины, Категории, Подписки (детально), Модерация, Аналитика, Товары-детально.
+
+## [2026-06-25] [INFRA-BACKUP-DRILL-FIRST-RUN-001] ✅ Restore drill — PASS
+- **Статус:** ✅ PASS
+- **Что сделано:** Полный restore drill на прод-дампе
+- **Шаги:**
+  - `pg_dump` (postgres:18-bookworm via Docker) → дамп 0.28 MB за ~10 сек
+  - `docker run postgres:18-bookworm` staging на порту 55432
+  - `pg_restore --no-owner --no-acl` → exit 0, все FK constraints созданы
+- **Integrity checks:**
+  ```
+  users=12, sellers=9, stores=9, products=34,
+  orders=22, order_items=26, carts=6
+  orphan_sellers=0, orphan_stores=0, orphan_order_items=0, null_totalAmount=0
+  ```
+- **drill_status: PASS**
+- **Примечание:** Railway Postgres 18.4 — требует pg_dump v18 (postgres:18-bookworm образ)
+- **Следующий drill:** последняя пятница июня 2026 → 26.06.2026 (или июль)
+
+## [2026-06-24] [STRESS-DOS-001] ✅ ИСПРАВЛЕНО 29.06.2026 — Body-парсер без явного лимита
+- **Статус:** ✅ Исправлено (29.06.2026, Полат). Fix в `apps/api/src/main.ts`:
+  `bodyParser: false` в NestFactory.create + явные `app.useBodyParser('json'|'urlencoded', { limit: '100kb' })`.
+  Большое тело отсекается на этапе парсинга, до guard/Prisma. Media не затронут
+  (multipart FileInterceptor multer 10MB + presigned R2). raw body нигде не нужен
+  (telegram webhook валидирует header-токеном). tsc чистый.
+- **Companion-фикс (29.06, после деплоя):** прод-smoke показал large→**500** (не 413).
+  Root cause: `PayloadTooLargeError` body-parser'а НЕ `HttpException` → падал в
+  финальную ветку `GlobalExceptionFilter` → 500 + спам в Sentry на каждый oversized
+  запрос (мини-DoS через лог-шум). Фикс: filter ловит raw-ошибки с HTTP-статусом
+  4xx (type=entity.too.large→413, entity.parse.failed→400) и отдаёт корректный код
+  без репорта инцидента. `apps/api/src/common/filters/global-exception.filter.ts`.
+- **Smoke baseline (прод 29.06):** health 200, small POST→401 (парсится), large→500
+  (баг подтверждён реальным). После companion-деплоя ожидается large→413.
+- **Что случилось:** Stress test выявил: `PATCH /api/v1/admin/db/tables/products/:id` с ~500KB JSON body возвращает **500** без токена. Auth guard должен возвращать 401 ДО парсинга body, но этого не происходит.
+- **Воспроизведение:** `curl -X PATCH https://savdo-api-production.up.railway.app/api/v1/admin/db/tables/products/any -H "Content-Type: application/json" -d '{"title":"'$(python3 -c "print('x'*500000)""}'`  → 500
+- **Риск:** DoS вектор — анонимный запрос 500KB → 500. Возможно body-parser выполняется в глобальном middleware до Passport guard. При highload может исчерпать память.
+- **Вероятная причина:** NestJS `app.use(json({ limit: '1mb' }))` глобален, а Passport guard — на уровне route. Body парсится для всех роутов включая ошибочные. 500 = Prisma/service крашится на невалидном UUID при слишком длинном поле (до auth check).
+- **Fix:** В `main.ts` — `app.use(json({ limit: '100kb' }))` для admin роутов (или глобально). Или переставить auth guard выше body-parser через custom middleware order.
+- **Что сделано:** Залогировано, баг добавлен в backlog.
+
 ## [2026-06-18] [SECURITY-AUDIT-001] ✅ Исправлено — 5 уязвимостей безопасности
 - **Статус:** ✅ Исправлено (18.06.2026)
 - **BOLA-001 🔴**: Любой buyer мог отменить чужой заказ через `PATCH /buyer/orders/:id/status`. Fix: добавлен `buyerId` в `UpdateOrderStatusInput`, проверка в use-case.
@@ -134,8 +494,14 @@
 - **Импакт:** TMA `/buyer` карточки магазинов всегда показывали 0. У Azim в
   БД 3 активных товара — теперь видно `📦 3`.
 
-## [2026-06-04] [ADMIN-PRODUCTS-NO-STORE-FIELD] 🟡 Backend не возвращает store в admin/products
-- **Статус:** 🟡 Открыто. **Кто:** Полат (или параллельная P2-3/4 сессия api).
+## [2026-06-04] [ADMIN-PRODUCTS-NO-STORE-FIELD] ✅ ИСПРАВЛЕНО 29.06.2026
+- **Статус:** ✅ Исправлено (29.06.2026, Полат). В `products.repository.ts` добавлен
+  `adminProductListInclude` (images + store{id,name,slug}) + тип `AdminProductListItem`;
+  `findAll()` теперь `include: adminProductListInclude`, return-type обновлён.
+  Фронт `ProductsPage.tsx:236` уже читал `p.store?.name ?? p.storeName ?? '—'` —
+  правки фронта не нужны. tsc чистый.
+- **(исходный репорт ниже)**
+- **Статус (old):** 🟡 Открыто. **Кто:** Полат (или параллельная P2-3/4 сессия api).
 - **Где:** `apps/api/src/modules/products/repositories/products.repository.ts:142` —
   метод `findAll()` имеет `include: { images: ... }` БЕЗ `store: { select: { name: true } }`.
 - **Импакт UI:** P2-6 (audit-2026-06-04) — в `apps/admin/src/pages/ProductsPage.tsx`
@@ -420,8 +786,12 @@
   - `railway.toml` — `healthcheckPath` → `/api/v1/health/live` (чистый
     liveness, без БД/Redis ping); `restartPolicyMaxRetries` 3 → 10.
 
-## [2026-05-16] [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] 🟡 «Самовывоз» всё равно платит доставку
-- **Статус:** 🟡 Предупреждение — тикет Полату заведён в `tasks.md`, не исправлено.
+## [2026-05-16] [API-CHECKOUT-PICKUP-DELIVERY-FEE-001] ✅ ИСПРАВЛЕНО (verified 29.06.2026)
+- **Статус:** ✅ Исправлено (подтверждено аудитом 29.06.2026 — запись была устаревшей).
+  `ConfirmCheckoutDto.deliveryMode` ('delivery'|'pickup') добавлен; `confirm-checkout.use-case.ts:144-146`:
+  `input.deliveryMode === 'pickup' ? 0 : computeDeliveryFee(store.deliverySettings)`. Preview-эндпоинт
+  тоже принимает `deliveryMode` (checkout.controller.ts:55). Suммы preview/confirm согласованы.
+- **(исходный репорт ниже — был 🟡 Открыт)**
 - **Что случилось:** при закрытии `WB-B01` обнаружено: `confirm-checkout.use-case`
   считает `deliveryFee` через `computeDeliveryFee(store.deliverySettings)`
   безусловно. Backend не знает про режим «Самовывоз» (в `ConfirmCheckoutDto`
