@@ -8,7 +8,7 @@ import {
 } from '@/lib/buyer-url';
 
 // FRONTEND-SMOKE-PLAYWRIGHT-001 part B — buyer-url helpers (web-seller).
-// Защищает контракт `NEXT_PUBLIC_BUYER_URL` → maxsavdo.uz fallback и формат URL.
+// Защищает контракт `NEXT_PUBLIC_BUYER_URL` → shop.maxsavdo.uz fallback и формат URL.
 
 const ORIGINAL = process.env.NEXT_PUBLIC_BUYER_URL;
 
@@ -23,9 +23,9 @@ describe('buyer-url helpers', () => {
       expect(buyerOrigin()).toBe('https://staging.maxsavdo.uz');
     });
 
-    it('падает на maxsavdo.uz fallback если env пустая', () => {
+    it('падает на shop.maxsavdo.uz fallback если env пустая', () => {
       process.env.NEXT_PUBLIC_BUYER_URL = '';
-      expect(buyerOrigin()).toBe('https://maxsavdo.uz');
+      expect(buyerOrigin()).toBe('https://shop.maxsavdo.uz');
     });
   });
 

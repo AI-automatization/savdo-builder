@@ -1,7 +1,7 @@
-// Buyer storefront URL helpers — read NEXT_PUBLIC_BUYER_URL with maxsavdo.uz fallback,
+// Buyer storefront URL helpers — read NEXT_PUBLIC_BUYER_URL with shop.maxsavdo.uz fallback,
 // so dev/staging environments don't show dead production links.
 
-const FALLBACK = 'https://maxsavdo.uz';
+const FALLBACK = 'https://shop.maxsavdo.uz';
 
 export function buyerOrigin(): string {
   return process.env.NEXT_PUBLIC_BUYER_URL || FALLBACK;
