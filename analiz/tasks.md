@@ -22,13 +22,15 @@
   все 5 доменов резолвятся (69.46.46.x, proxied) и отвечают **HTTP 200**: maxsavdo.uz, www, shop
   (контент web-buyer — роутинг корректный), seller, api (`/api/v1/health` 200). Redirect-петель нет
   (SSL Full strict ок). Историю диагноза (lame delegation ahost) см. done.md/logs.md 07.07.
-- **🔲 Полат/Claude (СЛЕДУЮЩИЙ ШАГ):** env vars через Railway dashboard (нужен подключённый Chrome):
-  web-buyer (`savdo-builder-by`): `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`,
-  `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`; web-seller (`savdo-builder-sl`):
-  `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`; **landing**: `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`
-  (хвост LANDING-BRANCH-DRIFT-001 — сейчас держится на code-fallback `buyer-url.ts`).
-  Сначала read Variables (research-before-assume), потом менять. После redeploy — curl 5 доменов +
-  CORS-preflight, UptimeRobot, Search Console.
+- **✅ ENV VARS ОБНОВЛЕНЫ (Claude через Railway dashboard, 09.07):** одним changeset (Apply 6 changes → Deploy):
+  - `savdo-builder-by` (web-buyer): `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`,
+    **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (раньше не было — sitemap/robots/canonical
+    падали на дефолт).
+  - `savdo-builder-sl` (web-seller): `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`,
+    `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (было `savdo-builder-by-production.up.railway.app`).
+  - `landing`: `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz` (было railway.app + лишний пробел в значении!),
+    **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (закрыт хвост LANDING-BRANCH-DRIFT-001).
+- **🔲 Постдеплой:** UptimeRobot на 5 доменов, Search Console (связка SEO-AUDIT-001).
 - **🔲 Азим (код):** apex=landing ⇒ магазины живут на shop.maxsavdo.uz — обновить `extractSlug`
   парсер web-buyer, `buyerStoreUrl` web-seller, canonical/sitemap (связка SEO-AUDIT-001).
 - **⚠️ Осторожно с CORS:** wildcard `*.maxsavdo.uz` в проде (`e18f94e`) покрывает apex и все
