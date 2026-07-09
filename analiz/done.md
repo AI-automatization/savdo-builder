@@ -1,5 +1,19 @@
 # Done — Азим + Полат
 
+## 2026-07-07 (Fable 5, по запросу owner-а) — SEO-AUDIT-001: аудит SEO/GEO/AEO + кода сайта
+
+### ✅ [SEO-AUDIT-001-AUDIT] Проведён read-only аудит, план фиксов оформлен
+- **Важность:** 🔴 (сайт невидим для поисковиков/AI) · **Дата:** 07.07.2026
+- **Файлы:** только чтение (web-buyer: layout/sitemap/robots/manifest/next.config/страницы/lib;
+  web-seller: layout/socket/client; admin: index.html). Изменений кода НЕТ.
+- **Что сделано:** полный SEO/GEO/AEO-аудит web-buyer + код-аудит сайта. Главное: discovery-дыра
+  (статичный sitemap + client-side главная без ссылок на магазины), client-side страница товара
+  (пустая для AI-краулеров), нет uz/hreflang, web-seller без noindex, дефекты Product JSON-LD,
+  socket без reconnect-лимита (в обоих web-апах), размытый контракт цен (fallback-пирамиды).
+  ⚠️ Найдено расхождение трекера с кодом: i18n ru/uz и /help из done.md 21.05 в коде отсутствуют.
+- **План фиксов:** `analiz/tasks.md → SEO-AUDIT-001` (P0-P2 + код-аудит, роли Полат/Азим).
+  Баг-детали: `analiz/logs.md → SEO-AUDIT-001`.
+
 ## 2026-07-05 (Полат) — SUSPENDED-ENFORCEMENT-001: backend-гейт приостановленной подписки
 
 ### ✅ [SUSPENDED-ENFORCEMENT-001] SUSPENDED больше не обходится на API (каталог)
