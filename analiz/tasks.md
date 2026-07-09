@@ -9,7 +9,7 @@
 > TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
 > Все — код-комплит + tsc TMA EXIT 0. Осталась live-ретест-проверка на устройстве.
 
-## 🔴 [DEPLOY-DOMAIN-MAXSAVDO-001] Привязка maxsavdo.uz — Railway-часть СДЕЛАНА 07.07, ждём DNS
+## 🟡 [DEPLOY-DOMAIN-MAXSAVDO-001] Привязка maxsavdo.uz — DNS ЖИВ 09.07, остались env vars + постдеплой
 - **Домен:** инфра/Railway (Полат+Claude) · Cloudflare DNS (Азим)
 - **Кто взял:** Полат + Claude (07.07)
 - **Карта (утвердил owner 07.07):** apex+www → **landing** · shop → web-buyer ·
@@ -18,18 +18,17 @@
   (maxsavdo.uz + www → landing:8080, shop → savdo-builder-by:8080, seller → savdo-builder-sl:8080,
   api → savdo-api:3000). Все CNAME-target'ы + TXT-верификации сняты →
   **`analiz/dns-maxsavdo-2026-07-07.md`** (передать Азиму для Cloudflare).
-- **🔴 БЛОКЕР НАЙДЕН (диагноз 07.07, вечер):** .uz TLD делегирует maxsavdo.uz на NS регистратора
-  ahost (`dns1/dns2.ahost.uz`, `ns1/ns2.ahost.cloud`), а те отвечают **Query refused** (зона не
-  сконфигурирована) → SERVFAIL у всех резолверов. NS на Cloudflare НЕ переключены — Cloudflare-зона
-  висит Pending. **Фикс (Азим/владелец аккаунта ahost):** Cloudflare → взять выданную пару NS →
-  в панели ahost сменить NS домена на неё → ждать делегирование (15 мин–часы) → зона Active →
-  проверить 10 записей из `analiz/dns-maxsavdo-2026-07-07.md` + SSL Full (strict).
-- **🔲 Азим:** внести 10 записей из файла в Cloudflare (CNAME proxied + TXT), SSL/TLS = **Full
-  (strict)** — если ещё не внесены.
-- **🔲 Полат (после того как DNS заживёт):** env vars (web-buyer:
-  `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`, `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`;
-  web-seller аналогично) — НЕ раньше чем DNS резолвится; затем curl-проверки, UptimeRobot,
-  Search Console.
+- **✅ БЛОКЕР СНЯТ (проверено 09.07):** Азим переключил NS у ahost → NS = donovan/emma.ns.cloudflare.com,
+  все 5 доменов резолвятся (69.46.46.x, proxied) и отвечают **HTTP 200**: maxsavdo.uz, www, shop
+  (контент web-buyer — роутинг корректный), seller, api (`/api/v1/health` 200). Redirect-петель нет
+  (SSL Full strict ок). Историю диагноза (lame delegation ahost) см. done.md/logs.md 07.07.
+- **🔲 Полат/Claude (СЛЕДУЮЩИЙ ШАГ):** env vars через Railway dashboard (нужен подключённый Chrome):
+  web-buyer (`savdo-builder-by`): `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`,
+  `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`; web-seller (`savdo-builder-sl`):
+  `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`; **landing**: `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`
+  (хвост LANDING-BRANCH-DRIFT-001 — сейчас держится на code-fallback `buyer-url.ts`).
+  Сначала read Variables (research-before-assume), потом менять. После redeploy — curl 5 доменов +
+  CORS-preflight, UptimeRobot, Search Console.
 - **🔲 Азим (код):** apex=landing ⇒ магазины живут на shop.maxsavdo.uz — обновить `extractSlug`
   парсер web-buyer, `buyerStoreUrl` web-seller, canonical/sitemap (связка SEO-AUDIT-001).
 - **⚠️ Осторожно с CORS:** wildcard `*.maxsavdo.uz` в проде (`e18f94e`) покрывает apex и все
