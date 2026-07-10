@@ -6,6 +6,9 @@
  *   - update: `adminRepo.updateStoreStatus(id, 'ARCHIVED')`
  *   - audit: STORE_ARCHIVED, payload `{ reason, adminId, previousStatus }`
  *   - INV-A02: reason обязателен на DTO-level
+ *   - postEffect (HYBRID-5): активный контекст владельца SELLER → BUYER,
+ *     иначе бот/TMA дефолтят на seller-контекст архивированного магазина
+ *     (switch-context гейтится только на deletedAt, статус не проверяет).
  */
 import { Store } from '@prisma/client';
 import { ErrorCode } from '../../../shared/constants/error-codes';
@@ -26,4 +29,10 @@ export class ArchiveStoreUseCase extends createStatusTransitionUseCase<Store, St
   audit: { action: 'STORE_ARCHIVED', entityType: 'Store' },
   withReason: true,
   includePreviousStatus: true,
+  postEffect: async (repo, { entityId }) => {
+    const ownerUserId = await repo.findStoreOwnerUserId(entityId);
+    if (ownerUserId) {
+      await repo.reconcileSellerContextToBuyer(ownerUserId);
+    }
+  },
 }) {}
