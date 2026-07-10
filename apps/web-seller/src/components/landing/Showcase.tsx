@@ -1,6 +1,6 @@
 'use client';
 
-import { Star, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { colors } from '@/lib/styles';
 import { demoStoreUrl } from '@/lib/landing/demo-store';
@@ -16,10 +16,11 @@ export function Showcase() {
   const ref = useReveal<HTMLDivElement>();
   const demo = demoStoreUrl();
 
+  // Без rating-бейджей: витрины — дизайн-примеры, вымышленный рейтинг = fake social proof.
   const stores = [
-    { cover: '/landing/s-fashion.jpg', name: 'Atelier Nur', niche: t('showcase.niche1'), rating: '4.9', initial: 'A' },
-    { cover: '/landing/s-beauty.jpg', name: 'Lumé Beauty', niche: t('showcase.niche2'), rating: '5.0', initial: 'L' },
-    { cover: '/landing/s-jewelry.jpg', name: 'Studio Roz', niche: t('showcase.niche3'), rating: '4.8', initial: 'S' },
+    { cover: '/landing/s-fashion.jpg', name: 'Atelier Nur', niche: t('showcase.niche1'), initial: 'A' },
+    { cover: '/landing/s-beauty.jpg', name: 'Lumé Beauty', niche: t('showcase.niche2'), initial: 'L' },
+    { cover: '/landing/s-jewelry.jpg', name: 'Studio Roz', niche: t('showcase.niche3'), initial: 'S' },
   ];
 
   return (
@@ -39,12 +40,6 @@ export function Showcase() {
             <div className="relative h-48">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={s.cover} alt={s.name} className="w-full h-full object-cover" />
-              <span
-                className="absolute top-3 right-3 inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full"
-                style={{ background: 'rgba(0,0,0,0.45)', color: '#fff', backdropFilter: 'blur(4px)' }}
-              >
-                <Star size={11} fill={colors.accent} style={{ color: colors.accent }} /> {s.rating}
-              </span>
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5">
               <div
