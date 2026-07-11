@@ -1335,58 +1335,9 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 
 ### 🟡 На Азиме — код
 
-## 🔴 [ONBOARDING-AUDIT-AZIM-001] Фиксы онбординга — web-buyer + web-seller (25.06.2026)
+## ✅ [ONBOARDING-AUDIT-AZIM-001] Фиксы онбординга — web-buyer + web-seller — ЗАКРЫТО 11.07.2026
 
-Источник: UX-аудит 80 персон. P0 блокеры которые ломают реальную эксплуатацию.
-
-### P0-1: `toSlug()` убивает кириллические названия магазинов
-- **Файл:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx:18-25`
-- **Проблема:** `[^\w\s-]` вырезает кириллицу → «Электро Маркет» → `""` → валидация проходит → API 400
-- **Фикс:** добавить транслитерацию перед regex:
-```typescript
-const CYRILLIC: Record<string, string> = {
-  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'j',к:'k',
-  л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
-  ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
-};
-
-function toSlug(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[а-яё]/g, (c) => CYRILLIC[c] ?? '')
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
-}
-```
-
-### P0-2: OtpGate не объясняет что нужен бот
-- **Файл:** `apps/web-buyer/src/components/auth/OtpGate.tsx:55-59`
-- **Проблема:** код отправлен в Telegram, но пользователь не знает что нужен @maxsavdo_bot
-- **Фикс:** добавить под текстом `step === 'code'`:
-```tsx
-{step === 'code' && (
-  <p className="text-xs mt-1" style={{ color: colors.textDim }}>
-    Не пришёл код? Убедитесь, что запустили{' '}
-    <a href="https://t.me/maxsavdo_bot" target="_blank" rel="noreferrer" style={{ color: colors.accent }}>
-      @maxsavdo_bot
-    </a>
-  </p>
-)}
-```
-
-### P1-1: «Войти» пугает новых пользователей
-- **Файл:** `apps/web-seller/src/app/(auth)/login/page.tsx`
-- **Фикс:** добавить под заголовком подсказку: «Если вы здесь впервые — введите номер телефона, аккаунт создастся автоматически»
-
-### P1-2: Два дублирующих TG поля в Step 2 онбординга
-- **Файл:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
-- **Фикс:** убрать отдельное поле `telegramContactLink`, генерировать из `telegramUsername`: `https://t.me/${username}`
-
-- **Домен:** apps/web-buyer, apps/web-seller (Азим)
-- **Приоритет:** P0-1 и P0-2 → сразу, P1 → до следующего демо
+Источник: UX-аудит 80 персон. Все P0 и P1 закрыты (Азим/Claude). Детали — `done.md`.
 
 ---
 

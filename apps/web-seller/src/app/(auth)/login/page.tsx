@@ -84,8 +84,11 @@ export default function LoginPage() {
           {step === "phone" ? (
             <>
               <h2 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>Войти</h2>
-              <p className="text-sm mb-5" style={{ color: colors.textMuted }}>
+              <p className="text-sm mb-1" style={{ color: colors.textMuted }}>
                 Введите номер телефона — отправим код
+              </p>
+              <p className="text-xs mb-5" style={{ color: colors.textDim }}>
+                Если вы здесь впервые — аккаунт создастся автоматически
               </p>
 
               <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: colors.textDim }}>

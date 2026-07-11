@@ -5,6 +5,8 @@ import { useRequestOtp, useVerifyOtp } from '@/hooks/use-auth';
 import { colors } from '@/lib/styles';
 import { PhoneInput, isValidUzPhone } from '@/components/PhoneInput';
 
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
+
 type OtpStep = 'phone' | 'code';
 
 interface OtpGateProps {
@@ -120,6 +122,17 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
               >
                 Изменить номер
               </button>
+              <p className="text-xs text-center" style={{ color: colors.textDim }}>
+                Не пришёл код? Убедитесь, что запустили{' '}
+                <a
+                  href={`https://t.me/${BOT_USERNAME}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: colors.accent }}
+                >
+                  @{BOT_USERNAME}
+                </a>
+              </p>
             </>
           )}
           {error && <p className="text-xs text-center" style={{ color: colors.danger }}>{error}</p>}
