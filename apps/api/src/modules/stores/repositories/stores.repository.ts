@@ -97,6 +97,18 @@ export class StoresRepository {
     return { stores, total, page, limit };
   }
 
+  /**
+   * SEO-AUDIT-001: лёгкий фид для sitemap — только slug+updatedAt публичных
+   * магазинов (та же видимость, что findAllPublished, без include/пагинации).
+   */
+  async findAllPublishedForSitemap() {
+    return this.prisma.store.findMany({
+      where: { isPublic: true, isSuspendedByBilling: false, deletedAt: null, status: 'APPROVED' },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
   // FEAT-001: case-insensitive поиск по публичным магазинам.
   // Используется в GET /storefront/search.
   // API-STORES-FILTER-SUSPENDED-001: status: APPROVED — SUSPENDED stores не

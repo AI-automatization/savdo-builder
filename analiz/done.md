@@ -39,6 +39,38 @@ UX-аудита 80 персон устранены.
 
 ---
 
+## 2026-07-09 (Claude/Полат) — DEPLOY-DOMAIN-MAXSAVDO-001: домены живы + env vars переведены на maxsavdo.uz
+
+### ✅ [DEPLOY-DOMAIN-MAXSAVDO-001-ENV] Railway env vars обновлены под кастомные домены
+- **Важность:** 🔴 (прод-инфра) · **Дата:** 09.07.2026
+- **Контекст:** NS переключены ahost→Cloudflare (Азим, 08.07) — все 5 доменов резолвятся и отвечают 200.
+  После этого стало безопасно менять NEXT_PUBLIC_* (вшиваются в бандл при билде).
+- **Что сделано (Claude через Railway dashboard, один changeset «6 changes across 3 services»):**
+  - `savdo-builder-by`: `NEXT_PUBLIC_API_URL` → `https://api.maxsavdo.uz`; **добавлен**
+    `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (не было вовсе — sitemap/robots/metadataBase
+    web-buyer падали на дефолт).
+  - `savdo-builder-sl`: `NEXT_PUBLIC_API_URL` → `https://api.maxsavdo.uz`;
+    `NEXT_PUBLIC_BUYER_URL` → `https://shop.maxsavdo.uz` (был railway.app URL).
+  - `landing`: `NEXT_PUBLIC_API_URL` → `https://api.maxsavdo.uz` (старое значение содержало
+    лишний ведущий пробел!); **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` —
+    закрыт хвост LANDING-BRANCH-DRIFT-001 (демо-ссылка больше не зависит от code-fallback).
+- **Деплой:** все 3 сервиса Deployment successful (Railway Activity 09.07). Проверки curl — см. tasks.md.
+- **Не тронуто:** savdo-api (env серверные, домен уже привязан), admin/TMA (остаются на railway.app).
+
+## 2026-07-07 (Fable 5, по запросу owner-а) — SEO-AUDIT-001: аудит SEO/GEO/AEO + кода сайта
+
+### ✅ [SEO-AUDIT-001-AUDIT] Проведён read-only аудит, план фиксов оформлен
+- **Важность:** 🔴 (сайт невидим для поисковиков/AI) · **Дата:** 07.07.2026
+- **Файлы:** только чтение (web-buyer: layout/sitemap/robots/manifest/next.config/страницы/lib;
+  web-seller: layout/socket/client; admin: index.html). Изменений кода НЕТ.
+- **Что сделано:** полный SEO/GEO/AEO-аудит web-buyer + код-аудит сайта. Главное: discovery-дыра
+  (статичный sitemap + client-side главная без ссылок на магазины), client-side страница товара
+  (пустая для AI-краулеров), нет uz/hreflang, web-seller без noindex, дефекты Product JSON-LD,
+  socket без reconnect-лимита (в обоих web-апах), размытый контракт цен (fallback-пирамиды).
+  ⚠️ Найдено расхождение трекера с кодом: i18n ru/uz и /help из done.md 21.05 в коде отсутствуют.
+- **План фиксов:** `analiz/tasks.md → SEO-AUDIT-001` (P0-P2 + код-аудит, роли Полат/Азим).
+  Баг-детали: `analiz/logs.md → SEO-AUDIT-001`.
+
 ## 2026-07-08 (Азим/Claude) — LANDING-BRANCH-DRIFT-001: maxsavdo.uz показывал mock-плейсхолдеры + мёртвую ссылку демо
 
 ### ✅ [LANDING-BRANCH-DRIFT-001] Синхронизирован `landing`-ветка с `web-seller`, починен fallback buyer-url

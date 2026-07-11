@@ -1,5 +1,23 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-07] [SEO-AUDIT-001] Аудит SEO/GEO/AEO web-buyer — критические находки (read-only, фиксы не применялись)
+- **Статус:** 🟡 Предупреждение (зона web-* = Азим; API-контракт под sitemap — Полат)
+- **Что случилось:** проведён аудит web-buyer/web-seller/admin по коду. Критичное:
+  1. `apps/web-buyer/src/app/sitemap.ts` — статичный, 5 URL, ни одного магазина/товара; главная
+     `(shop)/page.tsx` = "use client" без серверных ссылок на магазины → у краулеров НЕТ пути
+     к `/[slug]` (discovery-дыра).
+  2. `(shop)/[slug]/products/[id]/page.tsx:1` — "use client": контент товара не в HTML → невидим
+     для AI-краулеров без JS (GPTBot/ClaudeBot/PerplexityBot). Спасает только JSON-LD из layout.
+  3. Нет uz-локали/hreflang (`layout.tsx:48` lang="ru" hardcoded, i18n-каталога в src/lib нет).
+  4. ⚠️ РАСХОЖДЕНИЕ ТРЕКЕРА С КОДОМ: done.md/tasks.md утверждают что FAQ-001 (/help, 21.05) и
+     i18n ru/uz web-buyer сделаны — в текущем коде маршрута /help и i18n НЕТ. Похоже потеряны
+     при редизайне dark-luxury 25.05.
+  5. `apps/web-seller` — нет robots.ts/noindex, дашборд индексируем.
+  6. `web-buyer/src/app/manifest.ts` icons → `/favicon.ico`, но `public/` пуст → 404 иконки PWA.
+  7. Product JSON-LD (`products/[id]/layout.tsx:37`): availability всегда InStock, price fallback 0,
+     нет aggregateRating/BreadcrumbList; нет JSON-LD на странице магазина; нет llms.txt.
+- **Что сделано:** только аудит + отчёт владельцу. Фиксы — по решению (web-* — Азим).
+
 ## [2026-07-08] [LANDING-BRANCH-DRIFT-001] `landing` и `web-seller` — разные Railway-сервисы из одного apps/web-seller, молча расходятся
 - **Статус:** ✅ Исправлено (см. done.md), но паттерн повторится если не следить
 - **Что случилось:** `maxsavdo.uz` (сервис `landing`) и `seller.maxsavdo.uz` (сервис `savdo-builder-sl`)
