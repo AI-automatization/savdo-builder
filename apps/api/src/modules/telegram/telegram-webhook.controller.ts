@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Public } from '../../common/decorators/public.decorator';
 import { TelegramBotService } from './services/telegram-bot.service';
 import { TelegramDemoHandler } from './telegram-demo.handler';
+import { t } from './telegram-bot-i18n';
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
 
@@ -221,7 +222,8 @@ export class TelegramWebhookController {
       const url = botUsername && slug
         ? `https://t.me/${botUsername}?startapp=store_${slug}`
         : tmaUrl;
-      await this.bot.sendToChannel(chatId, `🔗 Открыть магазин:`, [[{ text: '🛒 Открыть', url }]], 'HTML');
+      const lang = await this.demo.getLang(chatId);
+      await this.bot.sendToChannel(chatId, t(lang, 'deeplink.storeLink'), [[{ text: t(lang, 'btn.open'), url }]], 'HTML');
       return;
     }
 
