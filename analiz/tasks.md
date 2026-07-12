@@ -9,6 +9,93 @@
 > TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
 > Все — код-комплит + tsc TMA EXIT 0. Осталась live-ретест-проверка на устройстве.
 
+## 🟡 [DEPLOY-DOMAIN-MAXSAVDO-001] Привязка maxsavdo.uz — DNS ЖИВ 09.07, остались env vars + постдеплой
+- **Домен:** инфра/Railway (Полат+Claude) · Cloudflare DNS (Азим)
+- **Кто взял:** Полат + Claude (07.07)
+- **Карта (утвердил owner 07.07):** apex+www → **landing** · shop → web-buyer ·
+  seller → web-seller · api → savdo-api · admin/TMA остаются на railway.app.
+- **✅ 07.07 сделано (Claude через Railway dashboard):** 5 кастомных доменов привязаны
+  (maxsavdo.uz + www → landing:8080, shop → savdo-builder-by:8080, seller → savdo-builder-sl:8080,
+  api → savdo-api:3000). Все CNAME-target'ы + TXT-верификации сняты →
+  **`analiz/dns-maxsavdo-2026-07-07.md`** (передать Азиму для Cloudflare).
+- **✅ БЛОКЕР СНЯТ (проверено 09.07):** Азим переключил NS у ahost → NS = donovan/emma.ns.cloudflare.com,
+  все 5 доменов резолвятся (69.46.46.x, proxied) и отвечают **HTTP 200**: maxsavdo.uz, www, shop
+  (контент web-buyer — роутинг корректный), seller, api (`/api/v1/health` 200). Redirect-петель нет
+  (SSL Full strict ок). Историю диагноза (lame delegation ahost) см. done.md/logs.md 07.07.
+- **✅ ENV VARS ОБНОВЛЕНЫ (Claude через Railway dashboard, 09.07):** одним changeset (Apply 6 changes → Deploy):
+  - `savdo-builder-by` (web-buyer): `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`,
+    **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (раньше не было — sitemap/robots/canonical
+    падали на дефолт).
+  - `savdo-builder-sl` (web-seller): `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz`,
+    `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (было `savdo-builder-by-production.up.railway.app`).
+  - `landing`: `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz` (было railway.app + лишний пробел в значении!),
+    **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (закрыт хвост LANDING-BRANCH-DRIFT-001).
+- **🔲 Постдеплой:** UptimeRobot на 5 доменов, Search Console (связка SEO-AUDIT-001).
+- **🔲 Азим (код):** apex=landing ⇒ магазины живут на shop.maxsavdo.uz — обновить `extractSlug`
+  парсер web-buyer, `buyerStoreUrl` web-seller, canonical/sitemap (связка SEO-AUDIT-001).
+- **⚠️ Осторожно с CORS:** wildcard `*.maxsavdo.uz` в проде (`e18f94e`) покрывает apex и все
+  поддомены — новых правок API не нужно.
+
+## 🔴 [SEO-AUDIT-001] SEO/GEO/AEO + код-аудит сайта — план фиксов (аудит 07.07.2026)
+- **Домен:** apps/web-buyer + apps/web-seller (Азим) · apps/api sitemap-endpoint + packages/types (Полат)
+- **Кто взял:** пока никто — аудит read-only (Fable 5), фиксы распределить
+- **Контекст:** owner запросил аудит SEO/GEO/AEO + кода сайта. Находки-баги: `logs.md → SEO-AUDIT-001`.
+  Вывод: техфундамент хороший, но сайт невидим для поисковиков и AI-краулеров (нет discovery-пути).
+
+### ✅ Что НОРМ — не трогать (подтверждено чтением кода)
+- SSR страницы магазина + `generateMetadata`/canonical/OG (`[slug]/page.tsx`), React.cache дедуп.
+- Серверный Product JSON-LD + metadata (`products/[id]/layout.tsx`), Organization JSON-LD в корне.
+- `robots.ts` закрывает приватные пути; admin — `noindex,nofollow` (`admin/index.html:6`).
+- CSP/HSTS/security headers (`next.config.ts:34-56`), ISR revalidate 30s (`storefront-server.ts:20`).
+- alt/aria на карточках (`ProductCard.tsx`), next/image с sizes.
+- Гигиена кода: во всём web-buyer 3 `any` (один файл) и 1 обоснованный console.warn; web-seller чист.
+- axios refresh-mutex с защитой от 401-петель (`lib/api/client.ts:22-76`) — грамотно.
+- TanStack defaults staleTime 60s / retry 1 (`query-provider.tsx`) — ок.
+- Клиентский поиск НЕ рефетчит товары (`ProductsWithSearch` фильтрует серверный список).
+
+### 🔴 P0 — сайт невидим для краулеров (SEO/GEO)
+1. **[Полат, api]** Endpoint под sitemap: `GET /storefront/sitemap` — все slug магазинов (approved)
+   + id/updatedAt видимых товаров. Лёгкий, кэшируемый.
+2. **[Азим, web-buyer]** `sitemap.ts` → динамический (сейчас 5 статичных URL, ни одного магазина/товара).
+3. **[Азим, web-buyer]** Главная `(shop)/page.tsx` — "use client", ни одной серверной ссылки на
+   магазины → краулеру некуда идти. Добавить серверный блок featured-магазинов (endpoint
+   `/storefront/featured` уже есть).
+4. **[Азим, web-buyer]** `products/[id]/page.tsx` — "use client": контент товара не в HTML,
+   AI-краулеры (GPTBot/ClaudeBot/PerplexityBot) видят пустую страницу. Перевести первичный рендер
+   на сервер (данные уже фетчатся в layout — отдать вниз), интерактив оставить клиентским.
+
+### 🟠 P1
+5. **[Азим]** uz-локаль + hreflang: `lang="ru"` hardcoded (`layout.tsx:48`), i18n-каталога в
+   web-buyer НЕТ. ⚠️ done.md утверждает i18n ru/uz + /help сделаны 21.05 — в коде отсутствуют,
+   похоже потеряны при редизайне dark-luxury 25.05. Разобраться в git log и восстановить.
+6. **[Азим]** Вернуть `/help` (FAQ) + FAQPage JSON-LD — ядро AEO. Добавить в sitemap.
+7. **[Азим]** web-seller: нет robots.ts/noindex — дашборд индексируем. Закрыть noindex целиком.
+8. **[Азим]** Product JSON-LD (`products/[id]/layout.tsx:36-37`): availability всегда InStock
+   (лечить по стоку/статусу), price fallback 0 (не отдавать Offer без цены), добавить
+   aggregateRating из отзывов (UI уже есть — ProductReviews).
+9. **[Азим]** `/about` — связать с LANDING-CORP-PAGE-001 (уже в бэклоге): entity-контент для GEO.
+
+### 🟡 P2
+10. llms.txt; Organization JSON-LD: logo + sameAs (TG-канал) + contactPoint; BreadcrumbList на
+    товаре; WebSite+SearchAction на главной.
+11. `manifest.ts` icons → `/favicon.ico`, но `public/` пуст → 404 иконки PWA. Положить реальные.
+12. `sitemap.ts` lastModified = new Date() на каждый запрос — отдавать честные даты.
+13. `robots.ts:14-15` — `/orders` и `/orders/` дубль (косметика).
+
+### 🔧 Код-аудит (не SEO)
+14. **[Азим, web-buyer+web-seller]** `lib/socket.ts` обоих апов: `io(BASE_URL)` без
+    `reconnectionAttempts`/backoff → дефолт socket.io = вечный reconnect (та же болезнь, что
+    PERF-TMA-HEAT-001 п.2; в TMA фикшено 03.07). Портировать лимит из TMA.
+15. **[Полат types + Азим]** Контракт позиций/цен размыт: `checkout/page.tsx:46-64`
+    (`cartItemUnitPrice` — 7 fallback-полей), `orders/[id]/page.tsx:51-63` (`normalizeOrder(raw: any)`) —
+    фронт гадает форму ответа API. Та же семья, что TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009.
+    Зафиксировать контракт в `packages/types` и убрать fallback-пирамиды.
+16. **[проверить]** `storefront-server.ts:56` выбрасывает `meta.total` → на странице магазина нет
+    пагинации: если API отдаёт дефолтный limit, магазин с большим каталогом покажет только первую
+    страницу («Товары · N» врёт). Проверить limit `/storefront/products` и добавить пагинацию/«ещё».
+17. **[норм, зафиксировать]** JWT в localStorage (`auth/storage.ts`) — осознанный XSS-компромисс,
+    приемлем при текущем строгом CSP; не переделывать без причины.
+
 ## 🟡 [TMA-SETTINGS-GEAR-CRASH-013] Интермиттентный ErrorBoundary при открытии Настроек
 - **Домен:** apps/tma · **Кто взял:** Полат · **Приоритет:** 🟡 · **Статус:** НЕ фикшен (нужен стек)
 - **Что:** при открытии Настроек иногда ErrorBoundary «Что-то пошло не так» (воспроизвёлся 1/2),

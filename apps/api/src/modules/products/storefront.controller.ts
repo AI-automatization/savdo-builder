@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   Query,
   UseGuards,
@@ -76,6 +77,30 @@ export class StorefrontController {
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   async getFeaturedStorefront() {
     return this.getFeatured.execute();
+  }
+
+  // ─── SEO-AUDIT-001: sitemap feed ─────────────────────────────────────────
+
+  /**
+   * GET /api/v1/storefront/sitemap
+   *
+   * Фид для динамического sitemap.xml web-buyer: slug'и публичных магазинов
+   * + id видимых товаров, оба с updatedAt (честный lastmod вместо new Date()).
+   * URL из slug/id собирает фронт — API не знает канонический хост.
+   *
+   * Cache-Control 1h + Throttle 10/min: фид дешёвый (select 2 полей),
+   * но дёргают его только генераторы sitemap, чаще незачем.
+   */
+  @Get('storefront/sitemap')
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getSitemapFeed() {
+    const [stores, products] = await Promise.all([
+      this.storesRepo.findAllPublishedForSitemap(),
+      this.productsRepo.findAllPublicForSitemap(),
+    ]);
+    return { stores, products };
   }
 
   // ─── Stores ──────────────────────────────────────────────────────────────
