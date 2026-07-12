@@ -25,6 +25,45 @@
   без реконсиляции владелец архивированного магазина оставался в мёртвом seller-контексте.
 - +3 unit-теста, suite 23/23 PASS. Коммит `1d2b4bc`.
 
+## 2026-07-11 (Азим/Claude) — ONBOARDING-AUDIT-AZIM-001 P0-1/P0-2: слепая зона онбординга
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P0-1 — `toSlug()` убивал кириллические названия магазинов
+- **Важность:** 🔴 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+- **Что сделано:** добавлена таблица транслитерации кириллицы (`CYRILLIC`), применяется перед
+  regex-очисткой `[^\w\s-]`; добавлена обрезка ведущих/хвостовых дефисов. «Электро Маркет» теперь
+  → `elektro-market` вместо `""` (раньше валидация на фронте проходила с пустым slug и падала 400
+  на API — продавец с кириллическим названием не мог пройти онбординг).
+- **Проверка:** `pnpm --filter web-seller exec tsc --noEmit` — EXIT 0.
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P0-2 — OtpGate не объяснял, что нужен @maxsavdo_bot
+- **Важность:** 🔴 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx`
+- **Что сделано:** на шаге ввода кода добавлена подсказка-ссылка на бота под кнопкой «Изменить
+  номер». Username берётся из `NEXT_PUBLIC_TG_BOT_USERNAME` с фолбэком `maxsavdo_bot` — тот же
+  паттерн, что уже используется в `products/[id]/page.tsx`.
+- **Проверка:** `pnpm --filter web-buyer exec tsc --noEmit` — 1 ошибка, но предсуществующая и
+  несвязанная (`orders/[id]/page.tsx:243`, OrderStatus 'PROCESSING' — файл не трогался).
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P1-1 — копирайт «Войти» пугал новых пользователей
+- **Важность:** 🟡 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-seller/src/app/(auth)/login/page.tsx`
+- **Что сделано:** под подзаголовком добавлена строка «Если вы здесь впервые — аккаунт создастся
+  автоматически» — снимает страх юзеров, у которых ещё нет аккаунта, перед формой «Войти».
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P1-2 — дублирующее TG-поле в Step 2 онбординга
+- **Важность:** 🟡 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+- **Что сделано:** убрано отдельное поле `telegramContactLink` (react-hook-form регистрация +
+  input + валидация), `Step2Data` больше не хранит его. `telegramContactLink` теперь выводится из
+  `telegramUsername` как `https://t.me/${bareUsername}` при сабмите (`handleStep2`). Продавец
+  вводит username один раз вместо двух похожих полей.
+- **Проверка:** `pnpm --filter web-seller exec tsc --noEmit` — EXIT 0 для обоих P1-фиксов.
+
+**[ONBOARDING-AUDIT-AZIM-001] закрыт полностью** (P0-1, P0-2, P1-1, P1-2) — все 4 пункта из
+UX-аудита 80 персон устранены.
+
+---
+
 ## 2026-07-09 (Claude/Полат) — DEPLOY-DOMAIN-MAXSAVDO-001: домены живы + env vars переведены на maxsavdo.uz
 
 ### ✅ [DEPLOY-DOMAIN-MAXSAVDO-001-ENV] Railway env vars обновлены под кастомные домены
