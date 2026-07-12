@@ -265,14 +265,14 @@ const paymentMethods: {
 }[] = [
   {
     id: "cash",
-    label: "Наличные курьеру",
-    sub: "оплата при получении",
+    label: "Наличные",
+    sub: "при встрече / самовывозе",
     disabled: false,
   },
   {
     id: "card",
-    label: "Картой курьеру",
-    sub: "UzCard / Humo POS-терминал",
+    label: "Перевод на карту",
+    sub: "продавец пришлёт реквизиты в чате заказа",
     disabled: false,
   },
   {
@@ -654,7 +654,7 @@ export default function CheckoutPage() {
                   className="text-[11px] mb-1.5"
                   style={{ color: colors.textMuted }}
                 >
-                  Комментарий курьеру (необязательно)
+                  Комментарий к заказу (необязательно)
                 </div>
                 <textarea
                   value={comment}
