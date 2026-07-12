@@ -5,6 +5,9 @@
 
 ---
 
+> ✅ 12.07: INFRA-ENV-BUYER-URL-API-001 закрыт (см. done.md) — `BUYER_URL=https://shop.maxsavdo.uz`
+> добавлен на savdo-api (переменной не было вовсе), Deploy применён, health 200.
+
 > ✅ 02.07 закрыты (см. done.md): TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009,
 > TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
 > Все — код-комплит + tsc TMA EXIT 0. Осталась live-ретест-проверка на устройстве.
@@ -59,10 +62,12 @@
 
 ### 🔴 P0 — сайт невидим для краулеров (SEO/GEO)
 1. ✅ **[Полат, api]** Endpoint под sitemap: `GET /storefront/sitemap` — закрыто 10.07.2026
-   (`1d2b4bc4`, main). Отдаёт slug+updatedAt магазинов, id+updatedAt товаров.
+   (`1d2b4bc4`, main). Отдаёт slug+updatedAt магазинов, id+updatedAt товаров. Типы
+   `StorefrontSitemapFeed` добавлены в `packages/types` 12.07 (`98270455`).
 2. ✅ **[Азим, web-buyer]** `sitemap.ts` → динамический — закрыто 12.07.2026 (`b215b59b`,
    ветка `web-buyer`). Магазины подключены. **⚠️ Товары НЕ эмитятся** — фид из п.1 не несёт
-   `store.slug`/`storeId`, без него нельзя построить канонический `/{slug}/products/{id}`.
+   `store.slug`/`storeId` (подтверждено и в новом `StorefrontSitemapProduct` типе — тоже только
+   `id`/`updatedAt`), без него нельзя построить канонический `/{slug}/products/{id}`.
    **Нужно от Полата:** добавить `store: { select: { slug: true } }` (или плоский `storeSlug`)
    в `ProductsRepository.findAllPublicForSitemap` (`apps/api/src/modules/products/
    repositories/products.repository.ts`) — тривиальная правка, разблокирует товары в sitemap.
@@ -232,8 +237,10 @@
 - ✅ **HYBRID-3** [api/bot] Меню бота по `users.role` + кнопки переключения. Закрыл
   `ROLE-SOURCE-INCONSISTENCY-001`. → done.md
 - ✅ **HYBRID-6** [api] `capabilities {canBuy,canSell,hasStore}` в /auth/me и /auth/telegram. → done.md
-- 🔲 **HYBRID-5** [api] Проактивная реконсиляция при удалении/архивации магазина (сейчас
-  переключение реактивно гейтится на store — основной риск закрыт, это hardening).
+- ✅ **HYBRID-5** [api] СДЕЛАНО 10.07 (Claude): `ArchiveStoreUseCase.postEffect` →
+  `findStoreOwnerUserId` + `reconcileSellerContextToBuyer` (updateMany по role, идемпотентно).
+  Важно: гейт switch-context проверяет ТОЛЬКО deletedAt (не статус) — реконсиляция была
+  единственным барьером. +3 теста (23/23). Коммит `1d2b4bc`.
 - Схема (`packages/db`) — миграция НЕ понадобилась (Buyer?+Seller? уже сосуществуют).
 - ⚠️ **НЕ ЗАКОММИЧЕНО:** Фаза 2 (api+bot+tma) на диске, tsc всех трёх зелёный, но пользователь
   отклонял git-операции — коммит/деплой по его команде. Фаза 1 (HYBRID-4) закоммичена (af39641, main).
