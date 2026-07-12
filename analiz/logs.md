@@ -1,5 +1,16 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-12] [BOT-STORE-LINK-404-001] Бот выдавал 404-ссылку магазина после регистрации
+- **Статус:** ✅ Исправлено (коммит `544e192`)
+- **Что случилось:** owner сообщил — в боте у продавца сообщение «Магазин создан» (и /store)
+  выдаёт ссылку, которая открывает 404. Root cause: `telegram-demo.handler.ts` хардкодил
+  `maxsavdo.uz/{slug}` (строки 482, 832 до фикса). До 09.07 это работало, но по карте доменов
+  apex+www отданы ЛЕНДИНГУ — магазины переехали на `shop.maxsavdo.uz/{slug}`. Бот не обновили —
+  та же семья, что и код-правки Азима (extractSlug/buyerStoreUrl из DEPLOY-DOMAIN-MAXSAVDO-001).
+- **Что сделано:** `buyerBaseUrl()` = `BUYER_URL` env ?? `https://shop.maxsavdo.uz`; все ссылки бота
+  через него. ⚠️ Проверить в Railway env savdo-api: если `BUYER_URL` задан старым railway.app URL —
+  обновить на `https://shop.maxsavdo.uz` (иначе и channel-post-builder шлёт неканонические ссылки).
+
 ## [2026-07-07] [SEO-AUDIT-001] Аудит SEO/GEO/AEO web-buyer — критические находки (read-only, фиксы не применялись)
 - **Статус:** 🟡 Предупреждение (зона web-* = Азим; API-контракт под sitemap — Полат)
 - **Что случилось:** проведён аудит web-buyer/web-seller/admin по коду. Критичное:
