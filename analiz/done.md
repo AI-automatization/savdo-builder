@@ -26,6 +26,74 @@
 - `orders.controller.ts:73-74` — `(result as any)` → типизированный PaginatedOrders.
 - nest build EXIT 0. Хвост задачи закрыт — `as any` в контроллерах 0.
 
+## 2026-07-12 (Азим/Claude, вечер) — LANDING-CORP-PAGE-001: buyer catalog + admin входы
+
+### ✅ [LANDING-CORP-PAGE-001] Точки входа на маркетинг-лендинге
+- **Важность:** 🟠 · **Дата:** 12.07.2026 · **Ветки:** `landing` (`ba1bd884`), `web-seller` (`2088a0d7`, cherry-pick)
+- **Файлы:** `apps/web-seller/src/components/landing/LandingHeader.tsx`, `LandingFooter.tsx`,
+  `src/lib/i18n/ru.ts`, `src/lib/i18n/uz.ts`
+- **Что сделано:** реализована design-спека `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`
+  (approved 11.07). Тикет переформулирован по факту 11.07 — seller-лендинг уже был готов, не хватало
+  входа для покупателя (каталог магазинов) и технической ссылки на админку. Добавлено: ссылка «Каталог
+  магазинов» в хедере (десктоп+мобайл) через `buyerOrigin()`; 4-я колонка «Продукт» в футере с той же
+  ссылкой + приглушённая «Админка» (`NEXT_PUBLIC_ADMIN_URL`, фолбэк `adminsb.up.railway.app`); i18n
+  ключи `nav.buyerCatalog`/`footer.admin` ru+uz. Hero и seller-конверсия не тронуты.
+- **Проверка:** tsc EXIT 0 на обеих ветках, `next build` EXIT 0, Playwright — desktop header, мобильное
+  меню, футер 4 колонки, переключение RU/UZ, 0 console errors.
+- **Follow-up (не в scope, за Полатом):** `main` расходится с прод-ветками лендинга (тот же класс, что
+  `LANDING-BRANCH-DRIFT-001`); `NEXT_PUBLIC_ADMIN_URL` фолбэк не подтверждён явно.
+
+## 2026-07-12 (Азим/Claude) — SEO-AUDIT-001 P0 (п.2-4) + DEPLOY-DOMAIN-MAXSAVDO-001 (web-buyer часть)
+
+### ✅ [SEO-AUDIT-001] П.2 — sitemap.ts стал динамическим
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `src/lib/api/storefront-server.ts`
+- **Что сделано:** вместо 6 статичных URL — `serverGetSitemapFeed()` тянет `GET /storefront/sitemap`
+  (Полат, `1d2b4bc4`), добавляет магазины с честным `lastModified`. Товары НЕ эмитятся — фид не несёт
+  `store.slug`, без него не построить `/{slug}/products/{id}`; заведён блокер на Полата в `logs.md`.
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0 (`/sitemap.xml` в списке роутов, revalidate 30s).
+
+### ✅ [SEO-AUDIT-001] П.3 — главная страница отдаёт server-rendered ссылки на магазины
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/page.tsx`, `src/components/home/HomeTopStores.tsx`,
+  `src/hooks/use-storefront.ts` (`useFeaturedStorefront` += `initialData`), `storefront-server.ts`
+  (новый `serverGetFeatured`)
+- **Что сделано:** `HomePage` стал async Server Component, фетчит featured server-side и передаёт
+  как `initialData` в `useFeaturedStorefront` — краулер получает реальные `<a href="/{slug}">`
+  в первом HTML вместо client-only skeleton (раньше `HomeTopStores` фетчил только через
+  `useQuery` без SSR-данных).
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0 (`/` статически пререндерится, revalidate 30s).
+
+### ✅ [SEO-AUDIT-001] П.4 — карточка товара отдаёт контент в первом HTML
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` (переписан на async
+  Server Component), новый `.../ProductPageClient.tsx` (вся интерактивная логика, без изменений
+  поведения), `hooks/use-storefront.ts` (`useProduct` += `initialProduct`/`initialDataUpdatedAt: 0`)
+- **Что сделано:** `page.tsx` теперь фетчит товар через `serverGetProduct` и рендерит
+  `ProductPageClient` с `initialProduct`. `useProduct` использует его как `initialData`, но с
+  `initialDataUpdatedAt: 0` — auth-зависимые поля (`inWishlist`) дообновляются фоновым рефетчем
+  на mount, не залипая на 3-минутный `staleTime` (server-фетч идёт без auth-токена).
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0, vitest 22/25 (3 падения в `MaxsavdoLogo.test.tsx` —
+  pre-existing, не связаны с этой правкой).
+
+### ✅ [SEO-AUDIT-001] П.13 — robots.ts дубль `/orders`/`/orders/`
+- **Важность:** 🟢 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/robots.ts`
+- **Что сделано:** убран дублирующий disallow-путь (косметика из P2 аудита).
+
+### ✅ [DEPLOY-DOMAIN-MAXSAVDO-001] Азим (код) — fallback URL на apex вместо shop.maxsavdo.uz
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/layout.tsx` (metadataBase), `robots.ts`, `sitemap.ts`,
+  `[slug]/products/[id]/layout.tsx` (canonical/OG)
+- **Что сделано:** `extractSlug`-парсера в коде не нашлось (web-buyer не делает subdomain-роутинг,
+  только path `/${slug}`) — реальный баг оказался в `NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz'`
+  fallback (та же категория, что уже чинили в web-seller `b35d05d`). Поправлено на
+  `https://shop.maxsavdo.uz` в 4 местах. В проде не било (env var уже задан 09.07) — задевало
+  только dev/staging без env var.
+- **Проверка:** tsc EXIT 0.
+- **Не запушено:** коммит только локальный (`.worktrees/web-buyer`), push — по решению Азима.
+>>>>>>> aeeeacdc37a04d79f7cfb743e6bd17f83ab8968f
+
 ## 2026-07-12 (Claude/Полат) — бот: фикс 404-ссылки + язык в онбординге + смена названия магазина
 
 ### ✅ [BOT-STORE-LINK-404-001] 404 на ссылке магазина в боте
