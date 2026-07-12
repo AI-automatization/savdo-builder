@@ -441,48 +441,29 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
-## 🟠 [LANDING-CORP-PAGE-001] Корпоративная landing-страница с контактами + входами
+## ✅ [LANDING-CORP-PAGE-001] Корпоративная landing-страница с контактами + входами — ЗАКРЫТО 12.07.2026
 
-- **Домен:** `apps/web-buyer` (новый route `/about` или отдельный sub-app) — Азим.
-- **Кто берёт:** Азим (UI/контент) · Полат (consult, если потребуется новый
-  storefront-эндпоинт под featured stores на landing).
-- **Приоритет:** P1 marketing-блокер для public launch — внешний посетитель
-  должен видеть «что это за платформа, где покупать, где регистрироваться продавцу,
-  как связаться» в одном месте; сейчас разрозненно по `/`, `/[slug]`, web-seller.
-- **Что должно быть на странице:**
-  1. **Hero**: что такое maxsavdo (платформа Telegram-магазинов для UZ) + кнопки:
-     - «Открыть в Telegram» → `https://t.me/savdo_builderBOT` (TMA buyer/seller flow)
-     - «Стать продавцом» → web-seller `/become-seller`
-     - «Перейти к магазинам» → web-buyer `/` (storefront)
-  2. **Контактные связи** (видны без скролла):
-     - Telegram support: `@maxsavdo_support` (после `SUPPORT-CHANNEL-001`)
-     - Email: `support@maxsavdo.uz`, `legal@maxsavdo.uz` (после регистрации
-       юр.лица и `LEGAL-OFFER-REQUISITES-001`)
-     - Телефон (опционально, после регистрации)
-  3. **Каналы входа** (по аудиториям):
-     - **Покупателям:** TMA buyer (`?startapp=`) + web-buyer storefront URL
-     - **Продавцам:** TMA seller (`?start=become_seller`) + web-seller dashboard
-     - **Админам:** admin URL (не promotion, но техническая ссылка в footer)
-  4. **Цены/тарифы** (после `BILLING-MACHINE-001`): FREE/PRO/STUDIO с краткой
-     таблицей (карточки тарифов уже есть в `docs/business/pricing-rationale-v2-2026-06-04.md`).
-  5. **Юр.секция** в footer: ссылки на `/offer`, `/privacy`, `/terms`, `/refund`
-     (уже существуют от `MARKETING-PUBLIC-OFFER-PAGES-001`).
-- **Контракт к Полату (если потребуется):**
-  - `GET /api/v1/storefront/landing/stats` (опц.) — `{ storesCount, productsCount,
-    ordersCount? }` для hero-цифр. Без этого endpoint'а можно сделать статичный
-    hero без счётчиков — не блокер MVP.
-- **Файлы (predict):**
-  - `apps/web-buyer/src/app/about/page.tsx` (или `apps/web-buyer/src/app/page.tsx`
-    переработка — решение Азима).
-  - `apps/web-buyer/src/lib/i18n/{ru,uz}.ts` — секция `landing.*` строк.
-  - SEO: JSON-LD `Organization` + `WebSite` schema, OG-image.
-- **Definition of done:**
-  - Страница открывается анонимно (без auth), отдаёт корректный SEO meta,
-    все CTA-кнопки кликаются и ведут в правильные точки входа.
-  - Адаптив mobile/desktop.
-  - RU + UZ переводы.
-- **Источник:** запрос владельца 05.06.2026 после закрытия checkout-500 +
-  BUG-2 (готовимся к закрытой бете).
+- **Переформулирован 11.07.2026** (см. `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`,
+  approved): исходный тикет просил строить `/about` в web-buyer с нуля — но к 11.07 уже существовал
+  полноценный seller-маркетинг лендинг на `landing`/`web-seller` deploy-ветках (Hero/Pricing/FAQ/итд).
+  Реальный пробел — не было входов для покупателя (каталог) и админки, а не отсутствие страницы.
+- **✅ Реализовано 12.07.2026** (ветки `landing` `ba1bd884`, cherry-pick на `web-seller` `2088a0d7`):
+  - `LandingHeader.tsx`: ссылка «Каталог магазинов» (`buyerOrigin()`, `target=_blank`) в десктоп-нав
+    и мобильном меню.
+  - `LandingFooter.tsx`: `grid-cols-3` → `sm:grid-cols-4`, новая колонка «Продукт» — «Каталог
+    магазинов» + приглушённая «Админка» (`NEXT_PUBLIC_ADMIN_URL`, фолбэк `adminsb.up.railway.app`).
+  - i18n `nav.buyerCatalog`/`footer.admin` в `ru.ts`/`uz.ts` (обе ветки).
+  - Hero и seller-конверсия НЕ тронуты (вне scope).
+- **Проверено:** tsc EXIT 0 (обе ветки), `next build` EXIT 0, Playwright (desktop header, мобильное
+  меню, футер 4 колонки, RU+UZ, 0 console errors).
+- **Не входило в scope (см. спеку §1):** email/support-контакты (блокер `LEGAL-OFFER-REQUISITES-001` +
+  `SUPPORT-CHANNEL-001`), правки Hero, синхронизация `main` с прод-ветками лендинга (см. риск ниже).
+- **🔲 Follow-up (не срочно, архитектурное решение не моё):** `main` расходится с прод-ветками
+  лендинга (`main`: `web-seller/page.tsx` = `redirect('/dashboard')`, `landing`/`web-seller`: полный
+  маркетинг-лендинг) — тот же класс проблемы, что `LANDING-BRANCH-DRIFT-001`. Нужно решение Полата:
+  смёржить лендинг в `main` или явно задокументировать deploy-ветки как самостоятельные.
+- **🔲 Follow-up:** `NEXT_PUBLIC_ADMIN_URL` фолбэк не подтверждён Полатом явно (взят из его же
+  security-аудитов) — спросить точный текущий домен админки при следующем контакте.
 
 ---
 

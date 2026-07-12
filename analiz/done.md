@@ -1,5 +1,22 @@
 # Done — Азим + Полат
 
+## 2026-07-12 (Азим/Claude, вечер) — LANDING-CORP-PAGE-001: buyer catalog + admin входы
+
+### ✅ [LANDING-CORP-PAGE-001] Точки входа на маркетинг-лендинге
+- **Важность:** 🟠 · **Дата:** 12.07.2026 · **Ветки:** `landing` (`ba1bd884`), `web-seller` (`2088a0d7`, cherry-pick)
+- **Файлы:** `apps/web-seller/src/components/landing/LandingHeader.tsx`, `LandingFooter.tsx`,
+  `src/lib/i18n/ru.ts`, `src/lib/i18n/uz.ts`
+- **Что сделано:** реализована design-спека `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`
+  (approved 11.07). Тикет переформулирован по факту 11.07 — seller-лендинг уже был готов, не хватало
+  входа для покупателя (каталог магазинов) и технической ссылки на админку. Добавлено: ссылка «Каталог
+  магазинов» в хедере (десктоп+мобайл) через `buyerOrigin()`; 4-я колонка «Продукт» в футере с той же
+  ссылкой + приглушённая «Админка» (`NEXT_PUBLIC_ADMIN_URL`, фолбэк `adminsb.up.railway.app`); i18n
+  ключи `nav.buyerCatalog`/`footer.admin` ru+uz. Hero и seller-конверсия не тронуты.
+- **Проверка:** tsc EXIT 0 на обеих ветках, `next build` EXIT 0, Playwright — desktop header, мобильное
+  меню, футер 4 колонки, переключение RU/UZ, 0 console errors.
+- **Follow-up (не в scope, за Полатом):** `main` расходится с прод-ветками лендинга (тот же класс, что
+  `LANDING-BRANCH-DRIFT-001`); `NEXT_PUBLIC_ADMIN_URL` фолбэк не подтверждён явно.
+
 ## 2026-07-12 (Азим/Claude) — SEO-AUDIT-001 P0 (п.2-4) + DEPLOY-DOMAIN-MAXSAVDO-001 (web-buyer часть)
 
 ### ✅ [SEO-AUDIT-001] П.2 — sitemap.ts стал динамическим
