@@ -1,5 +1,31 @@
 # Done — Азим + Полат
 
+## 2026-07-12 (Claude/Полат, вечер) — types-контракты + DevOps-хвосты + as-any cleanup
+
+### ✅ [SEO-AUDIT-001 п.15, types-часть] Честные контракты checkout/orders + sitemap-типы
+- **Коммит:** `9827045` (main). Находки сверки типов с реальным API:
+  `CheckoutPreview.storeName` — фикция (API никогда не отдавал) → @deprecated optional;
+  не хватало valid/cartId/skuSnapshot; `DeliveryAddress` (request, строгий) подменял
+  собой response-side адрес заказа с null-полями → новый `OrderDeliveryAddress`;
+  `Order.store` бывает null. + `StorefrontSitemapFeed` под GET /storefront/sitemap.
+- Проверки: web-seller tsc EXIT 0; web-buyer — 0 новых ошибок (1 предсуществующая).
+- Остаток за Азимом — потребить типы, убрать normalizeOrder(any)/fallback-пирамиды.
+
+### ✅ [DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001, хвост] п.3 дозакрыт + п.4 вердикт
+- **Находка:** фикс maxRetries 3→10 (18.05) попал только в `apps/tma/railway.toml`
+  (мёртвый дубль). Railway для telegram-app читает КОРНЕВОЙ `railway.toml` ветки tma
+  (Root Directory = корень) — там оставалось 3. Исправлено (`3eb8222` → tma),
+  деплой авто-триггернулся, TMA перекатился.
+- **п.4 закрыт с вердиктом «нельзя как написано»:** `apps/tma/Dockerfile` копирует
+  pnpm-lock/workspace из корня → Root Directory=apps/tma сломает build-context.
+  Детали в tasks.md.
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001, хвост] as-any cleanup контроллеров
+- `admin.controller.ts:154,163` — `status as any` → валидация против enum OrderStatus
+  (невалидный ?status= раньше уходил в Prisma и ронял запрос, теперь = без фильтра);
+- `orders.controller.ts:73-74` — `(result as any)` → типизированный PaginatedOrders.
+- nest build EXIT 0. Хвост задачи закрыт — `as any` в контроллерах 0.
+
 ## 2026-07-12 (Claude/Полат) — бот: фикс 404-ссылки + язык в онбординге + смена названия магазина
 
 ### ✅ [BOT-STORE-LINK-404-001] 404 на ссылке магазина в боте
