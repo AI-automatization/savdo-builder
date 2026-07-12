@@ -1,10 +1,15 @@
 import { OrderStatus, PaymentMethod, PaymentStatus, DeliveryType } from '../enums';
-import { DeliveryAddress } from './cart';
 import { StoreRef } from './stores';
 import { PaginationMeta } from '../common';
 
 // ── Order Item ────────────────────────────────────────────────────────────────
 
+/**
+ * SEO-AUDIT-001 п.15: контракт сверен с `orders.mapper.ts:34-43` — API
+ * гарантирует ровно эти поля (снапшоты цен из OrderItem.unitPriceSnapshot /
+ * lineTotalAmount, уже числа). Фронту не нужен `normalizeOrder(raw: any)` —
+ * форма стабильна.
+ */
 export interface OrderItem {
   id: string;
   productId: string;
@@ -14,6 +19,18 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   subtotal: number;
+}
+
+/**
+ * Response-side адрес доставки заказа: любые поля могут быть null
+ * (`orders.mapper.ts:4-10` — street = addressLine1 ?? null; заказы до
+ * миграции адресов вообще без deliveryAddress). НЕ путать с request-side
+ * `DeliveryAddress` из cart.ts, где street/city обязательны.
+ */
+export interface OrderDeliveryAddress {
+  street: string | null;
+  city: string | null;
+  region: string | null;
 }
 
 // ── Order ─────────────────────────────────────────────────────────────────────
@@ -27,7 +44,7 @@ export interface OrderListItem {
   totalAmount: number;
   currencyCode: string;
   /** May be undefined for orders created before address migration */
-  deliveryAddress?: DeliveryAddress;
+  deliveryAddress?: OrderDeliveryAddress;
   deliveryFee: number;
   /**
    * API-RESPONSE-TYPES-RECONCILE-001: seller orders-list (`GET /seller/orders`)
@@ -67,7 +84,8 @@ export interface Order extends OrderListItem {
   /** Phone entered at checkout — backup/reserve number */
   customerPhone: string;
   buyerNote: string | null;
-  store: Pick<StoreRef, 'name' | 'telegramContactLink'>;
+  /** null, если магазин не подгружен/удалён (`orders.mapper.ts:31-33`). */
+  store: Pick<StoreRef, 'name' | 'telegramContactLink'> | null;
   items: OrderItem[];
   paymentMethod: PaymentMethod | null;
   paymentStatus: PaymentStatus | null;
