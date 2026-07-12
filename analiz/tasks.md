@@ -31,8 +31,12 @@
   - `landing`: `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz` (было railway.app + лишний пробел в значении!),
     **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (закрыт хвост LANDING-BRANCH-DRIFT-001).
 - **🔲 Постдеплой:** UptimeRobot на 5 доменов, Search Console (связка SEO-AUDIT-001).
-- **🔲 Азим (код):** apex=landing ⇒ магазины живут на shop.maxsavdo.uz — обновить `extractSlug`
-  парсер web-buyer, `buyerStoreUrl` web-seller, canonical/sitemap (связка SEO-AUDIT-001).
+- **✅ Азим (код) — закрыто 12.07.2026 (ветка `web-buyer`, `b215b59b`):** `extractSlug`-парсера
+  в коде не оказалось (web-buyer не делает subdomain-based роутинг, только path `/${slug}`) —
+  реальный баг был в fallback-константах `NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz'`
+  (та же категория, что уже чинили в web-seller `b35d05d`). Поправлено на `shop.maxsavdo.uz`
+  в 4 файлах: `layout.tsx` (metadataBase), `robots.ts`, `sitemap.ts`, `[id]/layout.tsx` (canonical/OG).
+  В проде не било (env var уже был задан 09.07) — задевало только dev/staging без env.
 - **⚠️ Осторожно с CORS:** wildcard `*.maxsavdo.uz` в проде (`e18f94e`) покрывает apex и все
   поддомены — новых правок API не нужно.
 
@@ -54,15 +58,21 @@
 - Клиентский поиск НЕ рефетчит товары (`ProductsWithSearch` фильтрует серверный список).
 
 ### 🔴 P0 — сайт невидим для краулеров (SEO/GEO)
-1. **[Полат, api]** Endpoint под sitemap: `GET /storefront/sitemap` — все slug магазинов (approved)
-   + id/updatedAt видимых товаров. Лёгкий, кэшируемый.
-2. **[Азим, web-buyer]** `sitemap.ts` → динамический (сейчас 5 статичных URL, ни одного магазина/товара).
-3. **[Азим, web-buyer]** Главная `(shop)/page.tsx` — "use client", ни одной серверной ссылки на
-   магазины → краулеру некуда идти. Добавить серверный блок featured-магазинов (endpoint
-   `/storefront/featured` уже есть).
-4. **[Азим, web-buyer]** `products/[id]/page.tsx` — "use client": контент товара не в HTML,
-   AI-краулеры (GPTBot/ClaudeBot/PerplexityBot) видят пустую страницу. Перевести первичный рендер
-   на сервер (данные уже фетчатся в layout — отдать вниз), интерактив оставить клиентским.
+1. ✅ **[Полат, api]** Endpoint под sitemap: `GET /storefront/sitemap` — закрыто 10.07.2026
+   (`1d2b4bc4`, main). Отдаёт slug+updatedAt магазинов, id+updatedAt товаров.
+2. ✅ **[Азим, web-buyer]** `sitemap.ts` → динамический — закрыто 12.07.2026 (`b215b59b`,
+   ветка `web-buyer`). Магазины подключены. **⚠️ Товары НЕ эмитятся** — фид из п.1 не несёт
+   `store.slug`/`storeId`, без него нельзя построить канонический `/{slug}/products/{id}`.
+   **Нужно от Полата:** добавить `store: { select: { slug: true } }` (или плоский `storeSlug`)
+   в `ProductsRepository.findAllPublicForSitemap` (`apps/api/src/modules/products/
+   repositories/products.repository.ts`) — тривиальная правка, разблокирует товары в sitemap.
+3. ✅ **[Азим, web-buyer]** Главная `(shop)/page.tsx` — закрыто 12.07.2026 (`b215b59b`).
+   `serverGetFeatured()` фетчит featured server-side, `HomeTopStores` получает `initialData` —
+   краулер видит реальные `<a href="/{slug}">` в первом HTML вместо client-only skeleton.
+4. ✅ **[Азим, web-buyer]** `products/[id]/page.tsx` — закрыто 12.07.2026 (`b215b59b`). Стал
+   async Server Component (`serverGetProduct`), интерактив вынесен в новый `ProductPageClient.tsx`
+   без изменения поведения. `useProduct` получил `initialData` + `initialDataUpdatedAt: 0`
+   (auth-поля типа `inWishlist` дообновляются фоновым рефетчем, не залипают на staleTime).
 
 ### 🟠 P1
 5. **[Азим]** uz-локаль + hreflang: `lang="ru"` hardcoded (`layout.tsx:48`), i18n-каталога в
@@ -80,7 +90,7 @@
     товаре; WebSite+SearchAction на главной.
 11. `manifest.ts` icons → `/favicon.ico`, но `public/` пуст → 404 иконки PWA. Положить реальные.
 12. `sitemap.ts` lastModified = new Date() на каждый запрос — отдавать честные даты.
-13. `robots.ts:14-15` — `/orders` и `/orders/` дубль (косметика).
+13. ✅ `robots.ts:14-15` — `/orders`/`/orders/` дубль убран, закрыто 12.07.2026 (`b215b59b`, web-buyer).
 
 ### 🔧 Код-аудит (не SEO)
 14. **[Азим, web-buyer+web-seller]** `lib/socket.ts` обоих апов: `io(BASE_URL)` без

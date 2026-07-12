@@ -2647,3 +2647,18 @@ P2: остальное.
 - P1 split `products.controller.ts` и `admin.controller.ts` — большой, в отдельную сессию.
 - P1 Swagger setup — `API-SWAGGER-001` уже в tasks.md.
 
+## [2026-07-12] [SEO-AUDIT-001] Sitemap-фид не несёт store.slug — товары нельзя добавить в sitemap.ts
+- **Статус:** 🟡 Блокер на Полате (не критично — sitemap с магазинами уже живой)
+- **Что случилось:** реализуя п.2 SEO-AUDIT-001 (динамический `sitemap.ts`, ветка `web-buyer`
+  `b215b59b`), обнаружил, что `GET /storefront/sitemap` (`1d2b4bc4`, Полат) отдаёт товары как
+  `{ id, updatedAt }` — без `store.slug`/`storeId`. Канонический URL товара в web-buyer —
+  `/{storeSlug}/products/{id}` (см. `[slug]/products/[id]/page.tsx`), без slug магазина построить
+  его нельзя. В итоге `sitemap.ts` сейчас эмитит только магазины, товары — пропущены.
+- **Что нужно:** в `apps/api/src/modules/products/repositories/products.repository.ts`
+  `findAllPublicForSitemap()` — добавить в `select` `store: { select: { slug: true } }` (или
+  плоский `storeSlug` через отдельный select), прокинуть в `storefront.controller.ts` ответ
+  `getSitemapFeed()`. Тривиальная правка (тот же паттерн, что уже есть в `findAllPublic`).
+- **Что сделано:** ничего пока — не моя зона (`apps/api`). web-buyer готов принять поле сразу,
+  как оно появится (`SitemapFeed` в `storefront-server.ts` нужно расширить `products[].storeSlug`
+  + один map в `sitemap.ts`, ~10 минут работы после бэкенд-правки).
+
