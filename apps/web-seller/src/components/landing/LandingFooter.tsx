@@ -8,12 +8,18 @@ import { MaxsavdoLogo } from '@/components/brand/MaxsavdoLogo';
 import { buyerOrigin } from '@/lib/buyer-url';
 import { LangToggle } from './LangToggle';
 
+// Самый свежий URL админки из security-аудитов Полата (analiz/logs.md,
+// май-июнь 2026) — admin остаётся на railway.app, не мигрировал на
+// maxsavdo.uz (DEPLOY-DOMAIN-MAXSAVDO-001). Env var, не хардкод — если
+// Полат подтвердит другое значение, правится в Railway без деплоя кода.
+const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://adminsb.up.railway.app';
+
 export function LandingFooter() {
   const { t } = useTranslation();
   const origin = buyerOrigin();
   return (
     <footer style={{ background: colors.surface, borderTop: `1px solid ${colors.border}` }}>
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 grid gap-8 sm:grid-cols-3">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 grid gap-8 sm:grid-cols-4">
         <div>
           <Link href="/" className="flex items-center gap-2 mb-3">
             <MaxsavdoLogo size={28} />
@@ -35,6 +41,21 @@ export function LandingFooter() {
             <Send size={16} /> @maxsavdo_bot
           </a>
           <div className="mt-4"><LangToggle /></div>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: colors.textDim }}>{t('footer.product')}</p>
+          <ul className="flex flex-col gap-2 text-sm">
+            <li>
+              <a href={origin} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>
+                {t('nav.buyerCatalog')}
+              </a>
+            </li>
+            <li>
+              <a href={ADMIN_URL} target="_blank" rel="noopener noreferrer" className="text-[11px] hover:opacity-80" style={{ color: colors.textDim }}>
+                {t('footer.admin')}
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 text-xs" style={{ color: colors.textDim, borderTop: `1px solid ${colors.border}` }}>
