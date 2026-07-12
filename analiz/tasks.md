@@ -5,12 +5,6 @@
 
 ---
 
-## 🟡 [BOT-I18N-FULL-001] Дожать i18n бота — остальные тексты (после BOT-ONBOARDING-I18N-001)
-- **Домен:** apps/api telegram · **Кто взял:** пока никто
-- **Что:** онбординг+меню локализованы 12.07 (done.md); ещё RU-only: списки заказов
-  (seller/buyer + ORDER_LABEL), /help, привязка канала, поиск магазина, logout, ошибки.
-- **Как:** ключи добавлять в `telegram-bot-i18n.ts`, язык через `this.getLang(chatId)`.
-
 ## 🟠 [INFRA-ENV-BUYER-URL-API-001] Проверить/выставить BUYER_URL на savdo-api (Railway)
 - **Домен:** инфра · **Связано:** BOT-STORE-LINK-404-001 (logs.md 12.07)
 - **Что:** бот и channel-post-builder берут `BUYER_URL` из env savdo-api. Код-fallback теперь
