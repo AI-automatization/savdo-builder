@@ -25,4 +25,7 @@ watchPatterns = ["apps/tma/**", "packages/types/**", "packages/ui/**", "railway.
 healthcheckPath = "/"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
+# DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001 п.3: 3 → 10. Фикс 18.05 попал только в
+# apps/tma/railway.toml (мёртвый дубль) — Railway для telegram-app читает ЭТОТ
+# файл (Root Directory = корень). Обнаружено 12.07 при разборе п.4.
+restartPolicyMaxRetries = 10
