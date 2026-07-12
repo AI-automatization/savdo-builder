@@ -582,6 +582,7 @@ export const ru: Translations = {
   'nav.faq': 'FAQ',
   'nav.login': 'Войти',
   'nav.toCabinet': 'В кабинет',
+  'nav.buyerCatalog': 'Каталог магазинов',
   'cta.create': 'Создать магазин',
   'cta.createFree': 'Создать бесплатно',
   'cta.demo': 'Посмотреть демо-магазин',
@@ -690,6 +691,7 @@ export const ru: Translations = {
   'footer.privacy': 'Политика конфиденциальности',
   'footer.terms': 'Условия использования',
   'footer.contact': 'Связаться',
+  'footer.admin': 'Админка',
   'footer.rights': '© 2026 maxsavdo',
   // Billing
   'billing.yourPlan': 'Ваш план',

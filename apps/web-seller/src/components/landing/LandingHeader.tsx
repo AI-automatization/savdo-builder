@@ -10,6 +10,7 @@ import { MaxsavdoLogo } from '@/components/brand/MaxsavdoLogo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LangToggle } from './LangToggle';
 import { landingTrack } from '@/lib/landing/analytics';
+import { buyerOrigin } from '@/lib/buyer-url';
 
 const ANCHORS = [
   { href: '#how', key: 'nav.how' },
@@ -58,6 +59,16 @@ export function LandingHeader() {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
+          <a
+            href={buyerOrigin()}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => landingTrack('landing_cta_clicked', { place: 'header-buyer-catalog' })}
+            className="text-sm px-3 py-2 transition-colors hover:opacity-80"
+            style={{ color: colors.textMuted }}
+          >
+            {t('nav.buyerCatalog')}
+          </a>
           <LangToggle />
           <ThemeToggle />
           {!isAuthenticated && (
@@ -87,6 +98,16 @@ export function LandingHeader() {
               {t(a.key)}
             </a>
           ))}
+          <a
+            href={buyerOrigin()}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => { setOpen(false); landingTrack('landing_cta_clicked', { place: 'mobile-menu-buyer-catalog' }); }}
+            className="text-sm py-1"
+            style={{ color: colors.textMuted }}
+          >
+            {t('nav.buyerCatalog')}
+          </a>
           <div className="flex items-center gap-2 pt-2">
             <LangToggle />
             <ThemeToggle />

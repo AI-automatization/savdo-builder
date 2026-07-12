@@ -580,6 +580,7 @@ export const uz: Translations = {
   'nav.faq': 'Savol-javob',
   'nav.login': 'Kirish',
   'nav.toCabinet': 'Kabinetga',
+  'nav.buyerCatalog': "Doʻkonlar katalogi",
   'cta.create': "Do'kon yaratish",
   'cta.createFree': 'Bepul yaratish',
   'cta.demo': "Demo do'konni ko'rish",
@@ -688,6 +689,7 @@ export const uz: Translations = {
   'footer.privacy': 'Maxfiylik siyosati',
   'footer.terms': 'Foydalanish shartlari',
   'footer.contact': "Bog'lanish",
+  'footer.admin': 'Administratsiya',
   'footer.rights': '© 2026 maxsavdo',
   // Billing
   'billing.yourPlan': "Sizning rejangiz",
