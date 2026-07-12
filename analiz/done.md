@@ -19,6 +19,15 @@
   state `awaiting_store_rename` → update `store.name`. Slug/ссылка сознательно не меняются.
 - **Остаток:** ~~BOT-I18N-FULL-001~~ → закрыт тем же днём, см. ниже.
 
+### ✅ [INFRA-ENV-BUYER-URL-API-001] BUYER_URL добавлен на savdo-api (Railway)
+- **Важность:** 🟠 · **Дата:** 12.07.2026 (Claude через Railway dashboard)
+- **Факт:** переменной `BUYER_URL` на savdo-api НЕ БЫЛО вовсе (36 переменных просмотрены) —
+  бот работал на код-fallback, а автопостинг в каналы слал t.me-deeplink вместо веб-ссылки товара.
+- **Что сделано:** `BUYER_URL=https://shop.maxsavdo.uz` добавлен, Deploy применён (37 переменных),
+  health 200. Теперь channel-post-builder строит канонические веб-ссылки
+  `shop.maxsavdo.uz/{slug}/products/{id}` в постах каналов.
+- **Попутно подтверждено:** деплой BOT-I18N-FULL-001 в проде («Deployment successful» в Activity).
+
 ### ✅ [BOT-I18N-FULL-001] Полная ru/uz локализация всех текстов бота
 - **Важность:** 🟡 · **Дата:** 12.07.2026 · **Коммит:** `7fdaa2c` (ветка api → `7d847c1`)
 - **Что сделано:** локализованы все остальные флоу: /help, привязка канала, товары-в-TMA,

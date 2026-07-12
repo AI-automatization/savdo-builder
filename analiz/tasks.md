@@ -5,11 +5,8 @@
 
 ---
 
-## 🟠 [INFRA-ENV-BUYER-URL-API-001] Проверить/выставить BUYER_URL на savdo-api (Railway)
-- **Домен:** инфра · **Связано:** BOT-STORE-LINK-404-001 (logs.md 12.07)
-- **Что:** бот и channel-post-builder берут `BUYER_URL` из env savdo-api. Код-fallback теперь
-  `https://shop.maxsavdo.uz`, но если переменная задана старым railway.app URL — ссылки будут
-  неканонические. Railway → savdo-api → Variables → `BUYER_URL=https://shop.maxsavdo.uz`.
+> ✅ 12.07: INFRA-ENV-BUYER-URL-API-001 закрыт (см. done.md) — `BUYER_URL=https://shop.maxsavdo.uz`
+> добавлен на savdo-api (переменной не было вовсе), Deploy применён, health 200.
 
 > ✅ 02.07 закрыты (см. done.md): TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009,
 > TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
