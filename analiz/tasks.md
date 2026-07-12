@@ -5,6 +5,18 @@
 
 ---
 
+## 🟡 [BOT-I18N-FULL-001] Дожать i18n бота — остальные тексты (после BOT-ONBOARDING-I18N-001)
+- **Домен:** apps/api telegram · **Кто взял:** пока никто
+- **Что:** онбординг+меню локализованы 12.07 (done.md); ещё RU-only: списки заказов
+  (seller/buyer + ORDER_LABEL), /help, привязка канала, поиск магазина, logout, ошибки.
+- **Как:** ключи добавлять в `telegram-bot-i18n.ts`, язык через `this.getLang(chatId)`.
+
+## 🟠 [INFRA-ENV-BUYER-URL-API-001] Проверить/выставить BUYER_URL на savdo-api (Railway)
+- **Домен:** инфра · **Связано:** BOT-STORE-LINK-404-001 (logs.md 12.07)
+- **Что:** бот и channel-post-builder берут `BUYER_URL` из env savdo-api. Код-fallback теперь
+  `https://shop.maxsavdo.uz`, но если переменная задана старым railway.app URL — ссылки будут
+  неканонические. Railway → savdo-api → Variables → `BUYER_URL=https://shop.maxsavdo.uz`.
+
 > ✅ 02.07 закрыты (см. done.md): TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009,
 > TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
 > Все — код-комплит + tsc TMA EXIT 0. Осталась live-ретест-проверка на устройстве.
@@ -54,8 +66,10 @@
 - Клиентский поиск НЕ рефетчит товары (`ProductsWithSearch` фильтрует серверный список).
 
 ### 🔴 P0 — сайт невидим для краулеров (SEO/GEO)
-1. **[Полат, api]** Endpoint под sitemap: `GET /storefront/sitemap` — все slug магазинов (approved)
-   + id/updatedAt видимых товаров. Лёгкий, кэшируемый.
+1. ~~**[Полат, api]** Endpoint под sitemap~~ ✅ **СДЕЛАНО 10.07 (Claude):** `GET /api/v1/storefront/sitemap`
+   — `{stores: [{slug, updatedAt}], products: [{id, updatedAt}]}`, та же видимость что
+   findAllPublished/findAllPublic, Cache-Control 1h + Throttle 10/min, cap 5000 товаров.
+   Коммит `1d2b4bc`, ветка api запушена (c48db2e). Азим: подключить в `sitemap.ts` (п.2).
 2. **[Азим, web-buyer]** `sitemap.ts` → динамический (сейчас 5 статичных URL, ни одного магазина/товара).
 3. **[Азим, web-buyer]** Главная `(shop)/page.tsx` — "use client", ни одной серверной ссылки на
    магазины → краулеру некуда идти. Добавить серверный блок featured-магазинов (endpoint
@@ -222,8 +236,10 @@
 - ✅ **HYBRID-3** [api/bot] Меню бота по `users.role` + кнопки переключения. Закрыл
   `ROLE-SOURCE-INCONSISTENCY-001`. → done.md
 - ✅ **HYBRID-6** [api] `capabilities {canBuy,canSell,hasStore}` в /auth/me и /auth/telegram. → done.md
-- 🔲 **HYBRID-5** [api] Проактивная реконсиляция при удалении/архивации магазина (сейчас
-  переключение реактивно гейтится на store — основной риск закрыт, это hardening).
+- ✅ **HYBRID-5** [api] СДЕЛАНО 10.07 (Claude): `ArchiveStoreUseCase.postEffect` →
+  `findStoreOwnerUserId` + `reconcileSellerContextToBuyer` (updateMany по role, идемпотентно).
+  Важно: гейт switch-context проверяет ТОЛЬКО deletedAt (не статус) — реконсиляция была
+  единственным барьером. +3 теста (23/23). Коммит `1d2b4bc`.
 - Схема (`packages/db`) — миграция НЕ понадобилась (Buyer?+Seller? уже сосуществуют).
 - ⚠️ **НЕ ЗАКОММИЧЕНО:** Фаза 2 (api+bot+tma) на диске, tsc всех трёх зелёный, но пользователь
   отклонял git-операции — коммит/деплой по его команде. Фаза 1 (HYBRID-4) закоммичена (af39641, main).
@@ -1422,58 +1438,9 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
 
 ### 🟡 На Азиме — код
 
-## 🔴 [ONBOARDING-AUDIT-AZIM-001] Фиксы онбординга — web-buyer + web-seller (25.06.2026)
+## ✅ [ONBOARDING-AUDIT-AZIM-001] Фиксы онбординга — web-buyer + web-seller — ЗАКРЫТО 11.07.2026
 
-Источник: UX-аудит 80 персон. P0 блокеры которые ломают реальную эксплуатацию.
-
-### P0-1: `toSlug()` убивает кириллические названия магазинов
-- **Файл:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx:18-25`
-- **Проблема:** `[^\w\s-]` вырезает кириллицу → «Электро Маркет» → `""` → валидация проходит → API 400
-- **Фикс:** добавить транслитерацию перед regex:
-```typescript
-const CYRILLIC: Record<string, string> = {
-  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'j',к:'k',
-  л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
-  ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
-};
-
-function toSlug(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[а-яё]/g, (c) => CYRILLIC[c] ?? '')
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
-}
-```
-
-### P0-2: OtpGate не объясняет что нужен бот
-- **Файл:** `apps/web-buyer/src/components/auth/OtpGate.tsx:55-59`
-- **Проблема:** код отправлен в Telegram, но пользователь не знает что нужен @maxsavdo_bot
-- **Фикс:** добавить под текстом `step === 'code'`:
-```tsx
-{step === 'code' && (
-  <p className="text-xs mt-1" style={{ color: colors.textDim }}>
-    Не пришёл код? Убедитесь, что запустили{' '}
-    <a href="https://t.me/maxsavdo_bot" target="_blank" rel="noreferrer" style={{ color: colors.accent }}>
-      @maxsavdo_bot
-    </a>
-  </p>
-)}
-```
-
-### P1-1: «Войти» пугает новых пользователей
-- **Файл:** `apps/web-seller/src/app/(auth)/login/page.tsx`
-- **Фикс:** добавить под заголовком подсказку: «Если вы здесь впервые — введите номер телефона, аккаунт создастся автоматически»
-
-### P1-2: Два дублирующих TG поля в Step 2 онбординга
-- **Файл:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
-- **Фикс:** убрать отдельное поле `telegramContactLink`, генерировать из `telegramUsername`: `https://t.me/${username}`
-
-- **Домен:** apps/web-buyer, apps/web-seller (Азим)
-- **Приоритет:** P0-1 и P0-2 → сразу, P1 → до следующего демо
+Источник: UX-аудит 80 персон. Все P0 и P1 закрыты (Азим/Claude). Детали — `done.md`.
 
 ---
 
