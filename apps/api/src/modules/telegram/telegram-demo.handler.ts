@@ -4,6 +4,7 @@ import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
 import { escapeTgHtml } from '../../shared/telegram-html';
 import { maskPhone } from '../../shared/pii';
+import { BotLang, t, normalizeBotLang } from './telegram-bot-i18n';
 
 // ── Redis keys ────────────────────────────────────────────────────────────────
 const TTL_LONG  = 365 * 24 * 60 * 60; // 1 год — привязка телефона
@@ -12,6 +13,18 @@ const TTL_STATE = 600;                  // 10 минут — состояние 
 const KEY_PHONE = (chatId: string) => `tg:phone:${chatId}`;
 const KEY_STATE = (chatId: string) => `tg:state:${chatId}`;
 const KEY_TMP   = (chatId: string, field: string) => `tg:tmp:${chatId}:${field}`;
+const KEY_LANG  = (chatId: string) => `tg:lang:${chatId}`;
+
+// ── Публичный URL витрины ─────────────────────────────────────────────────────
+// BOT-STORE-LINK-404-001: apex maxsavdo.uz занят лендингом (карта доменов 07.07),
+// магазины живут на shop.maxsavdo.uz — ссылка `maxsavdo.uz/{slug}` давала 404.
+function buyerBaseUrl(): string {
+  return (process.env.BUYER_URL ?? 'https://shop.maxsavdo.uz').replace(/\/$/, '');
+}
+
+function storeUrl(slug: string): string {
+  return `${buyerBaseUrl()}/${slug}`;
+}
 
 // ── Транслитерация кириллицы для slug-генерации ───────────────────────────────
 const CYRILLIC_MAP: Record<string, string> = {
@@ -62,6 +75,26 @@ export class TelegramDemoHandler {
     await this.redis.set(KEY_TMP(chatId, field), val, TTL_STATE);
   }
 
+  // ── Язык бота (BOT-ONBOARDING-I18N-001) ───────────────────────────────────
+  // Redis — быстрый путь; fallback — users.languageCode (default "ru" в схеме).
+
+  async getLang(chatId: string): Promise<BotLang> {
+    const cached = await this.redis.get(KEY_LANG(chatId));
+    if (cached) return normalizeBotLang(cached);
+    const user = await this.resolveUser(chatId);
+    const lang = normalizeBotLang(user?.languageCode);
+    if (user) await this.redis.set(KEY_LANG(chatId), lang, TTL_LONG);
+    return lang;
+  }
+
+  async setLang(chatId: string, lang: BotLang): Promise<void> {
+    await this.redis.set(KEY_LANG(chatId), lang, TTL_LONG);
+    const user = await this.resolveUser(chatId);
+    if (user && user.languageCode !== lang) {
+      await this.prisma.user.update({ where: { id: user.id }, data: { languageCode: lang } });
+    }
+  }
+
   // ── User helpers ──────────────────────────────────────────────────────────
 
   private async resolveUser(chatId: string) {
@@ -110,13 +143,20 @@ export class TelegramDemoHandler {
   async handleStart(chatId: string, firstName?: string, startParam?: string): Promise<void> {
     const user = await this.resolveUser(chatId);
 
+    // BOT-ONBOARDING-I18N-001: самый первый контакт с ботом — выбор языка.
+    // Один тап, запоминается на год (Redis) + в users.languageCode после
+    // регистрации — онбординг длиннее не становится.
+    if (!user && !(await this.redis.get(KEY_LANG(chatId)))) {
+      await this.askLanguage(chatId, firstName);
+      return;
+    }
+
+    const lang = await this.getLang(chatId);
+    const nameSuffix = firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : '';
+
     if (!user) {
       // Новый пользователь — просим телефон
-      await this.bot.sendMessage(
-        chatId,
-        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nДобро пожаловать в <b>maxsavdo</b> — маркетплейс продавцов Узбекистана.\n\nДля входа поделитесь номером телефона:`,
-        { parseMode: 'HTML' },
-      );
+      await this.bot.sendMessage(chatId, t(lang, 'greeting.new', { name: nameSuffix }), { parseMode: 'HTML' });
       await this.bot.sendContactRequest(chatId);
       return;
     }
@@ -124,11 +164,7 @@ export class TelegramDemoHandler {
     // Ghost-юзер (phone = tg_XXXXXXX): зашёл через TMA, телефон не привязан.
     // Просим поделиться контактом — это синхронизирует аккаунт.
     if (user.phone.startsWith('tg_')) {
-      await this.bot.sendMessage(
-        chatId,
-        `👋 Привет${firstName ? `, <b>${escapeTgHtml(firstName)}</b>` : ''}!\n\nВы уже вошли через наше приложение. Для полноценной работы с ботом поделитесь номером телефона:`,
-        { parseMode: 'HTML' },
-      );
+      await this.bot.sendMessage(chatId, t(lang, 'greeting.ghost', { name: nameSuffix }), { parseMode: 'HTML' });
       await this.bot.sendContactRequest(chatId);
       return;
     }
@@ -171,6 +207,29 @@ export class TelegramDemoHandler {
     } else {
       await this.showBuyerMenu(chatId, displayName);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Выбор языка (BOT-ONBOARDING-I18N-001)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async askLanguage(chatId: string, firstName?: string): Promise<void> {
+    // firstName прокидываем через tmp — после выбора языка продолжим /start.
+    if (firstName) await this.setTmp(chatId, 'startFirstName', firstName);
+    await this.bot.sendInlineKeyboard(
+      chatId,
+      t('ru', 'chooseLanguage'),
+      [[
+        { text: t('ru', 'btn.lang.uz'), callback_data: 'lang_uz' },
+        { text: t('ru', 'btn.lang.ru'), callback_data: 'lang_ru' },
+      ]],
+    );
+  }
+
+  async handleLanguageChoice(chatId: string, lang: BotLang): Promise<void> {
+    await this.setLang(chatId, lang);
+    const firstName = (await this.getTmp(chatId, 'startFirstName')) ?? undefined;
+    await this.handleStart(chatId, firstName);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -223,7 +282,8 @@ export class TelegramDemoHandler {
     const normalized = phone.startsWith('+') ? phone : `+${phone}`;
     await this.setPhone(chatId, normalized);
 
-    await this.bot.removeKeyboard(chatId, `✅ Номер получен! Определяем ваш аккаунт...`);
+    const lang = await this.getLang(chatId);
+    await this.bot.removeKeyboard(chatId, t(lang, 'contact.received'));
 
     // Проверяем есть ли уже пользователь по номеру телефона
     const existing = await this.prisma.user.findUnique({ where: { phone: normalized } });
@@ -309,11 +369,7 @@ export class TelegramDemoHandler {
         const buyer = await this.prisma.buyer.findUnique({ where: { userId: ghost.id } });
         if (!buyer?.firstName) {
           await this.setState(chatId, 'awaiting_buyer_name');
-          await this.bot.sendMessage(
-            chatId,
-            `✅ Номер подтверждён!\n\nКак вас зовут? Введите <b>имя и фамилию</b> (например: Алишер Иванов)\nили только имя:`,
-            { parseMode: 'HTML' },
-          );
+          await this.bot.sendMessage(chatId, t(lang, 'buyer.askName'), { parseMode: 'HTML' });
         } else {
           await this.showBuyerMenu(chatId, buyer.firstName);
         }
@@ -328,10 +384,10 @@ export class TelegramDemoHandler {
 
     await this.bot.sendInlineKeyboard(
       chatId,
-      `Как вы хотите зарегистрироваться?`,
+      t(lang, 'role.question'),
       [
-        [{ text: '🛍 Я покупатель', callback_data: 'reg_buyer' }],
-        [{ text: '🏪 Я продавец',   callback_data: 'reg_seller' }],
+        [{ text: t(lang, 'btn.role.buyer'), callback_data: 'reg_buyer' }],
+        [{ text: t(lang, 'btn.role.seller'), callback_data: 'reg_seller' }],
       ],
     );
   }
@@ -346,12 +402,14 @@ export class TelegramDemoHandler {
 
     if (!phone) { await this.handleStart(chatId); return; }
 
+    const lang = await this.getLang(chatId);
     const user = await this.prisma.user.create({
       data: {
         phone,
         role: 'BUYER',
         isPhoneVerified: true,
         telegramId: BigInt(chatId),
+        languageCode: lang,
         buyer: { create: { firstName: firstName || null } },
       },
     });
@@ -365,31 +423,26 @@ export class TelegramDemoHandler {
   // ─────────────────────────────────────────────────────────────────────────
 
   async startSellerRegistration(chatId: string): Promise<void> {
+    const lang = await this.getLang(chatId);
     await this.setState(chatId, 'seller_reg_name');
-    await this.bot.sendMessage(
-      chatId,
-      `🏪 Регистрация продавца\n\nШаг 1/3 — Введите ваше <b>полное имя</b>:`,
-      { parseMode: 'HTML' },
-    );
+    await this.bot.sendMessage(chatId, t(lang, 'reg.step1'), { parseMode: 'HTML' });
   }
 
   async handleSellerRegName(chatId: string, text: string): Promise<void> {
+    const lang = await this.getLang(chatId);
     await this.setTmp(chatId, 'sellerName', text.trim());
     await this.setState(chatId, 'seller_reg_store_name');
-    await this.bot.sendMessage(
-      chatId,
-      `✅ Отлично!\n\nШаг 2/3 — Введите <b>название магазина</b>:`,
-      { parseMode: 'HTML' },
-    );
+    await this.bot.sendMessage(chatId, t(lang, 'reg.step2'), { parseMode: 'HTML' });
   }
 
   async handleSellerRegStoreName(chatId: string, text: string): Promise<void> {
+    const lang = await this.getLang(chatId);
     await this.setTmp(chatId, 'storeName', text.trim());
     await this.setState(chatId, 'seller_reg_store_desc');
     await this.bot.sendInlineKeyboard(
       chatId,
-      `✅ Название сохранено!\n\nШаг 3/3 — Введите <b>описание магазина</b> (или пропустите):`,
-      [[{ text: '⏭ Пропустить', callback_data: 'seller_reg_skip_desc' }]],
+      t(lang, 'reg.step3'),
+      [[{ text: t(lang, 'btn.skip'), callback_data: 'seller_reg_skip_desc' }]],
       'HTML',
     );
   }
@@ -397,6 +450,7 @@ export class TelegramDemoHandler {
   async finishSellerRegistration(chatId: string, description?: string): Promise<void> {
     await this.clearState(chatId);
 
+    const lang      = await this.getLang(chatId);
     const phone     = await this.getTmp(chatId, 'phone');
     const firstName = await this.getTmp(chatId, 'firstName');
     const username  = await this.getTmp(chatId, 'username');
@@ -404,7 +458,7 @@ export class TelegramDemoHandler {
     const storeName  = await this.getTmp(chatId, 'storeName');
 
     if (!phone || !sellerName || !storeName) {
-      await this.bot.sendMessage(chatId, '❌ Ошибка регистрации. Напишите /start и попробуйте снова.');
+      await this.bot.sendMessage(chatId, t(lang, 'reg.error'));
       return;
     }
 
@@ -455,6 +509,7 @@ export class TelegramDemoHandler {
           data: {
             role: 'SELLER',
             telegramId: BigInt(chatId),
+            languageCode: lang,
             seller: { create: sellerNested },
           },
         });
@@ -467,6 +522,7 @@ export class TelegramDemoHandler {
             role: 'SELLER',
             isPhoneVerified: true,
             telegramId: BigInt(chatId),
+            languageCode: lang,
             seller: { create: sellerNested },
           },
         });
@@ -479,10 +535,11 @@ export class TelegramDemoHandler {
 
       await this.bot.sendInlineKeyboard(
         chatId,
-        `🎉 <b>Магазин создан!</b>\n\n🏪 ${escapeTgHtml(storeName)}\n🔗 maxsavdo.uz/${escapeTgHtml(slug)}\n\nТеперь настройте Telegram-канал для автопостинга товаров:`,
+        t(lang, 'store.created', { name: escapeTgHtml(storeName), url: storeUrl(escapeTgHtml(slug)) }),
         [
-          [{ text: '📢 Привязать TG канал', callback_data: 'seller_link_channel' }],
-          [{ text: '⏭ Пропустить',         callback_data: 'seller_skip_channel'  }],
+          [{ text: t(lang, 'btn.linkChannel'), callback_data: 'seller_link_channel' }],
+          [{ text: t(lang, 'btn.renameStore'), callback_data: 'seller_rename_store' }],
+          [{ text: t(lang, 'btn.skipChannel'), callback_data: 'seller_skip_channel' }],
         ],
         'HTML',
       );
@@ -712,24 +769,28 @@ export class TelegramDemoHandler {
 
   async showSellerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
+    const lang = await this.getLang(chatId);
     const twaUrl = process.env.TMA_URL ?? 'https://maxsavdo.uz';
     const rows: Array<Array<InlineButton | WebAppButton>> = [
-      [{ text: '📱 Открыть приложение', web_app: { url: twaUrl } }],
+      [{ text: t(lang, 'btn.openApp'), web_app: { url: twaUrl } }],
       [
-        { text: '📋 Заказы', callback_data: 'seller_orders' },
-        { text: '📦 Товары', callback_data: 'seller_products' },
+        { text: t(lang, 'btn.sellerOrders'), callback_data: 'seller_orders' },
+        { text: t(lang, 'btn.sellerProducts'), callback_data: 'seller_products' },
       ],
       [
-        { text: '🔗 Магазин',  callback_data: 'seller_store'        },
-        { text: '📊 Статистика', callback_data: 'seller_stats'      },
+        { text: t(lang, 'btn.sellerStore'), callback_data: 'seller_store' },
+        { text: t(lang, 'btn.sellerStats'), callback_data: 'seller_stats' },
       ],
-      [{ text: '📢 Привязать Telegram-канал', callback_data: 'seller_link_channel' }],
+      [{ text: t(lang, 'btn.menuLinkChannel'), callback_data: 'seller_link_channel' }],
       // HYBRID-3: переключение в режим покупателя (покупать может любой аккаунт).
-      [{ text: '🛒 Режим покупателя', callback_data: 'switch_to_buyer' }],
+      [
+        { text: t(lang, 'btn.buyerMode'), callback_data: 'switch_to_buyer' },
+        { text: t(lang, 'btn.language'), callback_data: 'change_lang' },
+      ],
     ];
     await this.bot.sendWithWebApp(
       chatId,
-      `👋 <b>${name ? escapeTgHtml(name) : 'Продавец'}</b>, панель управления:\n\n💡 <i>Для удобного управления товарами используйте приложение</i>`,
+      t(lang, 'menu.seller.title', { name: name ? escapeTgHtml(name) : lang === 'uz' ? 'Sotuvchi' : 'Продавец' }),
       rows,
       'HTML',
     );
@@ -819,17 +880,65 @@ export class TelegramDemoHandler {
     const user = await this.resolveUser(chatId);
     if (!user) { await this.handleStart(chatId); return; }
 
+    const lang = await this.getLang(chatId);
     const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
-    if (!store) { await this.bot.sendMessage(chatId, '⚠️ Магазин не найден.'); return; }
+    if (!store) { await this.bot.sendMessage(chatId, t(lang, 'rename.noStore')); return; }
 
     const channel = store.telegramChannelId
-      ? `\n📢 Канал: ${escapeTgHtml(store.telegramChannelTitle ?? store.telegramChannelId)}`
-      : `\n📢 Канал: не привязан`;
+      ? t(lang, 'store.channelLinked', { channel: escapeTgHtml(store.telegramChannelTitle ?? store.telegramChannelId) })
+      : t(lang, 'store.channelNotLinked');
+
+    await this.bot.sendInlineKeyboard(
+      chatId,
+      t(lang, 'store.info', {
+        name: escapeTgHtml(store.name),
+        url: storeUrl(escapeTgHtml(store.slug)),
+        status: store.status,
+        channel,
+      }),
+      [[{ text: t(lang, 'btn.renameStore'), callback_data: 'seller_rename_store' }]],
+      'HTML',
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Смена названия магазина (BOT-ONBOARDING-I18N-001, просьба owner-а)
+  // slug/ссылка НЕ меняются — иначе ломаются уже разосланные ссылки.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async handleRenameStoreStart(chatId: string): Promise<void> {
+    const lang = await this.getLang(chatId);
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
+    if (!store) { await this.bot.sendMessage(chatId, t(lang, 'rename.noStore')); return; }
+
+    await this.setState(chatId, 'awaiting_store_rename');
+    await this.bot.sendMessage(chatId, t(lang, 'rename.ask'), { parseMode: 'HTML' });
+  }
+
+  async handleStoreRenameInput(chatId: string, text: string): Promise<void> {
+    await this.clearState(chatId);
+    const lang = await this.getLang(chatId);
+    const name = text.trim().slice(0, 100);
+    if (!name) { await this.handleRenameStoreStart(chatId); return; }
+
+    const user = await this.resolveUser(chatId);
+    if (!user) { await this.handleStart(chatId); return; }
+
+    const seller = await this.prisma.seller.findUnique({ where: { userId: user.id } });
+    const store  = seller ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null } }) : null;
+    if (!store) { await this.bot.sendMessage(chatId, t(lang, 'rename.noStore')); return; }
+
+    await this.prisma.store.update({ where: { id: store.id }, data: { name } });
+    this.logger.log(`Store ${store.id} renamed via bot: "${store.name}" → "${name}"`);
 
     await this.bot.sendMessage(
       chatId,
-      `🏪 <b>${escapeTgHtml(store.name)}</b>\n🔗 maxsavdo.uz/${escapeTgHtml(store.slug)}\n📌 Статус: ${store.status}${channel}`,
+      t(lang, 'rename.done', { name: escapeTgHtml(name), url: storeUrl(escapeTgHtml(store.slug)) }),
       { parseMode: 'HTML' },
     );
   }
@@ -860,11 +969,12 @@ export class TelegramDemoHandler {
 
   async showBuyerMenu(chatId: string, name: string): Promise<void> {
     await this.clearState(chatId);
+    const lang = await this.getLang(chatId);
     const twaUrl = process.env.TMA_URL ?? 'https://maxsavdo.uz';
     const rows: Array<Array<InlineButton | WebAppButton>> = [
-      [{ text: '📱 Открыть приложение', web_app: { url: twaUrl } }],
-      [{ text: '🏪 Найти магазин', callback_data: 'buyer_find_store' }],
-      [{ text: '📦 Мои заказы',   callback_data: 'buyer_orders'     }],
+      [{ text: t(lang, 'btn.openApp'), web_app: { url: twaUrl } }],
+      [{ text: t(lang, 'btn.findStore'), callback_data: 'buyer_find_store' }],
+      [{ text: t(lang, 'btn.myOrders'), callback_data: 'buyer_orders' }],
     ];
     // HYBRID-3: если у аккаунта есть seller-профиль + магазин — показываем
     // переключатель в режим продавца (гибридная модель: один аккаунт обе роли).
@@ -875,10 +985,11 @@ export class TelegramDemoHandler {
         ? await this.prisma.store.findFirst({ where: { sellerId: seller.id, deletedAt: null }, select: { id: true } })
         : null;
       if (store) {
-        rows.push([{ text: '🏪 Режим продавца', callback_data: 'switch_to_seller' }]);
+        rows.push([{ text: t(lang, 'btn.sellerMode'), callback_data: 'switch_to_seller' }]);
       }
     }
-    await this.bot.sendWithWebApp(chatId, `👋 Привет, <b>${escapeTgHtml(name)}</b>!`, rows, 'HTML');
+    rows.push([{ text: t(lang, 'btn.language'), callback_data: 'change_lang' }]);
+    await this.bot.sendWithWebApp(chatId, t(lang, 'menu.buyer.greeting', { name: escapeTgHtml(name) }), rows, 'HTML');
   }
 
   // HYBRID-3: переключение активного контекста из бота (зеркалит
@@ -965,7 +1076,7 @@ export class TelegramDemoHandler {
 
     const buyer = await this.prisma.buyer.findUnique({ where: { userId: user.id } });
     if (!buyer) {
-      await this.bot.sendMessage(chatId, '📭 У вас ещё нет заказов. Оформите первый на maxsavdo.uz');
+      await this.bot.sendMessage(chatId, `📭 У вас ещё нет заказов. Оформите первый: ${buyerBaseUrl()}`);
       return;
     }
 
