@@ -15,7 +15,7 @@ const inter = Inter({
   weight: ['300', '400', '500', '600', '700'],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz';
+const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://shop.maxsavdo.uz';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

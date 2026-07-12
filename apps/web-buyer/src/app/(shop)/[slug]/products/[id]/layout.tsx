@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { Product } from 'types';
 import { API_BASE } from '@/lib/api/env';
 
-const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz';
+const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://shop.maxsavdo.uz';
 
 async function fetchProduct(id: string): Promise<Product | null> {
   try {

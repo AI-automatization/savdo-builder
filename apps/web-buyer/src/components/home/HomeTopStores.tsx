@@ -2,13 +2,14 @@
 'use client';
 
 import Link from 'next/link';
+import type { FeaturedStorefrontResponse } from 'types';
 import { useFeaturedStorefront } from '@/hooks/use-storefront';
 import { StoreCard } from '@/components/store/StoreCard';
 import { colors } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
 
-export function HomeTopStores() {
-  const { data, isLoading, isError } = useFeaturedStorefront();
+export function HomeTopStores({ initialData }: { initialData?: FeaturedStorefrontResponse }) {
+  const { data, isLoading, isError } = useFeaturedStorefront(initialData);
   const stores = data?.topStores ?? [];
   const { t } = useTranslation();
 

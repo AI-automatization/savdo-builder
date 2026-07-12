@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import type { FeaturedStorefrontResponse, Product } from 'types';
 import {
   getStoreBySlug,
   getCategories,
@@ -63,12 +64,17 @@ export function useProducts(params: {
   });
 }
 
-export function useProduct(id: string) {
+// initialProduct — SEO-AUDIT-001 п.4: server-fetched продукт для первого
+// рендера (краулеры видят контент без JS). initialDataUpdatedAt: 0 держит
+// его "stale" сразу — server-фетч без auth, inWishlist/личные поля клиент
+// доуточняет фоновым рефетчем на mount, не залипая на 3-минутный staleTime.
+export function useProduct(id: string, initialProduct?: Product) {
   return useQuery({
     queryKey: storefrontKeys.product(id),
     queryFn: () => getProduct(id),
     enabled: !!id,
     staleTime: 3 * 60 * 1000,
+    ...(initialProduct ? { initialData: initialProduct, initialDataUpdatedAt: 0 } : {}),
   });
 }
 
@@ -83,12 +89,15 @@ export function useProductReviews(id: string, page = 1) {
 
 // ── Featured (homepage) ──────────────────────────────────────────────────────
 
-export function useFeaturedStorefront() {
+// initialData — SEO-AUDIT-001 п.3: homepage передаёт server-fetched featured
+// как initialData, чтобы первый рендер (для краулеров) не ждал client-фетча.
+export function useFeaturedStorefront(initialData?: FeaturedStorefrontResponse) {
   return useQuery({
     queryKey: storefrontKeys.featured,
     queryFn: getFeaturedStorefront,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    ...(initialData ? { initialData } : {}),
   });
 }
 

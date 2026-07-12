@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import { BottomNavBar } from '@/components/layout/BottomNavBar';
 import { HomeHero } from '@/components/home/HomeHero';
 import { HomeTopStores } from '@/components/home/HomeTopStores';
+import { serverGetFeatured } from '@/lib/api/storefront-server';
 import { colors } from '@/lib/styles';
 
 export const metadata: Metadata = {
@@ -23,11 +24,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  // SEO-AUDIT-001 п.3: server-фетч featured, чтобы краулер видел реальные
+  // <a href="/{slug}"> в первом HTML, а не только client-side skeleton.
+  const featured = await serverGetFeatured().catch(() => undefined);
+
   return (
     <div className="min-h-screen">
       <HomeHero />
-      <HomeTopStores />
+      <HomeTopStores initialData={featured} />
       <p
         className="text-[11px] text-center mt-10 pb-6"
         style={{ color: colors.textMuted }}

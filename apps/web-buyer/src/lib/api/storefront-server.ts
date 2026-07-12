@@ -4,7 +4,7 @@
  * Public endpoints only (no auth required).
  */
 
-import type { GlobalCategory, ProductListItem, StorefrontStore } from 'types';
+import type { FeaturedStorefrontResponse, GlobalCategory, Product, ProductListItem, StorefrontStore } from 'types';
 import type { StorefrontCategoryFilter } from './storefront.api';
 import { API_BASE } from './env';
 
@@ -27,6 +27,41 @@ async function sfetch<T>(path: string, search?: URLSearchParams | Record<string,
 
 export async function serverGetStoreBySlug(slug: string): Promise<StorefrontStore> {
   return sfetch<StorefrontStore>(`/storefront/stores/${slug}`);
+}
+
+/**
+ * SEO-AUDIT-001 п.3: featured-фид для homepage. Раньше тянулся только на
+ * клиенте (useFeaturedStorefront) — краулер видел пустую страницу без
+ * ссылок на магазины. Server-фетч даёт реальные <a href> в первом HTML.
+ */
+export async function serverGetFeatured(): Promise<FeaturedStorefrontResponse> {
+  return sfetch<FeaturedStorefrontResponse>('/storefront/featured');
+}
+
+/**
+ * SEO-AUDIT-001 п.4: product page primary content — server-фетч без auth,
+ * поэтому inWishlist всегда false здесь. Клиент допровери свежие данные сам
+ * (см. useProduct initialDataUpdatedAt: 0 в hooks/use-storefront.ts) — этот
+ * вызов только даёт краулеру реальный HTML на первый рендер.
+ */
+export async function serverGetProduct(id: string): Promise<Product> {
+  return sfetch<Product>(`/storefront/products/${id}`);
+}
+
+/**
+ * SEO-AUDIT-001 п.2: фид для sitemap.ts.
+ * ⚠️ products не несёт store slug/storeId — URL товара (`/{slug}/products/{id}`)
+ * построить нельзя без него. sitemap.ts пока эмитит только магазины; товары —
+ * после того как Полат добавит store.slug в findAllPublicForSitemap
+ * (products.repository.ts). Заведено в analiz/logs.md.
+ */
+export interface SitemapFeed {
+  stores: Array<{ slug: string; updatedAt: string }>;
+  products: Array<{ id: string; updatedAt: string }>;
+}
+
+export async function serverGetSitemapFeed(): Promise<SitemapFeed> {
+  return sfetch<SitemapFeed>('/storefront/sitemap');
 }
 
 export async function serverGetProducts(params: {

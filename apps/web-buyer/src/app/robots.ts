@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz';
+const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://shop.maxsavdo.uz';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -12,7 +12,6 @@ export default function robots(): MetadataRoute.Robots {
           '/checkout',
           '/cart',
           '/orders',
-          '/orders/',
           '/wishlist',
           '/chats',
           '/api/',
