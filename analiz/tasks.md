@@ -5,17 +5,8 @@
 
 ---
 
-## 🟡 [BOT-I18N-FULL-001] Дожать i18n бота — остальные тексты (после BOT-ONBOARDING-I18N-001)
-- **Домен:** apps/api telegram · **Кто взял:** пока никто
-- **Что:** онбординг+меню локализованы 12.07 (done.md); ещё RU-only: списки заказов
-  (seller/buyer + ORDER_LABEL), /help, привязка канала, поиск магазина, logout, ошибки.
-- **Как:** ключи добавлять в `telegram-bot-i18n.ts`, язык через `this.getLang(chatId)`.
-
-## 🟠 [INFRA-ENV-BUYER-URL-API-001] Проверить/выставить BUYER_URL на savdo-api (Railway)
-- **Домен:** инфра · **Связано:** BOT-STORE-LINK-404-001 (logs.md 12.07)
-- **Что:** бот и channel-post-builder берут `BUYER_URL` из env savdo-api. Код-fallback теперь
-  `https://shop.maxsavdo.uz`, но если переменная задана старым railway.app URL — ссылки будут
-  неканонические. Railway → savdo-api → Variables → `BUYER_URL=https://shop.maxsavdo.uz`.
+> ✅ 12.07: INFRA-ENV-BUYER-URL-API-001 закрыт (см. done.md) — `BUYER_URL=https://shop.maxsavdo.uz`
+> добавлен на savdo-api (переменной не было вовсе), Deploy применён, health 200.
 
 > ✅ 02.07 закрыты (см. done.md): TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009,
 > TMA-BUYER-NO-CANCEL-011, TMA-HYBRID-SETTINGS-BECOMESELLER-012, TMA-CART-BADGE-STALE-010.
@@ -100,10 +91,13 @@
 14. **[Азим, web-buyer+web-seller]** `lib/socket.ts` обоих апов: `io(BASE_URL)` без
     `reconnectionAttempts`/backoff → дефолт socket.io = вечный reconnect (та же болезнь, что
     PERF-TMA-HEAT-001 п.2; в TMA фикшено 03.07). Портировать лимит из TMA.
-15. **[Полат types + Азим]** Контракт позиций/цен размыт: `checkout/page.tsx:46-64`
-    (`cartItemUnitPrice` — 7 fallback-полей), `orders/[id]/page.tsx:51-63` (`normalizeOrder(raw: any)`) —
-    фронт гадает форму ответа API. Та же семья, что TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009.
-    Зафиксировать контракт в `packages/types` и убрать fallback-пирамиды.
+15. **[Полат ✅ 12.07 / Азим 🔲]** Контракт позиций/цен: types-часть СДЕЛАНА (`9827045`) —
+    `CheckoutPreview` сверен с API (+valid/cartId/skuSnapshot, storeName → @deprecated:
+    API его никогда не отдавал), `OrderDeliveryAddress` (nullable, response-side),
+    `Order.store` nullable, `StorefrontSitemapFeed` под новый endpoint. web-seller tsc EXIT 0.
+    **Азиму:** заменить `normalizeOrder(raw: any)` и `cartItemUnitPrice`-пирамиду
+    на типы из packages/types — поля гарантированы (сверка с orders.mapper.ts /
+    preview-checkout.use-case.ts задокументирована в JSDoc типов).
 16. **[проверить]** `storefront-server.ts:56` выбрасывает `meta.total` → на странице магазина нет
     пагинации: если API отдаёт дефолтный limit, магазин с большим каталогом покажет только первую
     страницу («Товары · N» врёт). Проверить limit `/storefront/products` и добавить пагинацию/«ещё».
@@ -600,9 +594,17 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
   (`restartPolicyMaxRetries` 3→10 во всех трёх `railway.toml`), п.5 ✅ (CI
   `deploy-config-check.yml` — падает если `railway.toml` сломан; CODEOWNERS —
   нужен GitHub-handle Полата, не сделан), п.7 ✅ (`docs/runbooks/railway-recovery.md`).
-  **Осталось:** п.4 (Root Directory для telegram-app — Railway dashboard),
-  п.6 (watchPatterns — пропущен, риск stale-деплоя выше пользы), п.8 (алертинг
-  Railway — dashboard). Все три — действия в Railway UI, не код.
+- **🆕 12.07 (Claude):** п.3 был закрыт НЕ полностью — фикс 18.05 попал только в
+  `apps/tma/railway.toml` (мёртвый дубль), а Railway для telegram-app читает
+  **корневой** `railway.toml` ветки tma (Root Directory = корень), где оставалось
+  `maxRetries=3`. Исправлено (`3eb8222` → tma, деплой авто-триггернулся ✅).
+  **п.4 ЗАКРЫТ С ВЕРДИКТОМ «нельзя как написано»:** `apps/tma/Dockerfile` копирует
+  `pnpm-lock.yaml`/`pnpm-workspace.yaml` из корня монорепо → Root Directory=apps/tma
+  обрежет build-context и сломает билд. Оставляем Root Directory=корень + корневой
+  toml на ветке tma. Альтернатива (standalone Dockerfile без workspace) — отдельная
+  задача, если дубль-конфиг снова кого-то укусит.
+  **Осталось:** п.6 (watchPatterns — пропущен осознанно), п.8 (алертинг =
+  INFRA-UPTIME-ALERTS-001), CODEOWNERS (нужен GitHub-handle Полата).
 - **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
   18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
   исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack

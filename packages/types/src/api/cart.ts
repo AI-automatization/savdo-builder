@@ -86,19 +86,35 @@ export interface DeliveryAddress {
   country?: string;
 }
 
+/**
+ * SEO-AUDIT-001 п.15: контракт сверен с реальным ответом API
+ * (`preview-checkout.use-case.ts` → controller отдаёт как есть).
+ * Это единственный источник цен позиций на checkout — фронту не нужно
+ * гадать по 7 fallback-полям (`cartItemUnitPrice`), поля ниже гарантированы.
+ */
 export interface CheckoutPreviewItem {
   productId: string;
   variantId: string | null;
   title: string;
   variantTitle: string | null;
+  /** SKU варианта (null для товара без варианта). */
+  skuSnapshot: string | null;
   quantity: number;
   unitPrice: number;
   subtotal: number;
 }
 
 export interface CheckoutPreview {
+  /** false — есть stockWarnings (часть позиций выпала из превью). */
+  valid: boolean;
+  cartId: string;
   storeId: string;
-  storeName: string;
+  /**
+   * @deprecated API это поле НЕ отдаёт (сверка 12.07.2026) — в ответе
+   * preview-checkout его никогда не было. Имя магазина брать из cart/store
+   * endpoint'ов. Оставлено опциональным, чтобы не ломать компиляцию.
+   */
+  storeName?: string;
   items: CheckoutPreviewItem[];
   subtotal: number;
   /**
