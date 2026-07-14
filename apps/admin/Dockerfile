@@ -2,7 +2,7 @@
 # apps/admin — Vite SPA (React + TypeScript)
 # Stage 1: builder через pnpm monorepo (нужен для @savdo/types и @savdo/ui)
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN npm install -g pnpm@11.12.0
 
