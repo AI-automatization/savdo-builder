@@ -1,5 +1,61 @@
 # Done — Азим + Полат
 
+## 2026-07-14 (Полат/Claude) — PARTNER-API-RAOS-001
+
+### ✅ [PARTNER-API-RAOS-001] Партнёрский API: выгрузка товаров RAOS → MaxSavdo
+- **Важность:** 🔴 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `packages/db` + `packages/types`
+- **Файлы:** `apps/api/src/modules/partner/*` (module, controller, admin-controller, guard,
+  2 use-case, repository, 2 DTO, spec — все новые), `packages/db/prisma/schema.prisma` (+PartnerApiKey),
+  `packages/db/prisma/migrations/20260714000001_partner_api_keys/` (ADD-only),
+  `apps/api/src/{app.module,modules/products/products.module,modules/media/media.module}.ts` (wiring/exports),
+  `packages/types/src/api/partner.ts` (новый), `docs/contracts/partner-api-raos.md` (контракт для RAOS)
+- **Что сделано:** подтверждён анализ Азима (функциональности не было: товар только через seller-JWT,
+  моделей ApiKey/Integration в схеме 0). Реализовано: auth по `X-Api-Key` (sha256-hash в БД, plaintext
+  один раз при выдаче, ключ скоупится на ОДИН store, revoke без удаления строки);
+  `POST /api/v1/partner/products` (@Public + PartnerApiKeyGuard, throttle 30/мин) — скачивает фото по
+  https-URL (анти-SSRF: только https, режем localhost/IP-литералы; mime jpeg/png/webp, ≤10MB), заливает
+  через существующий UploadDirectUseCase (sharp→R2), создаёт товар через CreateProductUseCase (лимиты
+  тарифа работают) и публикует через ChangeProductStatusUseCase (state machine + автопост в TG-канал).
+  Правило Азима «faqat rasmi bor mahsulot chiqadi»: без валидного фото товар НЕ создаётся (все фото
+  скачиваются ДО insert). Admin CRUD ключей: `POST/GET/DELETE /admin/partner-keys`
+  (@AdminPermission('system:integrations') — только super_admin/admin, custom-ролям reserved) + audit_log
+  (partner_key.issued/revoked). Миграцию применит `apps/api/start.sh` (migrate deploy) при деплое.
+- **Проверено:** `pnpm --filter api build` EXIT 0; jest partner.use-cases 10/10 (фото-фильтр, SSRF,
+  R2-fail→502+DRAFT, guard 401-ветки, publish=false).
+
+## 2026-07-12 (Азим/Claude, ночь) — PAY-004 (страница «Тарифы») + checkout payment-labels bug
+
+### ✅ [PAY-004] Страница «Тарифы» в кабинете продавца
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Домен:** `apps/web-seller`
+- **Файлы:** `src/app/(dashboard)/subscription/page.tsx` (новый), `src/hooks/use-subscription.ts` (новый),
+  `src/lib/api/subscription.api.ts` (новый), `src/app/(dashboard)/layout.tsx` (пункт «Тарифы» в NAV)
+- **Что сделано:** реализован «Этап 1» ручной оплаты из `docs/business/payments-legal-tax-2026-06-07.md`
+  §2.4 — продавец впервые видит свою подписку в кабинете (тариф/статус/дата окончания через уже рабочий
+  `GET /seller/subscription`), сравнение Free/Pro/Studio с актуальными цифрами из живого
+  `apps/api/.../plan-config.ts` (не из устаревших доков — см. ниже), кнопка «Отменить подписку»
+  (`POST /seller/subscription/cancel`, уже существовала). Кнопка «Оплатить» на Pro/Studio — деплинк в
+  Telegram-бот с готовым сообщением (тариф+магазин), НЕ фейковый API-запрос: `POST /seller/subscription/upgrade`
+  для создания PENDING-заявки в коде не существует (PAY-002/003 тоже не реализованы) — оплата остаётся
+  честно ручной до готовности Payme/Click-мерчанта.
+- **Побочная находка:** `apps/api/.../plan-config.ts` (BIZ-DECISIONS-§15, 14.06.2026, только в коде, без
+  md-доки) разошёлся с `docs/business/pricing-rationale-v2-2026-06-04.md` — Free-лимит 50 товаров/50
+  заказов (не 20), триал 30 дней (не 14). Подтверждено Азимом: код верный, доки устарели.
+- **Проверка:** `tsc --noEmit` на `apps/web-seller` — EXIT 0.
+
+### ✅ Checkout payment-labels bug (web-buyer)
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Файл:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Root cause:** способы оплаты были захардкожены под нереалистичный для УЗ сценарий — «Наличные курьеру»
+  / «Картой курьеру — UzCard/Humo POS-терминал» (курьеров с POS-терминалом у мелких TG-продавцов нет).
+  Баг был явно помечен ⚠️ в `docs/business/payments-legal-tax-2026-06-07.md` §1.3, но не исправлен.
+- **Что сделано:** тексты заменены на «Наличные — при встрече/самовывозе» и «Перевод на карту — продавец
+  пришлёт реквизиты в чате заказа» (честный placeholder, реального поля карты продавца пока нет — см.
+  задачу ниже). «Комментарий курьеру» → «Комментарий к заказу». `paymentMethod` state и так не уходил в
+  payload `confirm.mutateAsync` — это чисто UI-фикс, бэкенд-контракт не затронут.
+
+### 🆕 Новая задача для Полата — [SELLER-PAYMENT-REQUISITES-001]
+- Поле реквизитов оплаты продавца (карта + опц. Click/Payme-ссылка) на `Seller`/`Store` — нужно для
+  честного отображения на checkout вместо текущего placeholder. См. `analiz/tasks.md`.
+
 ## 2026-07-12 (Claude/Полат, вечер) — types-контракты + DevOps-хвосты + as-any cleanup
 
 ### ✅ [SEO-AUDIT-001 п.15, types-часть] Честные контракты checkout/orders + sitemap-типы
@@ -25,6 +81,73 @@
   (невалидный ?status= раньше уходил в Prisma и ронял запрос, теперь = без фильтра);
 - `orders.controller.ts:73-74` — `(result as any)` → типизированный PaginatedOrders.
 - nest build EXIT 0. Хвост задачи закрыт — `as any` в контроллерах 0.
+
+## 2026-07-12 (Азим/Claude, вечер) — LANDING-CORP-PAGE-001: buyer catalog + admin входы
+
+### ✅ [LANDING-CORP-PAGE-001] Точки входа на маркетинг-лендинге
+- **Важность:** 🟠 · **Дата:** 12.07.2026 · **Ветки:** `landing` (`ba1bd884`), `web-seller` (`2088a0d7`, cherry-pick)
+- **Файлы:** `apps/web-seller/src/components/landing/LandingHeader.tsx`, `LandingFooter.tsx`,
+  `src/lib/i18n/ru.ts`, `src/lib/i18n/uz.ts`
+- **Что сделано:** реализована design-спека `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`
+  (approved 11.07). Тикет переформулирован по факту 11.07 — seller-лендинг уже был готов, не хватало
+  входа для покупателя (каталог магазинов) и технической ссылки на админку. Добавлено: ссылка «Каталог
+  магазинов» в хедере (десктоп+мобайл) через `buyerOrigin()`; 4-я колонка «Продукт» в футере с той же
+  ссылкой + приглушённая «Админка» (`NEXT_PUBLIC_ADMIN_URL`, фолбэк `adminsb.up.railway.app`); i18n
+  ключи `nav.buyerCatalog`/`footer.admin` ru+uz. Hero и seller-конверсия не тронуты.
+- **Проверка:** tsc EXIT 0 на обеих ветках, `next build` EXIT 0, Playwright — desktop header, мобильное
+  меню, футер 4 колонки, переключение RU/UZ, 0 console errors.
+- **Follow-up (не в scope, за Полатом):** `main` расходится с прод-ветками лендинга (тот же класс, что
+  `LANDING-BRANCH-DRIFT-001`); `NEXT_PUBLIC_ADMIN_URL` фолбэк не подтверждён явно.
+
+## 2026-07-12 (Азим/Claude) — SEO-AUDIT-001 P0 (п.2-4) + DEPLOY-DOMAIN-MAXSAVDO-001 (web-buyer часть)
+
+### ✅ [SEO-AUDIT-001] П.2 — sitemap.ts стал динамическим
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `src/lib/api/storefront-server.ts`
+- **Что сделано:** вместо 6 статичных URL — `serverGetSitemapFeed()` тянет `GET /storefront/sitemap`
+  (Полат, `1d2b4bc4`), добавляет магазины с честным `lastModified`. Товары НЕ эмитятся — фид не несёт
+  `store.slug`, без него не построить `/{slug}/products/{id}`; заведён блокер на Полата в `logs.md`.
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0 (`/sitemap.xml` в списке роутов, revalidate 30s).
+
+### ✅ [SEO-AUDIT-001] П.3 — главная страница отдаёт server-rendered ссылки на магазины
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/page.tsx`, `src/components/home/HomeTopStores.tsx`,
+  `src/hooks/use-storefront.ts` (`useFeaturedStorefront` += `initialData`), `storefront-server.ts`
+  (новый `serverGetFeatured`)
+- **Что сделано:** `HomePage` стал async Server Component, фетчит featured server-side и передаёт
+  как `initialData` в `useFeaturedStorefront` — краулер получает реальные `<a href="/{slug}">`
+  в первом HTML вместо client-only skeleton (раньше `HomeTopStores` фетчил только через
+  `useQuery` без SSR-данных).
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0 (`/` статически пререндерится, revalidate 30s).
+
+### ✅ [SEO-AUDIT-001] П.4 — карточка товара отдаёт контент в первом HTML
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` (переписан на async
+  Server Component), новый `.../ProductPageClient.tsx` (вся интерактивная логика, без изменений
+  поведения), `hooks/use-storefront.ts` (`useProduct` += `initialProduct`/`initialDataUpdatedAt: 0`)
+- **Что сделано:** `page.tsx` теперь фетчит товар через `serverGetProduct` и рендерит
+  `ProductPageClient` с `initialProduct`. `useProduct` использует его как `initialData`, но с
+  `initialDataUpdatedAt: 0` — auth-зависимые поля (`inWishlist`) дообновляются фоновым рефетчем
+  на mount, не залипая на 3-минутный `staleTime` (server-фетч идёт без auth-токена).
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0, vitest 22/25 (3 падения в `MaxsavdoLogo.test.tsx` —
+  pre-existing, не связаны с этой правкой).
+
+### ✅ [SEO-AUDIT-001] П.13 — robots.ts дубль `/orders`/`/orders/`
+- **Важность:** 🟢 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/robots.ts`
+- **Что сделано:** убран дублирующий disallow-путь (косметика из P2 аудита).
+
+### ✅ [DEPLOY-DOMAIN-MAXSAVDO-001] Азим (код) — fallback URL на apex вместо shop.maxsavdo.uz
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/layout.tsx` (metadataBase), `robots.ts`, `sitemap.ts`,
+  `[slug]/products/[id]/layout.tsx` (canonical/OG)
+- **Что сделано:** `extractSlug`-парсера в коде не нашлось (web-buyer не делает subdomain-роутинг,
+  только path `/${slug}`) — реальный баг оказался в `NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz'`
+  fallback (та же категория, что уже чинили в web-seller `b35d05d`). Поправлено на
+  `https://shop.maxsavdo.uz` в 4 местах. В проде не било (env var уже задан 09.07) — задевало
+  только dev/staging без env var.
+- **Проверка:** tsc EXIT 0.
+- **Не запушено:** коммит только локальный (`.worktrees/web-buyer`), push — по решению Азима.
 
 ## 2026-07-12 (Claude/Полат) — бот: фикс 404-ссылки + язык в онбординге + смена названия магазина
 

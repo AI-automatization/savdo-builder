@@ -5,6 +5,26 @@
 
 ---
 
+## 🟡 [PARTNER-API-RAOS-001] RAOS-интеграция — КОД ГОТОВ 14.07 (см. done.md), остались орг-шаги
+- **Домен:** операционка (Полат) + RAOS-сторона
+- **✅ Код-комплит 14.07:** PartnerModule (`X-Api-Key` Guard, `POST /partner/products`,
+  admin CRUD ключей `/admin/partner-keys`), модель `PartnerApiKey` (ADD-only миграция
+  `20260714000001`), фильтр «только с фото», 10/10 тестов, build EXIT 0.
+  Контракт для RAOS: `docs/contracts/partner-api-raos.md`.
+- **🔲 Осталось (после деплоя api):**
+  1. Создать/выбрать магазин под RAOS-товары → выдать ключ: `POST /admin/partner-keys {storeId, name:"RAOS"}` (plaintext показывается один раз).
+  2. Передать ключ RAOS безопасным каналом + ссылку на контракт.
+  3. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
+
+## 🟡 [SELLER-PAYMENT-REQUISITES-001] Поле реквизитов оплаты продавца — нужно от Полата
+- **Домен:** `packages/db` (schema) + `apps/api` (endpoint)
+- **Кто взял:** запрос от Азима, 12.07.2026
+- **Контекст:** `docs/business/payments-legal-tax-2026-06-07.md` §1.4 — продавец вписывает реквизиты один раз в кабинете, покупатель видит их на checkout вместо нынешнего хардкода «курьер + POS-терминал» (тот баг уже поправлен на фронте Азимом, 12.07 — см. done.md, но без реального поля показывать покупателю нечего, сейчас placeholder-текст «реквизиты в чате заказа»).
+- **Детали:** на `Seller` или `Store` — новые опциональные поля: номер карты (строка, «8600…»), имя владельца карты, опционально ссылка Click/Payme, и флаг(и) какие способы оплаты продавец принимает (cash/card). Плюс endpoint: `PATCH seller/store` (или отдельный) для записи владельцем, и отдача этих полей в публичном ответе `storefront/stores/:slug` (или в checkout preview) — без выдачи чужих полных данных, только то что помечено видимым.
+- **После готовности:** Азим достраивает экран ввода в `web-seller` (кабинет продавца → реквизиты) и подключает реальное отображение на checkout в `web-buyer` (сейчас там честный placeholder, не показывает вымышленных данных).
+
+---
+
 > ✅ 12.07: INFRA-ENV-BUYER-URL-API-001 закрыт (см. done.md) — `BUYER_URL=https://shop.maxsavdo.uz`
 > добавлен на savdo-api (переменной не было вовсе), Deploy применён, health 200.
 
@@ -34,8 +54,12 @@
   - `landing`: `NEXT_PUBLIC_API_URL=https://api.maxsavdo.uz` (было railway.app + лишний пробел в значении!),
     **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (закрыт хвост LANDING-BRANCH-DRIFT-001).
 - **🔲 Постдеплой:** UptimeRobot на 5 доменов, Search Console (связка SEO-AUDIT-001).
-- **🔲 Азим (код):** apex=landing ⇒ магазины живут на shop.maxsavdo.uz — обновить `extractSlug`
-  парсер web-buyer, `buyerStoreUrl` web-seller, canonical/sitemap (связка SEO-AUDIT-001).
+- **✅ Азим (код) — закрыто 12.07.2026 (ветка `web-buyer`, `b215b59b`):** `extractSlug`-парсера
+  в коде не оказалось (web-buyer не делает subdomain-based роутинг, только path `/${slug}`) —
+  реальный баг был в fallback-константах `NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz'`
+  (та же категория, что уже чинили в web-seller `b35d05d`). Поправлено на `shop.maxsavdo.uz`
+  в 4 файлах: `layout.tsx` (metadataBase), `robots.ts`, `sitemap.ts`, `[id]/layout.tsx` (canonical/OG).
+  В проде не било (env var уже был задан 09.07) — задевало только dev/staging без env.
 - **⚠️ Осторожно с CORS:** wildcard `*.maxsavdo.uz` в проде (`e18f94e`) покрывает apex и все
   поддомены — новых правок API не нужно.
 
@@ -57,17 +81,23 @@
 - Клиентский поиск НЕ рефетчит товары (`ProductsWithSearch` фильтрует серверный список).
 
 ### 🔴 P0 — сайт невидим для краулеров (SEO/GEO)
-1. ~~**[Полат, api]** Endpoint под sitemap~~ ✅ **СДЕЛАНО 10.07 (Claude):** `GET /api/v1/storefront/sitemap`
-   — `{stores: [{slug, updatedAt}], products: [{id, updatedAt}]}`, та же видимость что
-   findAllPublished/findAllPublic, Cache-Control 1h + Throttle 10/min, cap 5000 товаров.
-   Коммит `1d2b4bc`, ветка api запушена (c48db2e). Азим: подключить в `sitemap.ts` (п.2).
-2. **[Азим, web-buyer]** `sitemap.ts` → динамический (сейчас 5 статичных URL, ни одного магазина/товара).
-3. **[Азим, web-buyer]** Главная `(shop)/page.tsx` — "use client", ни одной серверной ссылки на
-   магазины → краулеру некуда идти. Добавить серверный блок featured-магазинов (endpoint
-   `/storefront/featured` уже есть).
-4. **[Азим, web-buyer]** `products/[id]/page.tsx` — "use client": контент товара не в HTML,
-   AI-краулеры (GPTBot/ClaudeBot/PerplexityBot) видят пустую страницу. Перевести первичный рендер
-   на сервер (данные уже фетчатся в layout — отдать вниз), интерактив оставить клиентским.
+1. ✅ **[Полат, api]** Endpoint под sitemap: `GET /storefront/sitemap` — закрыто 10.07.2026
+   (`1d2b4bc4`, main). Отдаёт slug+updatedAt магазинов, id+updatedAt товаров. Типы
+   `StorefrontSitemapFeed` добавлены в `packages/types` 12.07 (`98270455`).
+2. ✅ **[Азим, web-buyer]** `sitemap.ts` → динамический — закрыто 12.07.2026 (`b215b59b`,
+   ветка `web-buyer`). Магазины подключены. **⚠️ Товары НЕ эмитятся** — фид из п.1 не несёт
+   `store.slug`/`storeId` (подтверждено и в новом `StorefrontSitemapProduct` типе — тоже только
+   `id`/`updatedAt`), без него нельзя построить канонический `/{slug}/products/{id}`.
+   **Нужно от Полата:** добавить `store: { select: { slug: true } }` (или плоский `storeSlug`)
+   в `ProductsRepository.findAllPublicForSitemap` (`apps/api/src/modules/products/
+   repositories/products.repository.ts`) — тривиальная правка, разблокирует товары в sitemap.
+3. ✅ **[Азим, web-buyer]** Главная `(shop)/page.tsx` — закрыто 12.07.2026 (`b215b59b`).
+   `serverGetFeatured()` фетчит featured server-side, `HomeTopStores` получает `initialData` —
+   краулер видит реальные `<a href="/{slug}">` в первом HTML вместо client-only skeleton.
+4. ✅ **[Азим, web-buyer]** `products/[id]/page.tsx` — закрыто 12.07.2026 (`b215b59b`). Стал
+   async Server Component (`serverGetProduct`), интерактив вынесен в новый `ProductPageClient.tsx`
+   без изменения поведения. `useProduct` получил `initialData` + `initialDataUpdatedAt: 0`
+   (auth-поля типа `inWishlist` дообновляются фоновым рефетчем, не залипают на staleTime).
 
 ### 🟠 P1
 5. **[Азим]** uz-локаль + hreflang: `lang="ru"` hardcoded (`layout.tsx:48`), i18n-каталога в
@@ -85,7 +115,7 @@
     товаре; WebSite+SearchAction на главной.
 11. `manifest.ts` icons → `/favicon.ico`, но `public/` пуст → 404 иконки PWA. Положить реальные.
 12. `sitemap.ts` lastModified = new Date() на каждый запрос — отдавать честные даты.
-13. `robots.ts:14-15` — `/orders` и `/orders/` дубль (косметика).
+13. ✅ `robots.ts:14-15` — `/orders`/`/orders/` дубль убран, закрыто 12.07.2026 (`b215b59b`, web-buyer).
 
 ### 🔧 Код-аудит (не SEO)
 14. **[Азим, web-buyer+web-seller]** `lib/socket.ts` обоих апов: `io(BASE_URL)` без
@@ -434,48 +464,29 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
-## 🟠 [LANDING-CORP-PAGE-001] Корпоративная landing-страница с контактами + входами
+## ✅ [LANDING-CORP-PAGE-001] Корпоративная landing-страница с контактами + входами — ЗАКРЫТО 12.07.2026
 
-- **Домен:** `apps/web-buyer` (новый route `/about` или отдельный sub-app) — Азим.
-- **Кто берёт:** Азим (UI/контент) · Полат (consult, если потребуется новый
-  storefront-эндпоинт под featured stores на landing).
-- **Приоритет:** P1 marketing-блокер для public launch — внешний посетитель
-  должен видеть «что это за платформа, где покупать, где регистрироваться продавцу,
-  как связаться» в одном месте; сейчас разрозненно по `/`, `/[slug]`, web-seller.
-- **Что должно быть на странице:**
-  1. **Hero**: что такое maxsavdo (платформа Telegram-магазинов для UZ) + кнопки:
-     - «Открыть в Telegram» → `https://t.me/savdo_builderBOT` (TMA buyer/seller flow)
-     - «Стать продавцом» → web-seller `/become-seller`
-     - «Перейти к магазинам» → web-buyer `/` (storefront)
-  2. **Контактные связи** (видны без скролла):
-     - Telegram support: `@maxsavdo_support` (после `SUPPORT-CHANNEL-001`)
-     - Email: `support@maxsavdo.uz`, `legal@maxsavdo.uz` (после регистрации
-       юр.лица и `LEGAL-OFFER-REQUISITES-001`)
-     - Телефон (опционально, после регистрации)
-  3. **Каналы входа** (по аудиториям):
-     - **Покупателям:** TMA buyer (`?startapp=`) + web-buyer storefront URL
-     - **Продавцам:** TMA seller (`?start=become_seller`) + web-seller dashboard
-     - **Админам:** admin URL (не promotion, но техническая ссылка в footer)
-  4. **Цены/тарифы** (после `BILLING-MACHINE-001`): FREE/PRO/STUDIO с краткой
-     таблицей (карточки тарифов уже есть в `docs/business/pricing-rationale-v2-2026-06-04.md`).
-  5. **Юр.секция** в footer: ссылки на `/offer`, `/privacy`, `/terms`, `/refund`
-     (уже существуют от `MARKETING-PUBLIC-OFFER-PAGES-001`).
-- **Контракт к Полату (если потребуется):**
-  - `GET /api/v1/storefront/landing/stats` (опц.) — `{ storesCount, productsCount,
-    ordersCount? }` для hero-цифр. Без этого endpoint'а можно сделать статичный
-    hero без счётчиков — не блокер MVP.
-- **Файлы (predict):**
-  - `apps/web-buyer/src/app/about/page.tsx` (или `apps/web-buyer/src/app/page.tsx`
-    переработка — решение Азима).
-  - `apps/web-buyer/src/lib/i18n/{ru,uz}.ts` — секция `landing.*` строк.
-  - SEO: JSON-LD `Organization` + `WebSite` schema, OG-image.
-- **Definition of done:**
-  - Страница открывается анонимно (без auth), отдаёт корректный SEO meta,
-    все CTA-кнопки кликаются и ведут в правильные точки входа.
-  - Адаптив mobile/desktop.
-  - RU + UZ переводы.
-- **Источник:** запрос владельца 05.06.2026 после закрытия checkout-500 +
-  BUG-2 (готовимся к закрытой бете).
+- **Переформулирован 11.07.2026** (см. `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`,
+  approved): исходный тикет просил строить `/about` в web-buyer с нуля — но к 11.07 уже существовал
+  полноценный seller-маркетинг лендинг на `landing`/`web-seller` deploy-ветках (Hero/Pricing/FAQ/итд).
+  Реальный пробел — не было входов для покупателя (каталог) и админки, а не отсутствие страницы.
+- **✅ Реализовано 12.07.2026** (ветки `landing` `ba1bd884`, cherry-pick на `web-seller` `2088a0d7`):
+  - `LandingHeader.tsx`: ссылка «Каталог магазинов» (`buyerOrigin()`, `target=_blank`) в десктоп-нав
+    и мобильном меню.
+  - `LandingFooter.tsx`: `grid-cols-3` → `sm:grid-cols-4`, новая колонка «Продукт» — «Каталог
+    магазинов» + приглушённая «Админка» (`NEXT_PUBLIC_ADMIN_URL`, фолбэк `adminsb.up.railway.app`).
+  - i18n `nav.buyerCatalog`/`footer.admin` в `ru.ts`/`uz.ts` (обе ветки).
+  - Hero и seller-конверсия НЕ тронуты (вне scope).
+- **Проверено:** tsc EXIT 0 (обе ветки), `next build` EXIT 0, Playwright (desktop header, мобильное
+  меню, футер 4 колонки, RU+UZ, 0 console errors).
+- **Не входило в scope (см. спеку §1):** email/support-контакты (блокер `LEGAL-OFFER-REQUISITES-001` +
+  `SUPPORT-CHANNEL-001`), правки Hero, синхронизация `main` с прод-ветками лендинга (см. риск ниже).
+- **🔲 Follow-up (не срочно, архитектурное решение не моё):** `main` расходится с прод-ветками
+  лендинга (`main`: `web-seller/page.tsx` = `redirect('/dashboard')`, `landing`/`web-seller`: полный
+  маркетинг-лендинг) — тот же класс проблемы, что `LANDING-BRANCH-DRIFT-001`. Нужно решение Полата:
+  смёржить лендинг в `main` или явно задокументировать deploy-ветки как самостоятельные.
+- **🔲 Follow-up:** `NEXT_PUBLIC_ADMIN_URL` фолбэк не подтверждён Полатом явно (взят из его же
+  security-аудитов) — спросить точный текущий домен админки при следующем контакте.
 
 ---
 
@@ -1544,9 +1555,9 @@ confirm (`computeDeliveryFee` пропускается). `CheckoutConfirmRequest
   - **Домен:** `apps/api`
   - **Детали:** `POST /payments/click/prepare` + `POST /payments/click/complete`. При complete → активировать подписку.
 
-- [ ] **[PAY-004]** Seller CRM: страница тарифов + кнопка оплаты
-  - **Домен:** `apps/web-seller`
-  - **Детали:** Страница `/billing` — список планов, текущая подписка, кнопка "Оплатить" → редирект на Payme/Click. После успешной оплаты → редирект обратно с активным доступом.
+- [x] **[PAY-004]** ✅ 12.07.2026 — закрыто Азимом, см. `analiz/done.md`. Реализовано как `/subscription`
+  (не `/billing`) — статус подписки + сравнение тарифов + деплинк в Telegram-бот вместо
+  Payme/Click-редиректа (авто-активация всё ещё ждёт PAY-002/003 + юрлицо).
   - **Заметка:** Азимов домен
 
 - [ ] **[PAY-005]** Admin: управление подписками продавцов

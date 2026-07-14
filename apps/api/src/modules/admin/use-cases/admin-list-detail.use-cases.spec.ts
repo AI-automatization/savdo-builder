@@ -125,10 +125,15 @@ describe('GetAuditLogUseCase', () => {
 
 describe('GetMeUseCase', () => {
   let useCase: GetMeUseCase;
-  let repo: { findUserById: jest.Mock };
+  let repo: { findUserById: jest.Mock; findCapabilities: jest.Mock };
 
   beforeEach(() => {
-    repo = { findUserById: jest.fn() };
+    repo = {
+      findUserById: jest.fn(),
+      // HYBRID-6: capabilities toggle lookup, called unconditionally after
+      // findUserById — this mock predates the feature (test/mock desync).
+      findCapabilities: jest.fn().mockResolvedValue({ canBuy: true, canSell: false, hasStore: false }),
+    };
     useCase = new GetMeUseCase(repo as unknown as AuthRepository);
   });
 
@@ -144,7 +149,10 @@ describe('GetMeUseCase', () => {
     // если профиля нет) — стабильный shape AuthUser для web-buyer/admin.
     expect(result).toEqual({
       success: true,
-      data: { id: 'u-1', phone: '+998900000001', buyer: null },
+      data: {
+        id: 'u-1', phone: '+998900000001', buyer: null,
+        capabilities: { canBuy: true, canSell: false, hasStore: false },
+      },
     });
   });
 });

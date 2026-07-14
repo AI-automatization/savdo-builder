@@ -493,6 +493,7 @@ model Store {
   carts            Cart[]
   orders           Order[]
   directions       StoreDirection[]
+  partnerApiKeys   PartnerApiKey[]
 
   @@index([status])
   @@index([isPublic])
@@ -550,6 +551,31 @@ model StoreDeliverySettings {
   store Store @relation(fields: [storeId], references: [id])
 
   @@map("store_delivery_settings")
+}
+
+// ─────────────────────────────────────────────
+// PARTNER API (PARTNER-API-RAOS-001)
+// ─────────────────────────────────────────────
+
+// Партнёрский API-ключ: внешняя система (RAOS) создаёт товары в конкретном
+// магазине MaxSavdo через POST /partner/products с заголовком X-Api-Key.
+// Храним ТОЛЬКО sha256-hash ключа — plaintext показывается один раз при выдаче.
+// Ключ скоупится на один store: компрометация ключа не даёт доступ к чужим
+// магазинам. Revoke = isActive=false (строка остаётся для аудита lastUsedAt).
+model PartnerApiKey {
+  id         String    @id @default(uuid())
+  keyHash    String    @unique // sha256(rawKey) hex
+  name       String // человекочитаемо: "RAOS"
+  storeId    String
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
+  @@map("partner_api_keys")
 }
 
 // ─────────────────────────────────────────────
