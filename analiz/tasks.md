@@ -11,10 +11,16 @@
   admin CRUD ключей `/admin/partner-keys`), модель `PartnerApiKey` (ADD-only миграция
   `20260714000001`), фильтр «только с фото», 10/10 тестов, build EXIT 0.
   Контракт для RAOS: `docs/contracts/partner-api-raos.md`.
-- **🔲 Осталось (после деплоя api):**
-  1. Создать/выбрать магазин под RAOS-товары → выдать ключ: `POST /admin/partner-keys {storeId, name:"RAOS"}` (plaintext показывается один раз).
-  2. Передать ключ RAOS безопасным каналом + ссылку на контракт.
-  3. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
+- **✅ 14.07 задеплоено и проверено на проде:** деплой api прошёл (после 2 фиксов Docker —
+  см. logs.md INFRA-DOCKER-PNPM11-001), миграция применена. Магазин RAOS создан
+  (slug `raos`, storeId `80e1d96e-1cf1-49fa-9e92-8578f56d6942`, seller VERIFIED, подписка
+  STUDIO ACTIVE до 14.07.2027, синтетический phone +998000001111). Ключ выдан
+  (keyId `28e677e5-…`), plaintext передан Полату в сессии. Smoke-тест: DRAFT-товар
+  `12c3e990-…` создан через API с реальным скачиванием фото → 201.
+- **🔲 Осталось:**
+  1. Передать ключ RAOS безопасным каналом + `docs/contracts/partner-api-raos.md`.
+  2. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
+  3. (опц.) удалить smoke-товар `12c3e990-6744-49e4-b4d7-e052a009a8a8` из admin.
 
 ## 🟡 [SELLER-PAYMENT-REQUISITES-001] Поле реквизитов оплаты продавца — нужно от Полата
 - **Домен:** `packages/db` (schema) + `apps/api` (endpoint)
