@@ -18,6 +18,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "maxsavdo — Seller Dashboard",
   description: "Управляй магазином в Telegram",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
