@@ -1,5 +1,18 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-14] [ADMIN-VENDOR-CHUNK-CRASH-001] Прод-админка чёрный экран после деплоя ef9f482
+- **Статус:** ✅ Исправлено (vite.config admin, hotfix)
+- **Что случилось:** после сегодняшнего деплоя admin (purge-кнопка + подтянутый main c lockfile-
+  регенерацией 0e6afa8) ВСЯ админка падала на старте: `TypeError: Cannot read properties of
+  undefined (reading 'forwardRef')` в `vendor-ui-*.js`, чёрный экран. Root cause: ручной
+  `manualChunks` в `apps/admin/vite.config.ts` (vendor-react/ui/charts/mfa) — после смены графа
+  зависимостей (pnpm 11 lockfile) Rollup стал исполнять vendor-ui (lucide/sonner) ДО инициализации
+  React-чанка. Сборка при этом зелёная — краш только runtime, поэтому build EXIT 0 не ловит.
+- **Что сделано:** manualChunks удалён (дефолтный чанкинг Vite упорядочивает init корректно;
+  admin — внутренняя панель, размер не критичен). Проверено `vite preview` в браузере до пуша.
+- **Урок:** после изменения lockfile/бандлера проверять SPA не только сборкой, но и рантаймом
+  (vite preview / прод-смоук на консоль-ошибки).
+
 ## [2026-07-14] [INFRA-DOCKER-PNPM11-001] Деплой savdo-api дважды упал после dep-bump Азима (0e6afa8)
 - **Статус:** ✅ Исправлено (коммиты `82b4886` + `6caa58b`), третий деплой в процессе
 - **Что случилось:** коммит `0e6afa8` (audit-фиксы) поднял `packageManager` до `pnpm@11.12.0` и
