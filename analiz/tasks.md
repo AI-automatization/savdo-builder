@@ -100,10 +100,18 @@
    (auth-поля типа `inWishlist` дообновляются фоновым рефетчем, не залипают на staleTime).
 
 ### 🟠 P1
-5. **[Азим]** uz-локаль + hreflang: `lang="ru"` hardcoded (`layout.tsx:48`), i18n-каталога в
-   web-buyer НЕТ. ⚠️ done.md утверждает i18n ru/uz + /help сделаны 21.05 — в коде отсутствуют,
-   похоже потеряны при редизайне dark-luxury 25.05. Разобраться в git log и восстановить.
-6. **[Азим]** Вернуть `/help` (FAQ) + FAQPage JSON-LD — ядро AEO. Добавить в sitemap.
+5. ✅ **[Азим]** ПРОВЕРЕНО 14.07.2026 — ложная тревога: i18n-каталог (`ru.ts`/`uz.ts`/
+   `I18nProvider.tsx`) и `/help` **существуют и работают** на ветке `web-buyer`, аудит
+   проверял `main` (там правда устаревший snapshot) — классика «git log ≠ content».
+   `lang="ru"` в `layout.tsx:49` — осознанный SSR-дефолт (клиентский `I18nProvider`
+   переключает `document.documentElement.lang` после mount, избегая hydration mismatch),
+   не баг. **hreflang решили НЕ делать:** сайт не path-based (нет `/ru/`/`/uz/` — один URL,
+   переключение языка через localStorage), полноценный hreflang требует разных URL на
+   разные языки → это отдельная архитектурная задача (path-based i18n), не SEO-патч.
+   Если понадобится — заводить отдельным тикетом.
+6. ✅ **[Азим]** ЗАКРЫТО 14.07.2026 — FAQPage JSON-LD добавлен в `apps/web-buyer/src/app/
+   help/page.tsx` (mirror паттерна из `products/[id]/layout.tsx`), данные из статичного
+   `ru.ts` (8 Q&A). `/help` уже был в sitemap (не нужно было добавлять). tsc EXIT 0.
 7. **[Азим]** web-seller: нет robots.ts/noindex — дашборд индексируем. Закрыть noindex целиком.
 8. **[Азим]** Product JSON-LD (`products/[id]/layout.tsx:36-37`): availability всегда InStock
    (лечить по стоку/статусу), price fallback 0 (не отдавать Offer без цены), добавить

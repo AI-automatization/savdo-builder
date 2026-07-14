@@ -8178,3 +8178,22 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
 - **Дата:** 15.06.2026
 - **Файлы:** `packages/db/prisma/schema.prisma`, `packages/db/prisma/migrations/20260615120000_subscription_tier_rename/migration.sql`, `packages/types/src/enums.ts`, `apps/api/src/modules/subscriptions/plan-config.ts`, `apps/api/src/modules/subscriptions/dto/mark-paid.dto.ts`, `apps/api/src/modules/subscriptions/dto/comp-subscription.dto.ts`, `apps/api/src/modules/subscriptions/use-cases/mark-paid.use-case.spec.ts`, `apps/api/src/modules/admin/admin-subscriptions.controller.ts`, `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/pages/SubscriptionDetailModal.tsx`, `apps/admin/src/pages/StoreDetailPage.tsx`, `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`, `apps/tma/src/pages/seller/SubscriptionPage.tsx`
 - **Что сделано:** Переименованы enum-значения STARTER→FREE, BUSINESS→STUDIO через `ALTER TYPE RENAME VALUE` (Postgres 10+, без data migration). Обновлены plan-config (Free 0₽/50 товаров, Pro 149k, Studio 399k), все DTO, frontend страницы, i18n ключи, TMA. Добавлен BetaGrandfatherUseCase (UPSERT всех продавцов на PRO до 01.09.2026). Кнопки в AdminPanel. Prisma client регенерирован.
+
+### ✅ [SEO-AUDIT-001 п.5-6] i18n/help ложная тревога + FAQPage JSON-LD — закрыто 14.07.2026
+- **Важность:** 🟡 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-buyer` (ветка `web-buyer`)
+- **Файлы:** `apps/web-buyer/src/app/help/page.tsx`
+- **Что сделано:** Расследование (systematic-debugging) показало, что п.5 SEO-AUDIT-001
+  описывал ложную тревогу — аудит проверял `main`, а i18n (`ru.ts`/`uz.ts`/`I18nProvider.tsx`)
+  и `/help` живут и работают только на ветке `web-buyer` (см. `analiz/tasks-azim.md`
+  предупреждение про это же). `lang="ru"` в `layout.tsx:49` — осознанный SSR-дефолт
+  (client `I18nProvider` переключает `document.documentElement.lang` после mount против
+  hydration mismatch), не баг. Решили НЕ делать hreflang — сайт не path-based (один URL,
+  язык через localStorage), полноценный hreflang требует разных URL на разные языки —
+  это отдельная архитектурная задача, не патч.
+  Реальный фикс — добавлен FAQPage JSON-LD в `/help` (mirror паттерна Product JSON-LD
+  из `products/[id]/layout.tsx`), 8 Q&A из статичного `ru.ts`. `/help` уже был в sitemap.
+  tsc EXIT 0.
+- **Урок:** аудиты SEO/кода в этом репо всегда сверять по фронт-веткам (`web-buyer`/
+  `web-seller`), не по `main` — main держит устаревший snapshot.
