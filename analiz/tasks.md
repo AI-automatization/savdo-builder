@@ -155,9 +155,11 @@
     **Азиму:** заменить `normalizeOrder(raw: any)` и `cartItemUnitPrice`-пирамиду
     на типы из packages/types — поля гарантированы (сверка с orders.mapper.ts /
     preview-checkout.use-case.ts задокументирована в JSDoc типов).
-16. **[проверить]** `storefront-server.ts:56` выбрасывает `meta.total` → на странице магазина нет
-    пагинации: если API отдаёт дефолтный limit, магазин с большим каталогом покажет только первую
-    страницу («Товары · N» врёт). Проверить limit `/storefront/products` и добавить пагинацию/«ещё».
+16. **[Азим — API готов]** `storefront-server.ts:56` выбрасывает `meta.total` → на странице магазина
+    нет пагинации. **Полат проверил 14.07:** API-часть уже умеет: `stores/:slug/products` — opt-in
+    пагинация (передай `?page=`/`?limit=` → envelope `{data, meta}`; без параметров — legacy raw
+    array c cap 200, `storefront.controller.ts:214-218`). Фронту: передавать page/limit и читать
+    meta.total → кнопка «ещё»/пагинация. Правок API не требуется.
 17. **[норм, зафиксировать]** JWT в localStorage (`auth/storage.ts`) — осознанный XSS-компромисс,
     приемлем при текущем строгом CSP; не переделывать без причины.
 
