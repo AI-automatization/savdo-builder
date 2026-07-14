@@ -1,5 +1,16 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-14] [INFRA-DOCKER-PNPM11-001] Деплой savdo-api дважды упал после dep-bump Азима (0e6afa8)
+- **Статус:** ✅ Исправлено (коммиты `82b4886` + `6caa58b`), третий деплой в процессе
+- **Что случилось:** коммит `0e6afa8` (audit-фиксы) поднял `packageManager` до `pnpm@11.12.0` и
+  переписал lockfile, но Dockerfile'ы остались на `pnpm@9.0.0` + `node:20-alpine`. Деплой №1:
+  `ERR_PNPM_BAD_PM_VERSION` на `pnpm rebuild sharp`. После фикса pnpm→11.12.0 деплой №2:
+  `ERR_UNKNOWN_BUILTIN_MODULE node:sqlite` — pnpm 11 требует Node ≥22.13, а образ Node 20.
+- **Что сделано:** во всех Dockerfile (api ×2 стадии, admin, tma): `pnpm@9.0.0`→`11.12.0`,
+  `node:20-alpine`→`node:22-alpine`. ⚠️ Урок: bump packageManager = проверять ВСЕ Dockerfile
+  (web-* на Railway без Dockerfile — их не задело). ⚠️ Деплои admin/tma тоже сломались бы на
+  следующем пуше — фикс уже в main, подтянется при очередном merge веток.
+
 ## [2026-07-12] [BOT-STORE-LINK-404-001] Бот выдавал 404-ссылку магазина после регистрации
 - **Статус:** ✅ Исправлено (коммит `544e192`)
 - **Что случилось:** owner сообщил — в боте у продавца сообщение «Магазин создан» (и /store)

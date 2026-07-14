@@ -479,6 +479,16 @@ model Store {
   // isPublic = seller хочет/не хочет. isSuspendedByBilling = платформа скрыла.
   // Storefront: isPublic=true AND isSuspendedByBilling=false.
   isSuspendedByBilling      Boolean     @default(false)
+  // SELLER-PAYMENT-REQUISITES-001: реквизиты продавца для MANUAL_TRANSFER на
+  // checkout (payments-legal-tax §1.4). Владелец вводит один раз; покупателю
+  // карта показывается ТОЛЬКО при acceptsCardTransfer=true (гейт в
+  // storefront.controller — findBySlug отдаёт все колонки).
+  paymentCardNumber         String?
+  paymentCardHolder         String?
+  paymentClickLink          String?
+  paymentPaymeLink          String?
+  acceptsCash               Boolean     @default(true)
+  acceptsCardTransfer       Boolean     @default(false)
   publishedAt               DateTime?
   createdAt                 DateTime    @default(now())
   updatedAt                 DateTime    @updatedAt

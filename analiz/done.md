@@ -1,5 +1,30 @@
 # Done — Азим + Полат
 
+## 2026-07-14 (Полат/Claude, вечер) — SELLER-PAYMENT-REQUISITES-001 (API) + sitemap storeSlug
+
+### ✅ [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — schema + API (часть Полата)
+- **Важность:** 🟡 · **Дата:** 14.07.2026 · **Домен:** `packages/db` + `apps/api` + `packages/types`
+- **Файлы:** `schema.prisma` (Store: +paymentCardNumber/Holder, +paymentClickLink/PaymeLink,
+  +acceptsCash(true)/acceptsCardTransfer(false)), миграция `20260714000002_store_payment_requisites`
+  (ADD-only), `stores/dto/update-payment-requisites.dto.ts` (новый), `stores.repository.ts`
+  (find/updatePaymentRequisites), `stores.controller.ts` (GET/PATCH `seller/store/payment-requisites`),
+  `products/storefront.controller.ts` (общий `mapPublicStoreBySlug` для обоих by-slug endpoints),
+  `packages/types/src/api/stores.ts` (StorePaymentRequisites, UpdateStorePaymentRequisitesRequest,
+  StorefrontStore.paymentRequisites?)
+- **Что сделано:** запрос Азима 12.07 (payments-legal-tax §1.4). Владелец вводит реквизиты
+  (карта, имя, Click/Payme-ссылки, флаги cash/card) через PATCH с валидацией (regex карты,
+  https-only ссылки, 422 при acceptsCardTransfer без карты — проверка эффективного состояния
+  ДО записи). Публично: `findBySlug` отдаёт все колонки → в by-slug ответах сырые поля
+  ВЫРЕЗАНЫ, вместо них `paymentRequisites` с гейтом — карта видна только при
+  acceptsCardTransfer=true. Задача Азима (экраны) — в tasks.md.
+
+### ✅ [SEO-AUDIT-001 п.2, хвост] storeSlug в sitemap-фиде товаров
+- **Важность:** 🔴 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `packages/types`
+- **Файлы:** `products.repository.ts` (findAllPublicForSitemap → +storeSlug плоско),
+  `packages/types/src/api/storefront.ts` (StorefrontSitemapProduct.storeSlug)
+- **Что сделано:** разблокированы товары в динамическом sitemap web-buyer — Азим просил
+  slug магазина для канонического `/{slug}/products/{id}`.
+
 ## 2026-07-14 (Полат/Claude) — PARTNER-API-RAOS-001
 
 ### ✅ [PARTNER-API-RAOS-001] Партнёрский API: выгрузка товаров RAOS → MaxSavdo
@@ -8178,3 +8203,58 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
 - **Дата:** 15.06.2026
 - **Файлы:** `packages/db/prisma/schema.prisma`, `packages/db/prisma/migrations/20260615120000_subscription_tier_rename/migration.sql`, `packages/types/src/enums.ts`, `apps/api/src/modules/subscriptions/plan-config.ts`, `apps/api/src/modules/subscriptions/dto/mark-paid.dto.ts`, `apps/api/src/modules/subscriptions/dto/comp-subscription.dto.ts`, `apps/api/src/modules/subscriptions/use-cases/mark-paid.use-case.spec.ts`, `apps/api/src/modules/admin/admin-subscriptions.controller.ts`, `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/pages/SubscriptionDetailModal.tsx`, `apps/admin/src/pages/StoreDetailPage.tsx`, `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`, `apps/tma/src/pages/seller/SubscriptionPage.tsx`
 - **Что сделано:** Переименованы enum-значения STARTER→FREE, BUSINESS→STUDIO через `ALTER TYPE RENAME VALUE` (Postgres 10+, без data migration). Обновлены plan-config (Free 0₽/50 товаров, Pro 149k, Studio 399k), все DTO, frontend страницы, i18n ключи, TMA. Добавлен BetaGrandfatherUseCase (UPSERT всех продавцов на PRO до 01.09.2026). Кнопки в AdminPanel. Prisma client регенерирован.
+
+### ✅ [SEO-AUDIT-001 п.5-6] i18n/help ложная тревога + FAQPage JSON-LD — закрыто 14.07.2026
+- **Важность:** 🟡 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-buyer` (ветка `web-buyer`)
+- **Файлы:** `apps/web-buyer/src/app/help/page.tsx`
+- **Что сделано:** Расследование (systematic-debugging) показало, что п.5 SEO-AUDIT-001
+  описывал ложную тревогу — аудит проверял `main`, а i18n (`ru.ts`/`uz.ts`/`I18nProvider.tsx`)
+  и `/help` живут и работают только на ветке `web-buyer` (см. `analiz/tasks-azim.md`
+  предупреждение про это же). `lang="ru"` в `layout.tsx:49` — осознанный SSR-дефолт
+  (client `I18nProvider` переключает `document.documentElement.lang` после mount против
+  hydration mismatch), не баг. Решили НЕ делать hreflang — сайт не path-based (один URL,
+  язык через localStorage), полноценный hreflang требует разных URL на разные языки —
+  это отдельная архитектурная задача, не патч.
+  Реальный фикс — добавлен FAQPage JSON-LD в `/help` (mirror паттерна Product JSON-LD
+  из `products/[id]/layout.tsx`), 8 Q&A из статичного `ru.ts`. `/help` уже был в sitemap.
+  tsc EXIT 0.
+- **Урок:** аудиты SEO/кода в этом репо всегда сверять по фронт-веткам (`web-buyer`/
+  `web-seller`), не по `main` — main держит устаревший snapshot.
+
+### ✅ [SEO-AUDIT-001 п.7-9] robots.ts web-seller + Product JSON-LD + /about-статус — закрыто 14.07.2026
+- **Важность:** 🟠 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-seller` (ветка `web-seller`, `850b07b4`) + `apps/web-buyer` (ветка `web-buyer`, `b817703e`)
+- **Файлы:** `apps/web-seller/src/app/robots.ts` (NEW), `apps/web-seller/src/app/layout.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx`
+- **Что сделано:**
+  - **п.7** web-seller дашборд был полностью без robots.ts/noindex → добавлен `robots.ts`
+    (`disallow: '/'` целиком) + `robots: {index:false, follow:false}` в root layout metadata.
+  - **п.8** Product JSON-LD в web-buyer чинен на реальные данные: `availability` теперь
+    `status===ACTIVE && isVisible && totalStock>0` вместо хардкода InStock; `offers`
+    целиком опускается если `price` не валиден (не отдаём Offer с `price:0`);
+    `aggregateRating` добавлен через отдельный fetch `/storefront/products/:id/reviews?limit=50`
+    (сервер клэмпит `limit` до 50 в `list-product-reviews.use-case.ts:37`) — включается
+    ТОЛЬКО когда `items.length >= total` (сэмпл покрывает весь пул отзывов), иначе честно
+    опускается (Product не имеет готового `avgRating`/`reviewCount` на API, в отличие от
+    Store — считать средний рейтинг по неполной выборке и заявлять `reviewCount: total`
+    было бы недостоверным).
+  - **п.9** `/about` — подтверждено что уже закрыт другим путём через `LANDING-CORP-PAGE-001`
+    (переформулирован 11.07, см. выше в этом файле) — исходная формулировка задачи в
+    `tasks.md` была стухшей копией, актуализирована.
+- **Verified:** tsc EXIT 0 на обеих ветках после каждого коммита.
+
+### ✅ [SEO-AUDIT-001 п.14] socket.io reconnect-лимит в web-buyer + web-seller — закрыто 14.07.2026
+- **Важность:** 🟡 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-buyer` (ветка `web-buyer`, `6ab448cc`) + `apps/web-seller` (ветка `web-seller`, `13a11dc9`)
+- **Файлы:** `apps/web-buyer/src/lib/socket.ts`, `apps/web-seller/src/lib/socket.ts`
+- **Что сделано:** оба `lib/socket.ts` использовали дефолт socket.io (бесконечный reconnect) —
+  та же болезнь, что чинили в `apps/tma` (`PERF-TMA-HEAT-001` п.2). Портирован тот же лимит:
+  `reconnectionAttempts: 8`, `reconnectionDelay: 1000`, `reconnectionDelayMax: 8000`. Оба апа
+  уже использовали функцию-колбэк для `auth` (`auth: (cb) => cb({token})`), поэтому отдельный
+  `connectSocket()`-хелпер (как в TMA) не понадобился — токен и так подтягивается свежим при
+  каждой попытке подключения.
+- **Verified:** tsc EXIT 0 на обеих ветках.

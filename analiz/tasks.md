@@ -11,17 +11,28 @@
   admin CRUD ключей `/admin/partner-keys`), модель `PartnerApiKey` (ADD-only миграция
   `20260714000001`), фильтр «только с фото», 10/10 тестов, build EXIT 0.
   Контракт для RAOS: `docs/contracts/partner-api-raos.md`.
-- **🔲 Осталось (после деплоя api):**
-  1. Создать/выбрать магазин под RAOS-товары → выдать ключ: `POST /admin/partner-keys {storeId, name:"RAOS"}` (plaintext показывается один раз).
-  2. Передать ключ RAOS безопасным каналом + ссылку на контракт.
-  3. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
+- **✅ 14.07 задеплоено и проверено на проде:** деплой api прошёл (после 2 фиксов Docker —
+  см. logs.md INFRA-DOCKER-PNPM11-001), миграция применена. Магазин RAOS создан
+  (slug `raos`, storeId `80e1d96e-1cf1-49fa-9e92-8578f56d6942`, seller VERIFIED, подписка
+  STUDIO ACTIVE до 14.07.2027, синтетический phone +998000001111). Ключ выдан
+  (keyId `28e677e5-…`), plaintext передан Полату в сессии. Smoke-тест: DRAFT-товар
+  `12c3e990-…` создан через API с реальным скачиванием фото → 201.
+- **🔲 Осталось:**
+  1. Передать ключ RAOS безопасным каналом + `docs/contracts/partner-api-raos.md`.
+  2. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
+  3. (опц.) удалить smoke-товар `12c3e990-6744-49e4-b4d7-e052a009a8a8` из admin.
 
-## 🟡 [SELLER-PAYMENT-REQUISITES-001] Поле реквизитов оплаты продавца — нужно от Полата
-- **Домен:** `packages/db` (schema) + `apps/api` (endpoint)
-- **Кто взял:** запрос от Азима, 12.07.2026
-- **Контекст:** `docs/business/payments-legal-tax-2026-06-07.md` §1.4 — продавец вписывает реквизиты один раз в кабинете, покупатель видит их на checkout вместо нынешнего хардкода «курьер + POS-терминал» (тот баг уже поправлен на фронте Азимом, 12.07 — см. done.md, но без реального поля показывать покупателю нечего, сейчас placeholder-текст «реквизиты в чате заказа»).
-- **Детали:** на `Seller` или `Store` — новые опциональные поля: номер карты (строка, «8600…»), имя владельца карты, опционально ссылка Click/Payme, и флаг(и) какие способы оплаты продавец принимает (cash/card). Плюс endpoint: `PATCH seller/store` (или отдельный) для записи владельцем, и отдача этих полей в публичном ответе `storefront/stores/:slug` (или в checkout preview) — без выдачи чужих полных данных, только то что помечено видимым.
-- **После готовности:** Азим достраивает экран ввода в `web-seller` (кабинет продавца → реквизиты) и подключает реальное отображение на checkout в `web-buyer` (сейчас там честный placeholder, не показывает вымышленных данных).
+## 🟢 [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — API ГОТОВ 14.07 (Полат), очередь Азима
+- **Домен:** `packages/db` + `apps/api` (✅ Полат 14.07, см. done.md) → `web-seller`/`web-buyer` (🔲 Азим)
+- **✅ Контракт для Азима:**
+  - Owner: `GET/PATCH /seller/store/payment-requisites` — сырые поля
+    `{paymentCardNumber, paymentCardHolder, paymentClickLink, paymentPaymeLink, acceptsCash, acceptsCardTransfer}`.
+    PATCH-семантика: undefined = не трогать, null/'' = очистить. Включить `acceptsCardTransfer`
+    без cardNumber → 422 VALIDATION_ERROR. Request-тип: `UpdateStorePaymentRequisitesRequest` (packages/types).
+  - Buyer: в `storefront/stores/:slug` и `stores/:slug` появился объект `paymentRequisites`
+    (тип `StorePaymentRequisites`): `{acceptsCash, acceptsCardTransfer, cardNumber, cardHolder, clickLink, paymeLink}` —
+    карта/ссылки не-null ТОЛЬКО при acceptsCardTransfer=true (гейт на сервере, сырые колонки из ответа вырезаны).
+- **🔲 Азим:** экран «Реквизиты» в web-seller + реальное отображение на checkout web-buyer вместо placeholder.
 
 ---
 
@@ -85,12 +96,10 @@
    (`1d2b4bc4`, main). Отдаёт slug+updatedAt магазинов, id+updatedAt товаров. Типы
    `StorefrontSitemapFeed` добавлены в `packages/types` 12.07 (`98270455`).
 2. ✅ **[Азим, web-buyer]** `sitemap.ts` → динамический — закрыто 12.07.2026 (`b215b59b`,
-   ветка `web-buyer`). Магазины подключены. **⚠️ Товары НЕ эмитятся** — фид из п.1 не несёт
-   `store.slug`/`storeId` (подтверждено и в новом `StorefrontSitemapProduct` типе — тоже только
-   `id`/`updatedAt`), без него нельзя построить канонический `/{slug}/products/{id}`.
-   **Нужно от Полата:** добавить `store: { select: { slug: true } }` (или плоский `storeSlug`)
-   в `ProductsRepository.findAllPublicForSitemap` (`apps/api/src/modules/products/
-   repositories/products.repository.ts`) — тривиальная правка, разблокирует товары в sitemap.
+   ветка `web-buyer`). Магазины подключены.
+   **✅ Хвост от Полата закрыт 14.07.2026:** `findAllPublicForSitemap` теперь отдаёт плоский
+   `storeSlug` (select store.slug + map), тип `StorefrontSitemapProduct` дополнен. **Азиму:**
+   доэмитить товары в `sitemap.ts` — канонический URL `/{storeSlug}/products/{id}`.
 3. ✅ **[Азим, web-buyer]** Главная `(shop)/page.tsx` — закрыто 12.07.2026 (`b215b59b`).
    `serverGetFeatured()` фетчит featured server-side, `HomeTopStores` получает `initialData` —
    краулер видит реальные `<a href="/{slug}">` в первом HTML вместо client-only skeleton.
@@ -100,15 +109,33 @@
    (auth-поля типа `inWishlist` дообновляются фоновым рефетчем, не залипают на staleTime).
 
 ### 🟠 P1
-5. **[Азим]** uz-локаль + hreflang: `lang="ru"` hardcoded (`layout.tsx:48`), i18n-каталога в
-   web-buyer НЕТ. ⚠️ done.md утверждает i18n ru/uz + /help сделаны 21.05 — в коде отсутствуют,
-   похоже потеряны при редизайне dark-luxury 25.05. Разобраться в git log и восстановить.
-6. **[Азим]** Вернуть `/help` (FAQ) + FAQPage JSON-LD — ядро AEO. Добавить в sitemap.
-7. **[Азим]** web-seller: нет robots.ts/noindex — дашборд индексируем. Закрыть noindex целиком.
-8. **[Азим]** Product JSON-LD (`products/[id]/layout.tsx:36-37`): availability всегда InStock
-   (лечить по стоку/статусу), price fallback 0 (не отдавать Offer без цены), добавить
-   aggregateRating из отзывов (UI уже есть — ProductReviews).
-9. **[Азим]** `/about` — связать с LANDING-CORP-PAGE-001 (уже в бэклоге): entity-контент для GEO.
+5. ✅ **[Азим]** ПРОВЕРЕНО 14.07.2026 — ложная тревога: i18n-каталог (`ru.ts`/`uz.ts`/
+   `I18nProvider.tsx`) и `/help` **существуют и работают** на ветке `web-buyer`, аудит
+   проверял `main` (там правда устаревший snapshot) — классика «git log ≠ content».
+   `lang="ru"` в `layout.tsx:49` — осознанный SSR-дефолт (клиентский `I18nProvider`
+   переключает `document.documentElement.lang` после mount, избегая hydration mismatch),
+   не баг. **hreflang решили НЕ делать:** сайт не path-based (нет `/ru/`/`/uz/` — один URL,
+   переключение языка через localStorage), полноценный hreflang требует разных URL на
+   разные языки → это отдельная архитектурная задача (path-based i18n), не SEO-патч.
+   Если понадобится — заводить отдельным тикетом.
+6. ✅ **[Азим]** ЗАКРЫТО 14.07.2026 — FAQPage JSON-LD добавлен в `apps/web-buyer/src/app/
+   help/page.tsx` (mirror паттерна из `products/[id]/layout.tsx`), данные из статичного
+   `ru.ts` (8 Q&A). `/help` уже был в sitemap (не нужно было добавлять). tsc EXIT 0.
+7. ✅ **[Азим]** ЗАКРЫТО 14.07.2026 — `apps/web-seller/src/app/robots.ts` (NEW, disallow `/`
+   целиком — дашборд полностью приватный) + `robots: { index: false, follow: false }` в
+   root `layout.tsx` metadata (belt-and-suspenders). tsc EXIT 0.
+8. ✅ **[Азим]** ЗАКРЫТО 14.07.2026 — `products/[id]/layout.tsx`: availability теперь
+   `status===ACTIVE && isVisible && totalStock>0` (InStock/OutOfStock), `offers` целиком
+   опускается если цена не valid (не отдаём Offer с price:0), `aggregateRating` добавлен
+   через отдельный fetch отзывов (`limit=50` — серверный кап) — **только** когда
+   `items.length >= total` (весь пул отзывов покрыт сэмплом), иначе честно опускаем (сервер
+   не отдаёт готовый avgRating на Product, только на Store — считать по неполной выборке
+   и заявлять reviewCount=total было бы враньём). tsc EXIT 0.
+9. ✅ **[Азим]** ЗАКРЫТО через LANDING-CORP-PAGE-001 (12.07.2026, переформулирован 11.07) —
+   `/about` в web-buyer строить не стали: `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`
+   установил, что полноценный маркетинг-лендинг с entity-контентом (Hero/Pricing/FAQ) уже
+   существовал на `landing`/`web-seller` deploy-ветках, реальный пробел был в точках входа
+   (каталог/админка), не в отсутствии страницы. См. `done.md` LANDING-CORP-PAGE-001.
 
 ### 🟡 P2
 10. llms.txt; Organization JSON-LD: logo + sameAs (TG-канал) + contactPoint; BreadcrumbList на
@@ -118,9 +145,9 @@
 13. ✅ `robots.ts:14-15` — `/orders`/`/orders/` дубль убран, закрыто 12.07.2026 (`b215b59b`, web-buyer).
 
 ### 🔧 Код-аудит (не SEO)
-14. **[Азим, web-buyer+web-seller]** `lib/socket.ts` обоих апов: `io(BASE_URL)` без
-    `reconnectionAttempts`/backoff → дефолт socket.io = вечный reconnect (та же болезнь, что
-    PERF-TMA-HEAT-001 п.2; в TMA фикшено 03.07). Портировать лимит из TMA.
+14. ✅ **[Азим, web-buyer+web-seller]** ЗАКРЫТО 14.07.2026 — `reconnectionAttempts: 8` +
+    `reconnectionDelay/Max` портированы из `apps/tma/src/lib/socket.ts` в оба
+    `lib/socket.ts` (web-buyer `6ab448cc`, web-seller `13a11dc9`). tsc EXIT 0 на обеих.
 15. **[Полат ✅ 12.07 / Азим 🔲]** Контракт позиций/цен: types-часть СДЕЛАНА (`9827045`) —
     `CheckoutPreview` сверен с API (+valid/cartId/skuSnapshot, storeName → @deprecated:
     API его никогда не отдавал), `OrderDeliveryAddress` (nullable, response-side),

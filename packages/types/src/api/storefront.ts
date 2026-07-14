@@ -56,6 +56,8 @@ export interface StorefrontSitemapStore {
 export interface StorefrontSitemapProduct {
   id: string;
   updatedAt: string;
+  /** SEO-AUDIT-001 п.2: slug магазина — канонический URL = `/{storeSlug}/products/{id}`. */
+  storeSlug: string;
 }
 
 export interface StorefrontSitemapFeed {
