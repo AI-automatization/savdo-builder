@@ -89,6 +89,32 @@ export class PlanLimitGuardService {
   }
 
   /**
+   * SUSPENDED-ENFORCEMENT-001 (BILLING-MACHINE-001 §7): публичный хард-гейт
+   * статуса подписки для seller-mutation роутов (правка/удаление каталога,
+   * варианты, фото, атрибуты, репост в TG-канал). Бросает 402
+   * SUBSCRIPTION_SUSPENDED при SUSPENDED/CANCELLED/CHURNED.
+   *
+   * До этого фикса единственная проверка статуса жила в enforceProductsLimit()
+   * (только создание товара) — приостановленный продавец мог редактировать
+   * каталог, слать репосты и т.д. Фронтовый оверлей web-seller обходился скроллом.
+   *
+   * Fail-open при отсутствии подписки: приостановленный seller ВСЕГДА имеет
+   * строку subscription; отсутствие строки = data-gap (не приостановка), и
+   * блокировать такого из-за пробела в данных нельзя. Reads (GET) НЕ гейтятся —
+   * dashboard остаётся read-only по business-model-v2 §7, а не мёртвым.
+   */
+  async assertActiveSubscription(sellerId: string): Promise<void> {
+    const subscription = await this.findSubscription(sellerId);
+    if (!subscription) {
+      this.logger.warn(
+        `assertActiveSubscription: подписка не найдена для seller ${sellerId} — пропускаю (fail-open)`,
+      );
+      return;
+    }
+    this.assertSubscriptionActive(subscription.status);
+  }
+
+  /**
    * Софт-чек заказов в текущем календарном месяце (business-model-v2 §5).
    * НЕ блокирует — только возвращает state для баннера в seller dashboard.
    */

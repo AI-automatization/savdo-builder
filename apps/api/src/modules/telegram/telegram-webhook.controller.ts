@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Public } from '../../common/decorators/public.decorator';
 import { TelegramBotService } from './services/telegram-bot.service';
 import { TelegramDemoHandler } from './telegram-demo.handler';
+import { t } from './telegram-bot-i18n';
 import { RedisService } from '../../shared/redis.service';
 import { PrismaService } from '../../database/prisma.service';
 
@@ -167,6 +168,7 @@ export class TelegramWebhookController {
         case 'awaiting_buyer_name':      await this.demo.handleBuyerName(chatId, msg.text);        return;
         case 'awaiting_store_slug':      await this.demo.handleStoreSlugInput(chatId, msg.text);   return;
         case 'awaiting_channel':         await this.demo.handleChannelInput(chatId, msg.text);     return;
+        case 'awaiting_store_rename':    await this.demo.handleStoreRenameInput(chatId, msg.text); return;
         case 'seller_create_store_name': await this.demo.handleCreateStoreName(chatId, msg.text);  return;
         case 'seller_reg_name':          await this.demo.handleSellerRegName(chatId, msg.text);    return;
         case 'seller_reg_store_name':    await this.demo.handleSellerRegStoreName(chatId, msg.text); return;
@@ -186,10 +188,16 @@ export class TelegramWebhookController {
 
     await this.bot.answerCallbackQuery(cq.id);
 
+    // BOT-ONBOARDING-I18N-001: выбор/смена языка
+    if (data === 'lang_ru') { await this.demo.handleLanguageChoice(chatId, 'ru'); return; }
+    if (data === 'lang_uz') { await this.demo.handleLanguageChoice(chatId, 'uz'); return; }
+    if (data === 'change_lang') { await this.demo.askLanguage(chatId); return; }
+
     // Регистрация
     if (data === 'reg_buyer')  { await this.demo.registerAsBuyer(chatId);         return; }
     if (data === 'reg_seller') { await this.demo.startSellerRegistration(chatId); return; }
     if (data === 'seller_reg_skip_desc') { await this.demo.finishSellerRegistration(chatId); return; }
+    if (data === 'seller_rename_store')  { await this.demo.handleRenameStoreStart(chatId);   return; }
 
     // Продавец
     if (data === 'seller_orders')       { await this.demo.handleSellerOrders(chatId);         return; }
@@ -214,7 +222,8 @@ export class TelegramWebhookController {
       const url = botUsername && slug
         ? `https://t.me/${botUsername}?startapp=store_${slug}`
         : tmaUrl;
-      await this.bot.sendToChannel(chatId, `🔗 Открыть магазин:`, [[{ text: '🛒 Открыть', url }]], 'HTML');
+      const lang = await this.demo.getLang(chatId);
+      await this.bot.sendToChannel(chatId, t(lang, 'deeplink.storeLink'), [[{ text: t(lang, 'btn.open'), url }]], 'HTML');
       return;
     }
 

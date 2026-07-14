@@ -1,10 +1,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1: builder
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN apk add --no-cache openssl vips-dev fftw-dev
-RUN npm install -g pnpm@9.0.0
+RUN npm install -g pnpm@11.12.0
 
 WORKDIR /app
 
@@ -28,10 +28,10 @@ RUN pnpm --filter api build
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2: runner (только prod зависимости + собранный код)
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 RUN apk add --no-cache openssl wget vips fftw
-RUN npm install -g pnpm@9.0.0
+RUN npm install -g pnpm@11.12.0
 
 WORKDIR /app
 

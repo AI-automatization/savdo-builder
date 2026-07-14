@@ -6,6 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdatePaymentRequisitesDto } from './dto/update-payment-requisites.dto';
 import { ReplaceDirectionsDto } from './dto/replace-directions.dto';
 import { UpdateChannelTemplateDto } from './dto/update-channel-template.dto';
 import { CreateStoreUseCase } from './use-cases/create-store.use-case';
@@ -155,6 +156,49 @@ export class StoresController {
   ) {
     const channelId = dto.channelId === undefined ? null : dto.channelId;
     return this.updateChannelBinding.execute(user.sub, channelId);
+  }
+
+  // ─── SELLER-PAYMENT-REQUISITES-001: реквизиты оплаты (checkout) ───────────
+  // Владелец видит/правит полные значения; покупателю карта отдаётся через
+  // storefront/stores/:slug ТОЛЬКО при acceptsCardTransfer=true (гейт там).
+
+  @Get('payment-requisites')
+  async getPaymentRequisites(@CurrentUser() user: JwtPayload) {
+    const store = await this.requireMyStore(user.sub);
+    return this.storesRepo.findPaymentRequisites(store.id);
+  }
+
+  @Patch('payment-requisites')
+  async patchPaymentRequisites(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdatePaymentRequisitesDto,
+  ) {
+    const store = await this.requireMyStore(user.sub);
+
+    const data = {
+      ...(dto.cardNumber !== undefined ? { paymentCardNumber: dto.cardNumber || null } : {}),
+      ...(dto.cardHolder !== undefined ? { paymentCardHolder: dto.cardHolder || null } : {}),
+      ...(dto.clickLink !== undefined ? { paymentClickLink: dto.clickLink || null } : {}),
+      ...(dto.paymeLink !== undefined ? { paymentPaymeLink: dto.paymeLink || null } : {}),
+      ...(dto.acceptsCash !== undefined ? { acceptsCash: dto.acceptsCash } : {}),
+      ...(dto.acceptsCardTransfer !== undefined ? { acceptsCardTransfer: dto.acceptsCardTransfer } : {}),
+    };
+
+    // Включить приём карты без самой карты нельзя — покупателю нечего показать.
+    // Проверяем эффективное состояние ДО записи (PATCH-семантика: undefined = не трогаем).
+    const current = await this.storesRepo.findPaymentRequisites(store.id);
+    const effectiveAcceptsCard = data.acceptsCardTransfer ?? current?.acceptsCardTransfer ?? false;
+    const effectiveCardNumber =
+      'paymentCardNumber' in data ? data.paymentCardNumber : current?.paymentCardNumber;
+    if (effectiveAcceptsCard && !effectiveCardNumber) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Set cardNumber before enabling acceptsCardTransfer',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    return this.storesRepo.updatePaymentRequisites(store.id, data);
   }
 
   // ─── Store directions (many-to-many GlobalCategory) ─────────────────────────

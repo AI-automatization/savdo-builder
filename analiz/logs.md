@@ -1,5 +1,62 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-14] [INFRA-DOCKER-PNPM11-001] Деплой savdo-api дважды упал после dep-bump Азима (0e6afa8)
+- **Статус:** ✅ Исправлено (коммиты `82b4886` + `6caa58b`), третий деплой в процессе
+- **Что случилось:** коммит `0e6afa8` (audit-фиксы) поднял `packageManager` до `pnpm@11.12.0` и
+  переписал lockfile, но Dockerfile'ы остались на `pnpm@9.0.0` + `node:20-alpine`. Деплой №1:
+  `ERR_PNPM_BAD_PM_VERSION` на `pnpm rebuild sharp`. После фикса pnpm→11.12.0 деплой №2:
+  `ERR_UNKNOWN_BUILTIN_MODULE node:sqlite` — pnpm 11 требует Node ≥22.13, а образ Node 20.
+- **Что сделано:** во всех Dockerfile (api ×2 стадии, admin, tma): `pnpm@9.0.0`→`11.12.0`,
+  `node:20-alpine`→`node:22-alpine`. ⚠️ Урок: bump packageManager = проверять ВСЕ Dockerfile
+  (web-* на Railway без Dockerfile — их не задело). ⚠️ Деплои admin/tma тоже сломались бы на
+  следующем пуше — фикс уже в main, подтянется при очередном merge веток.
+
+## [2026-07-12] [BOT-STORE-LINK-404-001] Бот выдавал 404-ссылку магазина после регистрации
+- **Статус:** ✅ Исправлено (коммит `544e192`)
+- **Что случилось:** owner сообщил — в боте у продавца сообщение «Магазин создан» (и /store)
+  выдаёт ссылку, которая открывает 404. Root cause: `telegram-demo.handler.ts` хардкодил
+  `maxsavdo.uz/{slug}` (строки 482, 832 до фикса). До 09.07 это работало, но по карте доменов
+  apex+www отданы ЛЕНДИНГУ — магазины переехали на `shop.maxsavdo.uz/{slug}`. Бот не обновили —
+  та же семья, что и код-правки Азима (extractSlug/buyerStoreUrl из DEPLOY-DOMAIN-MAXSAVDO-001).
+- **Что сделано:** `buyerBaseUrl()` = `BUYER_URL` env ?? `https://shop.maxsavdo.uz`; все ссылки бота
+  через него. ⚠️ Проверить в Railway env savdo-api: если `BUYER_URL` задан старым railway.app URL —
+  обновить на `https://shop.maxsavdo.uz` (иначе и channel-post-builder шлёт неканонические ссылки).
+
+## [2026-07-07] [SEO-AUDIT-001] Аудит SEO/GEO/AEO web-buyer — критические находки (read-only, фиксы не применялись)
+- **Статус:** 🟡 Предупреждение (зона web-* = Азим; API-контракт под sitemap — Полат)
+- **Что случилось:** проведён аудит web-buyer/web-seller/admin по коду. Критичное:
+  1. `apps/web-buyer/src/app/sitemap.ts` — статичный, 5 URL, ни одного магазина/товара; главная
+     `(shop)/page.tsx` = "use client" без серверных ссылок на магазины → у краулеров НЕТ пути
+     к `/[slug]` (discovery-дыра).
+  2. `(shop)/[slug]/products/[id]/page.tsx:1` — "use client": контент товара не в HTML → невидим
+     для AI-краулеров без JS (GPTBot/ClaudeBot/PerplexityBot). Спасает только JSON-LD из layout.
+  3. Нет uz-локали/hreflang (`layout.tsx:48` lang="ru" hardcoded, i18n-каталога в src/lib нет).
+  4. ⚠️ РАСХОЖДЕНИЕ ТРЕКЕРА С КОДОМ: done.md/tasks.md утверждают что FAQ-001 (/help, 21.05) и
+     i18n ru/uz web-buyer сделаны — в текущем коде маршрута /help и i18n НЕТ. Похоже потеряны
+     при редизайне dark-luxury 25.05.
+  5. `apps/web-seller` — нет robots.ts/noindex, дашборд индексируем.
+  6. `web-buyer/src/app/manifest.ts` icons → `/favicon.ico`, но `public/` пуст → 404 иконки PWA.
+  7. Product JSON-LD (`products/[id]/layout.tsx:37`): availability всегда InStock, price fallback 0,
+     нет aggregateRating/BreadcrumbList; нет JSON-LD на странице магазина; нет llms.txt.
+- **Что сделано:** только аудит + отчёт владельцу. Фиксы — по решению (web-* — Азим).
+
+## [2026-07-08] [LANDING-BRANCH-DRIFT-001] `landing` и `web-seller` — разные Railway-сервисы из одного apps/web-seller, молча расходятся
+- **Статус:** ✅ Исправлено (см. done.md), но паттерн повторится если не следить
+- **Что случилось:** `maxsavdo.uz` (сервис `landing`) и `seller.maxsavdo.uz` (сервис `savdo-builder-sl`)
+  оба билдятся из `apps/web-seller/Dockerfile`, но с РАЗНЫХ git-веток (`landing` vs `web-seller`).
+  Правки на `web-seller` (включая i18n-переводы, которые сами по себе кажутся "просто текстом")
+  НИКОГДА автоматически не попадают на `landing` — нужен ручной cherry-pick/sync. За 3 недели
+  (19.06 → 07.07) ветки разошлись на 7 файлов, из-за чего публичный лендинг тихо деградировал
+  (сырые i18n-ключи, мёртвая ссылка на демо-магазин) без единого failed-деплоя или ошибки в логах.
+- **Что сделано:** ручной перенос 7 файлов + fallback-фикс, см. `done.md` → `LANDING-BRANCH-DRIFT-001`.
+- **Урок / антипаттерн:** любой PR в landing-релевантные файлы `apps/web-seller` (i18n словари,
+  `components/landing/**`, `lib/landing/**`, `app/page.tsx`, `app/layout.tsx`) должен параллельно
+  идти и в `web-seller`, и в `landing`, иначе один из двух публичных фронтов молча отстаёт. Перед
+  таким PR — сверять целевой файл на обеих ветках (см. существующий антипаттерн "Cherry-pick на
+  deploy-ветки без чтения целевого файла", 30.06 в Obsidian `_antipatterns.md`). Стоит завести
+  задачу на объединение дублирующегося landing-кода в общий пакет/компонент, чтобы не жить с двумя
+  разъезжающимися копиями.
+
 ## [2026-07-04] [API-TEST-AUTH-SUITE-FAIL] Падают auth/admin тесты (не блокер, предсуществующее)
 - **Статус:** 🟡 Предупреждение (не блокирует деплой — падения не в моей текущей задаче)
 - **Что случилось:** `pnpm --filter api test` → 9 failed: `telegram-auth.use-case.spec.ts` (8) +
@@ -2611,4 +2668,19 @@ P2: остальное.
 - P0 db FK на `User.referredBy` / `InventoryMovement.productId` — миграция + код проверка.
 - P1 split `products.controller.ts` и `admin.controller.ts` — большой, в отдельную сессию.
 - P1 Swagger setup — `API-SWAGGER-001` уже в tasks.md.
+
+## [2026-07-12] [SEO-AUDIT-001] Sitemap-фид не несёт store.slug — товары нельзя добавить в sitemap.ts
+- **Статус:** 🟡 Блокер на Полате (не критично — sitemap с магазинами уже живой)
+- **Что случилось:** реализуя п.2 SEO-AUDIT-001 (динамический `sitemap.ts`, ветка `web-buyer`
+  `b215b59b`), обнаружил, что `GET /storefront/sitemap` (`1d2b4bc4`, Полат) отдаёт товары как
+  `{ id, updatedAt }` — без `store.slug`/`storeId`. Канонический URL товара в web-buyer —
+  `/{storeSlug}/products/{id}` (см. `[slug]/products/[id]/page.tsx`), без slug магазина построить
+  его нельзя. В итоге `sitemap.ts` сейчас эмитит только магазины, товары — пропущены.
+- **Что нужно:** в `apps/api/src/modules/products/repositories/products.repository.ts`
+  `findAllPublicForSitemap()` — добавить в `select` `store: { select: { slug: true } }` (или
+  плоский `storeSlug` через отдельный select), прокинуть в `storefront.controller.ts` ответ
+  `getSitemapFeed()`. Тривиальная правка (тот же паттерн, что уже есть в `findAllPublic`).
+- **Что сделано:** ничего пока — не моя зона (`apps/api`). web-buyer готов принять поле сразу,
+  как оно появится (`SitemapFeed` в `storefront-server.ts` нужно расширить `products[].storeSlug`
+  + один map в `sitemap.ts`, ~10 минут работы после бэкенд-правки).
 

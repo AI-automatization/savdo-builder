@@ -33,6 +33,8 @@ import { SellersModule } from '../sellers/sellers.module';
     UploadDirectUseCase,
     RemoveBackgroundUseCase,
   ],
-  exports: [MediaRepository, R2StorageService, TelegramStorageService],
+  // UploadDirectUseCase: PARTNER-API-RAOS-001 — partner-модуль заливает
+  // скачанные по URL фото тем же конвейером (sharp resize → R2 → MediaFile).
+  exports: [MediaRepository, R2StorageService, TelegramStorageService, UploadDirectUseCase],
 })
 export class MediaModule {}

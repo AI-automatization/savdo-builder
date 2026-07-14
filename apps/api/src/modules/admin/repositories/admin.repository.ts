@@ -279,6 +279,28 @@ export class AdminRepository {
     });
   }
 
+  /** HYBRID-5: userId владельца магазина (через seller) для реконсиляции контекста. */
+  async findStoreOwnerUserId(storeId: string): Promise<string | null> {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { seller: { select: { userId: true } } },
+    });
+    return store?.seller?.userId ?? null;
+  }
+
+  /**
+   * HYBRID-5: если активный контекст пользователя = SELLER — вернуть BUYER.
+   * users.role — источник дефолт-контекста для бота/TMA (HYBRID-1); после
+   * архивации магазина SELLER-дефолт указывает в никуда. updateMany с фильтром
+   * по role — идемпотентно, BUYER/ADMIN не трогает.
+   */
+  async reconcileSellerContextToBuyer(userId: string): Promise<void> {
+    await this.prisma.user.updateMany({
+      where: { id: userId, role: 'SELLER' },
+      data: { role: 'BUYER' },
+    });
+  }
+
   async updateStoreStatus(id: string, status: string) {
     return this.prisma.store.update({
       where: { id },
