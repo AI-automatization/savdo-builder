@@ -5,6 +5,19 @@
 
 ---
 
+## 🔴 [PARTNER-API-RAOS-001] Партнёрская интеграция RAOS → MaxSavdo (выгрузка товаров) — НОВАЯ разработка, зона Полата
+- **Домен:** `apps/api` + `packages/db` (schema) + `packages/types`
+- **Кто взял:** запрос от Азима 14.07.2026 (код-верифицирован им же), подтверждение Полата (@ismailov_0011) — требуется
+- **Статус-факт (проверено 14.07):** функциональности НЕТ. Создание товара — только
+  `POST seller/products` под `JwtAuthGuard + Roles('SELLER')` (`apps/api/src/modules/products/products.controller.ts:125-128`).
+  В `packages/db/prisma/schema.prisma` нет моделей ApiKey / Integration / Webhook (grep = 0). Анализ Азима точен.
+- **Детали (новая разработка, стандартный partner-API паттерн):**
+  1. Auth-слой по API-ключу: новый Guard (`X-Api-Key` header), хранить hash ключа, не plaintext.
+  2. Новая Prisma-модель (ADD-only миграция, прод-safety): `PartnerApiKey { id, keyHash, storeId → Store, name, isActive, createdAt, lastUsedAt }` — связь ключ RAOS ↔ магазин MaxSavdo.
+  3. Новый endpoint `POST /partner/products` (throttle + аудит), переиспользующий CreateProduct use-case.
+  4. Фильтр «только товары с фото» (требование Азима: «faqat RASMI BOR mahsulot chiqadi») — reject без imageUrl.
+- **Оценка:** ~1 рабочий день (Guard + модель + endpoint + фильтр + тесты). Технически реально, блокеров нет.
+
 ## 🟡 [SELLER-PAYMENT-REQUISITES-001] Поле реквизитов оплаты продавца — нужно от Полата
 - **Домен:** `packages/db` (schema) + `apps/api` (endpoint)
 - **Кто взял:** запрос от Азима, 12.07.2026
