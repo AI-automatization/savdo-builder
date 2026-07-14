@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import type { Product } from 'types';
+import { ProductStatus, type Product } from 'types';
 import { API_BASE } from '@/lib/api/env';
+import type { ProductReviewsResponse } from '@/lib/api/storefront.api';
 
 const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://shop.maxsavdo.uz';
 
@@ -16,9 +17,42 @@ async function fetchProduct(id: string): Promise<Product | null> {
   }
 }
 
-function buildProductJsonLd(product: Product, slug: string, id: string) {
+/** Reviews API caps limit at 50 server-side — fetch that ceiling in one page. */
+async function fetchAllReviews(id: string): Promise<ProductReviewsResponse | null> {
+  try {
+    const res = await fetch(`${API_BASE}/storefront/products/${id}/reviews?limit=50`, {
+      next: { revalidate: process.env.NODE_ENV === 'development' ? 0 : 30 },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ProductReviewsResponse;
+  } catch {
+    return null;
+  }
+}
+
+function buildProductJsonLd(
+  product: Product,
+  slug: string,
+  id: string,
+  reviews: ProductReviewsResponse | null,
+) {
   const price = Number(product.basePrice);
   const images = product.mediaUrls?.length ? product.mediaUrls : undefined;
+  const inStock = product.status === ProductStatus.ACTIVE && product.isVisible && product.totalStock > 0;
+
+  // Only claim an aggregateRating when the fetched page covers every review —
+  // the API caps `limit` at 50, so a partial sample can't back an accurate average.
+  const aggregateRating =
+    reviews && reviews.total > 0 && reviews.items.length >= reviews.total
+      ? {
+          '@type': 'AggregateRating' as const,
+          ratingValue: Number(
+            (reviews.items.reduce((sum, r) => sum + r.rating, 0) / reviews.items.length).toFixed(2),
+          ),
+          reviewCount: reviews.total,
+        }
+      : undefined;
+
   return {
     '@context': 'https://schema.org/',
     '@type': 'Product',
@@ -29,13 +63,18 @@ function buildProductJsonLd(product: Product, slug: string, id: string) {
     brand: product.store?.name
       ? { '@type': 'Brand', name: product.store.name }
       : undefined,
-    offers: {
-      '@type': 'Offer',
-      url: `${SITE_URL}/${slug}/products/${id}`,
-      priceCurrency: 'UZS',
-      price: Number.isFinite(price) ? price : 0,
-      availability: 'https://schema.org/InStock',
-    },
+    aggregateRating,
+    // A Product without a valid price can't carry a meaningful Offer — omit
+    // rather than advertise price: 0.
+    offers: Number.isFinite(price) && price > 0
+      ? {
+          '@type': 'Offer',
+          url: `${SITE_URL}/${slug}/products/${id}`,
+          priceCurrency: 'UZS',
+          price,
+          availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        }
+      : undefined,
   };
 }
 
@@ -85,9 +124,9 @@ export default async function ProductLayout({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = await params;
-  const product = await fetchProduct(id);
+  const [product, reviews] = await Promise.all([fetchProduct(id), fetchAllReviews(id)]);
   if (!product) return <>{children}</>;
-  const jsonLd = buildProductJsonLd(product, slug, id);
+  const jsonLd = buildProductJsonLd(product, slug, id, reviews);
   return (
     <>
       <script
