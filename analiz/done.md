@@ -8220,3 +8220,16 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
     (переформулирован 11.07, см. выше в этом файле) — исходная формулировка задачи в
     `tasks.md` была стухшей копией, актуализирована.
 - **Verified:** tsc EXIT 0 на обеих ветках после каждого коммита.
+
+### ✅ [SEO-AUDIT-001 п.14] socket.io reconnect-лимит в web-buyer + web-seller — закрыто 14.07.2026
+- **Важность:** 🟡 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-buyer` (ветка `web-buyer`, `6ab448cc`) + `apps/web-seller` (ветка `web-seller`, `13a11dc9`)
+- **Файлы:** `apps/web-buyer/src/lib/socket.ts`, `apps/web-seller/src/lib/socket.ts`
+- **Что сделано:** оба `lib/socket.ts` использовали дефолт socket.io (бесконечный reconnect) —
+  та же болезнь, что чинили в `apps/tma` (`PERF-TMA-HEAT-001` п.2). Портирован тот же лимит:
+  `reconnectionAttempts: 8`, `reconnectionDelay: 1000`, `reconnectionDelayMax: 8000`. Оба апа
+  уже использовали функцию-колбэк для `auth` (`auth: (cb) => cb({token})`), поэтому отдельный
+  `connectSocket()`-хелпер (как в TMA) не понадобился — токен и так подтягивается свежим при
+  каждой попытке подключения.
+- **Verified:** tsc EXIT 0 на обеих ветках.

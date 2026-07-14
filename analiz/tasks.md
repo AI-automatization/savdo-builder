@@ -136,9 +136,9 @@
 13. ✅ `robots.ts:14-15` — `/orders`/`/orders/` дубль убран, закрыто 12.07.2026 (`b215b59b`, web-buyer).
 
 ### 🔧 Код-аудит (не SEO)
-14. **[Азим, web-buyer+web-seller]** `lib/socket.ts` обоих апов: `io(BASE_URL)` без
-    `reconnectionAttempts`/backoff → дефолт socket.io = вечный reconnect (та же болезнь, что
-    PERF-TMA-HEAT-001 п.2; в TMA фикшено 03.07). Портировать лимит из TMA.
+14. ✅ **[Азим, web-buyer+web-seller]** ЗАКРЫТО 14.07.2026 — `reconnectionAttempts: 8` +
+    `reconnectionDelay/Max` портированы из `apps/tma/src/lib/socket.ts` в оба
+    `lib/socket.ts` (web-buyer `6ab448cc`, web-seller `13a11dc9`). tsc EXIT 0 на обеих.
 15. **[Полат ✅ 12.07 / Азим 🔲]** Контракт позиций/цен: types-часть СДЕЛАНА (`9827045`) —
     `CheckoutPreview` сверен с API (+valid/cartId/skuSnapshot, storeName → @deprecated:
     API его никогда не отдавал), `OrderDeliveryAddress` (nullable, response-side),
