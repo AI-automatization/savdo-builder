@@ -1,5 +1,28 @@
 # Done — Азим + Полат
 
+## 2026-07-14 (Полат/Claude) — PARTNER-API-RAOS-001
+
+### ✅ [PARTNER-API-RAOS-001] Партнёрский API: выгрузка товаров RAOS → MaxSavdo
+- **Важность:** 🔴 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `packages/db` + `packages/types`
+- **Файлы:** `apps/api/src/modules/partner/*` (module, controller, admin-controller, guard,
+  2 use-case, repository, 2 DTO, spec — все новые), `packages/db/prisma/schema.prisma` (+PartnerApiKey),
+  `packages/db/prisma/migrations/20260714000001_partner_api_keys/` (ADD-only),
+  `apps/api/src/{app.module,modules/products/products.module,modules/media/media.module}.ts` (wiring/exports),
+  `packages/types/src/api/partner.ts` (новый), `docs/contracts/partner-api-raos.md` (контракт для RAOS)
+- **Что сделано:** подтверждён анализ Азима (функциональности не было: товар только через seller-JWT,
+  моделей ApiKey/Integration в схеме 0). Реализовано: auth по `X-Api-Key` (sha256-hash в БД, plaintext
+  один раз при выдаче, ключ скоупится на ОДИН store, revoke без удаления строки);
+  `POST /api/v1/partner/products` (@Public + PartnerApiKeyGuard, throttle 30/мин) — скачивает фото по
+  https-URL (анти-SSRF: только https, режем localhost/IP-литералы; mime jpeg/png/webp, ≤10MB), заливает
+  через существующий UploadDirectUseCase (sharp→R2), создаёт товар через CreateProductUseCase (лимиты
+  тарифа работают) и публикует через ChangeProductStatusUseCase (state machine + автопост в TG-канал).
+  Правило Азима «faqat rasmi bor mahsulot chiqadi»: без валидного фото товар НЕ создаётся (все фото
+  скачиваются ДО insert). Admin CRUD ключей: `POST/GET/DELETE /admin/partner-keys`
+  (@AdminPermission('system:integrations') — только super_admin/admin, custom-ролям reserved) + audit_log
+  (partner_key.issued/revoked). Миграцию применит `apps/api/start.sh` (migrate deploy) при деплое.
+- **Проверено:** `pnpm --filter api build` EXIT 0; jest partner.use-cases 10/10 (фото-фильтр, SSRF,
+  R2-fail→502+DRAFT, guard 401-ветки, publish=false).
+
 ## 2026-07-12 (Азим/Claude, ночь) — PAY-004 (страница «Тарифы») + checkout payment-labels bug
 
 ### ✅ [PAY-004] Страница «Тарифы» в кабинете продавца

@@ -35,6 +35,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AccountDeletionModule } from './modules/account/account-deletion.module';
+import { PartnerModule } from './modules/partner/partner.module';
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { QueuesModule } from './queues/queues.module';
@@ -76,6 +77,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     WishlistModule,
     ReviewsModule,
     AccountDeletionModule,
+    PartnerModule,
     HealthModule,
   ],
   providers: [

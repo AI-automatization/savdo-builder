@@ -5,18 +5,16 @@
 
 ---
 
-## 🔴 [PARTNER-API-RAOS-001] Партнёрская интеграция RAOS → MaxSavdo (выгрузка товаров) — НОВАЯ разработка, зона Полата
-- **Домен:** `apps/api` + `packages/db` (schema) + `packages/types`
-- **Кто взял:** запрос от Азима 14.07.2026 (код-верифицирован им же), подтверждение Полата (@ismailov_0011) — требуется
-- **Статус-факт (проверено 14.07):** функциональности НЕТ. Создание товара — только
-  `POST seller/products` под `JwtAuthGuard + Roles('SELLER')` (`apps/api/src/modules/products/products.controller.ts:125-128`).
-  В `packages/db/prisma/schema.prisma` нет моделей ApiKey / Integration / Webhook (grep = 0). Анализ Азима точен.
-- **Детали (новая разработка, стандартный partner-API паттерн):**
-  1. Auth-слой по API-ключу: новый Guard (`X-Api-Key` header), хранить hash ключа, не plaintext.
-  2. Новая Prisma-модель (ADD-only миграция, прод-safety): `PartnerApiKey { id, keyHash, storeId → Store, name, isActive, createdAt, lastUsedAt }` — связь ключ RAOS ↔ магазин MaxSavdo.
-  3. Новый endpoint `POST /partner/products` (throttle + аудит), переиспользующий CreateProduct use-case.
-  4. Фильтр «только товары с фото» (требование Азима: «faqat RASMI BOR mahsulot chiqadi») — reject без imageUrl.
-- **Оценка:** ~1 рабочий день (Guard + модель + endpoint + фильтр + тесты). Технически реально, блокеров нет.
+## 🟡 [PARTNER-API-RAOS-001] RAOS-интеграция — КОД ГОТОВ 14.07 (см. done.md), остались орг-шаги
+- **Домен:** операционка (Полат) + RAOS-сторона
+- **✅ Код-комплит 14.07:** PartnerModule (`X-Api-Key` Guard, `POST /partner/products`,
+  admin CRUD ключей `/admin/partner-keys`), модель `PartnerApiKey` (ADD-only миграция
+  `20260714000001`), фильтр «только с фото», 10/10 тестов, build EXIT 0.
+  Контракт для RAOS: `docs/contracts/partner-api-raos.md`.
+- **🔲 Осталось (после деплоя api):**
+  1. Создать/выбрать магазин под RAOS-товары → выдать ключ: `POST /admin/partner-keys {storeId, name:"RAOS"}` (plaintext показывается один раз).
+  2. Передать ключ RAOS безопасным каналом + ссылку на контракт.
+  3. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
 
 ## 🟡 [SELLER-PAYMENT-REQUISITES-001] Поле реквизитов оплаты продавца — нужно от Полата
 - **Домен:** `packages/db` (schema) + `apps/api` (endpoint)
