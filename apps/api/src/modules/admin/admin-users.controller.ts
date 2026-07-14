@@ -28,6 +28,7 @@ import { SuspendUserUseCase } from './use-cases/suspend-user.use-case';
 import { UnsuspendUserUseCase } from './use-cases/unsuspend-user.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { ChangeUserRoleUseCase } from './use-cases/change-user-role.use-case';
+import { AdminPurgeUserUseCase } from './use-cases/admin-purge-user.use-case';
 import { AdminRepository } from './repositories/admin.repository';
 import { AdminContextService } from './services/admin-context.service';
 
@@ -52,6 +53,7 @@ export class AdminUsersController {
     private readonly unsuspendUserUseCase: UnsuspendUserUseCase,
     private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
     private readonly changeUserRoleUseCase: ChangeUserRoleUseCase,
+    private readonly adminPurgeUserUseCase: AdminPurgeUserUseCase,
   ) {}
 
   @Get()
@@ -135,6 +137,26 @@ export class AdminUsersController {
       role: dto.role,
       actorUserId: user.sub,
       reason: dto.reason,
+    });
+  }
+
+  // POST /api/v1/admin/users/:id/purge — ADMIN-USER-PURGE-001.
+  // БЕЗВОЗВРАТНО удаляет аккаунт + seller + магазин + товары + заказы магазина
+  // (чистка тестовых данных). Требует type-to-confirm телефона в body.
+  // `user:purge` есть у базовых admin/super_admin через `user:*`; в словарь
+  // кастомных ролей НЕ добавлен — им не выдать.
+  @Post(':id/purge')
+  @AdminPermission('user:purge')
+  async purge(
+    @Param('id') id: string,
+    @Body() body: { confirmPhone?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.adminContext.requireAdmin(user);
+    return this.adminPurgeUserUseCase.execute({
+      userId: id,
+      actorUserId: user.sub,
+      confirmPhone: body?.confirmPhone ?? '',
     });
   }
 }
