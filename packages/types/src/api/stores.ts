@@ -85,6 +85,42 @@ export interface StorefrontStore {
   // API-STORE-DELIVERY-SETTINGS-TYPE-001 — настройки доставки (optional:
   // не все storefront-ответы их включают, product checkout — включает).
   deliverySettings?: StoreDeliverySettings;
+  // SELLER-PAYMENT-REQUISITES-001 — реквизиты оплаты для checkout (optional:
+  // отдают только by-slug endpoints; тип ниже в этом файле).
+  paymentRequisites?: StorePaymentRequisites;
+}
+
+// ── Payment requisites (SELLER-PAYMENT-REQUISITES-001) ────────────────────────
+
+/**
+ * Публичные реквизиты оплаты магазина в ответах `storefront/stores/:slug` и
+ * `stores/:slug`. Карта/ссылки НЕ null только когда acceptsCardTransfer=true
+ * (гейт в storefront.controller.mapPublicStoreBySlug) — checkout показывает
+ * блок «перевод на карту» по этому флагу.
+ */
+export interface StorePaymentRequisites {
+  acceptsCash: boolean;
+  acceptsCardTransfer: boolean;
+  cardNumber: string | null;
+  cardHolder: string | null;
+  clickLink: string | null;
+  paymeLink: string | null;
+}
+
+/**
+ * PATCH /seller/store/payment-requisites (владелец, PATCH-семантика:
+ * undefined = не трогать, null/'' = очистить). Ответ и GET — сырые поля
+ * Store: { paymentCardNumber, paymentCardHolder, paymentClickLink,
+ * paymentPaymeLink, acceptsCash, acceptsCardTransfer }.
+ * Включить acceptsCardTransfer без cardNumber нельзя → 422 VALIDATION_ERROR.
+ */
+export interface UpdateStorePaymentRequisitesRequest {
+  cardNumber?: string | null;
+  cardHolder?: string | null;
+  clickLink?: string | null;
+  paymeLink?: string | null;
+  acceptsCash?: boolean;
+  acceptsCardTransfer?: boolean;
 }
 
 // ── Global Category ───────────────────────────────────────────────────────────
