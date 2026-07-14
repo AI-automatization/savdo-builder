@@ -112,11 +112,21 @@
 6. ✅ **[Азим]** ЗАКРЫТО 14.07.2026 — FAQPage JSON-LD добавлен в `apps/web-buyer/src/app/
    help/page.tsx` (mirror паттерна из `products/[id]/layout.tsx`), данные из статичного
    `ru.ts` (8 Q&A). `/help` уже был в sitemap (не нужно было добавлять). tsc EXIT 0.
-7. **[Азим]** web-seller: нет robots.ts/noindex — дашборд индексируем. Закрыть noindex целиком.
-8. **[Азим]** Product JSON-LD (`products/[id]/layout.tsx:36-37`): availability всегда InStock
-   (лечить по стоку/статусу), price fallback 0 (не отдавать Offer без цены), добавить
-   aggregateRating из отзывов (UI уже есть — ProductReviews).
-9. **[Азим]** `/about` — связать с LANDING-CORP-PAGE-001 (уже в бэклоге): entity-контент для GEO.
+7. ✅ **[Азим]** ЗАКРЫТО 14.07.2026 — `apps/web-seller/src/app/robots.ts` (NEW, disallow `/`
+   целиком — дашборд полностью приватный) + `robots: { index: false, follow: false }` в
+   root `layout.tsx` metadata (belt-and-suspenders). tsc EXIT 0.
+8. ✅ **[Азим]** ЗАКРЫТО 14.07.2026 — `products/[id]/layout.tsx`: availability теперь
+   `status===ACTIVE && isVisible && totalStock>0` (InStock/OutOfStock), `offers` целиком
+   опускается если цена не valid (не отдаём Offer с price:0), `aggregateRating` добавлен
+   через отдельный fetch отзывов (`limit=50` — серверный кап) — **только** когда
+   `items.length >= total` (весь пул отзывов покрыт сэмплом), иначе честно опускаем (сервер
+   не отдаёт готовый avgRating на Product, только на Store — считать по неполной выборке
+   и заявлять reviewCount=total было бы враньём). tsc EXIT 0.
+9. ✅ **[Азим]** ЗАКРЫТО через LANDING-CORP-PAGE-001 (12.07.2026, переформулирован 11.07) —
+   `/about` в web-buyer строить не стали: `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`
+   установил, что полноценный маркетинг-лендинг с entity-контентом (Hero/Pricing/FAQ) уже
+   существовал на `landing`/`web-seller` deploy-ветках, реальный пробел был в точках входа
+   (каталог/админка), не в отсутствии страницы. См. `done.md` LANDING-CORP-PAGE-001.
 
 ### 🟡 P2
 10. llms.txt; Organization JSON-LD: logo + sameAs (TG-канал) + contactPoint; BreadcrumbList на

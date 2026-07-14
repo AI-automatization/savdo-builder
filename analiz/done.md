@@ -8197,3 +8197,26 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   tsc EXIT 0.
 - **Урок:** аудиты SEO/кода в этом репо всегда сверять по фронт-веткам (`web-buyer`/
   `web-seller`), не по `main` — main держит устаревший snapshot.
+
+### ✅ [SEO-AUDIT-001 п.7-9] robots.ts web-seller + Product JSON-LD + /about-статус — закрыто 14.07.2026
+- **Важность:** 🟠 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-seller` (ветка `web-seller`, `850b07b4`) + `apps/web-buyer` (ветка `web-buyer`, `b817703e`)
+- **Файлы:** `apps/web-seller/src/app/robots.ts` (NEW), `apps/web-seller/src/app/layout.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx`
+- **Что сделано:**
+  - **п.7** web-seller дашборд был полностью без robots.ts/noindex → добавлен `robots.ts`
+    (`disallow: '/'` целиком) + `robots: {index:false, follow:false}` в root layout metadata.
+  - **п.8** Product JSON-LD в web-buyer чинен на реальные данные: `availability` теперь
+    `status===ACTIVE && isVisible && totalStock>0` вместо хардкода InStock; `offers`
+    целиком опускается если `price` не валиден (не отдаём Offer с `price:0`);
+    `aggregateRating` добавлен через отдельный fetch `/storefront/products/:id/reviews?limit=50`
+    (сервер клэмпит `limit` до 50 в `list-product-reviews.use-case.ts:37`) — включается
+    ТОЛЬКО когда `items.length >= total` (сэмпл покрывает весь пул отзывов), иначе честно
+    опускается (Product не имеет готового `avgRating`/`reviewCount` на API, в отличие от
+    Store — считать средний рейтинг по неполной выборке и заявлять `reviewCount: total`
+    было бы недостоверным).
+  - **п.9** `/about` — подтверждено что уже закрыт другим путём через `LANDING-CORP-PAGE-001`
+    (переформулирован 11.07, см. выше в этом файле) — исходная формулировка задачи в
+    `tasks.md` была стухшей копией, актуализирована.
+- **Verified:** tsc EXIT 0 на обеих ветках после каждого коммита.
