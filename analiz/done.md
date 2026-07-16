@@ -8233,3 +8233,36 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   `connectSocket()`-хелпер (как в TMA) не понадобился — токен и так подтягивается свежим при
   каждой попытке подключения.
 - **Verified:** tsc EXIT 0 на обеих ветках.
+
+## 2026-07-16 (Азим/Claude) — SEO-AUDIT-001 P2 (по шаблону SEO-GEO-Ishlar-Shabloni.md)
+
+### ✅ [SEO-AUDIT-001-P2] llms.txt, честный sitemap lastModified, BreadcrumbList, AI-краулеры в robots.ts
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** `apps/landing` + `apps/web-buyer`
+- **Файлы:** `apps/landing/src/app/robots.ts`, `apps/landing/src/app/sitemap.ts`,
+  `apps/landing/public/llms.txt` (новый), `apps/web-buyer/src/app/robots.ts`,
+  `apps/web-buyer/src/app/sitemap.ts`, `apps/web-buyer/src/app/layout.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx`
+- **Что сделано:**
+  - `robots.ts` (оба апа): добавлены explicit-правила для AI-краулеров (GPTBot, ChatGPT-User,
+    ClaudeBot, Claude-Web, Anthropic-AI, Google-Extended, PerplexityBot, YouBot, Applebot(-Extended),
+    Meta-ExternalAgent, Grokbot, CCBot, cohere-ai) — функционально уже разрешались через `userAgent: '*'`,
+    но явный allow безопаснее для GEO-видимости.
+  - `apps/landing/public/llms.txt` — новый AI-манифест (продукт, цены Free/Pro-149k/Studio-399k,
+    сравнение с конкурентами, ключевые страницы, заметка для AI-ассистентов).
+  - `sitemap.ts` (оба апа) — честный `lastModified` вместо `new Date()` на каждый запрос: статичные
+    страницы (лендинг /,/ru; web-buyer terms/privacy/offer/refund/help) теперь берут реальную дату
+    последнего git-коммита файла страницы. Главная web-buyer намеренно осталась динамической
+    (агрегирует живые featured-магазины/товары — `now` тут честен).
+  - Organization JSON-LD в web-buyer `layout.tsx` дополнен `logo`+`sameAs`(TG-бот)+`contactPoint`
+    (landing уже имел это раньше — теперь оба апа консистентны).
+  - Новый BreadcrumbList JSON-LD на `products/[id]/layout.tsx` (Home → Store → Product).
+  - **Сознательно НЕ добавлено:** WebSite+SearchAction — у web-buyer нет URL-адресуемой страницы
+    поиска (`searchStorefront()` в `search.api.ts` — чистый API-виджет без `?q=`-роута), фейковый
+    SearchAction нарушил бы правило шаблона «не врать в JSON-LD». Local-SEO city-страницы,
+    Speakable/AnswerBox/IndexNow, GSC/Bing/Yandex Webmaster, Google/Yandex Business Profile,
+    GA4/Метрика — не тронуты (либо не в скоупе MVP, либо требуют доступ к внешним аккаунтам —
+    см. `analiz/tasks.md → DEPLOY-DOMAIN-MAXSAVDO-001` и апекс-баг в `SEO-AUDIT-001`).
+  - Проверено: `manifest.ts` icons (P2 #11) — ложная тревога, `icon-192.png`/`icon-512.png`
+    реально существуют в `apps/web-buyer/public/`, 404 нет.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих апах, `next build` чист (landing — все роуты
+  статичные, включая новый `/llms.txt`... файл лежит в `public/`, не роут, отдаётся as-is).
