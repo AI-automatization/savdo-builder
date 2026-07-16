@@ -285,4 +285,40 @@ export class StoresRepository {
       },
     });
   }
+
+  // ─── SELLER-PAYMENT-REQUISITES-001 ─────────────────────────────────────────
+
+  private static readonly PAYMENT_REQUISITES_SELECT = {
+    paymentCardNumber: true,
+    paymentCardHolder: true,
+    paymentClickLink: true,
+    paymentPaymeLink: true,
+    acceptsCash: true,
+    acceptsCardTransfer: true,
+  } as const;
+
+  async findPaymentRequisites(storeId: string) {
+    return this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: StoresRepository.PAYMENT_REQUISITES_SELECT,
+    });
+  }
+
+  async updatePaymentRequisites(
+    storeId: string,
+    data: {
+      paymentCardNumber?: string | null;
+      paymentCardHolder?: string | null;
+      paymentClickLink?: string | null;
+      paymentPaymeLink?: string | null;
+      acceptsCash?: boolean;
+      acceptsCardTransfer?: boolean;
+    },
+  ) {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data,
+      select: StoresRepository.PAYMENT_REQUISITES_SELECT,
+    });
+  }
 }

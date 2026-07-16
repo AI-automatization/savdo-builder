@@ -11,17 +11,28 @@
   admin CRUD ключей `/admin/partner-keys`), модель `PartnerApiKey` (ADD-only миграция
   `20260714000001`), фильтр «только с фото», 10/10 тестов, build EXIT 0.
   Контракт для RAOS: `docs/contracts/partner-api-raos.md`.
-- **🔲 Осталось (после деплоя api):**
-  1. Создать/выбрать магазин под RAOS-товары → выдать ключ: `POST /admin/partner-keys {storeId, name:"RAOS"}` (plaintext показывается один раз).
-  2. Передать ключ RAOS безопасным каналом + ссылку на контракт.
-  3. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
+- **✅ 14.07 задеплоено и проверено на проде:** деплой api прошёл (после 2 фиксов Docker —
+  см. logs.md INFRA-DOCKER-PNPM11-001), миграция применена. Магазин RAOS создан
+  (slug `raos`, storeId `80e1d96e-1cf1-49fa-9e92-8578f56d6942`, seller VERIFIED, подписка
+  STUDIO ACTIVE до 14.07.2027, синтетический phone +998000001111). Ключ выдан
+  (keyId `28e677e5-…`), plaintext передан Полату в сессии. Smoke-тест: DRAFT-товар
+  `12c3e990-…` создан через API с реальным скачиванием фото → 201.
+- **🔲 Осталось:**
+  1. Передать ключ RAOS безопасным каналом + `docs/contracts/partner-api-raos.md`.
+  2. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
+  3. (опц.) удалить smoke-товар `12c3e990-6744-49e4-b4d7-e052a009a8a8` из admin.
 
-## 🟡 [SELLER-PAYMENT-REQUISITES-001] Поле реквизитов оплаты продавца — нужно от Полата
-- **Домен:** `packages/db` (schema) + `apps/api` (endpoint)
-- **Кто взял:** запрос от Азима, 12.07.2026
-- **Контекст:** `docs/business/payments-legal-tax-2026-06-07.md` §1.4 — продавец вписывает реквизиты один раз в кабинете, покупатель видит их на checkout вместо нынешнего хардкода «курьер + POS-терминал» (тот баг уже поправлен на фронте Азимом, 12.07 — см. done.md, но без реального поля показывать покупателю нечего, сейчас placeholder-текст «реквизиты в чате заказа»).
-- **Детали:** на `Seller` или `Store` — новые опциональные поля: номер карты (строка, «8600…»), имя владельца карты, опционально ссылка Click/Payme, и флаг(и) какие способы оплаты продавец принимает (cash/card). Плюс endpoint: `PATCH seller/store` (или отдельный) для записи владельцем, и отдача этих полей в публичном ответе `storefront/stores/:slug` (или в checkout preview) — без выдачи чужих полных данных, только то что помечено видимым.
-- **После готовности:** Азим достраивает экран ввода в `web-seller` (кабинет продавца → реквизиты) и подключает реальное отображение на checkout в `web-buyer` (сейчас там честный placeholder, не показывает вымышленных данных).
+## 🟢 [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — API ГОТОВ 14.07 (Полат), очередь Азима
+- **Домен:** `packages/db` + `apps/api` (✅ Полат 14.07, см. done.md) → `web-seller`/`web-buyer` (🔲 Азим)
+- **✅ Контракт для Азима:**
+  - Owner: `GET/PATCH /seller/store/payment-requisites` — сырые поля
+    `{paymentCardNumber, paymentCardHolder, paymentClickLink, paymentPaymeLink, acceptsCash, acceptsCardTransfer}`.
+    PATCH-семантика: undefined = не трогать, null/'' = очистить. Включить `acceptsCardTransfer`
+    без cardNumber → 422 VALIDATION_ERROR. Request-тип: `UpdateStorePaymentRequisitesRequest` (packages/types).
+  - Buyer: в `storefront/stores/:slug` и `stores/:slug` появился объект `paymentRequisites`
+    (тип `StorePaymentRequisites`): `{acceptsCash, acceptsCardTransfer, cardNumber, cardHolder, clickLink, paymeLink}` —
+    карта/ссылки не-null ТОЛЬКО при acceptsCardTransfer=true (гейт на сервере, сырые колонки из ответа вырезаны).
+- **🔲 Азим:** экран «Реквизиты» в web-seller + реальное отображение на checkout web-buyer вместо placeholder.
 
 ---
 
@@ -106,12 +117,10 @@
    (`1d2b4bc4`, main). Отдаёт slug+updatedAt магазинов, id+updatedAt товаров. Типы
    `StorefrontSitemapFeed` добавлены в `packages/types` 12.07 (`98270455`).
 2. ✅ **[Азим, web-buyer]** `sitemap.ts` → динамический — закрыто 12.07.2026 (`b215b59b`,
-   ветка `web-buyer`). Магазины подключены. **⚠️ Товары НЕ эмитятся** — фид из п.1 не несёт
-   `store.slug`/`storeId` (подтверждено и в новом `StorefrontSitemapProduct` типе — тоже только
-   `id`/`updatedAt`), без него нельзя построить канонический `/{slug}/products/{id}`.
-   **Нужно от Полата:** добавить `store: { select: { slug: true } }` (или плоский `storeSlug`)
-   в `ProductsRepository.findAllPublicForSitemap` (`apps/api/src/modules/products/
-   repositories/products.repository.ts`) — тривиальная правка, разблокирует товары в sitemap.
+   ветка `web-buyer`). Магазины подключены.
+   **✅ Хвост от Полата закрыт 14.07.2026:** `findAllPublicForSitemap` теперь отдаёт плоский
+   `storeSlug` (select store.slug + map), тип `StorefrontSitemapProduct` дополнен. **Азиму:**
+   доэмитить товары в `sitemap.ts` — канонический URL `/{storeSlug}/products/{id}`.
 3. ✅ **[Азим, web-buyer]** Главная `(shop)/page.tsx` — закрыто 12.07.2026 (`b215b59b`).
    `serverGetFeatured()` фетчит featured server-side, `HomeTopStores` получает `initialData` —
    краулер видит реальные `<a href="/{slug}">` в первом HTML вместо client-only skeleton.
@@ -181,9 +190,11 @@
     **Азиму:** заменить `normalizeOrder(raw: any)` и `cartItemUnitPrice`-пирамиду
     на типы из packages/types — поля гарантированы (сверка с orders.mapper.ts /
     preview-checkout.use-case.ts задокументирована в JSDoc типов).
-16. **[проверить]** `storefront-server.ts:56` выбрасывает `meta.total` → на странице магазина нет
-    пагинации: если API отдаёт дефолтный limit, магазин с большим каталогом покажет только первую
-    страницу («Товары · N» врёт). Проверить limit `/storefront/products` и добавить пагинацию/«ещё».
+16. **[Азим — API готов]** `storefront-server.ts:56` выбрасывает `meta.total` → на странице магазина
+    нет пагинации. **Полат проверил 14.07:** API-часть уже умеет: `stores/:slug/products` — opt-in
+    пагинация (передай `?page=`/`?limit=` → envelope `{data, meta}`; без параметров — legacy raw
+    array c cap 200, `storefront.controller.ts:214-218`). Фронту: передавать page/limit и читать
+    meta.total → кнопка «ещё»/пагинация. Правок API не требуется.
 17. **[норм, зафиксировать]** JWT в localStorage (`auth/storage.ts`) — осознанный XSS-компромисс,
     приемлем при текущем строгом CSP; не переделывать без причины.
 

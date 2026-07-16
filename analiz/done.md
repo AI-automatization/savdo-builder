@@ -1,5 +1,49 @@
 # Done — Азим + Полат
 
+## 2026-07-14 (Полат/Claude, ночь) — ADMIN-USER-PURGE-001
+
+### ✅ [ADMIN-USER-PURGE-001] Кнопка «Удалить безвозвратно» в админке (user + store + товары + заказы)
+- **Важность:** 🟡 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `apps/admin`
+- **Контекст:** запрос owner — чистка тестовых аккаунтов перед тестовой эксплуатацией. До этого
+  hard-delete был только у cron T+90d (API-ACCOUNT-PURGE-001), который НАМЕРЕННО пропускает продавцов.
+- **Файлы:** `admin/use-cases/admin-purge-user.use-case.ts` (+spec, новые),
+  `admin-users.controller.ts` (`POST /admin/users/:id/purge`, @AdminPermission('user:purge')),
+  `admin.module.ts`, `apps/admin/src/pages/UserDetailPage.tsx` (danger-кнопка + type-to-confirm модал),
+  `apps/admin/src/lib/i18n/{ru,uz}.ts`
+- **Что сделано:** одна транзакция удаляет всё дерево по FK-карте схемы: чаты продавца (messages→threads),
+  заказы магазина (history/refunds→orders, items cascade), корзины, товары (movements→variant-options→
+  variants→options→groups→products), периферию store (contacts/delivery/categories/partner-keys)→store,
+  подписку (payments→subscription), документы верификации→seller; buyer-ветка зеркалит cron-purge
+  (заказы юзера-как-покупателя в чужих магазинах НЕ удаляются — отвязка buyerId, финансы целы);
+  audit_log append `USER_HARD_DELETED` (actor=admin). Защиты: нельзя себя, нельзя админа (сначала revoke),
+  type-to-confirm телефона (и в API, и в UI-модале). Permission `user:purge` — только base admin/super_admin
+  (кастомным ролям не выдать, нет в словаре). Тесты 5/5, api+admin build EXIT 0.
+
+## 2026-07-14 (Полат/Claude, вечер) — SELLER-PAYMENT-REQUISITES-001 (API) + sitemap storeSlug
+
+### ✅ [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — schema + API (часть Полата)
+- **Важность:** 🟡 · **Дата:** 14.07.2026 · **Домен:** `packages/db` + `apps/api` + `packages/types`
+- **Файлы:** `schema.prisma` (Store: +paymentCardNumber/Holder, +paymentClickLink/PaymeLink,
+  +acceptsCash(true)/acceptsCardTransfer(false)), миграция `20260714000002_store_payment_requisites`
+  (ADD-only), `stores/dto/update-payment-requisites.dto.ts` (новый), `stores.repository.ts`
+  (find/updatePaymentRequisites), `stores.controller.ts` (GET/PATCH `seller/store/payment-requisites`),
+  `products/storefront.controller.ts` (общий `mapPublicStoreBySlug` для обоих by-slug endpoints),
+  `packages/types/src/api/stores.ts` (StorePaymentRequisites, UpdateStorePaymentRequisitesRequest,
+  StorefrontStore.paymentRequisites?)
+- **Что сделано:** запрос Азима 12.07 (payments-legal-tax §1.4). Владелец вводит реквизиты
+  (карта, имя, Click/Payme-ссылки, флаги cash/card) через PATCH с валидацией (regex карты,
+  https-only ссылки, 422 при acceptsCardTransfer без карты — проверка эффективного состояния
+  ДО записи). Публично: `findBySlug` отдаёт все колонки → в by-slug ответах сырые поля
+  ВЫРЕЗАНЫ, вместо них `paymentRequisites` с гейтом — карта видна только при
+  acceptsCardTransfer=true. Задача Азима (экраны) — в tasks.md.
+
+### ✅ [SEO-AUDIT-001 п.2, хвост] storeSlug в sitemap-фиде товаров
+- **Важность:** 🔴 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `packages/types`
+- **Файлы:** `products.repository.ts` (findAllPublicForSitemap → +storeSlug плоско),
+  `packages/types/src/api/storefront.ts` (StorefrontSitemapProduct.storeSlug)
+- **Что сделано:** разблокированы товары в динамическом sitemap web-buyer — Азим просил
+  slug магазина для канонического `/{slug}/products/{id}`.
+
 ## 2026-07-14 (Полат/Claude) — PARTNER-API-RAOS-001
 
 ### ✅ [PARTNER-API-RAOS-001] Партнёрский API: выгрузка товаров RAOS → MaxSavdo
