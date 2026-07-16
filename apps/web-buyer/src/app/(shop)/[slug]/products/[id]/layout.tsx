@@ -116,6 +116,28 @@ export async function generateMetadata({
   };
 }
 
+function buildBreadcrumbJsonLd(product: Product, slug: string, id: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'maxsavdo', item: SITE_URL },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: product.store?.name ?? slug,
+        item: `${SITE_URL}/${slug}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product.title,
+        item: `${SITE_URL}/${slug}/products/${id}`,
+      },
+    ],
+  };
+}
+
 export default async function ProductLayout({
   children,
   params,
@@ -127,11 +149,16 @@ export default async function ProductLayout({
   const [product, reviews] = await Promise.all([fetchProduct(id), fetchAllReviews(id)]);
   if (!product) return <>{children}</>;
   const jsonLd = buildProductJsonLd(product, slug, id, reviews);
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(product, slug, id);
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       {children}
     </>

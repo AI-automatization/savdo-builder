@@ -62,8 +62,19 @@ export default function RootLayout({
               '@type': 'Organization',
               name: 'maxsavdo',
               url: siteUrl,
+              logo: `${siteUrl}/brand/maxsavdo-mark.png`,
               description: 'Платформа интернет-магазинов Узбекистана в Telegram',
               areaServed: { '@type': 'Country', name: 'Uzbekistan' },
+              sameAs: ['https://t.me/savdo_builderBOT'],
+              contactPoint: [
+                {
+                  '@type': 'ContactPoint',
+                  contactType: 'customer support',
+                  email: 'hello@maxsavdo.uz',
+                  url: 'https://t.me/savdo_builderBOT',
+                  availableLanguage: ['ru', 'uz'],
+                },
+              ],
             }),
           }}
         />
