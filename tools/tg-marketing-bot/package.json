@@ -1,0 +1,18 @@
+{
+  "name": "max_savdo_tg_bot",
+  "version": "1.0.0",
+  "private": true,
+  "main": "telegram.js",
+  "scripts": {
+    "start": "node telegram.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@gradio/client": "^2.3.0",
+    "dotenv": "^16.4.5",
+    "msedge-tts": "^2.0.6",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

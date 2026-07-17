@@ -46,6 +46,7 @@ import { DbManagerUseCase } from './use-cases/db-manager.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
 import { ChangeUserRoleUseCase } from './use-cases/change-user-role.use-case';
 import { AdminPurgeUserUseCase } from './use-cases/admin-purge-user.use-case';
+import { AdminPurgeStoreUseCase } from './use-cases/admin-purge-store.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
 import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
 import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
@@ -110,6 +111,7 @@ import { MediaModule } from '../media/media.module';
     AdminCreateSellerUseCase,
     ChangeUserRoleUseCase,
     AdminPurgeUserUseCase,
+    AdminPurgeStoreUseCase,
     AdminCreateStoreUseCase,
     GetSystemHealthUseCase,
     AdminAuthUseCase,

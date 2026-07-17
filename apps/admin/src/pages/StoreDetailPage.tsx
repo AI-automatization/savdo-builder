@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2, Send, CreditCard } from 'lucide-react'
+import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
@@ -364,6 +365,10 @@ export default function StoreDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [productActionLoading, setProductActionLoading] = useState<string | null>(null)
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState<string | null>(null)
+  // ADMIN-STORE-PURGE-001: безвозвратное удаление магазина (danger zone)
+  const [purgeModal, setPurgeModal] = useState(false)
+  const [purgeSlug, setPurgeSlug] = useState('')
+  const [purging, setPurging] = useState(false)
 
   async function toggleProductHide(product: StoreProduct) {
     const isHidden = product.status === 'HIDDEN_BY_ADMIN'
@@ -387,6 +392,23 @@ export default function StoreDetailPage() {
       refetchProducts()
     } finally {
       setProductActionLoading(null)
+    }
+  }
+
+  async function purgeStore() {
+    if (!store) return
+    setPurging(true)
+    setActionError(null)
+    try {
+      const res = await api.post<{ purged: boolean; orders: number; products: number }>(
+        `/api/v1/admin/stores/${store.id}/purge`,
+        { confirmSlug: purgeSlug.trim() },
+      )
+      toast.success(`${t('storeDetail.purgeDone')} (orders: ${res.orders}, products: ${res.products})`)
+      navigate('/stores')
+    } catch (e: any) {
+      setActionError(e.message ?? t('common.error'))
+      setPurging(false)
     }
   }
 
@@ -509,6 +531,10 @@ export default function StoreDetailPage() {
               <Archive size={14} /> {t('storeDetail.toArchive')}
             </button>
           )}
+          {/* ADMIN-STORE-PURGE-001: безвозвратное удаление (danger zone) */}
+          <button onClick={() => { setPurgeSlug(''); setActionError(null); setPurgeModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.5)', background: 'rgba(239,68,68,0.15)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <Trash2 size={14} /> {t('storeDetail.purge')}
+          </button>
         </div>
       </div>
 
@@ -766,6 +792,60 @@ export default function StoreDetailPage() {
           onCancel={() => setModal(null)}
           loading={actionLoading}
         />
+      )}
+
+      {/* ADMIN-STORE-PURGE-001: Purge Modal (type-to-confirm slug) */}
+      {purgeModal && (
+        <DialogShell onClose={() => !purging && setPurgeModal(false)} width={440} ariaLabelledBy="store-purge-modal-title">
+            <h3 id="store-purge-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: '#EF4444' }}>
+              {t('storeDetail.purgeTitle')}
+            </h3>
+            <p className="m-0 mb-2 text-[14px]" style={{ color: 'var(--text-muted)' }}>
+              {t('storeDetail.purgeWarning')}
+            </p>
+            <p className="m-0 mb-4 text-[13px]" style={{ color: 'var(--text-muted)' }}>
+              {t('storeDetail.purgeConfirmHint')} <code className="font-mono" style={{ color: 'var(--text)' }}>{store.slug}</code>
+            </p>
+            <input
+              value={purgeSlug}
+              onChange={e => setPurgeSlug(e.target.value)}
+              placeholder={store.slug}
+              aria-label={t('storeDetail.purgeConfirmHint')}
+              className="w-full px-3.5 py-3 rounded-xl text-[14px] outline-none font-mono"
+              style={{
+                background: 'var(--surface2)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                color: 'var(--text)',
+                boxSizing: 'border-box',
+              }}
+            />
+            {actionError && (
+              <div role="alert" className="mt-2 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
+            )}
+            <div className="flex gap-2.5 justify-end mt-4">
+              <button
+                onClick={() => setPurgeModal(false)}
+                disabled={purging}
+                className="px-5 py-2.5 rounded-xl text-[14px]"
+                style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={purgeStore}
+                disabled={purgeSlug.trim() !== store.slug || purging}
+                className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+                style={{
+                  border: 'none',
+                  cursor: purgeSlug.trim() === store.slug && !purging ? 'pointer' : 'not-allowed',
+                  background: purgeSlug.trim() === store.slug ? '#EF4444' : 'var(--surface2)',
+                  color: purgeSlug.trim() === store.slug ? 'white' : 'var(--text-muted)',
+                }}
+              >
+                {purging ? t('common.loading') : t('storeDetail.purgeButton')}
+              </button>
+            </div>
+        </DialogShell>
       )}
     </div>
   )
