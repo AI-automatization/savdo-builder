@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { t } from "@/lib/i18n";
+import { organizationJsonLd } from "@/lib/jsonld";
 import "./globals.css";
 
 const inter = Inter({
@@ -84,6 +85,15 @@ export default function RootLayout({
   return (
     <html lang="uz" className={`${inter.variable} dark`}>
       <body className="min-h-screen bg-brand-bg text-brand-text antialiased font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              ...organizationJsonLd(),
+            }),
+          }}
+        />
         {/* Ambient amber orbs — Azim base, Polat colors */}
         <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
           <div className="absolute rounded-full" style={{ width: 640, height: 640, top: -200, right: -160, background: "radial-gradient(circle, rgba(232,165,82,0.18) 0%, transparent 65%)", filter: "blur(60px)" }} />

@@ -1,5 +1,6 @@
 import { t } from "@/lib/i18n";
 import { getFeaturedStores } from "@/lib/api";
+import { pageJsonLd } from "@/lib/jsonld";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import How from "@/components/How";
@@ -18,6 +19,10 @@ export default async function HomePageRu() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd(dict, locale)) }}
+      />
       <Header locale={locale} dict={dict} />
       <main>
         <Hero locale={locale} dict={dict.hero} />
