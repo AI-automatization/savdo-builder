@@ -20,7 +20,8 @@
 - **🔲 Осталось:**
   1. Передать ключ RAOS безопасным каналом + `docs/contracts/partner-api-raos.md`.
   2. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
-  3. (опц.) удалить smoke-товар `12c3e990-6744-49e4-b4d7-e052a009a8a8` из admin.
+  3. ~~(опц.) удалить smoke-товар `12c3e990-…`~~ ✅ 16.07 — удалён в рамках чистки базы
+     (PROD-DB-CLEANUP-001, см. done.md).
 
 ## 🟢 [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — API ГОТОВ 14.07 (Полат), очередь Азима
 - **Домен:** `packages/db` + `apps/api` (✅ Полат 14.07, см. done.md) → `web-seller`/`web-buyer` (🔲 Азим)

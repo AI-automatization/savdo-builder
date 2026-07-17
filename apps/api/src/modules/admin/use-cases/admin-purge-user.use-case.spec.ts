@@ -15,6 +15,7 @@ function makeTx() {
     delete: jest.fn().mockResolvedValue({}),
     updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     create: jest.fn().mockResolvedValue({}),
+    findMany: jest.fn().mockResolvedValue([]),
   });
   return {
     chatMessage: model(), chatThread: model(),
@@ -25,6 +26,7 @@ function makeTx() {
     partnerApiKey: model(), store: model(),
     subscriptionPayment: model(), subscription: model(), sellerVerificationDocument: model(),
     seller: model(), auditLog: model(), buyer: model(), user: model(),
+    moderationCase: model(), moderationAction: model(),
   };
 }
 
@@ -78,6 +80,13 @@ describe('AdminPurgeUserUseCase (ADMIN-USER-PURGE-001)', () => {
     });
     expect(tx.buyer.delete).toHaveBeenCalledWith({ where: { id: 'b-1' } });
     expect(tx.user.delete).toHaveBeenCalledWith({ where: { id: 'u-1' } });
+    // Сироты модерации: user/seller-уровень + store-уровень (внутри subtree).
+    expect(tx.moderationCase.deleteMany).toHaveBeenCalledWith({
+      where: { entityId: { in: ['u-1', 's-1'] } },
+    });
+    expect(tx.moderationCase.deleteMany).toHaveBeenCalledWith({
+      where: { entityId: { in: ['st-1'] } },
+    });
     expect(tx.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: 'USER_HARD_DELETED', actorUserId: 'admin-1' }),

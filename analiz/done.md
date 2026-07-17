@@ -1,5 +1,35 @@
 # Done — Азим + Полат
 
+## 2026-07-16 (Полат/Claude) — Чистка прод-базы + ADMIN-STORE-PURGE-001
+
+### ✅ [PROD-DB-CLEANUP-001] Чистка тестовых аккаунтов и товаров через админку
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** операционка (admin-сессия браузера)
+- **Что сделано:** по приказу owner удалены все не-админские аккаунты: 14 юзеров purge-нуты
+  (1 через UI-модал, 13 через admin API циклом, все 201) — вместе с магазинами/товарами/заказами.
+  Все 4 живых товара soft-deleted через DELETE /admin/products/:id. 3 сироты модерации удалены
+  (см. logs.md MODERATION-ORPHANS-001). Сохранены: RAOS (+998000001111, партнёрская интеграция
+  с выданным ключом) и 2 админа. Итог: users 3, stores 3 (raos APPROVED / white-house DRAFT /
+  DRIPSB SUSPENDED), живых товаров 0, очередь модерации 0. Магазины админов (white-house, DRIPSB)
+  ждут деплоя ADMIN-STORE-PURGE-001 — user-purge их не берёт (владельцы = админы).
+
+### ✅ [ADMIN-STORE-PURGE-001] Кнопка «Удалить магазин безвозвратно» (store без удаления владельца)
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** `apps/api` + `apps/admin`
+- **Контекст:** ADMIN-USER-PURGE-001 не покрывает случай «владелец = админ» (guard запрещает
+  удалять аккаунт с AdminUser-записью). Нужен purge магазина отдельно от аккаунта.
+- **Файлы:** `admin/use-cases/purge-store-subtree.ts` (новый — общий хелпер поддерева store,
+  вынесен из admin-purge-user), `admin-purge-store.use-case.ts` (+spec, новые),
+  `admin-purge-user.use-case.ts` (рефакторинг на хелпер + чистка moderation-сирот),
+  `admin-stores.controller.ts` (`POST /admin/stores/:id/purge`, @AdminPermission('store:purge')),
+  `admin.module.ts`, `admin.repository.ts` (фикс _count, см. logs.md),
+  `apps/admin/src/pages/StoreDetailPage.tsx` (danger-кнопка + type-to-confirm slug модал),
+  `apps/admin/src/lib/i18n/{ru,uz}.ts` (+7 ключей)
+- **Что сделано:** одна транзакция удаляет поддерево магазина по FK-карте (moderation-сироты
+  store+products → заказы (history/refunds→orders) → cart → товары (movements→variant-options→
+  variants→options→groups) → периферия (contacts/delivery/categories/partner-keys) → store) +
+  audit `STORE_HARD_DELETED`. Seller-профиль и аккаунт владельца остаются. Защиты: confirmSlug
+  type-to-confirm ДО транзакции (и в API, и в UI). Тесты 8/8 (5 user-purge + 3 store-purge),
+  api+admin build EXIT 0.
+
 ## 2026-07-14 (Полат/Claude, ночь) — ADMIN-USER-PURGE-001
 
 ### ✅ [ADMIN-USER-PURGE-001] Кнопка «Удалить безвозвратно» в админке (user + store + товары + заказы)
