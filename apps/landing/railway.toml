@@ -18,6 +18,6 @@ restartPolicyMaxRetries = 3
 [variables]
 NEXT_PUBLIC_API_URL = "https://savdo-api-production.up.railway.app"
 NEXT_PUBLIC_BOT_USERNAME = "savdo_builderBOT"
-NEXT_PUBLIC_SITE_URL = "https://savdo.uz"
+NEXT_PUBLIC_SITE_URL = "https://maxsavdo.uz"
 NODE_ENV = "production"
 NEXT_TELEMETRY_DISABLED = "1"

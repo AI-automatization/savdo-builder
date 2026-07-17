@@ -1,16 +1,15 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Send, Mail } from 'lucide-react';
 
 export type Locale = 'uz' | 'ru';
 
 export type FooterDict = {
   tagline: string;
-  productHeading: string;
-  productLinks: { label: string; href: string }[];
-  contactHeading: string;
-  channelLabel: string;
-  emailLabel: string;
   rights: string;
+  contact: string;
+  bot: string;
+  channel: string;
 };
 
 type FooterProps = {
@@ -18,6 +17,7 @@ type FooterProps = {
   dict: FooterDict;
 };
 
+const BOT_URL = 'https://t.me/savdo_builderBOT';
 const TG_CHANNEL = 'https://t.me/savdobuilder';
 const EMAIL = 'hello@maxsavdo.uz';
 
@@ -26,70 +26,67 @@ export default function Footer({ locale, dict }: FooterProps) {
   const home = locale === 'uz' ? '/' : '/ru';
 
   return (
-    <footer className="border-t border-brand-border bg-brand-bg">
+    <footer
+      className="mt-4"
+      style={{
+        borderTop: '1px solid rgba(232,165,82,0.12)',
+        background: 'rgba(15,15,15,0.60)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
+    >
       <div className="mx-auto grid w-full max-w-content gap-10 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:gap-12 lg:px-8">
-        {/* Brand */}
         <div>
-          <Link href={home} className="flex items-center gap-2" aria-label="MaxSavdo">
-            <span className="inline-block h-7 w-7 rounded-md bg-brand-accent" aria-hidden />
-            <span className="text-lg font-semibold text-brand-text">MaxSavdo</span>
+          <Link href={home} className="flex items-center gap-2.5" aria-label="MaxSavdo">
+            <Image src="/logo-maxsavdo.svg" alt="MaxSavdo" width={34} height={34} />
+            <span className="text-lg font-bold tracking-tight text-brand-text">MaxSavdo</span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-brand-muted">
             {dict.tagline}
           </p>
         </div>
 
-        {/* Product links */}
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
-            {dict.productHeading}
+            {dict.contact}
           </h4>
           <ul className="mt-4 flex flex-col gap-3 text-sm">
-            {dict.productLinks.map((l) => (
-              <li key={l.href}>
-                <a
-                  href={l.href}
-                  className="text-brand-text transition-colors hover:text-brand-accent"
-                >
-                  {l.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Contacts */}
-        <div>
-          <h4 className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
-            {dict.contactHeading}
-          </h4>
-          <ul className="mt-4 flex flex-col gap-3 text-sm">
+            <li>
+              <a
+                href={BOT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
+              >
+                <Send size={15} aria-hidden /> {dict.bot}
+              </a>
+            </li>
             <li>
               <a
                 href={TG_CHANNEL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
+                className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
               >
-                <Send size={16} aria-hidden /> {dict.channelLabel}
+                <Send size={15} aria-hidden /> {dict.channel}
               </a>
             </li>
             <li>
               <a
                 href={`mailto:${EMAIL}`}
-                className="inline-flex items-center gap-2 text-brand-text transition-colors hover:text-brand-accent"
+                className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
               >
-                <Mail size={16} aria-hidden /> {dict.emailLabel}
+                <Mail size={15} aria-hidden /> {EMAIL}
               </a>
             </li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-brand-border">
-        <div className="mx-auto flex w-full max-w-content flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-brand-muted sm:flex-row sm:px-6 lg:px-8">
+      <div style={{ borderTop: '1px solid rgba(232,165,82,0.08)' }}>
+        <div className="mx-auto flex w-full max-w-content flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-brand-muted sm:flex-row sm:px-6 lg:px-8">
           <span>© {year} MaxSavdo. {dict.rights}</span>
-          <span>Made in Uzbekistan</span>
+          <span style={{ color: 'rgba(232,165,82,0.40)' }}>Made in Uzbekistan 🇺🇿</span>
         </div>
       </div>
     </footer>
