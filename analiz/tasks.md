@@ -20,7 +20,8 @@
 - **🔲 Осталось:**
   1. Передать ключ RAOS безопасным каналом + `docs/contracts/partner-api-raos.md`.
   2. Получить от RAOS: https-URL фото, объёмы/частоту, нужен ли update/delete-sync (не входит в v1).
-  3. (опц.) удалить smoke-товар `12c3e990-6744-49e4-b4d7-e052a009a8a8` из admin.
+  3. ~~(опц.) удалить smoke-товар `12c3e990-…`~~ ✅ 16.07 — удалён в рамках чистки базы
+     (PROD-DB-CLEANUP-001, см. done.md).
 
 ## 🟢 [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — API ГОТОВ 14.07 (Полат), очередь Азима
 - **Домен:** `packages/db` + `apps/api` (✅ Полат 14.07, см. done.md) → `web-seller`/`web-buyer` (🔲 Азим)
@@ -80,6 +81,27 @@
 - **Контекст:** owner запросил аудит SEO/GEO/AEO + кода сайта. Находки-баги: `logs.md → SEO-AUDIT-001`.
   Вывод: техфундамент хороший, но сайт невидим для поисковиков и AI-краулеров (нет discovery-пути).
 
+### 🔴 P0 НОВОЕ (16.07.2026) — apex maxsavdo.uz отдаёт 404 на /robots.txt и /sitemap.xml (причина ПОДТВЕРЖДЕНА, фикс на паузе)
+- **Домен:** Railway дашборд (доступ есть у Азима — зашёл под azim.kurbanov.2000@mail.ru,
+  TezCode Team → savdo builder) — НЕ код-фикс
+- **Контекст:** внешний аудит (Bekzod aka) заявил maxsavdo.uz 3/10, robots.txt+sitemap.xml
+  "вообще отсутствуют". Проверено live 16.07 — подтверждено, но код в `apps/landing` в порядке.
+- **Причина ПОДТВЕРЖДЕНА (не догадка):** apex/`www.maxsavdo.uz` реально обслуживает **web-seller**,
+  а не `landing` — тело 404 дословно совпадает с `apps/web-seller/src/app/layout.tsx:19-27`
+  (title/description/lang). При этом Railway Settings показывает `landing` как владельца домена,
+  и его деплой свежий/успешный (4 дня назад, HEAD `ba1bd884`) — т.е. рассинхрон именно в
+  Railway edge routing, не в коде/деплое. Полные детали и nslookup-доказательства —
+  `logs.md → SEO-AUDIT-001 [2026-07-16, доп.]`.
+- **⚠️ Побочная находка:** воркспейс `TezCode Team` превысил Compute Usage Limit ($64/$60) —
+  "All deployments are paused" до апгрейда лимита или след. billing-цикла. Не блокирует фикс
+  домена (это не деплой), но блокирует любой обычный редеплой сервисов до решения по лимиту.
+- **Предложенный фикс (НЕ применён — owner попросил подождать 16.07):** в Railway → `landing` →
+  Settings → Networking: удалить и заново добавить custom domain `maxsavdo.uz`+`www` — форсирует
+  Railway пересобрать routing. DNS в Cloudflare трогать не обязательно, если новый CNAME-таргет
+  совпадёт со старым.
+- **Отдельно, не блокер:** ни у одного из 7 сайтов компании (включая нас) нет Google Search
+  Console / Yandex.Webmaster — аккаунт-левел действие у владельца доменов, не код-задача.
+
 ### ✅ Что НОРМ — не трогать (подтверждено чтением кода)
 - SSR страницы магазина + `generateMetadata`/canonical/OG (`[slug]/page.tsx`), React.cache дедуп.
 - Серверный Product JSON-LD + metadata (`products/[id]/layout.tsx`), Organization JSON-LD в корне.
@@ -138,10 +160,24 @@
    (каталог/админка), не в отсутствии страницы. См. `done.md` LANDING-CORP-PAGE-001.
 
 ### 🟡 P2
-10. llms.txt; Organization JSON-LD: logo + sameAs (TG-канал) + contactPoint; BreadcrumbList на
-    товаре; WebSite+SearchAction на главной.
-11. `manifest.ts` icons → `/favicon.ico`, но `public/` пуст → 404 иконки PWA. Положить реальные.
-12. `sitemap.ts` lastModified = new Date() на каждый запрос — отдавать честные даты.
+10. ✅ ЗАКРЫТО 16.07.2026 (Азим, по шаблону `SEO-GEO-Ishlar-Shabloni.md`) — `public/llms.txt`
+    добавлен в `apps/landing` (продукт/цены/сравнение/FAQ-ссылки). Organization JSON-LD в
+    web-buyer `layout.tsx` дополнен `logo`+`sameAs`(TG-бот)+`contactPoint` (landing уже имел это
+    раньше, теперь оба апа консистентны). BreadcrumbList JSON-LD добавлен на
+    `products/[id]/layout.tsx` (Home→Store→Product). **WebSite+SearchAction сознательно
+    пропущен** — у web-buyer нет URL-адресуемой страницы поиска (`searchStorefront()` — чистый
+    API-виджет без `?q=` роута), фейковый SearchAction был бы враньём в JSON-LD. Также добавлены
+    explicit AI-краулер правила (GPTBot/ClaudeBot/Google-Extended/PerplexityBot/etc.) в
+    `robots.ts` обоих апов (landing + web-buyer) — функционально уже разрешались через
+    `userAgent: '*'`, но явные правила безопаснее для GEO. tsc + build чисты в обоих апах.
+11. ✅ ПРОВЕРЕНО 16.07.2026 — ложная тревога / уже неактуально: `apps/web-buyer/public/icon-192.png`
+    и `icon-512.png` реально существуют, `manifest.ts` ссылается именно на них (не на favicon.ico).
+    404 нет. `apps/landing` и `apps/web-seller` вообще не имеют `manifest.ts` — нечему 404-ить.
+12. ✅ ЗАКРЫТО 16.07.2026 (Азим) — `sitemap.ts` в `apps/landing` и `apps/web-buyer`: статичные
+    страницы (лендинг /,/ru, terms/privacy/offer/refund/help) теперь используют честный
+    `lastModified` = реальная дата последнего git-коммита файла страницы, а не `new Date()` на
+    каждый запрос. Главная web-buyer (`/`) осознанно оставлена динамической — она агрегирует
+    живые featured-магазины/товары, `now` тут не обман.
 13. ✅ `robots.ts:14-15` — `/orders`/`/orders/` дубль убран, закрыто 12.07.2026 (`b215b59b`, web-buyer).
 
 ### 🔧 Код-аудит (не SEO)

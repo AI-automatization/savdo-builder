@@ -259,7 +259,15 @@ export class AdminRepository {
           // ADMIN-STORES-NO-COUNTS-001 (подтверждён вживую 29.06.2026): admin
           // список показывал «—» в колонках ТОВАРЫ/ЗАКАЗЫ — endpoint не отдавал
           // counts. Фронт (StoresPage.tsx:238,246) уже читает _count.products/orders.
-          _count: { select: { products: true, orders: true } },
+          // ADMIN-STORES-COUNT-SOFT-DELETED-001 (16.07.2026): admin force-delete
+          // товара — это soft-delete (deletedAt), без фильтра счётчик показывал
+          // удалённые товары («20» при пустом списке).
+          _count: {
+            select: {
+              products: { where: { deletedAt: null } },
+              orders: true,
+            },
+          },
         },
       }),
       this.prisma.store.count({ where }),

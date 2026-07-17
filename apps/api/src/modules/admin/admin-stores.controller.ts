@@ -32,6 +32,7 @@ import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
 import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
 import { SetStoreVerificationUseCase } from './use-cases/set-store-verification.use-case';
 import { AdminUpdateStoreChannelUseCase } from './use-cases/admin-update-store-channel.use-case';
+import { AdminPurgeStoreUseCase } from './use-cases/admin-purge-store.use-case';
 import { AdminContextService } from './services/admin-context.service';
 
 /**
@@ -60,6 +61,7 @@ export class AdminStoresController {
     private readonly unapproveStoreUseCase: UnapproveStoreUseCase,
     private readonly setStoreVerificationUseCase: SetStoreVerificationUseCase,
     private readonly adminUpdateStoreChannelUseCase: AdminUpdateStoreChannelUseCase,
+    private readonly adminPurgeStoreUseCase: AdminPurgeStoreUseCase,
   ) {}
 
   @Get()
@@ -157,6 +159,26 @@ export class AdminStoresController {
       actorUserId: user.sub,
       isVerified: false,
       reason: dto.reason,
+    });
+  }
+
+  // ADMIN-STORE-PURGE-001: БЕЗВОЗВРАТНО удаляет магазин + товары + заказы,
+  // НЕ трогая аккаунт владельца (для тестовых магазинов на admin-аккаунтах,
+  // которые user-purge не берёт). Type-to-confirm slug в body.
+  // `store:purge` есть у базовых admin/super_admin через `store:*`; в словарь
+  // кастомных ролей НЕ добавлен — им не выдать.
+  @Post(':id/purge')
+  @AdminPermission('store:purge')
+  async purge(
+    @Param('id') id: string,
+    @Body() body: { confirmSlug?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.adminContext.requireAdmin(user);
+    return this.adminPurgeStoreUseCase.execute({
+      storeId: id,
+      actorUserId: user.sub,
+      confirmSlug: body?.confirmSlug ?? '',
     });
   }
 

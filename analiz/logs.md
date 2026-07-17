@@ -1,5 +1,24 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-16] [MODERATION-ORPHANS-001] Сироты в очереди модерации после hard-delete
+- **Статус:** ✅ Исправлено (чистка прода + фикс в purge-коде)
+- **Что случилось:** при чистке прод-базы в очереди модерации остались 3 OPEN-кейса
+  (46b25cdd, dfbbaaca, 61fee013) на уже удалённые сущности. Root cause:
+  `ModerationCase/ModerationAction.entityId` — строка БЕЗ FK (schema.prisma:1289-1324),
+  каскады user-purge их не зацепили. APPROVE/REJECT по сироте падает P2025
+  (take-action.use-case.ts:90-101 — store.update по несуществующему id).
+- **Что сделано:** 3 кейса удалены через DELETE /admin/db/tables/moderation_cases/:id (все 200);
+  в admin-purge-user.use-case.ts и новый purge-store-subtree.ts добавлена ручная чистка
+  moderation-таблиц по entityId (user/seller/store/productIds) внутри транзакции.
+
+## [2026-07-16] [ADMIN-STORES-COUNT-SOFT-DELETED-001] Счётчик товаров в /stores включал soft-deleted
+- **Статус:** ✅ Исправлено (код), ждёт деплой api
+- **Что случилось:** admin force-delete товара — это SOFT delete (products.repository.ts:366-370,
+  deletedAt), а `_count.products` в findStores считал все строки → список магазинов показывал
+  «удалённые» товары в колонке ТОВАРЫ.
+- **Что сделано:** admin.repository.ts findStores: `_count.products` с фильтром
+  `{ where: { deletedAt: null } }` + комментарий с ID бага.
+
 ## [2026-07-14] [ADMIN-VENDOR-CHUNK-CRASH-001] Прод-админка чёрный экран после деплоя ef9f482
 - **Статус:** ✅ Исправлено (vite.config admin, hotfix)
 - **Что случилось:** после сегодняшнего деплоя admin (purge-кнопка + подтянутый main c lockfile-
@@ -2697,3 +2716,74 @@ P2: остальное.
   как оно появится (`SitemapFeed` в `storefront-server.ts` нужно расширить `products[].storeSlug`
   + один map в `sitemap.ts`, ~10 минут работы после бэкенд-правки).
 
+
+## [2026-07-16] [SEO-AUDIT-001] apex-домен maxsavdo.uz отдаёт 404 на /robots.txt и /sitemap.xml — НЕ баг кода, edge-cache/domain-routing
+
+- **Статус:** 🔴 Баг (подтверждён live-проверкой), НЕ код-фикс — нужен Railway/Cloudflare дашборд
+- **Контекст:** внешний SEO/GEO/AIO-аудит (Bekzod aka, AI-ассистент) сообщил, что maxsavdo.uz
+  (3/10, худший из 7 сайтов компании) не имеет robots.txt/sitemap.xml вообще. Проверил вживую:
+  claim подтверждён на live-домене, НО код в порядке — `apps/landing/src/app/robots.ts` и
+  `sitemap.ts` существуют с первого scaffold-коммита (`698cf21b`), локальный `npm run build`
+  генерирует их как статичные роуты (`○ /robots.txt`, `○ /sitemap.xml`) без ошибок.
+- **Доказательства (curl, 16.07.2026):**
+  - `curl https://maxsavdo.uz/robots.txt` → HTTP 404, `x-nextjs-cache: HIT`, тело содержит
+    `<title>maxsavdo — Seller Dashboard</title>` — это метадата **web-seller**, не `landing`.
+  - `curl https://maxsavdo.uz/sitemap.xml`, `/ru` — тот же паттерн (404 + Seller Dashboard meta).
+  - НО `curl https://seller.maxsavdo.uz/robots.txt` (правильный поддомен web-seller) → 200,
+    честный `Disallow: /` — сам web-seller деплой здоров.
+  - `curl https://shop.maxsavdo.uz/robots.txt` (web-buyer) → 200, полный корректный robots.txt
+    с Sitemap-строкой — web-buyer тоже здоров.
+  - Апекс-домен `/` при этом ВИЗУАЛЬНО выглядит как landing (маркетинг-копия "Магазин, который
+    выглядит дорого") — не рассинхрон с `DEPLOY-DOMAIN-MAXSAVDO-001` картой на первый взгляд,
+    но `www.maxsavdo.uz/robots.txt` — та же ошибка (Seller Dashboard 404).
+- **Вероятная причина:** `web-seller/src/app/robots.ts` не зависит от Host и вернул бы то же
+  `Disallow: /`, если бы апекс реально проксировался на web-seller ориджин — но апекс получает
+  404, значит это **не живой рендер**, а закэшированный на Railway edge (`Server: railway-hikari`,
+  `x-nextjs-prerender: 1`) ответ от какого-то прошлого запроса/хоста, отданный сейчас под
+  неверным доменом. Похоже на то, что кэш на грани Railway/Cloudflare не учитывает Host в ключе
+  кэширования для этих путей → cross-domain cache pollution.
+- **Что НЕ делал:** не трогал код `apps/landing` — правка кода тут не поможет, раз локальная
+  сборка и так генерирует файлы верно. Нет доступа к Railway/Cloudflare дашборду в этой сессии
+  (проверил `railway` CLI — не установлен; Playwright → railway.com/dashboard → экран логина,
+  сессии нет).
+- **Что нужно (владельцу Railway/Cloudflare — Полат или кто держит доступ):**
+  1. Railway → Settings → Domains: подтвердить, что `maxsavdo.uz` + `www` реально привязаны к
+     сервису `landing` (не остался старый bind на `savdo-builder-sl`/web-seller).
+  2. Сделать свежий Deploy `landing` (новый build id обычно инвалидирует ISR/edge-кэш).
+  3. Cloudflare → Caching → Purge Cache (минимум для `/robots.txt`, `/sitemap.xml`, `/`, `/ru`)
+     на зоне maxsavdo.uz.
+  4. Перепроверить: `curl -I https://maxsavdo.uz/robots.txt` должен отдать `landing`-контент,
+     не 404.
+- **Отдельно (не блокер этого бага):** GSC/Yandex.Webmaster — их **вообще ни у одного из 7
+  сайтов компании нет** по внешнему аудиту. Это аккаунт-левел действие (верификация домена в
+  Google/Yandex через TXT-запись или meta-tag), требует доступ к аккаунту Bekzod aka/owner —
+  не код-задача, Claude не может это сделать сам.
+
+## [2026-07-16, доп.] [SEO-AUDIT-001] apex-баг — причина ПОДТВЕРЖДЕНА (Railway edge routing), фикс НЕ применён (owner попросил подождать)
+
+- **Уточнение к записи выше:** причина не "закэшированный 404", а **web-seller реально обслуживает
+  трафик apex/`www` maxsavdo.uz** — тело 404-ответа 1-в-1 совпадает с `apps/web-seller/src/app/
+  layout.tsx:19-27` (`title: "maxsavdo — Seller Dashboard"`, `description: "Управляй магазином
+  в Telegram"`, `lang="ru"`), не догадка, а точное совпадение строк кода.
+- **Проверено в Railway дашборде (TezCode Team → savdo builder, зашёл под azim.kurbanov.2000@mail.ru):**
+  - Domains у сервиса `landing`: `maxsavdo.uz` + `www.maxsavdo.uz` — оба привязаны правильно.
+  - Последний деплой `landing` — "LANDING-CORP-PAGE-001", 4 дня назад, **Deployment successful**,
+    соответствует текущему HEAD ветки `landing` (`ba1bd884`).
+  - Т.е. на уровне Railway Settings всё выглядит корректно.
+  - ⚠️ **Отдельная находка:** воркспейс `TezCode Team` (там же лежит `savdo builder`) превысил
+    Compute Usage Limit ($64/$60) — "All deployments are paused" до апгрейда лимита или
+    следующего billing-цикла. Значит редеплой сейчас всё равно не пройдёт, пока лимит не поднят.
+  - `nslookup` (read-only): `seller.maxsavdo.uz`→`imgm5990.up.railway.app`,
+    `shop.maxsavdo.uz`→`2hba0kzp.up.railway.app`, `www.maxsavdo.uz`→`ggnri8a2.up.railway.app`
+    (свой уникальный таргет), но `maxsavdo.uz` (apex) — голый A-record `69.46.46.66` без
+    CNAME-алиаса (у всех остальных виден `*.up.railway.app`).
+- **Рабочая гипотеза:** Railway edge (`railway-hikari`) держит устаревшую routing-запись для
+  apex+www — домены раньше (до 07.07) вероятно указывали на web-seller, и после переключения на
+  `landing` (см. `DEPLOY-DOMAIN-MAXSAVDO-001`) edge не обновил внутренний routing, хотя в
+  Settings UI показывает актуальное состояние.
+- **Предложенный безопасный фикс (НЕ применён — owner попросил подождать):** удалить и заново
+  добавить `maxsavdo.uz`/`www` как custom domain у сервиса `landing` в Railway — форсирует
+  Railway пересобрать routing-запись. Требует активного billing-лимита? Нет — привязка домена
+  не деплой, лимит компьюта не должен мешать. DNS в Cloudflare трогать не обязательно, если
+  Railway выдаст тот же CNAME-таргет.
+- **Статус:** 🔴 Открыто, ждём решения owner'а когда делать фикс.
