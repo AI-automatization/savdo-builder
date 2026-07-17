@@ -1,5 +1,31 @@
 # Done — Азим + Полат
 
+## 2026-07-17 (Fable 5) — LANDING-DEPLOY-TOPOLOGY-001: apps/landing SEO синхронизирован с main
+
+### ✅ [LANDING-DEPLOY-TOPOLOGY-001] (частично) — SEO-код в main, деплой-переключение осталось Полату
+- **Важность:** 🔴 · **Дата:** 17.07.2026 · **Ветка:** `landing-seo-sync` → смёржена в `main`
+- **Контекст:** owner попросил аудит, почему `maxsavdo.uz` не виден в Google/geo-поиске. Найден
+  root cause — см. `tasks.md → LANDING-DEPLOY-TOPOLOGY-001` (Railway `landing`-сервис билдится из
+  `apps/web-seller`, не из `apps/landing`; вся SEO-работа Азима 16.07 никогда не деплоилась).
+- **Файлы:**
+  - Cherry-pick с `origin/landing` (7 коммитов, только `apps/landing`-путь): логотип/цвета/favicon-фиксы
+    + `4589707a` — `apps/landing/public/llms.txt` (новый), `apps/landing/src/app/robots.ts`
+    (AI-crawler allow-правила), `apps/landing/src/app/sitemap.ts` (честные `lastModified`).
+  - Новое: `apps/landing/src/lib/jsonld.ts`, `apps/landing/src/app/layout.tsx`,
+    `apps/landing/src/app/page.tsx`, `apps/landing/src/app/ru/page.tsx` — JSON-LD (Organization,
+    WebSite, SoftwareApplication+Offers, FAQPage).
+  - Фикс: `apps/landing/railway.toml` (`NEXT_PUBLIC_SITE_URL` `savdo.uz`→`maxsavdo.uz`).
+- **Что сделано:** см. полное описание в `tasks.md`. Кратко — весь SEO-фундамент для `apps/landing`
+  теперь в `main` и запушен. Локально проверено: `tsc --noEmit` чисто, production build чисто
+  (8/8 страниц), standalone-сборка поднята и curl-ом подтверждено, что JSON-LD/robots.txt/
+  sitemap.xml/llms.txt рендерятся правильно.
+- **Не сделано (осознанно, не моя зона):** переключение Railway Root Directory сервиса `landing`
+  с `apps/web-seller` на `apps/landing` — нужен доступ к Railway dashboard (Полат/owner), плюс это
+  live-инфра продакшена, менять без подтверждения владельца нельзя. Пока это не сделано, все эти
+  правки физически не видны на живом `maxsavdo.uz`. Полный чеклист оставшихся шагов — в `tasks.md`.
+- **Урок:** тот же анти-паттерн, что `LANDING-BRANCH-DRIFT-001` — два кодовых пути под одним доменом,
+  один из них молча не деплоится. Стоит закрыть branch `landing` после переключения, чтобы не повторилось.
+
 ## 2026-07-14 (Полат/Claude, ночь) — ADMIN-USER-PURGE-001
 
 ### ✅ [ADMIN-USER-PURGE-001] Кнопка «Удалить безвозвратно» в админке (user + store + товары + заказы)

@@ -5,6 +5,49 @@
 
 ---
 
+## 🔴 [LANDING-DEPLOY-TOPOLOGY-001] Railway `landing` сервис билдится НЕ из `apps/landing` — весь SEO-код мёртв в проде
+- **Домен:** инфра/Railway (Полат) — нужно решение owner (Railway dashboard доступ, не код)
+- **Кто взял:** пока никто — находка от Fable 5 (17.07, аудит по запросу owner)
+- **Контекст:** owner попросил разобраться, почему `maxsavdo.uz` не индексируется / плохо виден в Google
+  и geo-поиске. Диагноз: `railway.toml` сервиса `landing` = `dockerfilePath = "apps/web-seller/Dockerfile"`
+  (branch `landing`, см. `git show origin/landing:apps/web-seller/railway.toml`) — тот самый анти-паттерн
+  из `LANDING-BRANCH-DRIFT-001`. Тем временем в репо параллельно живёт отдельное, полноценное
+  `apps/landing` (Next.js 15, свой `robots.ts`/`sitemap.ts`/`layout.tsx` с canonical+hreflang+keywords) —
+  и branch `landing` содержит АКТУАЛЬНЫЕ SEO/GEO правки Азима от 16.07 именно в `apps/landing`
+  (`4589707a` — llms.txt, AI-crawler allow-правила в robots.ts, честные даты в sitemap.ts). Но раз
+  Railway-сервис `landing` строится из `apps/web-seller`, ничего из `apps/landing` **никогда не
+  деплоилось** — живой `maxsavdo.uz` отдаёт старую вёрстку из `apps/web-seller` (рус-only тайтл
+  "магазин, который выглядит дорого"), а `robots.txt`/`sitemap.xml` там 404 на момент аудита.
+- **Что сделано (Fable 5, 17.07, ветка `landing-seo-sync` от `main`):**
+  1. Cherry-picked 7 коммитов Азима (`apps/landing`-only, без примеси `apps/web-seller`) с `origin/landing`
+     на `main`: логотип/фавикон/цвета + `4589707a` (llms.txt, AI-crawler robots, честные даты sitemap).
+  2. Добавлен JSON-LD, которого не было вообще: Organization (root layout, sitewide) + per-locale
+     `@graph` (WebSite, SoftwareApplication с реальными Offer из тарифов, FAQPage из реального FAQ).
+     Без LocalBusiness/адреса — физической точки для покупателей нет, выдумывать по принципу
+     `LANDING-HONEST-COPY-001` не стали.
+  3. Фикс `apps/landing/railway.toml`: `NEXT_PUBLIC_SITE_URL` default был `savdo.uz` (опечатка) →
+     `maxsavdo.uz`.
+  4. Проверено локально: `tsc --noEmit` чисто, `npm run build` чисто (8/8 страниц, `/robots.txt` +
+     `/sitemap.xml` генерятся), standalone-сборка поднята и curl-ом проверено — JSON-LD рендерится,
+     robots.txt отдаёт AI-crawler правила, sitemap.xml — честные даты, llms.txt — 200.
+  5. Смёржено в `main`, запушено (см. `done.md`).
+- **🔲 Осталось (нужен Полат/owner, Railway dashboard):**
+  1. Переключить Root Directory / Dockerfile сервиса `landing` в Railway с `apps/web-seller` на
+     `apps/landing`, source branch → `main` (не `landing` — тот branch дальше мешает `apps/landing`
+     с `apps/web-seller`-правками, годными только для `seller.maxsavdo.uz`).
+  2. Проверить env vars сервиса после переключения: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_BOT_USERNAME`,
+     `NEXT_PUBLIC_SITE_URL=https://maxsavdo.uz` (сверить с `apps/landing/railway.toml`/`.env.example`).
+  3. После деплоя — curl-ом перепроверить `maxsavdo.uz/robots.txt`, `/sitemap.xml`, `/llms.txt`, JSON-LD
+     на `/` — что живой сайт реально отдаёт то, что в `apps/landing`, а не старую `web-seller`-вёрстку.
+  4. Постдеплой: Google Search Console (sitemap submit + Request Indexing на `/` и `/ru`), Bing Webmaster
+     (import from GSC — критично, ChatGPT web search использует Bing-индекс), Google Business Profile /
+     2GIS / Yandex Business (SEO-AUDIT-001 §4.4 — отдельная задача, не блокируется этим пунктом).
+  5. Решить судьбу branch `landing`: после переключения Root Directory она либо ре-таргетится на чистый
+     `apps/landing`-only workflow, либо удаляется как источник путаницы (то же предупреждение, что и в
+     `LANDING-BRANCH-DRIFT-001`).
+
+---
+
 ## 🟡 [PARTNER-API-RAOS-001] RAOS-интеграция — КОД ГОТОВ 14.07 (см. done.md), остались орг-шаги
 - **Домен:** операционка (Полат) + RAOS-сторона
 - **✅ Код-комплит 14.07:** PartnerModule (`X-Api-Key` Guard, `POST /partner/products`,
