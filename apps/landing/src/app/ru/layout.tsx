@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { t } from "@/lib/i18n";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://maxsavdo.uz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://maxsavdo.uz";
 const ru = t("ru");
 
 export const metadata: Metadata = {

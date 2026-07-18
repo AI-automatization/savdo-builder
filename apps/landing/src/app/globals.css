@@ -35,15 +35,37 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-accent px-6 py-3 font-semibold text-brand-bg transition-colors hover:bg-brand-accentHover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-accent px-6 py-3 font-semibold text-brand-bg transition-colors hover:bg-brand-accentHover;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-border bg-brand-surface px-6 py-3 font-semibold text-brand-text transition-colors hover:border-brand-accent;
   }
 
-  .card {
-    @apply rounded-2xl border border-brand-border bg-brand-surface p-6;
+  /* Azim glass cards with Polat amber */
+  .card-glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(232, 165, 82, 0.18);
+    border-radius: 20px;
+  }
+
+  .card-glass-dim {
+    background: rgba(255, 255, 255, 0.025);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(232, 165, 82, 0.10);
+    border-radius: 20px;
+  }
+
+  .card-glass-highlight {
+    background: rgba(232, 165, 82, 0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(232, 165, 82, 0.40);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px -20px rgba(232, 165, 82, 0.28);
   }
 }
 

@@ -13,7 +13,7 @@ export type FAQItem = {
 export type FAQDict = {
   title: string;
   subtitle?: string;
-  items: FAQItem[]; // 5-7
+  items: FAQItem[];
 };
 
 type FAQProps = {
@@ -25,10 +25,7 @@ export default function FAQ({ dict }: FAQProps) {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <section
-      id="faq"
-      className="border-t border-brand-border bg-brand-bg py-20 lg:py-28"
-    >
+    <section id="faq" className="py-20 lg:py-28">
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-brand-text sm:text-4xl">
@@ -48,7 +45,8 @@ export default function FAQ({ dict }: FAQProps) {
             return (
               <li
                 key={item.q}
-                className="rounded-xl border border-brand-border bg-brand-surface"
+                className={open ? 'card-glass-highlight' : 'card-glass'}
+                style={{ overflow: 'hidden' }}
               >
                 <h3>
                   <button
@@ -61,12 +59,9 @@ export default function FAQ({ dict }: FAQProps) {
                   >
                     <span>{item.q}</span>
                     <ChevronDown
-                      size={20}
+                      size={18}
                       aria-hidden
-                      className={
-                        'shrink-0 text-brand-muted transition-transform ' +
-                        (open ? 'rotate-180 text-brand-accent' : '')
-                      }
+                      style={{ color: open ? '#E8A552' : '#A0A0A0', flexShrink: 0, transition: 'transform 0.2s, color 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
                     />
                   </button>
                 </h3>
@@ -76,7 +71,8 @@ export default function FAQ({ dict }: FAQProps) {
                     id={panelId}
                     role="region"
                     aria-labelledby={buttonId}
-                    className="border-t border-brand-border px-5 py-4 text-sm leading-relaxed text-brand-muted"
+                    className="px-5 pb-4 pt-0 text-sm leading-relaxed text-brand-muted"
+                    style={{ borderTop: '1px solid rgba(232,165,82,0.15)' }}
                   >
                     {item.a}
                   </div>

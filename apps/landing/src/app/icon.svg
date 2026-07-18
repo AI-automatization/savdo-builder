@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <clipPath id="fl"><rect x="0" y="0" width="16" height="32"/></clipPath>
+    <clipPath id="fr"><rect x="16" y="0" width="16" height="32"/></clipPath>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#0F0F0F"/>
+  <path d="M 11 9 Q 16 4 21 9" stroke="#C9A876" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <text x="16" y="27" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="900" font-size="26" fill="#F5F5F5" clip-path="url(#fl)">M</text>
+  <text x="16" y="27" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="900" font-size="26" fill="#C9A876" clip-path="url(#fr)">M</text>
+</svg>
